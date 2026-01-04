@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ArrowLeft, Check, Dumbbell, Calendar, IndianRupee, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useRazorpay } from "@/hooks/useRazorpay";
 
 interface GymSettings {
   monthly_fee: number;
@@ -23,11 +24,11 @@ const Register = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { initiatePayment, isLoading: isPaymentLoading } = useRazorpay();
   const { name, phone } = (location.state as { name: string; phone: string }) || {};
   
   const [selectedMonths, setSelectedMonths] = useState(3);
   const [settings, setSettings] = useState<GymSettings | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!name || !phone) {
@@ -58,75 +59,37 @@ const Register = () => {
   const subscriptionAmount = monthlyFee * selectedMonths;
   const totalAmount = subscriptionAmount + joiningFee;
 
-  const handlePayment = async () => {
-    setIsLoading(true);
-    
-    try {
-      // Create member
-      const { data: member, error: memberError } = await supabase
-        .from("members")
-        .insert({ name, phone })
-        .select()
-        .single();
-
-      if (memberError) throw memberError;
-
-      // Calculate dates
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + selectedMonths);
-
-      // Create subscription
-      const { data: subscription, error: subError } = await supabase
-        .from("subscriptions")
-        .insert({
-          member_id: member.id,
-          start_date: startDate.toISOString().split("T")[0],
-          end_date: endDate.toISOString().split("T")[0],
-          plan_months: selectedMonths,
-          status: "active",
-        })
-        .select()
-        .single();
-
-      if (subError) throw subError;
-
-      // Create payment record (pending - would be updated by webhook in production)
-      const { error: paymentError } = await supabase
-        .from("payments")
-        .insert({
-          member_id: member.id,
-          subscription_id: subscription.id,
-          amount: totalAmount,
-          payment_mode: "online",
-          status: "success", // In production, this would be "pending" until Razorpay confirms
+  const handlePayment = () => {
+    initiatePayment({
+      amount: totalAmount,
+      memberName: name,
+      memberPhone: phone,
+      isNewMember: true,
+      months: selectedMonths,
+      onSuccess: (data) => {
+        const endDate = new Date(data.endDate);
+        navigate("/success", {
+          state: {
+            memberName: name,
+            phone,
+            amount: totalAmount,
+            endDate: endDate.toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }),
+            isNewMember: true,
+          },
         });
-
-      if (paymentError) throw paymentError;
-
-      // Success!
-      navigate("/success", {
-        state: {
-          memberName: name,
-          phone,
-          amount: totalAmount,
-          endDate: endDate.toLocaleDateString("en-IN", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          }),
-          isNewMember: true,
-        },
-      });
-    } catch (error: any) {
-      toast({
-        title: "Registration Failed",
-        description: error.message || "Something went wrong",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+      },
+      onError: (error) => {
+        toast({
+          title: "Payment Failed",
+          description: error,
+          variant: "destructive",
+        });
+      },
+    });
   };
 
   if (!name || !phone) return null;
@@ -238,9 +201,9 @@ const Register = () => {
               size="xl"
               className="w-full"
               onClick={handlePayment}
-              disabled={isLoading}
+              disabled={isPaymentLoading}
             >
-              {isLoading ? (
+              {isPaymentLoading ? (
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
                   Processing...

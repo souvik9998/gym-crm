@@ -1,0 +1,281 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Calendar, CreditCard, Banknote, Filter, X } from "lucide-react";
+import type { Database } from "@/integrations/supabase/types";
+
+type PaymentMode = Database["public"]["Enums"]["payment_mode"];
+type PaymentStatus = Database["public"]["Enums"]["payment_status"];
+
+interface Payment {
+  id: string;
+  amount: number;
+  payment_mode: PaymentMode;
+  status: PaymentStatus | null;
+  created_at: string | null;
+  notes: string | null;
+  member: {
+    name: string;
+    phone: string;
+  } | null;
+}
+
+interface PaymentHistoryProps {
+  refreshKey: number;
+}
+
+export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [paymentMode, setPaymentMode] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  useEffect(() => {
+    fetchPayments();
+  }, [refreshKey]);
+
+  const fetchPayments = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("payments")
+        .select(`
+          id,
+          amount,
+          payment_mode,
+          status,
+          created_at,
+          notes,
+          member:members(name, phone)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setPayments(data || []);
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const clearFilters = () => {
+    setDateFrom("");
+    setDateTo("");
+    setPaymentMode("all");
+    setStatusFilter("all");
+  };
+
+  const filteredPayments = payments.filter((payment) => {
+    // Date filter
+    if (dateFrom && payment.created_at) {
+      const paymentDate = new Date(payment.created_at);
+      const fromDate = new Date(dateFrom);
+      if (paymentDate < fromDate) return false;
+    }
+    if (dateTo && payment.created_at) {
+      const paymentDate = new Date(payment.created_at);
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (paymentDate > toDate) return false;
+    }
+
+    // Payment mode filter
+    if (paymentMode !== "all" && payment.payment_mode !== paymentMode) {
+      return false;
+    }
+
+    // Status filter
+    if (statusFilter !== "all" && payment.status !== statusFilter) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const getStatusBadge = (status: PaymentStatus | null) => {
+    switch (status) {
+      case "success":
+        return <Badge variant="success">Success</Badge>;
+      case "pending":
+        return <Badge variant="warning">Pending</Badge>;
+      case "failed":
+        return <Badge variant="destructive">Failed</Badge>;
+      default:
+        return <Badge variant="secondary">Unknown</Badge>;
+    }
+  };
+
+  const getPaymentModeIcon = (mode: PaymentMode) => {
+    return mode === "online" ? (
+      <CreditCard className="w-4 h-4 text-accent" />
+    ) : (
+      <Banknote className="w-4 h-4 text-success" />
+    );
+  };
+
+  const hasActiveFilters = dateFrom || dateTo || paymentMode !== "all" || statusFilter !== "all";
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="w-8 h-8 border-4 border-accent/30 border-t-accent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-end">
+        <div className="flex-1 min-w-[150px]">
+          <label className="text-xs text-muted-foreground mb-1 block">From Date</label>
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="h-9"
+          />
+        </div>
+        <div className="flex-1 min-w-[150px]">
+          <label className="text-xs text-muted-foreground mb-1 block">To Date</label>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="h-9"
+          />
+        </div>
+        <div className="flex-1 min-w-[120px]">
+          <label className="text-xs text-muted-foreground mb-1 block">Payment Mode</label>
+          <Select value={paymentMode} onValueChange={setPaymentMode}>
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Modes</SelectItem>
+              <SelectItem value="online">Online</SelectItem>
+              <SelectItem value="cash">Cash</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex-1 min-w-[120px]">
+          <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="success">Success</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="failed">Failed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9">
+            <X className="w-4 h-4 mr-1" />
+            Clear
+          </Button>
+        )}
+      </div>
+
+      {/* Results summary */}
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <span>
+          Showing {filteredPayments.length} of {payments.length} transactions
+        </span>
+        <span className="font-semibold text-foreground">
+          Total: ₹{filteredPayments.reduce((sum, p) => sum + Number(p.amount), 0).toLocaleString("en-IN")}
+        </span>
+      </div>
+
+      {/* Table */}
+      {filteredPayments.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Filter className="w-10 h-10 mx-auto mb-3 opacity-50" />
+          <p>No payments found</p>
+          {hasActiveFilters && (
+            <p className="text-sm mt-1">Try adjusting your filters</p>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-lg border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead>Date</TableHead>
+                <TableHead>Member</TableHead>
+                <TableHead>Mode</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredPayments.map((payment) => (
+                <TableRow key={payment.id}>
+                  <TableCell className="text-sm">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      {payment.created_at
+                        ? new Date(payment.created_at).toLocaleDateString("en-IN", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "-"}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {payment.created_at
+                        ? new Date(payment.created_at).toLocaleTimeString("en-IN", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : ""}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="font-medium">{payment.member?.name || "Unknown"}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {payment.member?.phone || "-"}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {getPaymentModeIcon(payment.payment_mode)}
+                      <span className="capitalize">{payment.payment_mode}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-semibold">
+                    ₹{Number(payment.amount).toLocaleString("en-IN")}
+                  </TableCell>
+                  <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+};
