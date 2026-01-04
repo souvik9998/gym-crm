@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ArrowLeft, Check, Dumbbell, Calendar, IndianRupee, User, Phone, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useRazorpay } from "@/hooks/useRazorpay";
 
 interface Member {
   id: string;
@@ -28,12 +29,15 @@ const Renew = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { initiatePayment, isLoading: isPaymentLoading } = useRazorpay();
   const member = (location.state as { member: Member })?.member;
   
   const [selectedMonths, setSelectedMonths] = useState(3);
   const [settings, setSettings] = useState<GymSettings | null>(null);
-  const [currentSubscription, setCurrentSubscription] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [currentSubscription, setCurrentSubscription] = useState<{
+    end_date: string;
+    status: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!member) {
@@ -44,7 +48,6 @@ const Renew = () => {
   }, [member, navigate]);
 
   const fetchData = async () => {
-    // Get settings
     const { data: settingsData } = await supabase
       .from("gym_settings")
       .select("monthly_fee")
@@ -55,10 +58,9 @@ const Renew = () => {
       setSettings({ monthly_fee: Number(settingsData.monthly_fee) });
     }
 
-    // Get current subscription
     const { data: subData } = await supabase
       .from("subscriptions")
-      .select("*")
+      .select("end_date, status")
       .eq("member_id", member.id)
       .order("end_date", { ascending: false })
       .limit(1)
@@ -75,73 +77,38 @@ const Renew = () => {
     !isExpired && 
     new Date(currentSubscription.end_date) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-  const handlePayment = async () => {
-    setIsLoading(true);
-    
-    try {
-      // Calculate new dates
-      const startDate = isExpired || !currentSubscription
-        ? new Date()
-        : new Date(currentSubscription.end_date);
-      
-      if (!isExpired && currentSubscription) {
-        startDate.setDate(startDate.getDate() + 1);
-      }
-      
-      const endDate = new Date(startDate);
-      endDate.setMonth(endDate.getMonth() + selectedMonths);
-
-      // Create subscription
-      const { data: subscription, error: subError } = await supabase
-        .from("subscriptions")
-        .insert({
-          member_id: member.id,
-          start_date: startDate.toISOString().split("T")[0],
-          end_date: endDate.toISOString().split("T")[0],
-          plan_months: selectedMonths,
-          status: "active",
-        })
-        .select()
-        .single();
-
-      if (subError) throw subError;
-
-      // Create payment record
-      const { error: paymentError } = await supabase
-        .from("payments")
-        .insert({
-          member_id: member.id,
-          subscription_id: subscription.id,
-          amount: totalAmount,
-          payment_mode: "online",
-          status: "success",
+  const handlePayment = () => {
+    initiatePayment({
+      amount: totalAmount,
+      memberId: member.id,
+      memberName: member.name,
+      memberPhone: member.phone,
+      isNewMember: false,
+      months: selectedMonths,
+      onSuccess: (data) => {
+        const endDate = new Date(data.endDate);
+        navigate("/success", {
+          state: {
+            memberName: member.name,
+            phone: member.phone,
+            amount: totalAmount,
+            endDate: endDate.toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }),
+            isNewMember: false,
+          },
         });
-
-      if (paymentError) throw paymentError;
-
-      // Success!
-      navigate("/success", {
-        state: {
-          memberName: member.name,
-          phone: member.phone,
-          amount: totalAmount,
-          endDate: endDate.toLocaleDateString("en-IN", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          }),
-          isNewMember: false,
-        },
-      });
-    } catch (error: any) {
-      toast({
-        title: "Renewal Failed",
-        description: error.message || "Something went wrong",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+      },
+      onError: (error) => {
+        toast({
+          title: "Renewal Failed",
+          description: error,
+          variant: "destructive",
+        });
+      },
+    });
   };
 
   if (!member) return null;
@@ -259,9 +226,9 @@ const Renew = () => {
               size="xl"
               className="w-full"
               onClick={handlePayment}
-              disabled={isLoading}
+              disabled={isPaymentLoading}
             >
-              {isLoading ? (
+              {isPaymentLoading ? (
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
                   Processing...

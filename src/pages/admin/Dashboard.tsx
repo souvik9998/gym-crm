@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dumbbell,
   Users,
@@ -14,8 +15,11 @@ import {
   LogOut,
   RefreshCw,
   TrendingUp,
+  QrCode,
+  History,
 } from "lucide-react";
 import { MembersTable } from "@/components/admin/MembersTable";
+import { PaymentHistory } from "@/components/admin/PaymentHistory";
 import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
 import { AddPaymentDialog } from "@/components/admin/AddPaymentDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -43,9 +47,9 @@ const AdminDashboard = () => {
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [activeTab, setActiveTab] = useState("members");
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user ?? null);
@@ -55,7 +59,6 @@ const AdminDashboard = () => {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (!session?.user) {
@@ -75,24 +78,20 @@ const AdminDashboard = () => {
 
   const fetchStats = async () => {
     try {
-      // Get total members
       const { count: totalMembers } = await supabase
         .from("members")
         .select("*", { count: "exact", head: true });
 
-      // Get active subscriptions
       const { count: activeMembers } = await supabase
         .from("subscriptions")
         .select("*", { count: "exact", head: true })
         .eq("status", "active");
 
-      // Get expiring soon
       const { count: expiringSoon } = await supabase
         .from("subscriptions")
         .select("*", { count: "exact", head: true })
         .eq("status", "expiring_soon");
 
-      // Get monthly revenue
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
@@ -111,7 +110,7 @@ const AdminDashboard = () => {
         expiringSoon: expiringSoon || 0,
         monthlyRevenue,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching stats:", error);
     }
   };
@@ -154,6 +153,15 @@ const AdminDashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+                onClick={() => navigate("/admin/qr-code")}
+                title="QR Code"
+              >
+                <QrCode className="w-4 h-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -237,37 +245,55 @@ const AdminDashboard = () => {
           </Card>
         </div>
 
-        {/* Actions & Search */}
+        {/* Tabs for Members & Payments */}
         <Card className="border-0 shadow-card">
-          <CardHeader className="pb-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <CardTitle className="text-lg">Members</CardTitle>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1 min-w-[200px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by name or phone..."
-                    className="pl-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setIsAddPaymentOpen(true)}>
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    Cash Payment
-                  </Button>
-                  <Button variant="accent" onClick={() => setIsAddMemberOpen(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Member
-                  </Button>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <CardHeader className="pb-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <TabsList className="bg-muted">
+                  <TabsTrigger value="members" className="gap-2">
+                    <Users className="w-4 h-4" />
+                    Members
+                  </TabsTrigger>
+                  <TabsTrigger value="payments" className="gap-2">
+                    <History className="w-4 h-4" />
+                    Payments
+                  </TabsTrigger>
+                </TabsList>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {activeTab === "members" && (
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search by name or phone..."
+                        className="pl-10"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setIsAddPaymentOpen(true)}>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Cash Payment
+                    </Button>
+                    <Button variant="accent" onClick={() => setIsAddMemberOpen(true)}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Member
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <MembersTable searchQuery={searchQuery} refreshKey={refreshKey} />
-          </CardContent>
+            </CardHeader>
+            <CardContent>
+              <TabsContent value="members" className="mt-0">
+                <MembersTable searchQuery={searchQuery} refreshKey={refreshKey} />
+              </TabsContent>
+              <TabsContent value="payments" className="mt-0">
+                <PaymentHistory refreshKey={refreshKey} />
+              </TabsContent>
+            </CardContent>
+          </Tabs>
         </Card>
       </main>
 
