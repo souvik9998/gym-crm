@@ -68,14 +68,10 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Hero Header */}
       <header className="px-4 pt-12 pb-8 text-center">
-        <div className="flex items-center justify-center gap-3 mb-4 w-24 h-24">
-          <img
-            src="/logo.jpg"
-            alt="Icon"
-            className="w-full h-full object-contain rounded-xl"
-          />
-        </div>
-        <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
+        <div className="flex items-center justify-center gap-3 mb-4 w-full h-20">
+        <div className="rounded-xl w-20 h-full">
+          <img src="/logo.jpg" alt="Icon" className="w-full h-full object-contain rounded-xl"/></div></div>
+            <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
           Pro Plus Fitness
         </h1>
         <p className="text-muted-foreground text-lg">Dinhata</p>
