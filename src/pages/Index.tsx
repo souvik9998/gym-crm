@@ -69,7 +69,7 @@ const Index = () => {
       {/* Hero Header */}
       <header className="px-4 pt-12 pb-8 text-center">
         <div className="flex items-center justify-center gap-3 mb-4 w-full h-20">
-        <div className="rounded-xl w-20 h-full">
+        <div style={{ width: "4rem" }} className="h-full rounded-xl">
           <img src="/logo.jpg" alt="Icon" className="w-full h-full object-contain rounded-xl"/></div></div>
             <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
           Pro Plus Fitness
