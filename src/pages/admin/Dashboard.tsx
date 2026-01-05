@@ -158,6 +158,25 @@ const AdminDashboard = () => {
     toast({ title: "Data refreshed" });
   };
 
+  const handleAddSampleData = async () => {
+    const { addSampleData } = await import("@/utils/addSampleData");
+    const result = await addSampleData();
+    
+    if (result.success) {
+      toast({ 
+        title: "Sample data added", 
+        description: "Added expired member and member expiring in 2 days" 
+      });
+      setRefreshKey((k) => k + 1);
+    } else {
+      toast({ 
+        title: "Error", 
+        description: result.message,
+        variant: "destructive" 
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -307,6 +326,13 @@ const AdminDashboard = () => {
                   )}
                 </div>
                 <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleAddSampleData}
+                    title="Add sample expired and expiring members"
+                  >
+                    Add Sample Data
+                  </Button>
                   <Button variant="outline" onClick={() => setIsAddPaymentOpen(true)}>
                     <CreditCard className="w-4 h-4 mr-2" />
                     Cash Payment
