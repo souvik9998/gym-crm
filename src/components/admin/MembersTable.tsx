@@ -10,14 +10,17 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, Calendar, MoreVertical, User, Trash2 } from "lucide-react";
+import { Phone, Calendar, MoreVertical, User, Trash2, Pencil } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { EditMemberDialog } from "./EditMemberDialog";
+import type { ExpiryFilterValue } from "./ExpiryFilter";
 
 interface Member {
   id: string;
@@ -25,20 +28,24 @@ interface Member {
   phone: string;
   join_date: string;
   subscription?: {
+    id: string;
     status: string;
     end_date: string;
+    start_date: string;
   };
 }
 
 interface MembersTableProps {
   searchQuery: string;
   refreshKey: number;
+  expiryFilter: ExpiryFilterValue;
 }
 
-export const MembersTable = ({ searchQuery, refreshKey }: MembersTableProps) => {
+export const MembersTable = ({ searchQuery, refreshKey, expiryFilter }: MembersTableProps) => {
   const { toast } = useToast();
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
 
   useEffect(() => {
     fetchMembers();
@@ -59,7 +66,7 @@ export const MembersTable = ({ searchQuery, refreshKey }: MembersTableProps) => 
         (membersData || []).map(async (member) => {
           const { data: subData } = await supabase
             .from("subscriptions")
-            .select("status, end_date")
+            .select("id, status, end_date, start_date")
             .eq("member_id", member.id)
             .order("end_date", { ascending: false })
             .limit(1)
@@ -72,7 +79,7 @@ export const MembersTable = ({ searchQuery, refreshKey }: MembersTableProps) => 
         })
       );
 
-      setMembers(membersWithSubs);
+      setMembers(membersWithSubs as Member[]);
     } catch (error: any) {
       console.error("Error fetching members:", error);
     } finally {
@@ -102,11 +109,38 @@ export const MembersTable = ({ searchQuery, refreshKey }: MembersTableProps) => 
     }
   };
 
-  const filteredMembers = members.filter(
+  // Filter by search query
+  const searchFiltered = members.filter(
     (m) =>
       m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.phone.includes(searchQuery)
   );
+
+  // Filter by expiry date
+  const filteredMembers = searchFiltered.filter((m) => {
+    if (expiryFilter === "all") return true;
+    if (!m.subscription?.end_date) return false;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(m.subscription.end_date);
+    endDate.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    switch (expiryFilter) {
+      case "today":
+        return diffDays === 0;
+      case "tomorrow":
+        return diffDays === 1;
+      case "7days":
+        return diffDays >= 0 && diffDays <= 7;
+      case "10days":
+        return diffDays >= 0 && diffDays <= 10;
+      default:
+        return true;
+    }
+  });
 
   const getStatusBadge = (subscription?: { status: string; end_date: string }) => {
     if (!subscription) {
@@ -206,6 +240,11 @@ export const MembersTable = ({ searchQuery, refreshKey }: MembersTableProps) => 
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setEditingMember(member)}>
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Edit Member
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
                       onClick={() => handleDelete(member.id)}
@@ -220,6 +259,13 @@ export const MembersTable = ({ searchQuery, refreshKey }: MembersTableProps) => 
           ))}
         </TableBody>
       </Table>
+
+      <EditMemberDialog
+        open={!!editingMember}
+        onOpenChange={(open) => !open && setEditingMember(null)}
+        member={editingMember}
+        onSuccess={fetchMembers}
+      />
     </div>
   );
 };
