@@ -69,9 +69,11 @@ const Index = () => {
       {/* Hero Header */}
       <header className="px-4 pt-12 pb-8 text-center">
         <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="p-3 bg-accent/10 rounded-lg">
-            <Dumbbell className="w-8 h-8 text-accent" />
-          </div>
+          <img
+                src="/logo.jpg"
+                alt="Icon"
+                className="w-full h-full object-cover rounded-xl"
+              />
         </div>
         <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
           Pro Plus Fitness
