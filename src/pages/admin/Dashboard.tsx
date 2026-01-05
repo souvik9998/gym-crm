@@ -194,18 +194,13 @@ const AdminDashboard = () => {
         <div className="container py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div  style={{ height: "4rem" }} className="flex items-center justify-center gap-3 mb-4 w-full h-20">
-          <div
-            style={{ width: "4rem" }}
-            className="h-full rounded-xl overflow-hidden"
-          >
-            <img
-              src="/logo.jpg"
-              alt="Icon"
-              className="w-full h-full object-contain"
-            />
-          </div>
-        </div>
+              <div className="w-11 h-11 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow overflow-hidden">
+              <img
+                src="/logo.jpg"
+                alt="Icon"
+                className="w-full h-full object-cover rounded-xl"
+              />
+            </div>
               <div>
                 <h1 className="text-lg font-semibold text-foreground">
                   Pro Plus Fitness
