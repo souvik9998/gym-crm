@@ -33,12 +33,14 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
   const [isSearching, setIsSearching] = useState(false);
   const [member, setMember] = useState<Member | null>(null);
   const [monthlyFee, setMonthlyFee] = useState(500);
+  const [customAmount, setCustomAmount] = useState<string>("");
 
   useEffect(() => {
     if (open) {
       fetchSettings();
       setMember(null);
       setPhone("");
+      setCustomAmount("");
     }
   }, [open]);
 
@@ -95,8 +97,21 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
     }
   };
 
-  const totalAmount = monthlyFee * months;
+  const calculatedAmount = monthlyFee * months;
+  const totalAmount = customAmount ? Number(customAmount) : calculatedAmount;
 
+  // Update custom amount when months change
+  const handleMonthsChange = (value: number) => {
+    setMonths(value);
+    setCustomAmount((monthlyFee * value).toString());
+  };
+
+  // Initialize custom amount when member is found
+  useEffect(() => {
+    if (member) {
+      setCustomAmount(calculatedAmount.toString());
+    }
+  }, [member, calculatedAmount]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -226,7 +241,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                 <select
                   id="payment-months"
                   value={months}
-                  onChange={(e) => setMonths(Number(e.target.value))}
+                  onChange={(e) => handleMonthsChange(Number(e.target.value))}
                   className="flex h-12 w-full rounded-lg border-2 border-input bg-background px-4 py-3 text-base"
                 >
                   <option value={1}>1 Month</option>
@@ -236,11 +251,28 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                 </select>
               </div>
 
-              <div className="bg-muted rounded-xl p-4">
-                <div className="flex justify-between font-bold">
-                  <span>Amount (Cash)</span>
-                  <span className="text-accent">₹{totalAmount.toLocaleString("en-IN")}</span>
+              <div className="space-y-2">
+                <Label htmlFor="custom-amount" className="flex items-center gap-2">
+                  Amount (Cash)
+                </Label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 rounded-l-lg border-2 border-r-0 border-input bg-muted text-muted-foreground text-sm">
+                    ₹
+                  </span>
+                  <Input
+                    id="custom-amount"
+                    type="number"
+                    value={customAmount}
+                    onChange={(e) => setCustomAmount(e.target.value)}
+                    className="rounded-l-none"
+                    min="0"
+                  />
                 </div>
+                {Number(customAmount) !== calculatedAmount && (
+                  <p className="text-xs text-muted-foreground">
+                    Default: ₹{calculatedAmount.toLocaleString("en-IN")}
+                  </p>
+                )}
               </div>
             </>
           )}
