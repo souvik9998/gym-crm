@@ -72,7 +72,7 @@ const Index = () => {
           <img
             src="/logo.jpg"
             alt="Icon"
-            className="w-full h-full object-contain rounded-xl"
+            className="w-full h-full object-fit rounded-xl"
           />
         </div>
         <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
