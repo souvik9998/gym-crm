@@ -68,7 +68,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Hero Header */}
       <header className="px-4 pt-12 pb-8 text-center">
-        <div className="flex items-center justify-center gap-3 mb-4 w-full h-20">
+        <div  style={{ height: "4rem" }} className="flex items-center justify-center gap-3 mb-4 w-full h-20">
           <div
             style={{ width: "4rem" }}
             className="h-full rounded-xl overflow-hidden"
