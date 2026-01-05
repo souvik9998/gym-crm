@@ -18,8 +18,8 @@ const Success = () => {
 
   if (!state) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-primary via-primary/95 to-primary/80">
-        <Card className="max-w-md mx-4">
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="max-w-md mx-4 border">
           <CardContent className="p-8 text-center">
             <p>No payment information found.</p>
             <Button variant="accent" className="mt-4" onClick={() => navigate("/")}>
@@ -36,8 +36,8 @@ const Success = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-success/90 via-success/80 to-primary/90 flex items-center justify-center p-4">
-      <Card className="max-w-md w-full animate-slide-up border-0 shadow-2xl">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="max-w-md w-full border">
         <CardContent className="p-8">
           {/* Success Icon */}
           <div className="flex justify-center mb-6">
@@ -50,7 +50,7 @@ const Success = () => {
           </div>
 
           {/* Title */}
-          <h1 className="font-display text-2xl font-bold text-center mb-2">
+          <h1 className="text-2xl font-semibold text-center mb-2">
             Payment Successful!
           </h1>
           <p className="text-center text-muted-foreground mb-6">
@@ -105,7 +105,7 @@ const Success = () => {
           {/* Actions */}
           <div className="space-y-3">
             <Button
-              variant="hero"
+              variant="accent"
               size="lg"
               className="w-full"
               onClick={() => navigate("/")}

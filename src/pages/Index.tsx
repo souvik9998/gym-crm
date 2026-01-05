@@ -65,25 +65,25 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary via-primary/95 to-primary/80">
+    <div className="min-h-screen bg-background">
       {/* Hero Header */}
-      <header className="px-4 pt-8 pb-4 text-center">
+      <header className="px-4 pt-12 pb-8 text-center">
         <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="p-3 bg-accent rounded-xl shadow-glow animate-pulse-glow">
-            <Dumbbell className="w-8 h-8 text-accent-foreground" />
+          <div className="p-3 bg-accent/10 rounded-lg">
+            <Dumbbell className="w-8 h-8 text-accent" />
           </div>
         </div>
-        <h1 className="font-display text-3xl md:text-4xl font-bold text-primary-foreground mb-2">
+        <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
           Pro Plus Fitness
         </h1>
-        <p className="text-primary-foreground/80 text-lg">Dinhata</p>
+        <p className="text-muted-foreground text-lg">Dinhata</p>
       </header>
 
       {/* Main Content */}
       <main className="px-4 pb-8">
-        <Card className="max-w-md mx-auto mt-6 animate-fade-in border-0 shadow-xl">
+        <Card className="max-w-md mx-auto mt-6 border">
           <CardHeader className="text-center pb-4">
-            <CardTitle className="text-xl">Welcome to Your Fitness Journey</CardTitle>
+            <CardTitle className="text-lg">Welcome to Your Fitness Journey</CardTitle>
             <CardDescription>
               Enter your details to register or renew your membership
             </CardDescription>
@@ -129,8 +129,8 @@ const Index = () => {
 
               <Button
                 type="submit"
-                variant="hero"
-                size="xl"
+                variant="accent"
+                size="lg"
                 className="w-full mt-6"
                 disabled={isLoading}
               >
@@ -151,19 +151,18 @@ const Index = () => {
         </Card>
 
         {/* Features */}
-        <div className="max-w-md mx-auto mt-8 grid grid-cols-3 gap-4">
+        <div className="max-w-md mx-auto mt-12 grid grid-cols-3 gap-4">
           {[
             { icon: Shield, label: "Secure Payment" },
             { icon: Clock, label: "Instant Access" },
             { icon: CreditCard, label: "Easy Renewal" },
-          ].map(({ icon: Icon, label }, i) => (
+          ].map(({ icon: Icon, label }) => (
             <div
               key={label}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-primary-foreground/10 backdrop-blur-sm animate-fade-in"
-              style={{ animationDelay: `${(i + 1) * 100}ms` }}
+              className="flex flex-col items-center gap-2 p-4 rounded-lg border bg-card"
             >
-              <Icon className="w-6 h-6 text-accent" />
-              <span className="text-xs text-primary-foreground/80 text-center font-medium">
+              <Icon className="w-5 h-5 text-accent" />
+              <span className="text-xs text-muted-foreground text-center">
                 {label}
               </span>
             </div>
@@ -174,7 +173,7 @@ const Index = () => {
         <div className="max-w-md mx-auto mt-8 text-center">
           <Button
             variant="ghost"
-            className="text-primary-foreground/60 hover:text-primary-foreground hover:bg-primary-foreground/10"
+            className="text-muted-foreground hover:text-foreground"
             onClick={() => navigate("/admin/login")}
           >
             Admin Login

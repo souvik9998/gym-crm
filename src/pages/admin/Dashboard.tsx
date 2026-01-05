@@ -149,25 +149,25 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-primary shadow-lg">
+      <header className="sticky top-0 z-50 bg-card border-b">
         <div className="container py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-accent rounded-lg">
-                <Dumbbell className="w-5 h-5 text-accent-foreground" />
+              <div className="p-2 bg-accent/10 rounded-lg">
+                <Dumbbell className="w-5 h-5 text-accent" />
               </div>
               <div>
-                <h1 className="font-display text-lg font-bold text-primary-foreground">
+                <h1 className="text-lg font-semibold text-foreground">
                   Pro Plus Fitness
                 </h1>
-                <p className="text-xs text-primary-foreground/70">Admin Dashboard</p>
+                <p className="text-xs text-muted-foreground">Admin Dashboard</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+                className="text-muted-foreground hover:text-foreground"
                 onClick={() => navigate("/admin/qr-code")}
                 title="QR Code"
               >
@@ -176,7 +176,7 @@ const AdminDashboard = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+                className="text-muted-foreground hover:text-foreground"
                 onClick={handleRefresh}
               >
                 <RefreshCw className="w-4 h-4" />
@@ -184,7 +184,7 @@ const AdminDashboard = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+                className="text-muted-foreground hover:text-foreground"
                 onClick={handleSignOut}
               >
                 <LogOut className="w-4 h-4" />
@@ -197,56 +197,56 @@ const AdminDashboard = () => {
       <main className="container py-6 space-y-6">
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="border-0 shadow-card">
+          <Card className="border">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary/10 rounded-lg">
                   <Users className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-display font-bold">{stats.totalMembers}</p>
+                  <p className="text-2xl font-semibold">{stats.totalMembers}</p>
                   <p className="text-xs text-muted-foreground">Total Members</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-card">
+          <Card className="border">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-success/10 rounded-lg">
                   <TrendingUp className="w-5 h-5 text-success" />
                 </div>
                 <div>
-                  <p className="text-2xl font-display font-bold">{stats.activeMembers}</p>
+                  <p className="text-2xl font-semibold">{stats.activeMembers}</p>
                   <p className="text-xs text-muted-foreground">Active</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-card">
+          <Card className="border">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-warning/10 rounded-lg">
                   <AlertTriangle className="w-5 h-5 text-warning" />
                 </div>
                 <div>
-                  <p className="text-2xl font-display font-bold">{stats.expiringSoon}</p>
+                  <p className="text-2xl font-semibold">{stats.expiringSoon}</p>
                   <p className="text-xs text-muted-foreground">Expiring Soon</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-card">
+          <Card className="border">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-accent/10 rounded-lg">
                   <CreditCard className="w-5 h-5 text-accent" />
                 </div>
                 <div>
-                  <p className="text-2xl font-display font-bold">
+                  <p className="text-2xl font-semibold">
                     ₹{stats.monthlyRevenue.toLocaleString("en-IN")}
                   </p>
                   <p className="text-xs text-muted-foreground">This Month</p>
@@ -257,7 +257,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* Tabs for Members & Payments */}
-        <Card className="border-0 shadow-card">
+        <Card className="border">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <CardHeader className="pb-4">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -288,7 +288,7 @@ const AdminDashboard = () => {
                       <CreditCard className="w-4 h-4 mr-2" />
                       Cash Payment
                     </Button>
-                    <Button variant="accent" onClick={() => setIsAddMemberOpen(true)}>
+                    <Button variant="default" onClick={() => setIsAddMemberOpen(true)}>
                       <Plus className="w-4 h-4 mr-2" />
                       Add Member
                     </Button>

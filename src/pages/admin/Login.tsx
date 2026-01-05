@@ -90,24 +90,24 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary via-primary/95 to-primary/80 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Back Button */}
         <Button
           variant="ghost"
           size="sm"
-          className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 mb-6"
+          className="text-muted-foreground hover:text-foreground mb-6"
           onClick={() => navigate("/")}
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Portal
         </Button>
 
-        <Card className="animate-fade-in border-0 shadow-xl">
+        <Card className="border">
           <CardHeader className="text-center pb-4">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <div className="p-3 bg-primary rounded-xl">
-                <Shield className="w-6 h-6 text-primary-foreground" />
+              <div className="p-3 bg-accent/10 rounded-lg">
+                <Shield className="w-6 h-6 text-accent" />
               </div>
             </div>
             <CardTitle className="flex items-center justify-center gap-2">
@@ -156,7 +156,7 @@ const AdminLogin = () => {
 
               <Button
                 type="submit"
-                variant="hero"
+                variant="accent"
                 size="lg"
                 className="w-full"
                 disabled={isLoading}

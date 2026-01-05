@@ -103,27 +103,27 @@ const QRCodePage = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-primary shadow-lg">
+      <header className="sticky top-0 z-50 bg-card border-b">
         <div className="container py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+                className="text-muted-foreground hover:text-foreground"
                 onClick={() => navigate("/admin/dashboard")}
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-accent rounded-lg">
-                  <QrCode className="w-5 h-5 text-accent-foreground" />
+                <div className="p-2 bg-accent/10 rounded-lg">
+                  <QrCode className="w-5 h-5 text-accent" />
                 </div>
                 <div>
-                  <h1 className="font-display text-lg font-bold text-primary-foreground">
+                  <h1 className="text-lg font-semibold text-foreground">
                     QR Code Generator
                   </h1>
-                  <p className="text-xs text-primary-foreground/70">Member Registration Portal</p>
+                  <p className="text-xs text-muted-foreground">Member Registration Portal</p>
                 </div>
               </div>
             </div>
@@ -134,9 +134,9 @@ const QRCodePage = () => {
       <main className="container py-8">
         <div className="max-w-2xl mx-auto space-y-6">
           {/* QR Code Card */}
-          <Card className="border-0 shadow-xl">
+          <Card className="border">
             <CardHeader className="text-center pb-4">
-              <CardTitle className="text-2xl font-display">{gymName}</CardTitle>
+              <CardTitle className="text-2xl font-semibold">{gymName}</CardTitle>
               <CardDescription>
                 Scan this QR code to register or renew your membership
               </CardDescription>
@@ -162,7 +162,7 @@ const QRCodePage = () => {
               {/* Gym logo placeholder */}
               <div className="flex items-center gap-2 text-accent">
                 <Dumbbell className="w-6 h-6" />
-                <span className="font-display font-bold text-lg">{gymName}</span>
+                <span className="font-semibold text-lg">{gymName}</span>
               </div>
 
               {/* URL Display */}
@@ -205,7 +205,7 @@ const QRCodePage = () => {
           </Card>
 
           {/* Instructions */}
-          <Card className="border-0 shadow-card">
+          <Card className="border">
             <CardHeader>
               <CardTitle className="text-lg">How to Use</CardTitle>
             </CardHeader>

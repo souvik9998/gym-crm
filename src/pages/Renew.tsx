@@ -114,14 +114,14 @@ const Renew = () => {
   if (!member) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary via-primary/95 to-primary/80">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="px-4 pt-6 pb-4">
         <div className="max-w-md mx-auto">
           <Button
             variant="ghost"
             size="sm"
-            className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 -ml-2"
+            className="text-muted-foreground hover:text-foreground -ml-2"
             onClick={() => navigate("/")}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -130,7 +130,7 @@ const Renew = () => {
         </div>
         <div className="flex items-center justify-center gap-2 mt-4">
           <Dumbbell className="w-6 h-6 text-accent" />
-          <span className="font-display text-xl font-bold text-primary-foreground">
+          <span className="text-xl font-semibold text-foreground">
             Renew Membership
           </span>
         </div>
@@ -138,7 +138,7 @@ const Renew = () => {
 
       {/* Main */}
       <main className="px-4 pb-8">
-        <Card className="max-w-md mx-auto animate-fade-in border-0 shadow-xl">
+        <Card className="max-w-md mx-auto border">
           <CardHeader className="pb-4">
             <CardTitle className="text-lg">Welcome back, {member.name}!</CardTitle>
             <CardDescription>Renew your membership to continue your fitness journey</CardDescription>
@@ -188,7 +188,7 @@ const Renew = () => {
                   }`}
                 >
                   <div className="text-center">
-                    <div className="font-display text-2xl font-bold text-foreground">
+                    <div className="text-2xl font-semibold text-foreground">
                       {months}
                     </div>
                     <div className="text-sm text-muted-foreground">
@@ -213,7 +213,7 @@ const Renew = () => {
                   <Calendar className="w-4 h-4" />
                   {selectedMonths} {selectedMonths === 1 ? "Month" : "Months"}
                 </span>
-                <span className="font-display text-2xl font-bold text-accent flex items-center">
+                <span className="text-2xl font-semibold text-accent flex items-center">
                   <IndianRupee className="w-5 h-5" />
                   {totalAmount.toLocaleString("en-IN")}
                 </span>
@@ -222,8 +222,8 @@ const Renew = () => {
 
             {/* Pay Button */}
             <Button
-              variant="hero"
-              size="xl"
+              variant="accent"
+              size="lg"
               className="w-full"
               onClick={handlePayment}
               disabled={isPaymentLoading}
