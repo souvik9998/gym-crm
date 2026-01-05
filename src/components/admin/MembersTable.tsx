@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { EditMemberDialog } from "./EditMemberDialog";
-import type { ExpiryFilterValue } from "./ExpiryFilter";
+import type { MemberFilterValue } from "./MemberFilter";
 
 interface Member {
   id: string;
@@ -38,10 +38,10 @@ interface Member {
 interface MembersTableProps {
   searchQuery: string;
   refreshKey: number;
-  expiryFilter: ExpiryFilterValue;
+  filterValue: MemberFilterValue;
 }
 
-export const MembersTable = ({ searchQuery, refreshKey, expiryFilter }: MembersTableProps) => {
+export const MembersTable = ({ searchQuery, refreshKey, filterValue }: MembersTableProps) => {
   const { toast } = useToast();
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,27 +116,55 @@ export const MembersTable = ({ searchQuery, refreshKey, expiryFilter }: MembersT
       m.phone.includes(searchQuery)
   );
 
-  // Filter by expiry date
+  // Filter by member status and expiry date
   const filteredMembers = searchFiltered.filter((m) => {
-    if (expiryFilter === "all") return true;
-    if (!m.subscription?.end_date) return false;
+    if (filterValue === "all") return true;
 
+    const subscription = m.subscription;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const endDate = new Date(m.subscription.end_date);
+
+    // Handle members without subscription
+    if (!subscription || !subscription.end_date) {
+      return filterValue === "inactive";
+    }
+
+    const endDate = new Date(subscription.end_date);
     endDate.setHours(0, 0, 0, 0);
-
     const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const isExpired = diffDays < 0;
+    const isActive = diffDays > 0 && (subscription.status === "active" || (!isExpired && diffDays > 7));
+    const isExpiringSoon = !isExpired && diffDays >= 0 && diffDays <= 7;
 
-    switch (expiryFilter) {
-      case "today":
-        return diffDays === 0;
-      case "tomorrow":
-        return diffDays === 1;
-      case "7days":
-        return diffDays >= 0 && diffDays <= 7;
-      case "10days":
-        return diffDays >= 0 && diffDays <= 10;
+    switch (filterValue) {
+      case "active":
+        // Active members: not expired and more than 7 days remaining
+        return !isExpired && diffDays > 7;
+      
+      case "expired":
+        // All expired members
+        return isExpired || subscription.status === "expired";
+      
+      case "expired_recent":
+        // Recently expired (within last 30 days)
+        return isExpired && diffDays >= -30;
+      
+      case "expiring_soon":
+        // All expiring soon (within 7 days)
+        return isExpiringSoon;
+      
+      case "expiring_2days":
+        // Expiring within 2 days
+        return !isExpired && diffDays >= 0 && diffDays <= 2;
+      
+      case "expiring_7days":
+        // Expiring within 7 days
+        return !isExpired && diffDays >= 0 && diffDays <= 7;
+      
+      case "inactive":
+        // Inactive: no subscription, paused, or expired
+        return !subscription || subscription.status === "paused" || isExpired;
+      
       default:
         return true;
     }
@@ -181,84 +209,86 @@ export const MembersTable = ({ searchQuery, refreshKey, expiryFilter }: MembersT
   }
 
   return (
-    <div className="overflow-x-auto -mx-6">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Member</TableHead>
-            <TableHead className="hidden sm:table-cell">Phone</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="hidden md:table-cell">Expires</TableHead>
-            <TableHead className="w-10"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredMembers.map((member) => (
-            <TableRow key={member.id}>
-              <TableCell>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-sm font-semibold text-primary">
-                      {member.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-medium">{member.name}</p>
-                    <p className="text-xs text-muted-foreground sm:hidden flex items-center gap-1">
-                      <Phone className="w-3 h-3" />
-                      {member.phone}
-                    </p>
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell className="hidden sm:table-cell">
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <Phone className="w-3 h-3" />
-                  +91 {member.phone}
-                </div>
-              </TableCell>
-              <TableCell>{getStatusBadge(member.subscription)}</TableCell>
-              <TableCell className="hidden md:table-cell">
-                {member.subscription ? (
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Calendar className="w-3 h-3" />
-                    {new Date(member.subscription.end_date).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setEditingMember(member)}>
-                      <Pencil className="w-4 h-4 mr-2" />
-                      Edit Member
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onClick={() => handleDelete(member.id)}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Member
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
+    <div className="w-full">
+      <div className="rounded-lg border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="font-semibold">Member</TableHead>
+              <TableHead className="hidden sm:table-cell font-semibold">Phone</TableHead>
+              <TableHead className="font-semibold">Status</TableHead>
+              <TableHead className="hidden md:table-cell font-semibold">Expires</TableHead>
+              <TableHead className="w-10"></TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {filteredMembers.map((member) => (
+              <TableRow key={member.id} className="hover:bg-muted/30">
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-sm font-semibold text-primary">
+                        {member.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium">{member.name}</p>
+                      <p className="text-xs text-muted-foreground sm:hidden flex items-center gap-1">
+                        <Phone className="w-3 h-3" />
+                        {member.phone}
+                      </p>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell className="hidden sm:table-cell">
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Phone className="w-3 h-3" />
+                    +91 {member.phone}
+                  </div>
+                </TableCell>
+                <TableCell>{getStatusBadge(member.subscription)}</TableCell>
+                <TableCell className="hidden md:table-cell">
+                  {member.subscription ? (
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(member.subscription.end_date).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setEditingMember(member)}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Edit Member
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => handleDelete(member.id)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Member
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
       <EditMemberDialog
         open={!!editingMember}

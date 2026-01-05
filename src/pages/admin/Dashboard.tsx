@@ -22,7 +22,7 @@ import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
 import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
 import { AddPaymentDialog } from "@/components/admin/AddPaymentDialog";
-import { ExpiryFilter, type ExpiryFilterValue } from "@/components/admin/ExpiryFilter";
+import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@supabase/supabase-js";
 
@@ -30,6 +30,8 @@ interface DashboardStats {
   totalMembers: number;
   activeMembers: number;
   expiringSoon: number;
+  expiredMembers: number;
+  inactiveMembers: number;
   monthlyRevenue: number;
 }
 
@@ -43,13 +45,15 @@ const AdminDashboard = () => {
     totalMembers: 0,
     activeMembers: 0,
     expiringSoon: 0,
+    expiredMembers: 0,
+    inactiveMembers: 0,
     monthlyRevenue: 0,
   });
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState("members");
-  const [expiryFilter, setExpiryFilter] = useState<ExpiryFilterValue>("all");
+  const [memberFilter, setMemberFilter] = useState<MemberFilterValue>("all");
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -103,6 +107,22 @@ const AdminDashboard = () => {
 
       const uniqueExpiringSoon = new Set(expiringData?.map((s) => s.member_id) || []).size;
 
+      // Get unique members with expired subscriptions
+      const { data: expiredData } = await supabase
+        .from("subscriptions")
+        .select("member_id")
+        .eq("status", "expired");
+
+      const uniqueExpiredMembers = new Set(expiredData?.map((s) => s.member_id) || []).size;
+
+      // Get inactive members (no subscription or paused)
+      const { data: allSubs } = await supabase
+        .from("subscriptions")
+        .select("member_id, status");
+      
+      const membersWithSubs = new Set(allSubs?.map((s) => s.member_id) || []);
+      const inactiveCount = (totalMembers || 0) - membersWithSubs.size;
+
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
@@ -119,6 +139,8 @@ const AdminDashboard = () => {
         totalMembers: totalMembers || 0,
         activeMembers: uniqueActiveMembers,
         expiringSoon: uniqueExpiringSoon,
+        expiredMembers: uniqueExpiredMembers,
+        inactiveMembers: inactiveCount,
         monthlyRevenue,
       });
     } catch (error: unknown) {
@@ -194,62 +216,62 @@ const AdminDashboard = () => {
         </div>
       </header>
 
-      <main className="container py-6 space-y-6">
+      <main className="container py-6 space-y-6 max-w-7xl mx-auto">
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="border">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Users className="w-5 h-5 text-primary" />
-                </div>
+          <Card className="border hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-semibold">{stats.totalMembers}</p>
-                  <p className="text-xs text-muted-foreground">Total Members</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.totalMembers}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Total Members</p>
+                </div>
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <Users className="w-6 h-6 text-primary" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-success/10 rounded-lg">
-                  <TrendingUp className="w-5 h-5 text-success" />
-                </div>
+          <Card className="border hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-semibold">{stats.activeMembers}</p>
-                  <p className="text-xs text-muted-foreground">Active</p>
+                  <p className="text-2xl font-bold text-success">{stats.activeMembers}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Active Members</p>
+                </div>
+                <div className="p-3 bg-success/10 rounded-lg">
+                  <TrendingUp className="w-6 h-6 text-success" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-warning/10 rounded-lg">
-                  <AlertTriangle className="w-5 h-5 text-warning" />
-                </div>
+          <Card className="border hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-semibold">{stats.expiringSoon}</p>
-                  <p className="text-xs text-muted-foreground">Expiring Soon</p>
+                  <p className="text-2xl font-bold text-warning">{stats.expiringSoon}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Expiring Soon</p>
+                </div>
+                <div className="p-3 bg-warning/10 rounded-lg">
+                  <AlertTriangle className="w-6 h-6 text-warning" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-accent/10 rounded-lg">
-                  <CreditCard className="w-5 h-5 text-accent" />
-                </div>
+          <Card className="border hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-semibold">
+                  <p className="text-2xl font-bold text-accent">
                     ₹{stats.monthlyRevenue.toLocaleString("en-IN")}
                   </p>
-                  <p className="text-xs text-muted-foreground">This Month</p>
+                  <p className="text-xs text-muted-foreground mt-1">This Month</p>
+                </div>
+                <div className="p-3 bg-accent/10 rounded-lg">
+                  <CreditCard className="w-6 h-6 text-accent" />
                 </div>
               </div>
             </CardContent>
@@ -257,23 +279,23 @@ const AdminDashboard = () => {
         </div>
 
         {/* Tabs for Members & Payments */}
-        <Card className="border">
+        <Card className="border shadow-sm">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <CardHeader className="pb-4">
+            <CardHeader className="pb-4 border-b">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <TabsList className="bg-muted">
-                  <TabsTrigger value="members" className="gap-2">
-                    <Users className="w-4 h-4" />
-                    Members
-                  </TabsTrigger>
-                  <TabsTrigger value="payments" className="gap-2">
-                    <History className="w-4 h-4" />
-                    Payments
-                  </TabsTrigger>
-                </TabsList>
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex items-center gap-4">
+                  <TabsList className="bg-muted">
+                    <TabsTrigger value="members" className="gap-2">
+                      <Users className="w-4 h-4" />
+                      Members
+                    </TabsTrigger>
+                    <TabsTrigger value="payments" className="gap-2">
+                      <History className="w-4 h-4" />
+                      Payments
+                    </TabsTrigger>
+                  </TabsList>
                   {activeTab === "members" && (
-                    <div className="relative flex-1 min-w-[200px]">
+                    <div className="relative flex-1 min-w-[250px]">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         placeholder="Search by name or phone..."
@@ -283,23 +305,33 @@ const AdminDashboard = () => {
                       />
                     </div>
                   )}
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setIsAddPaymentOpen(true)}>
-                      <CreditCard className="w-4 h-4 mr-2" />
-                      Cash Payment
-                    </Button>
-                    <Button variant="default" onClick={() => setIsAddMemberOpen(true)}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Member
-                    </Button>
-                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setIsAddPaymentOpen(true)}>
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Cash Payment
+                  </Button>
+                  <Button variant="default" onClick={() => setIsAddMemberOpen(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Member
+                  </Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <TabsContent value="members" className="mt-0 space-y-4">
-                <ExpiryFilter value={expiryFilter} onChange={setExpiryFilter} />
-                <MembersTable searchQuery={searchQuery} refreshKey={refreshKey} expiryFilter={expiryFilter} />
+            <CardContent className="p-6">
+              <TabsContent value="members" className="mt-0 space-y-6">
+                <MemberFilter 
+                  value={memberFilter} 
+                  onChange={setMemberFilter}
+                  counts={{
+                    all: stats.totalMembers,
+                    active: stats.activeMembers,
+                    expiring_soon: stats.expiringSoon,
+                    expired: stats.expiredMembers,
+                    inactive: stats.inactiveMembers,
+                  }}
+                />
+                <MembersTable searchQuery={searchQuery} refreshKey={refreshKey} filterValue={memberFilter} />
               </TabsContent>
               <TabsContent value="payments" className="mt-0">
                 <PaymentHistory refreshKey={refreshKey} />
