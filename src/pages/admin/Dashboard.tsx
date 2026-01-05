@@ -22,6 +22,7 @@ import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
 import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
 import { AddPaymentDialog } from "@/components/admin/AddPaymentDialog";
+import { ExpiryFilter, type ExpiryFilterValue } from "@/components/admin/ExpiryFilter";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@supabase/supabase-js";
 
@@ -48,6 +49,7 @@ const AdminDashboard = () => {
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState("members");
+  const [expiryFilter, setExpiryFilter] = useState<ExpiryFilterValue>("all");
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -78,19 +80,28 @@ const AdminDashboard = () => {
 
   const fetchStats = async () => {
     try {
+      // Refresh subscription statuses first
+      await supabase.rpc("refresh_subscription_statuses");
+
       const { count: totalMembers } = await supabase
         .from("members")
         .select("*", { count: "exact", head: true });
 
-      const { count: activeMembers } = await supabase
+      // Get unique members with active subscriptions
+      const { data: activeData } = await supabase
         .from("subscriptions")
-        .select("*", { count: "exact", head: true })
+        .select("member_id")
         .eq("status", "active");
 
-      const { count: expiringSoon } = await supabase
+      const uniqueActiveMembers = new Set(activeData?.map((s) => s.member_id) || []).size;
+
+      // Get unique members with expiring soon subscriptions
+      const { data: expiringData } = await supabase
         .from("subscriptions")
-        .select("*", { count: "exact", head: true })
+        .select("member_id")
         .eq("status", "expiring_soon");
+
+      const uniqueExpiringSoon = new Set(expiringData?.map((s) => s.member_id) || []).size;
 
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
@@ -106,8 +117,8 @@ const AdminDashboard = () => {
 
       setStats({
         totalMembers: totalMembers || 0,
-        activeMembers: activeMembers || 0,
-        expiringSoon: expiringSoon || 0,
+        activeMembers: uniqueActiveMembers,
+        expiringSoon: uniqueExpiringSoon,
         monthlyRevenue,
       });
     } catch (error: unknown) {
@@ -286,8 +297,9 @@ const AdminDashboard = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <TabsContent value="members" className="mt-0">
-                <MembersTable searchQuery={searchQuery} refreshKey={refreshKey} />
+              <TabsContent value="members" className="mt-0 space-y-4">
+                <ExpiryFilter value={expiryFilter} onChange={setExpiryFilter} />
+                <MembersTable searchQuery={searchQuery} refreshKey={refreshKey} expiryFilter={expiryFilter} />
               </TabsContent>
               <TabsContent value="payments" className="mt-0">
                 <PaymentHistory refreshKey={refreshKey} />
