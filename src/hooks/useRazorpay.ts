@@ -9,6 +9,15 @@ interface RazorpayOptions {
   memberPhone: string;
   isNewMember: boolean;
   months: number;
+  customDays?: number;
+  trainerId?: string;
+  trainerFee?: number;
+  memberDetails?: {
+    photoIdType: string;
+    photoIdNumber: string;
+    address: string;
+    gender: string;
+  };
   onSuccess: (data: {
     memberId: string;
     subscriptionId: string;
@@ -19,7 +28,7 @@ interface RazorpayOptions {
 
 declare global {
   interface Window {
-    Razorpay: any;
+    Razorpay: unknown;
   }
 }
 
@@ -50,6 +59,10 @@ export const useRazorpay = () => {
       memberPhone,
       isNewMember,
       months,
+      customDays,
+      trainerId,
+      trainerFee,
+      memberDetails,
       onSuccess,
       onError,
     }: RazorpayOptions) => {
@@ -73,6 +86,10 @@ export const useRazorpay = () => {
               memberPhone,
               isNewMember,
               months,
+              customDays,
+              trainerId,
+              trainerFee,
+              memberDetails,
             },
           }
         );
@@ -83,13 +100,17 @@ export const useRazorpay = () => {
 
         console.log("Order created:", orderData);
 
+        const durationText = customDays 
+          ? `${customDays} Day${customDays > 1 ? "s" : ""} Pass`
+          : `${months} Month${months > 1 ? "s" : ""} Membership`;
+
         // Open Razorpay checkout
         const options = {
           key: orderData.keyId,
           amount: orderData.amount,
           currency: orderData.currency,
           name: "Pro Plus Fitness",
-          description: `${months} Month${months > 1 ? "s" : ""} Membership`,
+          description: durationText,
           order_id: orderData.orderId,
           prefill: {
             name: memberName,
@@ -98,7 +119,7 @@ export const useRazorpay = () => {
           theme: {
             color: "#F97316", // accent color
           },
-          handler: async function (response: any) {
+          handler: async function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
             try {
               // Verify payment
               const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
@@ -113,6 +134,10 @@ export const useRazorpay = () => {
                     memberPhone,
                     amount,
                     months,
+                    customDays,
+                    trainerId,
+                    trainerFee,
+                    memberDetails,
                     isNewMember,
                   },
                 }
@@ -127,12 +152,13 @@ export const useRazorpay = () => {
                 subscriptionId: verifyData.subscriptionId,
                 endDate: verifyData.endDate,
               });
-            } catch (error: any) {
+            } catch (error: unknown) {
+              const errorMessage = error instanceof Error ? error.message : "Payment verification failed";
               console.error("Verification error:", error);
-              onError?.(error.message || "Payment verification failed");
+              onError?.(errorMessage);
               toast({
                 title: "Payment Verification Failed",
-                description: error.message,
+                description: errorMessage,
                 variant: "destructive",
               });
             } finally {
@@ -146,8 +172,9 @@ export const useRazorpay = () => {
           },
         };
 
-        const razorpay = new window.Razorpay(options);
-        razorpay.on("payment.failed", function (response: any) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const razorpay = new (window.Razorpay as any)(options);
+        razorpay.on("payment.failed", function (response: { error: { description: string } }) {
           console.error("Payment failed:", response.error);
           onError?.(response.error.description || "Payment failed");
           toast({
@@ -159,12 +186,13 @@ export const useRazorpay = () => {
         });
 
         razorpay.open();
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to initiate payment";
         console.error("Payment initiation error:", error);
-        onError?.(error.message || "Failed to initiate payment");
+        onError?.(errorMessage);
         toast({
           title: "Payment Error",
-          description: error.message,
+          description: errorMessage,
           variant: "destructive",
         });
         setIsLoading(false);

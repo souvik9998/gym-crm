@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      custom_packages: {
+        Row: {
+          created_at: string
+          duration_days: number
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_days: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_days?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       gym_settings: {
         Row: {
           gym_address: string | null
@@ -22,6 +52,7 @@ export type Database = {
           id: string
           joining_fee: number
           monthly_fee: number
+          monthly_packages: number[] | null
           updated_at: string | null
           whatsapp_enabled: boolean | null
         }
@@ -32,6 +63,7 @@ export type Database = {
           id?: string
           joining_fee?: number
           monthly_fee?: number
+          monthly_packages?: number[] | null
           updated_at?: string | null
           whatsapp_enabled?: boolean | null
         }
@@ -42,10 +74,62 @@ export type Database = {
           id?: string
           joining_fee?: number
           monthly_fee?: number
+          monthly_packages?: number[] | null
           updated_at?: string | null
           whatsapp_enabled?: boolean | null
         }
         Relationships: []
+      }
+      member_details: {
+        Row: {
+          address: string | null
+          created_at: string
+          gender: string | null
+          id: string
+          member_id: string
+          personal_trainer_id: string | null
+          photo_id_number: string | null
+          photo_id_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          gender?: string | null
+          id?: string
+          member_id: string
+          personal_trainer_id?: string | null
+          photo_id_number?: string | null
+          photo_id_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          gender?: string | null
+          id?: string
+          member_id?: string
+          personal_trainer_id?: string | null
+          photo_id_number?: string | null
+          photo_id_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_details_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: true
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_details_personal_trainer_id_fkey"
+            columns: ["personal_trainer_id"]
+            isOneToOne: false
+            referencedRelation: "personal_trainers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       members: {
         Row: {
@@ -131,35 +215,80 @@ export type Database = {
           },
         ]
       }
+      personal_trainers: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          monthly_fee: number
+          name: string
+          phone: string | null
+          specialization: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          monthly_fee?: number
+          name: string
+          phone?: string | null
+          specialization?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          monthly_fee?: number
+          name?: string
+          phone?: string | null
+          specialization?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string | null
+          custom_days: number | null
           end_date: string
           id: string
+          is_custom_package: boolean | null
           member_id: string
+          personal_trainer_id: string | null
           plan_months: number
           start_date: string
           status: Database["public"]["Enums"]["subscription_status"] | null
+          trainer_fee: number | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          custom_days?: number | null
           end_date: string
           id?: string
+          is_custom_package?: boolean | null
           member_id: string
+          personal_trainer_id?: string | null
           plan_months: number
           start_date?: string
           status?: Database["public"]["Enums"]["subscription_status"] | null
+          trainer_fee?: number | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          custom_days?: number | null
           end_date?: string
           id?: string
+          is_custom_package?: boolean | null
           member_id?: string
+          personal_trainer_id?: string | null
           plan_months?: number
           start_date?: string
           status?: Database["public"]["Enums"]["subscription_status"] | null
+          trainer_fee?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -168,6 +297,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_personal_trainer_id_fkey"
+            columns: ["personal_trainer_id"]
+            isOneToOne: false
+            referencedRelation: "personal_trainers"
             referencedColumns: ["id"]
           },
         ]

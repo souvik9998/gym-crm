@@ -1,24 +1,14 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Check, Dumbbell, Calendar, IndianRupee, Sparkles } from "lucide-react";
+import { ArrowLeft, Dumbbell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRazorpay } from "@/hooks/useRazorpay";
+import MemberDetailsForm, { type MemberDetailsData } from "@/components/registration/MemberDetailsForm";
+import PackageSelectionForm, { type PackageSelectionData } from "@/components/registration/PackageSelectionForm";
 
-interface GymSettings {
-  monthly_fee: number;
-  joining_fee: number;
-  gym_name: string;
-}
-
-const planOptions = [
-  { months: 1, label: "1 Month", popular: false },
-  { months: 3, label: "3 Months", popular: true },
-  { months: 6, label: "6 Months", popular: false },
-  { months: 12, label: "12 Months", popular: false },
-];
+type Step = "details" | "package";
 
 const Register = () => {
   const location = useLocation();
@@ -27,58 +17,51 @@ const Register = () => {
   const { initiatePayment, isLoading: isPaymentLoading } = useRazorpay();
   const { name, phone } = (location.state as { name: string; phone: string }) || {};
   
-  const [selectedMonths, setSelectedMonths] = useState(3);
-  const [settings, setSettings] = useState<GymSettings | null>(null);
+  const [step, setStep] = useState<Step>("details");
+  const [memberDetails, setMemberDetails] = useState<MemberDetailsData | null>(null);
 
   useEffect(() => {
     if (!name || !phone) {
       navigate("/");
-      return;
     }
-    fetchSettings();
   }, [name, phone, navigate]);
 
-  const fetchSettings = async () => {
-    const { data } = await supabase
-      .from("gym_settings")
-      .select("monthly_fee, joining_fee, gym_name")
-      .limit(1)
-      .maybeSingle();
-    
-    if (data) {
-      setSettings({
-        monthly_fee: Number(data.monthly_fee),
-        joining_fee: Number(data.joining_fee),
-        gym_name: data.gym_name || "Pro Plus Fitness",
-      });
-    }
+  const handleDetailsSubmit = (data: MemberDetailsData) => {
+    setMemberDetails(data);
+    setStep("package");
   };
 
-  const monthlyFee = settings?.monthly_fee || 500;
-  const joiningFee = settings?.joining_fee || 200;
-  const subscriptionAmount = monthlyFee * selectedMonths;
-  const totalAmount = subscriptionAmount + joiningFee;
-
-  const handlePayment = () => {
-    initiatePayment({
-      amount: totalAmount,
+  const handlePackageSubmit = async (packageData: PackageSelectionData) => {
+    // Prepare payment data
+    const paymentData = {
+      amount: packageData.totalAmount,
       memberName: name,
       memberPhone: phone,
       isNewMember: true,
-      months: selectedMonths,
+      months: packageData.isCustomPackage ? 0 : packageData.selectedMonths,
+      customDays: packageData.customPackage?.duration_days,
+      trainerId: packageData.selectedTrainer?.id,
+      trainerFee: packageData.trainerFee,
+      memberDetails: memberDetails,
+    };
+
+    initiatePayment({
+      ...paymentData,
       onSuccess: (data) => {
         const endDate = new Date(data.endDate);
         navigate("/success", {
           state: {
             memberName: name,
             phone,
-            amount: totalAmount,
+            amount: packageData.totalAmount,
             endDate: endDate.toLocaleDateString("en-IN", {
               day: "numeric",
               month: "long",
               year: "numeric",
             }),
             isNewMember: true,
+            hasTrainer: packageData.wantsTrainer,
+            trainerName: packageData.selectedTrainer?.name,
           },
         });
       },
@@ -103,7 +86,13 @@ const Register = () => {
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-foreground -ml-2"
-            onClick={() => navigate("/")}
+            onClick={() => {
+              if (step === "package") {
+                setStep("details");
+              } else {
+                navigate("/");
+              }
+            }}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
@@ -115,111 +104,32 @@ const Register = () => {
             New Membership
           </span>
         </div>
+        {/* Step Indicator */}
+        <div className="flex justify-center gap-2 mt-4">
+          <div className={`w-3 h-3 rounded-full ${step === "details" ? "bg-accent" : "bg-muted"}`} />
+          <div className={`w-3 h-3 rounded-full ${step === "package" ? "bg-accent" : "bg-muted"}`} />
+        </div>
       </header>
 
       {/* Main */}
       <main className="px-4 pb-8">
-        <Card className="max-w-md mx-auto border">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Welcome, {name}!</CardTitle>
-            <CardDescription>Select your membership plan to get started</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Plan Selection */}
-            <div className="grid grid-cols-2 gap-3">
-              {planOptions.map(({ months, label, popular }) => (
-                <button
-                  key={months}
-                  onClick={() => setSelectedMonths(months)}
-                  className={`relative p-4 rounded-xl border-2 transition-all duration-200 ${
-                    selectedMonths === months
-                      ? "border-accent bg-accent/10 shadow-lg"
-                      : "border-border hover:border-accent/50 bg-card"
-                  }`}
-                >
-                  {popular && (
-                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-accent text-accent-foreground text-xs font-bold rounded-full flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" />
-                      Popular
-                    </span>
-                  )}
-                  <div className="text-center">
-                    <div className="text-2xl font-semibold text-foreground">
-                      {months}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {months === 1 ? "Month" : "Months"}
-                    </div>
-                    {selectedMonths === months && (
-                      <div className="mt-2 flex justify-center">
-                        <div className="w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-                          <Check className="w-3 h-3 text-accent-foreground" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
+        {step === "details" && (
+          <MemberDetailsForm
+            memberName={name}
+            onSubmit={handleDetailsSubmit}
+            onBack={() => navigate("/")}
+          />
+        )}
 
-            {/* Price Breakdown */}
-            <div className="bg-muted rounded-xl p-4 space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Subscription ({selectedMonths} mo)
-                </span>
-                <span className="font-semibold flex items-center">
-                  <IndianRupee className="w-4 h-4" />
-                  {subscriptionAmount.toLocaleString("en-IN")}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" />
-                  Joining Fee
-                </span>
-                <span className="font-semibold flex items-center">
-                  <IndianRupee className="w-4 h-4" />
-                  {joiningFee.toLocaleString("en-IN")}
-                </span>
-              </div>
-              <div className="border-t border-border pt-3">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-lg">Total</span>
-                  <span className="text-2xl font-semibold text-accent flex items-center">
-                    <IndianRupee className="w-5 h-5" />
-                    {totalAmount.toLocaleString("en-IN")}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Pay Button */}
-            <Button
-              variant="accent"
-              size="lg"
-              className="w-full"
-              onClick={handlePayment}
-              disabled={isPaymentLoading}
-            >
-              {isPaymentLoading ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
-                  Processing...
-                </div>
-              ) : (
-                <>
-                  Pay ₹{totalAmount.toLocaleString("en-IN")}
-                </>
-              )}
-            </Button>
-
-            <p className="text-xs text-center text-muted-foreground">
-              Secure payment powered by Razorpay
-            </p>
-          </CardContent>
-        </Card>
+        {step === "package" && (
+          <PackageSelectionForm
+            isNewMember={true}
+            memberName={name}
+            onSubmit={handlePackageSubmit}
+            onBack={() => setStep("details")}
+            isLoading={isPaymentLoading}
+          />
+        )}
       </main>
     </div>
   );

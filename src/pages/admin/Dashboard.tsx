@@ -17,6 +17,7 @@ import {
   TrendingUp,
   QrCode,
   History,
+  Settings,
 } from "lucide-react";
 import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
@@ -159,22 +160,7 @@ const AdminDashboard = () => {
   };
 
   const handleAddSampleData = async () => {
-    const { addSampleData } = await import("@/utils/addSampleData");
-    const result = await addSampleData();
-    
-    if (result.success) {
-      toast({ 
-        title: "Sample data added", 
-        description: "Added expired member and member expiring in 2 days" 
-      });
-      setRefreshKey((k) => k + 1);
-    } else {
-      toast({ 
-        title: "Error", 
-        description: result.message,
-        variant: "destructive" 
-      });
-    }
+    // Removed - no longer needed
   };
 
   if (isLoading) {
@@ -209,6 +195,15 @@ const AdminDashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => navigate("/admin/settings")}
+                title="Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -330,13 +325,6 @@ const AdminDashboard = () => {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={handleAddSampleData}
-                    title="Add sample expired and expiring members"
-                  >
-                    Add Sample Data
-                  </Button>
                   <Button variant="outline" onClick={() => setIsAddPaymentOpen(true)}>
                     <CreditCard className="w-4 h-4 mr-2" />
                     Cash Payment
