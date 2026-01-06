@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, Calendar, IndianRupee, Sparkles, User, Dumbbell } from "lucide-react";
+import { Check, Calendar, IndianRupee, Sparkles, User, Dumbbell, Clock, AlertCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { addDays, addMonths, differenceInDays, format, isBefore } from "date-fns";
 
 interface Trainer {
   id: string;
@@ -27,6 +29,14 @@ interface MonthlyPackage {
   joining_fee: number;
 }
 
+interface PTDurationOption {
+  label: string;
+  endDate: Date;
+  days: number;
+  fee: number;
+  isValid: boolean;
+}
+
 interface PackageSelectionFormProps {
   isNewMember: boolean;
   memberName: string;
@@ -45,6 +55,8 @@ export interface PackageSelectionData {
   subscriptionAmount: number;
   joiningFee: number;
   trainerFee: number;
+  ptDays?: number;
+  ptEndDate?: string;
 }
 
 const PackageSelectionForm = ({ 
@@ -59,6 +71,7 @@ const PackageSelectionForm = ({
   const [selectedCustomPackage, setSelectedCustomPackage] = useState<CustomPackage | null>(null);
   const [wantsTrainer, setWantsTrainer] = useState(false);
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
+  const [selectedPTOption, setSelectedPTOption] = useState<PTDurationOption | null>(null);
 
   const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
@@ -105,6 +118,91 @@ const PackageSelectionForm = ({
     }
   };
 
+  // Calculate membership end date based on selection
+  const membershipEndDate = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (packageType === "custom" && selectedCustomPackage) {
+      return addDays(today, selectedCustomPackage.duration_days);
+    } else if (selectedMonthlyPackage) {
+      return addMonths(today, selectedMonthlyPackage.months);
+    }
+    return today;
+  }, [packageType, selectedMonthlyPackage, selectedCustomPackage]);
+
+  // Generate dynamic PT duration options based on membership end date
+  const ptDurationOptions = useMemo((): PTDurationOption[] => {
+    if (!selectedTrainer) return [];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const options: PTDurationOption[] = [];
+    const dailyRate = selectedTrainer.monthly_fee / 30;
+
+    // For custom (daily) packages, only offer PT for the same duration
+    if (packageType === "custom" && selectedCustomPackage) {
+      const days = selectedCustomPackage.duration_days;
+      const fee = Math.ceil(dailyRate * days);
+      options.push({
+        label: `${days} Day${days > 1 ? "s" : ""} (Full Package)`,
+        endDate: membershipEndDate,
+        days,
+        fee,
+        isValid: true,
+      });
+      return options;
+    }
+
+    // For monthly packages, generate 1-month, 2-month, etc. options
+    if (selectedMonthlyPackage) {
+      for (let months = 1; months <= selectedMonthlyPackage.months; months++) {
+        const optionEndDate = addMonths(today, months);
+        const isValid = isBefore(optionEndDate, membershipEndDate) || optionEndDate.getTime() === membershipEndDate.getTime();
+        const days = differenceInDays(optionEndDate, today);
+        const fee = Math.ceil(dailyRate * days);
+
+        options.push({
+          label: `${months} Month${months > 1 ? "s" : ""}`,
+          endDate: optionEndDate,
+          days,
+          fee,
+          isValid,
+        });
+      }
+
+      // Add "Till Membership End" option if different from last valid option
+      const daysToMembershipEnd = differenceInDays(membershipEndDate, today);
+      const lastValidOption = options[options.length - 1];
+      
+      if (lastValidOption && Math.abs(differenceInDays(lastValidOption.endDate, membershipEndDate)) > 1) {
+        const fee = Math.ceil(dailyRate * daysToMembershipEnd);
+        options.push({
+          label: `Till ${format(membershipEndDate, "d MMM yyyy")}`,
+          endDate: membershipEndDate,
+          days: daysToMembershipEnd,
+          fee,
+          isValid: true,
+        });
+      }
+    }
+
+    return options;
+  }, [selectedTrainer, packageType, selectedMonthlyPackage, selectedCustomPackage, membershipEndDate]);
+
+  // Auto-select PT option when trainer is selected or options change
+  useEffect(() => {
+    if (wantsTrainer && ptDurationOptions.length > 0) {
+      // Default to matching gym membership duration
+      const matchingOption = ptDurationOptions.find(
+        (opt) => opt.isValid && opt.days === differenceInDays(membershipEndDate, new Date())
+      );
+      setSelectedPTOption(matchingOption || ptDurationOptions.find((opt) => opt.isValid) || null);
+    } else {
+      setSelectedPTOption(null);
+    }
+  }, [wantsTrainer, ptDurationOptions, membershipEndDate]);
+
   // Calculate amounts
   const isCustom = packageType === "custom" && selectedCustomPackage;
   
@@ -117,10 +215,8 @@ const PackageSelectionForm = ({
     ? selectedCustomPackage!.price 
     : (selectedMonthlyPackage?.price || 0);
   
-  const trainerFee = wantsTrainer && selectedTrainer 
-    ? (isCustom 
-        ? Math.ceil((selectedTrainer.monthly_fee / 30) * selectedCustomPackage!.duration_days)
-        : selectedTrainer.monthly_fee * (selectedMonthlyPackage?.months || 1))
+  const trainerFee = wantsTrainer && selectedTrainer && selectedPTOption 
+    ? selectedPTOption.fee 
     : 0;
   
   const totalAmount = subscriptionAmount + joiningFee + trainerFee;
@@ -136,9 +232,10 @@ const PackageSelectionForm = ({
       subscriptionAmount,
       joiningFee,
       trainerFee,
+      ptDays: wantsTrainer && selectedPTOption ? selectedPTOption.days : undefined,
+      ptEndDate: wantsTrainer && selectedPTOption ? format(selectedPTOption.endDate, "yyyy-MM-dd") : undefined,
     });
   };
-
   return (
     <Card className="max-w-md mx-auto border">
       <CardHeader className="pb-4">
@@ -267,37 +364,101 @@ const PackageSelectionForm = ({
             </div>
 
             {wantsTrainer && (
-              <div className="space-y-3 pl-2">
-                {trainers.map((trainer) => (
-                  <button
-                    key={trainer.id}
-                    onClick={() => setSelectedTrainer(trainer)}
-                    className={`w-full p-4 rounded-xl border-2 transition-all duration-200 flex justify-between items-center ${
-                      selectedTrainer?.id === trainer.id
-                        ? "border-accent bg-accent/10"
-                        : "border-border hover:border-accent/50 bg-card"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="w-5 h-5 text-primary" />
+              <div className="space-y-4 pl-2">
+                {/* Trainer Selection */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-muted-foreground">Select Trainer</h4>
+                  {trainers.map((trainer) => (
+                    <button
+                      key={trainer.id}
+                      onClick={() => setSelectedTrainer(trainer)}
+                      className={`w-full p-4 rounded-xl border-2 transition-all duration-200 flex justify-between items-center ${
+                        selectedTrainer?.id === trainer.id
+                          ? "border-accent bg-accent/10"
+                          : "border-border hover:border-accent/50 bg-card"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-medium">{trainer.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {trainer.specialization || "General Training"}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-left">
-                        <p className="font-medium">{trainer.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {trainer.specialization || "General Training"}
+                      <div className="text-right">
+                        <p className="font-bold text-accent flex items-center">
+                          <IndianRupee className="w-4 h-4" />
+                          {trainer.monthly_fee}
                         </p>
+                        <p className="text-xs text-muted-foreground">/month</p>
                       </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* PT Duration Selection */}
+                {selectedTrainer && ptDurationOptions.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-muted-foreground">PT Duration</h4>
+                    <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-2 text-sm">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">
+                        Gym membership ends:{" "}
+                        <span className="font-medium text-foreground">
+                          {format(membershipEndDate, "d MMM yyyy")}
+                        </span>
+                      </span>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-accent flex items-center">
-                        <IndianRupee className="w-4 h-4" />
-                        {trainer.monthly_fee}
-                      </p>
-                      <p className="text-xs text-muted-foreground">/month</p>
+                    <div className="space-y-2">
+                      {ptDurationOptions.map((option, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => option.isValid && setSelectedPTOption(option)}
+                          disabled={!option.isValid}
+                          className={`w-full p-3 rounded-xl border-2 transition-all duration-200 ${
+                            !option.isValid
+                              ? "border-border/50 bg-muted/30 opacity-50 cursor-not-allowed"
+                              : selectedPTOption?.label === option.label
+                              ? "border-accent bg-accent/10"
+                              : "border-border hover:border-accent/50 bg-card"
+                          }`}
+                        >
+                          <div className="flex justify-between items-center">
+                            <div className="text-left">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-sm">{option.label}</p>
+                                {!option.isValid && (
+                                  <Badge variant="outline" className="text-destructive border-destructive/30 text-xs">
+                                    Exceeds membership
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <Clock className="w-3 h-3" />
+                                {option.days} days • Ends {format(option.endDate, "d MMM")}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-accent flex items-center text-sm">
+                                <IndianRupee className="w-3 h-3" />
+                                {option.fee.toLocaleString("en-IN")}
+                              </span>
+                              {option.isValid && selectedPTOption?.label === option.label && (
+                                <div className="w-4 h-4 rounded-full bg-accent flex items-center justify-center">
+                                  <Check className="w-2.5 h-2.5 text-accent-foreground" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
                     </div>
-                  </button>
-                ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -332,11 +493,11 @@ const PackageSelectionForm = ({
             </div>
           )}
 
-          {wantsTrainer && selectedTrainer && trainerFee > 0 && (
+          {wantsTrainer && selectedTrainer && selectedPTOption && trainerFee > 0 && (
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground flex items-center gap-2">
                 <Dumbbell className="w-4 h-4" />
-                Trainer ({selectedTrainer.name})
+                {selectedTrainer.name} ({selectedPTOption.days}d)
               </span>
               <span className="font-semibold flex items-center">
                 <IndianRupee className="w-4 h-4" />

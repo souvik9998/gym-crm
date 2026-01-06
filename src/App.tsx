@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Register from "./pages/Register";
 import Renew from "./pages/Renew";
+import ExtendPT from "./pages/ExtendPT";
 import Success from "./pages/Success";
 import MemberProfile from "./pages/MemberProfile";
 import AdminLogin from "./pages/admin/Login";
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/register" element={<Register />} />
           <Route path="/renew" element={<Renew />} />
+          <Route path="/extend-pt" element={<ExtendPT />} />
           <Route path="/success" element={<Success />} />
           <Route path="/profile" element={<MemberProfile />} />
           <Route path="/admin/login" element={<AdminLogin />} />
