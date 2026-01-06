@@ -19,6 +19,7 @@ const Index = () => {
   const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [existingMember, setExistingMember] = useState<any>(null);
+  const [membershipEndDate, setMembershipEndDate] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,6 +48,32 @@ const Index = () => {
       if (error) throw error;
 
       if (member) {
+        // Fetch active subscription to get membership end date
+        const { data: subscription } = await supabase
+          .from("subscriptions")
+          .select("end_date")
+          .eq("member_id", member.id)
+          .eq("status", "active")
+          .order("end_date", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        // Also check expiring_soon status
+        if (!subscription) {
+          const { data: expiringSub } = await supabase
+            .from("subscriptions")
+            .select("end_date")
+            .eq("member_id", member.id)
+            .eq("status", "expiring_soon")
+            .order("end_date", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          setMembershipEndDate(expiringSub?.end_date || null);
+        } else {
+          setMembershipEndDate(subscription?.end_date || null);
+        }
+
         // Existing member - show options
         setExistingMember(member);
         setShowOptions(true);
@@ -69,13 +96,19 @@ const Index = () => {
     if (option === 'renew') {
       navigate("/renew", { state: { member: existingMember } });
     } else {
-      navigate("/extend-pt", { state: { member: existingMember } });
+      navigate("/extend-pt", { 
+        state: { 
+          member: existingMember,
+          membershipEndDate: membershipEndDate
+        } 
+      });
     }
   };
 
   const handleBack = () => {
     setShowOptions(false);
     setExistingMember(null);
+    setMembershipEndDate(null);
     setPhone("");
   };
 
@@ -105,43 +138,78 @@ const Index = () => {
       <main className="px-4 pb-8">
         {showOptions ? (
           // Options for existing member
-          <Card className="max-w-md mx-auto mt-6 border">
-            <CardHeader className="text-center pb-4">
-              <CardTitle className="text-lg">Welcome Back, {existingMember?.name}!</CardTitle>
-              <CardDescription>
+          <Card className="max-w-md mx-auto mt-6 border-0 shadow-xl bg-gradient-to-br from-card to-card/80">
+            <CardHeader className="text-center pb-2">
+              <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-accent/10 flex items-center justify-center">
+                <Dumbbell className="w-8 h-8 text-accent" />
+              </div>
+              <CardTitle className="text-xl">Welcome Back!</CardTitle>
+              <p className="text-lg font-semibold text-accent">{existingMember?.name}</p>
+              <CardDescription className="mt-2">
                 What would you like to do today?
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <Button
-                variant="accent"
-                size="lg"
-                className="w-full justify-between"
+            <CardContent className="space-y-3 pt-4">
+              <button
                 onClick={() => handleOptionSelect('renew')}
+                className="w-full p-4 rounded-xl border-2 border-accent bg-accent/5 hover:bg-accent/10 transition-all duration-200 group"
               >
-                <div className="flex items-center gap-3">
-                  <Dumbbell className="w-5 h-5" />
-                  <span>Renew Gym Membership</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Dumbbell className="w-6 h-6 text-accent" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-semibold text-foreground">Renew Gym Membership</p>
+                      <p className="text-sm text-muted-foreground">Continue your fitness journey</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-accent group-hover:translate-x-1 transition-transform" />
                 </div>
-                <ArrowRight className="w-5 h-5" />
-              </Button>
+              </button>
               
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full justify-between"
+              <button
                 onClick={() => handleOptionSelect('extend-pt')}
+                disabled={!membershipEndDate}
+                className={`w-full p-4 rounded-xl border-2 transition-all duration-200 group ${
+                  membershipEndDate 
+                    ? "border-border hover:border-accent/50 hover:bg-accent/5" 
+                    : "border-border/50 bg-muted/30 opacity-60 cursor-not-allowed"
+                }`}
               >
-                <div className="flex items-center gap-3">
-                  <UserPlus className="w-5 h-5" />
-                  <span>Extend Personal Training</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform ${
+                      membershipEndDate ? "bg-primary/10 group-hover:scale-110" : "bg-muted"
+                    }`}>
+                      <UserPlus className={`w-6 h-6 ${membershipEndDate ? "text-primary" : "text-muted-foreground"}`} />
+                    </div>
+                    <div className="text-left">
+                      <p className={`font-semibold ${membershipEndDate ? "text-foreground" : "text-muted-foreground"}`}>
+                        {membershipEndDate ? "Add / Extend Personal Training" : "Personal Training"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {membershipEndDate 
+                          ? "Get personalized coaching" 
+                          : "Renew gym membership first"}
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className={`w-5 h-5 transition-transform ${
+                    membershipEndDate ? "text-muted-foreground group-hover:translate-x-1" : "text-muted-foreground/50"
+                  }`} />
                 </div>
-                <ArrowRight className="w-5 h-5" />
-              </Button>
+              </button>
+
+              {!membershipEndDate && (
+                <p className="text-xs text-center text-muted-foreground bg-muted/50 p-2 rounded-lg">
+                  You need an active gym membership to add personal training
+                </p>
+              )}
 
               <Button
                 variant="ghost"
-                className="w-full mt-4"
+                className="w-full mt-2"
                 onClick={handleBack}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
