@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Dumbbell, Phone, ArrowRight, Shield, Clock, CreditCard } from "lucide-react";
+import { Phone, ArrowRight, Shield, Clock, CreditCard, Dumbbell, UserPlus, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -18,6 +18,8 @@ const Index = () => {
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [existingMember, setExistingMember] = useState<any>(null);
+  const [showOptions, setShowOptions] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +38,7 @@ const Index = () => {
     
     try {
       // Check if member exists
-      const { data: existingMember, error } = await supabase
+      const { data: member, error } = await supabase
         .from("members")
         .select("*")
         .eq("phone", phone)
@@ -44,9 +46,10 @@ const Index = () => {
 
       if (error) throw error;
 
-      if (existingMember) {
-        // Existing member - go to renewal
-        navigate("/renew", { state: { member: existingMember } });
+      if (member) {
+        // Existing member - show options
+        setExistingMember(member);
+        setShowOptions(true);
       } else {
         // New member - go to registration with phone only
         navigate("/register", { state: { phone } });
@@ -60,6 +63,20 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleOptionSelect = (option: 'renew' | 'extend-pt') => {
+    if (option === 'renew') {
+      navigate("/renew", { state: { member: existingMember } });
+    } else {
+      navigate("/extend-pt", { state: { member: existingMember } });
+    }
+  };
+
+  const handleBack = () => {
+    setShowOptions(false);
+    setExistingMember(null);
+    setPhone("");
   };
 
   return (
@@ -86,59 +103,108 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="px-4 pb-8">
-        <Card className="max-w-md mx-auto mt-6 border">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-lg">Welcome to Your Fitness Journey</CardTitle>
-            <CardDescription>
-              Enter your phone number to register or renew your membership
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-accent" />
-                  Phone Number
-                </Label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-4 rounded-l-lg border-2 border-r-0 border-input bg-muted text-muted-foreground text-sm font-medium">
-                    +91
-                  </span>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="9876543210"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                    className="rounded-l-none"
-                    required
-                    autoComplete="tel"
-                  />
-                </div>
-              </div>
-
+        {showOptions ? (
+          // Options for existing member
+          <Card className="max-w-md mx-auto mt-6 border">
+            <CardHeader className="text-center pb-4">
+              <CardTitle className="text-lg">Welcome Back, {existingMember?.name}!</CardTitle>
+              <CardDescription>
+                What would you like to do today?
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <Button
-                type="submit"
                 variant="accent"
                 size="lg"
-                className="w-full mt-6"
-                disabled={isLoading}
+                className="w-full justify-between"
+                onClick={() => handleOptionSelect('renew')}
               >
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
-                    Checking...
-                  </div>
-                ) : (
-                  <>
-                    Continue
-                    <ArrowRight className="w-5 h-5" />
-                  </>
-                )}
+                <div className="flex items-center gap-3">
+                  <Dumbbell className="w-5 h-5" />
+                  <span>Renew Gym Membership</span>
+                </div>
+                <ArrowRight className="w-5 h-5" />
               </Button>
-            </form>
-          </CardContent>
-        </Card>
+              
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full justify-between"
+                onClick={() => handleOptionSelect('extend-pt')}
+              >
+                <div className="flex items-center gap-3">
+                  <UserPlus className="w-5 h-5" />
+                  <span>Extend Personal Training</span>
+                </div>
+                <ArrowRight className="w-5 h-5" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                className="w-full mt-4"
+                onClick={handleBack}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Use Different Number
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          // Phone input form
+          <Card className="max-w-md mx-auto mt-6 border">
+            <CardHeader className="text-center pb-4">
+              <CardTitle className="text-lg">Welcome to Your Fitness Journey</CardTitle>
+              <CardDescription>
+                Enter your phone number to register or renew your membership
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-accent" />
+                    Phone Number
+                  </Label>
+                  <div className="flex">
+                    <span className="inline-flex items-center px-4 rounded-l-lg border-2 border-r-0 border-input bg-muted text-muted-foreground text-sm font-medium">
+                      +91
+                    </span>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="9876543210"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                      className="rounded-l-none"
+                      required
+                      autoComplete="tel"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="accent"
+                  size="lg"
+                  className="w-full mt-6"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
+                      Checking...
+                    </div>
+                  ) : (
+                    <>
+                      Continue
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Features */}
         <div className="max-w-md mx-auto mt-12 grid grid-cols-3 gap-4">
