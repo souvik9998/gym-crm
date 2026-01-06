@@ -88,6 +88,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
   const [trainers, setTrainers] = useState<PersonalTrainer[]>([]);
   const [selectedTrainerId, setSelectedTrainerId] = useState("");
   const [selectedPTOption, setSelectedPTOption] = useState<PTDurationOption | null>(null);
+  const [ptCustomAmount, setPtCustomAmount] = useState<string>("");
   
   // Member's current subscription end date (for PT duration calculation)
   const [membershipEndDate, setMembershipEndDate] = useState<Date | null>(null);
@@ -104,6 +105,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
       setGymCustomAmount("");
       setSelectedTrainerId("");
       setSelectedPTOption(null);
+      setPtCustomAmount("");
       setMembershipEndDate(null);
       setGymEndDate(null);
     }
@@ -227,7 +229,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
     calculateGymEndDate();
   }, [member, selectedPackage]);
 
-  // Generate PT duration options (similar to ExtendPT.tsx)
+  // Generate PT duration options (similar to ExtendPT.tsx and PackageSelectionForm.tsx)
   const ptDurationOptions = useMemo((): PTDurationOption[] => {
     if (!selectedTrainer || !member) return [];
 
@@ -236,60 +238,57 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
     const options: PTDurationOption[] = [];
     const dailyRate = selectedTrainer.monthly_fee / 30;
 
-    // If payment type is gym_and_pt, PT should match gym membership duration
-    if (paymentType === "gym_and_pt" && gymEndDate) {
-      const days = differenceInDays(gymEndDate, today);
-      if (days > 0) {
-        const fee = Math.ceil(dailyRate * days);
-        options.push({
-          label: `Till ${format(gymEndDate, "d MMM yyyy")} (Match Gym)`,
-          endDate: gymEndDate,
-          days,
-          fee,
-          isValid: true,
-        });
-      }
-      return options;
+    // Determine the membership end date constraint
+    let membershipEndConstraint: Date | null = null;
+    
+    if (paymentType === "gym_and_pt") {
+      // For gym_and_pt, use the new gym membership end date as constraint
+      membershipEndConstraint = gymEndDate;
+    } else if (paymentType === "pt_only") {
+      // For pt_only, use existing membership end date
+      membershipEndConstraint = membershipEndDate;
     }
 
-    // For PT only, check membership end date
-    if (paymentType === "pt_only") {
-      if (!membershipEndDate) {
-        return []; // No active membership
+    if (!membershipEndConstraint) {
+      // For pt_only without active membership, return empty
+      if (paymentType === "pt_only") {
+        return [];
       }
+      // For gym_and_pt, if gymEndDate is not calculated yet, return empty
+      return [];
+    }
 
-      // Generate 1-month, 2-month, 3-month options
-      for (let months = 1; months <= 3; months++) {
-        const optionEndDate = addMonths(today, months);
-        const isValid = isBefore(optionEndDate, membershipEndDate) || optionEndDate.getTime() === membershipEndDate.getTime();
-        const days = differenceInDays(optionEndDate, today);
-        const fee = Math.ceil(dailyRate * days);
+    // Generate 1-month, 2-month, 3-month options (similar to user form)
+    for (let months = 1; months <= 3; months++) {
+      const optionEndDate = addMonths(today, months);
+      const isValid = isBefore(optionEndDate, membershipEndConstraint!) || optionEndDate.getTime() === membershipEndConstraint!.getTime();
+      const days = differenceInDays(optionEndDate, today);
+      const fee = Math.ceil(dailyRate * days);
 
-        options.push({
-          label: `${months} Month${months > 1 ? "s" : ""}`,
-          endDate: optionEndDate,
-          days,
-          fee,
-          isValid,
-        });
-      }
+      options.push({
+        label: `${months} Month${months > 1 ? "s" : ""}`,
+        endDate: optionEndDate,
+        days,
+        fee,
+        isValid,
+      });
+    }
 
-      // Add "Till Membership End" option if different
-      const daysToMembershipEnd = differenceInDays(membershipEndDate, today);
-      const existingMatchingOption = options.find(
-        (opt) => opt.isValid && Math.abs(differenceInDays(opt.endDate, membershipEndDate)) <= 1
-      );
+    // Add "Till Membership End" option if different from existing options
+    const daysToMembershipEnd = differenceInDays(membershipEndConstraint, today);
+    const existingMatchingOption = options.find(
+      (opt) => opt.isValid && Math.abs(differenceInDays(opt.endDate, membershipEndConstraint!)) <= 1
+    );
 
-      if (!existingMatchingOption && daysToMembershipEnd > 0) {
-        const fee = Math.ceil(dailyRate * daysToMembershipEnd);
-        options.push({
-          label: `Till ${format(membershipEndDate, "d MMM yyyy")}`,
-          endDate: membershipEndDate,
-          days: daysToMembershipEnd,
-          fee,
-          isValid: true,
-        });
-      }
+    if (!existingMatchingOption && daysToMembershipEnd > 0) {
+      const fee = Math.ceil(dailyRate * daysToMembershipEnd);
+      options.push({
+        label: `Till ${format(membershipEndConstraint, "d MMM yyyy")}`,
+        endDate: membershipEndConstraint,
+        days: daysToMembershipEnd,
+        fee,
+        isValid: true,
+      });
     }
 
     return options;
@@ -299,20 +298,37 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
   useEffect(() => {
     if ((paymentType === "gym_and_pt" || paymentType === "pt_only") && ptDurationOptions.length > 0) {
       const firstValid = ptDurationOptions.find((opt) => opt.isValid);
-      setSelectedPTOption(firstValid || null);
+      if (firstValid) {
+        setSelectedPTOption(firstValid);
+        // Set default PT fee
+        setPtCustomAmount(firstValid.fee.toString());
+      } else {
+        setSelectedPTOption(null);
+        setPtCustomAmount("");
+      }
     } else {
       setSelectedPTOption(null);
+      setPtCustomAmount("");
     }
   }, [selectedTrainer?.id, paymentType, ptDurationOptions]);
+
+  // Update PT custom amount when PT option changes
+  useEffect(() => {
+    if (selectedPTOption && !ptCustomAmount) {
+      setPtCustomAmount(selectedPTOption.fee.toString());
+    }
+  }, [selectedPTOption]);
 
   // Calculate amounts
   const gymAmount = paymentType === "pt_only" 
     ? 0 
     : (gymCustomAmount ? Number(gymCustomAmount) : (selectedPackage?.price || 0));
   
-  const ptAmount = (paymentType === "gym_and_pt" || paymentType === "pt_only") && selectedPTOption
+  const ptDefaultAmount = (paymentType === "gym_and_pt" || paymentType === "pt_only") && selectedPTOption
     ? selectedPTOption.fee
     : 0;
+  
+  const ptAmount = ptCustomAmount ? Number(ptCustomAmount) : ptDefaultAmount;
   
   const totalAmount = gymAmount + ptAmount;
 
@@ -387,7 +403,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
       if (paymentType === "gym_and_pt" || paymentType === "pt_only") {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const ptEndDate = selectedPTOption!.endDate;
+        const ptEndDate = new Date(selectedPTOption!.endDate);
         ptEndDate.setHours(23, 59, 59, 999);
 
         await supabase.from("pt_subscriptions").insert({
@@ -396,7 +412,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
           start_date: today.toISOString().split("T")[0],
           end_date: ptEndDate.toISOString().split("T")[0],
           monthly_fee: selectedTrainer!.monthly_fee,
-          total_fee: selectedPTOption!.fee,
+          total_fee: ptAmount, // Use custom amount if provided, otherwise use calculated fee
           status: "active",
         });
       }
@@ -585,52 +601,84 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                         </div>
 
                         {selectedTrainer && ptDurationOptions.length > 0 && (
-                          <div className="space-y-2">
-                            <Label>PT Duration</Label>
-                            {paymentType === "pt_only" && membershipEndDate && (
-                              <div className="p-2 bg-muted/50 rounded-lg text-xs text-muted-foreground">
-                                Gym membership ends: {format(membershipEndDate, "d MMM yyyy")}
-                              </div>
-                            )}
+                          <>
                             <div className="space-y-2">
-                              {ptDurationOptions.map((option, idx) => (
-                                <button
-                                  key={idx}
-                                  type="button"
-                                  onClick={() => option.isValid && setSelectedPTOption(option)}
-                                  disabled={!option.isValid}
-                                  className={`w-full p-3 rounded-xl border-2 transition-all duration-200 text-left ${
-                                    !option.isValid
-                                      ? "border-border/50 bg-muted/30 opacity-50 cursor-not-allowed"
-                                      : selectedPTOption?.label === option.label
-                                      ? "border-accent bg-accent/10"
-                                      : "border-border hover:border-accent/50 bg-card"
-                                  }`}
-                                >
-                                  <div className="flex justify-between items-center">
-                                    <div>
-                                      <div className="flex items-center gap-2">
-                                        <p className="font-medium text-sm">{option.label}</p>
-                                        {!option.isValid && (
-                                          <Badge variant="outline" className="text-destructive border-destructive/30 text-xs">
-                                            Exceeds membership
-                                          </Badge>
-                                        )}
+                              <Label>PT Duration</Label>
+                              {(paymentType === "pt_only" && membershipEndDate) || (paymentType === "gym_and_pt" && gymEndDate) ? (
+                                <div className="p-2 bg-muted/50 rounded-lg text-xs text-muted-foreground">
+                                  {paymentType === "gym_and_pt" 
+                                    ? `Gym membership ends: ${format(gymEndDate!, "d MMM yyyy")}`
+                                    : `Gym membership ends: ${format(membershipEndDate!, "d MMM yyyy")}`
+                                  }
+                                </div>
+                              ) : null}
+                              <div className="space-y-2">
+                                {ptDurationOptions.map((option, idx) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => {
+                                      if (option.isValid) {
+                                        setSelectedPTOption(option);
+                                        setPtCustomAmount(option.fee.toString());
+                                      }
+                                    }}
+                                    disabled={!option.isValid}
+                                    className={`w-full p-3 rounded-xl border-2 transition-all duration-200 text-left ${
+                                      !option.isValid
+                                        ? "border-border/50 bg-muted/30 opacity-50 cursor-not-allowed"
+                                        : selectedPTOption?.label === option.label
+                                        ? "border-accent bg-accent/10"
+                                        : "border-border hover:border-accent/50 bg-card"
+                                    }`}
+                                  >
+                                    <div className="flex justify-between items-center">
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <p className="font-medium text-sm">{option.label}</p>
+                                          {!option.isValid && (
+                                            <Badge variant="outline" className="text-destructive border-destructive/30 text-xs">
+                                              Exceeds membership
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                                          <Clock className="w-3 h-3" />
+                                          {option.days} days • Ends {format(option.endDate, "d MMM yyyy")}
+                                        </p>
                                       </div>
-                                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                                        <Clock className="w-3 h-3" />
-                                        {option.days} days • Ends {format(option.endDate, "d MMM yyyy")}
-                                      </p>
+                                      <span className="font-bold text-accent flex items-center text-sm">
+                                        <IndianRupee className="w-3 h-3" />
+                                        {option.fee.toLocaleString("en-IN")}
+                                      </span>
                                     </div>
-                                    <span className="font-bold text-accent flex items-center text-sm">
-                                      <IndianRupee className="w-3 h-3" />
-                                      {option.fee.toLocaleString("en-IN")}
-                                    </span>
-                                  </div>
-                                </button>
-                              ))}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
-                          </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="pt-amount">PT Fee (₹)</Label>
+                              <div className="flex">
+                                <span className="inline-flex items-center px-3 rounded-l-lg border-2 border-r-0 border-input bg-muted text-muted-foreground text-sm">
+                                  ₹
+                                </span>
+                                <Input
+                                  id="pt-amount"
+                                  type="number"
+                                  value={ptCustomAmount || (selectedPTOption?.fee || 0)}
+                                  onChange={(e) => setPtCustomAmount(e.target.value)}
+                                  className="rounded-l-none"
+                                  min="0"
+                                />
+                              </div>
+                              {selectedPTOption && !ptCustomAmount && (
+                                <p className="text-xs text-muted-foreground">
+                                  Default: ₹{selectedPTOption.fee.toLocaleString("en-IN")} ({selectedPTOption.days} days)
+                                </p>
+                              )}
+                            </div>
+                          </>
                         )}
                       </>
                     )}

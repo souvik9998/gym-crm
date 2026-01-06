@@ -35,6 +35,7 @@ interface DashboardStats {
   expiredMembers: number;
   inactiveMembers: number;
   monthlyRevenue: number;
+  withPT: number;
 }
 
 const AdminDashboard = () => {
@@ -50,6 +51,7 @@ const AdminDashboard = () => {
     expiredMembers: 0,
     inactiveMembers: 0,
     monthlyRevenue: 0,
+    withPT: 0,
   });
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
@@ -137,6 +139,16 @@ const AdminDashboard = () => {
 
       const monthlyRevenue = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
+      // Get active PT subscriptions count
+      const today = new Date().toISOString().split("T")[0];
+      const { data: activePTData } = await supabase
+        .from("pt_subscriptions")
+        .select("member_id")
+        .eq("status", "active")
+        .gte("end_date", today);
+
+      const uniquePTMembers = new Set(activePTData?.map((pt) => pt.member_id) || []).size;
+
       setStats({
         totalMembers: totalMembers || 0,
         activeMembers: uniqueActiveMembers,
@@ -144,6 +156,7 @@ const AdminDashboard = () => {
         expiredMembers: uniqueExpiredMembers,
         inactiveMembers: inactiveCount,
         monthlyRevenue,
+        withPT: uniquePTMembers,
       });
     } catch (error: unknown) {
       console.error("Error fetching stats:", error);
@@ -353,6 +366,7 @@ const AdminDashboard = () => {
                     expiring_soon: stats.expiringSoon,
                     expired: stats.expiredMembers,
                     inactive: stats.inactiveMembers,
+                    with_pt: stats.withPT,
                   }}
                 />
                 <MembersTable searchQuery={searchQuery} refreshKey={refreshKey} filterValue={memberFilter} />

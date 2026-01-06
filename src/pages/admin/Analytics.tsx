@@ -45,8 +45,10 @@ interface MemberGrowth {
 
 interface TrainerStats {
   name: string;
+  id: string;
   members: number;
   revenue: number;
+  monthlyRevenue: MonthlyRevenue[];
 }
 
 const COLORS = ["hsl(var(--accent))", "hsl(var(--primary))", "hsl(var(--success))", "hsl(var(--warning))"];
@@ -162,29 +164,83 @@ const AdminAnalytics = () => {
         })
       );
 
-      // Fetch trainer stats
+      // Fetch trainer stats from pt_subscriptions
       const { data: trainers } = await supabase
         .from("personal_trainers")
-        .select("id, name");
+        .select("id, name")
+        .eq("is_active", true);
 
-      const { data: subs } = await supabase
-        .from("subscriptions")
-        .select("personal_trainer_id, trainer_fee")
-        .not("personal_trainer_id", "is", null);
+      const { data: ptSubs } = await supabase
+        .from("pt_subscriptions")
+        .select("personal_trainer_id, member_id, total_fee, created_at")
+        .eq("status", "active");
 
-      const trainerData: Record<string, { name: string; members: number; revenue: number }> = {};
+      const trainerData: Record<string, { 
+        name: string; 
+        id: string;
+        members: Set<string>; 
+        revenue: number;
+        payments: Array<{ amount: number; month: string }>;
+      }> = {};
+      
       trainers?.forEach((t) => {
-        trainerData[t.id] = { name: t.name, members: 0, revenue: 0 };
+        trainerData[t.id] = { 
+          name: t.name, 
+          id: t.id,
+          members: new Set(), 
+          revenue: 0,
+          payments: []
+        };
       });
 
-      subs?.forEach((sub) => {
-        if (sub.personal_trainer_id && trainerData[sub.personal_trainer_id]) {
-          trainerData[sub.personal_trainer_id].members += 1;
-          trainerData[sub.personal_trainer_id].revenue += Number(sub.trainer_fee) || 0;
+      // Process PT subscriptions
+      ptSubs?.forEach((ptSub) => {
+        if (ptSub.personal_trainer_id && trainerData[ptSub.personal_trainer_id]) {
+          trainerData[ptSub.personal_trainer_id].members.add(ptSub.member_id);
+          trainerData[ptSub.personal_trainer_id].revenue += Number(ptSub.total_fee) || 0;
+          
+          // Track monthly revenue
+          const date = new Date(ptSub.created_at);
+          const monthKey = date.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+          trainerData[ptSub.personal_trainer_id].payments.push({
+            amount: Number(ptSub.total_fee) || 0,
+            month: monthKey
+          });
         }
       });
 
-      setTrainerStats(Object.values(trainerData).filter((t) => t.members > 0));
+      // Convert to array and calculate monthly revenue for each trainer
+      const trainerStatsArray = Object.values(trainerData)
+        .filter((t) => t.members.size > 0)
+        .map((t) => {
+          // Calculate monthly revenue for last 6 months
+          const monthlyRevenueMap: Record<string, number> = {};
+          last6Months.forEach((month) => {
+            monthlyRevenueMap[month] = 0;
+          });
+
+          t.payments.forEach((payment) => {
+            if (monthlyRevenueMap[payment.month] !== undefined) {
+              monthlyRevenueMap[payment.month] += payment.amount;
+            }
+          });
+
+          const monthlyRevenue = last6Months.map((month) => ({
+            month,
+            revenue: monthlyRevenueMap[month] || 0,
+            payments: 0, // Not tracking payment count for trainers
+          }));
+
+          return {
+            name: t.name,
+            id: t.id,
+            members: t.members.size,
+            revenue: t.revenue,
+            monthlyRevenue,
+          };
+        });
+
+      setTrainerStats(trainerStatsArray);
 
       // Calculate totals
       const totalRevenue = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
@@ -426,23 +482,56 @@ const AdminAnalytics = () => {
               <CardContent>
                 <div className="space-y-4">
                   {trainerStats.map((trainer, index) => (
-                    <div key={trainer.name} className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div 
-                          className="w-10 h-10 rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: COLORS[index % COLORS.length] + "20" }}
-                        >
-                          <Dumbbell className="w-5 h-5" style={{ color: COLORS[index % COLORS.length] }} />
+                    <div key={trainer.id} className="space-y-3">
+                      <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="w-10 h-10 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: COLORS[index % COLORS.length] + "20" }}
+                          >
+                            <Dumbbell className="w-5 h-5" style={{ color: COLORS[index % COLORS.length] }} />
+                          </div>
+                          <div>
+                            <p className="font-medium">{trainer.name}</p>
+                            <p className="text-sm text-muted-foreground">{trainer.members} members</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium">{trainer.name}</p>
-                          <p className="text-sm text-muted-foreground">{trainer.members} members</p>
-                        </div>
+                        <p className="font-semibold text-accent flex items-center gap-1">
+                          <IndianRupee className="w-4 h-4" />
+                          {trainer.revenue.toLocaleString("en-IN")}
+                        </p>
                       </div>
-                      <p className="font-semibold text-accent flex items-center gap-1">
-                        <IndianRupee className="w-4 h-4" />
-                        {trainer.revenue.toLocaleString("en-IN")}
-                      </p>
+                      {/* Monthly Revenue Chart for this trainer */}
+                      <div className="pl-2 border-l-2" style={{ borderColor: COLORS[index % COLORS.length] }}>
+                        <p className="text-xs text-muted-foreground mb-2">Monthly Revenue</p>
+                        <ChartContainer config={chartConfig} className="h-[120px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={trainer.monthlyRevenue}>
+                              <XAxis 
+                                dataKey="month" 
+                                tickLine={false} 
+                                axisLine={false}
+                                tick={{ fontSize: 10 }}
+                                angle={-45}
+                                textAnchor="end"
+                                height={60}
+                              />
+                              <YAxis 
+                                tickLine={false} 
+                                axisLine={false}
+                                tick={{ fontSize: 10 }}
+                                tickFormatter={(v) => `₹${v / 1000}k`}
+                              />
+                              <ChartTooltip content={<ChartTooltipContent />} />
+                              <Bar 
+                                dataKey="revenue" 
+                                fill={COLORS[index % COLORS.length]} 
+                                radius={[2, 2, 0, 0]}
+                              />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </ChartContainer>
+                      </div>
                     </div>
                   ))}
                 </div>

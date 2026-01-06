@@ -238,8 +238,8 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
         {/* PT Filter Card */}
         <Card
           className={cn(
-            "border transition-all cursor-pointer hover:shadow-md",
-            ptFilterActive && "border-warning/50 border-2 shadow-sm bg-warning/5"
+            "border transition-all cursor-pointer hover:shadow-md bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20",
+            ptFilterActive && "border-purple-400/50 border-2 shadow-md bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30"
           )}
           onClick={handlePtClick}
         >
@@ -247,15 +247,17 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
             <div className="flex items-center gap-2 mb-2">
               <div className={cn(
                 "p-1.5 rounded-lg",
-                ptFilterActive ? "bg-warning text-warning-foreground" : "bg-warning/10 text-warning"
+                ptFilterActive 
+                  ? "bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-sm" 
+                  : "bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 text-purple-600 dark:text-purple-400"
               )}>
                 <Dumbbell className="w-5 h-5" />
               </div>
             </div>
             <div>
-              <span className="font-semibold text-xs block">Personal Training</span>
+              <span className="font-semibold text-xs block text-purple-700 dark:text-purple-300">Personal Training</span>
               {counts && (
-                <span className="text-xs font-medium text-warning">
+                <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
                   {counts.with_pt || 0} with PT
                 </span>
               )}
