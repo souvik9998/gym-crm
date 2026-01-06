@@ -58,7 +58,8 @@ const ExtendPT = () => {
       return;
     }
     fetchTrainers();
-  }, [member, membershipEndDate, navigate, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchTrainers = async () => {
     setIsLoadingData(true);
