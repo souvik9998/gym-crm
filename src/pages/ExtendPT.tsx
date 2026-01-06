@@ -120,11 +120,44 @@ const ExtendPT = () => {
     return options;
   }, [membershipEndDate, selectedTrainer]);
 
-  // Auto-select first valid option when trainer changes
+  // Auto-select first valid option only when trainer changes
   useEffect(() => {
-    const firstValid = ptDurationOptions.find((opt) => opt.isValid);
-    setSelectedOption(firstValid || null);
-  }, [ptDurationOptions]);
+    if (selectedTrainer && membershipEndDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dailyRate = selectedTrainer.monthly_fee / 30;
+      
+      // Find first valid option (1 month that doesn't exceed membership)
+      const oneMonthEnd = addMonths(today, 1);
+      const isOneMonthValid = isBefore(oneMonthEnd, membershipEndDate) || oneMonthEnd.getTime() === membershipEndDate.getTime();
+      
+      if (isOneMonthValid) {
+        const days = differenceInDays(oneMonthEnd, today);
+        setSelectedOption({
+          label: "1 Month",
+          endDate: oneMonthEnd,
+          days,
+          fee: Math.ceil(dailyRate * days),
+          isValid: true,
+        });
+      } else {
+        // If 1 month exceeds, use till membership end
+        const daysToEnd = differenceInDays(membershipEndDate, today);
+        if (daysToEnd > 0) {
+          setSelectedOption({
+            label: `Till ${format(membershipEndDate, "d MMM yyyy")}`,
+            endDate: membershipEndDate,
+            days: daysToEnd,
+            fee: Math.ceil(dailyRate * daysToEnd),
+            isValid: true,
+          });
+        } else {
+          setSelectedOption(null);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTrainer?.id]);
 
   const handleSubmit = async () => {
     if (!selectedTrainer || !selectedOption || !member) return;
