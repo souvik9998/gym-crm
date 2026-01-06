@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, Calendar, MoreVertical, User, Trash2, Pencil } from "lucide-react";
+import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,15 +35,20 @@ interface Member {
     end_date: string;
     start_date: string;
   };
+  activePT?: {
+    trainer_name: string;
+    end_date: string;
+  } | null;
 }
 
 interface MembersTableProps {
   searchQuery: string;
   refreshKey: number;
   filterValue: MemberFilterValue;
+  ptFilterActive?: boolean;
 }
 
-export const MembersTable = ({ searchQuery, refreshKey, filterValue }: MembersTableProps) => {
+export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterActive = false }: MembersTableProps) => {
   const { toast } = useToast();
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,9 +75,10 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue }: MembersTa
 
       if (membersError) throw membersError;
 
-      // Get latest subscription for each member
-      const membersWithSubs = await Promise.all(
+      // Get latest subscription and PT for each member
+      const membersWithData = await Promise.all(
         (membersData || []).map(async (member) => {
+          // Get subscription
           const { data: subData } = await supabase
             .from("subscriptions")
             .select("id, status, end_date, start_date")
@@ -81,14 +87,30 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue }: MembersTa
             .limit(1)
             .maybeSingle();
 
+          // Get active PT subscription
+          const today = new Date().toISOString().split("T")[0];
+          const { data: ptData } = await supabase
+            .from("pt_subscriptions")
+            .select("end_date, personal_trainer:personal_trainers(name)")
+            .eq("member_id", member.id)
+            .eq("status", "active")
+            .gte("end_date", today)
+            .order("end_date", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
           return {
             ...member,
             subscription: subData || undefined,
+            activePT: ptData ? {
+              trainer_name: (ptData.personal_trainer as any)?.name || "Unknown",
+              end_date: ptData.end_date,
+            } : null,
           };
         })
       );
 
-      setMembers(membersWithSubs as Member[]);
+      setMembers(membersWithData as Member[]);
     } catch (error: any) {
       console.error("Error fetching members:", error);
     } finally {
@@ -128,8 +150,19 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue }: MembersTa
       m.phone.includes(searchQuery)
   );
 
+  // Filter by PT status if PT filter is active
+  const ptFiltered = ptFilterActive 
+    ? searchFiltered.filter((m) => {
+        if (filterValue === "all") return true;
+        if (filterValue === "active") return !!m.activePT;
+        if (filterValue === "inactive" || filterValue === "expired") return !m.activePT;
+        return true;
+      })
+    : searchFiltered;
+
   // Filter by member status and expiry date
-  const filteredMembers = searchFiltered.filter((m) => {
+  const filteredMembers = (ptFilterActive ? ptFiltered : searchFiltered).filter((m) => {
+    if (ptFilterActive) return true; // Already filtered above
     if (filterValue === "all") return true;
 
     const subscription = m.subscription;
@@ -214,6 +247,12 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue }: MembersTa
               <TableHead className="font-semibold">Member</TableHead>
               <TableHead className="hidden sm:table-cell font-semibold">Phone</TableHead>
               <TableHead className="font-semibold">Status</TableHead>
+              <TableHead className="hidden lg:table-cell font-semibold">
+                <div className="flex items-center gap-1">
+                  <Dumbbell className="w-4 h-4" />
+                  Trainer
+                </div>
+              </TableHead>
               <TableHead className="hidden md:table-cell font-semibold">Expires</TableHead>
               <TableHead className="w-10"></TableHead>
             </TableRow>
@@ -248,6 +287,18 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue }: MembersTa
                   </div>
                 </TableCell>
                 <TableCell>{getStatusBadge(member.subscription)}</TableCell>
+                <TableCell className="hidden lg:table-cell">
+                  {member.activePT ? (
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-warning/10 text-warning border-warning/20">
+                        <Dumbbell className="w-3 h-3 mr-1" />
+                        {member.activePT.trainer_name}
+                      </Badge>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">No PT</span>
+                  )}
+                </TableCell>
                 <TableCell className="hidden md:table-cell">
                   {member.subscription ? (
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">

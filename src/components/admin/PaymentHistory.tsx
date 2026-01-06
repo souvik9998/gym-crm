@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, CreditCard, Banknote, Filter, X } from "lucide-react";
+import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type PaymentMode = Database["public"]["Enums"]["payment_mode"];
@@ -31,6 +31,7 @@ interface Payment {
   status: PaymentStatus | null;
   created_at: string | null;
   notes: string | null;
+  payment_type: string | null;
   member: {
     name: string;
     phone: string;
@@ -48,6 +49,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const [dateTo, setDateTo] = useState("");
   const [paymentMode, setPaymentMode] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
 
   useEffect(() => {
     fetchPayments();
@@ -65,6 +67,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
           status,
           created_at,
           notes,
+          payment_type,
           member:members(name, phone)
         `)
         .order("created_at", { ascending: false });
@@ -83,6 +86,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     setDateTo("");
     setPaymentMode("all");
     setStatusFilter("all");
+    setTypeFilter("all");
   };
 
   const filteredPayments = payments.filter((payment) => {
@@ -106,6 +110,11 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
 
     // Status filter
     if (statusFilter !== "all" && payment.status !== statusFilter) {
+      return false;
+    }
+
+    // Type filter
+    if (typeFilter !== "all" && payment.payment_type !== typeFilter) {
       return false;
     }
 
@@ -133,7 +142,33 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     );
   };
 
-  const hasActiveFilters = dateFrom || dateTo || paymentMode !== "all" || statusFilter !== "all";
+  const getPaymentTypeBadge = (type: string | null) => {
+    switch (type) {
+      case "gym_and_pt":
+        return (
+          <Badge variant="outline" className="text-xs bg-accent/10 text-accent">
+            <Dumbbell className="w-3 h-3 mr-1" />
+            Gym + PT
+          </Badge>
+        );
+      case "pt_only":
+        return (
+          <Badge variant="outline" className="text-xs bg-warning/10 text-warning">
+            <Dumbbell className="w-3 h-3 mr-1" />
+            PT Only
+          </Badge>
+        );
+      case "gym_membership":
+      default:
+        return (
+          <Badge variant="outline" className="text-xs bg-primary/10 text-primary">
+            Gym
+          </Badge>
+        );
+    }
+  };
+
+  const hasActiveFilters = dateFrom || dateTo || paymentMode !== "all" || statusFilter !== "all" || typeFilter !== "all";
 
   if (isLoading) {
     return (
@@ -147,7 +182,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     <div className="space-y-4">
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end">
-        <div className="flex-1 min-w-[150px]">
+        <div className="flex-1 min-w-[130px]">
           <label className="text-xs text-muted-foreground mb-1 block">From Date</label>
           <Input
             type="date"
@@ -156,7 +191,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
             className="h-9"
           />
         </div>
-        <div className="flex-1 min-w-[150px]">
+        <div className="flex-1 min-w-[130px]">
           <label className="text-xs text-muted-foreground mb-1 block">To Date</label>
           <Input
             type="date"
@@ -165,30 +200,44 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
             className="h-9"
           />
         </div>
-        <div className="flex-1 min-w-[120px]">
-          <label className="text-xs text-muted-foreground mb-1 block">Payment Mode</label>
+        <div className="flex-1 min-w-[100px]">
+          <label className="text-xs text-muted-foreground mb-1 block">Mode</label>
           <Select value={paymentMode} onValueChange={setPaymentMode}>
             <SelectTrigger className="h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Modes</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="online">Online</SelectItem>
               <SelectItem value="cash">Cash</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <div className="flex-1 min-w-[120px]">
+        <div className="flex-1 min-w-[100px]">
           <label className="text-xs text-muted-foreground mb-1 block">Status</label>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="success">Success</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="failed">Failed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex-1 min-w-[100px]">
+          <label className="text-xs text-muted-foreground mb-1 block">Type</label>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="gym_membership">Gym Only</SelectItem>
+              <SelectItem value="pt_only">PT Only</SelectItem>
+              <SelectItem value="gym_and_pt">Gym + PT</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -226,6 +275,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
               <TableRow className="bg-muted/50">
                 <TableHead>Date</TableHead>
                 <TableHead>Member</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Mode</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
@@ -259,6 +309,9 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                     <div className="text-xs text-muted-foreground">
                       {payment.member?.phone || "-"}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {getPaymentTypeBadge(payment.payment_type)}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

@@ -16,6 +16,7 @@ import {
   MapPin, 
   IdCard,
   IndianRupee,
+  Dumbbell,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100),
@@ -40,6 +42,13 @@ interface MonthlyPackage {
   price: number;
   joining_fee: number;
   is_active: boolean;
+}
+
+interface PersonalTrainer {
+  id: string;
+  name: string;
+  monthly_fee: number;
+  specialization: string | null;
 }
 
 interface AddMemberDialogProps {
@@ -69,11 +78,19 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const [monthlyFee, setMonthlyFee] = useState(0);
   const [joiningFee, setJoiningFee] = useState(0);
   
+  // Personal Training
+  const [wantsPT, setWantsPT] = useState(false);
+  const [trainers, setTrainers] = useState<PersonalTrainer[]>([]);
+  const [selectedTrainerId, setSelectedTrainerId] = useState("");
+  const [ptMonths, setPtMonths] = useState(1);
+  const [ptFee, setPtFee] = useState(0);
+  
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
       fetchPackages();
+      fetchTrainers();
     }
   }, [open]);
 
@@ -86,10 +103,23 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
     if (data && data.length > 0) {
       setMonthlyPackages(data);
-      // Set default to first package
       setSelectedPackageId(data[0].id);
       setMonthlyFee(Number(data[0].price));
       setJoiningFee(Number(data[0].joining_fee));
+    }
+  };
+
+  const fetchTrainers = async () => {
+    const { data } = await supabase
+      .from("personal_trainers")
+      .select("*")
+      .eq("is_active", true)
+      .order("name");
+
+    if (data && data.length > 0) {
+      setTrainers(data);
+      setSelectedTrainerId(data[0].id);
+      setPtFee(Number(data[0].monthly_fee));
     }
   };
 
@@ -99,11 +129,40 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     if (pkg) {
       setMonthlyFee(Number(pkg.price));
       setJoiningFee(Number(pkg.joining_fee));
+      // Reset PT months if more than gym months
+      if (ptMonths > pkg.months) {
+        setPtMonths(pkg.months);
+      }
+    }
+  };
+
+  const handleTrainerChange = (trainerId: string) => {
+    setSelectedTrainerId(trainerId);
+    const trainer = trainers.find((t) => t.id === trainerId);
+    if (trainer) {
+      setPtFee(Number(trainer.monthly_fee) * ptMonths);
+    }
+  };
+
+  const handlePtMonthsChange = (months: number) => {
+    setPtMonths(months);
+    const trainer = trainers.find((t) => t.id === selectedTrainerId);
+    if (trainer) {
+      setPtFee(Number(trainer.monthly_fee) * months);
     }
   };
 
   const selectedPackage = monthlyPackages.find((p) => p.id === selectedPackageId);
-  const totalAmount = monthlyFee + joiningFee;
+  const selectedTrainer = trainers.find((t) => t.id === selectedTrainerId);
+  const gymTotal = monthlyFee + joiningFee;
+  const totalAmount = gymTotal + (wantsPT ? ptFee : 0);
+
+  // Generate PT month options based on gym package
+  const ptMonthOptions = [];
+  const maxPtMonths = selectedPackage?.months || 1;
+  for (let i = 1; i <= maxPtMonths; i++) {
+    ptMonthOptions.push(i);
+  }
 
   const formatIdNumber = (value: string, type: string) => {
     const cleaned = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
@@ -171,6 +230,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           address: address || null,
           photo_id_type: photoIdType || null,
           photo_id_number: photoIdNumber || null,
+          personal_trainer_id: wantsPT ? selectedTrainerId : null,
         });
         if (detailsError) throw detailsError;
       }
@@ -188,19 +248,39 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           end_date: endDate.toISOString().split("T")[0],
           plan_months: selectedPackage?.months || 1,
           status: "active",
+          personal_trainer_id: wantsPT ? selectedTrainerId : null,
+          trainer_fee: wantsPT ? ptFee : null,
         })
         .select()
         .single();
 
       if (subError) throw subError;
 
+      // Create PT subscription if selected
+      if (wantsPT && selectedTrainerId) {
+        const ptEndDate = new Date();
+        ptEndDate.setMonth(ptEndDate.getMonth() + ptMonths);
+        
+        await supabase.from("pt_subscriptions").insert({
+          member_id: member.id,
+          personal_trainer_id: selectedTrainerId,
+          start_date: startDate.toISOString().split("T")[0],
+          end_date: ptEndDate.toISOString().split("T")[0],
+          monthly_fee: selectedTrainer?.monthly_fee || 0,
+          total_fee: ptFee,
+          status: "active",
+        });
+      }
+
       // Create payment record (cash)
+      const paymentType = wantsPT ? "gym_and_pt" : "gym_membership";
       const { error: paymentError } = await supabase.from("payments").insert({
         member_id: member.id,
         subscription_id: subscription.id,
         amount: totalAmount,
         payment_mode: "cash",
         status: "success",
+        payment_type: paymentType,
         notes: "Added via admin dashboard",
       });
 
@@ -231,20 +311,24 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setSelectedPackageId("");
     setMonthlyFee(0);
     setJoiningFee(0);
+    setWantsPT(false);
+    setSelectedTrainerId("");
+    setPtMonths(1);
+    setPtFee(0);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="p-6 pb-0">
           <DialogTitle>Add New Member</DialogTitle>
           <DialogDescription>
             Add a new member with cash payment
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
-          <form onSubmit={handleSubmit} className="space-y-5 pb-2">
+        <ScrollArea className="flex-1 px-6 pb-6">
+          <form onSubmit={handleSubmit} className="space-y-5 pt-4">
             {/* Contact Details Section */}
             <div className="space-y-4">
               <h3 className="text-sm font-medium text-muted-foreground">Contact Details</h3>
@@ -401,23 +485,97 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
               </div>
             </div>
 
+            {/* Personal Training Section */}
+            <div className="space-y-4 pt-2 border-t">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Dumbbell className="w-4 h-4" />
+                  Personal Training Add-on
+                </h3>
+                <Switch checked={wantsPT} onCheckedChange={setWantsPT} />
+              </div>
+
+              {wantsPT && trainers.length > 0 && (
+                <div className="space-y-4 animate-in slide-in-from-top-2">
+                  <div className="space-y-2">
+                    <Label>Select Trainer</Label>
+                    <Select value={selectedTrainerId} onValueChange={handleTrainerChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose trainer" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {trainers.map((trainer) => (
+                          <SelectItem key={trainer.id} value={trainer.id}>
+                            {trainer.name} - ₹{trainer.monthly_fee}/month
+                            {trainer.specialization && ` (${trainer.specialization})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>PT Duration</Label>
+                    <Select value={String(ptMonths)} onValueChange={(v) => handlePtMonthsChange(Number(v))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ptMonthOptions.map((m) => (
+                          <SelectItem key={m} value={String(m)}>
+                            {m} {m === 1 ? "Month" : "Months"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Max {maxPtMonths} {maxPtMonths === 1 ? "month" : "months"} (matches gym membership)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="pt-fee">PT Fee (₹)</Label>
+                    <Input
+                      id="pt-fee"
+                      type="number"
+                      value={ptFee}
+                      onChange={(e) => setPtFee(Number(e.target.value) || 0)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Default: ₹{(selectedTrainer?.monthly_fee || 0) * ptMonths}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {wantsPT && trainers.length === 0 && (
+                <p className="text-sm text-muted-foreground">No active trainers available. Add trainers in settings.</p>
+              )}
+            </div>
+
             {/* Price Summary */}
             <div className="bg-muted rounded-xl p-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subscription ({selectedPackage?.months || 0} {selectedPackage?.months === 1 ? "month" : "months"})</span>
+                <span className="text-muted-foreground">Gym Membership ({selectedPackage?.months || 0} {selectedPackage?.months === 1 ? "month" : "months"})</span>
                 <span>₹{monthlyFee.toLocaleString("en-IN")}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Joining Fee</span>
                 <span>₹{joiningFee.toLocaleString("en-IN")}</span>
               </div>
+              {wantsPT && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Personal Training ({ptMonths} {ptMonths === 1 ? "month" : "months"})</span>
+                  <span>₹{ptFee.toLocaleString("en-IN")}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold pt-2 border-t border-border">
                 <span>Total (Cash)</span>
                 <span className="text-accent">₹{totalAmount.toLocaleString("en-IN")}</span>
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 pb-2">
               <Button
                 type="button"
                 variant="outline"
