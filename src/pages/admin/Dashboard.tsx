@@ -58,6 +58,7 @@ const AdminDashboard = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState("members");
   const [memberFilter, setMemberFilter] = useState<MemberFilterValue>("all");
+  const [ptFilterActive, setPtFilterActive] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -359,7 +360,13 @@ const AdminDashboard = () => {
               <TabsContent value="members" className="mt-0 space-y-6">
                 <MemberFilter 
                   value={memberFilter} 
-                  onChange={setMemberFilter}
+                  onChange={(value) => {
+                    setMemberFilter(value);
+                    // Detoggle PT filter when "All Members" is clicked
+                    if (value === "all" && ptFilterActive) {
+                      setPtFilterActive(false);
+                    }
+                  }}
                   counts={{
                     all: stats.totalMembers,
                     active: stats.activeMembers,
@@ -368,8 +375,15 @@ const AdminDashboard = () => {
                     inactive: stats.inactiveMembers,
                     with_pt: stats.withPT,
                   }}
+                  ptFilterActive={ptFilterActive}
+                  onPtFilterChange={setPtFilterActive}
                 />
-                <MembersTable searchQuery={searchQuery} refreshKey={refreshKey} filterValue={memberFilter} />
+                <MembersTable 
+                  searchQuery={searchQuery} 
+                  refreshKey={refreshKey} 
+                  filterValue={memberFilter}
+                  ptFilterActive={ptFilterActive}
+                />
               </TabsContent>
               <TabsContent value="payments" className="mt-0">
                 <PaymentHistory refreshKey={refreshKey} />

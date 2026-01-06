@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell } from "lucide-react";
+import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { EditMemberDialog } from "./EditMemberDialog";
 import { MemberActivityDialog } from "./MemberActivityDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { cn } from "@/lib/utils";
 import type { MemberFilterValue } from "./MemberFilter";
 
 interface Member {
@@ -48,6 +49,9 @@ interface MembersTableProps {
   ptFilterActive?: boolean;
 }
 
+type SortField = "name" | "phone" | "status" | "trainer" | "expiry" | "join_date";
+type SortOrder = "asc" | "desc";
+
 export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterActive = false }: MembersTableProps) => {
   const { toast } = useToast();
   const [members, setMembers] = useState<Member[]>([]);
@@ -60,6 +64,8 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     memberId: "",
     memberName: "",
   });
+  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
 
   useEffect(() => {
     fetchMembers();
@@ -151,53 +157,135 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
   );
 
   // Filter by PT status if PT filter is active
-  const ptFiltered = ptFilterActive 
-    ? searchFiltered.filter((m) => {
-        if (filterValue === "all") return true;
-        if (filterValue === "active") return !!m.activePT;
-        if (filterValue === "inactive" || filterValue === "expired") return !m.activePT;
-        return true;
-      })
-    : searchFiltered;
+  const filteredMembers = searchFiltered.filter((m) => {
+    if (ptFilterActive) {
+      // When PT filter is active, filter based on PT subscription status
+      if (filterValue === "all") return !!m.activePT; // Show all members with PT
+      
+      if (!m.activePT) {
+        // Member has no active PT
+        return filterValue === "inactive";
+      }
 
-  // Filter by member status and expiry date
-  const filteredMembers = (ptFilterActive ? ptFiltered : searchFiltered).filter((m) => {
-    if (ptFilterActive) return true; // Already filtered above
-    if (filterValue === "all") return true;
+      // Member has active PT - check PT expiry status
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const ptEndDate = new Date(m.activePT.end_date);
+      ptEndDate.setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((ptEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      const isPTExpired = diffDays < 0;
+      const isPTExpiringSoon = !isPTExpired && diffDays >= 0 && diffDays <= 7;
 
-    const subscription = m.subscription;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+      switch (filterValue) {
+        case "active":
+          return !isPTExpired && diffDays > 7;
+        case "expiring_soon":
+          return isPTExpiringSoon;
+        case "expiring_2days":
+          return !isPTExpired && diffDays >= 0 && diffDays <= 2;
+        case "expiring_7days":
+          return !isPTExpired && diffDays >= 0 && diffDays <= 7;
+        case "expired":
+        case "expired_recent":
+          return isPTExpired;
+        case "inactive":
+          return false; // Has PT, so not inactive
+        default:
+          return true;
+      }
+    } else {
+      // Normal filtering based on gym membership
+      if (filterValue === "all") return true;
 
-    // Handle members without subscription
-    if (!subscription || !subscription.end_date) {
-      return filterValue === "inactive";
+      const subscription = m.subscription;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Handle members without subscription
+      if (!subscription || !subscription.end_date) {
+        return filterValue === "inactive";
+      }
+
+      const endDate = new Date(subscription.end_date);
+      endDate.setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      const isExpired = diffDays < 0;
+      const isExpiringSoon = !isExpired && diffDays >= 0 && diffDays <= 7;
+
+      switch (filterValue) {
+        case "active":
+          return !isExpired && diffDays > 7;
+        case "expired":
+          return isExpired || subscription.status === "expired";
+        case "expired_recent":
+          return isExpired && diffDays >= -30;
+        case "expiring_soon":
+          return isExpiringSoon;
+        case "expiring_2days":
+          return !isExpired && diffDays >= 0 && diffDays <= 2;
+        case "expiring_7days":
+          return !isExpired && diffDays >= 0 && diffDays <= 7;
+        case "inactive":
+          return !subscription || subscription.status === "paused" || isExpired;
+        default:
+          return true;
+      }
     }
+  });
 
-    const endDate = new Date(subscription.end_date);
-    endDate.setHours(0, 0, 0, 0);
-    const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    const isExpired = diffDays < 0;
-    const isExpiringSoon = !isExpired && diffDays >= 0 && diffDays <= 7;
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
 
-    switch (filterValue) {
-      case "active":
-        return !isExpired && diffDays > 7;
-      case "expired":
-        return isExpired || subscription.status === "expired";
-      case "expired_recent":
-        return isExpired && diffDays >= -30;
-      case "expiring_soon":
-        return isExpiringSoon;
-      case "expiring_2days":
-        return !isExpired && diffDays >= 0 && diffDays <= 2;
-      case "expiring_7days":
-        return !isExpired && diffDays >= 0 && diffDays <= 7;
-      case "inactive":
-        return !subscription || subscription.status === "paused" || isExpired;
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-3.5 h-3.5 ml-1 text-muted-foreground" />;
+    }
+    return sortOrder === "asc" 
+      ? <ArrowUp className="w-3.5 h-3.5 ml-1 text-accent" />
+      : <ArrowDown className="w-3.5 h-3.5 ml-1 text-accent" />;
+  };
+
+  const sortedMembers = [...filteredMembers].sort((a, b) => {
+    let comparison = 0;
+
+    switch (sortField) {
+      case "name":
+        comparison = a.name.localeCompare(b.name);
+        break;
+      case "phone":
+        comparison = a.phone.localeCompare(b.phone);
+        break;
+      case "status":
+        const statusA = a.subscription?.status || "inactive";
+        const statusB = b.subscription?.status || "inactive";
+        comparison = statusA.localeCompare(statusB);
+        break;
+      case "trainer":
+        const trainerA = a.activePT?.trainer_name || "";
+        const trainerB = b.activePT?.trainer_name || "";
+        comparison = trainerA.localeCompare(trainerB);
+        break;
+      case "expiry":
+        const expiryA = a.subscription?.end_date ? new Date(a.subscription.end_date).getTime() : 0;
+        const expiryB = b.subscription?.end_date ? new Date(b.subscription.end_date).getTime() : 0;
+        comparison = expiryA - expiryB;
+        break;
+      case "join_date":
+        const joinA = a.join_date ? new Date(a.join_date).getTime() : 0;
+        const joinB = b.join_date ? new Date(b.join_date).getTime() : 0;
+        comparison = joinA - joinB;
+        break;
       default:
-        return true;
+        return 0;
     }
+
+    return sortOrder === "asc" ? comparison : -comparison;
   });
 
   const getStatusBadge = (subscription?: { status: string; end_date: string }) => {
@@ -227,7 +315,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     );
   }
 
-  if (filteredMembers.length === 0) {
+  if (sortedMembers.length === 0) {
     return (
       <div className="text-center py-12">
         <User className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
@@ -244,21 +332,92 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="font-semibold">Member</TableHead>
-              <TableHead className="hidden sm:table-cell font-semibold">Phone</TableHead>
-              <TableHead className="font-semibold">Status</TableHead>
-              <TableHead className="hidden lg:table-cell font-semibold">
-                <div className="flex items-center gap-1">
-                  <Dumbbell className="w-4 h-4" />
-                  Trainer
-                </div>
+              <TableHead className="font-semibold">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-8 px-2 -ml-2 hover:bg-muted/50",
+                    sortField === "name" && "bg-muted"
+                  )}
+                  onClick={() => handleSort("name")}
+                >
+                  <span className="flex items-center gap-1">
+                    Member
+                    {getSortIcon("name")}
+                  </span>
+                </Button>
               </TableHead>
-              <TableHead className="hidden md:table-cell font-semibold">Expires</TableHead>
+              <TableHead className="hidden sm:table-cell font-semibold">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-8 px-2 -ml-2 hover:bg-muted/50",
+                    sortField === "phone" && "bg-muted"
+                  )}
+                  onClick={() => handleSort("phone")}
+                >
+                  <span className="flex items-center gap-1">
+                    Phone
+                    {getSortIcon("phone")}
+                  </span>
+                </Button>
+              </TableHead>
+              <TableHead className="font-semibold">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-8 px-2 -ml-2 hover:bg-muted/50",
+                    sortField === "status" && "bg-muted"
+                  )}
+                  onClick={() => handleSort("status")}
+                >
+                  <span className="flex items-center gap-1">
+                    Status
+                    {getSortIcon("status")}
+                  </span>
+                </Button>
+              </TableHead>
+              <TableHead className="hidden lg:table-cell font-semibold">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-8 px-2 -ml-2 hover:bg-muted/50",
+                    sortField === "trainer" && "bg-muted"
+                  )}
+                  onClick={() => handleSort("trainer")}
+                >
+                  <span className="flex items-center gap-1">
+                    <Dumbbell className="w-4 h-4" />
+                    Trainer
+                    {getSortIcon("trainer")}
+                  </span>
+                </Button>
+              </TableHead>
+              <TableHead className="hidden md:table-cell font-semibold">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-8 px-2 -ml-2 hover:bg-muted/50",
+                    sortField === "expiry" && "bg-muted"
+                  )}
+                  onClick={() => handleSort("expiry")}
+                >
+                  <span className="flex items-center gap-1">
+                    Expires
+                    {getSortIcon("expiry")}
+                  </span>
+                </Button>
+              </TableHead>
               <TableHead className="w-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredMembers.map((member) => (
+            {sortedMembers.map((member) => (
               <TableRow 
                 key={member.id} 
                 className="hover:bg-muted/30 cursor-pointer"
@@ -290,9 +449,11 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
                 <TableCell className="hidden lg:table-cell">
                   {member.activePT ? (
                     <div className="flex items-center gap-2">
-                      <Badge className="bg-warning/10 text-warning border-warning/20">
+                      <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 text-purple-700 dark:text-purple-300 border-purple-300/50 dark:border-purple-700/50">
                         <Dumbbell className="w-3 h-3 mr-1" />
-                        {member.activePT.trainer_name}
+                        <span className="font-medium bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+                          {member.activePT.trainer_name}
+                        </span>
                       </Badge>
                     </div>
                   ) : (

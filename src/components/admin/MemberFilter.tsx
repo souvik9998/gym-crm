@@ -1,8 +1,13 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, UserX, Users, Dumbbell } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, ChevronDown, UserX, Users, Dumbbell } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export type MemberFilterCategory = "all" | "active" | "expired" | "inactive" | "expiring_soon" | "pt";
 
@@ -38,16 +43,16 @@ const filterCategories: {
   icon: React.ReactNode;
   color: string;
   bgColor: string;
-  borderColor: string;
+  hoverColor: string;
   internalFilters?: { value: MemberFilterValue; label: string }[];
 }[] = [
   {
     category: "all",
     label: "All Members",
-    icon: <Users className="w-5 h-5" />,
-    color: "text-primary",
-    bgColor: "bg-primary/10",
-    borderColor: "border-primary/30",
+    icon: <Users className="w-4 h-4" />,
+    color: "text-blue-700 dark:text-blue-400",
+    bgColor: "bg-blue-50 dark:bg-blue-950/30",
+    hoverColor: "hover:bg-blue-100 dark:hover:bg-blue-950/50",
     internalFilters: [
       { value: "all", label: "All Members" },
     ],
@@ -55,10 +60,10 @@ const filterCategories: {
   {
     category: "active",
     label: "Active",
-    icon: <CheckCircle2 className="w-5 h-5" />,
-    color: "text-success",
-    bgColor: "bg-success/10",
-    borderColor: "border-success/30",
+    icon: <CheckCircle2 className="w-4 h-4" />,
+    color: "text-green-700 dark:text-green-400",
+    bgColor: "bg-green-50 dark:bg-green-950/30",
+    hoverColor: "hover:bg-green-100 dark:hover:bg-green-950/50",
     internalFilters: [
       { value: "active", label: "All Active" },
     ],
@@ -66,10 +71,10 @@ const filterCategories: {
   {
     category: "expiring_soon",
     label: "Expiring",
-    icon: <Clock className="w-5 h-5" />,
-    color: "text-warning",
-    bgColor: "bg-warning/10",
-    borderColor: "border-warning/30",
+    icon: <Clock className="w-4 h-4" />,
+    color: "text-amber-700 dark:text-amber-400",
+    bgColor: "bg-amber-50 dark:bg-amber-950/30",
+    hoverColor: "hover:bg-amber-100 dark:hover:bg-amber-950/50",
     internalFilters: [
       { value: "expiring_soon", label: "All Expiring" },
       { value: "expiring_2days", label: "In 2 Days" },
@@ -79,10 +84,10 @@ const filterCategories: {
   {
     category: "expired",
     label: "Expired",
-    icon: <XCircle className="w-5 h-5" />,
-    color: "text-destructive",
-    bgColor: "bg-destructive/10",
-    borderColor: "border-destructive/30",
+    icon: <XCircle className="w-4 h-4" />,
+    color: "text-red-700 dark:text-red-400",
+    bgColor: "bg-red-50 dark:bg-red-950/30",
+    hoverColor: "hover:bg-red-100 dark:hover:bg-red-950/50",
     internalFilters: [
       { value: "expired", label: "All Expired" },
       { value: "expired_recent", label: "Recent" },
@@ -91,10 +96,10 @@ const filterCategories: {
   {
     category: "inactive",
     label: "Inactive",
-    icon: <UserX className="w-5 h-5" />,
-    color: "text-muted-foreground",
-    bgColor: "bg-muted/50",
-    borderColor: "border-border",
+    icon: <UserX className="w-4 h-4" />,
+    color: "text-slate-700 dark:text-slate-400",
+    bgColor: "bg-slate-50 dark:bg-slate-950/30",
+    hoverColor: "hover:bg-slate-100 dark:hover:bg-slate-950/50",
     internalFilters: [
       { value: "inactive", label: "All Inactive" },
     ],
@@ -111,40 +116,42 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
     return null;
   };
 
-  const [expandedCategory, setExpandedCategory] = useState<MemberFilterCategory | null>(() => {
-    return getCategoryFromValue(value);
-  });
-
-  // Update expanded category when value changes externally
-  useEffect(() => {
-    const category = getCategoryFromValue(value);
-    if (category && category !== expandedCategory) {
-      setExpandedCategory(category);
+  const currentCategory = getCategoryFromValue(value);
+  const getCurrentLabel = () => {
+    if (ptFilterActive) {
+      switch (value) {
+        case "active": return "Active PT";
+        case "expiring_soon": return "Expiring PT";
+        case "expired": return "Expired PT";
+        case "inactive": return "No PT";
+        default: return "All PT";
+      }
     }
-  }, [value, expandedCategory]);
+    const category = filterCategories.find((c) => c.category === currentCategory);
+    if (category) {
+      const selectedFilter = category.internalFilters?.find((f) => f.value === value);
+      return selectedFilter?.label || category.label;
+    }
+    return "All Members";
+  };
 
   const handleCategoryClick = (category: MemberFilterCategory | "all") => {
     if (category === "pt") return; // PT is handled separately
     
-    if (expandedCategory === category) {
-      setExpandedCategory(null);
+    // Detoggle PT filter when "All Members" is clicked
+    if (category === "all" && ptFilterActive && onPtFilterChange) {
+      onPtFilterChange(false);
+    }
+    
+    // Set to first internal filter or category default
+    const categoryData = filterCategories.find((c) => c.category === category);
+    if (categoryData?.internalFilters && categoryData.internalFilters.length > 0) {
+      onChange(categoryData.internalFilters[0].value);
+    } else if (category === "all") {
       onChange("all");
     } else {
-      setExpandedCategory(category as MemberFilterCategory);
-      // Set to first internal filter or category default
-      const categoryData = filterCategories.find((c) => c.category === category);
-      if (categoryData?.internalFilters && categoryData.internalFilters.length > 0) {
-        onChange(categoryData.internalFilters[0].value);
-      } else if (category === "all") {
-        onChange("all");
-      } else {
-        onChange(category as MemberFilterValue);
-      }
+      onChange(category as MemberFilterValue);
     }
-  };
-
-  const handleInternalFilterClick = (filterValue: MemberFilterValue) => {
-    onChange(filterValue);
   };
 
   const handlePtClick = () => {
@@ -156,141 +163,153 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
     }
   };
 
-  const currentCategory = getCategoryFromValue(value);
-
   return (
-    <div className="space-y-3">
-      {/* Filter Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-        {filterCategories.map((category) => {
-          const isExpanded = expandedCategory === category.category;
-          const isActive = currentCategory === category.category && !ptFilterActive;
+    <div className="flex flex-wrap items-center gap-2">
+      {/* Filter Chips with Dropdowns */}
+      {filterCategories.map((category) => {
+        const isActive = currentCategory === category.category && !ptFilterActive;
+        const hasSubFilters = category.internalFilters && category.internalFilters.length > 1;
 
-          return (
-            <Card
-              key={category.category}
-              className={cn(
-                "border transition-all cursor-pointer hover:shadow-md",
-                isActive && category.borderColor,
-                isExpanded && "border-2 shadow-sm",
-                isActive && "shadow-sm"
-              )}
-              onClick={() => handleCategoryClick(category.category)}
-            >
-              <CardContent className="p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className={cn("p-1.5 rounded-lg", category.bgColor, category.color)}>
-                      {category.icon}
-                    </div>
-                  </div>
-                  {category.internalFilters && category.internalFilters.length > 1 && (
-                    isExpanded ? (
-                      <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    )
-                  )}
-                </div>
-                <div>
-                  <span className="font-semibold text-xs block">{category.label}</span>
+        return (
+          <DropdownMenu key={category.category}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "h-9 px-3 rounded-full border transition-all",
+                  category.bgColor,
+                  category.color,
+                  category.hoverColor,
+                  isActive && "ring-2 ring-offset-2",
+                  isActive && category.color.replace("text-", "ring-").replace("-700", "-500").replace("-400", "-500")
+                )}
+                onClick={() => !hasSubFilters && handleCategoryClick(category.category)}
+              >
+                <div className="flex items-center gap-2">
+                  {category.icon}
+                  <span className="text-sm font-medium">{category.label}</span>
                   {counts && (
-                    <span className={cn("text-xs font-medium", category.color)}>
-                      {category.category === "all" && counts.all !== undefined && `${counts.all}`}
-                      {category.category === "active" && counts.active !== undefined && `${counts.active}`}
-                      {category.category === "expiring_soon" && counts.expiring_soon !== undefined && `${counts.expiring_soon}`}
-                      {category.category === "expired" && counts.expired !== undefined && `${counts.expired}`}
-                      {category.category === "inactive" && counts.inactive !== undefined && `${counts.inactive}`}
+                    <span className={cn("text-xs font-semibold px-1.5 py-0.5 rounded-full", category.bgColor, category.color)}>
+                      {category.category === "all" && counts.all !== undefined && counts.all}
+                      {category.category === "active" && counts.active !== undefined && counts.active}
+                      {category.category === "expiring_soon" && counts.expiring_soon !== undefined && counts.expiring_soon}
+                      {category.category === "expired" && counts.expired !== undefined && counts.expired}
+                      {category.category === "inactive" && counts.inactive !== undefined && counts.inactive}
                     </span>
                   )}
+                  {hasSubFilters && <ChevronDown className="w-3 h-3 ml-1" />}
                 </div>
+              </Button>
+            </DropdownMenuTrigger>
+            {hasSubFilters && (
+              <DropdownMenuContent align="start" className="w-48">
+                {category.internalFilters?.map((filter) => {
+                  const isSelected = value === filter.value;
+                  return (
+                    <DropdownMenuItem
+                      key={filter.value}
+                      onClick={() => {
+                        onChange(filter.value);
+                        if (category.category === "all" && ptFilterActive && onPtFilterChange) {
+                          onPtFilterChange(false);
+                        }
+                      }}
+                      className={cn(
+                        "cursor-pointer",
+                        isSelected && "bg-accent"
+                      )}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span>{filter.label}</span>
+                        {isSelected && <CheckCircle2 className="w-4 h-4 text-accent-foreground" />}
+                      </div>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            )}
+          </DropdownMenu>
+        );
+      })}
 
-                {/* Internal Filters */}
-                {isExpanded && category.internalFilters && category.internalFilters.length > 1 && (
-                  <div className="mt-2 pt-2 border-t space-y-1">
-                    {category.internalFilters.map((filter) => {
-                      const isSelected = value === filter.value;
-                      return (
-                        <Button
-                          key={filter.value}
-                          variant={isSelected ? "default" : "ghost"}
-                          size="sm"
-                          className={cn(
-                            "w-full justify-start text-xs h-7 font-medium",
-                            isSelected && "bg-primary text-primary-foreground shadow-sm"
-                          )}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleInternalFilterClick(filter.value);
-                          }}
-                        >
-                          {filter.label}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-
-        {/* PT Filter Card */}
-        <Card
-          className={cn(
-            "border transition-all cursor-pointer hover:shadow-md bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20",
-            ptFilterActive && "border-purple-400/50 border-2 shadow-md bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30"
-          )}
-          onClick={handlePtClick}
-        >
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <div className={cn(
-                "p-1.5 rounded-lg",
-                ptFilterActive 
-                  ? "bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-sm" 
-                  : "bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 text-purple-600 dark:text-purple-400"
-              )}>
-                <Dumbbell className="w-5 h-5" />
-              </div>
-            </div>
-            <div>
-              <span className="font-semibold text-xs block text-purple-700 dark:text-purple-300">Personal Training</span>
+      {/* PT Filter Chip */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "h-9 px-3 rounded-full border transition-all bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30",
+              ptFilterActive 
+                ? "ring-2 ring-purple-400/50 border-purple-400/50 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40"
+                : "border-purple-200/50 dark:border-purple-800/50 hover:bg-gradient-to-r hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-900/30 dark:hover:to-pink-900/30"
+            )}
+            onClick={handlePtClick}
+          >
+            <div className="flex items-center gap-2">
+              <Dumbbell className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Personal Training</span>
               {counts && (
-                <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
-                  {counts.with_pt || 0} with PT
+                <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
+                  {counts.with_pt || 0}
                 </span>
               )}
+              <ChevronDown className="w-3 h-3 ml-1 text-purple-600 dark:text-purple-400" />
             </div>
-            {ptFilterActive && (
-              <div className="mt-2 pt-2 border-t space-y-1">
-                <Button
-                  variant={value === "active" ? "default" : "ghost"}
-                  size="sm"
-                  className="w-full justify-start text-xs h-7"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onChange("active");
-                  }}
-                >
-                  With PT
-                </Button>
-                <Button
-                  variant={value === "inactive" ? "default" : "ghost"}
-                  size="sm"
-                  className="w-full justify-start text-xs h-7"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onChange("inactive");
-                  }}
-                >
-                  Without PT
-                </Button>
+          </Button>
+        </DropdownMenuTrigger>
+        {ptFilterActive && (
+          <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuItem
+              onClick={() => onChange("active")}
+              className={cn(
+                "cursor-pointer",
+                value === "active" && "bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40"
+              )}
+            >
+              <div className="flex items-center justify-between w-full">
+                <span>Active PT</span>
+                {value === "active" && <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onChange("expiring_soon")}
+              className={cn(
+                "cursor-pointer",
+                value === "expiring_soon" && "bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40"
+              )}
+            >
+              <div className="flex items-center justify-between w-full">
+                <span>Expiring PT</span>
+                {value === "expiring_soon" && <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onChange("expired")}
+              className={cn(
+                "cursor-pointer",
+                value === "expired" && "bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40"
+              )}
+            >
+              <div className="flex items-center justify-between w-full">
+                <span>Expired PT</span>
+                {value === "expired" && <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onChange("inactive")}
+              className={cn(
+                "cursor-pointer",
+                value === "inactive" && "bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40"
+              )}
+            >
+              <div className="flex items-center justify-between w-full">
+                <span>No PT</span>
+                {value === "inactive" && <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        )}
+      </DropdownMenu>
     </div>
   );
 };
