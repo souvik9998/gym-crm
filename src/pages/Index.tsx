@@ -4,27 +4,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Dumbbell, Phone, User, ArrowRight, Shield, Clock, CreditCard } from "lucide-react";
+import { Dumbbell, Phone, ArrowRight, Shield, Clock, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
 const formSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters").max(100),
   phone: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian phone number"),
 });
 
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const result = formSchema.safeParse({ name, phone });
+    const result = formSchema.safeParse({ phone });
     if (!result.success) {
       toast({
         title: "Invalid Input",
@@ -50,8 +48,8 @@ const Index = () => {
         // Existing member - go to renewal
         navigate("/renew", { state: { member: existingMember } });
       } else {
-        // New member - go to registration
-        navigate("/register", { state: { name, phone } });
+        // New member - go to registration with phone only
+        navigate("/register", { state: { phone } });
       }
     } catch (error: any) {
       toast({
@@ -68,7 +66,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Hero Header */}
       <header className="px-4 pt-12 pb-8 text-center">
-        <div  style={{ height: "4rem" }} className="flex items-center justify-center gap-3 mb-4 w-full h-20">
+        <div style={{ height: "4rem" }} className="flex items-center justify-center gap-3 mb-4 w-full h-20">
           <div
             style={{ width: "4rem" }}
             className="h-full rounded-xl overflow-hidden"
@@ -80,7 +78,7 @@ const Index = () => {
             />
           </div>
         </div>
-            <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
+        <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
           Pro Plus Fitness
         </h1>
         <p className="text-muted-foreground text-lg">Dinhata</p>
@@ -92,26 +90,11 @@ const Index = () => {
           <CardHeader className="text-center pb-4">
             <CardTitle className="text-lg">Welcome to Your Fitness Journey</CardTitle>
             <CardDescription>
-              Enter your details to register or renew your membership
+              Enter your phone number to register or renew your membership
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium flex items-center gap-2">
-                  <User className="w-4 h-4 text-accent" />
-                  Full Name
-                </Label>
-                <Input
-                  id="name"
-                  placeholder="Enter your full name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  autoComplete="name"
-                />
-              </div>
-              
               <div className="space-y-2">
                 <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
                   <Phone className="w-4 h-4 text-accent" />

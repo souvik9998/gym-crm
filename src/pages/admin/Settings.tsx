@@ -19,6 +19,7 @@ import {
   Dumbbell,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { User } from "@supabase/supabase-js";
 
 interface Trainer {
@@ -38,14 +39,19 @@ interface CustomPackage {
   is_active: boolean;
 }
 
+interface MonthlyPackage {
+  id: string;
+  months: number;
+  price: number;
+  joining_fee: number;
+  is_active: boolean;
+}
+
 interface GymSettings {
   id: string;
   gym_name: string | null;
-  monthly_fee: number;
-  joining_fee: number;
   gym_phone: string | null;
   gym_address: string | null;
-  monthly_packages: number[];
 }
 
 const AdminSettings = () => {
@@ -58,11 +64,12 @@ const AdminSettings = () => {
   // Gym Settings
   const [settings, setSettings] = useState<GymSettings | null>(null);
   const [gymName, setGymName] = useState("");
-  const [monthlyFee, setMonthlyFee] = useState("");
-  const [joiningFee, setJoiningFee] = useState("");
   const [gymPhone, setGymPhone] = useState("");
   const [gymAddress, setGymAddress] = useState("");
-  const [monthlyPackages, setMonthlyPackages] = useState<number[]>([1, 3, 6, 12]);
+
+  // Monthly Packages
+  const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
+  const [newMonthlyPackage, setNewMonthlyPackage] = useState({ months: "", price: "", joining_fee: "" });
 
   // Trainers
   const [trainers, setTrainers] = useState<Trainer[]>([]);
@@ -71,6 +78,21 @@ const AdminSettings = () => {
   // Custom Packages
   const [customPackages, setCustomPackages] = useState<CustomPackage[]>([]);
   const [newPackage, setNewPackage] = useState({ name: "", duration_days: "", price: "" });
+
+  // Confirm Dialog
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+    variant?: "default" | "destructive";
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+    variant: "default",
+  });
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -101,18 +123,25 @@ const AdminSettings = () => {
     // Fetch gym settings
     const { data: settingsData } = await supabase
       .from("gym_settings")
-      .select("*")
+      .select("id, gym_name, gym_phone, gym_address")
       .limit(1)
       .maybeSingle();
 
     if (settingsData) {
       setSettings(settingsData as GymSettings);
       setGymName(settingsData.gym_name || "");
-      setMonthlyFee(String(settingsData.monthly_fee));
-      setJoiningFee(String(settingsData.joining_fee));
       setGymPhone(settingsData.gym_phone || "");
       setGymAddress(settingsData.gym_address || "");
-      setMonthlyPackages(settingsData.monthly_packages || [1, 3, 6, 12]);
+    }
+
+    // Fetch monthly packages
+    const { data: monthlyData } = await supabase
+      .from("monthly_packages")
+      .select("*")
+      .order("months");
+
+    if (monthlyData) {
+      setMonthlyPackages(monthlyData);
     }
 
     // Fetch trainers
@@ -144,11 +173,8 @@ const AdminSettings = () => {
       .from("gym_settings")
       .update({
         gym_name: gymName,
-        monthly_fee: Number(monthlyFee),
-        joining_fee: Number(joiningFee),
         gym_phone: gymPhone,
         gym_address: gymAddress,
-        monthly_packages: monthlyPackages,
       })
       .eq("id", settings.id);
 
@@ -159,6 +185,54 @@ const AdminSettings = () => {
     } else {
       toast({ title: "Settings saved successfully" });
     }
+  };
+
+  const handleAddMonthlyPackage = async () => {
+    if (!newMonthlyPackage.months || !newMonthlyPackage.price) {
+      toast({ title: "Please fill months and price", variant: "destructive" });
+      return;
+    }
+
+    const months = Number(newMonthlyPackage.months);
+    
+    // Check for duplicate
+    if (monthlyPackages.some((p) => p.months === months)) {
+      toast({ title: "A package with this duration already exists", variant: "destructive" });
+      return;
+    }
+
+    const { error } = await supabase.from("monthly_packages").insert({
+      months,
+      price: Number(newMonthlyPackage.price),
+      joining_fee: Number(newMonthlyPackage.joining_fee) || 0,
+    });
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Package added" });
+      setNewMonthlyPackage({ months: "", price: "", joining_fee: "" });
+      fetchData();
+    }
+  };
+
+  const handleToggleMonthlyPackage = async (id: string, isActive: boolean) => {
+    await supabase.from("monthly_packages").update({ is_active: isActive }).eq("id", id);
+    fetchData();
+  };
+
+  const handleDeleteMonthlyPackage = (id: string, months: number) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete Package",
+      description: `Are you sure you want to delete the ${months} month package?`,
+      variant: "destructive",
+      onConfirm: async () => {
+        await supabase.from("monthly_packages").delete().eq("id", id);
+        fetchData();
+        toast({ title: "Package deleted" });
+      },
+    });
   };
 
   const handleAddTrainer = async () => {
@@ -188,10 +262,18 @@ const AdminSettings = () => {
     fetchData();
   };
 
-  const handleDeleteTrainer = async (id: string) => {
-    await supabase.from("personal_trainers").delete().eq("id", id);
-    fetchData();
-    toast({ title: "Trainer deleted" });
+  const handleDeleteTrainer = (id: string, name: string) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete Trainer",
+      description: `Are you sure you want to delete "${name}"?`,
+      variant: "destructive",
+      onConfirm: async () => {
+        await supabase.from("personal_trainers").delete().eq("id", id);
+        fetchData();
+        toast({ title: "Trainer deleted" });
+      },
+    });
   };
 
   const handleAddPackage = async () => {
@@ -200,14 +282,26 @@ const AdminSettings = () => {
       return;
     }
 
+    const durationDays = Number(newPackage.duration_days);
+    
+    // Check for duplicate duration
+    if (customPackages.some((p) => p.duration_days === durationDays)) {
+      toast({ title: "A package with this duration already exists", variant: "destructive" });
+      return;
+    }
+
     const { error } = await supabase.from("custom_packages").insert({
       name: newPackage.name,
-      duration_days: Number(newPackage.duration_days),
+      duration_days: durationDays,
       price: Number(newPackage.price),
     });
 
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      if (error.code === "23505") {
+        toast({ title: "A package with this duration already exists", variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      }
     } else {
       toast({ title: "Package added" });
       setNewPackage({ name: "", duration_days: "", price: "" });
@@ -220,24 +314,18 @@ const AdminSettings = () => {
     fetchData();
   };
 
-  const handleDeletePackage = async (id: string) => {
-    await supabase.from("custom_packages").delete().eq("id", id);
-    fetchData();
-    toast({ title: "Package deleted" });
-  };
-
-  const handleAddMonthOption = () => {
-    const input = prompt("Enter number of months:");
-    if (input) {
-      const months = parseInt(input);
-      if (months > 0 && !monthlyPackages.includes(months)) {
-        setMonthlyPackages([...monthlyPackages, months].sort((a, b) => a - b));
-      }
-    }
-  };
-
-  const handleRemoveMonthOption = (month: number) => {
-    setMonthlyPackages(monthlyPackages.filter((m) => m !== month));
+  const handleDeletePackage = (id: string, name: string) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete Package",
+      description: `Are you sure you want to delete "${name}"?`,
+      variant: "destructive",
+      onConfirm: async () => {
+        await supabase.from("custom_packages").delete().eq("id", id);
+        fetchData();
+        toast({ title: "Package deleted" });
+      },
+    });
   };
 
   if (isLoading) {
@@ -273,99 +361,174 @@ const AdminSettings = () => {
       </header>
 
       <main className="container py-6 max-w-4xl mx-auto space-y-6">
-        <Tabs defaultValue="general">
+        <Tabs defaultValue="packages">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="general" className="gap-2">
-              <IndianRupee className="w-4 h-4" />
-              General
+            <TabsTrigger value="packages" className="gap-2">
+              <Package className="w-4 h-4" />
+              Packages
             </TabsTrigger>
             <TabsTrigger value="trainers" className="gap-2">
               <Users className="w-4 h-4" />
               Trainers
             </TabsTrigger>
-            <TabsTrigger value="packages" className="gap-2">
-              <Package className="w-4 h-4" />
-              Packages
+            <TabsTrigger value="general" className="gap-2">
+              <IndianRupee className="w-4 h-4" />
+              General
             </TabsTrigger>
           </TabsList>
 
-          {/* General Settings */}
-          <TabsContent value="general" className="space-y-6 mt-6">
+          {/* Packages Tab */}
+          <TabsContent value="packages" className="space-y-6 mt-6">
+            {/* Monthly Packages */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Dumbbell className="w-5 h-5 text-accent" />
-                  Gym Information
-                </CardTitle>
-                <CardDescription>Basic gym details and contact information</CardDescription>
+                <CardTitle>Monthly Packages</CardTitle>
+                <CardDescription>Configure monthly subscription plans with custom pricing</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-2">
-                    <Label>Gym Name</Label>
-                    <Input value={gymName} onChange={(e) => setGymName(e.target.value)} placeholder="Pro Plus Fitness" />
+                    <Label>Duration (Months) *</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={newMonthlyPackage.months}
+                      onChange={(e) => setNewMonthlyPackage({ ...newMonthlyPackage, months: e.target.value })}
+                      placeholder="e.g., 1, 3, 6"
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Phone Number</Label>
-                    <Input value={gymPhone} onChange={(e) => setGymPhone(e.target.value)} placeholder="+91 9876543210" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Address</Label>
-                  <Input value={gymAddress} onChange={(e) => setGymAddress(e.target.value)} placeholder="Gym address" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <IndianRupee className="w-5 h-5 text-accent" />
-                  Fee Structure
-                </CardTitle>
-                <CardDescription>Monthly subscription and joining fees</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Monthly Fee (₹)</Label>
-                    <Input type="number" value={monthlyFee} onChange={(e) => setMonthlyFee(e.target.value)} />
+                    <Label>Price (₹) *</Label>
+                    <Input
+                      type="number"
+                      value={newMonthlyPackage.price}
+                      onChange={(e) => setNewMonthlyPackage({ ...newMonthlyPackage, price: e.target.value })}
+                      placeholder="e.g., 1000"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Joining Fee (₹)</Label>
-                    <Input type="number" value={joiningFee} onChange={(e) => setJoiningFee(e.target.value)} />
+                    <Input
+                      type="number"
+                      value={newMonthlyPackage.joining_fee}
+                      onChange={(e) => setNewMonthlyPackage({ ...newMonthlyPackage, joining_fee: e.target.value })}
+                      placeholder="e.g., 200"
+                    />
                   </div>
                 </div>
+                <Button onClick={handleAddMonthlyPackage}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Package
+                </Button>
+
+                {monthlyPackages.length > 0 && (
+                  <div className="space-y-3 pt-4 border-t">
+                    {monthlyPackages.map((pkg) => (
+                      <div key={pkg.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                        <div>
+                          <p className="font-medium">{pkg.months} {pkg.months === 1 ? "Month" : "Months"}</p>
+                          <p className="text-sm text-muted-foreground">
+                            ₹{pkg.price} + ₹{pkg.joining_fee} joining fee
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor={`monthly-${pkg.id}`} className="text-sm">Active</Label>
+                            <Switch
+                              id={`monthly-${pkg.id}`}
+                              checked={pkg.is_active}
+                              onCheckedChange={(checked) => handleToggleMonthlyPackage(pkg.id, checked)}
+                            />
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleDeleteMonthlyPackage(pkg.id, pkg.months)}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
+            {/* Daily/Custom Packages */}
             <Card>
               <CardHeader>
-                <CardTitle>Monthly Package Options</CardTitle>
-                <CardDescription>Configure which monthly durations users can choose</CardDescription>
+                <CardTitle>Daily Passes</CardTitle>
+                <CardDescription>Create packages for daily or short-term memberships (no joining fee)</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {monthlyPackages.map((month) => (
-                    <div key={month} className="flex items-center gap-1 px-3 py-1.5 bg-muted rounded-full">
-                      <span className="text-sm font-medium">{month} {month === 1 ? "Month" : "Months"}</span>
-                      <button onClick={() => handleRemoveMonthOption(month)} className="ml-1 text-muted-foreground hover:text-destructive">
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                  <Button variant="outline" size="sm" onClick={handleAddMonthOption}>
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add
-                  </Button>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label>Package Name *</Label>
+                    <Input
+                      value={newPackage.name}
+                      onChange={(e) => setNewPackage({ ...newPackage, name: e.target.value })}
+                      placeholder="e.g., 1 Week Pass"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Duration (Days) *</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={newPackage.duration_days}
+                      onChange={(e) => setNewPackage({ ...newPackage, duration_days: e.target.value })}
+                      placeholder="e.g., 7"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Price (₹) *</Label>
+                    <Input
+                      type="number"
+                      value={newPackage.price}
+                      onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })}
+                      placeholder="e.g., 300"
+                    />
+                  </div>
                 </div>
+                <Button onClick={handleAddPackage}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Daily Pass
+                </Button>
+
+                {customPackages.length > 0 && (
+                  <div className="space-y-3 pt-4 border-t">
+                    {customPackages.map((pkg) => (
+                      <div key={pkg.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                        <div>
+                          <p className="font-medium">{pkg.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {pkg.duration_days} {pkg.duration_days === 1 ? "Day" : "Days"} • ₹{pkg.price}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor={`pkg-${pkg.id}`} className="text-sm">Active</Label>
+                            <Switch
+                              id={`pkg-${pkg.id}`}
+                              checked={pkg.is_active}
+                              onCheckedChange={(checked) => handleTogglePackage(pkg.id, checked)}
+                            />
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleDeletePackage(pkg.id, pkg.name)}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
-
-            <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full">
-              <Save className="w-4 h-4 mr-2" />
-              {isSaving ? "Saving..." : "Save Settings"}
-            </Button>
           </TabsContent>
 
           {/* Personal Trainers */}
@@ -444,7 +607,11 @@ const AdminSettings = () => {
                               onCheckedChange={(checked) => handleToggleTrainer(trainer.id, checked)}
                             />
                           </div>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteTrainer(trainer.id)}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleDeleteTrainer(trainer.id, trainer.name)}
+                          >
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
                         </div>
@@ -456,88 +623,51 @@ const AdminSettings = () => {
             </Card>
           </TabsContent>
 
-          {/* Custom Packages */}
-          <TabsContent value="packages" className="space-y-6 mt-6">
+          {/* General Settings */}
+          <TabsContent value="general" className="space-y-6 mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Add Custom Package</CardTitle>
-                <CardDescription>Create packages for daily or custom duration memberships</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <Dumbbell className="w-5 h-5 text-accent" />
+                  Gym Information
+                </CardTitle>
+                <CardDescription>Basic gym details and contact information</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Package Name *</Label>
-                    <Input
-                      value={newPackage.name}
-                      onChange={(e) => setNewPackage({ ...newPackage, name: e.target.value })}
-                      placeholder="e.g., 1 Week Pass"
-                    />
+                    <Label>Gym Name</Label>
+                    <Input value={gymName} onChange={(e) => setGymName(e.target.value)} placeholder="Pro Plus Fitness" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Duration (Days) *</Label>
-                    <Input
-                      type="number"
-                      value={newPackage.duration_days}
-                      onChange={(e) => setNewPackage({ ...newPackage, duration_days: e.target.value })}
-                      placeholder="7"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Price (₹) *</Label>
-                    <Input
-                      type="number"
-                      value={newPackage.price}
-                      onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })}
-                      placeholder="300"
-                    />
+                    <Label>Phone Number</Label>
+                    <Input value={gymPhone} onChange={(e) => setGymPhone(e.target.value)} placeholder="+91 9876543210" />
                   </div>
                 </div>
-                <Button onClick={handleAddPackage}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Package
-                </Button>
+                <div className="space-y-2">
+                  <Label>Address</Label>
+                  <Input value={gymAddress} onChange={(e) => setGymAddress(e.target.value)} placeholder="Gym address" />
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Existing Packages</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {customPackages.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No custom packages added yet</p>
-                ) : (
-                  <div className="space-y-3">
-                    {customPackages.map((pkg) => (
-                      <div key={pkg.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                        <div>
-                          <p className="font-medium">{pkg.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {pkg.duration_days} {pkg.duration_days === 1 ? "Day" : "Days"} • ₹{pkg.price}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            <Label htmlFor={`pkg-${pkg.id}`} className="text-sm">Active</Label>
-                            <Switch
-                              id={`pkg-${pkg.id}`}
-                              checked={pkg.is_active}
-                              onCheckedChange={(checked) => handleTogglePackage(pkg.id, checked)}
-                            />
-                          </div>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeletePackage(pkg.id)}>
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full">
+              <Save className="w-4 h-4 mr-2" />
+              {isSaving ? "Saving..." : "Save Settings"}
+            </Button>
           </TabsContent>
         </Tabs>
       </main>
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText="Delete"
+        variant={confirmDialog.variant}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   );
 };

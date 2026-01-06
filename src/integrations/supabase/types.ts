@@ -161,6 +161,36 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_packages: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          joining_fee: number
+          months: number
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          joining_fee?: number
+          months: number
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          joining_fee?: number
+          months?: number
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number

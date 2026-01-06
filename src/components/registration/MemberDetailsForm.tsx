@@ -10,17 +10,18 @@ import { ArrowRight, IdCard, MapPin, User } from "lucide-react";
 interface MemberDetailsFormProps {
   onSubmit: (data: MemberDetailsData) => void;
   onBack: () => void;
-  memberName: string;
 }
 
 export interface MemberDetailsData {
+  fullName: string;
   photoIdType: string;
   photoIdNumber: string;
   address: string;
   gender: string;
 }
 
-const MemberDetailsForm = ({ onSubmit, onBack, memberName }: MemberDetailsFormProps) => {
+const MemberDetailsForm = ({ onSubmit, onBack }: MemberDetailsFormProps) => {
+  const [fullName, setFullName] = useState("");
   const [photoIdType, setPhotoIdType] = useState("");
   const [photoIdNumber, setPhotoIdNumber] = useState("");
   const [address, setAddress] = useState("");
@@ -29,6 +30,7 @@ const MemberDetailsForm = ({ onSubmit, onBack, memberName }: MemberDetailsFormPr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
+      fullName,
       photoIdType,
       photoIdNumber,
       address,
@@ -58,15 +60,29 @@ const MemberDetailsForm = ({ onSubmit, onBack, memberName }: MemberDetailsFormPr
       <CardHeader className="pb-4">
         <CardTitle className="text-lg">Personal Details</CardTitle>
         <CardDescription>
-          Hi {memberName}, please provide your details for verification
+          Please provide your details for registration
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Full Name */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <User className="w-4 h-4 text-accent" />
+              Full Name
+            </Label>
+            <Input
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Enter your full name"
+              required
+              autoComplete="name"
+            />
+          </div>
+
           {/* Gender */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2">
-              <User className="w-4 h-4 text-accent" />
               Gender
             </Label>
             <RadioGroup value={gender} onValueChange={setGender} className="flex gap-4">
@@ -146,7 +162,7 @@ const MemberDetailsForm = ({ onSubmit, onBack, memberName }: MemberDetailsFormPr
               type="submit" 
               variant="accent" 
               className="flex-1"
-              disabled={!gender || !photoIdType || !photoIdNumber || !address}
+              disabled={!fullName || !gender || !photoIdType || !photoIdNumber || !address}
             >
               Continue
               <ArrowRight className="w-4 h-4 ml-2" />

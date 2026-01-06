@@ -18,6 +18,7 @@ import {
   QrCode,
   History,
   Settings,
+  BarChart3,
 } from "lucide-react";
 import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
@@ -159,10 +160,6 @@ const AdminDashboard = () => {
     toast({ title: "Data refreshed" });
   };
 
-  const handleAddSampleData = async () => {
-    // Removed - no longer needed
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -195,6 +192,15 @@ const AdminDashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => navigate("/admin/analytics")}
+                title="Analytics"
+              >
+                <BarChart3 className="w-4 h-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
