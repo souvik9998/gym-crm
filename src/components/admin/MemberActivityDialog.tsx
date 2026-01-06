@@ -193,11 +193,19 @@ export const MemberActivityDialog = ({
       case "gym_and_pt":
         return <Badge variant="outline" className="text-xs">Gym + PT</Badge>;
       case "pt_only":
-        return <Badge variant="outline" className="text-xs bg-warning/10 text-warning">PT Only</Badge>;
+      case "pt":
+        return <Badge variant="outline" className="text-xs bg-warning/10 text-warning">PT</Badge>;
       case "gym_membership":
       default:
         return <Badge variant="outline" className="text-xs bg-primary/10 text-primary">Gym</Badge>;
     }
+  };
+
+  const formatPaymentNotes = (notes: string | null) => {
+    if (!notes) return null;
+    // Hide internal IDs from display
+    if (notes.startsWith("pt_subscription_id:")) return null;
+    return notes;
   };
 
   const formatDate = (dateString: string) => {
@@ -482,8 +490,8 @@ export const MemberActivityDialog = ({
                               <span className="text-sm capitalize">{payment.status}</span>
                             </div>
                           </div>
-                          {payment.notes && (
-                            <p className="mt-2 text-sm text-muted-foreground">{payment.notes}</p>
+                          {formatPaymentNotes(payment.notes) && (
+                            <p className="mt-2 text-sm text-muted-foreground">{formatPaymentNotes(payment.notes)}</p>
                           )}
                         </CardContent>
                       </Card>

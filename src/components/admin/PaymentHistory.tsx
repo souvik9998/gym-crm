@@ -152,10 +152,11 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
           </Badge>
         );
       case "pt_only":
+      case "pt":
         return (
           <Badge variant="outline" className="text-xs bg-warning/10 text-warning">
             <Dumbbell className="w-3 h-3 mr-1" />
-            PT Only
+            PT
           </Badge>
         );
       case "gym_membership":
