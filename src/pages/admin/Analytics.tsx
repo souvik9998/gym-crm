@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
   BarChart3,
@@ -309,161 +308,155 @@ const AdminAnalytics = () => {
           </Card>
         </div>
 
-        <Tabs defaultValue="revenue">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="revenue" className="gap-2">
-              <IndianRupee className="w-4 h-4" />
-              Revenue
-            </TabsTrigger>
-            <TabsTrigger value="members" className="gap-2">
-              <Users className="w-4 h-4" />
-              Members
-            </TabsTrigger>
-            <TabsTrigger value="trainers" className="gap-2">
-              <Dumbbell className="w-4 h-4" />
-              Trainers
-            </TabsTrigger>
-          </TabsList>
+        {/* Revenue Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <IndianRupee className="w-5 h-5 text-accent" />
+              Monthly Revenue
+            </CardTitle>
+            <CardDescription>Revenue trend over the last 6 months</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenueData}>
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v / 1000}k`} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="revenue" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </CardContent>
+        </Card>
 
-          {/* Revenue Tab */}
-          <TabsContent value="revenue" className="mt-6 space-y-6">
+        {/* Member Growth Charts - Side by Side */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                Member Growth
+              </CardTitle>
+              <CardDescription>Total members over time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={memberGrowth}>
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="members" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))" }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-success" />
+                New Members per Month
+              </CardTitle>
+              <CardDescription>New member registrations</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={memberGrowth}>
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="newMembers" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Trainer Performance */}
+        {trainerStats.length > 0 ? (
+          <div className="grid md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Monthly Revenue</CardTitle>
-                <CardDescription>Revenue trend over the last 6 months</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <Dumbbell className="w-5 h-5 text-warning" />
+                  Trainer Performance
+                </CardTitle>
+                <CardDescription>Members trained by each trainer</CardDescription>
               </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[300px]">
+              <CardContent className="flex justify-center">
+                <ChartContainer config={chartConfig} className="h-[250px] w-[250px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={revenueData}>
-                      <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                      <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v / 1000}k`} />
+                    <PieChart>
+                      <Pie
+                        data={trainerStats}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="members"
+                        nameKey="name"
+                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                      >
+                        {trainerStats.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="revenue" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
+                    </PieChart>
                   </ResponsiveContainer>
                 </ChartContainer>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Members Tab */}
-          <TabsContent value="members" className="mt-6 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Member Growth</CardTitle>
-                <CardDescription>Total members over time</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={memberGrowth}>
-                      <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                      <YAxis tickLine={false} axisLine={false} />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line type="monotone" dataKey="members" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))" }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              </CardContent>
-            </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>New Members per Month</CardTitle>
-                <CardDescription>New member registrations</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <IndianRupee className="w-5 h-5 text-accent" />
+                  Trainer Revenue
+                </CardTitle>
+                <CardDescription>Revenue generated by trainers</CardDescription>
               </CardHeader>
               <CardContent>
-                <ChartContainer config={chartConfig} className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={memberGrowth}>
-                      <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                      <YAxis tickLine={false} axisLine={false} />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="newMembers" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Trainers Tab */}
-          <TabsContent value="trainers" className="mt-6 space-y-6">
-            {trainerStats.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Dumbbell className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-                  <p className="text-muted-foreground">No trainer data available yet</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Trainer Performance</CardTitle>
-                    <CardDescription>Members trained by each trainer</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex justify-center">
-                    <ChartContainer config={chartConfig} className="h-[300px] w-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={trainerStats}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={100}
-                            paddingAngle={5}
-                            dataKey="members"
-                            nameKey="name"
-                            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                          >
-                            {trainerStats.map((_, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <ChartTooltip content={<ChartTooltipContent />} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </ChartContainer>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Trainer Revenue</CardTitle>
-                    <CardDescription>Revenue generated by trainers</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {trainerStats.map((trainer, index) => (
-                        <div key={trainer.name} className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div 
-                              className="w-10 h-10 rounded-full flex items-center justify-center"
-                              style={{ backgroundColor: COLORS[index % COLORS.length] + "20" }}
-                            >
-                              <Dumbbell className="w-5 h-5" style={{ color: COLORS[index % COLORS.length] }} />
-                            </div>
-                            <div>
-                              <p className="font-medium">{trainer.name}</p>
-                              <p className="text-sm text-muted-foreground">{trainer.members} members</p>
-                            </div>
-                          </div>
-                          <p className="font-semibold text-accent flex items-center gap-1">
-                            <IndianRupee className="w-4 h-4" />
-                            {trainer.revenue.toLocaleString("en-IN")}
-                          </p>
+                <div className="space-y-4">
+                  {trainerStats.map((trainer, index) => (
+                    <div key={trainer.name} className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-10 h-10 rounded-full flex items-center justify-center"
+                          style={{ backgroundColor: COLORS[index % COLORS.length] + "20" }}
+                        >
+                          <Dumbbell className="w-5 h-5" style={{ color: COLORS[index % COLORS.length] }} />
                         </div>
-                      ))}
+                        <div>
+                          <p className="font-medium">{trainer.name}</p>
+                          <p className="text-sm text-muted-foreground">{trainer.members} members</p>
+                        </div>
+                      </div>
+                      <p className="font-semibold text-accent flex items-center gap-1">
+                        <IndianRupee className="w-4 h-4" />
+                        {trainer.revenue.toLocaleString("en-IN")}
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-          </TabsContent>
-        </Tabs>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Dumbbell className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+              <p className="text-muted-foreground">No trainer data available yet</p>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   );

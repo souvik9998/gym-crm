@@ -17,6 +17,9 @@ import {
   Plus,
   Trash2,
   Dumbbell,
+  Pencil,
+  X,
+  Check,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -70,14 +73,20 @@ const AdminSettings = () => {
   // Monthly Packages
   const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
   const [newMonthlyPackage, setNewMonthlyPackage] = useState({ months: "", price: "", joining_fee: "" });
+  const [editingMonthlyId, setEditingMonthlyId] = useState<string | null>(null);
+  const [editMonthlyData, setEditMonthlyData] = useState({ price: "", joining_fee: "" });
 
   // Trainers
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [newTrainer, setNewTrainer] = useState({ name: "", phone: "", specialization: "", monthly_fee: "" });
+  const [editingTrainerId, setEditingTrainerId] = useState<string | null>(null);
+  const [editTrainerData, setEditTrainerData] = useState({ name: "", phone: "", specialization: "", monthly_fee: "" });
 
   // Custom Packages
   const [customPackages, setCustomPackages] = useState<CustomPackage[]>([]);
   const [newPackage, setNewPackage] = useState({ name: "", duration_days: "", price: "" });
+  const [editingPackageId, setEditingPackageId] = useState<string | null>(null);
+  const [editPackageData, setEditPackageData] = useState({ name: "", price: "" });
 
   // Confirm Dialog
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -187,6 +196,7 @@ const AdminSettings = () => {
     }
   };
 
+  // Monthly Package handlers
   const handleAddMonthlyPackage = async () => {
     if (!newMonthlyPackage.months || !newMonthlyPackage.price) {
       toast({ title: "Please fill months and price", variant: "destructive" });
@@ -195,7 +205,6 @@ const AdminSettings = () => {
 
     const months = Number(newMonthlyPackage.months);
     
-    // Check for duplicate
     if (monthlyPackages.some((p) => p.months === months)) {
       toast({ title: "A package with this duration already exists", variant: "destructive" });
       return;
@@ -212,6 +221,29 @@ const AdminSettings = () => {
     } else {
       toast({ title: "Package added" });
       setNewMonthlyPackage({ months: "", price: "", joining_fee: "" });
+      fetchData();
+    }
+  };
+
+  const handleEditMonthlyPackage = (pkg: MonthlyPackage) => {
+    setEditingMonthlyId(pkg.id);
+    setEditMonthlyData({ price: String(pkg.price), joining_fee: String(pkg.joining_fee) });
+  };
+
+  const handleSaveMonthlyPackage = async (id: string) => {
+    const { error } = await supabase
+      .from("monthly_packages")
+      .update({
+        price: Number(editMonthlyData.price),
+        joining_fee: Number(editMonthlyData.joining_fee) || 0,
+      })
+      .eq("id", id);
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Package updated" });
+      setEditingMonthlyId(null);
       fetchData();
     }
   };
@@ -235,6 +267,7 @@ const AdminSettings = () => {
     });
   };
 
+  // Trainer handlers
   const handleAddTrainer = async () => {
     if (!newTrainer.name || !newTrainer.monthly_fee) {
       toast({ title: "Please fill required fields", variant: "destructive" });
@@ -253,6 +286,41 @@ const AdminSettings = () => {
     } else {
       toast({ title: "Trainer added" });
       setNewTrainer({ name: "", phone: "", specialization: "", monthly_fee: "" });
+      fetchData();
+    }
+  };
+
+  const handleEditTrainer = (trainer: Trainer) => {
+    setEditingTrainerId(trainer.id);
+    setEditTrainerData({
+      name: trainer.name,
+      phone: trainer.phone || "",
+      specialization: trainer.specialization || "",
+      monthly_fee: String(trainer.monthly_fee),
+    });
+  };
+
+  const handleSaveTrainer = async (id: string) => {
+    if (!editTrainerData.name || !editTrainerData.monthly_fee) {
+      toast({ title: "Name and monthly fee are required", variant: "destructive" });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("personal_trainers")
+      .update({
+        name: editTrainerData.name,
+        phone: editTrainerData.phone || null,
+        specialization: editTrainerData.specialization || null,
+        monthly_fee: Number(editTrainerData.monthly_fee),
+      })
+      .eq("id", id);
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Trainer updated" });
+      setEditingTrainerId(null);
       fetchData();
     }
   };
@@ -276,6 +344,7 @@ const AdminSettings = () => {
     });
   };
 
+  // Custom Package handlers
   const handleAddPackage = async () => {
     if (!newPackage.name || !newPackage.duration_days || !newPackage.price) {
       toast({ title: "Please fill all fields", variant: "destructive" });
@@ -284,7 +353,6 @@ const AdminSettings = () => {
 
     const durationDays = Number(newPackage.duration_days);
     
-    // Check for duplicate duration
     if (customPackages.some((p) => p.duration_days === durationDays)) {
       toast({ title: "A package with this duration already exists", variant: "destructive" });
       return;
@@ -305,6 +373,34 @@ const AdminSettings = () => {
     } else {
       toast({ title: "Package added" });
       setNewPackage({ name: "", duration_days: "", price: "" });
+      fetchData();
+    }
+  };
+
+  const handleEditPackage = (pkg: CustomPackage) => {
+    setEditingPackageId(pkg.id);
+    setEditPackageData({ name: pkg.name, price: String(pkg.price) });
+  };
+
+  const handleSavePackage = async (id: string) => {
+    if (!editPackageData.name || !editPackageData.price) {
+      toast({ title: "Name and price are required", variant: "destructive" });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("custom_packages")
+      .update({
+        name: editPackageData.name,
+        price: Number(editPackageData.price),
+      })
+      .eq("id", id);
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Package updated" });
+      setEditingPackageId(null);
       fetchData();
     }
   };
@@ -425,28 +521,67 @@ const AdminSettings = () => {
                   <div className="space-y-3 pt-4 border-t">
                     {monthlyPackages.map((pkg) => (
                       <div key={pkg.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                        <div>
-                          <p className="font-medium">{pkg.months} {pkg.months === 1 ? "Month" : "Months"}</p>
-                          <p className="text-sm text-muted-foreground">
-                            ₹{pkg.price} + ₹{pkg.joining_fee} joining fee
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            <Label htmlFor={`monthly-${pkg.id}`} className="text-sm">Active</Label>
-                            <Switch
-                              id={`monthly-${pkg.id}`}
-                              checked={pkg.is_active}
-                              onCheckedChange={(checked) => handleToggleMonthlyPackage(pkg.id, checked)}
-                            />
+                        {editingMonthlyId === pkg.id ? (
+                          <div className="flex-1 grid grid-cols-2 gap-3 mr-4">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Price (₹)</Label>
+                              <Input
+                                type="number"
+                                value={editMonthlyData.price}
+                                onChange={(e) => setEditMonthlyData({ ...editMonthlyData, price: e.target.value })}
+                                className="h-9"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Joining Fee (₹)</Label>
+                              <Input
+                                type="number"
+                                value={editMonthlyData.joining_fee}
+                                onChange={(e) => setEditMonthlyData({ ...editMonthlyData, joining_fee: e.target.value })}
+                                className="h-9"
+                              />
+                            </div>
                           </div>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleDeleteMonthlyPackage(pkg.id, pkg.months)}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
+                        ) : (
+                          <div>
+                            <p className="font-medium">{pkg.months} {pkg.months === 1 ? "Month" : "Months"}</p>
+                            <p className="text-sm text-muted-foreground">
+                              ₹{pkg.price} + ₹{pkg.joining_fee} joining fee
+                            </p>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          {editingMonthlyId === pkg.id ? (
+                            <>
+                              <Button size="icon" variant="ghost" onClick={() => handleSaveMonthlyPackage(pkg.id)}>
+                                <Check className="w-4 h-4 text-success" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => setEditingMonthlyId(null)}>
+                                <X className="w-4 h-4 text-muted-foreground" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <Label htmlFor={`monthly-${pkg.id}`} className="text-sm">Active</Label>
+                                <Switch
+                                  id={`monthly-${pkg.id}`}
+                                  checked={pkg.is_active}
+                                  onCheckedChange={(checked) => handleToggleMonthlyPackage(pkg.id, checked)}
+                                />
+                              </div>
+                              <Button variant="ghost" size="icon" onClick={() => handleEditMonthlyPackage(pkg)}>
+                                <Pencil className="w-4 h-4 text-muted-foreground" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleDeleteMonthlyPackage(pkg.id, pkg.months)}
+                              >
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -500,28 +635,66 @@ const AdminSettings = () => {
                   <div className="space-y-3 pt-4 border-t">
                     {customPackages.map((pkg) => (
                       <div key={pkg.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                        <div>
-                          <p className="font-medium">{pkg.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {pkg.duration_days} {pkg.duration_days === 1 ? "Day" : "Days"} • ₹{pkg.price}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            <Label htmlFor={`pkg-${pkg.id}`} className="text-sm">Active</Label>
-                            <Switch
-                              id={`pkg-${pkg.id}`}
-                              checked={pkg.is_active}
-                              onCheckedChange={(checked) => handleTogglePackage(pkg.id, checked)}
-                            />
+                        {editingPackageId === pkg.id ? (
+                          <div className="flex-1 grid grid-cols-2 gap-3 mr-4">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Name</Label>
+                              <Input
+                                value={editPackageData.name}
+                                onChange={(e) => setEditPackageData({ ...editPackageData, name: e.target.value })}
+                                className="h-9"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Price (₹)</Label>
+                              <Input
+                                type="number"
+                                value={editPackageData.price}
+                                onChange={(e) => setEditPackageData({ ...editPackageData, price: e.target.value })}
+                                className="h-9"
+                              />
+                            </div>
                           </div>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleDeletePackage(pkg.id, pkg.name)}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
+                        ) : (
+                          <div>
+                            <p className="font-medium">{pkg.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {pkg.duration_days} {pkg.duration_days === 1 ? "Day" : "Days"} • ₹{pkg.price}
+                            </p>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          {editingPackageId === pkg.id ? (
+                            <>
+                              <Button size="icon" variant="ghost" onClick={() => handleSavePackage(pkg.id)}>
+                                <Check className="w-4 h-4 text-success" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => setEditingPackageId(null)}>
+                                <X className="w-4 h-4 text-muted-foreground" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <Label htmlFor={`pkg-${pkg.id}`} className="text-sm">Active</Label>
+                                <Switch
+                                  id={`pkg-${pkg.id}`}
+                                  checked={pkg.is_active}
+                                  onCheckedChange={(checked) => handleTogglePackage(pkg.id, checked)}
+                                />
+                              </div>
+                              <Button variant="ghost" size="icon" onClick={() => handleEditPackage(pkg)}>
+                                <Pencil className="w-4 h-4 text-muted-foreground" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleDeletePackage(pkg.id, pkg.name)}
+                              >
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -592,28 +765,83 @@ const AdminSettings = () => {
                   <div className="space-y-3">
                     {trainers.map((trainer) => (
                       <div key={trainer.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                        <div>
-                          <p className="font-medium">{trainer.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {trainer.specialization || "General"} • ₹{trainer.monthly_fee}/month
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            <Label htmlFor={`trainer-${trainer.id}`} className="text-sm">Active</Label>
-                            <Switch
-                              id={`trainer-${trainer.id}`}
-                              checked={trainer.is_active}
-                              onCheckedChange={(checked) => handleToggleTrainer(trainer.id, checked)}
-                            />
+                        {editingTrainerId === trainer.id ? (
+                          <div className="flex-1 grid grid-cols-2 gap-3 mr-4">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Name *</Label>
+                              <Input
+                                value={editTrainerData.name}
+                                onChange={(e) => setEditTrainerData({ ...editTrainerData, name: e.target.value })}
+                                className="h-9"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Phone</Label>
+                              <Input
+                                value={editTrainerData.phone}
+                                onChange={(e) => setEditTrainerData({ ...editTrainerData, phone: e.target.value })}
+                                className="h-9"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Specialization</Label>
+                              <Input
+                                value={editTrainerData.specialization}
+                                onChange={(e) => setEditTrainerData({ ...editTrainerData, specialization: e.target.value })}
+                                className="h-9"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Monthly Fee (₹) *</Label>
+                              <Input
+                                type="number"
+                                value={editTrainerData.monthly_fee}
+                                onChange={(e) => setEditTrainerData({ ...editTrainerData, monthly_fee: e.target.value })}
+                                className="h-9"
+                              />
+                            </div>
                           </div>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleDeleteTrainer(trainer.id, trainer.name)}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
+                        ) : (
+                          <div>
+                            <p className="font-medium">{trainer.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {trainer.specialization || "General"} • ₹{trainer.monthly_fee}/month
+                              {trainer.phone && ` • ${trainer.phone}`}
+                            </p>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          {editingTrainerId === trainer.id ? (
+                            <>
+                              <Button size="icon" variant="ghost" onClick={() => handleSaveTrainer(trainer.id)}>
+                                <Check className="w-4 h-4 text-success" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => setEditingTrainerId(null)}>
+                                <X className="w-4 h-4 text-muted-foreground" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <Label htmlFor={`trainer-${trainer.id}`} className="text-sm">Active</Label>
+                                <Switch
+                                  id={`trainer-${trainer.id}`}
+                                  checked={trainer.is_active}
+                                  onCheckedChange={(checked) => handleToggleTrainer(trainer.id, checked)}
+                                />
+                              </div>
+                              <Button variant="ghost" size="icon" onClick={() => handleEditTrainer(trainer)}>
+                                <Pencil className="w-4 h-4 text-muted-foreground" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleDeleteTrainer(trainer.id, trainer.name)}
+                              >
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
