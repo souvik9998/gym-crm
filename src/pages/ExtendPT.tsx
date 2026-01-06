@@ -270,11 +270,21 @@ const ExtendPT = () => {
                     ) : (
                       <div className="space-y-2">
                         {ptDurationOptions.map((option, idx) => (
-                          <button
-                            type="button"
+                          <div
                             key={idx}
-                            onClick={() => option.isValid && setSelectedOption(option)}
-                            disabled={!option.isValid}
+                            role="button"
+                            tabIndex={option.isValid ? 0 : -1}
+                            onClick={() => {
+                              if (option.isValid) {
+                                setSelectedOption(option);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (option.isValid && (e.key === 'Enter' || e.key === ' ')) {
+                                e.preventDefault();
+                                setSelectedOption(option);
+                              }
+                            }}
                             className={`w-full p-4 rounded-xl border-2 transition-all duration-200 ${
                               !option.isValid
                                 ? "border-border/50 bg-muted/30 opacity-50 cursor-not-allowed"
@@ -310,7 +320,7 @@ const ExtendPT = () => {
                                 )}
                               </div>
                             </div>
-                          </button>
+                          </div>
                         ))}
                       </div>
                     )}
