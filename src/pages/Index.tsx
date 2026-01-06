@@ -48,31 +48,17 @@ const Index = () => {
       if (error) throw error;
 
       if (member) {
-        // Fetch active subscription to get membership end date
+        // Fetch latest subscription (active or expiring_soon) to get membership end date
         const { data: subscription } = await supabase
           .from("subscriptions")
-          .select("end_date")
+          .select("end_date, status")
           .eq("member_id", member.id)
-          .eq("status", "active")
+          .in("status", ["active", "expiring_soon"])
           .order("end_date", { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        // Also check expiring_soon status
-        if (!subscription) {
-          const { data: expiringSub } = await supabase
-            .from("subscriptions")
-            .select("end_date")
-            .eq("member_id", member.id)
-            .eq("status", "expiring_soon")
-            .order("end_date", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          
-          setMembershipEndDate(expiringSub?.end_date || null);
-        } else {
-          setMembershipEndDate(subscription?.end_date || null);
-        }
+        setMembershipEndDate(subscription?.end_date || null);
 
         // Existing member - show options
         setExistingMember(member);
