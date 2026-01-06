@@ -223,6 +223,7 @@ const ExtendPT = () => {
                   <h3 className="font-medium text-sm text-muted-foreground">Select Trainer</h3>
                   {trainers.map((trainer) => (
                     <button
+                      type="button"
                       key={trainer.id}
                       onClick={() => setSelectedTrainer(trainer)}
                       className={`w-full p-4 rounded-xl border-2 transition-all duration-200 flex justify-between items-center ${
@@ -270,6 +271,7 @@ const ExtendPT = () => {
                       <div className="space-y-2">
                         {ptDurationOptions.map((option, idx) => (
                           <button
+                            type="button"
                             key={idx}
                             onClick={() => option.isValid && setSelectedOption(option)}
                             disabled={!option.isValid}
