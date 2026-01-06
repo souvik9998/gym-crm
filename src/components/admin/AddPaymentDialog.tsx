@@ -436,7 +436,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="p-6 pb-4 flex-shrink-0 border-b">
           <DialogTitle>Record Cash Payment</DialogTitle>
           <DialogDescription>
@@ -444,8 +444,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-hidden px-6 py-4">
-          <ScrollArea className="h-full max-h-[calc(90vh-140px)]">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
             <form onSubmit={handleSubmit} className="space-y-5 pr-4">
           <div className="space-y-2">
             <Label htmlFor="search-phone" className="flex items-center gap-2">
@@ -685,7 +684,6 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
             </Button>
             </div>
           </form>
-          </ScrollArea>
         </div>
       </DialogContent>
     </Dialog>
