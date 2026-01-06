@@ -13,9 +13,28 @@ serve(async (req) => {
   }
 
   try {
-    const { amount, memberId, memberName, memberPhone, isNewMember, months, subscriptionId } = await req.json();
+    const {
+      amount,
+      memberId,
+      memberName,
+      memberPhone,
+      isNewMember,
+      months,
+      customDays,
+      trainerId,
+      trainerFee,
+      subscriptionId,
+    } = await req.json();
 
-    console.log("Creating Razorpay order:", { amount, memberId, memberName, isNewMember, months });
+    console.log("Creating Razorpay order:", {
+      amount,
+      memberId,
+      memberName,
+      isNewMember,
+      months,
+      customDays,
+      trainerId,
+    });
 
     const RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
     const RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
@@ -36,6 +55,9 @@ serve(async (req) => {
         member_phone: memberPhone,
         is_new_member: String(isNewMember),
         months: String(months),
+        custom_days: customDays ? String(customDays) : "",
+        trainer_id: trainerId || "",
+        trainer_fee: trainerFee ? String(trainerFee) : "",
         subscription_id: subscriptionId || "",
       },
     };

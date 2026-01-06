@@ -22,6 +22,9 @@ serve(async (req) => {
       memberPhone,
       amount,
       months,
+      customDays,
+      trainerId,
+      trainerFee,
       isNewMember,
     } = await req.json();
 
@@ -78,12 +81,89 @@ serve(async (req) => {
       console.log("Created new member:", finalMemberId);
     }
 
-    // Calculate subscription dates
     const startDate = new Date();
-    const endDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+
+    // ---- PT purchase/extension ----
+    if (trainerId && customDays && customDays > 0) {
+      // Fetch trainer monthly fee for recordkeeping
+      const { data: trainer, error: trainerError } = await supabase
+        .from("personal_trainers")
+        .select("monthly_fee")
+        .eq("id", trainerId)
+        .single();
+
+      if (trainerError || !trainer) {
+        console.error("Error fetching trainer:", trainerError);
+        throw new Error("Failed to verify trainer");
+      }
+
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + customDays);
+
+      const totalFee = typeof trainerFee === "number" ? trainerFee : amount;
+
+      const { data: ptSub, error: ptError } = await supabase
+        .from("pt_subscriptions")
+        .insert({
+          member_id: finalMemberId,
+          personal_trainer_id: trainerId,
+          start_date: startDate.toISOString().split("T")[0],
+          end_date: endDate.toISOString().split("T")[0],
+          monthly_fee: trainer.monthly_fee,
+          total_fee: totalFee,
+          status: "active",
+        })
+        .select()
+        .single();
+
+      if (ptError) {
+        console.error("Error creating PT subscription:", ptError);
+        throw new Error("Failed to create PT subscription");
+      }
+
+      // Record payment (linked to member; payments table can't FK pt_subscriptions)
+      const { error: paymentError } = await supabase.from("payments").insert({
+        member_id: finalMemberId,
+        amount: amount,
+        payment_mode: "online",
+        status: "success",
+        payment_type: "pt",
+        notes: `pt_subscription_id:${ptSub.id}`,
+        razorpay_order_id: razorpay_order_id,
+        razorpay_payment_id: razorpay_payment_id,
+      });
+
+      if (paymentError) {
+        console.error("Error creating payment:", paymentError);
+        throw new Error("Failed to record payment");
+      }
+
+      console.log("PT subscription + payment recorded successfully");
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          memberId: finalMemberId,
+          subscriptionId: ptSub.id,
+          endDate: endDate.toISOString().split("T")[0],
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+
+    // ---- Gym membership purchase/renewal ----
+    if (!months || months <= 0) {
+      console.error("Invalid months for membership payment", { months, trainerId, customDays });
+      throw new Error("Invalid membership duration");
+    }
+
+    const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + months);
 
-    // Create subscription
     const { data: subscription, error: subError } = await supabase
       .from("subscriptions")
       .insert({
@@ -103,13 +183,13 @@ serve(async (req) => {
 
     console.log("Created subscription:", subscription.id);
 
-    // Create payment record
     const { error: paymentError } = await supabase.from("payments").insert({
       member_id: finalMemberId,
       subscription_id: subscription.id,
       amount: amount,
       payment_mode: "online",
       status: "success",
+      payment_type: "membership",
       razorpay_order_id: razorpay_order_id,
       razorpay_payment_id: razorpay_payment_id,
     });
@@ -119,7 +199,7 @@ serve(async (req) => {
       throw new Error("Failed to record payment");
     }
 
-    console.log("Payment recorded successfully");
+    console.log("Membership payment recorded successfully");
 
     return new Response(
       JSON.stringify({
