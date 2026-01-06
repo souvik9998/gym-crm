@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Check, Dumbbell, Calendar, IndianRupee, User, Phone, AlertCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { ArrowLeft, Dumbbell } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRazorpay } from "@/hooks/useRazorpay";
+import PackageSelectionForm, { type PackageSelectionData } from "@/components/registration/PackageSelectionForm";
 
 interface Member {
   id: string;
@@ -14,90 +13,45 @@ interface Member {
   join_date: string;
 }
 
-interface GymSettings {
-  monthly_fee: number;
-}
-
-const planOptions = [
-  { months: 1, label: "1 Month" },
-  { months: 3, label: "3 Months" },
-  { months: 6, label: "6 Months" },
-  { months: 12, label: "12 Months" },
-];
-
 const Renew = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { initiatePayment, isLoading: isPaymentLoading } = useRazorpay();
   const member = (location.state as { member: Member })?.member;
-  
-  const [selectedMonths, setSelectedMonths] = useState(3);
-  const [settings, setSettings] = useState<GymSettings | null>(null);
-  const [currentSubscription, setCurrentSubscription] = useState<{
-    end_date: string;
-    status: string;
-  } | null>(null);
 
   useEffect(() => {
     if (!member) {
       navigate("/");
-      return;
     }
-    fetchData();
   }, [member, navigate]);
 
-  const fetchData = async () => {
-    const { data: settingsData } = await supabase
-      .from("gym_settings")
-      .select("monthly_fee")
-      .limit(1)
-      .maybeSingle();
-    
-    if (settingsData) {
-      setSettings({ monthly_fee: Number(settingsData.monthly_fee) });
-    }
-
-    const { data: subData } = await supabase
-      .from("subscriptions")
-      .select("end_date, status")
-      .eq("member_id", member.id)
-      .order("end_date", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    
-    setCurrentSubscription(subData);
-  };
-
-  const monthlyFee = settings?.monthly_fee || 500;
-  const totalAmount = monthlyFee * selectedMonths;
-
-  const isExpired = currentSubscription && new Date(currentSubscription.end_date) < new Date();
-  const isExpiringSoon = currentSubscription && 
-    !isExpired && 
-    new Date(currentSubscription.end_date) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-  const handlePayment = () => {
+  const handlePackageSubmit = (packageData: PackageSelectionData) => {
     initiatePayment({
-      amount: totalAmount,
+      amount: packageData.totalAmount,
       memberId: member.id,
       memberName: member.name,
       memberPhone: member.phone,
       isNewMember: false,
-      months: selectedMonths,
+      months: packageData.isCustomPackage ? 0 : packageData.selectedMonths,
+      customDays: packageData.customPackage?.duration_days,
+      trainerId: packageData.selectedTrainer?.id,
+      trainerFee: packageData.trainerFee,
       onSuccess: (data) => {
         const endDate = new Date(data.endDate);
         navigate("/success", {
           state: {
             memberName: member.name,
             phone: member.phone,
-            amount: totalAmount,
+            amount: packageData.totalAmount,
             endDate: endDate.toLocaleDateString("en-IN", {
               day: "numeric",
               month: "long",
               year: "numeric",
             }),
             isNewMember: false,
+            hasTrainer: packageData.wantsTrainer,
+            trainerName: packageData.selectedTrainer?.name,
           },
         });
       },
@@ -138,113 +92,13 @@ const Renew = () => {
 
       {/* Main */}
       <main className="px-4 pb-8">
-        <Card className="max-w-md mx-auto border">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Welcome back, {member.name}!</CardTitle>
-            <CardDescription>Renew your membership to continue your fitness journey</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Member Info */}
-            <div className="bg-muted rounded-xl p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm">
-                <User className="w-4 h-4 text-accent" />
-                <span className="font-medium">{member.name}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone className="w-4 h-4" />
-                <span>+91 {member.phone}</span>
-              </div>
-              {currentSubscription && (
-                <div className="flex items-center gap-2 text-sm mt-2">
-                  {isExpired ? (
-                    <span className="px-2 py-1 bg-destructive/10 text-destructive rounded-full text-xs font-medium flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      Expired on {new Date(currentSubscription.end_date).toLocaleDateString("en-IN")}
-                    </span>
-                  ) : isExpiringSoon ? (
-                    <span className="px-2 py-1 bg-warning/10 text-warning rounded-full text-xs font-medium flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      Expires on {new Date(currentSubscription.end_date).toLocaleDateString("en-IN")}
-                    </span>
-                  ) : (
-                    <span className="px-2 py-1 bg-success/10 text-success rounded-full text-xs font-medium">
-                      Active until {new Date(currentSubscription.end_date).toLocaleDateString("en-IN")}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Plan Selection */}
-            <div className="grid grid-cols-2 gap-3">
-              {planOptions.map(({ months, label }) => (
-                <button
-                  key={months}
-                  onClick={() => setSelectedMonths(months)}
-                  className={`relative p-4 rounded-xl border-2 transition-all duration-200 ${
-                    selectedMonths === months
-                      ? "border-accent bg-accent/10 shadow-lg"
-                      : "border-border hover:border-accent/50 bg-card"
-                  }`}
-                >
-                  <div className="text-center">
-                    <div className="text-2xl font-semibold text-foreground">
-                      {months}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {months === 1 ? "Month" : "Months"}
-                    </div>
-                    {selectedMonths === months && (
-                      <div className="mt-2 flex justify-center">
-                        <div className="w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-                          <Check className="w-3 h-3 text-accent-foreground" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* Price */}
-            <div className="bg-muted rounded-xl p-4">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  {selectedMonths} {selectedMonths === 1 ? "Month" : "Months"}
-                </span>
-                <span className="text-2xl font-semibold text-accent flex items-center">
-                  <IndianRupee className="w-5 h-5" />
-                  {totalAmount.toLocaleString("en-IN")}
-                </span>
-              </div>
-            </div>
-
-            {/* Pay Button */}
-            <Button
-              variant="accent"
-              size="lg"
-              className="w-full"
-              onClick={handlePayment}
-              disabled={isPaymentLoading}
-            >
-              {isPaymentLoading ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
-                  Processing...
-                </div>
-              ) : (
-                <>
-                  Pay ₹{totalAmount.toLocaleString("en-IN")}
-                </>
-              )}
-            </Button>
-
-            <p className="text-xs text-center text-muted-foreground">
-              Secure payment powered by Razorpay
-            </p>
-          </CardContent>
-        </Card>
+        <PackageSelectionForm
+          isNewMember={false}
+          memberName={member.name}
+          onSubmit={handlePackageSubmit}
+          onBack={() => navigate("/")}
+          isLoading={isPaymentLoading}
+        />
       </main>
     </div>
   );
