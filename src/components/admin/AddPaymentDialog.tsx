@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,14 +9,56 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Phone, Calendar, Search } from "lucide-react";
+import { 
+  Phone, 
+  Calendar, 
+  Search, 
+  Dumbbell, 
+  IndianRupee,
+  User,
+  Clock,
+  AlertCircle,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { addMonths, differenceInDays, format, isBefore } from "date-fns";
 
 interface Member {
   id: string;
   name: string;
   phone: string;
+}
+
+interface MonthlyPackage {
+  id: string;
+  months: number;
+  price: number;
+  joining_fee: number;
+  is_active: boolean;
+}
+
+interface PersonalTrainer {
+  id: string;
+  name: string;
+  monthly_fee: number;
+  specialization: string | null;
+}
+
+interface PTDurationOption {
+  label: string;
+  endDate: Date;
+  days: number;
+  fee: number;
+  isValid: boolean;
 }
 
 interface AddPaymentDialogProps {
@@ -25,34 +67,71 @@ interface AddPaymentDialogProps {
   onSuccess: () => void;
 }
 
+type PaymentType = "gym_only" | "gym_and_pt" | "pt_only";
+
 export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDialogProps) => {
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
-  const [months, setMonths] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [member, setMember] = useState<Member | null>(null);
-  const [monthlyFee, setMonthlyFee] = useState(500);
-  const [customAmount, setCustomAmount] = useState<string>("");
+  
+  // Payment type
+  const [paymentType, setPaymentType] = useState<PaymentType>("gym_only");
+  
+  // Gym membership
+  const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
+  const [selectedPackageId, setSelectedPackageId] = useState("");
+  const [gymCustomAmount, setGymCustomAmount] = useState<string>("");
+  
+  // Personal Training
+  const [trainers, setTrainers] = useState<PersonalTrainer[]>([]);
+  const [selectedTrainerId, setSelectedTrainerId] = useState("");
+  const [selectedPTOption, setSelectedPTOption] = useState<PTDurationOption | null>(null);
+  
+  // Member's current subscription end date (for PT duration calculation)
+  const [membershipEndDate, setMembershipEndDate] = useState<Date | null>(null);
+  const [gymEndDate, setGymEndDate] = useState<Date | null>(null);
 
   useEffect(() => {
     if (open) {
-      fetchSettings();
+      fetchPackages();
+      fetchTrainers();
       setMember(null);
       setPhone("");
-      setCustomAmount("");
+      setPaymentType("gym_only");
+      setSelectedPackageId("");
+      setGymCustomAmount("");
+      setSelectedTrainerId("");
+      setSelectedPTOption(null);
+      setMembershipEndDate(null);
+      setGymEndDate(null);
     }
   }, [open]);
 
-  const fetchSettings = async () => {
+  const fetchPackages = async () => {
     const { data } = await supabase
-      .from("gym_settings")
-      .select("monthly_fee")
-      .limit(1)
-      .maybeSingle();
+      .from("monthly_packages")
+      .select("*")
+      .eq("is_active", true)
+      .order("months");
 
-    if (data) {
-      setMonthlyFee(Number(data.monthly_fee));
+    if (data && data.length > 0) {
+      setMonthlyPackages(data);
+      setSelectedPackageId(data[0].id);
+    }
+  };
+
+  const fetchTrainers = async () => {
+    const { data } = await supabase
+      .from("personal_trainers")
+      .select("*")
+      .eq("is_active", true)
+      .order("name");
+
+    if (data && data.length > 0) {
+      setTrainers(data);
+      setSelectedTrainerId(data[0].id);
     }
   };
 
@@ -78,6 +157,8 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
 
       if (data) {
         setMember(data);
+        // Fetch current membership end date for PT duration calculation
+        fetchMembershipEndDate(data.id);
       } else {
         toast({
           title: "Member Not Found",
@@ -85,6 +166,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
           variant: "destructive",
         });
         setMember(null);
+        setMembershipEndDate(null);
       }
     } catch (error: any) {
       toast({
@@ -97,21 +179,143 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
     }
   };
 
-  const calculatedAmount = monthlyFee * months;
-  const totalAmount = customAmount ? Number(customAmount) : calculatedAmount;
+  const fetchMembershipEndDate = async (memberId: string) => {
+    const { data } = await supabase
+      .from("subscriptions")
+      .select("end_date")
+      .eq("member_id", memberId)
+      .order("end_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  // Update custom amount when months change
-  const handleMonthsChange = (value: number) => {
-    setMonths(value);
-    setCustomAmount((monthlyFee * value).toString());
+    if (data) {
+      const endDate = new Date(data.end_date);
+      endDate.setHours(23, 59, 59, 999);
+      setMembershipEndDate(endDate);
+    } else {
+      setMembershipEndDate(null);
+    }
   };
 
-  // Initialize custom amount when member is found
+  const selectedPackage = monthlyPackages.find((p) => p.id === selectedPackageId);
+  const selectedTrainer = trainers.find((t) => t.id === selectedTrainerId);
+
+  // Calculate gym membership end date when member or package changes
   useEffect(() => {
-    if (member) {
-      setCustomAmount(calculatedAmount.toString());
+    const calculateGymEndDate = async () => {
+      if (!member || !selectedPackage) {
+        setGymEndDate(null);
+        return;
+      }
+
+      const { data: currentSub } = await supabase
+        .from("subscriptions")
+        .select("end_date")
+        .eq("member_id", member.id)
+        .order("end_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const isExpired = !currentSub || new Date(currentSub.end_date) < new Date();
+      const startDate = isExpired ? new Date() : new Date(currentSub.end_date);
+      if (!isExpired) startDate.setDate(startDate.getDate() + 1);
+
+      const endDate = addMonths(startDate, selectedPackage.months);
+      setGymEndDate(endDate);
+    };
+
+    calculateGymEndDate();
+  }, [member, selectedPackage]);
+
+  // Generate PT duration options (similar to ExtendPT.tsx)
+  const ptDurationOptions = useMemo((): PTDurationOption[] => {
+    if (!selectedTrainer || !member) return [];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const options: PTDurationOption[] = [];
+    const dailyRate = selectedTrainer.monthly_fee / 30;
+
+    // If payment type is gym_and_pt, PT should match gym membership duration
+    if (paymentType === "gym_and_pt" && gymEndDate) {
+      const days = differenceInDays(gymEndDate, today);
+      if (days > 0) {
+        const fee = Math.ceil(dailyRate * days);
+        options.push({
+          label: `Till ${format(gymEndDate, "d MMM yyyy")} (Match Gym)`,
+          endDate: gymEndDate,
+          days,
+          fee,
+          isValid: true,
+        });
+      }
+      return options;
     }
-  }, [member, calculatedAmount]);
+
+    // For PT only, check membership end date
+    if (paymentType === "pt_only") {
+      if (!membershipEndDate) {
+        return []; // No active membership
+      }
+
+      // Generate 1-month, 2-month, 3-month options
+      for (let months = 1; months <= 3; months++) {
+        const optionEndDate = addMonths(today, months);
+        const isValid = isBefore(optionEndDate, membershipEndDate) || optionEndDate.getTime() === membershipEndDate.getTime();
+        const days = differenceInDays(optionEndDate, today);
+        const fee = Math.ceil(dailyRate * days);
+
+        options.push({
+          label: `${months} Month${months > 1 ? "s" : ""}`,
+          endDate: optionEndDate,
+          days,
+          fee,
+          isValid,
+        });
+      }
+
+      // Add "Till Membership End" option if different
+      const daysToMembershipEnd = differenceInDays(membershipEndDate, today);
+      const existingMatchingOption = options.find(
+        (opt) => opt.isValid && Math.abs(differenceInDays(opt.endDate, membershipEndDate)) <= 1
+      );
+
+      if (!existingMatchingOption && daysToMembershipEnd > 0) {
+        const fee = Math.ceil(dailyRate * daysToMembershipEnd);
+        options.push({
+          label: `Till ${format(membershipEndDate, "d MMM yyyy")}`,
+          endDate: membershipEndDate,
+          days: daysToMembershipEnd,
+          fee,
+          isValid: true,
+        });
+      }
+    }
+
+    return options;
+  }, [selectedTrainer, paymentType, membershipEndDate, gymEndDate, member]);
+
+  // Auto-select PT option when trainer or payment type changes
+  useEffect(() => {
+    if ((paymentType === "gym_and_pt" || paymentType === "pt_only") && ptDurationOptions.length > 0) {
+      const firstValid = ptDurationOptions.find((opt) => opt.isValid);
+      setSelectedPTOption(firstValid || null);
+    } else {
+      setSelectedPTOption(null);
+    }
+  }, [selectedTrainer?.id, paymentType, ptDurationOptions]);
+
+  // Calculate amounts
+  const gymAmount = paymentType === "pt_only" 
+    ? 0 
+    : (gymCustomAmount ? Number(gymCustomAmount) : (selectedPackage?.price || 0));
+  
+  const ptAmount = (paymentType === "gym_and_pt" || paymentType === "pt_only") && selectedPTOption
+    ? selectedPTOption.fee
+    : 0;
+  
+  const totalAmount = gymAmount + ptAmount;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -124,10 +328,31 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
       return;
     }
 
+    if (paymentType !== "pt_only" && !selectedPackageId) {
+      toast({
+        title: "Select Package",
+        description: "Please select a gym membership package",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if ((paymentType === "gym_and_pt" || paymentType === "pt_only") && (!selectedTrainerId || !selectedPTOption)) {
+      toast({
+        title: "Select Trainer",
+        description: "Please select a trainer and duration",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // Get current subscription
+      let subscriptionId: string | null = null;
+
+      // Create/Extend gym subscription if needed
+      if (paymentType !== "pt_only") {
       const { data: currentSub } = await supabase
         .from("subscriptions")
         .select("end_date")
@@ -136,37 +361,61 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
         .limit(1)
         .maybeSingle();
 
-      // Calculate new dates
       const isExpired = !currentSub || new Date(currentSub.end_date) < new Date();
       const startDate = isExpired ? new Date() : new Date(currentSub.end_date);
       if (!isExpired) startDate.setDate(startDate.getDate() + 1);
 
-      const endDate = new Date(startDate);
-      endDate.setMonth(endDate.getMonth() + months);
+        const endDate = addMonths(startDate, selectedPackage!.months);
 
-      // Create subscription
       const { data: subscription, error: subError } = await supabase
         .from("subscriptions")
         .insert({
           member_id: member.id,
           start_date: startDate.toISOString().split("T")[0],
           end_date: endDate.toISOString().split("T")[0],
-          plan_months: months,
+            plan_months: selectedPackage!.months,
           status: "active",
         })
         .select()
         .single();
 
       if (subError) throw subError;
+        subscriptionId = subscription.id;
+      }
+
+      // Create PT subscription if needed
+      if (paymentType === "gym_and_pt" || paymentType === "pt_only") {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const ptEndDate = selectedPTOption!.endDate;
+        ptEndDate.setHours(23, 59, 59, 999);
+
+        await supabase.from("pt_subscriptions").insert({
+          member_id: member.id,
+          personal_trainer_id: selectedTrainerId,
+          start_date: today.toISOString().split("T")[0],
+          end_date: ptEndDate.toISOString().split("T")[0],
+          monthly_fee: selectedTrainer!.monthly_fee,
+          total_fee: selectedPTOption!.fee,
+          status: "active",
+        });
+      }
 
       // Create payment record
+      const paymentTypeValue = paymentType === "gym_only" 
+        ? "gym_membership" 
+        : paymentType === "pt_only" 
+        ? "pt_only" 
+        : "gym_and_pt";
+
       const { error: paymentError } = await supabase.from("payments").insert({
         member_id: member.id,
-        subscription_id: subscription.id,
+        subscription_id: subscriptionId,
         amount: totalAmount,
         payment_mode: "cash",
         status: "success",
-        notes: "Cash payment via admin",
+        payment_type: paymentTypeValue,
+        notes: `Cash payment via admin - ${paymentTypeValue}`,
       });
 
       if (paymentError) throw paymentError;
@@ -187,15 +436,17 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="p-6 pb-4 flex-shrink-0 border-b">
           <DialogTitle>Record Cash Payment</DialogTitle>
           <DialogDescription>
             Add a cash payment for an existing member
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="flex-1 min-h-0 overflow-hidden px-6 py-4">
+          <ScrollArea className="h-full max-h-[calc(90vh-140px)]">
+            <form onSubmit={handleSubmit} className="space-y-5 pr-4">
           <div className="space-y-2">
             <Label htmlFor="search-phone" className="flex items-center gap-2">
               <Phone className="w-4 h-4 text-accent" />
@@ -233,51 +484,189 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                 <p className="text-sm text-muted-foreground">+91 {member.phone}</p>
               </div>
 
+                {/* Payment Type Selection */}
               <div className="space-y-2">
-                <Label htmlFor="payment-months" className="flex items-center gap-2">
+                  <Label className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-accent" />
-                  Extend Membership
+                    Payment Type
                 </Label>
-                <select
-                  id="payment-months"
-                  value={months}
-                  onChange={(e) => handleMonthsChange(Number(e.target.value))}
-                  className="flex h-12 w-full rounded-lg border-2 border-input bg-background px-4 py-3 text-base"
-                >
-                  <option value={1}>1 Month</option>
-                  <option value={3}>3 Months</option>
-                  <option value={6}>6 Months</option>
-                  <option value={12}>12 Months</option>
-                </select>
+                  <Select value={paymentType} onValueChange={(v) => setPaymentType(v as PaymentType)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gym_only">Extend Gym Membership Only</SelectItem>
+                      <SelectItem value="gym_and_pt">Extend Gym + PT</SelectItem>
+                      <SelectItem value="pt_only">PT Only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Gym Membership Section */}
+                {paymentType !== "pt_only" && (
+                  <div className="space-y-4 pt-2 border-t">
+                    <h3 className="text-sm font-medium text-muted-foreground">Gym Membership</h3>
+                    
+                    <div className="space-y-2">
+                      <Label>Select Package</Label>
+                      <Select value={selectedPackageId} onValueChange={setSelectedPackageId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select package" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {monthlyPackages.map((pkg) => (
+                            <SelectItem key={pkg.id} value={pkg.id}>
+                              {pkg.months} {pkg.months === 1 ? "Month" : "Months"} - ₹{pkg.price}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="custom-amount" className="flex items-center gap-2">
-                  Amount (Cash)
-                </Label>
+                      <Label htmlFor="gym-amount">Amount (₹)</Label>
                 <div className="flex">
                   <span className="inline-flex items-center px-3 rounded-l-lg border-2 border-r-0 border-input bg-muted text-muted-foreground text-sm">
                     ₹
                   </span>
                   <Input
-                    id="custom-amount"
+                          id="gym-amount"
                     type="number"
-                    value={customAmount}
-                    onChange={(e) => setCustomAmount(e.target.value)}
+                          value={gymCustomAmount || (selectedPackage?.price || 0)}
+                          onChange={(e) => setGymCustomAmount(e.target.value)}
                     className="rounded-l-none"
                     min="0"
                   />
                 </div>
-                {Number(customAmount) !== calculatedAmount && (
+                      {!gymCustomAmount && selectedPackage && (
                   <p className="text-xs text-muted-foreground">
-                    Default: ₹{calculatedAmount.toLocaleString("en-IN")}
-                  </p>
+                          Default: ₹{selectedPackage.price.toLocaleString("en-IN")} ({selectedPackage.months} {selectedPackage.months === 1 ? "month" : "months"})
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 )}
+
+                {/* Personal Training Section */}
+                {(paymentType === "gym_and_pt" || paymentType === "pt_only") && (
+                  <div className="space-y-4 pt-2 border-t">
+                    <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Dumbbell className="w-4 h-4" />
+                      Personal Training
+                    </h3>
+
+                    {paymentType === "pt_only" && !membershipEndDate && (
+                      <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                        <div className="flex items-center gap-2 text-destructive">
+                          <AlertCircle className="w-4 h-4" />
+                          <p className="text-sm font-medium">
+                            Member needs an active gym membership to add PT
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {trainers.length > 0 && (
+                      <>
+                        <div className="space-y-2">
+                          <Label>Select Trainer</Label>
+                          <Select value={selectedTrainerId} onValueChange={setSelectedTrainerId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose trainer" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {trainers.map((trainer) => (
+                                <SelectItem key={trainer.id} value={trainer.id}>
+                                  {trainer.name} - ₹{trainer.monthly_fee}/month
+                                  {trainer.specialization && ` (${trainer.specialization})`}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {selectedTrainer && ptDurationOptions.length > 0 && (
+                          <div className="space-y-2">
+                            <Label>PT Duration</Label>
+                            {paymentType === "pt_only" && membershipEndDate && (
+                              <div className="p-2 bg-muted/50 rounded-lg text-xs text-muted-foreground">
+                                Gym membership ends: {format(membershipEndDate, "d MMM yyyy")}
+                              </div>
+                            )}
+                            <div className="space-y-2">
+                              {ptDurationOptions.map((option, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => option.isValid && setSelectedPTOption(option)}
+                                  disabled={!option.isValid}
+                                  className={`w-full p-3 rounded-xl border-2 transition-all duration-200 text-left ${
+                                    !option.isValid
+                                      ? "border-border/50 bg-muted/30 opacity-50 cursor-not-allowed"
+                                      : selectedPTOption?.label === option.label
+                                      ? "border-accent bg-accent/10"
+                                      : "border-border hover:border-accent/50 bg-card"
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <p className="font-medium text-sm">{option.label}</p>
+                                        {!option.isValid && (
+                                          <Badge variant="outline" className="text-destructive border-destructive/30 text-xs">
+                                            Exceeds membership
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                                        <Clock className="w-3 h-3" />
+                                        {option.days} days • Ends {format(option.endDate, "d MMM yyyy")}
+                                      </p>
+                                    </div>
+                                    <span className="font-bold text-accent flex items-center text-sm">
+                                      <IndianRupee className="w-3 h-3" />
+                                      {option.fee.toLocaleString("en-IN")}
+                                    </span>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {trainers.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No active trainers available</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Price Summary */}
+                <div className="bg-muted rounded-xl p-4 space-y-2">
+                  {paymentType !== "pt_only" && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Gym Membership</span>
+                      <span>₹{gymAmount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+                  {(paymentType === "gym_and_pt" || paymentType === "pt_only") && selectedPTOption && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        Personal Training ({selectedPTOption.days} days)
+                      </span>
+                      <span>₹{ptAmount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold pt-2 border-t border-border">
+                    <span>Total (Cash)</span>
+                    <span className="text-accent">₹{totalAmount.toLocaleString("en-IN")}</span>
+                  </div>
               </div>
             </>
           )}
 
-          <div className="flex gap-3">
+            <div className="flex gap-3 pb-2">
             <Button
               type="button"
               variant="outline"
@@ -290,12 +679,14 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
               type="submit"
               variant="accent"
               className="flex-1"
-              disabled={isLoading || !member}
+                disabled={isLoading || !member || totalAmount === 0}
             >
               {isLoading ? "Recording..." : "Record Payment"}
             </Button>
-          </div>
-        </form>
+            </div>
+          </form>
+          </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

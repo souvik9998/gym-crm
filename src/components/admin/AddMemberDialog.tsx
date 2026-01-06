@@ -319,16 +319,17 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="p-6 pb-0">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="p-6 pb-4 flex-shrink-0 border-b">
           <DialogTitle>Add New Member</DialogTitle>
           <DialogDescription>
             Add a new member with cash payment
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 pb-6">
-          <form onSubmit={handleSubmit} className="space-y-5 pt-4">
+        <div className="flex-1 min-h-0 overflow-hidden px-6 py-4">
+          <ScrollArea className="h-full max-h-[calc(90vh-140px)]">
+            <form onSubmit={handleSubmit} className="space-y-5 pr-4">
             {/* Contact Details Section */}
             <div className="space-y-4">
               <h3 className="text-sm font-medium text-muted-foreground">Contact Details</h3>
@@ -589,7 +590,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
               </Button>
             </div>
           </form>
-        </ScrollArea>
+          </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
