@@ -39,10 +39,19 @@ const ExtendPT = () => {
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
-    if (!member || !membershipEndDate) {
+    if (!member) {
       toast({
         title: "Access Denied",
-        description: "Please access this page from your member profile.",
+        description: "Please access this page from the home page.",
+        variant: "destructive",
+      });
+      navigate("/");
+      return;
+    }
+    if (!membershipEndDate) {
+      toast({
+        title: "No Active Membership",
+        description: "You need an active gym membership to add personal training.",
         variant: "destructive",
       });
       navigate("/");
