@@ -106,9 +106,18 @@ const AdminLogin = () => {
         <Card className="border">
           <CardHeader className="text-center pb-4">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <div className="p-3 bg-accent/10 rounded-lg">
-                <Shield className="w-6 h-6 text-accent" />
-              </div>
+              <div  style={{ height: "4rem" }} className="flex items-center justify-center gap-3 mb-4 w-full h-20">
+          <div
+            style={{ width: "4rem" }}
+            className="h-full rounded-xl overflow-hidden"
+          >
+            <img
+              src="/logo.jpg"
+              alt="Icon"
+              className="w-full h-full object-contain"
+            />
+          </div>
+        </div>
             </div>
             <CardTitle className="flex items-center justify-center gap-2">
               <Dumbbell className="w-5 h-5 text-accent" />
