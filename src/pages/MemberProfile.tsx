@@ -31,7 +31,10 @@ interface Subscription {
   trainer_fee: number | null;
   is_custom_package: boolean | null;
   custom_days: number | null;
+  personal_trainer_id: string | null;
   personal_trainer?: { name: string } | null;
+  pt_start_date: string | null;
+  pt_end_date: string | null;
 }
 
 interface Payment {
@@ -201,6 +204,25 @@ const MemberProfile = () => {
                           <Dumbbell className="w-4 h-4 text-accent" />
                           {currentSubscription.personal_trainer.name}
                         </span>
+                      </div>
+                    )}
+                    
+                    {/* Add PT Button - only show if no active PT */}
+                    {!currentSubscription.personal_trainer_id && (
+                      <div className="pt-3 border-t border-border">
+                        <Button 
+                          variant="outline" 
+                          className="w-full gap-2"
+                          onClick={() => navigate("/extend-pt", { 
+                            state: { 
+                              member, 
+                              membershipEndDate: currentSubscription.end_date 
+                            } 
+                          })}
+                        >
+                          <Dumbbell className="w-4 h-4" />
+                          Add Personal Training
+                        </Button>
                       </div>
                     )}
                   </div>
