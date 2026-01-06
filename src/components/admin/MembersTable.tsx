@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { EditMemberDialog } from "./EditMemberDialog";
+import { MemberActivityDialog } from "./MemberActivityDialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { MemberFilterValue } from "./MemberFilter";
 
 interface Member {
@@ -46,6 +48,13 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue }: MembersTa
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [viewingMemberId, setViewingMemberId] = useState<string | null>(null);
+  const [viewingMemberName, setViewingMemberName] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; memberId: string; memberName: string }>({
+    open: false,
+    memberId: "",
+    memberName: "",
+  });
 
   useEffect(() => {
     fetchMembers();
@@ -87,14 +96,12 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue }: MembersTa
     }
   };
 
-  const handleDelete = async (memberId: string) => {
-    if (!confirm("Are you sure you want to delete this member?")) return;
-
+  const handleDeleteConfirm = async () => {
     try {
       const { error } = await supabase
         .from("members")
         .delete()
-        .eq("id", memberId);
+        .eq("id", deleteConfirm.memberId);
 
       if (error) throw error;
 
@@ -107,6 +114,11 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue }: MembersTa
         variant: "destructive",
       });
     }
+  };
+
+  const handleMemberClick = (member: Member) => {
+    setViewingMemberId(member.id);
+    setViewingMemberName(member.name);
   };
 
   // Filter by search query
@@ -133,38 +145,23 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue }: MembersTa
     endDate.setHours(0, 0, 0, 0);
     const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     const isExpired = diffDays < 0;
-    const isActive = diffDays > 0 && (subscription.status === "active" || (!isExpired && diffDays > 7));
     const isExpiringSoon = !isExpired && diffDays >= 0 && diffDays <= 7;
 
     switch (filterValue) {
       case "active":
-        // Active members: not expired and more than 7 days remaining
         return !isExpired && diffDays > 7;
-      
       case "expired":
-        // All expired members
         return isExpired || subscription.status === "expired";
-      
       case "expired_recent":
-        // Recently expired (within last 30 days)
         return isExpired && diffDays >= -30;
-      
       case "expiring_soon":
-        // All expiring soon (within 7 days)
         return isExpiringSoon;
-      
       case "expiring_2days":
-        // Expiring within 2 days
         return !isExpired && diffDays >= 0 && diffDays <= 2;
-      
       case "expiring_7days":
-        // Expiring within 7 days
         return !isExpired && diffDays >= 0 && diffDays <= 7;
-      
       case "inactive":
-        // Inactive: no subscription, paused, or expired
         return !subscription || subscription.status === "paused" || isExpired;
-      
       default:
         return true;
     }
@@ -223,7 +220,11 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue }: MembersTa
           </TableHeader>
           <TableBody>
             {filteredMembers.map((member) => (
-              <TableRow key={member.id} className="hover:bg-muted/30">
+              <TableRow 
+                key={member.id} 
+                className="hover:bg-muted/30 cursor-pointer"
+                onClick={() => handleMemberClick(member)}
+              >
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -261,7 +262,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue }: MembersTa
                     <span className="text-muted-foreground">-</span>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -276,7 +277,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue }: MembersTa
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
-                        onClick={() => handleDelete(member.id)}
+                        onClick={() => setDeleteConfirm({ open: true, memberId: member.id, memberName: member.name })}
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
                         Delete Member
@@ -295,6 +296,23 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue }: MembersTa
         onOpenChange={(open) => !open && setEditingMember(null)}
         member={editingMember}
         onSuccess={fetchMembers}
+      />
+
+      <MemberActivityDialog
+        open={!!viewingMemberId}
+        onOpenChange={(open) => !open && setViewingMemberId(null)}
+        memberId={viewingMemberId}
+        memberName={viewingMemberName}
+      />
+
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
+        title="Delete Member"
+        description={`Are you sure you want to delete "${deleteConfirm.memberName}"? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={handleDeleteConfirm}
       />
     </div>
   );

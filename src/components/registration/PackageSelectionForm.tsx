@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Check, Calendar, IndianRupee, Sparkles, User, Dumbbell } from "lucide-react";
@@ -21,10 +20,11 @@ interface CustomPackage {
   price: number;
 }
 
-interface GymSettings {
-  monthly_fee: number;
+interface MonthlyPackage {
+  id: string;
+  months: number;
+  price: number;
   joining_fee: number;
-  monthly_packages: number[];
 }
 
 interface PackageSelectionFormProps {
@@ -55,12 +55,12 @@ const PackageSelectionForm = ({
   isLoading 
 }: PackageSelectionFormProps) => {
   const [packageType, setPackageType] = useState<"monthly" | "custom">("monthly");
-  const [selectedMonths, setSelectedMonths] = useState(3);
+  const [selectedMonthlyPackage, setSelectedMonthlyPackage] = useState<MonthlyPackage | null>(null);
   const [selectedCustomPackage, setSelectedCustomPackage] = useState<CustomPackage | null>(null);
   const [wantsTrainer, setWantsTrainer] = useState(false);
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
 
-  const [settings, setSettings] = useState<GymSettings | null>(null);
+  const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [customPackages, setCustomPackages] = useState<CustomPackage[]>([]);
 
@@ -69,22 +69,18 @@ const PackageSelectionForm = ({
   }, []);
 
   const fetchData = async () => {
-    // Fetch gym settings
-    const { data: settingsData } = await supabase
-      .from("gym_settings")
-      .select("monthly_fee, joining_fee, monthly_packages")
-      .limit(1)
-      .maybeSingle();
+    // Fetch monthly packages with custom pricing
+    const { data: monthlyData } = await supabase
+      .from("monthly_packages")
+      .select("*")
+      .eq("is_active", true)
+      .order("months");
 
-    if (settingsData) {
-      setSettings({
-        monthly_fee: Number(settingsData.monthly_fee),
-        joining_fee: Number(settingsData.joining_fee),
-        monthly_packages: settingsData.monthly_packages || [1, 3, 6, 12],
-      });
-      // Set default selection to first option or 3 if available
-      const packages = settingsData.monthly_packages || [1, 3, 6, 12];
-      setSelectedMonths(packages.includes(3) ? 3 : packages[0]);
+    if (monthlyData && monthlyData.length > 0) {
+      setMonthlyPackages(monthlyData);
+      // Set default selection to 3 months if available, otherwise first
+      const defaultPkg = monthlyData.find((p) => p.months === 3) || monthlyData[0];
+      setSelectedMonthlyPackage(defaultPkg);
     }
 
     // Fetch trainers
@@ -109,27 +105,29 @@ const PackageSelectionForm = ({
     }
   };
 
-  const monthlyFee = settings?.monthly_fee || 500;
-  const joiningFee = isNewMember ? (settings?.joining_fee || 200) : 0;
-  const monthlyPackages = settings?.monthly_packages || [1, 3, 6, 12];
-
   // Calculate amounts
   const isCustom = packageType === "custom" && selectedCustomPackage;
+  
+  // For daily passes, no joining fee
+  const joiningFee = isCustom 
+    ? 0 
+    : (isNewMember && selectedMonthlyPackage ? Number(selectedMonthlyPackage.joining_fee) : 0);
+  
   const subscriptionAmount = isCustom 
     ? selectedCustomPackage!.price 
-    : monthlyFee * selectedMonths;
+    : (selectedMonthlyPackage?.price || 0);
   
   const trainerFee = wantsTrainer && selectedTrainer 
     ? (isCustom 
         ? Math.ceil((selectedTrainer.monthly_fee / 30) * selectedCustomPackage!.duration_days)
-        : selectedTrainer.monthly_fee * selectedMonths)
+        : selectedTrainer.monthly_fee * (selectedMonthlyPackage?.months || 1))
     : 0;
   
   const totalAmount = subscriptionAmount + joiningFee + trainerFee;
 
   const handleSubmit = () => {
     onSubmit({
-      selectedMonths: isCustom ? 0 : selectedMonths,
+      selectedMonths: isCustom ? 0 : (selectedMonthlyPackage?.months || 0),
       selectedTrainer: wantsTrainer ? selectedTrainer : null,
       wantsTrainer,
       isCustomPackage: !!isCustom,
@@ -165,39 +163,49 @@ const PackageSelectionForm = ({
 
           {/* Monthly Packages */}
           <TabsContent value="monthly" className="mt-4">
-            <div className="grid grid-cols-2 gap-3">
-              {monthlyPackages.map((months) => (
-                <button
-                  key={months}
-                  onClick={() => setSelectedMonths(months)}
-                  className={`relative p-4 rounded-xl border-2 transition-all duration-200 ${
-                    selectedMonths === months
-                      ? "border-accent bg-accent/10 shadow-lg"
-                      : "border-border hover:border-accent/50 bg-card"
-                  }`}
-                >
-                  {months === 3 && (
-                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-accent text-accent-foreground text-xs font-bold rounded-full flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" />
-                      Popular
-                    </span>
-                  )}
-                  <div className="text-center">
-                    <div className="text-2xl font-semibold text-foreground">{months}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {months === 1 ? "Month" : "Months"}
-                    </div>
-                    {selectedMonths === months && (
-                      <div className="mt-2 flex justify-center">
-                        <div className="w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-                          <Check className="w-3 h-3 text-accent-foreground" />
-                        </div>
-                      </div>
+            {monthlyPackages.length === 0 ? (
+              <p className="text-center text-muted-foreground py-6">
+                No monthly packages available
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {monthlyPackages.map((pkg) => (
+                  <button
+                    key={pkg.id}
+                    onClick={() => setSelectedMonthlyPackage(pkg)}
+                    className={`relative p-4 rounded-xl border-2 transition-all duration-200 ${
+                      selectedMonthlyPackage?.id === pkg.id
+                        ? "border-accent bg-accent/10 shadow-lg"
+                        : "border-border hover:border-accent/50 bg-card"
+                    }`}
+                  >
+                    {pkg.months === 3 && (
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-accent text-accent-foreground text-xs font-bold rounded-full flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" />
+                        Popular
+                      </span>
                     )}
-                  </div>
-                </button>
-              ))}
-            </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-semibold text-foreground">{pkg.months}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {pkg.months === 1 ? "Month" : "Months"}
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-accent flex items-center justify-center">
+                        <IndianRupee className="w-3 h-3" />
+                        {Number(pkg.price).toLocaleString("en-IN")}
+                      </div>
+                      {selectedMonthlyPackage?.id === pkg.id && (
+                        <div className="mt-2 flex justify-center">
+                          <div className="w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+                            <Check className="w-3 h-3 text-accent-foreground" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Custom/Daily Packages */}
@@ -302,7 +310,7 @@ const PackageSelectionForm = ({
               <Calendar className="w-4 h-4" />
               {isCustom 
                 ? selectedCustomPackage?.name 
-                : `Subscription (${selectedMonths} mo)`
+                : `Subscription (${selectedMonthlyPackage?.months || 0} mo)`
               }
             </span>
             <span className="font-semibold flex items-center">
@@ -358,7 +366,7 @@ const PackageSelectionForm = ({
             size="lg"
             className="flex-1"
             onClick={handleSubmit}
-            disabled={isLoading || (packageType === "custom" && !selectedCustomPackage) || (wantsTrainer && !selectedTrainer)}
+            disabled={isLoading || (packageType === "monthly" && !selectedMonthlyPackage) || (packageType === "custom" && !selectedCustomPackage) || (wantsTrainer && !selectedTrainer)}
           >
             {isLoading ? (
               <div className="flex items-center gap-2">

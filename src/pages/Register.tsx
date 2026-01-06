@@ -15,16 +15,16 @@ const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { initiatePayment, isLoading: isPaymentLoading } = useRazorpay();
-  const { name, phone } = (location.state as { name: string; phone: string }) || {};
+  const { phone } = (location.state as { phone: string }) || {};
   
   const [step, setStep] = useState<Step>("details");
   const [memberDetails, setMemberDetails] = useState<MemberDetailsData | null>(null);
 
   useEffect(() => {
-    if (!name || !phone) {
+    if (!phone) {
       navigate("/");
     }
-  }, [name, phone, navigate]);
+  }, [phone, navigate]);
 
   const handleDetailsSubmit = (data: MemberDetailsData) => {
     setMemberDetails(data);
@@ -32,10 +32,12 @@ const Register = () => {
   };
 
   const handlePackageSubmit = async (packageData: PackageSelectionData) => {
+    if (!memberDetails) return;
+
     // Prepare payment data
     const paymentData = {
       amount: packageData.totalAmount,
-      memberName: name,
+      memberName: memberDetails.fullName,
       memberPhone: phone,
       isNewMember: true,
       months: packageData.isCustomPackage ? 0 : packageData.selectedMonths,
@@ -51,7 +53,7 @@ const Register = () => {
         const endDate = new Date(data.endDate);
         navigate("/success", {
           state: {
-            memberName: name,
+            memberName: memberDetails.fullName,
             phone,
             amount: packageData.totalAmount,
             endDate: endDate.toLocaleDateString("en-IN", {
@@ -75,7 +77,7 @@ const Register = () => {
     });
   };
 
-  if (!name || !phone) return null;
+  if (!phone) return null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -115,16 +117,15 @@ const Register = () => {
       <main className="px-4 pb-8">
         {step === "details" && (
           <MemberDetailsForm
-            memberName={name}
             onSubmit={handleDetailsSubmit}
             onBack={() => navigate("/")}
           />
         )}
 
-        {step === "package" && (
+        {step === "package" && memberDetails && (
           <PackageSelectionForm
             isNewMember={true}
-            memberName={name}
+            memberName={memberDetails.fullName}
             onSubmit={handlePackageSubmit}
             onBack={() => setStep("details")}
             isLoading={isPaymentLoading}
