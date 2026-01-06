@@ -199,6 +199,7 @@ export type Database = {
           member_id: string
           notes: string | null
           payment_mode: Database["public"]["Enums"]["payment_mode"]
+          payment_type: string | null
           razorpay_order_id: string | null
           razorpay_payment_id: string | null
           status: Database["public"]["Enums"]["payment_status"] | null
@@ -211,6 +212,7 @@ export type Database = {
           member_id: string
           notes?: string | null
           payment_mode: Database["public"]["Enums"]["payment_mode"]
+          payment_type?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
           status?: Database["public"]["Enums"]["payment_status"] | null
@@ -223,6 +225,7 @@ export type Database = {
           member_id?: string
           notes?: string | null
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
+          payment_type?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
           status?: Database["public"]["Enums"]["payment_status"] | null
@@ -278,6 +281,60 @@ export type Database = {
         }
         Relationships: []
       }
+      pt_subscriptions: {
+        Row: {
+          created_at: string | null
+          end_date: string
+          id: string
+          member_id: string
+          monthly_fee: number
+          personal_trainer_id: string
+          start_date: string
+          status: string
+          total_fee: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          end_date: string
+          id?: string
+          member_id: string
+          monthly_fee?: number
+          personal_trainer_id: string
+          start_date?: string
+          status?: string
+          total_fee?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          member_id?: string
+          monthly_fee?: number
+          personal_trainer_id?: string
+          start_date?: string
+          status?: string
+          total_fee?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pt_subscriptions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pt_subscriptions_personal_trainer_id_fkey"
+            columns: ["personal_trainer_id"]
+            isOneToOne: false
+            referencedRelation: "personal_trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           created_at: string | null
@@ -288,6 +345,8 @@ export type Database = {
           member_id: string
           personal_trainer_id: string | null
           plan_months: number
+          pt_end_date: string | null
+          pt_start_date: string | null
           start_date: string
           status: Database["public"]["Enums"]["subscription_status"] | null
           trainer_fee: number | null
@@ -302,6 +361,8 @@ export type Database = {
           member_id: string
           personal_trainer_id?: string | null
           plan_months: number
+          pt_end_date?: string | null
+          pt_start_date?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["subscription_status"] | null
           trainer_fee?: number | null
@@ -316,6 +377,8 @@ export type Database = {
           member_id?: string
           personal_trainer_id?: string | null
           plan_months?: number
+          pt_end_date?: string | null
+          pt_start_date?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["subscription_status"] | null
           trainer_fee?: number | null
