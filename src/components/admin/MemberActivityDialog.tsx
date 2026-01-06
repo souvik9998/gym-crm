@@ -192,9 +192,9 @@ export const MemberActivityDialog = ({
               <TabsTrigger value="payments">Payments</TabsTrigger>
             </TabsList>
 
-            <ScrollArea className="flex-1 mt-4">
-              {/* Overview Tab */}
-              <TabsContent value="overview" className="mt-0 space-y-4">
+            {/* Overview Tab */}
+            <TabsContent value="overview" className="mt-4 flex-1 overflow-auto">
+              <div className="space-y-4 pr-2">
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -276,88 +276,96 @@ export const MemberActivityDialog = ({
                     </CardContent>
                   </Card>
                 </div>
-              </TabsContent>
+              </div>
+            </TabsContent>
 
-              {/* Subscriptions Tab */}
-              <TabsContent value="subscriptions" className="mt-0 space-y-3">
-                {subscriptions.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">No subscriptions found</p>
-                ) : (
-                  subscriptions.map((sub) => (
-                    <Card key={sub.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">
-                                {sub.is_custom_package 
-                                  ? `${sub.custom_days} Day Pass` 
-                                  : `${sub.plan_months} Month${sub.plan_months > 1 ? "s" : ""}`}
-                              </span>
-                              {getStatusBadge(sub.status)}
-                            </div>
-                            <div className="text-sm text-muted-foreground space-y-0.5">
-                              <p className="flex items-center gap-2">
-                                <Calendar className="w-3 h-3" />
-                                {formatDate(sub.start_date)} — {formatDate(sub.end_date)}
-                              </p>
-                              {sub.personal_trainer && (
+            {/* Subscriptions Tab */}
+            <TabsContent value="subscriptions" className="mt-4 flex-1 overflow-auto">
+              <ScrollArea className="h-[400px] pr-2">
+                <div className="space-y-3">
+                  {subscriptions.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">No subscriptions found</p>
+                  ) : (
+                    subscriptions.map((sub) => (
+                      <Card key={sub.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  {sub.is_custom_package 
+                                    ? `${sub.custom_days} Day Pass` 
+                                    : `${sub.plan_months} Month${sub.plan_months > 1 ? "s" : ""}`}
+                                </span>
+                                {getStatusBadge(sub.status)}
+                              </div>
+                              <div className="text-sm text-muted-foreground space-y-0.5">
                                 <p className="flex items-center gap-2">
-                                  <Dumbbell className="w-3 h-3" />
-                                  Trainer: {sub.personal_trainer.name}
-                                  {sub.trainer_fee && ` (₹${sub.trainer_fee})`}
+                                  <Calendar className="w-3 h-3" />
+                                  {formatDate(sub.start_date)} — {formatDate(sub.end_date)}
                                 </p>
-                              )}
+                                {sub.personal_trainer && (
+                                  <p className="flex items-center gap-2">
+                                    <Dumbbell className="w-3 h-3" />
+                                    Trainer: {sub.personal_trainer.name}
+                                    {sub.trainer_fee && ` (₹${sub.trainer_fee})`}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </TabsContent>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
 
-              {/* Payments Tab */}
-              <TabsContent value="payments" className="mt-0 space-y-3">
-                {payments.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">No payments found</p>
-                ) : (
-                  payments.map((payment) => (
-                    <Card key={payment.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-muted">
-                              {payment.payment_mode === "cash" ? (
-                                <Banknote className="w-4 h-4 text-success" />
-                              ) : (
-                                <CreditCard className="w-4 h-4 text-accent" />
-                              )}
+            {/* Payments Tab */}
+            <TabsContent value="payments" className="mt-4 flex-1 overflow-auto">
+              <ScrollArea className="h-[400px] pr-2">
+                <div className="space-y-3">
+                  {payments.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">No payments found</p>
+                  ) : (
+                    payments.map((payment) => (
+                      <Card key={payment.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 rounded-lg bg-muted">
+                                {payment.payment_mode === "cash" ? (
+                                  <Banknote className="w-4 h-4 text-success" />
+                                ) : (
+                                  <CreditCard className="w-4 h-4 text-accent" />
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-medium flex items-center gap-1">
+                                  <IndianRupee className="w-4 h-4" />
+                                  {Number(payment.amount).toLocaleString("en-IN")}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {formatDate(payment.created_at)} • {payment.payment_mode}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium flex items-center gap-1">
-                                <IndianRupee className="w-4 h-4" />
-                                {Number(payment.amount).toLocaleString("en-IN")}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {formatDate(payment.created_at)} • {payment.payment_mode}
-                              </p>
+                            <div className="flex items-center gap-2">
+                              {getPaymentStatusIcon(payment.status)}
+                              <span className="text-sm capitalize">{payment.status}</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {getPaymentStatusIcon(payment.status)}
-                            <span className="text-sm capitalize">{payment.status}</span>
-                          </div>
-                        </div>
-                        {payment.notes && (
-                          <p className="mt-2 text-sm text-muted-foreground">{payment.notes}</p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </TabsContent>
-            </ScrollArea>
+                          {payment.notes && (
+                            <p className="mt-2 text-sm text-muted-foreground">{payment.notes}</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
           </Tabs>
         )}
       </DialogContent>
