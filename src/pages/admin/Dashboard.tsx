@@ -333,11 +333,11 @@ const AdminDashboard = () => {
                     </TabsTrigger>
                   </TabsList>
                   {activeTab === "members" && (
-                    <div className="relative flex-1 min-w-[250px]">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <div className="relative flex-1 min-w-[250px] max-w-md group">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
                       <Input
                         placeholder="Search by name or phone..."
-                        className="pl-10"
+                        className="pl-10 h-10 bg-muted/50 border-transparent hover:bg-muted hover:border-border focus:bg-background focus:border-border"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                       />
