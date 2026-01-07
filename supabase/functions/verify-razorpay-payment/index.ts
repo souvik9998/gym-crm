@@ -27,10 +27,11 @@ serve(async (req) => {
       trainerFee,
       gymFee,
       ptStartDate,
+      gymStartDate, // For renewals: the day after existing membership ends
       isNewMember,
     } = await req.json();
 
-    console.log("Verifying payment:", { razorpay_order_id, razorpay_payment_id, memberId, isNewMember, trainerId, months, customDays });
+    console.log("Verifying payment:", { razorpay_order_id, razorpay_payment_id, memberId, isNewMember, trainerId, months, customDays, ptStartDate, gymStartDate });
 
     const RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -83,7 +84,8 @@ serve(async (req) => {
       console.log("Created new member:", finalMemberId);
     }
 
-    const startDate = new Date();
+    // Determine gym start date: for renewals, use gymStartDate (day after existing end); otherwise today
+    const startDate = gymStartDate ? new Date(gymStartDate) : new Date();
     startDate.setHours(0, 0, 0, 0);
 
     // Determine if this is PT-only (extension) or includes gym membership
@@ -209,17 +211,23 @@ serve(async (req) => {
         throw new Error("Failed to verify trainer");
       }
 
-      const ptEndDate = new Date(startDate);
+      // Use provided ptStartDate or default to gym start date
+      const ptStart = ptStartDate ? new Date(ptStartDate) : startDate;
+      ptStart.setHours(0, 0, 0, 0);
+      
+      const ptEndDate = new Date(ptStart);
       ptEndDate.setDate(ptEndDate.getDate() + customDays);
 
       const totalPTFee = typeof trainerFee === "number" ? trainerFee : 0;
+
+      console.log("Creating PT subscription:", { ptStart: ptStart.toISOString().split("T")[0], ptEndDate: ptEndDate.toISOString().split("T")[0], customDays });
 
       const { data: ptSub, error: ptError } = await supabase
         .from("pt_subscriptions")
         .insert({
           member_id: finalMemberId,
           personal_trainer_id: trainerId,
-          start_date: startDate.toISOString().split("T")[0],
+          start_date: ptStart.toISOString().split("T")[0],
           end_date: ptEndDate.toISOString().split("T")[0],
           monthly_fee: trainer.monthly_fee,
           total_fee: totalPTFee,

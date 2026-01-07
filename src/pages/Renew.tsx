@@ -75,6 +75,14 @@ const Renew = () => {
   }, [member, navigate]);
 
   const handlePackageSubmit = (packageData: PackageSelectionData) => {
+    // For renewals: gym starts the day after existing membership ends
+    let gymStart: string | undefined;
+    if (existingMembershipEndDate) {
+      const existingEnd = new Date(existingMembershipEndDate);
+      existingEnd.setDate(existingEnd.getDate() + 1);
+      gymStart = existingEnd.toISOString().split("T")[0];
+    }
+
     initiatePayment({
       amount: packageData.totalAmount,
       memberId: member.id,
@@ -87,6 +95,7 @@ const Renew = () => {
       trainerFee: packageData.trainerFee,
       gymFee: packageData.subscriptionAmount + packageData.joiningFee,
       ptStartDate: packageData.wantsTrainer && ptStartDate ? ptStartDate : undefined,
+      gymStartDate: gymStart,
       onSuccess: (data) => {
         const endDate = new Date(data.endDate);
         navigate("/success", {

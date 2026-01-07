@@ -14,6 +14,7 @@ interface RazorpayOptions {
   trainerFee?: number;
   gymFee?: number;
   ptStartDate?: string;
+  gymStartDate?: string; // For renewals: the day after existing membership ends
   memberDetails?: {
     photoIdType: string;
     photoIdNumber: string;
@@ -66,6 +67,7 @@ export const useRazorpay = () => {
       trainerFee,
       gymFee,
       ptStartDate,
+      gymStartDate,
       memberDetails,
       onSuccess,
       onError,
@@ -143,6 +145,7 @@ export const useRazorpay = () => {
                     trainerFee,
                     gymFee,
                     ptStartDate,
+                    gymStartDate,
                     memberDetails,
                     isNewMember,
                   },
