@@ -51,7 +51,27 @@ interface TrainerStats {
   monthlyRevenue: MonthlyRevenue[];
 }
 
+interface PackageSalesData {
+  month: string;
+  [key: string]: number | string; // Dynamic keys for package names
+}
+
+interface PackageInfo {
+  id: string;
+  label: string;
+  months: number;
+}
+
 const COLORS = ["hsl(var(--accent))", "hsl(var(--primary))", "hsl(var(--success))", "hsl(var(--warning))"];
+
+const PACKAGE_COLORS = [
+  "hsl(var(--accent))",
+  "hsl(var(--primary))", 
+  "hsl(var(--success))",
+  "hsl(var(--warning))",
+  "hsl(142, 76%, 36%)",
+  "hsl(262, 83%, 58%)",
+];
 
 const AdminAnalytics = () => {
   const navigate = useNavigate();
@@ -60,6 +80,8 @@ const AdminAnalytics = () => {
   const [revenueData, setRevenueData] = useState<MonthlyRevenue[]>([]);
   const [memberGrowth, setMemberGrowth] = useState<MemberGrowth[]>([]);
   const [trainerStats, setTrainerStats] = useState<TrainerStats[]>([]);
+  const [packageSalesData, setPackageSalesData] = useState<PackageSalesData[]>([]);
+  const [packageList, setPackageList] = useState<PackageInfo[]>([]);
   const [totals, setTotals] = useState({
     totalRevenue: 0,
     totalMembers: 0,
@@ -241,6 +263,51 @@ const AdminAnalytics = () => {
         });
 
       setTrainerStats(trainerStatsArray);
+
+      // Fetch package sales analytics
+      const { data: monthlyPackages } = await supabase
+        .from("monthly_packages")
+        .select("id, months")
+        .eq("is_active", true)
+        .order("months");
+
+      const { data: subscriptions } = await supabase
+        .from("subscriptions")
+        .select("plan_months, created_at, is_custom_package")
+        .order("created_at", { ascending: true });
+
+      // Build package info list
+      const pkgInfoList: PackageInfo[] = (monthlyPackages || []).map((p) => ({
+        id: p.id,
+        label: `${p.months} ${p.months === 1 ? "Month" : "Months"}`,
+        months: p.months,
+      }));
+      setPackageList(pkgInfoList);
+
+      // Process package sales by month
+      const packageSalesMap: Record<string, Record<string, number>> = {};
+      last6Months.forEach((month) => {
+        packageSalesMap[month] = {};
+        pkgInfoList.forEach((pkg) => {
+          packageSalesMap[month][pkg.label] = 0;
+        });
+      });
+
+      subscriptions?.forEach((sub) => {
+        if (sub.is_custom_package) return; // Skip custom packages
+        const date = new Date(sub.created_at);
+        const monthKey = date.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+        const pkgInfo = pkgInfoList.find((p) => p.months === sub.plan_months);
+        if (packageSalesMap[monthKey] && pkgInfo) {
+          packageSalesMap[monthKey][pkgInfo.label] = (packageSalesMap[monthKey][pkgInfo.label] || 0) + 1;
+        }
+      });
+
+      const packageSalesArray = last6Months.map((month) => ({
+        month,
+        ...packageSalesMap[month],
+      }));
+      setPackageSalesData(packageSalesArray);
 
       // Calculate totals
       const totalRevenue = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
@@ -434,7 +501,50 @@ const AdminAnalytics = () => {
           </Card>
         </div>
 
-        {/* Trainer Performance */}
+        {/* Package Sales Analytics */}
+        {packageSalesData.length > 0 && packageList.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-accent" />
+                Package Sales by Month
+              </CardTitle>
+              <CardDescription>Monthly breakdown of membership packages sold</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={packageSalesData}>
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    {packageList.map((pkg, index) => (
+                      <Bar 
+                        key={pkg.id} 
+                        dataKey={pkg.label} 
+                        fill={PACKAGE_COLORS[index % PACKAGE_COLORS.length]} 
+                        radius={[4, 4, 0, 0]}
+                        stackId="packages"
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+              <div className="flex flex-wrap gap-3 mt-4 justify-center">
+                {packageList.map((pkg, index) => (
+                  <div key={pkg.id} className="flex items-center gap-2 text-sm">
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: PACKAGE_COLORS[index % PACKAGE_COLORS.length] }} 
+                    />
+                    <span className="text-muted-foreground">{pkg.label}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {trainerStats.length > 0 ? (
           <div className="grid md:grid-cols-2 gap-6">
             <Card>
