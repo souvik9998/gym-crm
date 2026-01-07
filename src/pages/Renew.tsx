@@ -21,6 +21,8 @@ const Renew = () => {
   const { initiatePayment, isLoading: isPaymentLoading } = useRazorpay();
   const member = (location.state as { member: Member })?.member;
   const [ptStartDate, setPtStartDate] = useState<string | null>(null);
+  const [existingMembershipEndDate, setExistingMembershipEndDate] = useState<string | null>(null);
+  const [existingPTEndDate, setExistingPTEndDate] = useState<string | null>(null);
 
   useEffect(() => {
     if (!member) {
@@ -28,10 +30,25 @@ const Renew = () => {
       return;
     }
 
-    // Fetch existing active PT subscription to determine PT start date
-    const fetchPTSubscription = async () => {
+    const fetchMemberData = async () => {
       const today = new Date().toISOString().split("T")[0];
       
+      // Fetch existing active gym subscription to get membership end date
+      const { data: activeSubscription } = await supabase
+        .from("subscriptions")
+        .select("end_date")
+        .eq("member_id", member.id)
+        .eq("status", "active")
+        .gte("end_date", today)
+        .order("end_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (activeSubscription) {
+        setExistingMembershipEndDate(activeSubscription.end_date);
+      }
+
+      // Fetch existing active PT subscription to determine PT start date
       const { data: activePT } = await supabase
         .from("pt_subscriptions")
         .select("end_date")
@@ -43,6 +60,7 @@ const Renew = () => {
         .maybeSingle();
 
       if (activePT) {
+        setExistingPTEndDate(activePT.end_date);
         // PT start date should be existing end_date + 1
         const existingEndDate = new Date(activePT.end_date);
         existingEndDate.setDate(existingEndDate.getDate() + 1);
@@ -53,7 +71,7 @@ const Renew = () => {
       }
     };
 
-    fetchPTSubscription();
+    fetchMemberData();
   }, [member, navigate]);
 
   const handlePackageSubmit = (packageData: PackageSelectionData) => {
@@ -68,6 +86,7 @@ const Renew = () => {
       trainerId: packageData.selectedTrainer?.id,
       trainerFee: packageData.trainerFee,
       gymFee: packageData.subscriptionAmount + packageData.joiningFee,
+      ptStartDate: packageData.wantsTrainer && ptStartDate ? ptStartDate : undefined,
       onSuccess: (data) => {
         const endDate = new Date(data.endDate);
         navigate("/success", {
@@ -130,6 +149,8 @@ const Renew = () => {
           onBack={() => navigate("/", { state: { returnToOptions: true, phone: member.phone } })}
           isLoading={isPaymentLoading}
           ptStartDate={ptStartDate || undefined}
+          existingMembershipEndDate={existingMembershipEndDate || undefined}
+          existingPTEndDate={existingPTEndDate || undefined}
         />
       </main>
     </div>
