@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_summary_log: {
+        Row: {
+          created_at: string
+          id: string
+          member_ids: string[]
+          sent_at: string
+          summary_type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          member_ids?: string[]
+          sent_at?: string
+          summary_type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          member_ids?: string[]
+          sent_at?: string
+          summary_type?: string
+        }
+        Relationships: []
+      }
       custom_packages: {
         Row: {
           created_at: string
@@ -421,6 +445,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      whatsapp_notifications: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          member_id: string
+          notification_type: string
+          sent_at: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          member_id: string
+          notification_type: string
+          sent_at?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          member_id?: string
+          notification_type?: string
+          sent_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_notifications_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
