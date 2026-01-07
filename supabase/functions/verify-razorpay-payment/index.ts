@@ -25,10 +25,12 @@ serve(async (req) => {
       customDays,
       trainerId,
       trainerFee,
+      gymFee,
+      ptStartDate,
       isNewMember,
     } = await req.json();
 
-    console.log("Verifying payment:", { razorpay_order_id, razorpay_payment_id, memberId, isNewMember });
+    console.log("Verifying payment:", { razorpay_order_id, razorpay_payment_id, memberId, isNewMember, trainerId, months, customDays });
 
     const RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -84,8 +86,15 @@ serve(async (req) => {
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
 
-    // ---- PT purchase/extension ----
-    if (trainerId && customDays && customDays > 0) {
+    // Determine if this is PT-only (extension) or includes gym membership
+    const isPTOnlyPurchase = trainerId && customDays && customDays > 0 && (!months || months === 0);
+    const isGymWithPT = trainerId && customDays && customDays > 0 && months && months > 0;
+    const isGymOnly = (!trainerId || !customDays) && months && months > 0;
+
+    console.log("Payment type:", { isPTOnlyPurchase, isGymWithPT, isGymOnly });
+
+    // ---- PT-only purchase/extension (no gym membership) ----
+    if (isPTOnlyPurchase) {
       // Fetch trainer monthly fee for recordkeeping
       const { data: trainer, error: trainerError } = await supabase
         .from("personal_trainers")
@@ -98,7 +107,9 @@ serve(async (req) => {
         throw new Error("Failed to verify trainer");
       }
 
-      const endDate = new Date(startDate);
+      // Use provided ptStartDate or default to today
+      const ptStart = ptStartDate ? new Date(ptStartDate) : startDate;
+      const endDate = new Date(ptStart);
       endDate.setDate(endDate.getDate() + customDays);
 
       const totalFee = typeof trainerFee === "number" ? trainerFee : amount;
@@ -108,7 +119,7 @@ serve(async (req) => {
         .insert({
           member_id: finalMemberId,
           personal_trainer_id: trainerId,
-          start_date: startDate.toISOString().split("T")[0],
+          start_date: ptStart.toISOString().split("T")[0],
           end_date: endDate.toISOString().split("T")[0],
           monthly_fee: trainer.monthly_fee,
           total_fee: totalFee,
@@ -122,14 +133,13 @@ serve(async (req) => {
         throw new Error("Failed to create PT subscription");
       }
 
-      // Record payment (linked to member; payments table can't FK pt_subscriptions)
+      // Record payment for PT only
       const { error: paymentError } = await supabase.from("payments").insert({
         member_id: finalMemberId,
         amount: amount,
         payment_mode: "online",
         status: "success",
         payment_type: "pt",
-        notes: `pt_subscription_id:${ptSub.id}`,
         razorpay_order_id: razorpay_order_id,
         razorpay_payment_id: razorpay_payment_id,
       });
@@ -155,7 +165,7 @@ serve(async (req) => {
       );
     }
 
-    // ---- Gym membership purchase/renewal ----
+    // ---- Gym membership with optional PT ----
     if (!months || months <= 0) {
       console.error("Invalid months for membership payment", { months, trainerId, customDays });
       throw new Error("Invalid membership duration");
@@ -164,6 +174,7 @@ serve(async (req) => {
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + months);
 
+    // Create gym subscription
     const { data: subscription, error: subError } = await supabase
       .from("subscriptions")
       .insert({
@@ -183,13 +194,60 @@ serve(async (req) => {
 
     console.log("Created subscription:", subscription.id);
 
+    // If also has PT (Gym + PT), create PT subscription
+    let ptSubscriptionId: string | null = null;
+    if (isGymWithPT) {
+      // Fetch trainer monthly fee for recordkeeping
+      const { data: trainer, error: trainerError } = await supabase
+        .from("personal_trainers")
+        .select("monthly_fee")
+        .eq("id", trainerId)
+        .single();
+
+      if (trainerError || !trainer) {
+        console.error("Error fetching trainer:", trainerError);
+        throw new Error("Failed to verify trainer");
+      }
+
+      const ptEndDate = new Date(startDate);
+      ptEndDate.setDate(ptEndDate.getDate() + customDays);
+
+      const totalPTFee = typeof trainerFee === "number" ? trainerFee : 0;
+
+      const { data: ptSub, error: ptError } = await supabase
+        .from("pt_subscriptions")
+        .insert({
+          member_id: finalMemberId,
+          personal_trainer_id: trainerId,
+          start_date: startDate.toISOString().split("T")[0],
+          end_date: ptEndDate.toISOString().split("T")[0],
+          monthly_fee: trainer.monthly_fee,
+          total_fee: totalPTFee,
+          status: "active",
+        })
+        .select()
+        .single();
+
+      if (ptError) {
+        console.error("Error creating PT subscription:", ptError);
+        throw new Error("Failed to create PT subscription");
+      }
+
+      ptSubscriptionId = ptSub.id;
+      console.log("Created PT subscription:", ptSubscriptionId);
+    }
+
+    // Determine payment type
+    const paymentType = isGymWithPT ? "gym_and_pt" : "membership";
+
+    // Record payment
     const { error: paymentError } = await supabase.from("payments").insert({
       member_id: finalMemberId,
       subscription_id: subscription.id,
       amount: amount,
       payment_mode: "online",
       status: "success",
-      payment_type: "membership",
+      payment_type: paymentType,
       razorpay_order_id: razorpay_order_id,
       razorpay_payment_id: razorpay_payment_id,
     });
@@ -199,13 +257,14 @@ serve(async (req) => {
       throw new Error("Failed to record payment");
     }
 
-    console.log("Membership payment recorded successfully");
+    console.log("Membership payment recorded successfully, type:", paymentType);
 
     return new Response(
       JSON.stringify({
         success: true,
         memberId: finalMemberId,
         subscriptionId: subscription.id,
+        ptSubscriptionId: ptSubscriptionId,
         endDate: endDate.toISOString().split("T")[0],
       }),
       {

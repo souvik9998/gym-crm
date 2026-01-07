@@ -12,6 +12,8 @@ interface RazorpayOptions {
   customDays?: number;
   trainerId?: string;
   trainerFee?: number;
+  gymFee?: number;
+  ptStartDate?: string;
   memberDetails?: {
     photoIdType: string;
     photoIdNumber: string;
@@ -62,6 +64,8 @@ export const useRazorpay = () => {
       customDays,
       trainerId,
       trainerFee,
+      gymFee,
+      ptStartDate,
       memberDetails,
       onSuccess,
       onError,
@@ -137,6 +141,8 @@ export const useRazorpay = () => {
                     customDays,
                     trainerId,
                     trainerFee,
+                    gymFee,
+                    ptStartDate,
                     memberDetails,
                     isNewMember,
                   },

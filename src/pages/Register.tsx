@@ -41,9 +41,10 @@ const Register = () => {
       memberPhone: phone,
       isNewMember: true,
       months: packageData.isCustomPackage ? 0 : packageData.selectedMonths,
-      customDays: packageData.customPackage?.duration_days,
+      customDays: packageData.wantsTrainer && packageData.ptDays ? packageData.ptDays : packageData.customPackage?.duration_days,
       trainerId: packageData.selectedTrainer?.id,
       trainerFee: packageData.trainerFee,
+      gymFee: packageData.subscriptionAmount + packageData.joiningFee,
       memberDetails: memberDetails,
     };
 
