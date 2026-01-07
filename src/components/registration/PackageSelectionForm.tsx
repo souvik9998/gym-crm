@@ -44,6 +44,8 @@ interface PackageSelectionFormProps {
   onBack: () => void;
   isLoading: boolean;
   ptStartDate?: string; // For existing members with active PT, this is end_date + 1
+  existingMembershipEndDate?: string; // For renewals - the current gym membership end date
+  existingPTEndDate?: string; // For renewals - the current PT end date (if any)
 }
 
 export interface PackageSelectionData {
@@ -66,7 +68,9 @@ const PackageSelectionForm = ({
   onSubmit, 
   onBack,
   isLoading,
-  ptStartDate 
+  ptStartDate,
+  existingMembershipEndDate,
+  existingPTEndDate 
 }: PackageSelectionFormProps) => {
   const [packageType, setPackageType] = useState<"monthly" | "custom">("monthly");
   const [selectedMonthlyPackage, setSelectedMonthlyPackage] = useState<MonthlyPackage | null>(null);
@@ -259,6 +263,11 @@ const PackageSelectionForm = ({
       ptEndDate: wantsTrainer && selectedPTOption ? format(selectedPTOption.endDate, "yyyy-MM-dd") : undefined,
     });
   };
+  // Parse existing dates for display
+  const parsedExistingMembershipEndDate = existingMembershipEndDate ? new Date(existingMembershipEndDate) : null;
+  const parsedExistingPTEndDate = existingPTEndDate ? new Date(existingPTEndDate) : null;
+  const parsedPtStartDate = ptStartDate ? new Date(ptStartDate) : null;
+
   return (
     <Card className="max-w-md mx-auto border">
       <CardHeader className="pb-4">
@@ -266,6 +275,37 @@ const PackageSelectionForm = ({
         <CardDescription>
           {isNewMember ? "Welcome" : "Welcome back"}, {memberName}! Choose your membership plan
         </CardDescription>
+        
+        {/* Show existing membership info for renewals */}
+        {!isNewMember && parsedExistingMembershipEndDate && (
+          <div className="space-y-2 mt-3">
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                Current gym membership ends:{" "}
+                <span className="font-semibold text-foreground">
+                  {format(parsedExistingMembershipEndDate, "d MMMM yyyy")}
+                </span>
+              </span>
+            </div>
+            {parsedExistingPTEndDate && (
+              <div className="flex items-center gap-2 p-3 bg-accent/10 rounded-lg border border-accent/20">
+                <Dumbbell className="w-4 h-4 text-accent" />
+                <span className="text-sm text-muted-foreground">
+                  Current PT ends:{" "}
+                  <span className="font-semibold text-accent">
+                    {format(parsedExistingPTEndDate, "d MMMM yyyy")}
+                  </span>
+                  {parsedPtStartDate && (
+                    <span className="text-xs text-muted-foreground ml-1">
+                      (New PT starts {format(parsedPtStartDate, "d MMM yyyy")})
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Package Type Selection */}
@@ -517,16 +557,23 @@ const PackageSelectionForm = ({
           )}
 
           {wantsTrainer && selectedTrainer && selectedPTOption && trainerFee > 0 && (
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground flex items-center gap-2">
-                <Dumbbell className="w-4 h-4" />
-                {selectedTrainer.name} ({selectedPTOption.days}d)
-              </span>
-              <span className="font-semibold flex items-center">
-                <IndianRupee className="w-4 h-4" />
-                {trainerFee.toLocaleString("en-IN")}
-              </span>
-            </div>
+            <>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground flex items-center gap-2">
+                  <Dumbbell className="w-4 h-4" />
+                  {selectedTrainer.name} ({selectedPTOption.days}d)
+                </span>
+                <span className="font-semibold flex items-center">
+                  <IndianRupee className="w-4 h-4" />
+                  {trainerFee.toLocaleString("en-IN")}
+                </span>
+              </div>
+              {parsedPtStartDate && (
+                <div className="text-xs text-muted-foreground">
+                  PT: {format(parsedPtStartDate, "d MMM yyyy")} → {format(selectedPTOption.endDate, "d MMM yyyy")}
+                </div>
+              )}
+            </>
           )}
 
           <div className="border-t border-border pt-3">
