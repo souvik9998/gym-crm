@@ -349,41 +349,53 @@ const PackageSelectionForm = ({
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-3">
-                {monthlyPackages.map((pkg) => (
-                  <button
-                    key={pkg.id}
-                    onClick={() => setSelectedMonthlyPackage(pkg)}
-                    className={`relative p-4 rounded-xl border-2 transition-all duration-200 ${
-                      selectedMonthlyPackage?.id === pkg.id
-                        ? "border-accent bg-accent/10 shadow-lg"
-                        : "border-border hover:border-accent/50 bg-card"
-                    }`}
-                  >
-                    {pkg.months === 3 && (
-                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-accent text-accent-foreground text-xs font-bold rounded-full flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" />
-                        Popular
-                      </span>
-                    )}
-                    <div className="text-center">
-                      <div className="text-2xl font-semibold text-foreground">{pkg.months}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {pkg.months === 1 ? "Month" : "Months"}
-                      </div>
-                      <div className="mt-1 text-sm font-semibold text-accent flex items-center justify-center">
-                        <IndianRupee className="w-3 h-3" />
-                        {Number(pkg.price).toLocaleString("en-IN")}
-                      </div>
-                      {selectedMonthlyPackage?.id === pkg.id && (
-                        <div className="mt-2 flex justify-center">
-                          <div className="w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-                            <Check className="w-3 h-3 text-accent-foreground" />
-                          </div>
-                        </div>
+                {monthlyPackages.map((pkg) => {
+                  // Calculate end date for this specific package
+                  const startDate = existingMembershipEndDate 
+                    ? new Date(existingMembershipEndDate) 
+                    : new Date();
+                  startDate.setHours(0, 0, 0, 0);
+                  const pkgEndDate = addMonths(startDate, pkg.months);
+                  
+                  return (
+                    <button
+                      key={pkg.id}
+                      onClick={() => setSelectedMonthlyPackage(pkg)}
+                      className={`relative p-4 rounded-xl border-2 transition-all duration-200 ${
+                        selectedMonthlyPackage?.id === pkg.id
+                          ? "border-accent bg-accent/10 shadow-lg"
+                          : "border-border hover:border-accent/50 bg-card"
+                      }`}
+                    >
+                      {pkg.months === 3 && (
+                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-accent text-accent-foreground text-xs font-bold rounded-full flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" />
+                          Popular
+                        </span>
                       )}
-                    </div>
-                  </button>
-                ))}
+                      <div className="text-center">
+                        <div className="text-2xl font-semibold text-foreground">{pkg.months}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {pkg.months === 1 ? "Month" : "Months"}
+                        </div>
+                        <div className="mt-1 text-sm font-semibold text-accent flex items-center justify-center">
+                          <IndianRupee className="w-3 h-3" />
+                          {Number(pkg.price).toLocaleString("en-IN")}
+                        </div>
+                        <div className="mt-1.5 text-[10px] text-muted-foreground">
+                          Ends: {format(pkgEndDate, "d MMM yyyy")}
+                        </div>
+                        {selectedMonthlyPackage?.id === pkg.id && (
+                          <div className="mt-2 flex justify-center">
+                            <div className="w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+                              <Check className="w-3 h-3 text-accent-foreground" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </TabsContent>
