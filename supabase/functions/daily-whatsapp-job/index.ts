@@ -11,32 +11,75 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const WATI_API_KEY = Deno.env.get("WATI_API_KEY");
-    const WATI_ENDPOINT = Deno.env.get("WATI_ENDPOINT");
+    /* =======================
+       ENV VARIABLES
+    ======================= */
+    const WATI_API_KEY = Deno.env.get("WATI_API_KEY"); // MUST include "Bearer ..."
+    const WATI_ENDPOINT = Deno.env.get("WATI_ENDPOINT"); // https://app-server.wati.io
     const ADMIN_WHATSAPP_NUMBER = Deno.env.get("ADMIN_WHATSAPP_NUMBER");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!WATI_API_KEY || !WATI_ENDPOINT) {
-      throw new Error("WATI credentials not configured");
+    if (!WATI_API_KEY || !WATI_ENDPOINT || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Missing environment variables");
     }
 
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
-    
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    /* =======================
+       DATE HELPERS
+    ======================= */
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split("T")[0];
-    
-    const sevenDaysFromNow = new Date(today);
-    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-    const sevenDaysStr = sevenDaysFromNow.toISOString().split("T")[0];
 
-    // Check if daily job already ran today (idempotency)
+    const todayStr = today.toISOString().split("T")[0];
+
+    const sevenDays = new Date(today);
+    sevenDays.setDate(sevenDays.getDate() + 7);
+    const sevenDaysStr = sevenDays.toISOString().split("T")[0];
+
     const startOfDay = new Date(today);
     const endOfDay = new Date(today);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const { data: existingRun } = await supabase
+    /* =======================
+       WATI TEMPLATE SENDER
+    ======================= */
+    const sendTemplateMessage = async (phone: string, templateName: string, parameters: Record<string, string>) => {
+      let formattedPhone = phone.replace(/\D/g, "");
+      if (formattedPhone.length === 10) {
+        formattedPhone = `91${formattedPhone}`;
+      }
+      if (formattedPhone.length !== 12) {
+        throw new Error("Invalid phone number format");
+      }
+
+      const res = await fetch(`${WATI_ENDPOINT}/api/v1/sendTemplateMessage`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // IMPORTANT: token already has Bearer
+          Authorization: WATI_API_KEY,
+        },
+        body: JSON.stringify({
+          phone: formattedPhone,
+          template_name: templateName,
+          parameters,
+        }),
+      });
+
+      const data = await res.json();
+      console.log("WATI RESPONSE:", data);
+
+      if (!res.ok || data.result === false) {
+        throw new Error(data.message || "WATI send failed");
+      }
+    };
+
+    /* =======================
+       PREVENT DUPLICATE DAILY RUN
+    ======================= */
+    const { data: alreadyRun } = await supabase
       .from("admin_summary_log")
       .select("id")
       .eq("summary_type", "daily_expiring")
@@ -44,219 +87,95 @@ Deno.serve(async (req) => {
       .lte("sent_at", endOfDay.toISOString())
       .limit(1);
 
-    if (existingRun && existingRun.length > 0) {
+    if (alreadyRun && alreadyRun.length > 0) {
       return new Response(
-        JSON.stringify({ success: true, message: "Daily job already ran today", skipped: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          success: true,
+          skipped: true,
+          message: "Already ran today",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Refresh subscription statuses first
-    await supabase.rpc("refresh_subscription_statuses");
-
-    const results = {
-      expiring7Days: { sent: 0, failed: 0 },
-      expiringToday: { sent: 0, failed: 0 },
-      adminSummary: { sent: false, error: null as string | null },
-    };
-
-    // 1. Get members expiring in 7 days
-    const { data: expiring7DaysData } = await supabase
+    /* =======================
+       FETCH MEMBERS
+    ======================= */
+    const { data: expiring7Days } = await supabase
       .from("subscriptions")
       .select("member_id, end_date, members!inner(id, name, phone)")
       .eq("end_date", sevenDaysStr)
-      .not("status", "eq", "expired");
+      .neq("status", "expired");
 
-    // 2. Get members expiring today
-    const { data: expiringTodayData } = await supabase
+    const { data: expiringToday } = await supabase
       .from("subscriptions")
       .select("member_id, end_date, members!inner(id, name, phone)")
       .eq("end_date", todayStr)
-      .not("status", "eq", "expired");
+      .neq("status", "expired");
 
-    // Get already notified members today
-    const { data: todayNotifications } = await supabase
-      .from("whatsapp_notifications")
-      .select("member_id, notification_type")
-      .gte("sent_at", startOfDay.toISOString())
-      .lte("sent_at", endOfDay.toISOString());
-
-    const notifiedToday = {
-      expiring_7days: new Set(todayNotifications?.filter(n => n.notification_type === "expiring_7days").map(n => n.member_id) || []),
-      expiring_today: new Set(todayNotifications?.filter(n => n.notification_type === "expiring_today").map(n => n.member_id) || []),
-    };
-
-    // Helper function to send WhatsApp message
-    const sendWhatsApp = async (phone: string, message: string): Promise<boolean> => {
-      let formattedPhone = phone.replace(/\D/g, "");
-      if (formattedPhone.startsWith("91") && formattedPhone.length === 12) {
-        formattedPhone = formattedPhone.substring(2);
-      }
-      if (formattedPhone.length !== 10) {
-        throw new Error("Invalid phone number");
-      }
-
-      const response = await fetch(`${WATI_ENDPOINT}/api/v1/sendSessionMessage/91${formattedPhone}`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${WATI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ messageText: message }),
+    /* =======================
+       SEND MEMBER MESSAGES
+    ======================= */
+    for (const sub of expiring7Days || []) {
+      const member = sub.members as any;
+      await sendTemplateMessage(member.phone, "member_expiring", {
+        name: member.name,
+        days: "7",
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`WATI API error: ${errorText}`);
-      }
-      return true;
-    };
-
-    // Send 7-day expiring notifications
-    for (const sub of expiring7DaysData || []) {
-      const member = sub.members as any;
-      if (notifiedToday.expiring_7days.has(member.id)) continue;
-
-      try {
-        const endDate = new Date(sub.end_date).toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        });
-        const message = `Hi ${member.name}! 🏋️\n\nYour Pro Plus Fitness membership is expiring on ${endDate} (in 7 days).\n\nRenew now to continue your fitness journey without interruption!\n\nVisit us or renew online today.`;
-        
-        await sendWhatsApp(member.phone, message);
-        
-        await supabase.from("whatsapp_notifications").insert({
-          member_id: member.id,
-          notification_type: "expiring_7days",
-          status: "sent",
-        });
-        results.expiring7Days.sent++;
-      } catch (error: any) {
-        console.error(`Failed to send to ${member.name}:`, error);
-        await supabase.from("whatsapp_notifications").insert({
-          member_id: member.id,
-          notification_type: "expiring_7days",
-          status: "failed",
-          error_message: error.message,
-        });
-        results.expiring7Days.failed++;
-      }
+      await supabase.from("whatsapp_notifications").insert({
+        member_id: member.id,
+        notification_type: "expiring_7days",
+        status: "sent",
+      });
     }
 
-    // Send expiring today notifications
-    for (const sub of expiringTodayData || []) {
+    for (const sub of expiringToday || []) {
       const member = sub.members as any;
-      if (notifiedToday.expiring_today.has(member.id)) continue;
+      await sendTemplateMessage(member.phone, "member_expired", {
+        name: member.name,
+      });
 
-      try {
-        const endDate = new Date(sub.end_date).toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        });
-        const message = `Hi ${member.name}! ⚠️\n\nYour Pro Plus Fitness membership expires TODAY (${endDate})!\n\nDon't miss a single workout - renew now to keep your membership active.\n\nWe're here to help you stay fit!`;
-        
-        await sendWhatsApp(member.phone, message);
-        
-        await supabase.from("whatsapp_notifications").insert({
-          member_id: member.id,
-          notification_type: "expiring_today",
-          status: "sent",
-        });
-        results.expiringToday.sent++;
-      } catch (error: any) {
-        console.error(`Failed to send to ${member.name}:`, error);
-        await supabase.from("whatsapp_notifications").insert({
-          member_id: member.id,
-          notification_type: "expiring_today",
-          status: "failed",
-          error_message: error.message,
-        });
-        results.expiringToday.failed++;
-      }
+      await supabase.from("whatsapp_notifications").insert({
+        member_id: member.id,
+        notification_type: "expiring_today",
+        status: "sent",
+      });
     }
 
-    // 3. Send admin summary
+    /* =======================
+       ADMIN SUMMARY
+    ======================= */
     if (ADMIN_WHATSAPP_NUMBER) {
-      try {
-        // Get expired members (check every 2 days to avoid duplicates)
-        const twoDaysAgo = new Date(today);
-        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-        
-        const { data: lastExpiredSummary } = await supabase
-          .from("admin_summary_log")
-          .select("sent_at")
-          .eq("summary_type", "expired_members")
-          .order("sent_at", { ascending: false })
-          .limit(1);
+      const expiringNames = expiringToday?.map((s) => (s.members as any).name) || [];
 
-        const shouldSendExpiredSummary = !lastExpiredSummary || 
-          lastExpiredSummary.length === 0 || 
-          new Date(lastExpiredSummary[0].sent_at) < twoDaysAgo;
+      const { data: expiredData } = await supabase
+        .from("subscriptions")
+        .select("members!inner(name)")
+        .eq("status", "expired")
+        .lt("end_date", todayStr);
 
-        // Collect expiring today names
-        const expiringTodayNames = (expiringTodayData || []).map(s => (s.members as any).name);
-        
-        // Collect expired names if needed
-        let expiredNames: string[] = [];
-        if (shouldSendExpiredSummary) {
-          const { data: expiredData } = await supabase
-            .from("subscriptions")
-            .select("member_id, members!inner(name)")
-            .eq("status", "expired")
-            .lt("end_date", todayStr);
+      const expiredNames = [...new Set((expiredData || []).map((s) => (s.members as any).name))];
 
-          expiredNames = [...new Set((expiredData || []).map(s => (s.members as any).name))];
-        }
+      await sendTemplateMessage(ADMIN_WHATSAPP_NUMBER, "admin_daily_summary", {
+        expiring_list: expiringNames.join(", ") || "None",
+        expired_list: expiredNames.join(", ") || "None",
+      });
 
-        // Build admin summary message
-        let adminMessage = `📊 *Pro Plus Fitness - Daily Summary*\n\n📅 ${today.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}\n\n`;
-        
-        if (expiringTodayNames.length > 0) {
-          adminMessage += `⚠️ *Expiring Today (${expiringTodayNames.length}):*\n${expiringTodayNames.map(n => `• ${n}`).join("\n")}\n\n`;
-        } else {
-          adminMessage += `✅ No memberships expiring today.\n\n`;
-        }
-
-        if (shouldSendExpiredSummary && expiredNames.length > 0) {
-          adminMessage += `❌ *Expired Members (${expiredNames.length}):*\n${expiredNames.slice(0, 20).map(n => `• ${n}`).join("\n")}`;
-          if (expiredNames.length > 20) {
-            adminMessage += `\n...and ${expiredNames.length - 20} more`;
-          }
-        }
-
-        await sendWhatsApp(ADMIN_WHATSAPP_NUMBER, adminMessage);
-        results.adminSummary.sent = true;
-
-        // Log admin summary
-        await supabase.from("admin_summary_log").insert({
-          summary_type: "daily_expiring",
-          member_ids: (expiringTodayData || []).map(s => s.member_id),
-        });
-
-        if (shouldSendExpiredSummary && expiredNames.length > 0) {
-          await supabase.from("admin_summary_log").insert({
-            summary_type: "expired_members",
-            member_ids: [],
-          });
-        }
-      } catch (error: any) {
-        console.error("Failed to send admin summary:", error);
-        results.adminSummary.error = error.message;
-      }
+      await supabase.from("admin_summary_log").insert({
+        summary_type: "daily_expiring",
+        member_ids: expiringToday?.map((s) => s.member_id) || [],
+      });
     }
 
-    return new Response(
-      JSON.stringify({ success: true, results }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (error: any) {
-    console.error("Error in daily-whatsapp-job:", error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err: any) {
+    console.error("EDGE FUNCTION ERROR:", err);
+    return new Response(JSON.stringify({ success: false, error: err.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
