@@ -93,6 +93,8 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
   // Member's current subscription end date (for PT duration calculation)
   const [membershipEndDate, setMembershipEndDate] = useState<Date | null>(null);
   const [gymEndDate, setGymEndDate] = useState<Date | null>(null);
+  // Existing PT end date for calculating PT start date
+  const [existingPTEndDate, setExistingPTEndDate] = useState<Date | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -108,6 +110,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
       setPtCustomAmount("");
       setMembershipEndDate(null);
       setGymEndDate(null);
+      setExistingPTEndDate(null);
     }
   }, [open]);
 
@@ -182,7 +185,8 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
   };
 
   const fetchMembershipEndDate = async (memberId: string) => {
-    const { data } = await supabase
+    // Fetch gym membership end date
+    const { data: gymData } = await supabase
       .from("subscriptions")
       .select("end_date")
       .eq("member_id", memberId)
@@ -190,12 +194,32 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
       .limit(1)
       .maybeSingle();
 
-    if (data) {
-      const endDate = new Date(data.end_date);
+    if (gymData) {
+      const endDate = new Date(gymData.end_date);
       endDate.setHours(23, 59, 59, 999);
       setMembershipEndDate(endDate);
     } else {
       setMembershipEndDate(null);
+    }
+
+    // Fetch existing PT end date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const { data: ptData } = await supabase
+      .from("pt_subscriptions")
+      .select("end_date")
+      .eq("member_id", memberId)
+      .gte("end_date", today.toISOString().split("T")[0])
+      .order("end_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (ptData) {
+      const ptEnd = new Date(ptData.end_date);
+      ptEnd.setHours(23, 59, 59, 999);
+      setExistingPTEndDate(ptEnd);
+    } else {
+      setExistingPTEndDate(null);
     }
   };
 
@@ -229,12 +253,24 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
     calculateGymEndDate();
   }, [member, selectedPackage]);
 
+  // Calculate PT start date: day after existing PT ends, or today if no active PT
+  const ptStartDate = useMemo((): Date => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (existingPTEndDate && existingPTEndDate >= today) {
+      const nextDay = new Date(existingPTEndDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      nextDay.setHours(0, 0, 0, 0);
+      return nextDay;
+    }
+    return today;
+  }, [existingPTEndDate]);
+
   // Generate PT duration options (similar to ExtendPT.tsx and PackageSelectionForm.tsx)
   const ptDurationOptions = useMemo((): PTDurationOption[] => {
     if (!selectedTrainer || !member) return [];
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const options: PTDurationOption[] = [];
     const dailyRate = selectedTrainer.monthly_fee / 30;
 
@@ -258,11 +294,11 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
       return [];
     }
 
-    // Generate 1-month, 2-month, 3-month options (similar to user form)
+    // Generate 1-month, 2-month, 3-month options starting from ptStartDate
     for (let months = 1; months <= 3; months++) {
-      const optionEndDate = addMonths(today, months);
+      const optionEndDate = addMonths(ptStartDate, months);
       const isValid = isBefore(optionEndDate, membershipEndConstraint!) || optionEndDate.getTime() === membershipEndConstraint!.getTime();
-      const days = differenceInDays(optionEndDate, today);
+      const days = differenceInDays(optionEndDate, ptStartDate);
       const fee = Math.ceil(dailyRate * days);
 
       options.push({
@@ -275,7 +311,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
     }
 
     // Add "Till Membership End" option if different from existing options
-    const daysToMembershipEnd = differenceInDays(membershipEndConstraint, today);
+    const daysToMembershipEnd = differenceInDays(membershipEndConstraint, ptStartDate);
     const existingMatchingOption = options.find(
       (opt) => opt.isValid && Math.abs(differenceInDays(opt.endDate, membershipEndConstraint!)) <= 1
     );
@@ -283,7 +319,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
     if (!existingMatchingOption && daysToMembershipEnd > 0) {
       const fee = Math.ceil(dailyRate * daysToMembershipEnd);
       options.push({
-        label: `Till ${format(membershipEndConstraint, "d MMM yyyy")}`,
+        label: `Till Gym End (${format(membershipEndConstraint, "d MMM yyyy")})`,
         endDate: membershipEndConstraint,
         days: daysToMembershipEnd,
         fee,
@@ -292,7 +328,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
     }
 
     return options;
-  }, [selectedTrainer, paymentType, membershipEndDate, gymEndDate, member]);
+  }, [selectedTrainer, paymentType, membershipEndDate, gymEndDate, member, ptStartDate]);
 
   // Auto-select PT option when trainer or payment type changes
   useEffect(() => {
@@ -401,15 +437,13 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
 
       // Create PT subscription if needed
       if (paymentType === "gym_and_pt" || paymentType === "pt_only") {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
         const ptEndDate = new Date(selectedPTOption!.endDate);
         ptEndDate.setHours(23, 59, 59, 999);
 
         await supabase.from("pt_subscriptions").insert({
           member_id: member.id,
           personal_trainer_id: selectedTrainerId,
-          start_date: today.toISOString().split("T")[0],
+          start_date: ptStartDate.toISOString().split("T")[0],
           end_date: ptEndDate.toISOString().split("T")[0],
           monthly_fee: selectedTrainer!.monthly_fee,
           total_fee: ptAmount, // Use custom amount if provided, otherwise use calculated fee
@@ -536,6 +570,22 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                           ))}
                         </SelectContent>
                       </Select>
+                      
+                      {/* Display effective gym end date */}
+                      {gymEndDate && (
+                        <div className="p-3 bg-accent/10 border border-accent/20 rounded-lg">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="w-4 h-4 text-accent" />
+                            <span className="text-muted-foreground">New gym membership ends:</span>
+                            <span className="font-medium text-accent">{format(gymEndDate, "d MMMM yyyy")}</span>
+                          </div>
+                          {membershipEndDate && (
+                            <p className="text-xs text-muted-foreground mt-1 ml-6">
+                              Current ends: {format(membershipEndDate, "d MMM yyyy")}
+                            </p>
+                          )}
+                        </div>
+                      )}
               </div>
 
               <div className="space-y-2">
@@ -604,14 +654,27 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                           <>
                             <div className="space-y-2">
                               <Label>PT Duration</Label>
-                              {(paymentType === "pt_only" && membershipEndDate) || (paymentType === "gym_and_pt" && gymEndDate) ? (
-                                <div className="p-2 bg-muted/50 rounded-lg text-xs text-muted-foreground">
-                                  {paymentType === "gym_and_pt" 
-                                    ? `Gym membership ends: ${format(gymEndDate!, "d MMM yyyy")}`
-                                    : `Gym membership ends: ${format(membershipEndDate!, "d MMM yyyy")}`
-                                  }
-                                </div>
-                              ) : null}
+                              {/* Show existing PT and gym membership info */}
+                              <div className="p-3 bg-muted/50 rounded-lg space-y-1">
+                                {existingPTEndDate && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Current PT ends: <span className="font-medium">{format(existingPTEndDate, "d MMM yyyy")}</span>
+                                  </p>
+                                )}
+                                <p className="text-xs text-muted-foreground">
+                                  PT starts: <span className="font-medium text-accent">{format(ptStartDate, "d MMM yyyy")}</span>
+                                </p>
+                                {(paymentType === "pt_only" && membershipEndDate) || (paymentType === "gym_and_pt" && gymEndDate) ? (
+                                  <p className="text-xs text-muted-foreground">
+                                    Gym membership ends: <span className="font-medium">
+                                      {paymentType === "gym_and_pt" 
+                                        ? format(gymEndDate!, "d MMM yyyy")
+                                        : format(membershipEndDate!, "d MMM yyyy")
+                                      }
+                                    </span>
+                                  </p>
+                                ) : null}
+                              </div>
                               <div className="space-y-2">
                                 {ptDurationOptions.map((option, idx) => (
                                   <button
