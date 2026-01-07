@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Send } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,6 +68,8 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null);
+  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
+  const [sendingBulkWhatsApp, setSendingBulkWhatsApp] = useState(false);
 
   useEffect(() => {
     fetchMembers();
@@ -185,6 +188,69 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
       });
     } finally {
       setSendingWhatsApp(null);
+    }
+  };
+
+  const handleBulkWhatsApp = async () => {
+    if (selectedMembers.size === 0) return;
+    
+    setSendingBulkWhatsApp(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            memberIds: Array.from(selectedMembers),
+            type: "manual",
+          }),
+        }
+      );
+
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({ 
+          title: `WhatsApp sent to ${data.sent} members`,
+          description: data.failed > 0 ? `${data.failed} failed` : undefined,
+        });
+        setSelectedMembers(new Set());
+      } else {
+        throw new Error(data.error || "Failed to send WhatsApp");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Failed to send bulk WhatsApp",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSendingBulkWhatsApp(false);
+    }
+  };
+
+  const toggleMemberSelection = (memberId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedMembers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(memberId)) {
+        newSet.delete(memberId);
+      } else {
+        newSet.add(memberId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedMembers.size === sortedMembers.length) {
+      setSelectedMembers(new Set());
+    } else {
+      setSelectedMembers(new Set(sortedMembers.map(m => m.id)));
     }
   };
 
@@ -366,11 +432,44 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-3">
+      {/* Bulk action bar */}
+      {selectedMembers.size > 0 && (
+        <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
+          <span className="text-sm font-medium">
+            {selectedMembers.size} member{selectedMembers.size > 1 ? "s" : ""} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedMembers(new Set())}
+            >
+              Clear
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleBulkWhatsApp}
+              disabled={sendingBulkWhatsApp}
+              className="gap-2"
+            >
+              <Send className="w-4 h-4" />
+              {sendingBulkWhatsApp ? "Sending..." : "Send WhatsApp"}
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="rounded-lg border overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={selectedMembers.size === sortedMembers.length && sortedMembers.length > 0}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Select all"
+                />
+              </TableHead>
               <TableHead className="font-semibold">
                 <Button
                   variant="ghost"
@@ -459,9 +558,29 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
             {sortedMembers.map((member) => (
               <TableRow 
                 key={member.id} 
-                className="hover:bg-muted/30 cursor-pointer"
+                className={cn(
+                  "hover:bg-muted/30 cursor-pointer",
+                  selectedMembers.has(member.id) && "bg-primary/5"
+                )}
                 onClick={() => handleMemberClick(member)}
               >
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedMembers.has(member.id)}
+                    onCheckedChange={() => {
+                      setSelectedMembers(prev => {
+                        const newSet = new Set(prev);
+                        if (newSet.has(member.id)) {
+                          newSet.delete(member.id);
+                        } else {
+                          newSet.add(member.id);
+                        }
+                        return newSet;
+                      });
+                    }}
+                    aria-label={`Select ${member.name}`}
+                  />
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
