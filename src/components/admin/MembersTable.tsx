@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,6 +66,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
   });
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+  const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMembers();
@@ -147,6 +148,44 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
   const handleMemberClick = (member: Member) => {
     setViewingMemberId(member.id);
     setViewingMemberName(member.name);
+  };
+
+  const handleSendWhatsApp = async (member: Member, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSendingWhatsApp(member.id);
+    
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            memberIds: [member.id],
+            type: "manual",
+          }),
+        }
+      );
+
+      const data = await response.json();
+      
+      if (data.success && data.sent > 0) {
+        toast({ title: `WhatsApp sent to ${member.name}` });
+      } else {
+        throw new Error(data.error || "Failed to send WhatsApp");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Failed to send WhatsApp",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSendingWhatsApp(null);
+    }
   };
 
   // Filter by search query
@@ -482,6 +521,14 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={(e) => handleSendWhatsApp(member, e)}
+                        disabled={sendingWhatsApp === member.id}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        {sendingWhatsApp === member.id ? "Sending..." : "Send WhatsApp"}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => setEditingMember(member)}>
                         <Pencil className="w-4 h-4 mr-2" />
                         Edit Member

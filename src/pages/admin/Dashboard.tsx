@@ -19,6 +19,7 @@ import {
   History,
   Settings,
   BarChart3,
+  MessageCircle,
 } from "lucide-react";
 import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
@@ -59,6 +60,7 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("members");
   const [memberFilter, setMemberFilter] = useState<MemberFilterValue>("all");
   const [ptFilterActive, setPtFilterActive] = useState(false);
+  const [isSendingReminders, setIsSendingReminders] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -174,6 +176,36 @@ const AdminDashboard = () => {
     toast({ title: "Data refreshed" });
   };
 
+  const handleTriggerReminders = async () => {
+    setIsSendingReminders(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/daily-whatsapp-job`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({}),
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        toast({ 
+          title: "WhatsApp reminders sent",
+          description: data.skipped ? "Already sent today" : `Sent ${data.results?.expiring7Days?.sent || 0} + ${data.results?.expiringToday?.sent || 0} messages`,
+        });
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error: any) {
+      toast({ title: "Failed to send reminders", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSendingReminders(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -206,6 +238,16 @@ const AdminDashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={handleTriggerReminders}
+                disabled={isSendingReminders}
+                title="Send WhatsApp Reminders"
+              >
+                <MessageCircle className={`w-4 h-4 ${isSendingReminders ? "animate-pulse" : ""}`} />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
