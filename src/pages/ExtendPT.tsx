@@ -7,7 +7,7 @@ import { ArrowLeft, Dumbbell, Calendar, IndianRupee, User, Check, AlertCircle, C
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRazorpay } from "@/hooks/useRazorpay";
-import { addDays, addMonths, differenceInDays, format, isBefore, isAfter } from "date-fns";
+import { addDays, addMonths, differenceInDays, format, isBefore, isAfter, parseISO } from "date-fns";
 
 interface Trainer {
   id: string;
@@ -37,6 +37,7 @@ const ExtendPT = () => {
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
   const [selectedOption, setSelectedOption] = useState<PTDurationOption | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [existingPTEndDate, setExistingPTEndDate] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!member) {
@@ -57,38 +58,66 @@ const ExtendPT = () => {
       navigate("/");
       return;
     }
-    fetchTrainers();
+    fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchTrainers = async () => {
+  const fetchData = async () => {
     setIsLoadingData(true);
-    const { data } = await supabase
+    
+    // Fetch trainers
+    const { data: trainersData } = await supabase
       .from("personal_trainers")
       .select("id, name, specialization, monthly_fee")
       .eq("is_active", true);
 
-    if (data) {
-      setTrainers(data);
-      if (data.length > 0) setSelectedTrainer(data[0]);
+    if (trainersData) {
+      setTrainers(trainersData);
+      if (trainersData.length > 0) setSelectedTrainer(trainersData[0]);
     }
+
+    // Fetch existing active PT subscription for this member to determine start date
+    const today = new Date().toISOString().split("T")[0];
+    const { data: existingPT } = await supabase
+      .from("pt_subscriptions")
+      .select("end_date")
+      .eq("member_id", member.id)
+      .gte("end_date", today)
+      .order("end_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingPT?.end_date) {
+      setExistingPTEndDate(parseISO(existingPT.end_date));
+    }
+
     setIsLoadingData(false);
   };
+
+  // Calculate the PT start date based on existing PT subscriptions
+  const ptStartDate = useMemo(() => {
+    if (existingPTEndDate) {
+      // Start from day after existing PT ends
+      return addDays(existingPTEndDate, 1);
+    }
+    // No existing PT, start from today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  }, [existingPTEndDate]);
 
   // Generate dynamic PT duration options
   const ptDurationOptions = useMemo((): PTDurationOption[] => {
     if (!membershipEndDate || !selectedTrainer) return [];
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const options: PTDurationOption[] = [];
     const dailyRate = selectedTrainer.monthly_fee / 30;
 
-    // Generate 1-month, 2-month, 3-month options
+    // Generate 1-month, 2-month, 3-month options from ptStartDate
     for (let months = 1; months <= 3; months++) {
-      const optionEndDate = addMonths(today, months);
+      const optionEndDate = addMonths(ptStartDate, months);
       const isValid = isBefore(optionEndDate, membershipEndDate) || optionEndDate.getTime() === membershipEndDate.getTime();
-      const days = differenceInDays(optionEndDate, today);
+      const days = differenceInDays(optionEndDate, ptStartDate);
       const fee = Math.ceil(dailyRate * days);
 
       options.push({
@@ -101,7 +130,7 @@ const ExtendPT = () => {
     }
 
     // Add "Till Membership End" option if it's different from existing options
-    const daysToMembershipEnd = differenceInDays(membershipEndDate, today);
+    const daysToMembershipEnd = differenceInDays(membershipEndDate, ptStartDate);
     const existingMatchingOption = options.find(
       (opt) => opt.isValid && Math.abs(differenceInDays(opt.endDate, membershipEndDate)) <= 1
     );
@@ -118,21 +147,19 @@ const ExtendPT = () => {
     }
 
     return options;
-  }, [membershipEndDate, selectedTrainer]);
+  }, [membershipEndDate, selectedTrainer, ptStartDate]);
 
   // Auto-select first valid option only when trainer changes
   useEffect(() => {
     if (selectedTrainer && membershipEndDate) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
       const dailyRate = selectedTrainer.monthly_fee / 30;
       
       // Find first valid option (1 month that doesn't exceed membership)
-      const oneMonthEnd = addMonths(today, 1);
+      const oneMonthEnd = addMonths(ptStartDate, 1);
       const isOneMonthValid = isBefore(oneMonthEnd, membershipEndDate) || oneMonthEnd.getTime() === membershipEndDate.getTime();
       
       if (isOneMonthValid) {
-        const days = differenceInDays(oneMonthEnd, today);
+        const days = differenceInDays(oneMonthEnd, ptStartDate);
         setSelectedOption({
           label: "1 Month",
           endDate: oneMonthEnd,
@@ -142,7 +169,7 @@ const ExtendPT = () => {
         });
       } else {
         // If 1 month exceeds, use till membership end
-        const daysToEnd = differenceInDays(membershipEndDate, today);
+        const daysToEnd = differenceInDays(membershipEndDate, ptStartDate);
         if (daysToEnd > 0) {
           setSelectedOption({
             label: `Till ${format(membershipEndDate, "d MMM yyyy")}`,
@@ -172,6 +199,7 @@ const ExtendPT = () => {
       customDays: selectedOption.days,
       trainerId: selectedTrainer.id,
       trainerFee: selectedOption.fee,
+      ptStartDate: format(ptStartDate, "yyyy-MM-dd"),
       onSuccess: (data) => {
         navigate("/success", {
           state: {
@@ -228,14 +256,30 @@ const ExtendPT = () => {
             <CardDescription>
               Hi {member.name}! Extend your personal training subscription
             </CardDescription>
-            <div className="flex items-center gap-2 mt-2 p-3 bg-muted rounded-lg">
-              <Calendar className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">
-                Gym membership valid till:{" "}
-                <span className="font-semibold text-foreground">
-                  {format(membershipEndDate, "d MMMM yyyy")}
+            <div className="space-y-2 mt-2">
+              <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  Gym membership valid till:{" "}
+                  <span className="font-semibold text-foreground">
+                    {format(membershipEndDate, "d MMMM yyyy")}
+                  </span>
                 </span>
-              </span>
+              </div>
+              {existingPTEndDate && (
+                <div className="flex items-center gap-2 p-3 bg-accent/10 rounded-lg border border-accent/20">
+                  <Dumbbell className="w-4 h-4 text-accent" />
+                  <span className="text-sm text-muted-foreground">
+                    Existing PT ends:{" "}
+                    <span className="font-semibold text-accent">
+                      {format(existingPTEndDate, "d MMMM yyyy")}
+                    </span>
+                    <span className="text-xs text-muted-foreground ml-1">
+                      (New PT starts {format(ptStartDate, "d MMM yyyy")})
+                    </span>
+                  </span>
+                </div>
+              )}
             </div>
           </CardHeader>
 
@@ -373,6 +417,11 @@ const ExtendPT = () => {
                         {selectedOption.fee.toLocaleString("en-IN")}
                       </span>
                     </div>
+                    {existingPTEndDate && (
+                      <div className="text-xs text-muted-foreground">
+                        Starts: {format(ptStartDate, "d MMM yyyy")} → Ends: {format(selectedOption.endDate, "d MMM yyyy")}
+                      </div>
+                    )}
                     <div className="border-t border-border pt-3">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-lg">Total</span>
