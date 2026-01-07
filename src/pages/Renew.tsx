@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Dumbbell } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRazorpay } from "@/hooks/useRazorpay";
+import { supabase } from "@/integrations/supabase/client";
 import PackageSelectionForm, { type PackageSelectionData } from "@/components/registration/PackageSelectionForm";
 
 interface Member {
@@ -19,11 +20,40 @@ const Renew = () => {
   const { toast } = useToast();
   const { initiatePayment, isLoading: isPaymentLoading } = useRazorpay();
   const member = (location.state as { member: Member })?.member;
+  const [ptStartDate, setPtStartDate] = useState<string | null>(null);
 
   useEffect(() => {
     if (!member) {
       navigate("/");
+      return;
     }
+
+    // Fetch existing active PT subscription to determine PT start date
+    const fetchPTSubscription = async () => {
+      const today = new Date().toISOString().split("T")[0];
+      
+      const { data: activePT } = await supabase
+        .from("pt_subscriptions")
+        .select("end_date")
+        .eq("member_id", member.id)
+        .eq("status", "active")
+        .gte("end_date", today)
+        .order("end_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (activePT) {
+        // PT start date should be existing end_date + 1
+        const existingEndDate = new Date(activePT.end_date);
+        existingEndDate.setDate(existingEndDate.getDate() + 1);
+        setPtStartDate(existingEndDate.toISOString().split("T")[0]);
+      } else {
+        // No active PT, start from current date
+        setPtStartDate(today);
+      }
+    };
+
+    fetchPTSubscription();
   }, [member, navigate]);
 
   const handlePackageSubmit = (packageData: PackageSelectionData) => {
@@ -97,8 +127,9 @@ const Renew = () => {
           isNewMember={false}
           memberName={member.name}
           onSubmit={handlePackageSubmit}
-          onBack={() => navigate("/")}
+          onBack={() => navigate("/", { state: { returnToOptions: true, phone: member.phone } })}
           isLoading={isPaymentLoading}
+          ptStartDate={ptStartDate || undefined}
         />
       </main>
     </div>

@@ -43,6 +43,7 @@ interface PackageSelectionFormProps {
   onSubmit: (data: PackageSelectionData) => void;
   onBack: () => void;
   isLoading: boolean;
+  ptStartDate?: string; // For existing members with active PT, this is end_date + 1
 }
 
 export interface PackageSelectionData {
@@ -64,7 +65,8 @@ const PackageSelectionForm = ({
   memberName, 
   onSubmit, 
   onBack,
-  isLoading 
+  isLoading,
+  ptStartDate 
 }: PackageSelectionFormProps) => {
   const [packageType, setPackageType] = useState<"monthly" | "custom">("monthly");
   const [selectedMonthlyPackage, setSelectedMonthlyPackage] = useState<MonthlyPackage | null>(null);
@@ -131,12 +133,14 @@ const PackageSelectionForm = ({
     return today;
   }, [packageType, selectedMonthlyPackage, selectedCustomPackage]);
 
-  // Generate dynamic PT duration options based on membership end date
+  // Generate dynamic PT duration options based on membership end date and PT start date
   const ptDurationOptions = useMemo((): PTDurationOption[] => {
     if (!selectedTrainer) return [];
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Determine PT start date: use provided ptStartDate (for renewals with active PT) or today
+    const ptStart = ptStartDate ? new Date(ptStartDate) : new Date();
+    ptStart.setHours(0, 0, 0, 0);
+    
     const options: PTDurationOption[] = [];
     const dailyRate = selectedTrainer.monthly_fee / 30;
 
@@ -144,22 +148,39 @@ const PackageSelectionForm = ({
     if (packageType === "custom" && selectedCustomPackage) {
       const days = selectedCustomPackage.duration_days;
       const fee = Math.ceil(dailyRate * days);
-      options.push({
-        label: `${days} Day${days > 1 ? "s" : ""} (Full Package)`,
-        endDate: membershipEndDate,
-        days,
-        fee,
-        isValid: true,
-      });
+      const ptEndDate = addDays(ptStart, days);
+      const isValid = isBefore(ptEndDate, membershipEndDate) || ptEndDate.getTime() === membershipEndDate.getTime();
+      
+      if (isValid) {
+        options.push({
+          label: `${days} Day${days > 1 ? "s" : ""} (Full Package)`,
+          endDate: ptEndDate,
+          days,
+          fee,
+          isValid: true,
+        });
+      }
       return options;
     }
 
-    // For monthly packages, generate 1-month, 2-month, etc. options
+    // For monthly packages, generate options from PT start date
     if (selectedMonthlyPackage) {
-      for (let months = 1; months <= selectedMonthlyPackage.months; months++) {
-        const optionEndDate = addMonths(today, months);
+      // Calculate max days available from PT start to membership end
+      const maxDaysAvailable = differenceInDays(membershipEndDate, ptStart);
+      
+      if (maxDaysAvailable <= 0) {
+        // No PT available - PT start is beyond membership end
+        return [];
+      }
+
+      // Generate month-based options
+      for (let months = 1; months <= 12; months++) {
+        const optionEndDate = addMonths(ptStart, months);
         const isValid = isBefore(optionEndDate, membershipEndDate) || optionEndDate.getTime() === membershipEndDate.getTime();
-        const days = differenceInDays(optionEndDate, today);
+        
+        if (!isValid && months > 1) break; // Stop if we've exceeded membership end
+        
+        const days = differenceInDays(optionEndDate, ptStart);
         const fee = Math.ceil(dailyRate * days);
 
         options.push({
@@ -169,11 +190,13 @@ const PackageSelectionForm = ({
           fee,
           isValid,
         });
+        
+        if (!isValid) break; // Stop after adding the first invalid option
       }
 
       // Add "Till Membership End" option if different from last valid option
-      const daysToMembershipEnd = differenceInDays(membershipEndDate, today);
-      const lastValidOption = options[options.length - 1];
+      const daysToMembershipEnd = differenceInDays(membershipEndDate, ptStart);
+      const lastValidOption = options.filter(o => o.isValid).pop();
       
       if (lastValidOption && Math.abs(differenceInDays(lastValidOption.endDate, membershipEndDate)) > 1) {
         const fee = Math.ceil(dailyRate * daysToMembershipEnd);
@@ -188,7 +211,7 @@ const PackageSelectionForm = ({
     }
 
     return options;
-  }, [selectedTrainer, packageType, selectedMonthlyPackage, selectedCustomPackage, membershipEndDate]);
+  }, [selectedTrainer, packageType, selectedMonthlyPackage, selectedCustomPackage, membershipEndDate, ptStartDate]);
 
   // Auto-select PT option when trainer is selected or options change
   useEffect(() => {

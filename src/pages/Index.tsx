@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,12 +15,52 @@ const formSchema = z.object({
 
 const Index = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [existingMember, setExistingMember] = useState<any>(null);
   const [membershipEndDate, setMembershipEndDate] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
+
+  // Handle return from Renew/ExtendPT pages
+  useEffect(() => {
+    const state = location.state as { returnToOptions?: boolean; phone?: string } | null;
+    if (state?.returnToOptions && state?.phone) {
+      // Re-fetch member data and show options
+      const fetchMember = async () => {
+        setIsLoading(true);
+        try {
+          const { data: member } = await supabase
+            .from("members")
+            .select("*")
+            .eq("phone", state.phone)
+            .maybeSingle();
+
+          if (member) {
+            const { data: subscription } = await supabase
+              .from("subscriptions")
+              .select("end_date, status")
+              .eq("member_id", member.id)
+              .in("status", ["active", "expiring_soon"])
+              .order("end_date", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            setMembershipEndDate(subscription?.end_date || null);
+            setExistingMember(member);
+            setPhone(state.phone);
+            setShowOptions(true);
+          }
+        } finally {
+          setIsLoading(false);
+        }
+        // Clear the state to prevent re-triggering
+        window.history.replaceState({}, document.title);
+      };
+      fetchMember();
+    }
+  }, [location.state]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
