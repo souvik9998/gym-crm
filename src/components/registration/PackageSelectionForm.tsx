@@ -125,17 +125,24 @@ const PackageSelectionForm = ({
   };
 
   // Calculate membership end date based on selection
+  // For renewals: extend from existing end date; for new members: start from today
   const membershipEndDate = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // For renewals with existing membership, extend from existing end date
+    const startDate = existingMembershipEndDate 
+      ? new Date(existingMembershipEndDate) 
+      : today;
+    startDate.setHours(0, 0, 0, 0);
+    
     if (packageType === "custom" && selectedCustomPackage) {
-      return addDays(today, selectedCustomPackage.duration_days);
+      return addDays(startDate, selectedCustomPackage.duration_days);
     } else if (selectedMonthlyPackage) {
-      return addMonths(today, selectedMonthlyPackage.months);
+      return addMonths(startDate, selectedMonthlyPackage.months);
     }
-    return today;
-  }, [packageType, selectedMonthlyPackage, selectedCustomPackage]);
+    return startDate;
+  }, [packageType, selectedMonthlyPackage, selectedCustomPackage, existingMembershipEndDate]);
 
   // Generate dynamic PT duration options based on membership end date and PT start date
   const ptDurationOptions = useMemo((): PTDurationOption[] => {
@@ -198,19 +205,23 @@ const PackageSelectionForm = ({
         if (!isValid) break; // Stop after adding the first invalid option
       }
 
-      // Add "Till Membership End" option if different from last valid option
+      // Add "Until Gym Membership End Date" option
       const daysToMembershipEnd = differenceInDays(membershipEndDate, ptStart);
-      const lastValidOption = options.filter(o => o.isValid).pop();
-      
-      if (lastValidOption && Math.abs(differenceInDays(lastValidOption.endDate, membershipEndDate)) > 1) {
-        const fee = Math.ceil(dailyRate * daysToMembershipEnd);
-        options.push({
-          label: `Till ${format(membershipEndDate, "d MMM yyyy")}`,
-          endDate: membershipEndDate,
-          days: daysToMembershipEnd,
-          fee,
-          isValid: true,
-        });
+      if (daysToMembershipEnd > 0) {
+        const lastValidOption = options.filter(o => o.isValid).pop();
+        const existsDifferentOption = lastValidOption && Math.abs(differenceInDays(lastValidOption.endDate, membershipEndDate)) > 1;
+        
+        // Always add this option if it doesn't already exist
+        if (!lastValidOption || existsDifferentOption) {
+          const fee = Math.ceil(dailyRate * daysToMembershipEnd);
+          options.push({
+            label: `Until Gym End Date (${format(membershipEndDate, "d MMM yyyy")})`,
+            endDate: membershipEndDate,
+            days: daysToMembershipEnd,
+            fee,
+            isValid: true,
+          });
+        }
       }
     }
 
@@ -285,6 +296,15 @@ const PackageSelectionForm = ({
                 Current gym membership ends:{" "}
                 <span className="font-semibold text-foreground">
                   {format(parsedExistingMembershipEndDate, "d MMMM yyyy")}
+                </span>
+              </span>
+            </div>
+            <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
+              <Calendar className="w-4 h-4 text-primary" />
+              <span className="text-sm text-muted-foreground">
+                New gym membership ends:{" "}
+                <span className="font-semibold text-primary">
+                  {format(membershipEndDate, "d MMMM yyyy")}
                 </span>
               </span>
             </div>
@@ -467,11 +487,11 @@ const PackageSelectionForm = ({
                 {selectedTrainer && ptDurationOptions.length > 0 && (
                   <div className="space-y-3">
                     <h4 className="text-sm font-medium text-muted-foreground">PT Duration</h4>
-                    <div className="p-3 bg-muted/50 rounded-lg flex items-center gap-2 text-sm">
-                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <div className="p-3 bg-primary/10 rounded-lg flex items-center gap-2 text-sm border border-primary/20">
+                      <Calendar className="w-4 h-4 text-primary" />
                       <span className="text-muted-foreground">
-                        Gym membership ends:{" "}
-                        <span className="font-medium text-foreground">
+                        {!isNewMember && existingMembershipEndDate ? "New g" : "G"}ym membership ends:{" "}
+                        <span className="font-medium text-primary">
                           {format(membershipEndDate, "d MMM yyyy")}
                         </span>
                       </span>
