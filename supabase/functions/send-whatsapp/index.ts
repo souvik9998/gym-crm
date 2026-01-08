@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
-    const { memberIds, type, customMessage, templateName } = await req.json() as SendWhatsAppRequest;
+    const { memberIds, type, customMessage, templateName } = (await req.json()) as SendWhatsAppRequest;
 
     // Get members to notify
     let members: Member[] = [];
@@ -47,11 +47,8 @@ Deno.serve(async (req) => {
 
     if (memberIds && memberIds.length > 0) {
       // Specific members selected
-      const { data } = await supabase
-        .from("members")
-        .select("id, name, phone")
-        .in("id", memberIds);
-      
+      const { data } = await supabase.from("members").select("id, name, phone").in("id", memberIds);
+
       // Get subscriptions for these members
       for (const member of data || []) {
         const { data: subData } = await supabase
@@ -61,7 +58,7 @@ Deno.serve(async (req) => {
           .order("end_date", { ascending: false })
           .limit(1)
           .maybeSingle();
-        
+
         members.push({
           ...member,
           subscription: subData || undefined,
@@ -82,14 +79,14 @@ Deno.serve(async (req) => {
         .not("status", "eq", "expired");
 
       if (subsData) {
-        const memberIdsFromSubs = [...new Set(subsData.map(s => s.member_id))];
+        const memberIdsFromSubs = [...new Set(subsData.map((s) => s.member_id))];
         const { data: membersData } = await supabase
           .from("members")
           .select("id, name, phone")
           .in("id", memberIdsFromSubs);
 
         for (const member of membersData || []) {
-          const sub = subsData.find(s => s.member_id === member.id);
+          const sub = subsData.find((s) => s.member_id === member.id);
           members.push({
             ...member,
             subscription: sub ? { end_date: sub.end_date } : undefined,
@@ -105,14 +102,14 @@ Deno.serve(async (req) => {
         .eq("status", "expired");
 
       if (subsData) {
-        const memberIdsFromSubs = [...new Set(subsData.map(s => s.member_id))];
+        const memberIdsFromSubs = [...new Set(subsData.map((s) => s.member_id))];
         const { data: membersData } = await supabase
           .from("members")
           .select("id, name, phone")
           .in("id", memberIdsFromSubs);
 
         for (const member of membersData || []) {
-          const sub = subsData.find(s => s.member_id === member.id);
+          const sub = subsData.find((s) => s.member_id === member.id);
           members.push({
             ...member,
             subscription: sub ? { end_date: sub.end_date } : undefined,
@@ -133,11 +130,11 @@ Deno.serve(async (req) => {
       .gte("sent_at", startOfDay.toISOString())
       .lte("sent_at", endOfDay.toISOString());
 
-    const alreadyNotifiedIds = new Set(existingNotifications?.map(n => n.member_id) || []);
-    
+    const alreadyNotifiedIds = new Set(existingNotifications?.map((n) => n.member_id) || []);
+
     // Filter out already notified members (unless manual type)
     if (type !== "manual" && type !== "test") {
-      members = members.filter(m => !alreadyNotifiedIds.has(m.id));
+      members = members.filter((m) => !alreadyNotifiedIds.has(m.id));
     }
 
     const results: { memberId: string; name: string; success: boolean; error?: string }[] = [];
@@ -146,10 +143,12 @@ Deno.serve(async (req) => {
       try {
         // Format phone number for WATI - needs country code (91 for India)
         let phone = member.phone.replace(/\D/g, "");
+
         // If starts with 0, remove it
         if (phone.startsWith("0")) {
           phone = phone.substring(1);
         }
+
         // If already has 91 prefix and is 12 digits, keep as is
         if (phone.startsWith("91") && phone.length === 12) {
           // Phone is already in correct format
@@ -161,7 +160,7 @@ Deno.serve(async (req) => {
         }
 
         // Get end date formatted
-        const endDate = member.subscription?.end_date 
+        const endDate = member.subscription?.end_date
           ? new Date(member.subscription.end_date).toLocaleDateString("en-IN", {
               day: "numeric",
               month: "short",
@@ -169,60 +168,57 @@ Deno.serve(async (req) => {
             })
           : "N/A";
 
-        // Determine template based on type or use custom message
-        // For WATI, we need to use approved templates for proactive messages
-        // Template name format: template_name (must be pre-approved in WATI dashboard)
-        
-        // Use sendSessionMessage if within 24hr window, otherwise use template
-        // First try session message, fallback to template
-        
         let watiResponse: Response;
         let apiEndpoint: string;
         let requestBody: any;
 
-        if (customMessage) {
-          // Try session message first (works if user messaged within 24hrs)
-          apiEndpoint = `${WATI_ENDPOINT}/api/v1/sendSessionMessage/${phone}`;
-          requestBody = { messageText: customMessage };
-        } else if (templateName) {
-          // Use specified template
+        // Determine which API endpoint to use
+        if (templateName) {
+          // Use template message (for proactive messaging)
           apiEndpoint = `${WATI_ENDPOINT}/api/v1/sendTemplateMessage`;
           requestBody = {
             whatsappNumber: phone,
             template_name: templateName,
-            broadcast_name: `gym_reminder_${type}_${Date.now()}`,
+            broadcast_name: `gym_${type}_${Date.now()}`,
             parameters: [
               { name: "name", value: member.name },
               { name: "date", value: endDate },
             ],
           };
         } else {
-          // Default: try session message with type-based message
-          let message = "";
-          switch (type) {
-            case "expiring_7days":
-              message = `Hi ${member.name}! 🏋️\n\nYour Pro Plus Fitness membership is expiring on ${endDate} (in 7 days).\n\nRenew now to continue your fitness journey without interruption!\n\nVisit us or renew online today.`;
-              break;
-            case "expiring_today":
-              message = `Hi ${member.name}! ⚠️\n\nYour Pro Plus Fitness membership expires TODAY (${endDate})!\n\nDon't miss a single workout - renew now to keep your membership active.\n\nWe're here to help you stay fit!`;
-              break;
-            case "expired":
-              message = `Hi ${member.name}! 💪\n\nWe miss you at Pro Plus Fitness! Your membership expired on ${endDate}.\n\nRejoin now and get back on track with your fitness goals.\n\nSpecial offers may be available - visit us today!`;
-              break;
-            default:
-              message = `Hi ${member.name}! This is a message from Pro Plus Fitness.`;
+          // Use session message (only works within 24hr window)
+          let message = customMessage || "";
+
+          if (!customMessage) {
+            // Generate default message based on type
+            switch (type) {
+              case "expiring_7days":
+                message = `Hi ${member.name}! 🏋️\n\nYour Pro Plus Fitness membership is expiring on ${endDate} (in 7 days).\n\nRenew now to continue your fitness journey without interruption!\n\nVisit us or renew online today.`;
+                break;
+              case "expiring_today":
+                message = `Hi ${member.name}! ⚠️\n\nYour Pro Plus Fitness membership expires TODAY (${endDate})!\n\nDon't miss a single workout - renew now to keep your membership active.\n\nWe're here to help you stay fit!`;
+                break;
+              case "expired":
+                message = `Hi ${member.name}! 💪\n\nWe miss you at Pro Plus Fitness! Your membership expired on ${endDate}.\n\nRejoin now and get back on track with your fitness goals.\n\nSpecial offers may be available - visit us today!`;
+                break;
+              default:
+                message = `Hi ${member.name}! This is a message from Pro Plus Fitness.`;
+            }
           }
+
           apiEndpoint = `${WATI_ENDPOINT}/api/v1/sendSessionMessage/${phone}`;
           requestBody = { messageText: message };
         }
 
-        console.log(`Sending to ${phone} via ${apiEndpoint}`);
+        console.log(`Sending to ${member.name} (${phone})`);
+        console.log(`API Endpoint: ${apiEndpoint}`);
+        console.log(`Request Body:`, JSON.stringify(requestBody, null, 2));
 
         watiResponse = await fetch(apiEndpoint, {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${WATI_API_KEY}`,
-            "Content-Type": "application/json-patch+json",
+            Authorization: `Bearer ${WATI_API_KEY}`,
+            "Content-Type": "application/json",
           },
           body: JSON.stringify(requestBody),
         });
@@ -230,7 +226,7 @@ Deno.serve(async (req) => {
         const responseText = await watiResponse.text();
         console.log(`WATI Response for ${member.name}: ${watiResponse.status} - ${responseText}`);
 
-        // Parse response to check for success
+        // Parse response
         let responseData: any;
         try {
           responseData = JSON.parse(responseText);
@@ -238,9 +234,22 @@ Deno.serve(async (req) => {
           responseData = { result: watiResponse.ok };
         }
 
-        // WATI returns result: true/false in the response body
-        if (!watiResponse.ok || responseData.result === false) {
-          const errorMsg = responseData.message || responseData.info || responseText || "Unknown WATI error";
+        // Check if request was successful
+        // WATI returns { result: true/false } or { success: true/false }
+        const isSuccess =
+          watiResponse.ok &&
+          (responseData.result === true ||
+            responseData.success === true ||
+            (watiResponse.status === 200 && !responseData.result && !responseData.error));
+
+        if (!isSuccess) {
+          const errorMsg =
+            responseData.message ||
+            responseData.info ||
+            responseData.error ||
+            responseData.details ||
+            responseText ||
+            "Unknown WATI error";
           throw new Error(`WATI API error: ${errorMsg}`);
         }
 
@@ -251,10 +260,14 @@ Deno.serve(async (req) => {
           status: "sent",
         });
 
-        results.push({ memberId: member.id, name: member.name, success: true });
+        results.push({
+          memberId: member.id,
+          name: member.name,
+          success: true,
+        });
       } catch (error: any) {
         console.error(`Failed to send to ${member.name}:`, error);
-        
+
         // Log failed notification
         await supabase.from("whatsapp_notifications").insert({
           member_id: member.id,
@@ -263,24 +276,29 @@ Deno.serve(async (req) => {
           error_message: error.message,
         });
 
-        results.push({ memberId: member.id, name: member.name, success: false, error: error.message });
+        results.push({
+          memberId: member.id,
+          name: member.name,
+          success: false,
+          error: error.message,
+        });
       }
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        sent: results.filter(r => r.success).length,
-        failed: results.filter(r => !r.success).length,
+        sent: results.filter((r) => r.success).length,
+        failed: results.filter((r) => !r.success).length,
         results,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: any) {
     console.error("Error in send-whatsapp:", error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ success: false, error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
