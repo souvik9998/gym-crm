@@ -299,7 +299,8 @@ const PackageSelectionForm = ({
                 </span>
               </span>
             </div>
-            <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
+            {/* Commented out because we don't need to show the new gym membership end date */}
+            {/* <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
               <Calendar className="w-4 h-4 text-primary" />
               <span className="text-sm text-muted-foreground">
                 New gym membership ends:{" "}
@@ -307,8 +308,8 @@ const PackageSelectionForm = ({
                   {format(membershipEndDate, "d MMMM yyyy")}
                 </span>
               </span>
-            </div>
-            {parsedExistingPTEndDate && (
+            </div> */}
+            {/* {parsedExistingPTEndDate && wantsTrainer && (
               <div className="flex items-center gap-2 p-3 bg-accent/10 rounded-lg border border-accent/20">
                 <Dumbbell className="w-4 h-4 text-accent" />
                 <span className="text-sm text-muted-foreground">
@@ -323,7 +324,7 @@ const PackageSelectionForm = ({
                   )}
                 </span>
               </div>
-            )}
+            )} */}
           </div>
         )}
       </CardHeader>
@@ -457,6 +458,23 @@ const PackageSelectionForm = ({
               </div>
               <Switch checked={wantsTrainer} onCheckedChange={setWantsTrainer} />
             </div>
+
+            {parsedExistingPTEndDate && wantsTrainer && (
+              <div className="flex items-center gap-2 p-3 bg-accent/10 rounded-lg border border-accent/20">
+                <Dumbbell className="w-4 h-4 text-accent" />
+                <span className="text-sm text-muted-foreground">
+                  Current PT ends:{" "}
+                  <span className="font-semibold text-accent">
+                    {format(parsedExistingPTEndDate, "d MMMM yyyy")}
+                  </span>
+                  {parsedPtStartDate && (
+                    <span className="text-xs text-muted-foreground ml-1">
+                      (New PT starts {format(parsedPtStartDate, "d MMM yyyy")})
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
 
             {wantsTrainer && (
               <div className="space-y-4 pl-2">
