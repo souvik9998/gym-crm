@@ -76,15 +76,15 @@ Deno.serve(async (req) => {
       try {
         console.log(`Sending to ${chatId}: ${message.substring(0, 50)}...`);
         
-        const response = await fetch("https://api.periskope.app/message/send", {
+        const response = await fetch("https://api.periskope.app/v1/message/send", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${PERISKOPE_API_KEY}`,
-            "x-phone": PERISKOPE_PHONE,
+            "x-phone": PERISKOPE_PHONE!,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            chat_id: chatId,
+            chat_id: `${chatId}@c.us`,
             message: message,
           }),
         });
