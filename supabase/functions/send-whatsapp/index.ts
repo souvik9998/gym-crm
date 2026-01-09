@@ -9,7 +9,8 @@ interface SendWhatsAppRequest {
   memberIds?: string[];
   type?: "expiring_2days" | "expiring_today" | "manual" | "renewal" | "pt_extension";
   customMessage?: string;
-  // For direct send without member lookup
+
+  // Direct send
   phone?: string;
   name?: string;
   endDate?: string;
@@ -35,6 +36,7 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
     const {
       memberIds,
       type = "manual",
@@ -44,19 +46,26 @@ Deno.serve(async (req) => {
       endDate,
     } = (await req.json()) as SendWhatsAppRequest;
 
-    // Format phone number for Periskope (should be like 919876543210)
+    // ---------------------------
+    // Phone formatter
+    // ---------------------------
     const formatPhone = (phoneNum: string): string => {
       let cleaned = phoneNum.replace(/\D/g, "");
+
       if (cleaned.startsWith("0")) {
         cleaned = cleaned.substring(1);
       }
+
       if (cleaned.length === 10) {
         cleaned = "91" + cleaned;
       }
+
       return cleaned;
     };
 
-    // Generate message based on type
+    // ---------------------------
+    // MESSAGE GENERATOR (UPDATED)
+    // ---------------------------
     const generateMessage = (memberName: string, expiryDate: string, msgType: string): string => {
       const formattedDate = new Date(expiryDate).toLocaleDateString("en-IN", {
         day: "numeric",
@@ -66,60 +75,91 @@ Deno.serve(async (req) => {
 
       switch (msgType) {
         case "renewal":
-          return `🎉 Hi ${memberName}!\n\nYour gym membership has been renewed until *${formattedDate}*.\n\nKeep crushing your fitness goals! 💪`;
+          return (
+            `✅ *Membership Renewed Successfully!*\n\n` +
+            `Hi ${memberName}, 👋\n\n` +
+            `Your gym membership has been *renewed till ${formattedDate}*.\n\n` +
+            `Let’s stay consistent and keep pushing towards your fitness goals 💪🔥\n\n` +
+            `See you at the gym!\n— Team Gym`
+          );
+
         case "pt_extension":
-          return `🎉 Hi ${memberName}!\n\nYour Personal Training has been extended until *${formattedDate}*.\n\nSee you at the gym! 🏋️`;
+          return (
+            `🏋️ *Personal Training Extended!*\n\n` +
+            `Hi ${memberName}, 👋\n\n` +
+            `Your Personal Training sessions are now extended till *${formattedDate}*.\n\n` +
+            `Get ready to level up your performance with focused training 🔥\n\n` +
+            `Train hard!\n— Team Gym`
+          );
+
         case "expiring_2days":
-          return `⚠️ Hi ${memberName}!\n\nYour gym membership expires in *2 days* (${formattedDate}).\n\nRenew now to avoid any interruption! 🏃`;
+          return (
+            `⏳ *Membership Expiring Soon*\n\n` +
+            `Hi ${memberName}, 👋\n\n` +
+            `Your gym membership will expire in *2 days* on *${formattedDate}*.\n\n` +
+            `Renew on time to avoid any break in your workouts 💪\n\n` +
+            `Reply to this message or visit the gym to renew.\n— Team Gym`
+          );
+
         case "expiring_today":
-          return `🚨 Hi ${memberName}!\n\nYour gym membership expires *TODAY*!\n\nPlease renew immediately to continue your fitness journey. 💪`;
+          return (
+            `🚨 *Membership Expires Today*\n\n` +
+            `Hi ${memberName}, 👋\n\n` +
+            `Your gym membership expires *today (${formattedDate})*.\n\n` +
+            `Renew now to continue your fitness journey without interruption 🔥\n\n` +
+            `Contact us or visit the gym today.\n— Team Gym`
+          );
+
         default:
-          return customMessage || `Hi ${memberName}, this is a reminder from your gym!`;
+          return customMessage || `Hi ${memberName}, 👋\n\nThis is a message from your gym.\n\n— Team Gym`;
       }
     };
 
-    // Send message via Periskope
+    // ---------------------------
+    // SEND VIA PERISKOPE
+    // ---------------------------
     const sendPeriskopeMessage = async (
       chatId: string,
       message: string,
     ): Promise<{ success: boolean; error?: string }> => {
       try {
-        console.log(`Sending to ${chatId}: ${message.substring(0, 50)}...`);
-
         const response = await fetch("https://api.periskope.app/v1/message/send", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${PERISKOPE_API_KEY}`,
-            "x-phone": PERISKOPE_PHONE!,
+            "x-phone": PERISKOPE_PHONE,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             chat_id: `${chatId}@c.us`,
-            message: message,
+            message,
           }),
         });
 
         const responseText = await response.text();
-        console.log(`Periskope response for ${chatId}: ${response.status} - ${responseText}`);
 
         if (!response.ok) {
-          return { success: false, error: `Periskope API error: ${response.status} - ${responseText}` };
+          return {
+            success: false,
+            error: `${response.status} - ${responseText}`,
+          };
         }
 
         return { success: true };
       } catch (error: any) {
-        console.error("Error sending Periskope message:", error);
         return { success: false, error: error.message };
       }
     };
 
-    // If direct send (phone, name, endDate provided)
+    // ---------------------------
+    // DIRECT SEND (NO MEMBER LOOKUP)
+    // ---------------------------
     if (phone && name && endDate) {
       const formattedPhone = formatPhone(phone);
       const message = generateMessage(name, endDate, type);
+
       const result = await sendPeriskopeMessage(formattedPhone, message);
 
-      // Log notification if we have a member ID
       if (memberIds && memberIds.length > 0) {
         await supabase.from("whatsapp_notifications").insert({
           member_id: memberIds[0],
@@ -129,33 +169,35 @@ Deno.serve(async (req) => {
         });
       }
 
-      return new Response(JSON.stringify({ success: result.success, error: result.error }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return new Response(JSON.stringify(result), {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
       });
     }
 
-    // If memberIds provided, fetch members and send
+    // ---------------------------
+    // MEMBER BASED SEND
+    // ---------------------------
     if (!memberIds || memberIds.length === 0) {
       return new Response(JSON.stringify({ error: "No member IDs or phone provided" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
       });
     }
 
-    // Fetch members with their subscription data
-    const { data: members, error: membersError } = await supabase
-      .from("members")
-      .select("id, name, phone")
-      .in("id", memberIds);
+    const { data: members, error } = await supabase.from("members").select("id, name, phone").in("id", memberIds);
 
-    if (membersError) {
-      throw membersError;
-    }
+    if (error) throw error;
 
-    // Fetch subscription data for each member
     const membersWithSubs = [];
+
     for (const member of members || []) {
-      const { data: subData } = await supabase
+      const { data: sub } = await supabase
         .from("subscriptions")
         .select("end_date")
         .eq("member_id", member.id)
@@ -165,18 +207,18 @@ Deno.serve(async (req) => {
 
       membersWithSubs.push({
         ...member,
-        end_date: subData?.end_date || new Date().toISOString(),
+        end_date: sub?.end_date || new Date().toISOString(),
       });
     }
 
-    const results: { memberId: string; success: boolean; error?: string }[] = [];
+    const results = [];
 
     for (const member of membersWithSubs) {
-      const formattedPhone = formatPhone(member.phone);
+      const phone = formatPhone(member.phone);
       const message = customMessage || generateMessage(member.name, member.end_date, type);
-      const result = await sendPeriskopeMessage(formattedPhone, message);
 
-      // Log notification
+      const result = await sendPeriskopeMessage(phone, message);
+
       await supabase.from("whatsapp_notifications").insert({
         member_id: member.id,
         notification_type: type,
@@ -191,23 +233,27 @@ Deno.serve(async (req) => {
       });
     }
 
-    const successCount = results.filter((r) => r.success).length;
-    const failedCount = results.filter((r) => !r.success).length;
-
     return new Response(
       JSON.stringify({
         success: true,
-        sent: successCount,
-        failed: failedCount,
+        sent: results.filter((r) => r.success).length,
+        failed: results.filter((r) => !r.success).length,
         results,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      },
     );
   } catch (error: any) {
-    console.error("Error in send-whatsapp function:", error);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      },
     });
   }
 });
