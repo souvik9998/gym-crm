@@ -502,7 +502,12 @@ export type Database = {
       app_role: "admin" | "member"
       payment_mode: "online" | "cash"
       payment_status: "pending" | "success" | "failed"
-      subscription_status: "active" | "expired" | "expiring_soon" | "paused"
+      subscription_status:
+        | "active"
+        | "expired"
+        | "expiring_soon"
+        | "paused"
+        | "inactive"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -633,7 +638,13 @@ export const Constants = {
       app_role: ["admin", "member"],
       payment_mode: ["online", "cash"],
       payment_status: ["pending", "success", "failed"],
-      subscription_status: ["active", "expired", "expiring_soon", "paused"],
+      subscription_status: [
+        "active",
+        "expired",
+        "expiring_soon",
+        "paused",
+        "inactive",
+      ],
     },
   },
 } as const

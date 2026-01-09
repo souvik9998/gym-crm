@@ -607,7 +607,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
         case "expiring_7days":
           return !isExpired && diffDays >= 0 && diffDays <= 7;
         case "inactive":
-          return !subscription || subscription.status === "inactive" || subscription.status === "paused";
+          return subscription.status === "inactive";
         default:
           return true;
       }
@@ -996,7 +996,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
                           className="text-success hover:bg-success/10 hover:text-success focus:bg-success/10 focus:text-success"
                         >
                           <UserCheck className="w-4 h-4 mr-2" />
-                          Move to Active
+                          Set to Active
                         </DropdownMenuItem>
                       ) : (
                         <DropdownMenuItem 
