@@ -231,21 +231,23 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     }
   };
 
-  const handleMoveToInactive = async (member: Member, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleMoveToInactive = async (member: Member, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     try {
-      if (member.subscription?.id) {
+      let subscriptionId = member.subscription?.id;
+      
+      if (subscriptionId) {
         // Update existing subscription status to paused
         const { error } = await supabase
           .from("subscriptions")
           .update({ status: "paused" as any })
-          .eq("id", member.subscription.id);
+          .eq("id", subscriptionId);
         
         if (error) throw error;
       } else {
         // Create a paused subscription if none exists
         const today = new Date().toISOString().split("T")[0];
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("subscriptions")
           .insert({
             member_id: member.id,
@@ -253,13 +255,30 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
             start_date: today,
             end_date: today,
             plan_months: 0,
-          });
+          })
+          .select("id")
+          .single();
         
         if (error) throw error;
+        subscriptionId = data?.id;
       }
       
+      // Update local state immediately (in-place update)
+      setMembers(prev => prev.map(m => 
+        m.id === member.id 
+          ? { 
+              ...m, 
+              subscription: { 
+                id: subscriptionId!, 
+                status: "paused", 
+                end_date: member.subscription?.end_date || new Date().toISOString().split("T")[0],
+                start_date: member.subscription?.start_date || new Date().toISOString().split("T")[0],
+              } 
+            } 
+          : m
+      ));
+      
       toast({ title: `${member.name} moved to inactive` });
-      fetchMembers();
     } catch (error: any) {
       toast({
         title: "Error moving to inactive",
@@ -268,6 +287,50 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
       });
     }
   };
+
+  // Auto-mark members expired > 1 month as inactive
+  const autoMarkLongExpiredAsInactive = async () => {
+    const today = new Date();
+    const oneMonthAgo = new Date(today);
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    
+    const longExpiredMembers = members.filter(m => {
+      if (!m.subscription?.end_date) return false;
+      if (m.subscription.status === "paused") return false;
+      
+      const endDate = new Date(m.subscription.end_date);
+      return endDate < oneMonthAgo;
+    });
+
+    if (longExpiredMembers.length === 0) return;
+
+    // Update all long-expired subscriptions to paused
+    const subscriptionIds = longExpiredMembers.map(m => m.subscription!.id);
+    
+    const { error } = await supabase
+      .from("subscriptions")
+      .update({ status: "paused" as any })
+      .in("id", subscriptionIds);
+    
+    if (!error) {
+      // Update local state
+      setMembers(prev => prev.map(m => {
+        if (subscriptionIds.includes(m.subscription?.id || "")) {
+          return {
+            ...m,
+            subscription: { ...m.subscription!, status: "paused" }
+          };
+        }
+        return m;
+      }));
+    }
+  };
+
+  useEffect(() => {
+    if (members.length > 0) {
+      autoMarkLongExpiredAsInactive();
+    }
+  }, [members.length]);
 
   const isExpiringOrExpired = (member: Member): boolean => {
     if (!member.subscription) return false;
@@ -329,28 +392,74 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     }
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkSetInactive = async () => {
     if (selectedMembers.size === 0) return;
     
+    setBulkActionType("inactive");
     try {
-      const { error } = await supabase
-        .from("members")
-        .delete()
-        .in("id", Array.from(selectedMembers));
+      const selectedMembersData = getSelectedMembersData();
+      const today = new Date().toISOString().split("T")[0];
+      
+      // Separate members with and without subscriptions
+      const withSubscription = selectedMembersData.filter(m => m.subscription?.id);
+      const withoutSubscription = selectedMembersData.filter(m => !m.subscription?.id);
+      
+      // Update existing subscriptions to paused
+      if (withSubscription.length > 0) {
+        const subscriptionIds = withSubscription.map(m => m.subscription!.id);
+        const { error } = await supabase
+          .from("subscriptions")
+          .update({ status: "paused" as any })
+          .in("id", subscriptionIds);
+        
+        if (error) throw error;
+      }
+      
+      // Create paused subscriptions for those without
+      if (withoutSubscription.length > 0) {
+        const newSubscriptions = withoutSubscription.map(m => ({
+          member_id: m.id,
+          status: "paused" as any,
+          start_date: today,
+          end_date: today,
+          plan_months: 0,
+        }));
+        
+        const { error } = await supabase
+          .from("subscriptions")
+          .insert(newSubscriptions);
+        
+        if (error) throw error;
+      }
+      
+      // Update local state immediately
+      setMembers(prev => prev.map(m => {
+        if (selectedMembers.has(m.id)) {
+          return {
+            ...m,
+            subscription: {
+              id: m.subscription?.id || "temp-" + m.id,
+              status: "paused",
+              end_date: m.subscription?.end_date || today,
+              start_date: m.subscription?.start_date || today,
+            }
+          };
+        }
+        return m;
+      }));
 
-      if (error) throw error;
-
-      toast({ title: `${selectedMembers.size} member(s) deleted successfully` });
+      toast({ title: `${selectedMembers.size} member(s) set as inactive` });
       setSelectedMembers(new Set());
-      fetchMembers();
     } catch (error: any) {
       toast({
-        title: "Error deleting members",
+        title: "Error setting members inactive",
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setBulkActionType(null);
+      setBulkDeleteConfirm(false);
     }
-    setBulkDeleteConfirm(false);
   };
 
   const toggleMemberSelection = (memberId: string, e: React.MouseEvent) => {
@@ -590,27 +699,28 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
               </Button>
             )}
             <Button
-              variant="destructive"
+              variant="outline"
               size="sm"
               onClick={() => setBulkDeleteConfirm(true)}
+              disabled={bulkActionType !== null}
               className="gap-2"
             >
-              <Trash2 className="w-4 h-4" />
-              Delete
+              <UserX className="w-4 h-4" />
+              {bulkActionType === "inactive" ? "Processing..." : "Set as Inactive"}
             </Button>
           </div>
         </div>
       )}
 
-      {/* Bulk delete confirmation */}
+      {/* Bulk set inactive confirmation */}
       <ConfirmDialog
         open={bulkDeleteConfirm}
         onOpenChange={setBulkDeleteConfirm}
-        title="Delete Selected Members"
-        description={`Are you sure you want to delete ${selectedMembers.size} member(s)? This action cannot be undone.`}
-        confirmText="Delete All"
-        variant="destructive"
-        onConfirm={handleBulkDelete}
+        title="Set Selected Members as Inactive"
+        description={`Are you sure you want to set ${selectedMembers.size} member(s) as inactive?`}
+        confirmText="Set Inactive"
+        variant="default"
+        onConfirm={handleBulkSetInactive}
       />
       <div className="rounded-lg border overflow-hidden">
         <Table>
