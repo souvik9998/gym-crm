@@ -58,6 +58,7 @@ interface GymSettings {
   gym_name: string | null;
   gym_phone: string | null;
   gym_address: string | null;
+  whatsapp_enabled: boolean | null;
 }
 
 const AdminSettings = () => {
@@ -72,6 +73,7 @@ const AdminSettings = () => {
   const [gymName, setGymName] = useState("");
   const [gymPhone, setGymPhone] = useState("");
   const [gymAddress, setGymAddress] = useState("");
+  const [whatsappEnabled, setWhatsappEnabled] = useState(true);
 
   // Monthly Packages
   const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
@@ -135,7 +137,7 @@ const AdminSettings = () => {
     // Fetch gym settings
     const { data: settingsData } = await supabase
       .from("gym_settings")
-      .select("id, gym_name, gym_phone, gym_address")
+      .select("id, gym_name, gym_phone, gym_address, whatsapp_enabled")
       .limit(1)
       .maybeSingle();
 
@@ -144,6 +146,7 @@ const AdminSettings = () => {
       setGymName(settingsData.gym_name || "");
       setGymPhone(settingsData.gym_phone || "");
       setGymAddress(settingsData.gym_address || "");
+      setWhatsappEnabled(settingsData.whatsapp_enabled !== false);
     }
 
     // Fetch monthly packages
@@ -860,6 +863,61 @@ const AdminSettings = () => {
 
           {/* WhatsApp Templates */}
           <TabsContent value="whatsapp" className="space-y-6 mt-6">
+            {/* WhatsApp Enable/Disable Toggle */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 text-accent" />
+                  WhatsApp Messaging
+                </CardTitle>
+                <CardDescription>Enable or disable all WhatsApp messaging features</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-1">
+                    <p className="font-medium">WhatsApp Notifications</p>
+                    <p className="text-sm text-muted-foreground">
+                      {whatsappEnabled 
+                        ? "Automated and manual WhatsApp messages are enabled" 
+                        : "All WhatsApp messages are disabled"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-sm font-medium ${whatsappEnabled ? 'text-success' : 'text-muted-foreground'}`}>
+                      {whatsappEnabled ? "Enabled" : "Disabled"}
+                    </span>
+                    <Switch
+                      checked={whatsappEnabled}
+                      onCheckedChange={async (checked) => {
+                        if (!settings?.id) return;
+                        
+                        const { error } = await supabase
+                          .from("gym_settings")
+                          .update({ whatsapp_enabled: checked })
+                          .eq("id", settings.id);
+                        
+                        if (error) {
+                          toast({ 
+                            title: "Error", 
+                            description: error.message, 
+                            variant: "destructive" 
+                          });
+                        } else {
+                          setWhatsappEnabled(checked);
+                          toast({ 
+                            title: checked ? "WhatsApp Enabled" : "WhatsApp Disabled",
+                            description: checked 
+                              ? "WhatsApp messaging is now active" 
+                              : "All WhatsApp messages are now disabled"
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <WhatsAppTemplates />
           </TabsContent>
 
