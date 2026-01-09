@@ -20,10 +20,13 @@ import {
   Pencil,
   X,
   Check,
+  MessageCircle,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { User } from "@supabase/supabase-js";
+import { WhatsAppTemplates } from "@/components/admin/WhatsAppTemplates";
 
 interface Trainer {
   id: string;
@@ -458,7 +461,7 @@ const AdminSettings = () => {
 
       <main className="container py-6 max-w-4xl mx-auto space-y-6">
         <Tabs defaultValue="packages">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="packages" className="gap-2">
               <Package className="w-4 h-4" />
               Packages
@@ -466,6 +469,10 @@ const AdminSettings = () => {
             <TabsTrigger value="trainers" className="gap-2">
               <Users className="w-4 h-4" />
               Trainers
+            </TabsTrigger>
+            <TabsTrigger value="whatsapp" className="gap-2">
+              <MessageCircle className="w-4 h-4" />
+              WhatsApp
             </TabsTrigger>
             <TabsTrigger value="general" className="gap-2">
               <IndianRupee className="w-4 h-4" />
@@ -849,6 +856,11 @@ const AdminSettings = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* WhatsApp Templates */}
+          <TabsContent value="whatsapp" className="space-y-6 mt-6">
+            <WhatsAppTemplates />
           </TabsContent>
 
           {/* General Settings */}
