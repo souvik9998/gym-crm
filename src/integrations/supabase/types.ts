@@ -331,7 +331,7 @@ export type Database = {
           daily_pass_subscription_id: string | null
           daily_pass_user_id: string | null
           id: string
-          member_id: string
+          member_id: string | null
           notes: string | null
           payment_mode: Database["public"]["Enums"]["payment_mode"]
           payment_type: string | null
@@ -346,7 +346,7 @@ export type Database = {
           daily_pass_subscription_id?: string | null
           daily_pass_user_id?: string | null
           id?: string
-          member_id: string
+          member_id?: string | null
           notes?: string | null
           payment_mode: Database["public"]["Enums"]["payment_mode"]
           payment_type?: string | null
@@ -361,7 +361,7 @@ export type Database = {
           daily_pass_subscription_id?: string | null
           daily_pass_user_id?: string | null
           id?: string
-          member_id?: string
+          member_id?: string | null
           notes?: string | null
           payment_mode?: Database["public"]["Enums"]["payment_mode"]
           payment_type?: string | null
