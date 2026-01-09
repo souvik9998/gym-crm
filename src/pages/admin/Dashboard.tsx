@@ -120,13 +120,13 @@ const AdminDashboard = () => {
 
       const uniqueExpiredMembers = new Set(expiredData?.map((s) => s.member_id) || []).size;
 
-      // Get inactive members (no subscription or paused)
-      const { data: allSubs } = await supabase
+      // Get unique members with inactive subscriptions
+      const { data: inactiveData } = await supabase
         .from("subscriptions")
-        .select("member_id, status");
-      
-      const membersWithSubs = new Set(allSubs?.map((s) => s.member_id) || []);
-      const inactiveCount = (totalMembers || 0) - membersWithSubs.size;
+        .select("member_id")
+        .eq("status", "inactive");
+
+      const uniqueInactiveMembers = new Set(inactiveData?.map((s) => s.member_id) || []).size;
 
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
@@ -155,7 +155,7 @@ const AdminDashboard = () => {
         activeMembers: uniqueActiveMembers,
         expiringSoon: uniqueExpiringSoon,
         expiredMembers: uniqueExpiredMembers,
-        inactiveMembers: inactiveCount,
+        inactiveMembers: uniqueInactiveMembers,
         monthlyRevenue,
         withPT: uniquePTMembers,
       });
