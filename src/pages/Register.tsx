@@ -34,6 +34,8 @@ const Register = () => {
   const handlePackageSubmit = async (packageData: PackageSelectionData) => {
     if (!memberDetails) return;
 
+    const isDailyPass = packageData.isCustomPackage;
+
     // Prepare payment data
     const paymentData = {
       amount: packageData.totalAmount,
@@ -46,6 +48,13 @@ const Register = () => {
       trainerFee: packageData.trainerFee,
       gymFee: packageData.subscriptionAmount + packageData.joiningFee,
       memberDetails: memberDetails,
+      isDailyPass,
+      customPackage: packageData.customPackage ? {
+        id: packageData.customPackage.id,
+        name: packageData.customPackage.name,
+        duration_days: packageData.customPackage.duration_days,
+        price: packageData.customPackage.price,
+      } : undefined,
     };
 
     initiatePayment({
@@ -63,6 +72,7 @@ const Register = () => {
               year: "numeric",
             }),
             isNewMember: true,
+            isDailyPass: data.isDailyPass,
             hasTrainer: packageData.wantsTrainer,
             trainerName: packageData.selectedTrainer?.name,
           },

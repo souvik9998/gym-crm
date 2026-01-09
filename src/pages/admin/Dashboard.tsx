@@ -19,9 +19,11 @@ import {
   History,
   Settings,
   BarChart3,
+  Clock,
 } from "lucide-react";
 import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
+import DailyPassTable from "@/components/admin/DailyPassTable";
 import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
 import { AddPaymentDialog } from "@/components/admin/AddPaymentDialog";
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
@@ -36,6 +38,7 @@ interface DashboardStats {
   inactiveMembers: number;
   monthlyRevenue: number;
   withPT: number;
+  dailyPassUsers: number;
 }
 
 const AdminDashboard = () => {
@@ -52,7 +55,10 @@ const AdminDashboard = () => {
     inactiveMembers: 0,
     monthlyRevenue: 0,
     withPT: 0,
+    dailyPassUsers: 0,
   });
+  const [dailyPassSearchQuery, setDailyPassSearchQuery] = useState("");
+  const [dailyPassFilter, setDailyPassFilter] = useState("all");
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -150,6 +156,11 @@ const AdminDashboard = () => {
 
       const uniquePTMembers = new Set(activePTData?.map((pt) => pt.member_id) || []).size;
 
+      // Get daily pass users count
+      const { count: dailyPassCount } = await supabase
+        .from("daily_pass_users")
+        .select("*", { count: "exact", head: true });
+
       setStats({
         totalMembers: totalMembers || 0,
         activeMembers: uniqueActiveMembers,
@@ -158,6 +169,7 @@ const AdminDashboard = () => {
         inactiveMembers: uniqueInactiveMembers,
         monthlyRevenue,
         withPT: uniquePTMembers,
+        dailyPassUsers: dailyPassCount || 0,
       });
     } catch (error: unknown) {
       console.error("Error fetching stats:", error);
@@ -327,19 +339,23 @@ const AdminDashboard = () => {
                       <Users className="w-4 h-4" />
                       Members
                     </TabsTrigger>
+                    <TabsTrigger value="daily_pass" className="gap-2">
+                      <Clock className="w-4 h-4" />
+                      Daily Pass ({stats.dailyPassUsers})
+                    </TabsTrigger>
                     <TabsTrigger value="payments" className="gap-2">
                       <History className="w-4 h-4" />
                       Payments
                     </TabsTrigger>
                   </TabsList>
-                  {activeTab === "members" && (
+                  {(activeTab === "members" || activeTab === "daily_pass") && (
                     <div className="relative flex-1 min-w-[250px] max-w-md group">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
                       <Input
                         placeholder="Search by name or phone..."
                         className="pl-10 h-10 bg-muted/50 border-transparent hover:bg-muted hover:border-border focus:bg-background focus:border-border"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        value={activeTab === "members" ? searchQuery : dailyPassSearchQuery}
+                        onChange={(e) => activeTab === "members" ? setSearchQuery(e.target.value) : setDailyPassSearchQuery(e.target.value)}
                       />
                     </div>
                   )}
@@ -383,6 +399,13 @@ const AdminDashboard = () => {
                   refreshKey={refreshKey} 
                   filterValue={memberFilter}
                   ptFilterActive={ptFilterActive}
+                />
+              </TabsContent>
+              <TabsContent value="daily_pass" className="mt-0">
+                <DailyPassTable 
+                  searchQuery={dailyPassSearchQuery} 
+                  refreshKey={refreshKey}
+                  filterValue={dailyPassFilter}
                 />
               </TabsContent>
               <TabsContent value="payments" className="mt-0">

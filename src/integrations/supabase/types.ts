@@ -68,6 +68,115 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_pass_subscriptions: {
+        Row: {
+          created_at: string | null
+          daily_pass_user_id: string
+          duration_days: number
+          end_date: string
+          id: string
+          package_id: string | null
+          package_name: string
+          personal_trainer_id: string | null
+          price: number
+          start_date: string
+          status: string
+          trainer_fee: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          daily_pass_user_id: string
+          duration_days: number
+          end_date: string
+          id?: string
+          package_id?: string | null
+          package_name: string
+          personal_trainer_id?: string | null
+          price: number
+          start_date?: string
+          status?: string
+          trainer_fee?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          daily_pass_user_id?: string
+          duration_days?: number
+          end_date?: string
+          id?: string
+          package_id?: string | null
+          package_name?: string
+          personal_trainer_id?: string | null
+          price?: number
+          start_date?: string
+          status?: string
+          trainer_fee?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_pass_subscriptions_daily_pass_user_id_fkey"
+            columns: ["daily_pass_user_id"]
+            isOneToOne: false
+            referencedRelation: "daily_pass_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_pass_subscriptions_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "custom_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_pass_subscriptions_personal_trainer_id_fkey"
+            columns: ["personal_trainer_id"]
+            isOneToOne: false
+            referencedRelation: "personal_trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_pass_users: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          email: string | null
+          gender: string | null
+          id: string
+          name: string
+          phone: string
+          photo_id_number: string | null
+          photo_id_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          gender?: string | null
+          id?: string
+          name: string
+          phone: string
+          photo_id_number?: string | null
+          photo_id_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          gender?: string | null
+          id?: string
+          name?: string
+          phone?: string
+          photo_id_number?: string | null
+          photo_id_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       gym_settings: {
         Row: {
           gym_address: string | null
@@ -219,6 +328,8 @@ export type Database = {
         Row: {
           amount: number
           created_at: string | null
+          daily_pass_subscription_id: string | null
+          daily_pass_user_id: string | null
           id: string
           member_id: string
           notes: string | null
@@ -232,6 +343,8 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string | null
+          daily_pass_subscription_id?: string | null
+          daily_pass_user_id?: string | null
           id?: string
           member_id: string
           notes?: string | null
@@ -245,6 +358,8 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string | null
+          daily_pass_subscription_id?: string | null
+          daily_pass_user_id?: string | null
           id?: string
           member_id?: string
           notes?: string | null
@@ -256,6 +371,20 @@ export type Database = {
           subscription_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_daily_pass_subscription_id_fkey"
+            columns: ["daily_pass_subscription_id"]
+            isOneToOne: false
+            referencedRelation: "daily_pass_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_daily_pass_user_id_fkey"
+            columns: ["daily_pass_user_id"]
+            isOneToOne: false
+            referencedRelation: "daily_pass_users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_member_id_fkey"
             columns: ["member_id"]
