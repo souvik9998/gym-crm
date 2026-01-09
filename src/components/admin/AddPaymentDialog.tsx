@@ -470,6 +470,26 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
 
       if (paymentError) throw paymentError;
 
+      // Send WhatsApp notification
+      try {
+        const notificationType = paymentType === "pt_only" ? "pt_extension" : "renewal";
+        const endDateForNotification = paymentType === "pt_only" 
+          ? selectedPTOption!.endDate.toISOString().split("T")[0]
+          : gymEndDate?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0];
+        
+        await supabase.functions.invoke("send-whatsapp", {
+          body: {
+            phone: member.phone,
+            name: member.name,
+            endDate: endDateForNotification,
+            type: notificationType,
+            memberIds: [member.id],
+          },
+        });
+      } catch (err) {
+        console.error("Failed to send WhatsApp notification:", err);
+      }
+
       toast({ title: "Payment recorded successfully" });
       onSuccess();
       onOpenChange(false);

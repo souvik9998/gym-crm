@@ -7,18 +7,12 @@ const corsHeaders = {
 
 interface SendWhatsAppRequest {
   memberIds?: string[];
-  type: "manual" | "expiring_7days" | "expiring_today" | "expired" | "test";
+  type?: "expiring_2days" | "expiring_today" | "manual" | "renewal" | "pt_extension";
   customMessage?: string;
-  templateName?: string;
-}
-
-interface Member {
-  id: string;
-  name: string;
-  phone: string;
-  subscription?: {
-    end_date: string;
-  };
+  // For direct send without member lookup
+  phone?: string;
+  name?: string;
+  endDate?: string;
 }
 
 Deno.serve(async (req) => {
@@ -27,278 +21,184 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const WATI_API_KEY = Deno.env.get("WATI_API_KEY");
-    const WATI_ENDPOINT = Deno.env.get("WATI_ENDPOINT");
+    const PERISKOPE_API_KEY = Deno.env.get("PERISKOPE_API_KEY");
+    const PERISKOPE_PHONE = Deno.env.get("PERISKOPE_PHONE");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!WATI_API_KEY || !WATI_ENDPOINT) {
-      throw new Error("WATI credentials not configured");
+    if (!PERISKOPE_API_KEY || !PERISKOPE_PHONE) {
+      throw new Error("Periskope API credentials not configured");
     }
 
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
-    const { memberIds, type, customMessage, templateName } = (await req.json()) as SendWhatsAppRequest;
-
-    // Get members to notify
-    let members: Member[] = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split("T")[0];
-
-    if (memberIds && memberIds.length > 0) {
-      // Specific members selected
-      const { data } = await supabase.from("members").select("id, name, phone").in("id", memberIds);
-
-      // Get subscriptions for these members
-      for (const member of data || []) {
-        const { data: subData } = await supabase
-          .from("subscriptions")
-          .select("end_date")
-          .eq("member_id", member.id)
-          .order("end_date", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        members.push({
-          ...member,
-          subscription: subData || undefined,
-        });
-      }
-    } else if (type === "expiring_7days" || type === "expiring_today") {
-      // Get members with expiring memberships
-      const targetDate = new Date(today);
-      if (type === "expiring_7days") {
-        targetDate.setDate(targetDate.getDate() + 7);
-      }
-      const targetDateStr = targetDate.toISOString().split("T")[0];
-
-      const { data: subsData } = await supabase
-        .from("subscriptions")
-        .select("member_id, end_date")
-        .eq("end_date", type === "expiring_today" ? todayStr : targetDateStr)
-        .not("status", "eq", "expired");
-
-      if (subsData) {
-        const memberIdsFromSubs = [...new Set(subsData.map((s) => s.member_id))];
-        const { data: membersData } = await supabase
-          .from("members")
-          .select("id, name, phone")
-          .in("id", memberIdsFromSubs);
-
-        for (const member of membersData || []) {
-          const sub = subsData.find((s) => s.member_id === member.id);
-          members.push({
-            ...member,
-            subscription: sub ? { end_date: sub.end_date } : undefined,
-          });
-        }
-      }
-    } else if (type === "expired") {
-      // Get recently expired members
-      const { data: subsData } = await supabase
-        .from("subscriptions")
-        .select("member_id, end_date")
-        .lt("end_date", todayStr)
-        .eq("status", "expired");
-
-      if (subsData) {
-        const memberIdsFromSubs = [...new Set(subsData.map((s) => s.member_id))];
-        const { data: membersData } = await supabase
-          .from("members")
-          .select("id, name, phone")
-          .in("id", memberIdsFromSubs);
-
-        for (const member of membersData || []) {
-          const sub = subsData.find((s) => s.member_id === member.id);
-          members.push({
-            ...member,
-            subscription: sub ? { end_date: sub.end_date } : undefined,
-          });
-        }
-      }
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Supabase credentials not configured");
     }
 
-    // Check for already notified members today (idempotency)
-    const startOfDay = new Date(today);
-    const endOfDay = new Date(today);
-    endOfDay.setHours(23, 59, 59, 999);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { memberIds, type = "manual", customMessage, phone, name, endDate } = (await req.json()) as SendWhatsAppRequest;
 
-    const { data: existingNotifications } = await supabase
-      .from("whatsapp_notifications")
-      .select("member_id")
-      .eq("notification_type", type)
-      .gte("sent_at", startOfDay.toISOString())
-      .lte("sent_at", endOfDay.toISOString());
+    // Format phone number for Periskope (should be like 919876543210)
+    const formatPhone = (phoneNum: string): string => {
+      let cleaned = phoneNum.replace(/\D/g, "");
+      if (cleaned.startsWith("0")) {
+        cleaned = cleaned.substring(1);
+      }
+      if (cleaned.length === 10) {
+        cleaned = "91" + cleaned;
+      }
+      return cleaned;
+    };
 
-    const alreadyNotifiedIds = new Set(existingNotifications?.map((n) => n.member_id) || []);
+    // Generate message based on type
+    const generateMessage = (memberName: string, expiryDate: string, msgType: string): string => {
+      const formattedDate = new Date(expiryDate).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
 
-    // Filter out already notified members (unless manual type)
-    if (type !== "manual" && type !== "test") {
-      members = members.filter((m) => !alreadyNotifiedIds.has(m.id));
-    }
+      switch (msgType) {
+        case "renewal":
+          return `🎉 Hi ${memberName}!\n\nYour gym membership has been renewed until *${formattedDate}*.\n\nKeep crushing your fitness goals! 💪`;
+        case "pt_extension":
+          return `🎉 Hi ${memberName}!\n\nYour Personal Training has been extended until *${formattedDate}*.\n\nSee you at the gym! 🏋️`;
+        case "expiring_2days":
+          return `⚠️ Hi ${memberName}!\n\nYour gym membership expires in *2 days* (${formattedDate}).\n\nRenew now to avoid any interruption! 🏃`;
+        case "expiring_today":
+          return `🚨 Hi ${memberName}!\n\nYour gym membership expires *TODAY*!\n\nPlease renew immediately to continue your fitness journey. 💪`;
+        default:
+          return customMessage || `Hi ${memberName}, this is a reminder from your gym!`;
+      }
+    };
 
-    const results: { memberId: string; name: string; success: boolean; error?: string }[] = [];
-
-    for (const member of members) {
+    // Send message via Periskope
+    const sendPeriskopeMessage = async (chatId: string, message: string): Promise<{ success: boolean; error?: string }> => {
       try {
-        // Format phone number for WATI - needs country code (91 for India)
-        let phone = member.phone.replace(/\D/g, "");
-
-        // If starts with 0, remove it
-        if (phone.startsWith("0")) {
-          phone = phone.substring(1);
-        }
-
-        // If already has 91 prefix and is 12 digits, keep as is
-        if (phone.startsWith("91") && phone.length === 12) {
-          // Phone is already in correct format
-        } else if (phone.length === 10) {
-          // Add 91 prefix for Indian numbers
-          phone = "91" + phone;
-        } else {
-          throw new Error(`Invalid phone number format: ${member.phone}`);
-        }
-
-        // Get end date formatted
-        const endDate = member.subscription?.end_date
-          ? new Date(member.subscription.end_date).toLocaleDateString("en-IN", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })
-          : "N/A";
-
-        let watiResponse: Response;
-        let apiEndpoint: string;
-        let requestBody: any;
-
-        // Determine which API endpoint to use
-        if (templateName) {
-          // Use template message (for proactive messaging)
-          apiEndpoint = `${WATI_ENDPOINT}/api/v1/sendTemplateMessage`;
-          requestBody = {
-            whatsappNumber: phone,
-            template_name: templateName,
-            broadcast_name: `gym_${type}_${Date.now()}`,
-            parameters: [
-              { name: "name", value: member.name },
-              { name: "date", value: endDate },
-            ],
-          };
-        } else {
-          // Use session message (only works within 24hr window)
-          let message = customMessage || "";
-
-          if (!customMessage) {
-            // Generate default message based on type
-            switch (type) {
-              case "expiring_7days":
-                message = `Hi ${member.name}! 🏋️\n\nYour Pro Plus Fitness membership is expiring on ${endDate} (in 7 days).\n\nRenew now to continue your fitness journey without interruption!\n\nVisit us or renew online today.`;
-                break;
-              case "expiring_today":
-                message = `Hi ${member.name}! ⚠️\n\nYour Pro Plus Fitness membership expires TODAY (${endDate})!\n\nDon't miss a single workout - renew now to keep your membership active.\n\nWe're here to help you stay fit!`;
-                break;
-              case "expired":
-                message = `Hi ${member.name}! 💪\n\nWe miss you at Pro Plus Fitness! Your membership expired on ${endDate}.\n\nRejoin now and get back on track with your fitness goals.\n\nSpecial offers may be available - visit us today!`;
-                break;
-              default:
-                message = `Hi ${member.name}! This is a message from Pro Plus Fitness.`;
-            }
-          }
-
-          apiEndpoint = `${WATI_ENDPOINT}/api/v1/sendSessionMessage/${phone}`;
-          requestBody = { messageText: message };
-        }
-
-        console.log(`Sending to ${member.name} (${phone})`);
-        console.log(`API Endpoint: ${apiEndpoint}`);
-        console.log(`Request Body:`, JSON.stringify(requestBody, null, 2));
-
-        watiResponse = await fetch(apiEndpoint, {
+        console.log(`Sending to ${chatId}: ${message.substring(0, 50)}...`);
+        
+        const response = await fetch("https://api.periskope.app/message/send", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${WATI_API_KEY}`,
+            "Authorization": `Bearer ${PERISKOPE_API_KEY}`,
+            "x-phone": PERISKOPE_PHONE,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(requestBody),
+          body: JSON.stringify({
+            chat_id: chatId,
+            message: message,
+          }),
         });
 
-        const responseText = await watiResponse.text();
-        console.log(`WATI Response for ${member.name}: ${watiResponse.status} - ${responseText}`);
+        const responseText = await response.text();
+        console.log(`Periskope response for ${chatId}: ${response.status} - ${responseText}`);
 
-        // Parse response
-        let responseData: any;
-        try {
-          responseData = JSON.parse(responseText);
-        } catch {
-          responseData = { result: watiResponse.ok };
+        if (!response.ok) {
+          return { success: false, error: `Periskope API error: ${response.status} - ${responseText}` };
         }
 
-        // Check if request was successful
-        // WATI returns { result: true/false } or { success: true/false }
-        const isSuccess =
-          watiResponse.ok &&
-          (responseData.result === true ||
-            responseData.success === true ||
-            (watiResponse.status === 200 && !responseData.result && !responseData.error));
-
-        if (!isSuccess) {
-          const errorMsg =
-            responseData.message ||
-            responseData.info ||
-            responseData.error ||
-            responseData.details ||
-            responseText ||
-            "Unknown WATI error";
-          throw new Error(`WATI API error: ${errorMsg}`);
-        }
-
-        // Log successful notification
-        await supabase.from("whatsapp_notifications").insert({
-          member_id: member.id,
-          notification_type: type,
-          status: "sent",
-        });
-
-        results.push({
-          memberId: member.id,
-          name: member.name,
-          success: true,
-        });
+        return { success: true };
       } catch (error: any) {
-        console.error(`Failed to send to ${member.name}:`, error);
+        console.error("Error sending Periskope message:", error);
+        return { success: false, error: error.message };
+      }
+    };
 
-        // Log failed notification
+    // If direct send (phone, name, endDate provided)
+    if (phone && name && endDate) {
+      const formattedPhone = formatPhone(phone);
+      const message = generateMessage(name, endDate, type);
+      const result = await sendPeriskopeMessage(formattedPhone, message);
+
+      // Log notification if we have a member ID
+      if (memberIds && memberIds.length > 0) {
         await supabase.from("whatsapp_notifications").insert({
-          member_id: member.id,
+          member_id: memberIds[0],
           notification_type: type,
-          status: "failed",
-          error_message: error.message,
-        });
-
-        results.push({
-          memberId: member.id,
-          name: member.name,
-          success: false,
-          error: error.message,
+          status: result.success ? "sent" : "failed",
+          error_message: result.error || null,
         });
       }
+
+      return new Response(
+        JSON.stringify({ success: result.success, error: result.error }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    // If memberIds provided, fetch members and send
+    if (!memberIds || memberIds.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "No member IDs or phone provided" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Fetch members with their subscription data
+    const { data: members, error: membersError } = await supabase
+      .from("members")
+      .select("id, name, phone")
+      .in("id", memberIds);
+
+    if (membersError) {
+      throw membersError;
+    }
+
+    // Fetch subscription data for each member
+    const membersWithSubs = [];
+    for (const member of members || []) {
+      const { data: subData } = await supabase
+        .from("subscriptions")
+        .select("end_date")
+        .eq("member_id", member.id)
+        .order("end_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      membersWithSubs.push({
+        ...member,
+        end_date: subData?.end_date || new Date().toISOString(),
+      });
+    }
+
+    const results: { memberId: string; success: boolean; error?: string }[] = [];
+
+    for (const member of membersWithSubs) {
+      const formattedPhone = formatPhone(member.phone);
+      const message = customMessage || generateMessage(member.name, member.end_date, type);
+      const result = await sendPeriskopeMessage(formattedPhone, message);
+
+      // Log notification
+      await supabase.from("whatsapp_notifications").insert({
+        member_id: member.id,
+        notification_type: type,
+        status: result.success ? "sent" : "failed",
+        error_message: result.error || null,
+      });
+
+      results.push({
+        memberId: member.id,
+        success: result.success,
+        error: result.error,
+      });
+    }
+
+    const successCount = results.filter((r) => r.success).length;
+    const failedCount = results.filter((r) => !r.success).length;
 
     return new Response(
       JSON.stringify({
         success: true,
-        sent: results.filter((r) => r.success).length,
-        failed: results.filter((r) => !r.success).length,
+        sent: successCount,
+        failed: failedCount,
         results,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
-    console.error("Error in send-whatsapp:", error);
-    return new Response(JSON.stringify({ success: false, error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.error("Error in send-whatsapp function:", error);
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
