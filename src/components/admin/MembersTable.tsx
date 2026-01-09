@@ -11,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserX, Clock } from "lucide-react";
+import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserX, UserCheck, Clock } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -231,27 +231,31 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     }
   };
 
+  const isInactive = (member: Member): boolean => {
+    return member.subscription?.status === "inactive";
+  };
+
   const handleMoveToInactive = async (member: Member, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     try {
       let subscriptionId = member.subscription?.id;
       
       if (subscriptionId) {
-        // Update existing subscription status to paused
+        // Update existing subscription status to inactive
         const { error } = await supabase
           .from("subscriptions")
-          .update({ status: "paused" as any })
+          .update({ status: "inactive" as any })
           .eq("id", subscriptionId);
         
         if (error) throw error;
       } else {
-        // Create a paused subscription if none exists
+        // Create an inactive subscription if none exists
         const today = new Date().toISOString().split("T")[0];
         const { data, error } = await supabase
           .from("subscriptions")
           .insert({
             member_id: member.id,
-            status: "paused" as any,
+            status: "inactive" as any,
             start_date: today,
             end_date: today,
             plan_months: 0,
@@ -270,7 +274,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
               ...m, 
               subscription: { 
                 id: subscriptionId!, 
-                status: "paused", 
+                status: "inactive", 
                 end_date: member.subscription?.end_date || new Date().toISOString().split("T")[0],
                 start_date: member.subscription?.start_date || new Date().toISOString().split("T")[0],
               } 
@@ -288,6 +292,49 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     }
   };
 
+  const handleMoveToActive = async (member: Member, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      if (!member.subscription?.id) {
+        toast({
+          title: "No subscription found",
+          description: "Cannot activate member without a subscription",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Update subscription status to active
+      const { error } = await supabase
+        .from("subscriptions")
+        .update({ status: "active" as any })
+        .eq("id", member.subscription.id);
+      
+      if (error) throw error;
+      
+      // Update local state immediately (in-place update)
+      setMembers(prev => prev.map(m => 
+        m.id === member.id 
+          ? { 
+              ...m, 
+              subscription: { 
+                ...m.subscription!,
+                status: "active", 
+              } 
+            } 
+          : m
+      ));
+      
+      toast({ title: `${member.name} moved to active` });
+    } catch (error: any) {
+      toast({
+        title: "Error moving to active",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   // Auto-mark members expired > 1 month as inactive
   const autoMarkLongExpiredAsInactive = async () => {
     const today = new Date();
@@ -296,7 +343,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     
     const longExpiredMembers = members.filter(m => {
       if (!m.subscription?.end_date) return false;
-      if (m.subscription.status === "paused") return false;
+      if (m.subscription.status === "inactive") return false;
       
       const endDate = new Date(m.subscription.end_date);
       return endDate < oneMonthAgo;
@@ -304,12 +351,12 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
 
     if (longExpiredMembers.length === 0) return;
 
-    // Update all long-expired subscriptions to paused
+    // Update all long-expired subscriptions to inactive
     const subscriptionIds = longExpiredMembers.map(m => m.subscription!.id);
     
     const { error } = await supabase
       .from("subscriptions")
-      .update({ status: "paused" as any })
+      .update({ status: "inactive" as any })
       .in("id", subscriptionIds);
     
     if (!error) {
@@ -318,7 +365,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
         if (subscriptionIds.includes(m.subscription?.id || "")) {
           return {
             ...m,
-            subscription: { ...m.subscription!, status: "paused" }
+            subscription: { ...m.subscription!, status: "inactive" }
           };
         }
         return m;
@@ -404,22 +451,22 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
       const withSubscription = selectedMembersData.filter(m => m.subscription?.id);
       const withoutSubscription = selectedMembersData.filter(m => !m.subscription?.id);
       
-      // Update existing subscriptions to paused
+      // Update existing subscriptions to inactive
       if (withSubscription.length > 0) {
         const subscriptionIds = withSubscription.map(m => m.subscription!.id);
         const { error } = await supabase
           .from("subscriptions")
-          .update({ status: "paused" as any })
+          .update({ status: "inactive" as any })
           .in("id", subscriptionIds);
         
         if (error) throw error;
       }
       
-      // Create paused subscriptions for those without
+      // Create inactive subscriptions for those without
       if (withoutSubscription.length > 0) {
         const newSubscriptions = withoutSubscription.map(m => ({
           member_id: m.id,
-          status: "paused" as any,
+          status: "inactive" as any,
           start_date: today,
           end_date: today,
           plan_months: 0,
@@ -439,7 +486,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
             ...m,
             subscription: {
               id: m.subscription?.id || "temp-" + m.id,
-              status: "paused",
+              status: "inactive",
               end_date: m.subscription?.end_date || today,
               start_date: m.subscription?.start_date || today,
             }
@@ -560,7 +607,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
         case "expiring_7days":
           return !isExpired && diffDays >= 0 && diffDays <= 7;
         case "inactive":
-          return !subscription || subscription.status === "paused" || isExpired;
+          return !subscription || subscription.status === "inactive" || subscription.status === "paused";
         default:
           return true;
       }
@@ -636,6 +683,8 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
         return <Badge className="bg-destructive/10 text-destructive border-destructive/20">Expired</Badge>;
       case "paused":
         return <Badge variant="outline" className="text-muted-foreground">Paused</Badge>;
+      case "inactive":
+        return <Badge variant="outline" className="bg-muted text-muted-foreground">Inactive</Badge>;
       default:
         return <Badge variant="outline">{subscription.status}</Badge>;
     }
@@ -940,13 +989,23 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
                       
                       <DropdownMenuSeparator />
                       
-                      {/* Move to Inactive */}
-                      <DropdownMenuItem 
-                        onClick={(e) => handleMoveToInactive(member, e)}
-                      >
-                        <UserX className="w-4 h-4 mr-2" />
-                        Move to Inactive
-                      </DropdownMenuItem>
+                      {/* Move to Inactive / Active toggle */}
+                      {isInactive(member) ? (
+                        <DropdownMenuItem 
+                          onClick={(e) => handleMoveToActive(member, e)}
+                          className="text-success hover:bg-success/10 hover:text-success focus:bg-success/10 focus:text-success"
+                        >
+                          <UserCheck className="w-4 h-4 mr-2" />
+                          Move to Active
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem 
+                          onClick={(e) => handleMoveToInactive(member, e)}
+                        >
+                          <UserX className="w-4 h-4 mr-2" />
+                          Move to Inactive
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
