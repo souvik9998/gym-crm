@@ -260,6 +260,11 @@ const PackageSelectionForm = ({
   const totalAmount = subscriptionAmount + joiningFee + trainerFee;
 
   const handleSubmit = () => {
+    // Prevent submission if member has active membership and tries to select custom package
+    if (hasActiveMembership && isCustom) {
+      return;
+    }
+
     onSubmit({
       selectedMonths: isCustom ? 0 : (selectedMonthlyPackage?.months || 0),
       selectedTrainer: wantsTrainer ? selectedTrainer : null,
@@ -278,6 +283,25 @@ const PackageSelectionForm = ({
   const parsedExistingMembershipEndDate = existingMembershipEndDate ? new Date(existingMembershipEndDate) : null;
   const parsedExistingPTEndDate = existingPTEndDate ? new Date(existingPTEndDate) : null;
   const parsedPtStartDate = ptStartDate ? new Date(ptStartDate) : null;
+
+  // Check if member has active membership (end date is in the future)
+  const hasActiveMembership = useMemo(() => {
+    if (!parsedExistingMembershipEndDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return parsedExistingMembershipEndDate > today;
+  }, [parsedExistingMembershipEndDate]);
+
+  // Prevent switching to custom tab if member has active membership
+  // Also reset to monthly on mount if member has active membership
+  useEffect(() => {
+    if (hasActiveMembership) {
+      if (packageType === "custom") {
+        setPackageType("monthly");
+        setSelectedCustomPackage(null);
+      }
+    }
+  }, [hasActiveMembership, packageType]);
 
   return (
     <Card className="max-w-md mx-auto border">
@@ -330,13 +354,23 @@ const PackageSelectionForm = ({
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Package Type Selection */}
-        <Tabs value={packageType} onValueChange={(v) => setPackageType(v as "monthly" | "custom")}>
+        <Tabs value={packageType} onValueChange={(v) => {
+          // Prevent switching to custom tab if member has active membership
+          if (v === "custom" && hasActiveMembership) {
+            return;
+          }
+          setPackageType(v as "monthly" | "custom");
+        }}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="monthly" className="gap-2">
               <Calendar className="w-4 h-4" />
               Monthly
             </TabsTrigger>
-            <TabsTrigger value="custom" className="gap-2">
+            <TabsTrigger 
+              value="custom" 
+              className={hasActiveMembership ? "gap-2 opacity-50 cursor-not-allowed" : "gap-2"}
+              disabled={hasActiveMembership}
+            >
               <Sparkles className="w-4 h-4" />
               Daily Pass
             </TabsTrigger>
@@ -403,7 +437,23 @@ const PackageSelectionForm = ({
 
           {/* Custom/Daily Packages */}
           <TabsContent value="custom" className="mt-4">
-            {customPackages.length === 0 ? (
+            {hasActiveMembership ? (
+              <div className="p-6 bg-muted/50 border-2 border-muted rounded-xl space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-muted-foreground/10 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-foreground">Daily Passes Not Available</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Daily passes are only available for members without an active gym membership. 
+                      Since your membership is valid until {parsedExistingMembershipEndDate ? format(parsedExistingMembershipEndDate, "d MMMM yyyy") : ""}, 
+                      please select a monthly plan to extend your membership.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : customPackages.length === 0 ? (
               <p className="text-center text-muted-foreground py-6">
                 No daily passes available
               </p>
@@ -413,8 +463,11 @@ const PackageSelectionForm = ({
                   <button
                     key={pkg.id}
                     onClick={() => setSelectedCustomPackage(pkg)}
+                    disabled={hasActiveMembership}
                     className={`w-full p-4 rounded-xl border-2 transition-all duration-200 flex justify-between items-center ${
-                      selectedCustomPackage?.id === pkg.id
+                      hasActiveMembership
+                        ? "border-muted/50 bg-muted/30 opacity-60 cursor-not-allowed"
+                        : selectedCustomPackage?.id === pkg.id
                         ? "border-accent bg-accent/10 shadow-lg"
                         : "border-border hover:border-accent/50 bg-card"
                     }`}
@@ -426,11 +479,13 @@ const PackageSelectionForm = ({
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-accent flex items-center">
+                      <span className={`text-lg font-bold flex items-center ${
+                        hasActiveMembership ? "text-muted-foreground" : "text-accent"
+                      }`}>
                         <IndianRupee className="w-4 h-4" />
                         {pkg.price}
                       </span>
-                      {selectedCustomPackage?.id === pkg.id && (
+                      {selectedCustomPackage?.id === pkg.id && !hasActiveMembership && (
                         <div className="w-5 h-5 rounded-full bg-accent flex items-center justify-center">
                           <Check className="w-3 h-3 text-accent-foreground" />
                         </div>
@@ -647,7 +702,12 @@ const PackageSelectionForm = ({
             size="lg"
             className="flex-1"
             onClick={handleSubmit}
-            disabled={isLoading || (packageType === "monthly" && !selectedMonthlyPackage) || (packageType === "custom" && !selectedCustomPackage) || (wantsTrainer && !selectedTrainer)}
+            disabled={
+              isLoading || 
+              (packageType === "monthly" && !selectedMonthlyPackage) || 
+              (packageType === "custom" && (!selectedCustomPackage || hasActiveMembership)) || 
+              (wantsTrainer && !selectedTrainer)
+            }
           >
             {isLoading ? (
               <div className="flex items-center gap-2">
