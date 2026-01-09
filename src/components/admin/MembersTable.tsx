@@ -234,18 +234,35 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
   const handleMoveToInactive = async (member: Member, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      // Update subscription status to paused
       if (member.subscription?.id) {
-        await supabase
+        // Update existing subscription status to paused
+        const { error } = await supabase
           .from("subscriptions")
-          .update({ status: "paused" })
+          .update({ status: "paused" as any })
           .eq("id", member.subscription.id);
+        
+        if (error) throw error;
+      } else {
+        // Create a paused subscription if none exists
+        const today = new Date().toISOString().split("T")[0];
+        const { error } = await supabase
+          .from("subscriptions")
+          .insert({
+            member_id: member.id,
+            status: "paused" as any,
+            start_date: today,
+            end_date: today,
+            plan_months: 0,
+          });
+        
+        if (error) throw error;
       }
+      
       toast({ title: `${member.name} moved to inactive` });
       fetchMembers();
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: "Error moving to inactive",
         description: error.message,
         variant: "destructive",
       });
@@ -819,17 +836,6 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
                       >
                         <UserX className="w-4 h-4 mr-2" />
                         Move to Inactive
-                      </DropdownMenuItem>
-                      
-                      <DropdownMenuSeparator />
-                      
-                      {/* Delete Member */}
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => setDeleteConfirm({ open: true, memberId: member.id, memberName: member.name })}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete Member
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
