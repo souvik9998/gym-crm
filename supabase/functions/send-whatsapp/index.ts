@@ -7,7 +7,7 @@ const corsHeaders = {
 
 interface SendWhatsAppRequest {
   memberIds?: string[];
-  type?: "expiring_2days" | "expiring_today" | "manual" | "renewal" | "pt_extension";
+  type?: "expiring_2days" | "expiring_today" | "manual" | "renewal" | "pt_extension" | "promotional" | "expiry_reminder" | "payment_details" | "custom";
   customMessage?: string;
 
   // Direct send
@@ -64,14 +64,25 @@ Deno.serve(async (req) => {
     };
 
     // ---------------------------
-    // MESSAGE GENERATOR (UPDATED)
+    // MESSAGE GENERATOR
     // ---------------------------
-    const generateMessage = (memberName: string, expiryDate: string, msgType: string): string => {
+    const generateMessage = (
+      memberName: string, 
+      expiryDate: string, 
+      msgType: string,
+      paymentInfo?: { amount: number; date: string; mode: string } | null
+    ): string => {
       const formattedDate = new Date(expiryDate).toLocaleDateString("en-IN", {
         day: "numeric",
         month: "long",
         year: "numeric",
       });
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const endDateObj = new Date(expiryDate);
+      endDateObj.setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((endDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
       switch (msgType) {
         case "renewal":
@@ -79,8 +90,8 @@ Deno.serve(async (req) => {
             `✅ *Membership Renewed Successfully!*\n\n` +
             `Hi ${memberName}, 👋\n\n` +
             `Your gym membership has been *renewed till ${formattedDate}*.\n\n` +
-            `Let’s stay consistent and keep pushing towards your fitness goals 💪🔥\n\n` +
-            `See you at the gym!\n— Team Gym`
+            `Let's stay consistent and keep pushing towards your fitness goals 💪🔥\n\n` +
+            `See you at the gym!\n— Team Pro Plus Fitness`
           );
 
         case "pt_extension":
@@ -89,7 +100,7 @@ Deno.serve(async (req) => {
             `Hi ${memberName}, 👋\n\n` +
             `Your Personal Training sessions are now extended till *${formattedDate}*.\n\n` +
             `Get ready to level up your performance with focused training 🔥\n\n` +
-            `Train hard!\n— Team Gym`
+            `Train hard!\n— Team Pro Plus Fitness`
           );
 
         case "expiring_2days":
@@ -98,7 +109,7 @@ Deno.serve(async (req) => {
             `Hi ${memberName}, 👋\n\n` +
             `Your gym membership will expire in *2 days* on *${formattedDate}*.\n\n` +
             `Renew on time to avoid any break in your workouts 💪\n\n` +
-            `Reply to this message or visit the gym to renew.\n— Team Gym`
+            `Reply to this message or visit the gym to renew.\n— Team Pro Plus Fitness`
           );
 
         case "expiring_today":
@@ -107,11 +118,63 @@ Deno.serve(async (req) => {
             `Hi ${memberName}, 👋\n\n` +
             `Your gym membership expires *today (${formattedDate})*.\n\n` +
             `Renew now to continue your fitness journey without interruption 🔥\n\n` +
-            `Contact us or visit the gym today.\n— Team Gym`
+            `Contact us or visit the gym today.\n— Team Pro Plus Fitness`
           );
 
+        case "promotional":
+          return (
+            `🎉 *Special Offer for You!*\n\n` +
+            `Hi ${memberName}, 👋\n\n` +
+            `We have exciting offers waiting for you at Pro Plus Fitness! 💪\n\n` +
+            `Visit us today or reply to this message to know more about our exclusive deals.\n\n` +
+            `Stay fit, stay strong! 🔥\n— Team Pro Plus Fitness`
+          );
+
+        case "expiry_reminder":
+          const daysText = diffDays === 0 
+            ? "expires *today*" 
+            : diffDays < 0 
+              ? `expired *${Math.abs(diffDays)} days ago*`
+              : `expires in *${diffDays} days*`;
+          return (
+            `⚠️ *Subscription Expiry Reminder*\n\n` +
+            `Hi ${memberName}, 👋\n\n` +
+            `Your gym membership ${daysText} (${formattedDate}).\n\n` +
+            `Don't let your fitness journey pause! Renew now to continue your progress 💪\n\n` +
+            `Visit the gym or reply to renew.\n— Team Pro Plus Fitness`
+          );
+
+        case "payment_details":
+          if (paymentInfo) {
+            const paymentDate = new Date(paymentInfo.date).toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            });
+            return (
+              `🧾 *Payment Receipt*\n\n` +
+              `Hi ${memberName}, 👋\n\n` +
+              `Here are your last payment details:\n\n` +
+              `💰 *Amount:* ₹${paymentInfo.amount}\n` +
+              `📅 *Date:* ${paymentDate}\n` +
+              `💳 *Mode:* ${paymentInfo.mode.charAt(0).toUpperCase() + paymentInfo.mode.slice(1)}\n\n` +
+              `Your membership is valid till *${formattedDate}*.\n\n` +
+              `Thank you for being with us! 🙏\n— Team Pro Plus Fitness`
+            );
+          }
+          return (
+            `🧾 *Payment Information*\n\n` +
+            `Hi ${memberName}, 👋\n\n` +
+            `Your current membership is valid till *${formattedDate}*.\n\n` +
+            `For detailed payment history, please visit the gym or contact us.\n\n` +
+            `Thank you! 🙏\n— Team Pro Plus Fitness`
+          );
+
+        case "custom":
+          return customMessage || `Hi ${memberName}, 👋\n\nThis is a message from Pro Plus Fitness.\n\n— Team Pro Plus Fitness`;
+
         default:
-          return customMessage || `Hi ${memberName}, 👋\n\nThis is a message from your gym.\n\n— Team Gym`;
+          return customMessage || `Hi ${memberName}, 👋\n\nThis is a message from your gym.\n\n— Team Pro Plus Fitness`;
       }
     };
 
@@ -156,7 +219,7 @@ Deno.serve(async (req) => {
     // ---------------------------
     if (phone && name && endDate) {
       const formattedPhone = formatPhone(phone);
-      const message = generateMessage(name, endDate, type);
+      const message = customMessage || generateMessage(name, endDate, type);
 
       const result = await sendPeriskopeMessage(formattedPhone, message);
 
@@ -194,9 +257,10 @@ Deno.serve(async (req) => {
 
     if (error) throw error;
 
-    const membersWithSubs = [];
+    const membersWithData = [];
 
     for (const member of members || []) {
+      // Get subscription
       const { data: sub } = await supabase
         .from("subscriptions")
         .select("end_date")
@@ -205,19 +269,41 @@ Deno.serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-      membersWithSubs.push({
+      // Get last payment for payment_details type
+      let paymentInfo = null;
+      if (type === "payment_details") {
+        const { data: payment } = await supabase
+          .from("payments")
+          .select("amount, created_at, payment_mode")
+          .eq("member_id", member.id)
+          .eq("status", "success")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (payment) {
+          paymentInfo = {
+            amount: payment.amount,
+            date: payment.created_at,
+            mode: payment.payment_mode,
+          };
+        }
+      }
+
+      membersWithData.push({
         ...member,
         end_date: sub?.end_date || new Date().toISOString(),
+        paymentInfo,
       });
     }
 
     const results = [];
 
-    for (const member of membersWithSubs) {
-      const phone = formatPhone(member.phone);
-      const message = customMessage || generateMessage(member.name, member.end_date, type);
+    for (const member of membersWithData) {
+      const formattedPhone = formatPhone(member.phone);
+      const message = customMessage || generateMessage(member.name, member.end_date, type, member.paymentInfo);
 
-      const result = await sendPeriskopeMessage(phone, message);
+      const result = await sendPeriskopeMessage(formattedPhone, message);
 
       await supabase.from("whatsapp_notifications").insert({
         member_id: member.id,

@@ -11,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Send } from "lucide-react";
+import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Send, Receipt, UserX, Clock } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -153,9 +153,14 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     setViewingMemberName(member.name);
   };
 
-  const handleSendWhatsApp = async (member: Member, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSendingWhatsApp(member.id);
+  const sendWhatsAppMessage = async (
+    memberId: string, 
+    memberName: string, 
+    memberPhone: string,
+    type: string,
+    customMessage?: string
+  ) => {
+    setSendingWhatsApp(memberId);
     
     try {
       const response = await fetch(
@@ -167,8 +172,9 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
             "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({
-            memberIds: [member.id],
-            type: "manual",
+            memberIds: [memberId],
+            type,
+            customMessage,
           }),
         }
       );
@@ -176,7 +182,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
       const data = await response.json();
       
       if (data.success && data.sent > 0) {
-        toast({ title: `WhatsApp sent to ${member.name}` });
+        return true;
       } else {
         throw new Error(data.error || "Failed to send WhatsApp");
       }
@@ -186,9 +192,70 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
         description: error.message,
         variant: "destructive",
       });
+      return false;
     } finally {
       setSendingWhatsApp(null);
     }
+  };
+
+  const handleSendPromotional = async (member: Member, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const success = await sendWhatsAppMessage(member.id, member.name, member.phone, "promotional");
+    if (success) {
+      toast({ title: `Promotional message sent to ${member.name}` });
+    }
+  };
+
+  const handleSendExpiryReminder = async (member: Member, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!member.subscription) return;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(member.subscription.end_date);
+    endDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    const success = await sendWhatsAppMessage(member.id, member.name, member.phone, "expiry_reminder");
+    if (success) {
+      const dayText = diffDays === 0 ? "today" : diffDays < 0 ? `${Math.abs(diffDays)} days ago` : `in ${diffDays} days`;
+      toast({ title: `Expiry reminder sent to ${member.name}`, description: `Expires ${dayText}` });
+    }
+  };
+
+  const handleSendPaymentDetails = async (member: Member, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const success = await sendWhatsAppMessage(member.id, member.name, member.phone, "payment_details");
+    if (success) {
+      toast({ title: `Payment details sent to ${member.name}` });
+    }
+  };
+
+  const handleMoveToInactive = async (member: Member, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      // Update subscription status to paused
+      if (member.subscription?.id) {
+        await supabase
+          .from("subscriptions")
+          .update({ status: "paused" })
+          .eq("id", member.subscription.id);
+      }
+      toast({ title: `${member.name} moved to inactive` });
+      fetchMembers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const isExpiringOrExpired = (member: Member): boolean => {
+    if (!member.subscription) return false;
+    const status = member.subscription.status;
+    return status === "expiring_soon" || status === "expired";
   };
 
   const handleBulkWhatsApp = async () => {
@@ -640,19 +707,54 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {/* Update User */}
+                      <DropdownMenuItem onClick={() => setEditingMember(member)}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Update User
+                      </DropdownMenuItem>
+                      
+                      {/* Send Promotional Message */}
                       <DropdownMenuItem 
-                        onClick={(e) => handleSendWhatsApp(member, e)}
+                        onClick={(e) => handleSendPromotional(member, e)}
                         disabled={sendingWhatsApp === member.id}
                       >
                         <MessageCircle className="w-4 h-4 mr-2" />
-                        {sendingWhatsApp === member.id ? "Sending..." : "Send WhatsApp"}
+                        {sendingWhatsApp === member.id ? "Sending..." : "Send Promotional Message"}
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setEditingMember(member)}>
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Edit Member
+                      
+                      {/* Send Subscription Expiry Reminder - Only for Expiring Soon and Expired */}
+                      {isExpiringOrExpired(member) && (
+                        <DropdownMenuItem 
+                          onClick={(e) => handleSendExpiryReminder(member, e)}
+                          disabled={sendingWhatsApp === member.id}
+                        >
+                          <Clock className="w-4 h-4 mr-2" />
+                          Send Expiry Reminder
+                        </DropdownMenuItem>
+                      )}
+                      
+                      {/* Send Payment Details/Bill */}
+                      <DropdownMenuItem 
+                        onClick={(e) => handleSendPaymentDetails(member, e)}
+                        disabled={sendingWhatsApp === member.id}
+                      >
+                        <Receipt className="w-4 h-4 mr-2" />
+                        Send Payment Details
                       </DropdownMenuItem>
+                      
                       <DropdownMenuSeparator />
+                      
+                      {/* Move to Inactive */}
+                      <DropdownMenuItem 
+                        onClick={(e) => handleMoveToInactive(member, e)}
+                      >
+                        <UserX className="w-4 h-4 mr-2" />
+                        Move to Inactive
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuSeparator />
+                      
+                      {/* Delete Member */}
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
                         onClick={() => setDeleteConfirm({ open: true, memberId: member.id, memberName: member.name })}
