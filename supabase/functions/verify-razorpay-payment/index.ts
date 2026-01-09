@@ -28,9 +28,12 @@ Deno.serve(async (req) => {
       ptStartDate,
       gymStartDate, // For renewals: the day after existing membership ends
       isNewMember,
+      isDailyPass, // New flag to indicate daily pass purchase
+      memberDetails, // Contains gender, photo_id_type, photo_id_number, address
+      customPackage, // Contains id, name, duration_days, price
     } = await req.json();
 
-    console.log("Verifying payment:", { razorpay_order_id, razorpay_payment_id, memberId, isNewMember, trainerId, months, customDays, ptStartDate, gymStartDate });
+    console.log("Verifying payment:", { razorpay_order_id, razorpay_payment_id, memberId, isNewMember, isDailyPass, trainerId, months, customDays, ptStartDate, gymStartDate });
 
     const RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -65,6 +68,100 @@ Deno.serve(async (req) => {
     // Initialize Supabase client with service role
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
+    // ============ DAILY PASS HANDLING ============
+    if (isDailyPass) {
+      console.log("Processing daily pass purchase");
+      
+      // Create daily pass user
+      const { data: dailyPassUser, error: userError } = await supabase
+        .from("daily_pass_users")
+        .insert({
+          name: memberName,
+          phone: memberPhone,
+          gender: memberDetails?.gender || null,
+          photo_id_type: memberDetails?.photoIdType || null,
+          photo_id_number: memberDetails?.photoIdNumber || null,
+          address: memberDetails?.address || null,
+        })
+        .select()
+        .single();
+
+      if (userError) {
+        console.error("Error creating daily pass user:", userError);
+        throw new Error("Failed to create daily pass user");
+      }
+
+      console.log("Created daily pass user:", dailyPassUser.id);
+
+      // Calculate end date
+      const startDate = new Date();
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + (customPackage?.duration_days || customDays));
+
+      // Create daily pass subscription
+      const { data: subscription, error: subError } = await supabase
+        .from("daily_pass_subscriptions")
+        .insert({
+          daily_pass_user_id: dailyPassUser.id,
+          package_id: customPackage?.id || null,
+          package_name: customPackage?.name || `${customDays} Day Pass`,
+          duration_days: customPackage?.duration_days || customDays,
+          start_date: startDate.toISOString().split("T")[0],
+          end_date: endDate.toISOString().split("T")[0],
+          price: customPackage?.price || gymFee,
+          personal_trainer_id: trainerId || null,
+          trainer_fee: trainerFee || 0,
+          status: "active",
+        })
+        .select()
+        .single();
+
+      if (subError) {
+        console.error("Error creating daily pass subscription:", subError);
+        throw new Error("Failed to create daily pass subscription");
+      }
+
+      console.log("Created daily pass subscription:", subscription.id);
+
+      // Determine payment type
+      const paymentType = trainerId ? "gym_and_pt" : "gym_membership";
+
+      // Record payment linked to daily pass user
+      const { error: paymentError } = await supabase.from("payments").insert({
+        daily_pass_user_id: dailyPassUser.id,
+        daily_pass_subscription_id: subscription.id,
+        amount: amount,
+        payment_mode: "online",
+        status: "success",
+        payment_type: paymentType,
+        razorpay_order_id: razorpay_order_id,
+        razorpay_payment_id: razorpay_payment_id,
+      });
+
+      if (paymentError) {
+        console.error("Error creating payment:", paymentError);
+        throw new Error("Failed to record payment");
+      }
+
+      console.log("Daily pass payment recorded successfully");
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          isDailyPass: true,
+          dailyPassUserId: dailyPassUser.id,
+          subscriptionId: subscription.id,
+          endDate: endDate.toISOString().split("T")[0],
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+
+    // ============ REGULAR MEMBER HANDLING ============
     let finalMemberId = memberId;
 
     // If new member, create member record
@@ -81,6 +178,24 @@ Deno.serve(async (req) => {
       }
       finalMemberId = member.id;
       console.log("Created new member:", finalMemberId);
+
+      // Also create member_details if provided
+      if (memberDetails) {
+        const { error: detailsError } = await supabase
+          .from("member_details")
+          .insert({
+            member_id: finalMemberId,
+            gender: memberDetails.gender || null,
+            photo_id_type: memberDetails.photoIdType || null,
+            photo_id_number: memberDetails.photoIdNumber || null,
+            address: memberDetails.address || null,
+          });
+
+        if (detailsError) {
+          console.error("Error creating member details:", detailsError);
+          // Non-fatal, continue
+        }
+      }
     }
 
     // Determine gym start date: for renewals, use gymStartDate (day after existing end); otherwise today

@@ -15,6 +15,13 @@ interface RazorpayOptions {
   gymFee?: number;
   ptStartDate?: string;
   gymStartDate?: string; // For renewals: the day after existing membership ends
+  isDailyPass?: boolean; // Flag for daily pass purchases
+  customPackage?: {
+    id: string;
+    name: string;
+    duration_days: number;
+    price: number;
+  };
   memberDetails?: {
     photoIdType: string;
     photoIdNumber: string;
@@ -22,9 +29,11 @@ interface RazorpayOptions {
     gender: string;
   };
   onSuccess: (data: {
-    memberId: string;
+    memberId?: string;
+    dailyPassUserId?: string;
     subscriptionId: string;
     endDate: string;
+    isDailyPass?: boolean;
   }) => void;
   onError?: (error: string) => void;
 }
@@ -68,6 +77,8 @@ export const useRazorpay = () => {
       gymFee,
       ptStartDate,
       gymStartDate,
+      isDailyPass,
+      customPackage,
       memberDetails,
       onSuccess,
       onError,
@@ -96,6 +107,7 @@ export const useRazorpay = () => {
               trainerId,
               trainerFee,
               memberDetails,
+              isDailyPass,
             },
           }
         );
@@ -148,6 +160,8 @@ export const useRazorpay = () => {
                     gymStartDate,
                     memberDetails,
                     isNewMember,
+                    isDailyPass,
+                    customPackage,
                   },
                 }
               );
@@ -158,8 +172,10 @@ export const useRazorpay = () => {
 
               onSuccess({
                 memberId: verifyData.memberId,
+                dailyPassUserId: verifyData.dailyPassUserId,
                 subscriptionId: verifyData.subscriptionId,
                 endDate: verifyData.endDate,
+                isDailyPass: verifyData.isDailyPass,
               });
             } catch (error: unknown) {
               const errorMessage = error instanceof Error ? error.message : "Payment verification failed";

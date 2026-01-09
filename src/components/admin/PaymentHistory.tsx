@@ -32,7 +32,13 @@ interface Payment {
   created_at: string | null;
   notes: string | null;
   payment_type: string | null;
+  member_id: string | null;
+  daily_pass_user_id: string | null;
   member: {
+    name: string;
+    phone: string;
+  } | null;
+  daily_pass_user: {
     name: string;
     phone: string;
   } | null;
@@ -68,7 +74,10 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
           created_at,
           notes,
           payment_type,
-          member:members(name, phone)
+          member_id,
+          daily_pass_user_id,
+          member:members(name, phone),
+          daily_pass_user:daily_pass_users(name, phone)
         `)
         .order("created_at", { ascending: false });
 
@@ -306,9 +315,14 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium">{payment.member?.name || "Unknown"}</div>
+                    <div className="font-medium">
+                      {payment.member?.name || payment.daily_pass_user?.name || "Unknown"}
+                      {payment.daily_pass_user_id && (
+                        <Badge variant="outline" className="ml-2 text-[10px] py-0">Daily Pass</Badge>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">
-                      {payment.member?.phone || "-"}
+                      {payment.member?.phone || payment.daily_pass_user?.phone || "-"}
                     </div>
                   </TableCell>
                   <TableCell>
