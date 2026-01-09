@@ -37,6 +37,23 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Check if WhatsApp is enabled
+    const { data: settings } = await supabase
+      .from("gym_settings")
+      .select("whatsapp_enabled")
+      .limit(1)
+      .maybeSingle();
+
+    if (settings?.whatsapp_enabled === false) {
+      return new Response(
+        JSON.stringify({ success: false, error: "WhatsApp messaging is disabled" }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const {
       memberIds,
       type = "manual",
