@@ -11,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Send, Receipt, UserX, Clock } from "lucide-react";
+import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserX, Clock } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,7 +69,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
-  const [sendingBulkWhatsApp, setSendingBulkWhatsApp] = useState(false);
+  // Removed sendingBulkWhatsApp - now using bulkActionType
 
   useEffect(() => {
     fetchMembers();
@@ -258,10 +258,21 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     return status === "expiring_soon" || status === "expired";
   };
 
-  const handleBulkWhatsApp = async () => {
+  const [bulkActionType, setBulkActionType] = useState<string | null>(null);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+
+  const getSelectedMembersData = () => {
+    return sortedMembers.filter(m => selectedMembers.has(m.id));
+  };
+
+  const hasExpiringOrExpiredSelected = () => {
+    return getSelectedMembersData().some(m => isExpiringOrExpired(m));
+  };
+
+  const handleBulkWhatsApp = async (type: string) => {
     if (selectedMembers.size === 0) return;
     
-    setSendingBulkWhatsApp(true);
+    setBulkActionType(type);
     try {
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
@@ -273,7 +284,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
           },
           body: JSON.stringify({
             memberIds: Array.from(selectedMembers),
-            type: "manual",
+            type,
           }),
         }
       );
@@ -281,8 +292,9 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
       const data = await response.json();
       
       if (data.success) {
+        const typeLabel = type === "promotional" ? "Promotional messages" : "Expiry reminders";
         toast({ 
-          title: `WhatsApp sent to ${data.sent} members`,
+          title: `${typeLabel} sent to ${data.sent} members`,
           description: data.failed > 0 ? `${data.failed} failed` : undefined,
         });
         setSelectedMembers(new Set());
@@ -296,8 +308,32 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
         variant: "destructive",
       });
     } finally {
-      setSendingBulkWhatsApp(false);
+      setBulkActionType(null);
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedMembers.size === 0) return;
+    
+    try {
+      const { error } = await supabase
+        .from("members")
+        .delete()
+        .in("id", Array.from(selectedMembers));
+
+      if (error) throw error;
+
+      toast({ title: `${selectedMembers.size} member(s) deleted successfully` });
+      setSelectedMembers(new Set());
+      fetchMembers();
+    } catch (error: any) {
+      toast({
+        title: "Error deleting members",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+    setBulkDeleteConfirm(false);
   };
 
   const toggleMemberSelection = (memberId: string, e: React.MouseEvent) => {
@@ -502,11 +538,11 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     <div className="w-full space-y-3">
       {/* Bulk action bar */}
       {selectedMembers.size > 0 && (
-        <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
           <span className="text-sm font-medium">
             {selectedMembers.size} member{selectedMembers.size > 1 ? "s" : ""} selected
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -515,17 +551,50 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
               Clear
             </Button>
             <Button
+              variant="outline"
               size="sm"
-              onClick={handleBulkWhatsApp}
-              disabled={sendingBulkWhatsApp}
+              onClick={() => handleBulkWhatsApp("promotional")}
+              disabled={bulkActionType !== null}
               className="gap-2"
             >
-              <Send className="w-4 h-4" />
-              {sendingBulkWhatsApp ? "Sending..." : "Send WhatsApp"}
+              <MessageCircle className="w-4 h-4" />
+              {bulkActionType === "promotional" ? "Sending..." : "Send Promotional"}
+            </Button>
+            {hasExpiringOrExpiredSelected() && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkWhatsApp("expiry_reminder")}
+                disabled={bulkActionType !== null}
+                className="gap-2"
+              >
+                <Clock className="w-4 h-4" />
+                {bulkActionType === "expiry_reminder" ? "Sending..." : "Send Expiry Reminder"}
+              </Button>
+            )}
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setBulkDeleteConfirm(true)}
+              className="gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
             </Button>
           </div>
         </div>
       )}
+
+      {/* Bulk delete confirmation */}
+      <ConfirmDialog
+        open={bulkDeleteConfirm}
+        onOpenChange={setBulkDeleteConfirm}
+        title="Delete Selected Members"
+        description={`Are you sure you want to delete ${selectedMembers.size} member(s)? This action cannot be undone.`}
+        confirmText="Delete All"
+        variant="destructive"
+        onConfirm={handleBulkDelete}
+      />
       <div className="rounded-lg border overflow-hidden">
         <Table>
           <TableHeader>
