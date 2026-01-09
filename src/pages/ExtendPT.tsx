@@ -200,7 +200,22 @@ const ExtendPT = () => {
       trainerId: selectedTrainer.id,
       trainerFee: selectedOption.fee,
       ptStartDate: format(ptStartDate, "yyyy-MM-dd"),
-      onSuccess: (data) => {
+      onSuccess: async (data) => {
+        // Send WhatsApp notification for PT extension
+        try {
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              phone: member.phone,
+              name: member.name,
+              endDate: format(selectedOption.endDate, "yyyy-MM-dd"),
+              type: "pt_extension",
+              memberIds: [member.id],
+            },
+          });
+        } catch (err) {
+          console.error("Failed to send WhatsApp notification:", err);
+        }
+        
         navigate("/success", {
           state: {
             memberName: member.name,

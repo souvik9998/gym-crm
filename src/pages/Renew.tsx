@@ -96,8 +96,24 @@ const Renew = () => {
       gymFee: packageData.subscriptionAmount + packageData.joiningFee,
       ptStartDate: packageData.wantsTrainer && ptStartDate ? ptStartDate : undefined,
       gymStartDate: gymStart,
-      onSuccess: (data) => {
+      onSuccess: async (data) => {
         const endDate = new Date(data.endDate);
+        
+        // Send WhatsApp notification for renewal
+        try {
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              phone: member.phone,
+              name: member.name,
+              endDate: data.endDate,
+              type: "renewal",
+              memberIds: [member.id],
+            },
+          });
+        } catch (err) {
+          console.error("Failed to send WhatsApp notification:", err);
+        }
+        
         navigate("/success", {
           state: {
             memberName: member.name,
