@@ -25,6 +25,7 @@ import { MemberActivityDialog } from "./MemberActivityDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import type { MemberFilterValue } from "./MemberFilter";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 
 interface Member {
   id: string;
@@ -130,12 +131,30 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
 
   const handleDeleteConfirm = async () => {
     try {
+      // Get member data before deletion for logging
+      const memberToDelete = members.find(m => m.id === deleteConfirm.memberId);
+      
       const { error } = await supabase
         .from("members")
         .delete()
         .eq("id", deleteConfirm.memberId);
 
       if (error) throw error;
+
+      await logAdminActivity({
+        category: "members",
+        type: "member_deleted",
+        description: `Deleted member "${deleteConfirm.memberName}"`,
+        entityType: "members",
+        entityId: deleteConfirm.memberId,
+        entityName: deleteConfirm.memberName,
+        oldValue: memberToDelete ? {
+          name: memberToDelete.name,
+          phone: memberToDelete.phone,
+          join_date: memberToDelete.join_date,
+          subscription_status: memberToDelete.subscription?.status || "none",
+        } : null,
+      });
 
       toast({ title: "Member deleted successfully" });
       fetchMembers();

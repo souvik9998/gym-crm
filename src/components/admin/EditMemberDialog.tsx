@@ -65,6 +65,16 @@ export const EditMemberDialog = ({
   const [photoIdNumber, setPhotoIdNumber] = useState<string>("");
   const [address, setAddress] = useState<string>("");
 
+  // Original values to track changes
+  const [originalValues, setOriginalValues] = useState<{
+    name: string;
+    phone: string;
+    gender: string;
+    photoIdType: string;
+    photoIdNumber: string;
+    address: string;
+  } | null>(null);
+
   useEffect(() => {
     if (member) {
       setName(member.name);
@@ -83,81 +93,148 @@ export const EditMemberDialog = ({
 
       if (error) throw error;
 
-      if (data) {
-        setGender(data.gender || "");
-        setPhotoIdType(data.photo_id_type || "");
-        setPhotoIdNumber(data.photo_id_number || "");
-        setAddress(data.address || "");
-      } else {
-        // Reset fields if no details exist
-        setGender("");
-        setPhotoIdType("");
-        setPhotoIdNumber("");
-        setAddress("");
-      }
+      const fetchedGender = data?.gender || "";
+      const fetchedPhotoIdType = data?.photo_id_type || "";
+      const fetchedPhotoIdNumber = data?.photo_id_number || "";
+      const fetchedAddress = data?.address || "";
+
+      setGender(fetchedGender);
+      setPhotoIdType(fetchedPhotoIdType);
+      setPhotoIdNumber(fetchedPhotoIdNumber);
+      setAddress(fetchedAddress);
+
+      // Store original values for comparison
+      setOriginalValues({
+        name: member?.name || "",
+        phone: member?.phone || "",
+        gender: fetchedGender,
+        photoIdType: fetchedPhotoIdType,
+        photoIdNumber: fetchedPhotoIdNumber,
+        address: fetchedAddress,
+      });
     } catch (error: any) {
       console.error("Error fetching member details:", error);
+      // Still set original values even on error
+      setOriginalValues({
+        name: member?.name || "",
+        phone: member?.phone || "",
+        gender: "",
+        photoIdType: "",
+        photoIdNumber: "",
+        address: "",
+      });
     }
   };
 
   const handleSaveMember = async () => {
-    if (!member) return;
+    if (!member || !originalValues) return;
     setIsLoading(true);
 
     try {
-      // Update basic member info
-      const { error: memberError } = await supabase
-        .from("members")
-        .update({ name, phone })
-        .eq("id", member.id);
+      // Track what's changed
+      const changes: Record<string, { old: any; new: any }> = {};
+      const memberUpdates: Record<string, any> = {};
+      const detailUpdates: Record<string, any> = {};
 
-      if (memberError) throw memberError;
-
-      // Check if member_details exists
-      const { data: existingDetails } = await supabase
-        .from("member_details")
-        .select("id")
-        .eq("member_id", member.id)
-        .maybeSingle();
-
-      const detailsData = {
-        gender: gender || null,
-        photo_id_type: photoIdType || null,
-        photo_id_number: photoIdNumber || null,
-        address: address || null,
-      };
-
-      if (existingDetails) {
-        // Update existing details
-        const { error: detailsError } = await supabase
-          .from("member_details")
-          .update(detailsData)
-          .eq("member_id", member.id);
-
-        if (detailsError) throw detailsError;
-      } else {
-        // Insert new details
-        const { error: detailsError } = await supabase
-          .from("member_details")
-          .insert({
-            member_id: member.id,
-            ...detailsData,
-          });
-
-        if (detailsError) throw detailsError;
+      // Check member table fields
+      if (name !== originalValues.name) {
+        changes.name = { old: originalValues.name, new: name };
+        memberUpdates.name = name;
       }
+      if (phone !== originalValues.phone) {
+        changes.phone = { old: originalValues.phone, new: phone };
+        memberUpdates.phone = phone;
+      }
+
+      // Check member_details fields
+      if (gender !== originalValues.gender) {
+        changes.gender = { old: originalValues.gender || "Not set", new: gender || "Not set" };
+        detailUpdates.gender = gender || null;
+      }
+      if (photoIdType !== originalValues.photoIdType) {
+        changes.photo_id_type = { old: originalValues.photoIdType || "Not set", new: photoIdType || "Not set" };
+        detailUpdates.photo_id_type = photoIdType || null;
+      }
+      if (photoIdNumber !== originalValues.photoIdNumber) {
+        changes.photo_id_number = { old: originalValues.photoIdNumber || "Not set", new: photoIdNumber || "Not set" };
+        detailUpdates.photo_id_number = photoIdNumber || null;
+      }
+      if (address !== originalValues.address) {
+        changes.address = { old: originalValues.address || "Not set", new: address || "Not set" };
+        detailUpdates.address = address || null;
+      }
+
+      // Only update if there are changes
+      if (Object.keys(changes).length === 0) {
+        toast({ title: "No changes to save" });
+        setIsLoading(false);
+        return;
+      }
+
+      // Update member table if needed
+      if (Object.keys(memberUpdates).length > 0) {
+        const { error: memberError } = await supabase
+          .from("members")
+          .update(memberUpdates)
+          .eq("id", member.id);
+
+        if (memberError) throw memberError;
+      }
+
+      // Update member_details if needed
+      if (Object.keys(detailUpdates).length > 0) {
+        const { data: existingDetails } = await supabase
+          .from("member_details")
+          .select("id")
+          .eq("member_id", member.id)
+          .maybeSingle();
+
+        if (existingDetails) {
+          const { error: detailsError } = await supabase
+            .from("member_details")
+            .update(detailUpdates)
+            .eq("member_id", member.id);
+
+          if (detailsError) throw detailsError;
+        } else {
+          const { error: detailsError } = await supabase
+            .from("member_details")
+            .insert({
+              member_id: member.id,
+              gender: gender || null,
+              photo_id_type: photoIdType || null,
+              photo_id_number: photoIdNumber || null,
+              address: address || null,
+            });
+
+          if (detailsError) throw detailsError;
+        }
+      }
+
+      // Build old and new value objects for logging
+      const oldValue: Record<string, any> = {};
+      const newValue: Record<string, any> = {};
+      Object.entries(changes).forEach(([key, value]) => {
+        oldValue[key] = value.old;
+        newValue[key] = value.new;
+      });
+
+      const changedFields = Object.keys(changes).map(key => 
+        key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+      ).join(", ");
 
       await logAdminActivity({
         category: "members",
         type: "member_updated",
-        description: `Updated member details for "${name}"`,
+        description: `Updated ${changedFields} for "${name}"`,
         entityType: "members",
         entityId: member.id,
         entityName: name,
-        newValue: { name, phone, gender, address },
+        oldValue,
+        newValue,
       });
 
-      toast({ title: "Member updated successfully" });
+      toast({ title: "Member updated successfully", description: `Changed: ${changedFields}` });
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
