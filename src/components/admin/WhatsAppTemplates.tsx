@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Copy, Check } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MessageCircle, Copy, Check, Save, Megaphone, Clock, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface MessageTemplate {
@@ -14,11 +15,11 @@ interface MessageTemplate {
   template: string;
 }
 
-const MESSAGE_TEMPLATES: MessageTemplate[] = [
+const PROMOTIONAL_TEMPLATES: MessageTemplate[] = [
   {
-    id: "promotional",
-    name: "Promotional Message",
-    description: "Special offers and promotions",
+    id: "promotional_offer",
+    name: "Special Offer",
+    description: "Discounts and promotions",
     template: `🎉 *Special Offer for You!*
 
 Hi {name}, 👋
@@ -35,9 +36,44 @@ Stay fit, stay strong! 🔥
 — Team Pro Plus Fitness`,
   },
   {
-    id: "expiry_reminder",
-    name: "Expiry Reminder",
-    description: "Membership expiry notification",
+    id: "promotional_new_service",
+    name: "New Service",
+    description: "Announce new services or equipment",
+    template: `🆕 *Exciting Update!*
+
+Hi {name}, 👋
+
+We're thrilled to announce new additions to Pro Plus Fitness! 🏋️
+
+Come check out our latest equipment and services. Your fitness journey just got even better! 💪
+
+Visit us today!
+— Team Pro Plus Fitness`,
+  },
+  {
+    id: "promotional_event",
+    name: "Gym Event",
+    description: "Special events or workshops",
+    template: `📢 *You're Invited!*
+
+Hi {name}, 👋
+
+Join us for a special event at Pro Plus Fitness! 🎯
+
+Don't miss this opportunity to connect with fellow fitness enthusiasts and learn from the best.
+
+Reply to RSVP or visit the gym for details.
+
+See you there! 💪
+— Team Pro Plus Fitness`,
+  },
+];
+
+const EXPIRY_REMINDER_TEMPLATES: MessageTemplate[] = [
+  {
+    id: "expiry_reminder_standard",
+    name: "Standard Reminder",
+    description: "General expiry notification",
     template: `⚠️ *Subscription Expiry Reminder*
 
 Hi {name}, 👋
@@ -50,85 +86,158 @@ Visit the gym or reply to renew.
 — Team Pro Plus Fitness`,
   },
   {
-    id: "renewal_confirmation",
-    name: "Renewal Confirmation",
-    description: "Sent after membership renewal",
-    template: `✅ *Membership Renewed Successfully!*
+    id: "expiry_reminder_urgent",
+    name: "Urgent Reminder",
+    description: "Last chance notification",
+    template: `🚨 *Membership Expires Soon!*
 
 Hi {name}, 👋
 
-Your gym membership has been renewed till {expiry_date}.
+Your gym membership expires in just {days} days on {expiry_date}!
 
-Let's stay consistent and keep pushing towards your fitness goals 💪🔥
+⏰ Don't wait - renew today to avoid interruption.
 
-See you at the gym!
+💪 Keep your fitness momentum going!
+
+Reply or visit us now.
 — Team Pro Plus Fitness`,
   },
   {
-    id: "payment_receipt",
-    name: "Payment Receipt",
-    description: "Last payment details",
-    template: `🧾 *Payment Receipt*
+    id: "expiry_reminder_today",
+    name: "Expires Today",
+    description: "Same-day expiry alert",
+    template: `🚨 *Membership Expires Today*
 
 Hi {name}, 👋
 
-Here are your last payment details:
+Your gym membership expires *today* ({expiry_date}).
 
-💰 *Amount:* ₹{amount}
-📅 *Date:* {payment_date}
-💳 *Mode:* {payment_mode}
+Renew now to continue your fitness journey without interruption 🔥
 
-Your membership is valid till {expiry_date}.
-
-Thank you for being with us! 🙏
-— Team Pro Plus Fitness`,
-  },
-  {
-    id: "welcome",
-    name: "Welcome Message",
-    description: "New member welcome",
-    template: `🎉 *Welcome to Pro Plus Fitness!*
-
-Hi {name}, 👋
-
-We're thrilled to have you as part of our fitness family! 🏋️
-
-Your membership is now active till {expiry_date}.
-
-💪 Tips to get started:
-• Visit during non-peak hours (6-8 AM or 8-10 PM)
-• Ask our trainers for a workout plan
-• Stay hydrated and consistent!
-
-See you at the gym! Let's crush those goals! 🔥
-— Team Pro Plus Fitness`,
-  },
-  {
-    id: "pt_reminder",
-    name: "PT Session Reminder",
-    description: "Personal training reminder",
-    template: `🏋️ *Personal Training Reminder*
-
-Hi {name}, 👋
-
-Your Personal Training sessions are active till {expiry_date}.
-
-Make sure you're utilizing your sessions to the fullest! Your trainer is ready to help you achieve your goals 💪
-
-Book your next session today!
+Contact us or visit the gym today.
 — Team Pro Plus Fitness`,
   },
 ];
 
+const EXPIRED_REMINDER_TEMPLATES: MessageTemplate[] = [
+  {
+    id: "expired_reminder_standard",
+    name: "Standard Expired Notice",
+    description: "Inform about expired membership",
+    template: `⛔ *Membership Expired*
+
+Hi {name}, 👋
+
+Your gym membership expired on {expiry_date}.
+
+We miss seeing you at the gym! 💔 Renew now and get back on track with your fitness goals.
+
+🎁 *Special Renewal Offer* - Renew within 7 days and get a discount!
+
+Visit us or reply to renew today.
+— Team Pro Plus Fitness`,
+  },
+  {
+    id: "expired_reminder_comeback",
+    name: "Comeback Offer",
+    description: "Entice expired members to return",
+    template: `💪 *We Miss You!*
+
+Hi {name}, 👋
+
+Your gym membership expired {days} days ago on {expiry_date}.
+
+Ready to restart your fitness journey? We've got a special comeback offer just for you! 🎉
+
+✨ Renew now and get exclusive benefits
+✨ No additional joining fee for returning members
+
+Come back stronger! Visit us today.
+— Team Pro Plus Fitness`,
+  },
+  {
+    id: "expired_reminder_urgent",
+    name: "Final Reminder",
+    description: "Last chance before benefits expire",
+    template: `⚠️ *Final Reminder - Membership Expired*
+
+Hi {name}, 👋
+
+Your membership expired on {expiry_date}. This is your final reminder before your loyalty benefits reset.
+
+🔔 Renew within the next 7 days to:
+• Keep your membership history
+• Avoid re-paying joining fee
+• Continue your fitness streak
+
+Don't lose your progress! Reply or visit us now.
+— Team Pro Plus Fitness`,
+  },
+];
+
+type TemplateCategory = "promotional" | "expiry_reminder" | "expired_reminder";
+
 export const WhatsAppTemplates = () => {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<TemplateCategory>("promotional");
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
-  const [customMessage, setCustomMessage] = useState<string>("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  
+  // Separate custom messages for each category
+  const [promotionalMessage, setPromotionalMessage] = useState<string>("");
+  const [expiryReminderMessage, setExpiryReminderMessage] = useState<string>("");
+  const [expiredReminderMessage, setExpiredReminderMessage] = useState<string>("");
+
+  // Load saved messages from localStorage on mount
+  useEffect(() => {
+    const savedPromotional = localStorage.getItem("whatsapp_promotional_template");
+    const savedExpiryReminder = localStorage.getItem("whatsapp_expiry_reminder_template");
+    const savedExpiredReminder = localStorage.getItem("whatsapp_expired_reminder_template");
+    
+    if (savedPromotional) setPromotionalMessage(savedPromotional);
+    if (savedExpiryReminder) setExpiryReminderMessage(savedExpiryReminder);
+    if (savedExpiredReminder) setExpiredReminderMessage(savedExpiredReminder);
+  }, []);
+
+  const getTemplatesForCategory = (category: TemplateCategory): MessageTemplate[] => {
+    switch (category) {
+      case "promotional":
+        return PROMOTIONAL_TEMPLATES;
+      case "expiry_reminder":
+        return EXPIRY_REMINDER_TEMPLATES;
+      case "expired_reminder":
+        return EXPIRED_REMINDER_TEMPLATES;
+    }
+  };
+
+  const getCurrentMessage = (): string => {
+    switch (activeTab) {
+      case "promotional":
+        return promotionalMessage;
+      case "expiry_reminder":
+        return expiryReminderMessage;
+      case "expired_reminder":
+        return expiredReminderMessage;
+    }
+  };
+
+  const setCurrentMessage = (message: string) => {
+    switch (activeTab) {
+      case "promotional":
+        setPromotionalMessage(message);
+        break;
+      case "expiry_reminder":
+        setExpiryReminderMessage(message);
+        break;
+      case "expired_reminder":
+        setExpiredReminderMessage(message);
+        break;
+    }
+  };
 
   const handleTemplateSelect = (template: MessageTemplate) => {
     setSelectedTemplate(template.id);
-    setCustomMessage(template.template);
+    setCurrentMessage(template.template);
   };
 
   const handleCopyTemplate = (template: MessageTemplate) => {
@@ -139,122 +248,182 @@ export const WhatsAppTemplates = () => {
   };
 
   const handleSaveCustomMessage = () => {
-    // Store in localStorage for now - could be extended to database
-    localStorage.setItem("whatsapp_custom_template", customMessage);
-    toast({ title: "Custom message saved", description: "You can use this message when sending promotional messages" });
+    const message = getCurrentMessage();
+    const storageKey = `whatsapp_${activeTab}_template`;
+    localStorage.setItem(storageKey, message);
+    
+    const categoryNames = {
+      promotional: "Promotional",
+      expiry_reminder: "Expiry Reminder",
+      expired_reminder: "Expired Reminder",
+    };
+    
+    toast({ 
+      title: `${categoryNames[activeTab]} template saved`,
+      description: "This message will be used when sending this type of notification" 
+    });
   };
+
+  const getCategoryIcon = (category: TemplateCategory) => {
+    switch (category) {
+      case "promotional":
+        return <Megaphone className="w-4 h-4" />;
+      case "expiry_reminder":
+        return <Clock className="w-4 h-4" />;
+      case "expired_reminder":
+        return <AlertTriangle className="w-4 h-4" />;
+    }
+  };
+
+  const getCategoryDescription = (category: TemplateCategory): string => {
+    switch (category) {
+      case "promotional":
+        return "Messages for offers, events, and announcements to all members";
+      case "expiry_reminder":
+        return "Messages for members whose subscription is about to expire (expiring soon)";
+      case "expired_reminder":
+        return "Messages for members whose subscription has already expired";
+    }
+  };
+
+  const templates = getTemplatesForCategory(activeTab);
+  const currentMessage = getCurrentMessage();
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageCircle className="w-5 h-5 text-accent" />
-            Message Templates
-          </CardTitle>
-          <CardDescription>
-            Pre-built message templates for different scenarios. Click to load into the editor below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {MESSAGE_TEMPLATES.map((template) => (
-              <div
-                key={template.id}
-                className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
-                  selectedTemplate === template.id
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
-                }`}
-                onClick={() => handleTemplateSelect(template)}
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="font-medium text-sm">{template.name}</h4>
-                    <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCopyTemplate(template);
-                    }}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TemplateCategory)}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="promotional" className="gap-2">
+            <Megaphone className="w-4 h-4" />
+            <span className="hidden sm:inline">Promotional</span>
+          </TabsTrigger>
+          <TabsTrigger value="expiry_reminder" className="gap-2">
+            <Clock className="w-4 h-4" />
+            <span className="hidden sm:inline">Expiry Reminder</span>
+          </TabsTrigger>
+          <TabsTrigger value="expired_reminder" className="gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="hidden sm:inline">Expired Reminder</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value={activeTab} className="mt-4 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {getCategoryIcon(activeTab)}
+                {activeTab === "promotional" && "Promotional Templates"}
+                {activeTab === "expiry_reminder" && "Expiry Reminder Templates"}
+                {activeTab === "expired_reminder" && "Expired Reminder Templates"}
+              </CardTitle>
+              <CardDescription>{getCategoryDescription(activeTab)}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {templates.map((template) => (
+                  <div
+                    key={template.id}
+                    className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
+                      selectedTemplate === template.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    }`}
+                    onClick={() => handleTemplateSelect(template)}
                   >
-                    {copiedId === template.id ? (
-                      <Check className="w-4 h-4 text-success" />
-                    ) : (
-                      <Copy className="w-4 h-4 text-muted-foreground" />
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-medium text-sm">{template.name}</h4>
+                        <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyTemplate(template);
+                        }}
+                      >
+                        {copiedId === template.id ? (
+                          <Check className="w-4 h-4 text-success" />
+                        ) : (
+                          <Copy className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                    {selectedTemplate === template.id && (
+                      <Badge className="mt-2 text-xs" variant="secondary">
+                        Selected
+                      </Badge>
                     )}
-                  </Button>
-                </div>
-                {selectedTemplate === template.id && (
-                  <Badge className="mt-2 text-xs" variant="secondary">
-                    Selected
-                  </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageCircle className="w-5 h-5 text-accent" />
+                Custom {activeTab === "promotional" ? "Promotional" : activeTab === "expiry_reminder" ? "Expiry Reminder" : "Expired Reminder"} Message
+              </CardTitle>
+              <CardDescription>
+                Edit the selected template or write your own. This message will be used when sending {activeTab.replace("_", " ")} notifications.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Message Content</Label>
+                <Textarea
+                  value={currentMessage}
+                  onChange={(e) => setCurrentMessage(e.target.value)}
+                  placeholder="Write your custom message here..."
+                  className="min-h-[250px] font-mono text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="outline" className="text-xs">
+                  {"{name}"} = Member name
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {"{expiry_date}"} = Expiry date
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {"{days}"} = Days remaining/expired
+                </Badge>
+                {activeTab === "promotional" && (
+                  <>
+                    <Badge variant="outline" className="text-xs">
+                      {"{amount}"} = Payment amount
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {"{payment_date}"} = Payment date
+                    </Badge>
+                  </>
                 )}
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Custom Message Editor</CardTitle>
-          <CardDescription>
-            Edit the selected template or write your own custom message. Use placeholders like {"{name}"}, {"{expiry_date}"}, {"{days}"}, {"{amount}"}.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Message Content</Label>
-            <Textarea
-              value={customMessage}
-              onChange={(e) => setCustomMessage(e.target.value)}
-              placeholder="Write your custom message here..."
-              className="min-h-[250px] font-mono text-sm"
-            />
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className="text-xs">
-              {"{name}"} = Member name
-            </Badge>
-            <Badge variant="outline" className="text-xs">
-              {"{expiry_date}"} = Expiry date
-            </Badge>
-            <Badge variant="outline" className="text-xs">
-              {"{days}"} = Days remaining
-            </Badge>
-            <Badge variant="outline" className="text-xs">
-              {"{amount}"} = Payment amount
-            </Badge>
-            <Badge variant="outline" className="text-xs">
-              {"{payment_date}"} = Payment date
-            </Badge>
-            <Badge variant="outline" className="text-xs">
-              {"{payment_mode}"} = Cash/Online
-            </Badge>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={handleSaveCustomMessage} disabled={!customMessage.trim()}>
-              Save as Custom Template
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                navigator.clipboard.writeText(customMessage);
-                toast({ title: "Message copied to clipboard" });
-              }}
-              disabled={!customMessage.trim()}
-            >
-              <Copy className="w-4 h-4 mr-2" />
-              Copy Message
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              <div className="flex gap-2">
+                <Button onClick={handleSaveCustomMessage} disabled={!currentMessage.trim()}>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save as {activeTab === "promotional" ? "Promotional" : activeTab === "expiry_reminder" ? "Expiry Reminder" : "Expired Reminder"} Template
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(currentMessage);
+                    toast({ title: "Message copied to clipboard" });
+                  }}
+                  disabled={!currentMessage.trim()}
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy Message
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <Card>
         <CardHeader>
@@ -265,8 +434,9 @@ export const WhatsAppTemplates = () => {
             <strong>From Member Table:</strong> Click the three-dot menu (⋮) on any member row to access WhatsApp messaging options:
           </p>
           <ul className="list-disc list-inside space-y-1 ml-4">
-            <li><strong>Send Promotional Message</strong> - Available for all members</li>
-            <li><strong>Send Expiry Reminder</strong> - Available for expiring/expired members</li>
+            <li><strong>Send Promotional Message</strong> - Available for all members (uses Promotional template)</li>
+            <li><strong>Send Expiry Reminder</strong> - For members expiring soon (uses Expiry Reminder template)</li>
+            <li><strong>Send Expired Reminder</strong> - For members with expired subscriptions (uses Expired Reminder template)</li>
             <li><strong>Send Payment Details</strong> - Sends last payment receipt</li>
           </ul>
           <p className="mt-4">

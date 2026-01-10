@@ -102,37 +102,68 @@ const AdminDashboard = () => {
         .from("members")
         .select("*", { count: "exact", head: true });
 
-      // Get unique members with active subscriptions
-      const { data: activeData } = await supabase
+      // Get all members with their latest subscription
+      const { data: membersData } = await supabase
+        .from("members")
+        .select("id");
+
+      // Get subscriptions for status calculations
+      const { data: allSubscriptions } = await supabase
         .from("subscriptions")
-        .select("member_id")
-        .eq("status", "active");
+        .select("member_id, status, end_date")
+        .order("end_date", { ascending: false });
 
-      const uniqueActiveMembers = new Set(activeData?.map((s) => s.member_id) || []).size;
+      // Group subscriptions by member (latest first)
+      const memberSubscriptions = new Map<string, { status: string; end_date: string }>();
+      if (allSubscriptions) {
+        for (const sub of allSubscriptions) {
+          if (!memberSubscriptions.has(sub.member_id)) {
+            memberSubscriptions.set(sub.member_id, { status: sub.status || 'inactive', end_date: sub.end_date });
+          }
+        }
+      }
 
-      // Get unique members with expiring soon subscriptions
-      const { data: expiringData } = await supabase
-        .from("subscriptions")
-        .select("member_id")
-        .eq("status", "expiring_soon");
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-      const uniqueExpiringSoon = new Set(expiringData?.map((s) => s.member_id) || []).size;
+      let activeCount = 0;
+      let expiringSoonCount = 0;
+      let expiredCount = 0;
+      let inactiveCount = 0;
 
-      // Get unique members with expired subscriptions
-      const { data: expiredData } = await supabase
-        .from("subscriptions")
-        .select("member_id")
-        .eq("status", "expired");
+      // Calculate status based on actual dates
+      if (membersData) {
+        for (const member of membersData) {
+          const sub = memberSubscriptions.get(member.id);
+          
+          if (!sub) {
+            // No subscription at all - this should not count as inactive for display
+            // since we only count members with explicit inactive status
+            continue;
+          }
 
-      const uniqueExpiredMembers = new Set(expiredData?.map((s) => s.member_id) || []).size;
+          // If explicitly marked as inactive, count as inactive
+          if (sub.status === "inactive") {
+            inactiveCount++;
+            continue;
+          }
 
-      // Get unique members with inactive subscriptions
-      const { data: inactiveData } = await supabase
-        .from("subscriptions")
-        .select("member_id")
-        .eq("status", "inactive");
+          // Calculate based on actual end_date
+          const endDate = new Date(sub.end_date);
+          endDate.setHours(0, 0, 0, 0);
+          const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          const isExpired = diffDays < 0;
+          const isExpiringSoon = !isExpired && diffDays >= 0 && diffDays <= 7;
 
-      const uniqueInactiveMembers = new Set(inactiveData?.map((s) => s.member_id) || []).size;
+          if (isExpired) {
+            expiredCount++;
+          } else if (isExpiringSoon) {
+            expiringSoonCount++;
+          } else {
+            activeCount++;
+          }
+        }
+      }
 
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
@@ -147,12 +178,12 @@ const AdminDashboard = () => {
       const monthlyRevenue = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
       // Get active PT subscriptions count
-      const today = new Date().toISOString().split("T")[0];
+      const todayStr = new Date().toISOString().split("T")[0];
       const { data: activePTData } = await supabase
         .from("pt_subscriptions")
         .select("member_id")
         .eq("status", "active")
-        .gte("end_date", today);
+        .gte("end_date", todayStr);
 
       const uniquePTMembers = new Set(activePTData?.map((pt) => pt.member_id) || []).size;
 
@@ -163,10 +194,10 @@ const AdminDashboard = () => {
 
       setStats({
         totalMembers: totalMembers || 0,
-        activeMembers: uniqueActiveMembers,
-        expiringSoon: uniqueExpiringSoon,
-        expiredMembers: uniqueExpiredMembers,
-        inactiveMembers: uniqueInactiveMembers,
+        activeMembers: activeCount,
+        expiringSoon: expiringSoonCount,
+        expiredMembers: expiredCount,
+        inactiveMembers: inactiveCount,
         monthlyRevenue,
         withPT: uniquePTMembers,
         dailyPassUsers: dailyPassCount || 0,

@@ -7,7 +7,7 @@ const corsHeaders = {
 
 interface SendWhatsAppRequest {
   memberIds?: string[];
-  type?: "expiring_2days" | "expiring_today" | "manual" | "renewal" | "pt_extension" | "promotional" | "expiry_reminder" | "payment_details" | "custom";
+  type?: "expiring_2days" | "expiring_today" | "manual" | "renewal" | "pt_extension" | "promotional" | "expiry_reminder" | "expired_reminder" | "payment_details" | "custom";
   customMessage?: string;
 
   // Direct send
@@ -159,6 +159,17 @@ Deno.serve(async (req) => {
             `Your gym membership ${daysText} (${formattedDate}).\n\n` +
             `Don't let your fitness journey pause! Renew now to continue your progress 💪\n\n` +
             `Visit the gym or reply to renew.\n— Team Pro Plus Fitness`
+          );
+
+        case "expired_reminder":
+          const expiredDays = Math.abs(diffDays);
+          return (
+            `⛔ *Membership Expired*\n\n` +
+            `Hi ${memberName}, 👋\n\n` +
+            `Your gym membership expired ${expiredDays} days ago on ${formattedDate}.\n\n` +
+            `We miss seeing you at the gym! 💔 Renew now and get back on track with your fitness goals.\n\n` +
+            `🎁 *Special Renewal Offer* - Renew within 7 days and get exclusive benefits!\n\n` +
+            `Visit us or reply to renew today.\n— Team Pro Plus Fitness`
           );
 
         case "payment_details":

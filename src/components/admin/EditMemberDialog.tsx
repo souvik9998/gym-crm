@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -17,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, User, Phone, Save, Plus } from "lucide-react";
+import { Calendar, User, Phone, Save, MapPin, CreditCard, Users } from "lucide-react";
 
 interface Member {
   id: string;
@@ -30,6 +31,13 @@ interface Member {
     end_date: string;
     start_date: string;
   };
+}
+
+interface MemberDetails {
+  gender: string | null;
+  photo_id_type: string | null;
+  photo_id_number: string | null;
+  address: string | null;
 }
 
 interface EditMemberDialogProps {
@@ -49,94 +57,96 @@ export const EditMemberDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [extendMonths, setExtendMonths] = useState("1");
+  
+  // Additional member details
+  const [gender, setGender] = useState<string>("");
+  const [photoIdType, setPhotoIdType] = useState<string>("");
+  const [photoIdNumber, setPhotoIdNumber] = useState<string>("");
+  const [address, setAddress] = useState<string>("");
 
   useEffect(() => {
     if (member) {
       setName(member.name);
       setPhone(member.phone);
+      fetchMemberDetails(member.id);
     }
   }, [member]);
+
+  const fetchMemberDetails = async (memberId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("member_details")
+        .select("gender, photo_id_type, photo_id_number, address")
+        .eq("member_id", memberId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setGender(data.gender || "");
+        setPhotoIdType(data.photo_id_type || "");
+        setPhotoIdNumber(data.photo_id_number || "");
+        setAddress(data.address || "");
+      } else {
+        // Reset fields if no details exist
+        setGender("");
+        setPhotoIdType("");
+        setPhotoIdNumber("");
+        setAddress("");
+      }
+    } catch (error: any) {
+      console.error("Error fetching member details:", error);
+    }
+  };
 
   const handleSaveMember = async () => {
     if (!member) return;
     setIsLoading(true);
 
     try {
-      const { error } = await supabase
+      // Update basic member info
+      const { error: memberError } = await supabase
         .from("members")
         .update({ name, phone })
         .eq("id", member.id);
 
-      if (error) throw error;
+      if (memberError) throw memberError;
+
+      // Check if member_details exists
+      const { data: existingDetails } = await supabase
+        .from("member_details")
+        .select("id")
+        .eq("member_id", member.id)
+        .maybeSingle();
+
+      const detailsData = {
+        gender: gender || null,
+        photo_id_type: photoIdType || null,
+        photo_id_number: photoIdNumber || null,
+        address: address || null,
+      };
+
+      if (existingDetails) {
+        // Update existing details
+        const { error: detailsError } = await supabase
+          .from("member_details")
+          .update(detailsData)
+          .eq("member_id", member.id);
+
+        if (detailsError) throw detailsError;
+      } else {
+        // Insert new details
+        const { error: detailsError } = await supabase
+          .from("member_details")
+          .insert({
+            member_id: member.id,
+            ...detailsData,
+          });
+
+        if (detailsError) throw detailsError;
+      }
 
       toast({ title: "Member updated successfully" });
-      onSuccess();
-      onOpenChange(false);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleExtendSubscription = async () => {
-    if (!member?.subscription) return;
-    setIsLoading(true);
-
-    try {
-      const currentEndDate = new Date(member.subscription.end_date);
-      const newEndDate = new Date(currentEndDate);
-      newEndDate.setMonth(newEndDate.getMonth() + parseInt(extendMonths));
-
-      const { error } = await supabase
-        .from("subscriptions")
-        .update({ 
-          end_date: newEndDate.toISOString().split("T")[0],
-          status: "active"
-        })
-        .eq("id", member.subscription.id);
-
-      if (error) throw error;
-
-      toast({ title: `Subscription extended by ${extendMonths} month(s)` });
-      onSuccess();
-      onOpenChange(false);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCreateSubscription = async () => {
-    if (!member) return;
-    setIsLoading(true);
-
-    try {
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + parseInt(extendMonths));
-
-      const { error } = await supabase.from("subscriptions").insert({
-        member_id: member.id,
-        start_date: startDate.toISOString().split("T")[0],
-        end_date: endDate.toISOString().split("T")[0],
-        plan_months: parseInt(extendMonths),
-        status: "active",
-      });
-
-      if (error) throw error;
-
-      toast({ title: "Subscription created successfully" });
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
@@ -154,7 +164,7 @@ export const EditMemberDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="w-5 h-5" />
@@ -163,120 +173,142 @@ export const EditMemberDialog = ({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Member Details */}
+          {/* Contact Details */}
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Member name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
-              <div className="flex gap-2">
-                <div className="flex items-center px-3 bg-muted rounded-md border">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
-                  <span className="ml-2 text-sm text-muted-foreground">+91</span>
-                </div>
+            <h4 className="font-medium text-sm flex items-center gap-2 text-muted-foreground">
+              <Phone className="w-4 h-4" />
+              Contact Information
+            </h4>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
                 <Input
-                  id="phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  placeholder="10-digit number"
-                  className="flex-1"
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Member name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
+                <div className="flex gap-2">
+                  <div className="flex items-center px-3 bg-muted rounded-md border">
+                    <Phone className="w-4 h-4 text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">+91</span>
+                  </div>
+                  <Input
+                    id="phone"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    placeholder="10-digit number"
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Personal Details */}
+          <div className="border-t pt-4 space-y-4">
+            <h4 className="font-medium text-sm flex items-center gap-2 text-muted-foreground">
+              <Users className="w-4 h-4" />
+              Personal Details
+            </h4>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender</Label>
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="photoIdType">Photo ID Type</Label>
+                <Select value={photoIdType} onValueChange={setPhotoIdType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select ID type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="aadhar">Aadhar Card</SelectItem>
+                    <SelectItem value="pan">PAN Card</SelectItem>
+                    <SelectItem value="driving">Driving License</SelectItem>
+                    <SelectItem value="voter">Voter ID</SelectItem>
+                    <SelectItem value="passport">Passport</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="photoIdNumber">ID Number</Label>
+                <Input
+                  id="photoIdNumber"
+                  value={photoIdNumber}
+                  onChange={(e) => setPhotoIdNumber(e.target.value)}
+                  placeholder="Enter ID number"
                 />
               </div>
             </div>
-            <Button
-              onClick={handleSaveMember}
-              disabled={isLoading || !name || phone.length !== 10}
-              className="w-full"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              Save Changes
-            </Button>
           </div>
 
-          {/* Subscription Section */}
+          {/* Address */}
           <div className="border-t pt-4 space-y-4">
-            <h4 className="font-medium text-sm flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Subscription
+            <h4 className="font-medium text-sm flex items-center gap-2 text-muted-foreground">
+              <MapPin className="w-4 h-4" />
+              Address
             </h4>
-
-            {member.subscription ? (
-              <div className="space-y-3">
-                <div className="p-3 bg-muted rounded-lg text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Status:</span>
-                    <span className="font-medium capitalize">{member.subscription.status}</span>
-                  </div>
-                  <div className="flex justify-between mt-1">
-                    <span className="text-muted-foreground">Expires:</span>
-                    <span className="font-medium">
-                      {new Date(member.subscription.end_date).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Select value={extendMonths} onValueChange={setExtendMonths}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 Month</SelectItem>
-                      <SelectItem value="3">3 Months</SelectItem>
-                      <SelectItem value="6">6 Months</SelectItem>
-                      <SelectItem value="12">12 Months</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="outline"
-                    onClick={handleExtendSubscription}
-                    disabled={isLoading}
-                    className="flex-1"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Extend
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">No active subscription</p>
-                <div className="flex gap-2">
-                  <Select value={extendMonths} onValueChange={setExtendMonths}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 Month</SelectItem>
-                      <SelectItem value="3">3 Months</SelectItem>
-                      <SelectItem value="6">6 Months</SelectItem>
-                      <SelectItem value="12">12 Months</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="accent"
-                    onClick={handleCreateSubscription}
-                    disabled={isLoading}
-                    className="flex-1"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Subscription
-                  </Button>
-                </div>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Textarea
+                id="address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Enter full address"
+                className="min-h-[80px]"
+              />
+            </div>
           </div>
+
+          {/* Subscription Info (Read-only) */}
+          {member.subscription && (
+            <div className="border-t pt-4 space-y-4">
+              <h4 className="font-medium text-sm flex items-center gap-2 text-muted-foreground">
+                <Calendar className="w-4 h-4" />
+                Subscription
+              </h4>
+              <div className="p-3 bg-muted rounded-lg text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Status:</span>
+                  <span className="font-medium capitalize">{member.subscription.status}</span>
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-muted-foreground">Expires:</span>
+                  <span className="font-medium">
+                    {new Date(member.subscription.end_date).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                To extend membership, use the Renew page or Add Payment option.
+              </p>
+            </div>
+          )}
+
+          <Button
+            onClick={handleSaveMember}
+            disabled={isLoading || !name || phone.length !== 10}
+            className="w-full"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            Save Changes
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
