@@ -254,8 +254,8 @@ const AdminDashboard = () => {
                 variant="ghost"
                 size="icon"
                 className="text-muted-foreground hover:text-foreground"
-                onClick={() => navigate("/admin/whatsapp-logs")}
-                title="WhatsApp Logs"
+                onClick={() => navigate("/admin/logs")}
+                title="Activity Logs"
               >
                 <MessageSquare className="w-4 h-4" />
               </Button>

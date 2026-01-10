@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { User } from "@supabase/supabase-js";
 import { WhatsAppTemplates } from "@/components/admin/WhatsAppTemplates";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 
 interface Trainer {
   id: string;
@@ -184,6 +185,9 @@ const AdminSettings = () => {
     if (!settings?.id) return;
     setIsSaving(true);
 
+    const oldSettings = { gym_name: settings.gym_name, gym_phone: settings.gym_phone, gym_address: settings.gym_address };
+    const newSettings = { gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress };
+
     const { error } = await supabase
       .from("gym_settings")
       .update({
@@ -198,6 +202,14 @@ const AdminSettings = () => {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
+      await logAdminActivity({
+        category: "settings",
+        type: "gym_info_updated",
+        description: `Updated gym information`,
+        entityType: "gym_settings",
+        oldValue: oldSettings,
+        newValue: newSettings,
+      });
       toast({ title: "Settings saved successfully" });
     }
   };
@@ -225,6 +237,14 @@ const AdminSettings = () => {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
+      await logAdminActivity({
+        category: "packages",
+        type: "monthly_package_added",
+        description: `Added ${months} month package at ₹${newMonthlyPackage.price}`,
+        entityType: "monthly_packages",
+        entityName: `${months} Month Package`,
+        newValue: { months, price: Number(newMonthlyPackage.price), joining_fee: Number(newMonthlyPackage.joining_fee) || 0 },
+      });
       toast({ title: "Package added" });
       setNewMonthlyPackage({ months: "", price: "", joining_fee: "" });
       fetchData();
@@ -237,6 +257,9 @@ const AdminSettings = () => {
   };
 
   const handleSaveMonthlyPackage = async (id: string) => {
+    const pkg = monthlyPackages.find(p => p.id === id);
+    const oldValue = pkg ? { price: pkg.price, joining_fee: pkg.joining_fee } : null;
+    
     const { error } = await supabase
       .from("monthly_packages")
       .update({
@@ -248,6 +271,16 @@ const AdminSettings = () => {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
+      await logAdminActivity({
+        category: "packages",
+        type: "monthly_package_updated",
+        description: `Updated ${pkg?.months} month package pricing`,
+        entityType: "monthly_packages",
+        entityId: id,
+        entityName: `${pkg?.months} Month Package`,
+        oldValue,
+        newValue: { price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 },
+      });
       toast({ title: "Package updated" });
       setEditingMonthlyId(null);
       fetchData();
@@ -255,7 +288,17 @@ const AdminSettings = () => {
   };
 
   const handleToggleMonthlyPackage = async (id: string, isActive: boolean) => {
+    const pkg = monthlyPackages.find(p => p.id === id);
     await supabase.from("monthly_packages").update({ is_active: isActive }).eq("id", id);
+    await logAdminActivity({
+      category: "packages",
+      type: "monthly_package_toggled",
+      description: `${isActive ? "Activated" : "Deactivated"} ${pkg?.months} month package`,
+      entityType: "monthly_packages",
+      entityId: id,
+      entityName: `${pkg?.months} Month Package`,
+      newValue: { is_active: isActive },
+    });
     fetchData();
   };
 
@@ -267,6 +310,14 @@ const AdminSettings = () => {
       variant: "destructive",
       onConfirm: async () => {
         await supabase.from("monthly_packages").delete().eq("id", id);
+        await logAdminActivity({
+          category: "packages",
+          type: "monthly_package_deleted",
+          description: `Deleted ${months} month package`,
+          entityType: "monthly_packages",
+          entityId: id,
+          entityName: `${months} Month Package`,
+        });
         fetchData();
         toast({ title: "Package deleted" });
       },
@@ -290,6 +341,14 @@ const AdminSettings = () => {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
+      await logAdminActivity({
+        category: "trainers",
+        type: "trainer_added",
+        description: `Added trainer "${newTrainer.name}"`,
+        entityType: "personal_trainers",
+        entityName: newTrainer.name,
+        newValue: { name: newTrainer.name, monthly_fee: Number(newTrainer.monthly_fee) },
+      });
       toast({ title: "Trainer added" });
       setNewTrainer({ name: "", phone: "", specialization: "", monthly_fee: "" });
       fetchData();

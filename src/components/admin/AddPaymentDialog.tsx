@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import {
   Select,
   SelectContent,
@@ -495,6 +496,15 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
       } catch (err) {
         console.error("Failed to send WhatsApp notification:", err);
       }
+
+      await logAdminActivity({
+        category: "payments",
+        type: "cash_payment_added",
+        description: `Added cash payment of ₹${totalAmount} for ${member.name}`,
+        entityType: "payments",
+        entityName: member.name,
+        newValue: { amount: totalAmount, payment_type: paymentTypeValue, member_name: member.name },
+      });
 
       toast({ title: "Payment recorded successfully" });
       onSuccess();
