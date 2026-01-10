@@ -545,6 +545,7 @@ export type Database = {
           id: string
           is_active: boolean
           monthly_fee: number
+          monthly_salary: number
           name: string
           payment_category: string
           percentage_fee: number
@@ -558,6 +559,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           monthly_fee?: number
+          monthly_salary?: number
           name: string
           payment_category?: string
           percentage_fee?: number
@@ -571,6 +573,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           monthly_fee?: number
+          monthly_salary?: number
           name?: string
           payment_category?: string
           percentage_fee?: number
