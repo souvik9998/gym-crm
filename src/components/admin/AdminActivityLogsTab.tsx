@@ -31,8 +31,10 @@ import {
   MessageCircle,
   Calendar,
   TrendingUp,
+  Eye,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ActivityDetailDialog from "./ActivityDetailDialog";
 
 interface AdminActivityLog {
   id: string;
@@ -76,6 +78,13 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
     byCategory: {},
   });
   const [activeSubTab, setActiveSubTab] = useState("logs");
+  const [selectedActivity, setSelectedActivity] = useState<AdminActivityLog | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const handleViewActivity = (activity: AdminActivityLog) => {
+    setSelectedActivity(activity);
+    setIsDetailOpen(true);
+  };
 
   useEffect(() => {
     fetchLogs();
@@ -363,24 +372,29 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
               {/* Table */}
               <div className="rounded-md border">
                 <Table>
-                  <TableHeader>
+              <TableHeader>
                     <TableRow>
                       <TableHead>Time</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Activity</TableHead>
                       <TableHead>Entity</TableHead>
+                      <TableHead className="w-[80px]">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredLogs.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                           No activity logs found
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredLogs.map((log) => (
-                        <TableRow key={log.id}>
+                        <TableRow 
+                          key={log.id} 
+                          className="cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => handleViewActivity(log)}
+                        >
                           <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                             {formatDateTime(log.created_at)}
                           </TableCell>
@@ -400,6 +414,18 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
                               </Badge>
                             )}
                           </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewActivity(log);
+                              }}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -414,6 +440,13 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Activity Detail Modal */}
+      <ActivityDetailDialog
+        activity={selectedActivity}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+      />
     </div>
   );
 };
