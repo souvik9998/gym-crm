@@ -268,23 +268,23 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     if (e) e.stopPropagation();
     try {
       let subscriptionId = member.subscription?.id;
+      const today = new Date().toISOString().split("T")[0];
       
       if (subscriptionId) {
-        // Update existing subscription status to inactive
+        // Update existing subscription status to inactive in database
         const { error } = await supabase
           .from("subscriptions")
-          .update({ status: "inactive" as any })
+          .update({ status: "inactive" })
           .eq("id", subscriptionId);
         
         if (error) throw error;
       } else {
         // Create an inactive subscription if none exists
-        const today = new Date().toISOString().split("T")[0];
         const { data, error } = await supabase
           .from("subscriptions")
           .insert({
             member_id: member.id,
-            status: "inactive" as any,
+            status: "inactive",
             start_date: today,
             end_date: today,
             plan_months: 0,
@@ -296,7 +296,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
         subscriptionId = data?.id;
       }
       
-      // Update local state immediately (in-place update)
+      // Update local state immediately
       setMembers(prev => prev.map(m => 
         m.id === member.id 
           ? { 
@@ -304,8 +304,8 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
               subscription: { 
                 id: subscriptionId!, 
                 status: "inactive", 
-                end_date: member.subscription?.end_date || new Date().toISOString().split("T")[0],
-                start_date: member.subscription?.start_date || new Date().toISOString().split("T")[0],
+                end_date: member.subscription?.end_date || today,
+                start_date: member.subscription?.start_date || today,
               } 
             } 
           : m
@@ -631,9 +631,14 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Handle members without subscription
+      // Handle inactive filter - only show explicitly inactive members
+      if (filterValue === "inactive") {
+        return subscription?.status === "inactive";
+      }
+
+      // Handle members without subscription - exclude from other filters
       if (!subscription || !subscription.end_date) {
-        return filterValue === "inactive";
+        return false;
       }
 
       const endDate = new Date(subscription.end_date);
@@ -641,6 +646,11 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
       const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       const isExpired = diffDays < 0;
       const isExpiringSoon = !isExpired && diffDays >= 0 && diffDays <= 7;
+
+      // Skip inactive members from other filters
+      if (subscription.status === "inactive") {
+        return false;
+      }
 
       switch (filterValue) {
         case "active":
@@ -655,8 +665,6 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
           return !isExpired && diffDays >= 0 && diffDays <= 2;
         case "expiring_7days":
           return !isExpired && diffDays >= 0 && diffDays <= 7;
-        case "inactive":
-          return subscription.status === "inactive";
         default:
           return true;
       }
