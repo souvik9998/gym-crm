@@ -926,19 +926,6 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
                       </DropdownMenuItem>
                       
                       
-                      {/* Set to Active - Only for inactive members */}
-                      {isInactive(member) && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={(e) => handleMoveToActive(member, e)}
-                            className="text-success hover:bg-success/10 hover:text-success focus:bg-success/10 focus:text-success"
-                          >
-                            <UserCheck className="w-4 h-4 mr-2" />
-                            Set to Active
-                          </DropdownMenuItem>
-                        </>
-                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
