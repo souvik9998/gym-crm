@@ -5,6 +5,84 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper to create ledger entries
+async function createLedgerEntry(
+  supabase: any,
+  params: {
+    entryType: "income" | "expense";
+    category: string;
+    description: string;
+    amount: number;
+    memberId?: string;
+    dailyPassUserId?: string;
+    paymentId?: string;
+    trainerId?: string;
+    ptSubscriptionId?: string;
+  }
+) {
+  const today = new Date().toISOString().split("T")[0];
+  const { error } = await supabase.from("ledger_entries").insert({
+    entry_type: params.entryType,
+    category: params.category,
+    description: params.description,
+    amount: params.amount,
+    entry_date: today,
+    member_id: params.memberId || null,
+    daily_pass_user_id: params.dailyPassUserId || null,
+    payment_id: params.paymentId || null,
+    trainer_id: params.trainerId || null,
+    pt_subscription_id: params.ptSubscriptionId || null,
+    is_auto_generated: true,
+  });
+
+  if (error) {
+    console.error("Error creating ledger entry:", error);
+  }
+  return { error };
+}
+
+// Helper to calculate and create trainer percentage expense
+async function calculateTrainerPercentageExpense(
+  supabase: any,
+  trainerId: string,
+  ptFeeAmount: number,
+  memberId?: string,
+  dailyPassUserId?: string,
+  ptSubscriptionId?: string,
+  memberName?: string
+) {
+  // Fetch trainer info
+  const { data: trainer, error: trainerError } = await supabase
+    .from("personal_trainers")
+    .select("name, payment_category, percentage_fee")
+    .eq("id", trainerId)
+    .single();
+
+  if (trainerError || !trainer) {
+    console.error("Error fetching trainer for expense calculation:", trainerError);
+    return;
+  }
+
+  // Only create expense if trainer is on monthly + percentage basis
+  if (trainer.payment_category === "monthly_percentage" && trainer.percentage_fee > 0) {
+    const percentageAmount = (ptFeeAmount * trainer.percentage_fee) / 100;
+    
+    if (percentageAmount > 0) {
+      await createLedgerEntry(supabase, {
+        entryType: "expense",
+        category: "trainer_percentage",
+        description: `${trainer.name} - ${trainer.percentage_fee}% of PT fee${memberName ? ` for ${memberName}` : ""}`,
+        amount: percentageAmount,
+        memberId,
+        dailyPassUserId,
+        trainerId,
+        ptSubscriptionId,
+      });
+      console.log(`Created trainer percentage expense: ₹${percentageAmount} for ${trainer.name}`);
+    }
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -31,6 +109,7 @@ Deno.serve(async (req) => {
       isDailyPass, // New flag to indicate daily pass purchase
       memberDetails, // Contains gender, photo_id_type, photo_id_number, address
       customPackage, // Contains id, name, duration_days, price
+      joiningFee, // Joining fee amount if applicable
     } = await req.json();
 
     console.log("Verifying payment:", { razorpay_order_id, razorpay_payment_id, memberId, isNewMember, isDailyPass, trainerId, months, customDays, ptStartDate, gymStartDate });
@@ -128,7 +207,7 @@ Deno.serve(async (req) => {
       const paymentType = trainerId ? "gym_and_pt" : "gym_membership";
 
       // Record payment linked to daily pass user
-      const { error: paymentError } = await supabase.from("payments").insert({
+      const { data: paymentData, error: paymentError } = await supabase.from("payments").insert({
         daily_pass_user_id: dailyPassUser.id,
         daily_pass_subscription_id: subscription.id,
         amount: amount,
@@ -137,7 +216,7 @@ Deno.serve(async (req) => {
         payment_type: paymentType,
         razorpay_order_id: razorpay_order_id,
         razorpay_payment_id: razorpay_payment_id,
-      });
+      }).select().single();
 
       if (paymentError) {
         console.error("Error creating payment:", paymentError);
@@ -145,6 +224,45 @@ Deno.serve(async (req) => {
       }
 
       console.log("Daily pass payment recorded successfully");
+
+      // ===== CREATE LEDGER ENTRIES FOR DAILY PASS =====
+      const dailyPassFee = customPackage?.price || gymFee || 0;
+      
+      // Income: Daily pass fee
+      await createLedgerEntry(supabase, {
+        entryType: "income",
+        category: "daily_pass",
+        description: `Daily Pass - ${memberName} (${customPackage?.name || `${customDays} Day Pass`})`,
+        amount: dailyPassFee,
+        dailyPassUserId: dailyPassUser.id,
+        paymentId: paymentData?.id,
+      });
+      console.log(`Created ledger income entry for daily pass: ₹${dailyPassFee}`);
+
+      // If has PT, add PT income and calculate trainer expense
+      if (trainerId && trainerFee > 0) {
+        await createLedgerEntry(supabase, {
+          entryType: "income",
+          category: "pt_subscription",
+          description: `PT Subscription - ${memberName} (Daily Pass)`,
+          amount: trainerFee,
+          dailyPassUserId: dailyPassUser.id,
+          trainerId,
+          paymentId: paymentData?.id,
+        });
+        console.log(`Created ledger income entry for daily pass PT: ₹${trainerFee}`);
+
+        // Calculate trainer percentage expense
+        await calculateTrainerPercentageExpense(
+          supabase,
+          trainerId,
+          trainerFee,
+          undefined,
+          dailyPassUser.id,
+          undefined,
+          memberName
+        );
+      }
 
       return new Response(
         JSON.stringify({
@@ -214,7 +332,7 @@ Deno.serve(async (req) => {
       // Fetch trainer monthly fee for recordkeeping
       const { data: trainer, error: trainerError } = await supabase
         .from("personal_trainers")
-        .select("monthly_fee")
+        .select("monthly_fee, name")
         .eq("id", trainerId)
         .single();
 
@@ -250,7 +368,7 @@ Deno.serve(async (req) => {
       }
 
       // Record payment for PT only
-      const { error: paymentError } = await supabase.from("payments").insert({
+      const { data: paymentData, error: paymentError } = await supabase.from("payments").insert({
         member_id: finalMemberId,
         amount: amount,
         payment_mode: "online",
@@ -258,7 +376,7 @@ Deno.serve(async (req) => {
         payment_type: "pt",
         razorpay_order_id: razorpay_order_id,
         razorpay_payment_id: razorpay_payment_id,
-      });
+      }).select().single();
 
       if (paymentError) {
         console.error("Error creating payment:", paymentError);
@@ -266,6 +384,30 @@ Deno.serve(async (req) => {
       }
 
       console.log("PT subscription + payment recorded successfully");
+
+      // ===== CREATE LEDGER ENTRIES FOR PT-ONLY =====
+      await createLedgerEntry(supabase, {
+        entryType: "income",
+        category: "pt_subscription",
+        description: `PT Subscription - ${memberName} with ${trainer.name}`,
+        amount: totalFee,
+        memberId: finalMemberId,
+        trainerId,
+        ptSubscriptionId: ptSub.id,
+        paymentId: paymentData?.id,
+      });
+      console.log(`Created ledger income entry for PT subscription: ₹${totalFee}`);
+
+      // Calculate trainer percentage expense
+      await calculateTrainerPercentageExpense(
+        supabase,
+        trainerId,
+        totalFee,
+        finalMemberId,
+        undefined,
+        ptSub.id,
+        memberName
+      );
 
       return new Response(
         JSON.stringify({
@@ -312,11 +454,12 @@ Deno.serve(async (req) => {
 
     // If also has PT (Gym + PT), create PT subscription
     let ptSubscriptionId: string | null = null;
+    let trainerName: string | null = null;
     if (isGymWithPT) {
       // Fetch trainer monthly fee for recordkeeping
       const { data: trainer, error: trainerError } = await supabase
         .from("personal_trainers")
-        .select("monthly_fee")
+        .select("monthly_fee, name")
         .eq("id", trainerId)
         .single();
 
@@ -324,6 +467,8 @@ Deno.serve(async (req) => {
         console.error("Error fetching trainer:", trainerError);
         throw new Error("Failed to verify trainer");
       }
+
+      trainerName = trainer.name;
 
       // Use provided ptStartDate or default to gym start date
       const ptStart = ptStartDate ? new Date(ptStartDate) : startDate;
@@ -363,7 +508,7 @@ Deno.serve(async (req) => {
     const paymentType = isGymWithPT ? "gym_and_pt" : "membership";
 
     // Record payment
-    const { error: paymentError } = await supabase.from("payments").insert({
+    const { data: paymentData, error: paymentError } = await supabase.from("payments").insert({
       member_id: finalMemberId,
       subscription_id: subscription.id,
       amount: amount,
@@ -372,7 +517,7 @@ Deno.serve(async (req) => {
       payment_type: paymentType,
       razorpay_order_id: razorpay_order_id,
       razorpay_payment_id: razorpay_payment_id,
-    });
+    }).select().single();
 
     if (paymentError) {
       console.error("Error creating payment:", paymentError);
@@ -380,6 +525,65 @@ Deno.serve(async (req) => {
     }
 
     console.log("Membership payment recorded successfully, type:", paymentType);
+
+    // ===== CREATE LEDGER ENTRIES FOR GYM MEMBERSHIP =====
+    const gymSubscriptionAmount = gymFee || 0;
+    const actualJoiningFee = joiningFee || 0;
+
+    // Income: Gym membership/renewal
+    const incomeCategory = isNewMember ? "gym_membership" : "gym_renewal";
+    const gymIncomeAmount = gymSubscriptionAmount - actualJoiningFee; // Gym fee minus joining fee
+    
+    if (gymIncomeAmount > 0) {
+      await createLedgerEntry(supabase, {
+        entryType: "income",
+        category: incomeCategory,
+        description: `${isNewMember ? "New Membership" : "Renewal"} - ${memberName} (${months} month${months > 1 ? "s" : ""})`,
+        amount: gymIncomeAmount,
+        memberId: finalMemberId,
+        paymentId: paymentData?.id,
+      });
+      console.log(`Created ledger income entry for gym ${incomeCategory}: ₹${gymIncomeAmount}`);
+    }
+
+    // Income: Joining fee (if applicable for new members)
+    if (actualJoiningFee > 0) {
+      await createLedgerEntry(supabase, {
+        entryType: "income",
+        category: "joining_fee",
+        description: `Joining Fee - ${memberName}`,
+        amount: actualJoiningFee,
+        memberId: finalMemberId,
+        paymentId: paymentData?.id,
+      });
+      console.log(`Created ledger income entry for joining fee: ₹${actualJoiningFee}`);
+    }
+
+    // If has PT, add PT income and calculate trainer expense
+    if (isGymWithPT && trainerId && trainerFee > 0) {
+      await createLedgerEntry(supabase, {
+        entryType: "income",
+        category: "pt_subscription",
+        description: `PT Subscription - ${memberName}${trainerName ? ` with ${trainerName}` : ""}`,
+        amount: trainerFee,
+        memberId: finalMemberId,
+        trainerId,
+        ptSubscriptionId: ptSubscriptionId || undefined,
+        paymentId: paymentData?.id,
+      });
+      console.log(`Created ledger income entry for PT subscription: ₹${trainerFee}`);
+
+      // Calculate trainer percentage expense
+      await calculateTrainerPercentageExpense(
+        supabase,
+        trainerId,
+        trainerFee,
+        finalMemberId,
+        undefined,
+        ptSubscriptionId || undefined,
+        memberName
+      );
+    }
 
     return new Response(
       JSON.stringify({
