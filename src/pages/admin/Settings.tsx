@@ -371,6 +371,14 @@ const AdminSettings = () => {
       return;
     }
 
+    const trainer = trainers.find(t => t.id === id);
+    const oldValue = trainer ? {
+      name: trainer.name,
+      phone: trainer.phone,
+      specialization: trainer.specialization,
+      monthly_fee: trainer.monthly_fee,
+    } : null;
+
     const { error } = await supabase
       .from("personal_trainers")
       .update({
@@ -384,6 +392,21 @@ const AdminSettings = () => {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
+      await logAdminActivity({
+        category: "trainers",
+        type: "trainer_updated",
+        description: `Updated trainer "${editTrainerData.name}"`,
+        entityType: "personal_trainers",
+        entityId: id,
+        entityName: editTrainerData.name,
+        oldValue,
+        newValue: {
+          name: editTrainerData.name,
+          phone: editTrainerData.phone || null,
+          specialization: editTrainerData.specialization || null,
+          monthly_fee: Number(editTrainerData.monthly_fee),
+        },
+      });
       toast({ title: "Trainer updated" });
       setEditingTrainerId(null);
       fetchData();
@@ -391,7 +414,18 @@ const AdminSettings = () => {
   };
 
   const handleToggleTrainer = async (id: string, isActive: boolean) => {
+    const trainer = trainers.find(t => t.id === id);
     await supabase.from("personal_trainers").update({ is_active: isActive }).eq("id", id);
+    await logAdminActivity({
+      category: "trainers",
+      type: "trainer_toggled",
+      description: `${isActive ? "Activated" : "Deactivated"} trainer "${trainer?.name}"`,
+      entityType: "personal_trainers",
+      entityId: id,
+      entityName: trainer?.name,
+      oldValue: { is_active: !isActive },
+      newValue: { is_active: isActive },
+    });
     fetchData();
   };
 
@@ -402,7 +436,22 @@ const AdminSettings = () => {
       description: `Are you sure you want to delete "${name}"?`,
       variant: "destructive",
       onConfirm: async () => {
+        const trainer = trainers.find(t => t.id === id);
         await supabase.from("personal_trainers").delete().eq("id", id);
+        await logAdminActivity({
+          category: "trainers",
+          type: "trainer_deleted",
+          description: `Deleted trainer "${name}"`,
+          entityType: "personal_trainers",
+          entityId: id,
+          entityName: name,
+          oldValue: trainer ? {
+            name: trainer.name,
+            phone: trainer.phone,
+            specialization: trainer.specialization,
+            monthly_fee: trainer.monthly_fee,
+          } : null,
+        });
         fetchData();
         toast({ title: "Trainer deleted" });
       },
@@ -436,6 +485,14 @@ const AdminSettings = () => {
         toast({ title: "Error", description: error.message, variant: "destructive" });
       }
     } else {
+      await logAdminActivity({
+        category: "packages",
+        type: "custom_package_added",
+        description: `Added daily pass "${newPackage.name}" (${durationDays} days) at ₹${newPackage.price}`,
+        entityType: "custom_packages",
+        entityName: newPackage.name,
+        newValue: { name: newPackage.name, duration_days: durationDays, price: Number(newPackage.price) },
+      });
       toast({ title: "Package added" });
       setNewPackage({ name: "", duration_days: "", price: "" });
       fetchData();
@@ -453,6 +510,9 @@ const AdminSettings = () => {
       return;
     }
 
+    const pkg = customPackages.find(p => p.id === id);
+    const oldValue = pkg ? { name: pkg.name, price: pkg.price } : null;
+
     const { error } = await supabase
       .from("custom_packages")
       .update({
@@ -464,6 +524,16 @@ const AdminSettings = () => {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
+      await logAdminActivity({
+        category: "packages",
+        type: "custom_package_updated",
+        description: `Updated daily pass "${editPackageData.name}"`,
+        entityType: "custom_packages",
+        entityId: id,
+        entityName: editPackageData.name,
+        oldValue,
+        newValue: { name: editPackageData.name, price: Number(editPackageData.price) },
+      });
       toast({ title: "Package updated" });
       setEditingPackageId(null);
       fetchData();
@@ -471,7 +541,18 @@ const AdminSettings = () => {
   };
 
   const handleTogglePackage = async (id: string, isActive: boolean) => {
+    const pkg = customPackages.find(p => p.id === id);
     await supabase.from("custom_packages").update({ is_active: isActive }).eq("id", id);
+    await logAdminActivity({
+      category: "packages",
+      type: "custom_package_toggled",
+      description: `${isActive ? "Activated" : "Deactivated"} daily pass "${pkg?.name}"`,
+      entityType: "custom_packages",
+      entityId: id,
+      entityName: pkg?.name,
+      oldValue: { is_active: !isActive },
+      newValue: { is_active: isActive },
+    });
     fetchData();
   };
 
@@ -482,7 +563,17 @@ const AdminSettings = () => {
       description: `Are you sure you want to delete "${name}"?`,
       variant: "destructive",
       onConfirm: async () => {
+        const pkg = customPackages.find(p => p.id === id);
         await supabase.from("custom_packages").delete().eq("id", id);
+        await logAdminActivity({
+          category: "packages",
+          type: "custom_package_deleted",
+          description: `Deleted daily pass "${name}"`,
+          entityType: "custom_packages",
+          entityId: id,
+          entityName: name,
+          oldValue: pkg ? { name: pkg.name, duration_days: pkg.duration_days, price: pkg.price } : null,
+        });
         fetchData();
         toast({ title: "Package deleted" });
       },
@@ -963,6 +1054,14 @@ const AdminSettings = () => {
                           });
                         } else {
                           setWhatsappEnabled(checked);
+                          await logAdminActivity({
+                            category: "settings",
+                            type: "whatsapp_toggled",
+                            description: `${checked ? "Enabled" : "Disabled"} WhatsApp messaging`,
+                            entityType: "gym_settings",
+                            oldValue: { whatsapp_enabled: !checked },
+                            newValue: { whatsapp_enabled: checked },
+                          });
                           toast({ 
                             title: checked ? "WhatsApp Enabled" : "WhatsApp Disabled",
                             description: checked 

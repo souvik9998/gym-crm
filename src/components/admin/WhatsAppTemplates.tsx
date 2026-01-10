@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageCircle, Copy, Check, Save, Megaphone, Clock, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 interface MessageTemplate {
   id: string;
   name: string;
@@ -247,9 +247,10 @@ export const WhatsAppTemplates = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleSaveCustomMessage = () => {
+  const handleSaveCustomMessage = async () => {
     const message = getCurrentMessage();
     const storageKey = `whatsapp_${activeTab}_template`;
+    const oldMessage = localStorage.getItem(storageKey);
     localStorage.setItem(storageKey, message);
     
     const categoryNames = {
@@ -257,6 +258,17 @@ export const WhatsAppTemplates = () => {
       expiry_reminder: "Expiry Reminder",
       expired_reminder: "Expired Reminder",
     };
+    
+    await logAdminActivity({
+      category: "whatsapp",
+      type: "whatsapp_template_saved",
+      description: `Saved ${categoryNames[activeTab]} WhatsApp template`,
+      entityType: "whatsapp_template",
+      entityName: categoryNames[activeTab],
+      oldValue: oldMessage ? { template: oldMessage.substring(0, 100) + (oldMessage.length > 100 ? "..." : "") } : null,
+      newValue: { template: message.substring(0, 100) + (message.length > 100 ? "..." : "") },
+      metadata: { template_type: activeTab, full_template_length: message.length },
+    });
     
     toast({ 
       title: `${categoryNames[activeTab]} template saved`,
