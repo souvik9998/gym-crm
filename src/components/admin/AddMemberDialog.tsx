@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { z } from "zod";
 import {
   Select,
@@ -285,6 +286,16 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       });
 
       if (paymentError) throw paymentError;
+
+      await logAdminActivity({
+        category: "members",
+        type: "member_added",
+        description: `Added new member "${name}" with ${selectedPackage?.months || 1} month package`,
+        entityType: "members",
+        entityId: member.id,
+        entityName: name,
+        newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT },
+      });
 
       toast({ title: "Member added successfully" });
       onSuccess();

@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { Calendar, User, Phone, Save, MapPin, CreditCard, Users } from "lucide-react";
 
 interface Member {
@@ -145,6 +146,16 @@ export const EditMemberDialog = ({
 
         if (detailsError) throw detailsError;
       }
+
+      await logAdminActivity({
+        category: "members",
+        type: "member_updated",
+        description: `Updated member details for "${name}"`,
+        entityType: "members",
+        entityId: member.id,
+        entityName: name,
+        newValue: { name, phone, gender, address },
+      });
 
       toast({ title: "Member updated successfully" });
       onSuccess();

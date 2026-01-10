@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_activity_logs: {
+        Row: {
+          activity_category: string
+          activity_type: string
+          admin_user_id: string | null
+          created_at: string
+          description: string
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json | null
+          new_value: Json | null
+          old_value: Json | null
+        }
+        Insert: {
+          activity_category: string
+          activity_type: string
+          admin_user_id?: string | null
+          created_at?: string
+          description: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          new_value?: Json | null
+          old_value?: Json | null
+        }
+        Update: {
+          activity_category?: string
+          activity_type?: string
+          admin_user_id?: string | null
+          created_at?: string
+          description?: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          new_value?: Json | null
+          old_value?: Json | null
+        }
+        Relationships: []
+      }
       admin_summary_log: {
         Row: {
           created_at: string
@@ -577,33 +622,58 @@ export type Database = {
       }
       whatsapp_notifications: {
         Row: {
+          admin_user_id: string | null
           created_at: string
+          daily_pass_user_id: string | null
           error_message: string | null
           id: string
+          is_manual: boolean | null
           member_id: string
+          message_content: string | null
           notification_type: string
+          recipient_name: string | null
+          recipient_phone: string | null
           sent_at: string
           status: string
         }
         Insert: {
+          admin_user_id?: string | null
           created_at?: string
+          daily_pass_user_id?: string | null
           error_message?: string | null
           id?: string
+          is_manual?: boolean | null
           member_id: string
+          message_content?: string | null
           notification_type: string
+          recipient_name?: string | null
+          recipient_phone?: string | null
           sent_at?: string
           status?: string
         }
         Update: {
+          admin_user_id?: string | null
           created_at?: string
+          daily_pass_user_id?: string | null
           error_message?: string | null
           id?: string
+          is_manual?: boolean | null
           member_id?: string
+          message_content?: string | null
           notification_type?: string
+          recipient_name?: string | null
+          recipient_phone?: string | null
           sent_at?: string
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "whatsapp_notifications_daily_pass_user_id_fkey"
+            columns: ["daily_pass_user_id"]
+            isOneToOne: false
+            referencedRelation: "daily_pass_users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "whatsapp_notifications_member_id_fkey"
             columns: ["member_id"]
