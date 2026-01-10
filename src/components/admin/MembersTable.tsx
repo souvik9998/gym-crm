@@ -11,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserX, UserCheck, Clock, AlertTriangle } from "lucide-react";
+import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserCheck, Clock, AlertTriangle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -264,63 +264,6 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     return member.subscription?.status === "inactive";
   };
 
-  const handleMoveToInactive = async (member: Member, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    try {
-      let subscriptionId = member.subscription?.id;
-      const today = new Date().toISOString().split("T")[0];
-      
-      if (subscriptionId) {
-        // Update existing subscription status to inactive in database
-        const { error } = await supabase
-          .from("subscriptions")
-          .update({ status: "inactive" })
-          .eq("id", subscriptionId);
-        
-        if (error) throw error;
-      } else {
-        // Create an inactive subscription if none exists
-        const { data, error } = await supabase
-          .from("subscriptions")
-          .insert({
-            member_id: member.id,
-            status: "inactive",
-            start_date: today,
-            end_date: today,
-            plan_months: 0,
-          })
-          .select("id")
-          .single();
-        
-        if (error) throw error;
-        subscriptionId = data?.id;
-      }
-      
-      // Update local state immediately
-      setMembers(prev => prev.map(m => 
-        m.id === member.id 
-          ? { 
-              ...m, 
-              subscription: { 
-                id: subscriptionId!, 
-                status: "inactive", 
-                end_date: member.subscription?.end_date || today,
-                start_date: member.subscription?.start_date || today,
-              } 
-            } 
-          : m
-      ));
-      
-      toast({ title: `${member.name} moved to inactive` });
-    } catch (error: any) {
-      toast({
-        title: "Error moving to inactive",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleMoveToActive = async (member: Member, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     try {
@@ -364,28 +307,30 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     }
   };
 
-  // Auto-mark members expired > 1 month as inactive
+  // Auto-mark members expired > 30 days as inactive
   const autoMarkLongExpiredAsInactive = async () => {
     const today = new Date();
-    const oneMonthAgo = new Date(today);
-    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    today.setHours(0, 0, 0, 0);
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     const longExpiredMembers = members.filter(m => {
       if (!m.subscription?.end_date) return false;
       if (m.subscription.status === "inactive") return false;
       
       const endDate = new Date(m.subscription.end_date);
-      return endDate < oneMonthAgo;
+      endDate.setHours(0, 0, 0, 0);
+      return endDate < thirtyDaysAgo;
     });
 
     if (longExpiredMembers.length === 0) return;
 
-    // Update all long-expired subscriptions to inactive
+    // Update all long-expired subscriptions to inactive in database
     const subscriptionIds = longExpiredMembers.map(m => m.subscription!.id);
     
     const { error } = await supabase
       .from("subscriptions")
-      .update({ status: "inactive" as any })
+      .update({ status: "inactive" })
       .in("id", subscriptionIds);
     
     if (!error) {
@@ -429,7 +374,6 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
   };
 
   const [bulkActionType, setBulkActionType] = useState<string | null>(null);
-  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
   const getSelectedMembersData = () => {
     return sortedMembers.filter(m => selectedMembers.has(m.id));
@@ -485,76 +429,6 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
       });
     } finally {
       setBulkActionType(null);
-    }
-  };
-
-  const handleBulkSetInactive = async () => {
-    if (selectedMembers.size === 0) return;
-    
-    setBulkActionType("inactive");
-    try {
-      const selectedMembersData = getSelectedMembersData();
-      const today = new Date().toISOString().split("T")[0];
-      
-      // Separate members with and without subscriptions
-      const withSubscription = selectedMembersData.filter(m => m.subscription?.id);
-      const withoutSubscription = selectedMembersData.filter(m => !m.subscription?.id);
-      
-      // Update existing subscriptions to inactive
-      if (withSubscription.length > 0) {
-        const subscriptionIds = withSubscription.map(m => m.subscription!.id);
-        const { error } = await supabase
-          .from("subscriptions")
-          .update({ status: "inactive" as any })
-          .in("id", subscriptionIds);
-        
-        if (error) throw error;
-      }
-      
-      // Create inactive subscriptions for those without
-      if (withoutSubscription.length > 0) {
-        const newSubscriptions = withoutSubscription.map(m => ({
-          member_id: m.id,
-          status: "inactive" as any,
-          start_date: today,
-          end_date: today,
-          plan_months: 0,
-        }));
-        
-        const { error } = await supabase
-          .from("subscriptions")
-          .insert(newSubscriptions);
-        
-        if (error) throw error;
-      }
-      
-      // Update local state immediately
-      setMembers(prev => prev.map(m => {
-        if (selectedMembers.has(m.id)) {
-          return {
-            ...m,
-            subscription: {
-              id: m.subscription?.id || "temp-" + m.id,
-              status: "inactive",
-              end_date: m.subscription?.end_date || today,
-              start_date: m.subscription?.start_date || today,
-            }
-          };
-        }
-        return m;
-      }));
-
-      toast({ title: `${selectedMembers.size} member(s) set as inactive` });
-      setSelectedMembers(new Set());
-    } catch (error: any) {
-      toast({
-        title: "Error setting members inactive",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setBulkActionType(null);
-      setBulkDeleteConfirm(false);
     }
   };
 
@@ -821,30 +695,9 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
                 {bulkActionType === "expiry_reminder" ? "Sending..." : "Send Expiry Reminder"}
               </Button>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setBulkDeleteConfirm(true)}
-              disabled={bulkActionType !== null}
-              className="gap-2"
-            >
-              <UserX className="w-4 h-4" />
-              {bulkActionType === "inactive" ? "Processing..." : "Set as Inactive"}
-            </Button>
           </div>
         </div>
       )}
-
-      {/* Bulk set inactive confirmation */}
-      <ConfirmDialog
-        open={bulkDeleteConfirm}
-        onOpenChange={setBulkDeleteConfirm}
-        title="Set Selected Members as Inactive"
-        description={`Are you sure you want to set ${selectedMembers.size} member(s) as inactive?`}
-        confirmText="Set Inactive"
-        variant="default"
-        onConfirm={handleBulkSetInactive}
-      />
       <div className="rounded-lg border overflow-hidden">
         <Table>
           <TableHeader>
@@ -1072,24 +925,19 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
                         Send Payment Details
                       </DropdownMenuItem>
                       
-                      <DropdownMenuSeparator />
                       
-                      {/* Move to Inactive / Active toggle */}
-                      {isInactive(member) ? (
-                        <DropdownMenuItem 
-                          onClick={(e) => handleMoveToActive(member, e)}
-                          className="text-success hover:bg-success/10 hover:text-success focus:bg-success/10 focus:text-success"
-                        >
-                          <UserCheck className="w-4 h-4 mr-2" />
-                          Set to Active
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem 
-                          onClick={(e) => handleMoveToInactive(member, e)}
-                        >
-                          <UserX className="w-4 h-4 mr-2" />
-                          Move to Inactive
-                        </DropdownMenuItem>
+                      {/* Set to Active - Only for inactive members */}
+                      {isInactive(member) && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={(e) => handleMoveToActive(member, e)}
+                            className="text-success hover:bg-success/10 hover:text-success focus:bg-success/10 focus:text-success"
+                          >
+                            <UserCheck className="w-4 h-4 mr-2" />
+                            Set to Active
+                          </DropdownMenuItem>
+                        </>
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
