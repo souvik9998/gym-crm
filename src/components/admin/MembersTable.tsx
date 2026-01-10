@@ -11,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserX, UserCheck, Clock } from "lucide-react";
+import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserX, UserCheck, Clock, AlertTriangle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -223,6 +223,22 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     }
   };
 
+  const handleSendExpiredReminder = async (member: Member, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!member.subscription) return;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(member.subscription.end_date);
+    endDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.abs(Math.ceil((today.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24)));
+    
+    const success = await sendWhatsAppMessage(member.id, member.name, member.phone, "expired_reminder");
+    if (success) {
+      toast({ title: `Expired reminder sent to ${member.name}`, description: `Expired ${diffDays} days ago` });
+    }
+  };
+
   const handleSendPaymentDetails = async (member: Member, e: React.MouseEvent) => {
     e.stopPropagation();
     const success = await sendWhatsAppMessage(member.id, member.name, member.phone, "payment_details");
@@ -379,10 +395,24 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     }
   }, [members.length]);
 
-  const isExpiringOrExpired = (member: Member): boolean => {
+  const isExpiringSoon = (member: Member): boolean => {
     if (!member.subscription) return false;
     const status = member.subscription.status;
-    return status === "expiring_soon" || status === "expired";
+    return status === "expiring_soon";
+  };
+
+  const isExpired = (member: Member): boolean => {
+    if (!member.subscription) return false;
+    // Check actual date, not just status
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(member.subscription.end_date);
+    endDate.setHours(0, 0, 0, 0);
+    return endDate < today || member.subscription.status === "expired";
+  };
+
+  const isExpiringOrExpired = (member: Member): boolean => {
+    return isExpiringSoon(member) || isExpired(member);
   };
 
   const [bulkActionType, setBulkActionType] = useState<string | null>(null);
@@ -674,17 +704,34 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
       return <Badge variant="outline" className="text-muted-foreground">No Subscription</Badge>;
     }
 
+    // Calculate actual status based on end_date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(subscription.end_date);
+    endDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const isActuallyExpired = diffDays < 0;
+    const isActuallyExpiringSoon = !isActuallyExpired && diffDays >= 0 && diffDays <= 7;
+
+    // If status is inactive, show inactive
+    if (subscription.status === "inactive") {
+      return <Badge variant="outline" className="bg-muted text-muted-foreground">Inactive</Badge>;
+    }
+
+    // Use actual calculated status for display
+    if (isActuallyExpired) {
+      return <Badge className="bg-destructive/10 text-destructive border-destructive/20">Expired</Badge>;
+    }
+    
+    if (isActuallyExpiringSoon) {
+      return <Badge className="bg-warning/10 text-warning border-warning/20">Expiring Soon</Badge>;
+    }
+
     switch (subscription.status) {
       case "active":
         return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
-      case "expiring_soon":
-        return <Badge className="bg-warning/10 text-warning border-warning/20">Expiring Soon</Badge>;
-      case "expired":
-        return <Badge className="bg-destructive/10 text-destructive border-destructive/20">Expired</Badge>;
       case "paused":
         return <Badge variant="outline" className="text-muted-foreground">Paused</Badge>;
-      case "inactive":
-        return <Badge variant="outline" className="bg-muted text-muted-foreground">Inactive</Badge>;
       default:
         return <Badge variant="outline">{subscription.status}</Badge>;
     }
@@ -967,14 +1014,25 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
                         {sendingWhatsApp === member.id ? "Sending..." : "Send Promotional Message"}
                       </DropdownMenuItem>
                       
-                      {/* Send Subscription Expiry Reminder - Only for Expiring Soon and Expired */}
-                      {isExpiringOrExpired(member) && (
+                      {/* Send Subscription Expiry Reminder - Only for Expiring Soon */}
+                      {isExpiringSoon(member) && (
                         <DropdownMenuItem 
                           onClick={(e) => handleSendExpiryReminder(member, e)}
                           disabled={sendingWhatsApp === member.id}
                         >
                           <Clock className="w-4 h-4 mr-2" />
                           Send Expiry Reminder
+                        </DropdownMenuItem>
+                      )}
+                      
+                      {/* Send Expired Reminder - Only for Expired members */}
+                      {isExpired(member) && !isInactive(member) && (
+                        <DropdownMenuItem 
+                          onClick={(e) => handleSendExpiredReminder(member, e)}
+                          disabled={sendingWhatsApp === member.id}
+                        >
+                          <AlertTriangle className="w-4 h-4 mr-2" />
+                          Send Expired Reminder
                         </DropdownMenuItem>
                       )}
                       
