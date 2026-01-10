@@ -36,6 +36,9 @@ interface Trainer {
   specialization: string | null;
   monthly_fee: number;
   is_active: boolean;
+  payment_category: "monthly_percentage" | "session_basis";
+  percentage_fee: number;
+  session_fee: number;
 }
 
 interface CustomPackage {
@@ -84,9 +87,25 @@ const AdminSettings = () => {
 
   // Trainers
   const [trainers, setTrainers] = useState<Trainer[]>([]);
-  const [newTrainer, setNewTrainer] = useState({ name: "", phone: "", specialization: "", monthly_fee: "" });
+  const [newTrainer, setNewTrainer] = useState({ 
+    name: "", 
+    phone: "", 
+    specialization: "", 
+    monthly_fee: "",
+    payment_category: "monthly_percentage" as "monthly_percentage" | "session_basis",
+    percentage_fee: "",
+    session_fee: "",
+  });
   const [editingTrainerId, setEditingTrainerId] = useState<string | null>(null);
-  const [editTrainerData, setEditTrainerData] = useState({ name: "", phone: "", specialization: "", monthly_fee: "" });
+  const [editTrainerData, setEditTrainerData] = useState({ 
+    name: "", 
+    phone: "", 
+    specialization: "", 
+    monthly_fee: "",
+    payment_category: "monthly_percentage" as "monthly_percentage" | "session_basis",
+    percentage_fee: "",
+    session_fee: "",
+  });
 
   // Custom Packages
   const [customPackages, setCustomPackages] = useState<CustomPackage[]>([]);
@@ -167,7 +186,10 @@ const AdminSettings = () => {
       .order("name");
 
     if (trainersData) {
-      setTrainers(trainersData);
+      setTrainers(trainersData.map(t => ({
+        ...t,
+        payment_category: t.payment_category as "monthly_percentage" | "session_basis",
+      })));
     }
 
     // Fetch custom packages
@@ -326,8 +348,18 @@ const AdminSettings = () => {
 
   // Trainer handlers
   const handleAddTrainer = async () => {
-    if (!newTrainer.name || !newTrainer.monthly_fee) {
-      toast({ title: "Please fill required fields", variant: "destructive" });
+    if (!newTrainer.name) {
+      toast({ title: "Please fill trainer name", variant: "destructive" });
+      return;
+    }
+
+    // Validate based on payment category
+    if (newTrainer.payment_category === "monthly_percentage" && !newTrainer.monthly_fee) {
+      toast({ title: "Monthly fee is required for this payment category", variant: "destructive" });
+      return;
+    }
+    if (newTrainer.payment_category === "session_basis" && !newTrainer.session_fee) {
+      toast({ title: "Session fee is required for this payment category", variant: "destructive" });
       return;
     }
 
@@ -335,7 +367,10 @@ const AdminSettings = () => {
       name: newTrainer.name,
       phone: newTrainer.phone || null,
       specialization: newTrainer.specialization || null,
-      monthly_fee: Number(newTrainer.monthly_fee),
+      monthly_fee: Number(newTrainer.monthly_fee) || 0,
+      payment_category: newTrainer.payment_category,
+      percentage_fee: Number(newTrainer.percentage_fee) || 0,
+      session_fee: Number(newTrainer.session_fee) || 0,
     });
 
     if (error) {
@@ -344,13 +379,27 @@ const AdminSettings = () => {
       await logAdminActivity({
         category: "trainers",
         type: "trainer_added",
-        description: `Added trainer "${newTrainer.name}"`,
+        description: `Added trainer "${newTrainer.name}" with ${newTrainer.payment_category === "monthly_percentage" ? "monthly + percentage" : "session"} payment`,
         entityType: "personal_trainers",
         entityName: newTrainer.name,
-        newValue: { name: newTrainer.name, monthly_fee: Number(newTrainer.monthly_fee) },
+        newValue: { 
+          name: newTrainer.name, 
+          payment_category: newTrainer.payment_category,
+          monthly_fee: Number(newTrainer.monthly_fee) || 0,
+          percentage_fee: Number(newTrainer.percentage_fee) || 0,
+          session_fee: Number(newTrainer.session_fee) || 0,
+        },
       });
       toast({ title: "Trainer added" });
-      setNewTrainer({ name: "", phone: "", specialization: "", monthly_fee: "" });
+      setNewTrainer({ 
+        name: "", 
+        phone: "", 
+        specialization: "", 
+        monthly_fee: "",
+        payment_category: "monthly_percentage",
+        percentage_fee: "",
+        session_fee: "",
+      });
       fetchData();
     }
   };
@@ -362,12 +411,15 @@ const AdminSettings = () => {
       phone: trainer.phone || "",
       specialization: trainer.specialization || "",
       monthly_fee: String(trainer.monthly_fee),
+      payment_category: trainer.payment_category,
+      percentage_fee: String(trainer.percentage_fee || 0),
+      session_fee: String(trainer.session_fee || 0),
     });
   };
 
   const handleSaveTrainer = async (id: string) => {
-    if (!editTrainerData.name || !editTrainerData.monthly_fee) {
-      toast({ title: "Name and monthly fee are required", variant: "destructive" });
+    if (!editTrainerData.name) {
+      toast({ title: "Name is required", variant: "destructive" });
       return;
     }
 
@@ -377,6 +429,9 @@ const AdminSettings = () => {
       phone: trainer.phone,
       specialization: trainer.specialization,
       monthly_fee: trainer.monthly_fee,
+      payment_category: trainer.payment_category,
+      percentage_fee: trainer.percentage_fee,
+      session_fee: trainer.session_fee,
     } : null;
 
     const { error } = await supabase
@@ -385,7 +440,10 @@ const AdminSettings = () => {
         name: editTrainerData.name,
         phone: editTrainerData.phone || null,
         specialization: editTrainerData.specialization || null,
-        monthly_fee: Number(editTrainerData.monthly_fee),
+        monthly_fee: Number(editTrainerData.monthly_fee) || 0,
+        payment_category: editTrainerData.payment_category,
+        percentage_fee: Number(editTrainerData.percentage_fee) || 0,
+        session_fee: Number(editTrainerData.session_fee) || 0,
       })
       .eq("id", id);
 
@@ -404,7 +462,10 @@ const AdminSettings = () => {
           name: editTrainerData.name,
           phone: editTrainerData.phone || null,
           specialization: editTrainerData.specialization || null,
-          monthly_fee: Number(editTrainerData.monthly_fee),
+          monthly_fee: Number(editTrainerData.monthly_fee) || 0,
+          payment_category: editTrainerData.payment_category,
+          percentage_fee: Number(editTrainerData.percentage_fee) || 0,
+          session_fee: Number(editTrainerData.session_fee) || 0,
         },
       });
       toast({ title: "Trainer updated" });
@@ -898,14 +959,61 @@ const AdminSettings = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Monthly Fee (₹) *</Label>
-                    <Input
-                      type="number"
-                      value={newTrainer.monthly_fee}
-                      onChange={(e) => setNewTrainer({ ...newTrainer, monthly_fee: e.target.value })}
-                      placeholder="500"
-                    />
+                    <Label>Payment Category *</Label>
+                    <div className="flex gap-4 pt-2">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          checked={newTrainer.payment_category === "monthly_percentage"}
+                          onChange={() => setNewTrainer({ ...newTrainer, payment_category: "monthly_percentage" })}
+                          className="accent-primary"
+                        />
+                        <span className="text-sm">Monthly + Percentage</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          checked={newTrainer.payment_category === "session_basis"}
+                          onChange={() => setNewTrainer({ ...newTrainer, payment_category: "session_basis" })}
+                          className="accent-primary"
+                        />
+                        <span className="text-sm">Session Basis</span>
+                      </label>
+                    </div>
                   </div>
+                  {newTrainer.payment_category === "monthly_percentage" && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Monthly Fee (₹) *</Label>
+                        <Input
+                          type="number"
+                          value={newTrainer.monthly_fee}
+                          onChange={(e) => setNewTrainer({ ...newTrainer, monthly_fee: e.target.value })}
+                          placeholder="500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Percentage Fee (%)</Label>
+                        <Input
+                          type="number"
+                          value={newTrainer.percentage_fee}
+                          onChange={(e) => setNewTrainer({ ...newTrainer, percentage_fee: e.target.value })}
+                          placeholder="e.g., 20"
+                        />
+                      </div>
+                    </>
+                  )}
+                  {newTrainer.payment_category === "session_basis" && (
+                    <div className="space-y-2">
+                      <Label>Session Fee (₹) *</Label>
+                      <Input
+                        type="number"
+                        value={newTrainer.session_fee}
+                        onChange={(e) => setNewTrainer({ ...newTrainer, session_fee: e.target.value })}
+                        placeholder="Per session fee"
+                      />
+                    </div>
+                  )}
                 </div>
                 <Button onClick={handleAddTrainer}>
                   <Plus className="w-4 h-4 mr-2" />

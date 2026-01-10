@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Dumbbell,
   Users,
   CreditCard,
   AlertTriangle,
@@ -21,6 +20,7 @@ import {
   BarChart3,
   Clock,
   MessageSquare,
+  BookOpen,
 } from "lucide-react";
 import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
@@ -250,6 +250,15 @@ const AdminDashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => navigate("/admin/ledger")}
+                title="Ledger"
+              >
+                <BookOpen className="w-4 h-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
