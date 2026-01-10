@@ -14,6 +14,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminQRCode from "./pages/admin/QRCode";
 import AdminSettings from "./pages/admin/Settings";
 import AdminAnalytics from "./pages/admin/Analytics";
+import AdminLedger from "./pages/admin/Ledger";
 import Logs from "./pages/admin/Logs";
 import NotFound from "./pages/NotFound";
 
@@ -37,6 +38,7 @@ const App = () => (
           <Route path="/admin/qr-code" element={<AdminQRCode />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route path="/admin/ledger" element={<AdminLedger />} />
           <Route path="/admin/logs" element={<Logs />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

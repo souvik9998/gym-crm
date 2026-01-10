@@ -258,6 +258,99 @@ export type Database = {
         }
         Relationships: []
       }
+      ledger_entries: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          created_by: string | null
+          daily_pass_user_id: string | null
+          description: string
+          entry_date: string
+          entry_type: string
+          id: string
+          is_auto_generated: boolean
+          member_id: string | null
+          notes: string | null
+          payment_id: string | null
+          pt_subscription_id: string | null
+          trainer_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          created_by?: string | null
+          daily_pass_user_id?: string | null
+          description: string
+          entry_date?: string
+          entry_type: string
+          id?: string
+          is_auto_generated?: boolean
+          member_id?: string | null
+          notes?: string | null
+          payment_id?: string | null
+          pt_subscription_id?: string | null
+          trainer_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          daily_pass_user_id?: string | null
+          description?: string
+          entry_date?: string
+          entry_type?: string
+          id?: string
+          is_auto_generated?: boolean
+          member_id?: string | null
+          notes?: string | null
+          payment_id?: string | null
+          pt_subscription_id?: string | null
+          trainer_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_entries_daily_pass_user_id_fkey"
+            columns: ["daily_pass_user_id"]
+            isOneToOne: false
+            referencedRelation: "daily_pass_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_pt_subscription_id_fkey"
+            columns: ["pt_subscription_id"]
+            isOneToOne: false
+            referencedRelation: "pt_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_entries_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "personal_trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_details: {
         Row: {
           address: string | null
@@ -453,7 +546,10 @@ export type Database = {
           is_active: boolean
           monthly_fee: number
           name: string
+          payment_category: string
+          percentage_fee: number
           phone: string | null
+          session_fee: number
           specialization: string | null
           updated_at: string
         }
@@ -463,7 +559,10 @@ export type Database = {
           is_active?: boolean
           monthly_fee?: number
           name: string
+          payment_category?: string
+          percentage_fee?: number
           phone?: string | null
+          session_fee?: number
           specialization?: string | null
           updated_at?: string
         }
@@ -473,7 +572,10 @@ export type Database = {
           is_active?: boolean
           monthly_fee?: number
           name?: string
+          payment_category?: string
+          percentage_fee?: number
           phone?: string | null
+          session_fee?: number
           specialization?: string | null
           updated_at?: string
         }

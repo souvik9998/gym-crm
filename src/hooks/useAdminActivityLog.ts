@@ -7,7 +7,8 @@ export type ActivityCategory =
   | "trainers"
   | "settings"
   | "whatsapp"
-  | "subscriptions";
+  | "subscriptions"
+  | "ledger";
 
 export type ActivityType = 
   // Members
@@ -42,7 +43,11 @@ export type ActivityType =
   | "subscription_renewed"
   | "subscription_extended"
   | "pt_subscription_added"
-  | "pt_subscription_extended";
+  | "pt_subscription_extended"
+  // Ledger
+  | "expense_added"
+  | "expense_deleted"
+  | "income_added";
 
 interface LogActivityParams {
   category: ActivityCategory;
