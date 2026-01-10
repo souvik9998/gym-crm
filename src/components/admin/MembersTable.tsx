@@ -176,18 +176,26 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
         messageToSend = getSavedTemplate(type);
       }
 
+      // Get current admin user
+      const { data: { session } } = await supabase.auth.getSession();
+      const adminUserId = session?.user?.id || null;
+      const accessToken = session?.access_token || null;
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            "Authorization": accessToken ? `Bearer ${accessToken}` : `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
           },
           body: JSON.stringify({
             memberIds: [memberId],
             type: messageToSend ? "custom" : type,
             customMessage: messageToSend,
+            isManual: true,
+            adminUserId: adminUserId,
           }),
         }
       );
@@ -391,18 +399,26 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
       // Get saved template for the message type
       const savedTemplate = getSavedTemplate(type);
 
+      // Get current admin user
+      const { data: { session } } = await supabase.auth.getSession();
+      const adminUserId = session?.user?.id || null;
+      const accessToken = session?.access_token || null;
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            "Authorization": accessToken ? `Bearer ${accessToken}` : `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
           },
           body: JSON.stringify({
             memberIds: Array.from(selectedMembers),
             type: savedTemplate ? "custom" : type,
             customMessage: savedTemplate,
+            isManual: true,
+            adminUserId: adminUserId,
           }),
         }
       );

@@ -20,6 +20,7 @@ import {
   Settings,
   BarChart3,
   Clock,
+  MessageSquare,
 } from "lucide-react";
 import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
@@ -249,6 +250,15 @@ const AdminDashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => navigate("/admin/whatsapp-logs")}
+                title="WhatsApp Logs"
+              >
+                <MessageSquare className="w-4 h-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"

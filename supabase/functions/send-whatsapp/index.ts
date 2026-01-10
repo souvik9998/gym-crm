@@ -7,8 +7,11 @@ const corsHeaders = {
 
 interface SendWhatsAppRequest {
   memberIds?: string[];
+  dailyPassUserIds?: string[];
   type?: "expiring_2days" | "expiring_today" | "manual" | "renewal" | "pt_extension" | "promotional" | "expiry_reminder" | "expired_reminder" | "payment_details" | "custom";
   customMessage?: string;
+  isManual?: boolean; // Flag to indicate manual vs automated
+  adminUserId?: string; // Admin user ID who sent the message
 
   // Direct send
   phone?: string;
@@ -56,12 +59,93 @@ Deno.serve(async (req) => {
 
     const {
       memberIds,
+      dailyPassUserIds,
       type = "manual",
       customMessage,
+      isManual = false,
+      adminUserId,
       phone,
       name,
       endDate,
     } = (await req.json()) as SendWhatsAppRequest;
+
+    // Get admin user ID from request body if provided
+    let finalAdminUserId = adminUserId || null;
+    
+    // For manual messages, try to extract from authorization header if not provided
+    if (!finalAdminUserId && (isManual || type === "manual" || type === "custom")) {
+      try {
+        const authHeader = req.headers.get("authorization");
+        if (authHeader) {
+          const token = authHeader.replace("Bearer ", "").trim();
+          // Create a client with the user's token to verify and get user ID
+          const userSupabase = createClient(SUPABASE_URL!, token, {
+            auth: { persistSession: false },
+          });
+          const { data: { user }, error: userError } = await userSupabase.auth.getUser();
+          if (!userError && user) {
+            finalAdminUserId = user.id;
+            console.log("Extracted admin user ID from token:", finalAdminUserId);
+          }
+        }
+      } catch (e) {
+        console.warn("Could not extract admin user ID from token:", e);
+      }
+    }
+    
+    // Helper function to log WhatsApp message
+    const logWhatsAppMessage = async (logData: {
+      member_id?: string | null;
+      daily_pass_user_id?: string | null;
+      recipient_phone: string;
+      recipient_name: string;
+      notification_type: string;
+      message_content: string;
+      status: string;
+      error_message?: string | null;
+      is_manual: boolean;
+      admin_user_id?: string | null;
+    }) => {
+      try {
+        const insertData: any = {
+          recipient_phone: logData.recipient_phone || null,
+          recipient_name: logData.recipient_name || null,
+          notification_type: logData.notification_type,
+          message_content: (logData.message_content || "").substring(0, 500), // Limit to 500 chars for preview
+          status: logData.status,
+          error_message: logData.error_message || null,
+          is_manual: logData.is_manual,
+          admin_user_id: logData.admin_user_id || null,
+        };
+
+        // Only set member_id or daily_pass_user_id if they exist
+        // This avoids constraint violations
+        if (logData.member_id) {
+          insertData.member_id = logData.member_id;
+        }
+        if (logData.daily_pass_user_id) {
+          insertData.daily_pass_user_id = logData.daily_pass_user_id;
+        }
+
+        const { error: insertError } = await supabase
+          .from("whatsapp_notifications")
+          .insert(insertData);
+
+        if (insertError) {
+          console.error("Error logging WhatsApp message:", insertError);
+          // Log to console but don't throw - logging failure shouldn't break message sending
+        } else {
+          console.log("Successfully logged WhatsApp message:", {
+            type: logData.notification_type,
+            status: logData.status,
+            recipient: logData.recipient_name,
+          });
+        }
+      } catch (error: any) {
+        console.error("Exception while logging WhatsApp message:", error);
+        // Don't throw - logging failure shouldn't break message sending
+      }
+    };
 
     // ---------------------------
     // Phone formatter
@@ -251,14 +335,22 @@ Deno.serve(async (req) => {
 
       const result = await sendPeriskopeMessage(formattedPhone, message);
 
-      if (memberIds && memberIds.length > 0) {
-        await supabase.from("whatsapp_notifications").insert({
-          member_id: memberIds[0],
-          notification_type: type,
-          status: result.success ? "sent" : "failed",
-          error_message: result.error || null,
-        });
-      }
+      // Determine if this is manual
+      const isManualMessage = isManual || type === "manual" || type === "custom";
+      
+      // Log the message
+      await logWhatsAppMessage({
+        member_id: memberIds && memberIds.length > 0 ? memberIds[0] : null,
+        daily_pass_user_id: null,
+        recipient_phone: phone,
+        recipient_name: name,
+        notification_type: type,
+        message_content: message,
+        status: result.success ? "sent" : "failed",
+        error_message: result.error || null,
+        is_manual: isManualMessage,
+        admin_user_id: isManualMessage ? finalAdminUserId : null,
+      });
 
       return new Response(JSON.stringify(result), {
         headers: {
@@ -269,10 +361,10 @@ Deno.serve(async (req) => {
     }
 
     // ---------------------------
-    // MEMBER BASED SEND
+    // MEMBER/DAILY PASS USER BASED SEND
     // ---------------------------
-    if (!memberIds || memberIds.length === 0) {
-      return new Response(JSON.stringify({ error: "No member IDs or phone provided" }), {
+    if ((!memberIds || memberIds.length === 0) && (!dailyPassUserIds || dailyPassUserIds.length === 0)) {
+      return new Response(JSON.stringify({ error: "No member IDs, daily pass user IDs, or phone provided" }), {
         status: 400,
         headers: {
           ...corsHeaders,
@@ -281,13 +373,29 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: members, error } = await supabase.from("members").select("id, name, phone").in("id", memberIds);
+    // Fetch members if provided
+    let members: Array<{ id: string; name: string; phone: string }> = [];
+    if (memberIds && memberIds.length > 0) {
+      const { data: membersData, error: membersError } = await supabase.from("members").select("id, name, phone").in("id", memberIds);
+      if (membersError) throw membersError;
+      members = membersData || [];
+    }
 
-    if (error) throw error;
+    // Fetch daily pass users if provided
+    let dailyPassUsers: Array<{ id: string; name: string; phone: string }> = [];
+    if (dailyPassUserIds && dailyPassUserIds.length > 0) {
+      const { data: dailyPassUsersData, error: dailyPassUsersError } = await supabase
+        .from("daily_pass_users")
+        .select("id, name, phone")
+        .in("id", dailyPassUserIds);
+      if (dailyPassUsersError) throw dailyPassUsersError;
+      dailyPassUsers = dailyPassUsersData || [];
+    }
 
-    const membersWithData = [];
+    const recipientsWithData = [];
 
-    for (const member of members || []) {
+    // Process members
+    for (const member of members) {
       // Get subscription
       const { data: sub } = await supabase
         .from("subscriptions")
@@ -318,30 +426,61 @@ Deno.serve(async (req) => {
         }
       }
 
-      membersWithData.push({
+      recipientsWithData.push({
         ...member,
+        isMember: true,
         end_date: sub?.end_date || new Date().toISOString(),
         paymentInfo,
       });
     }
 
+    // Process daily pass users
+    for (const dailyPassUser of dailyPassUsers) {
+      // Get latest purchase for expiry date
+      const { data: purchase } = await supabase
+        .from("daily_pass_purchases")
+        .select("end_date")
+        .eq("daily_pass_user_id", dailyPassUser.id)
+        .order("end_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      recipientsWithData.push({
+        ...dailyPassUser,
+        isMember: false,
+        end_date: purchase?.end_date || new Date().toISOString(),
+        paymentInfo: null,
+      });
+    }
+
     const results = [];
 
-    for (const member of membersWithData) {
-      const formattedPhone = formatPhone(member.phone);
-      const message = customMessage || generateMessage(member.name, member.end_date, type, member.paymentInfo);
+    for (const recipient of recipientsWithData) {
+      const formattedPhone = formatPhone(recipient.phone);
+      const message = customMessage || generateMessage(recipient.name, recipient.end_date, type, recipient.paymentInfo);
 
       const result = await sendPeriskopeMessage(formattedPhone, message);
 
-      await supabase.from("whatsapp_notifications").insert({
-        member_id: member.id,
+      // Determine if this is manual
+      const isManualMessage = isManual || type === "manual" || type === "custom";
+      
+      // Log the message with all details
+      await logWhatsAppMessage({
+        member_id: recipient.isMember ? recipient.id : null,
+        daily_pass_user_id: recipient.isMember ? null : recipient.id,
+        recipient_phone: recipient.phone,
+        recipient_name: recipient.name,
         notification_type: type,
+        message_content: message,
         status: result.success ? "sent" : "failed",
         error_message: result.error || null,
+        is_manual: isManualMessage,
+        admin_user_id: isManualMessage ? finalAdminUserId : null,
       });
 
       results.push({
-        memberId: member.id,
+        memberId: recipient.isMember ? recipient.id : undefined,
+        dailyPassUserId: recipient.isMember ? undefined : recipient.id,
         success: result.success,
         error: result.error,
       });

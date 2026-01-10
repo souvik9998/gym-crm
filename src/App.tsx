@@ -14,6 +14,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminQRCode from "./pages/admin/QRCode";
 import AdminSettings from "./pages/admin/Settings";
 import AdminAnalytics from "./pages/admin/Analytics";
+import WhatsAppLogs from "./pages/admin/WhatsAppLogs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/admin/qr-code" element={<AdminQRCode />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route path="/admin/whatsapp-logs" element={<WhatsAppLogs />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

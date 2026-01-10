@@ -108,6 +108,7 @@ const Renew = () => {
               endDate: data.endDate,
               type: "renewal",
               memberIds: [member.id],
+              isManual: false, // Automated message from system
             },
           });
         } catch (err) {

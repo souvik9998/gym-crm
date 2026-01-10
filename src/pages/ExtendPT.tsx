@@ -210,6 +210,7 @@ const ExtendPT = () => {
               endDate: format(selectedOption.endDate, "yyyy-MM-dd"),
               type: "pt_extension",
               memberIds: [member.id],
+              isManual: false, // Automated message from system
             },
           });
         } catch (err) {

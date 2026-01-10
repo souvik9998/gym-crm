@@ -477,6 +477,10 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
           ? selectedPTOption!.endDate.toISOString().split("T")[0]
           : gymEndDate?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0];
         
+        // Get current admin user
+        const { data: { session } } = await supabase.auth.getSession();
+        const adminUserId = session?.user?.id || null;
+
         await supabase.functions.invoke("send-whatsapp", {
           body: {
             phone: member.phone,
@@ -484,6 +488,8 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
             endDate: endDateForNotification,
             type: notificationType,
             memberIds: [member.id],
+            isManual: true, // Admin manually adding payment
+            adminUserId: adminUserId,
           },
         });
       } catch (err) {
