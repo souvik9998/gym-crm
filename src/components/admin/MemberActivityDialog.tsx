@@ -270,35 +270,40 @@ export const MemberActivityDialog = ({
                     </CardContent>
                   </Card>
 
-                  {details && (
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                          Personal Details
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {details.gender && (
-                          <div className="flex items-center gap-3">
-                            <User className="w-4 h-4 text-muted-foreground" />
-                            <span className="capitalize">{details.gender}</span>
-                          </div>
-                        )}
-                        {details.address && (
-                          <div className="flex items-center gap-3">
-                            <MapPin className="w-4 h-4 text-muted-foreground" />
-                            <span>{details.address}</span>
-                          </div>
-                        )}
-                        {details.photo_id_type && (
-                          <div className="flex items-center gap-3">
-                            <IdCard className="w-4 h-4 text-muted-foreground" />
-                            <span className="capitalize">{details.photo_id_type}: {details.photo_id_number}</span>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Personal Details
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <User className="w-4 h-4 text-muted-foreground" />
+                        <span>
+                          <span className="text-muted-foreground text-sm">Gender: </span>
+                          <span className="capitalize">{details?.gender || "Not provided"}</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <span>
+                          <span className="text-muted-foreground text-sm">Address: </span>
+                          {details?.address || "Not provided"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <IdCard className="w-4 h-4 text-muted-foreground" />
+                        <span>
+                          <span className="text-muted-foreground text-sm">Photo ID: </span>
+                          {details?.photo_id_type ? (
+                            <span className="capitalize">{details.photo_id_type}: {details.photo_id_number || "N/A"}</span>
+                          ) : (
+                            "Not provided"
+                          )}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
 
                   {/* Current PT Status */}
                   <Card>

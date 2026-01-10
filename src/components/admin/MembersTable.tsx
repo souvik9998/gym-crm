@@ -153,6 +153,13 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     setViewingMemberName(member.name);
   };
 
+  // Get saved template from localStorage for a specific type
+  const getSavedTemplate = (type: string): string | undefined => {
+    const templateKey = `whatsapp_${type}_template`;
+    const savedTemplate = localStorage.getItem(templateKey);
+    return savedTemplate || undefined;
+  };
+
   const sendWhatsAppMessage = async (
     memberId: string, 
     memberName: string, 
@@ -163,6 +170,12 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     setSendingWhatsApp(memberId);
     
     try {
+      // Get saved template for the message type if no custom message provided
+      let messageToSend = customMessage;
+      if (!messageToSend) {
+        messageToSend = getSavedTemplate(type);
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
         {
@@ -173,8 +186,8 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
           },
           body: JSON.stringify({
             memberIds: [memberId],
-            type,
-            customMessage,
+            type: messageToSend ? "custom" : type,
+            customMessage: messageToSend,
           }),
         }
       );
@@ -431,6 +444,9 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     
     setBulkActionType(type);
     try {
+      // Get saved template for the message type
+      const savedTemplate = getSavedTemplate(type);
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
         {
@@ -441,7 +457,8 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
           },
           body: JSON.stringify({
             memberIds: Array.from(selectedMembers),
-            type,
+            type: savedTemplate ? "custom" : type,
+            customMessage: savedTemplate,
           }),
         }
       );
@@ -449,7 +466,9 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
       const data = await response.json();
       
       if (data.success) {
-        const typeLabel = type === "promotional" ? "Promotional messages" : "Expiry reminders";
+        const typeLabel = type === "promotional" ? "Promotional messages" : 
+                          type === "expiry_reminder" ? "Expiry reminders" : 
+                          type === "expired_reminder" ? "Expired reminders" : "Messages";
         toast({ 
           title: `${typeLabel} sent to ${data.sent} members`,
           description: data.failed > 0 ? `${data.failed} failed` : undefined,
