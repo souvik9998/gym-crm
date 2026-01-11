@@ -13,7 +13,8 @@ import {
   ArrowTrendingUpIcon,
   ClockIcon,
   ArrowDownTrayIcon,
-  FunnelIcon,
+  BarsArrowDownIcon,
+  BarsArrowUpIcon,
 } from "@heroicons/react/24/outline";
 import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
@@ -29,6 +30,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Separator } from "@/components/ui/separator";
 
 interface DashboardStats {
   totalMembers: number;
@@ -62,8 +66,9 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("members");
   const [memberFilter, setMemberFilter] = useState<MemberFilterValue>("all");
   const [ptFilterActive, setPtFilterActive] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
-  const membersTableRef = useRef<{ exportData: () => Promise<void> } | null>(null);
+  const [sortOpen, setSortOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<"name" | "join_date" | "end_date">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     fetchStats();
@@ -304,69 +309,87 @@ const AdminDashboard = () => {
               <div className="flex flex-col gap-4">
                 {/* Top Row - Tabs and Actions */}
                 <div className="flex items-center justify-between gap-3">
-                  {/* Tabs - Icon only like reference */}
+                  {/* Tabs - With text labels */}
                   <TabsList className="bg-muted/50 p-1 h-10">
                     <TabsTrigger 
                       value="members" 
                       className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-                      title="Members"
                     >
                       <UsersIcon className="w-4 h-4" />
+                      <span className="hidden sm:inline">Members</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="daily_pass" 
                       className="gap-1 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-                      title="Daily Pass"
                     >
                       <ClockIcon className="w-4 h-4" />
                       <span className="text-xs">({stats.dailyPassUsers})</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="payments" 
-                      className="px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-                      title="Payments"
+                      className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
                     >
                       <CreditCardIcon className="w-4 h-4" />
+                      <span className="hidden sm:inline">Payments</span>
                     </TabsTrigger>
                   </TabsList>
                   
                   {/* Action Buttons - Right side */}
                   <div className="flex items-center gap-2">
-                    {/* Filter Button with Popover */}
-                    <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+                    {/* Sort Button with Popover */}
+                    <Popover open={sortOpen} onOpenChange={setSortOpen}>
                       <PopoverTrigger asChild>
                         <Button 
                           variant="outline" 
                           size="icon"
                           className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
-                          title="Filter"
+                          title="Sort"
                         >
-                          <FunnelIcon className="w-4 h-4" />
+                          {sortOrder === "asc" ? (
+                            <BarsArrowUpIcon className="w-4 h-4" />
+                          ) : (
+                            <BarsArrowDownIcon className="w-4 h-4" />
+                          )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-3" align="end">
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-foreground mb-3">Filter Members</p>
-                          <MemberFilter 
-                            value={memberFilter} 
-                            onChange={(value) => {
-                              setMemberFilter(value);
-                              if (value === "all" && ptFilterActive) {
-                                setPtFilterActive(false);
-                              }
-                              setFilterOpen(false);
-                            }}
-                            counts={{
-                              all: stats.totalMembers,
-                              active: stats.activeMembers,
-                              expiring_soon: stats.expiringSoon,
-                              expired: stats.expiredMembers,
-                              inactive: stats.inactiveMembers,
-                              with_pt: stats.withPT,
-                            }}
-                            ptFilterActive={ptFilterActive}
-                            onPtFilterChange={setPtFilterActive}
-                          />
+                      <PopoverContent className="w-56 p-0" align="end">
+                        <div className="p-3 border-b border-border">
+                          <p className="text-sm font-medium text-foreground">Sort by</p>
+                        </div>
+                        <RadioGroup 
+                          value={sortBy} 
+                          onValueChange={(value) => setSortBy(value as typeof sortBy)}
+                          className="p-2"
+                        >
+                          <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                            <RadioGroupItem value="name" id="sort-name" />
+                            <Label htmlFor="sort-name" className="cursor-pointer flex-1 text-sm">Name</Label>
+                          </div>
+                          <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                            <RadioGroupItem value="join_date" id="sort-join" />
+                            <Label htmlFor="sort-join" className="cursor-pointer flex-1 text-sm">Join Date</Label>
+                          </div>
+                          <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                            <RadioGroupItem value="end_date" id="sort-expiry" />
+                            <Label htmlFor="sort-expiry" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
+                          </div>
+                        </RadioGroup>
+                        <Separator />
+                        <div className="p-2 space-y-1">
+                          <button
+                            onClick={() => setSortOrder("asc")}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "asc" ? "bg-muted font-medium" : ""}`}
+                          >
+                            <BarsArrowUpIcon className="w-4 h-4" />
+                            Oldest first
+                          </button>
+                          <button
+                            onClick={() => setSortOrder("desc")}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "desc" ? "bg-muted font-medium" : ""}`}
+                          >
+                            <BarsArrowDownIcon className="w-4 h-4" />
+                            Newest first
+                          </button>
                         </div>
                       </PopoverContent>
                     </Popover>
@@ -421,6 +444,26 @@ const AdminDashboard = () => {
             </CardHeader>
             <CardContent className="p-3 sm:p-4 md:p-6">
               <TabsContent value="members" className="mt-0 space-y-4">
+                {/* Inline Member Filter Chips */}
+                <MemberFilter 
+                  value={memberFilter} 
+                  onChange={(value) => {
+                    setMemberFilter(value);
+                    if (value === "all" && ptFilterActive) {
+                      setPtFilterActive(false);
+                    }
+                  }}
+                  counts={{
+                    all: stats.totalMembers,
+                    active: stats.activeMembers,
+                    expiring_soon: stats.expiringSoon,
+                    expired: stats.expiredMembers,
+                    inactive: stats.inactiveMembers,
+                    with_pt: stats.withPT,
+                  }}
+                  ptFilterActive={ptFilterActive}
+                  onPtFilterChange={setPtFilterActive}
+                />
                 <MembersTable 
                   searchQuery={searchQuery} 
                   refreshKey={refreshKey} 
