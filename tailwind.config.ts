@@ -111,9 +111,9 @@ export default {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		boxShadow: {
-  			'sm': '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-  			'md': '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
-  			'lg': '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)'
+  			sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+  			md: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+  			lg: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)'
   		},
   		keyframes: {
   			'accordion-down': {
@@ -152,7 +152,7 @@ export default {
   					transform: 'translateY(0)'
   				}
   			},
-  			'shimmer': {
+  			shimmer: {
   				from: {
   					backgroundPosition: '200% 0'
   				},
@@ -166,7 +166,7 @@ export default {
   			'accordion-up': 'accordion-up 0.2s ease-out',
   			'fade-in': 'fade-in 0.5s ease-out forwards',
   			'slide-up': 'slide-up 0.6s ease-out forwards',
-  			'shimmer': 'shimmer 3s ease-in-out infinite'
+  			shimmer: 'shimmer 3s ease-in-out infinite'
   		}
   	}
   },
