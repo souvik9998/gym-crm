@@ -85,20 +85,26 @@ const PackageSelectionForm = ({
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
   const [selectedPTOption, setSelectedPTOption] = useState<PTDurationOption | null>(null);
   
-  // Custom start date for membership - defaults to minStartDate or today
-  const [selectedStartDate, setSelectedStartDate] = useState<Date>(() => {
-    if (propMinStartDate) return propMinStartDate;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return today;
-  });
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [customPackages, setCustomPackages] = useState<CustomPackage[]>([]);
   
-  // Minimum start date: for renewals with active membership, it's end_date + 1; otherwise today
+  // Check if membership is expired (end date is in the past)
+  const isExpiredMembership = useMemo(() => {
+    if (!existingMembershipEndDate) return false;
+    const endDate = new Date(existingMembershipEndDate);
+    endDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return endDate < today;
+  }, [existingMembershipEndDate]);
+  
+  // Minimum start date logic:
+  // - For active membership: end_date + 1
+  // - For expired membership: previous end_date + 1 (allows selecting past dates)
+  // - For new members: today
   const minStartDate = useMemo(() => {
     if (propMinStartDate) return propMinStartDate;
     if (existingMembershipEndDate) {
@@ -106,23 +112,42 @@ const PackageSelectionForm = ({
       endDate.setHours(0, 0, 0, 0);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      // If membership is still active, min start is end_date + 1
-      if (endDate >= today) {
-        const minDate = addDays(endDate, 1);
-        return minDate;
+      
+      // For expired membership: min is day after previous membership ended
+      if (endDate < today) {
+        return addDays(endDate, 1);
       }
+      
+      // For active membership: min is end_date + 1
+      return addDays(endDate, 1);
     }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return today;
   }, [existingMembershipEndDate, propMinStartDate]);
   
-  // Update selected start date when minStartDate changes
+  // Custom start date for membership
+  // - For expired members: default to today but allow selecting from minStartDate
+  // - For active members: default to minStartDate (day after current ends)
+  // - For new members: default to today
+  const [selectedStartDate, setSelectedStartDate] = useState<Date>(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (propMinStartDate) return propMinStartDate;
+    
+    // For expired membership, default to today
+    // minStartDate will be calculated later and will allow past dates
+    return today;
+  });
+  
+  // Update selected start date when minStartDate changes (for active membership)
+  // But NOT for expired membership - they default to today
   useEffect(() => {
-    if (selectedStartDate < minStartDate) {
+    if (!isExpiredMembership && selectedStartDate < minStartDate) {
       setSelectedStartDate(minStartDate);
     }
-  }, [minStartDate]);
+  }, [minStartDate, isExpiredMembership]);
 
   useEffect(() => {
     fetchData();
@@ -436,7 +461,9 @@ const PackageSelectionForm = ({
           <p className="text-xs text-muted-foreground">
             {hasActiveMembership 
               ? `Minimum start date: ${format(minStartDate, "d MMM yyyy")} (day after current membership ends)`
-              : "Select when your membership should begin"}
+              : isExpiredMembership
+                ? `You can select any date from ${format(minStartDate, "d MMM yyyy")} (day after previous membership ended)`
+                : "Select when your membership should begin"}
           </p>
         </div>
 
