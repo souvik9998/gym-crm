@@ -453,8 +453,16 @@ const PackageSelectionForm = ({
                     setShowDatePicker(false);
                   }
                 }}
-                disabled={(date) => date < minStartDate}
+                disabled={(date) => {
+                  const dateNormalized = new Date(date);
+                  dateNormalized.setHours(0, 0, 0, 0);
+                  // For expired members: allow dates from minStartDate (can be past dates)
+                  // For active/new members: only allow dates from minStartDate onwards
+                  return dateNormalized < minStartDate;
+                }}
+                fromDate={isExpiredMembership ? minStartDate : undefined}
                 initialFocus
+                className="pointer-events-auto"
               />
             </PopoverContent>
           </Popover>
