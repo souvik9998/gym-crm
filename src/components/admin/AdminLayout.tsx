@@ -85,7 +85,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
       {/* Mobile Sidebar Overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -93,39 +93,40 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
       {/* Mobile Sidebar */}
       <div
         className={cn(
-          "fixed left-0 top-0 h-screen w-64 bg-sidebar border-r border-sidebar-border z-50 transform transition-transform duration-300 lg:hidden",
+          "fixed left-0 top-0 h-screen w-72 bg-card border-r border-border z-50 transform transition-transform duration-300 ease-in-out lg:hidden shadow-xl",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
+        <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary overflow-hidden">
+            <div className="w-10 h-10 rounded-xl bg-primary overflow-hidden shadow-sm">
               <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
             </div>
             <div>
-              <h1 className="text-sm font-semibold text-sidebar-foreground">{gymName}</h1>
-              <p className="text-xs text-sidebar-foreground/60">Admin Panel</p>
+              <h1 className="text-sm font-semibold text-foreground">{gymName}</h1>
+              <p className="text-xs text-muted-foreground">Admin Panel</p>
             </div>
           </div>
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="p-2 hover:bg-sidebar-accent rounded-lg transition-colors"
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
           >
-            <XMarkIcon className="w-5 h-5 text-sidebar-foreground" />
+            <XMarkIcon className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
         <AdminSidebar
           collapsed={false}
           onCollapsedChange={() => {}}
           gymName={gymName}
+          isMobile={true}
         />
       </div>
 
       {/* Main Content */}
       <div
         className={cn(
-          "min-h-screen transition-all duration-300",
-          sidebarCollapsed ? "lg:pl-[72px]" : "lg:pl-64"
+          "min-h-screen transition-all duration-300 ease-in-out",
+          sidebarCollapsed ? "lg:pl-[68px]" : "lg:pl-64"
         )}
       >
         <AdminHeader

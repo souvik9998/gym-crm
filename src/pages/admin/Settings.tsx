@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,39 +8,23 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  ArrowLeft,
-  Settings,
-  IndianRupee,
-  Users,
-  Package,
-  Save,
-  Plus,
-  Trash2,
-  Dumbbell,
-  Pencil,
-  X,
-  Check,
-  MessageCircle,
-} from "lucide-react";
+  CurrencyRupeeIcon,
+  CubeIcon,
+  CheckIcon,
+  XMarkIcon,
+  PlusIcon,
+  TrashIcon,
+  PencilIcon,
+  ChatBubbleLeftEllipsisIcon,
+  BuildingStorefrontIcon,
+} from "@heroicons/react/24/outline";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { User } from "@supabase/supabase-js";
 import { WhatsAppTemplates } from "@/components/admin/WhatsAppTemplates";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
-
-interface Trainer {
-  id: string;
-  name: string;
-  phone: string | null;
-  specialization: string | null;
-  monthly_fee: number;
-  monthly_salary: number;
-  is_active: boolean;
-  payment_category: "monthly_percentage" | "session_basis";
-  percentage_fee: number;
-  session_fee: number;
-}
+import { AdminLayout } from "@/components/admin/AdminLayout";
 
 interface CustomPackage {
   id: string;
@@ -68,9 +52,9 @@ interface GymSettings {
 
 const AdminSettings = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   // Gym Settings
@@ -85,30 +69,6 @@ const AdminSettings = () => {
   const [newMonthlyPackage, setNewMonthlyPackage] = useState({ months: "", price: "", joining_fee: "" });
   const [editingMonthlyId, setEditingMonthlyId] = useState<string | null>(null);
   const [editMonthlyData, setEditMonthlyData] = useState({ price: "", joining_fee: "" });
-
-  // Trainers
-  const [trainers, setTrainers] = useState<Trainer[]>([]);
-  const [newTrainer, setNewTrainer] = useState({ 
-    name: "", 
-    phone: "", 
-    specialization: "", 
-    monthly_fee: "",
-    monthly_salary: "",
-    payment_category: "monthly_percentage" as "monthly_percentage" | "session_basis",
-    percentage_fee: "",
-    session_fee: "",
-  });
-  const [editingTrainerId, setEditingTrainerId] = useState<string | null>(null);
-  const [editTrainerData, setEditTrainerData] = useState({ 
-    name: "", 
-    phone: "", 
-    specialization: "", 
-    monthly_fee: "",
-    monthly_salary: "",
-    payment_category: "monthly_percentage" as "monthly_percentage" | "session_basis",
-    percentage_fee: "",
-    session_fee: "",
-  });
 
   // Custom Packages
   const [customPackages, setCustomPackages] = useState<CustomPackage[]>([]);
@@ -131,24 +91,20 @@ const AdminSettings = () => {
     variant: "default",
   });
 
+  // Get initial tab from URL
+  const initialTab = searchParams.get("tab") || "packages";
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
-      if (!session?.user) {
-        navigate("/admin/login");
-      }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (!session?.user) {
-        navigate("/admin/login");
-      }
-      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -180,20 +136,6 @@ const AdminSettings = () => {
 
     if (monthlyData) {
       setMonthlyPackages(monthlyData);
-    }
-
-    // Fetch trainers
-    const { data: trainersData } = await supabase
-      .from("personal_trainers")
-      .select("*")
-      .order("name");
-
-    if (trainersData) {
-      setTrainers(trainersData.map(t => ({
-        ...t,
-        monthly_salary: t.monthly_salary ?? 0,
-        payment_category: t.payment_category as "monthly_percentage" | "session_basis",
-      })));
     }
 
     // Fetch custom packages
@@ -350,193 +292,6 @@ const AdminSettings = () => {
     });
   };
 
-  // Trainer handlers
-  const handleAddTrainer = async () => {
-    if (!newTrainer.name) {
-      toast({ title: "Please fill trainer name", variant: "destructive" });
-      return;
-    }
-
-    // Monthly fee is always required (what members are charged)
-    if (!newTrainer.monthly_fee) {
-      toast({ title: "Monthly fee (member charge) is required", variant: "destructive" });
-      return;
-    }
-
-    // Validate based on payment category
-    if (newTrainer.payment_category === "session_basis" && !newTrainer.session_fee) {
-      toast({ title: "Session fee is required for session basis category", variant: "destructive" });
-      return;
-    }
-
-    const { error } = await supabase.from("personal_trainers").insert({
-      name: newTrainer.name,
-      phone: newTrainer.phone || null,
-      specialization: newTrainer.specialization || null,
-      monthly_fee: Number(newTrainer.monthly_fee) || 0,
-      monthly_salary: Number(newTrainer.monthly_salary) || 0,
-      payment_category: newTrainer.payment_category,
-      percentage_fee: Number(newTrainer.percentage_fee) || 0,
-      session_fee: Number(newTrainer.session_fee) || 0,
-    });
-
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      await logAdminActivity({
-        category: "trainers",
-        type: "trainer_added",
-        description: `Added trainer "${newTrainer.name}" with ${newTrainer.payment_category === "monthly_percentage" ? "monthly + percentage" : "session"} payment`,
-        entityType: "personal_trainers",
-        entityName: newTrainer.name,
-        newValue: { 
-          name: newTrainer.name, 
-          payment_category: newTrainer.payment_category,
-          monthly_fee: Number(newTrainer.monthly_fee) || 0,
-          monthly_salary: Number(newTrainer.monthly_salary) || 0,
-          percentage_fee: Number(newTrainer.percentage_fee) || 0,
-          session_fee: Number(newTrainer.session_fee) || 0,
-        },
-      });
-      toast({ title: "Trainer added" });
-      setNewTrainer({ 
-        name: "", 
-        phone: "", 
-        specialization: "", 
-        monthly_fee: "",
-        monthly_salary: "",
-        payment_category: "monthly_percentage",
-        percentage_fee: "",
-        session_fee: "",
-      });
-      fetchData();
-    }
-  };
-
-  const handleEditTrainer = (trainer: Trainer) => {
-    setEditingTrainerId(trainer.id);
-    setEditTrainerData({
-      name: trainer.name,
-      phone: trainer.phone || "",
-      specialization: trainer.specialization || "",
-      monthly_fee: String(trainer.monthly_fee),
-      monthly_salary: String(trainer.monthly_salary || 0),
-      payment_category: trainer.payment_category,
-      percentage_fee: String(trainer.percentage_fee || 0),
-      session_fee: String(trainer.session_fee || 0),
-    });
-  };
-
-  const handleSaveTrainer = async (id: string) => {
-    if (!editTrainerData.name) {
-      toast({ title: "Name is required", variant: "destructive" });
-      return;
-    }
-
-    if (!editTrainerData.monthly_fee) {
-      toast({ title: "Monthly fee (member charge) is required", variant: "destructive" });
-      return;
-    }
-
-    const trainer = trainers.find(t => t.id === id);
-    const oldValue = trainer ? {
-      name: trainer.name,
-      phone: trainer.phone,
-      specialization: trainer.specialization,
-      monthly_fee: trainer.monthly_fee,
-      monthly_salary: trainer.monthly_salary,
-      payment_category: trainer.payment_category,
-      percentage_fee: trainer.percentage_fee,
-      session_fee: trainer.session_fee,
-    } : null;
-
-    const { error } = await supabase
-      .from("personal_trainers")
-      .update({
-        name: editTrainerData.name,
-        phone: editTrainerData.phone || null,
-        specialization: editTrainerData.specialization || null,
-        monthly_fee: Number(editTrainerData.monthly_fee) || 0,
-        monthly_salary: Number(editTrainerData.monthly_salary) || 0,
-        payment_category: editTrainerData.payment_category,
-        percentage_fee: Number(editTrainerData.percentage_fee) || 0,
-        session_fee: Number(editTrainerData.session_fee) || 0,
-      })
-      .eq("id", id);
-
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      await logAdminActivity({
-        category: "trainers",
-        type: "trainer_updated",
-        description: `Updated trainer "${editTrainerData.name}"`,
-        entityType: "personal_trainers",
-        entityId: id,
-        entityName: editTrainerData.name,
-        oldValue,
-        newValue: {
-          name: editTrainerData.name,
-          phone: editTrainerData.phone || null,
-          specialization: editTrainerData.specialization || null,
-          monthly_fee: Number(editTrainerData.monthly_fee) || 0,
-          monthly_salary: Number(editTrainerData.monthly_salary) || 0,
-          payment_category: editTrainerData.payment_category,
-          percentage_fee: Number(editTrainerData.percentage_fee) || 0,
-          session_fee: Number(editTrainerData.session_fee) || 0,
-        },
-      });
-      toast({ title: "Trainer updated" });
-      setEditingTrainerId(null);
-      fetchData();
-    }
-  };
-
-  const handleToggleTrainer = async (id: string, isActive: boolean) => {
-    const trainer = trainers.find(t => t.id === id);
-    await supabase.from("personal_trainers").update({ is_active: isActive }).eq("id", id);
-    await logAdminActivity({
-      category: "trainers",
-      type: "trainer_toggled",
-      description: `${isActive ? "Activated" : "Deactivated"} trainer "${trainer?.name}"`,
-      entityType: "personal_trainers",
-      entityId: id,
-      entityName: trainer?.name,
-      oldValue: { is_active: !isActive },
-      newValue: { is_active: isActive },
-    });
-    fetchData();
-  };
-
-  const handleDeleteTrainer = (id: string, name: string) => {
-    setConfirmDialog({
-      open: true,
-      title: "Delete Trainer",
-      description: `Are you sure you want to delete "${name}"?`,
-      variant: "destructive",
-      onConfirm: async () => {
-        const trainer = trainers.find(t => t.id === id);
-        await supabase.from("personal_trainers").delete().eq("id", id);
-        await logAdminActivity({
-          category: "trainers",
-          type: "trainer_deleted",
-          description: `Deleted trainer "${name}"`,
-          entityType: "personal_trainers",
-          entityId: id,
-          entityName: name,
-          oldValue: trainer ? {
-            name: trainer.name,
-            phone: trainer.phone,
-            specialization: trainer.specialization,
-            monthly_fee: trainer.monthly_fee,
-          } : null,
-        });
-        fetchData();
-        toast({ title: "Trainer deleted" });
-      },
-    });
-  };
-
   // Custom Package handlers
   const handleAddPackage = async () => {
     if (!newPackage.name || !newPackage.duration_days || !newPackage.price) {
@@ -659,55 +414,21 @@ const AdminSettings = () => {
     });
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-accent/30 border-t-accent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) return null;
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-card border-b">
-        <div className="container py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/admin/dashboard")}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-accent/10 rounded-lg">
-                <Settings className="w-5 h-5 text-accent" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-foreground">Admin Settings</h1>
-                <p className="text-xs text-muted-foreground">Customize gym settings</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="container py-6 max-w-4xl mx-auto space-y-6">
-        <Tabs defaultValue="packages">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="packages" className="gap-2">
-              <Package className="w-4 h-4" />
+    <AdminLayout title="Settings" subtitle="Configure gym settings">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Tabs defaultValue={initialTab}>
+          <TabsList className="grid w-full grid-cols-3 bg-muted/50">
+            <TabsTrigger value="packages" className="gap-2 data-[state=active]:bg-background">
+              <CubeIcon className="w-4 h-4" />
               Packages
             </TabsTrigger>
-            <TabsTrigger value="trainers" className="gap-2">
-              <Users className="w-4 h-4" />
-              Trainers
-            </TabsTrigger>
-            <TabsTrigger value="whatsapp" className="gap-2">
-              <MessageCircle className="w-4 h-4" />
+            <TabsTrigger value="whatsapp" className="gap-2 data-[state=active]:bg-background">
+              <ChatBubbleLeftEllipsisIcon className="w-4 h-4" />
               WhatsApp
             </TabsTrigger>
-            <TabsTrigger value="general" className="gap-2">
-              <IndianRupee className="w-4 h-4" />
+            <TabsTrigger value="general" className="gap-2 data-[state=active]:bg-background">
+              <BuildingStorefrontIcon className="w-4 h-4" />
               General
             </TabsTrigger>
           </TabsList>
@@ -715,7 +436,7 @@ const AdminSettings = () => {
           {/* Packages Tab */}
           <TabsContent value="packages" className="space-y-6 mt-6">
             {/* Monthly Packages */}
-            <Card>
+            <Card className="border-0 shadow-sm">
               <CardHeader>
                 <CardTitle>Monthly Packages</CardTitle>
                 <CardDescription>Configure monthly subscription plans with custom pricing</CardDescription>
@@ -751,15 +472,15 @@ const AdminSettings = () => {
                     />
                   </div>
                 </div>
-                <Button onClick={handleAddMonthlyPackage}>
-                  <Plus className="w-4 h-4 mr-2" />
+                <Button onClick={handleAddMonthlyPackage} className="gap-2">
+                  <PlusIcon className="w-4 h-4" />
                   Add Package
                 </Button>
 
                 {monthlyPackages.length > 0 && (
                   <div className="space-y-3 pt-4 border-t">
                     {monthlyPackages.map((pkg) => (
-                      <div key={pkg.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                      <div key={pkg.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                         {editingMonthlyId === pkg.id ? (
                           <div className="flex-1 grid grid-cols-2 gap-3 mr-4">
                             <div className="space-y-1">
@@ -793,10 +514,10 @@ const AdminSettings = () => {
                           {editingMonthlyId === pkg.id ? (
                             <>
                               <Button size="icon" variant="ghost" onClick={() => handleSaveMonthlyPackage(pkg.id)}>
-                                <Check className="w-4 h-4 text-success" />
+                                <CheckIcon className="w-4 h-4 text-success" />
                               </Button>
                               <Button size="icon" variant="ghost" onClick={() => setEditingMonthlyId(null)}>
-                                <X className="w-4 h-4 text-muted-foreground" />
+                                <XMarkIcon className="w-4 h-4 text-muted-foreground" />
                               </Button>
                             </>
                           ) : (
@@ -810,14 +531,14 @@ const AdminSettings = () => {
                                 />
                               </div>
                               <Button variant="ghost" size="icon" onClick={() => handleEditMonthlyPackage(pkg)}>
-                                <Pencil className="w-4 h-4 text-muted-foreground" />
+                                <PencilIcon className="w-4 h-4 text-muted-foreground" />
                               </Button>
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
                                 onClick={() => handleDeleteMonthlyPackage(pkg.id, pkg.months)}
                               >
-                                <Trash2 className="w-4 h-4 text-destructive" />
+                                <TrashIcon className="w-4 h-4 text-destructive" />
                               </Button>
                             </>
                           )}
@@ -830,7 +551,7 @@ const AdminSettings = () => {
             </Card>
 
             {/* Daily/Custom Packages */}
-            <Card>
+            <Card className="border-0 shadow-sm">
               <CardHeader>
                 <CardTitle>Daily Passes</CardTitle>
                 <CardDescription>Create packages for daily or short-term memberships (no joining fee)</CardDescription>
@@ -865,15 +586,15 @@ const AdminSettings = () => {
                     />
                   </div>
                 </div>
-                <Button onClick={handleAddPackage}>
-                  <Plus className="w-4 h-4 mr-2" />
+                <Button onClick={handleAddPackage} className="gap-2">
+                  <PlusIcon className="w-4 h-4" />
                   Add Daily Pass
                 </Button>
 
                 {customPackages.length > 0 && (
                   <div className="space-y-3 pt-4 border-t">
                     {customPackages.map((pkg) => (
-                      <div key={pkg.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                      <div key={pkg.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                         {editingPackageId === pkg.id ? (
                           <div className="flex-1 grid grid-cols-2 gap-3 mr-4">
                             <div className="space-y-1">
@@ -906,305 +627,31 @@ const AdminSettings = () => {
                           {editingPackageId === pkg.id ? (
                             <>
                               <Button size="icon" variant="ghost" onClick={() => handleSavePackage(pkg.id)}>
-                                <Check className="w-4 h-4 text-success" />
+                                <CheckIcon className="w-4 h-4 text-success" />
                               </Button>
                               <Button size="icon" variant="ghost" onClick={() => setEditingPackageId(null)}>
-                                <X className="w-4 h-4 text-muted-foreground" />
+                                <XMarkIcon className="w-4 h-4 text-muted-foreground" />
                               </Button>
                             </>
                           ) : (
                             <>
                               <div className="flex items-center gap-2">
-                                <Label htmlFor={`pkg-${pkg.id}`} className="text-sm">Active</Label>
+                                <Label htmlFor={`custom-${pkg.id}`} className="text-sm">Active</Label>
                                 <Switch
-                                  id={`pkg-${pkg.id}`}
+                                  id={`custom-${pkg.id}`}
                                   checked={pkg.is_active}
                                   onCheckedChange={(checked) => handleTogglePackage(pkg.id, checked)}
                                 />
                               </div>
                               <Button variant="ghost" size="icon" onClick={() => handleEditPackage(pkg)}>
-                                <Pencil className="w-4 h-4 text-muted-foreground" />
+                                <PencilIcon className="w-4 h-4 text-muted-foreground" />
                               </Button>
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
                                 onClick={() => handleDeletePackage(pkg.id, pkg.name)}
                               >
-                                <Trash2 className="w-4 h-4 text-destructive" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Personal Trainers */}
-          <TabsContent value="trainers" className="space-y-6 mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Add New Trainer</CardTitle>
-                <CardDescription>Add personal trainers with their fees</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Name *</Label>
-                    <Input
-                      value={newTrainer.name}
-                      onChange={(e) => setNewTrainer({ ...newTrainer, name: e.target.value })}
-                      placeholder="Trainer name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Phone</Label>
-                    <Input
-                      value={newTrainer.phone}
-                      onChange={(e) => setNewTrainer({ ...newTrainer, phone: e.target.value })}
-                      placeholder="Phone number"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Specialization</Label>
-                    <Input
-                      value={newTrainer.specialization}
-                      onChange={(e) => setNewTrainer({ ...newTrainer, specialization: e.target.value })}
-                      placeholder="e.g., Weight Training, Cardio"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Payment Category *</Label>
-                    <div className="flex gap-4 pt-2">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          checked={newTrainer.payment_category === "monthly_percentage"}
-                          onChange={() => setNewTrainer({ ...newTrainer, payment_category: "monthly_percentage" })}
-                          className="accent-primary"
-                        />
-                        <span className="text-sm">Monthly + Percentage</span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          checked={newTrainer.payment_category === "session_basis"}
-                          onChange={() => setNewTrainer({ ...newTrainer, payment_category: "session_basis" })}
-                          className="accent-primary"
-                        />
-                        <span className="text-sm">Session Basis</span>
-                      </label>
-                    </div>
-                  </div>
-                  {/* Monthly Fee - always shown (what members are charged) */}
-                  <div className="space-y-2">
-                    <Label>Monthly Fee (₹) * <span className="text-xs text-muted-foreground">(Member charge)</span></Label>
-                    <Input
-                      type="number"
-                      value={newTrainer.monthly_fee}
-                      onChange={(e) => setNewTrainer({ ...newTrainer, monthly_fee: e.target.value })}
-                      placeholder="What members pay per month"
-                    />
-                  </div>
-                  
-                  {newTrainer.payment_category === "monthly_percentage" && (
-                    <>
-                      <div className="space-y-2">
-                        <Label>Monthly Salary (₹) <span className="text-xs text-muted-foreground">(Trainer's salary)</span></Label>
-                        <Input
-                          type="number"
-                          value={newTrainer.monthly_salary}
-                          onChange={(e) => setNewTrainer({ ...newTrainer, monthly_salary: e.target.value })}
-                          placeholder="Trainer's monthly salary"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Percentage Fee (%) <span className="text-xs text-muted-foreground">(% of PT fee)</span></Label>
-                        <Input
-                          type="number"
-                          value={newTrainer.percentage_fee}
-                          onChange={(e) => setNewTrainer({ ...newTrainer, percentage_fee: e.target.value })}
-                          placeholder="e.g., 20"
-                        />
-                      </div>
-                    </>
-                  )}
-                  {newTrainer.payment_category === "session_basis" && (
-                    <div className="space-y-2">
-                      <Label>Session Fee (₹) * <span className="text-xs text-muted-foreground">(Per session/day)</span></Label>
-                      <Input
-                        type="number"
-                        value={newTrainer.session_fee}
-                        onChange={(e) => setNewTrainer({ ...newTrainer, session_fee: e.target.value })}
-                        placeholder="Per session fee"
-                      />
-                    </div>
-                  )}
-                </div>
-                <Button onClick={handleAddTrainer}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Trainer
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Existing Trainers</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {trainers.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No trainers added yet</p>
-                ) : (
-                  <div className="space-y-3">
-                    {trainers.map((trainer) => (
-                      <div key={trainer.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                        {editingTrainerId === trainer.id ? (
-                          <div className="flex-1 space-y-3 mr-4">
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="space-y-1">
-                                <Label className="text-xs">Name *</Label>
-                                <Input
-                                  value={editTrainerData.name}
-                                  onChange={(e) => setEditTrainerData({ ...editTrainerData, name: e.target.value })}
-                                  className="h-9"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Phone</Label>
-                                <Input
-                                  value={editTrainerData.phone}
-                                  onChange={(e) => setEditTrainerData({ ...editTrainerData, phone: e.target.value })}
-                                  className="h-9"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Specialization</Label>
-                                <Input
-                                  value={editTrainerData.specialization}
-                                  onChange={(e) => setEditTrainerData({ ...editTrainerData, specialization: e.target.value })}
-                                  className="h-9"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Monthly Fee (₹) * (Member charge)</Label>
-                                <Input
-                                  type="number"
-                                  value={editTrainerData.monthly_fee}
-                                  onChange={(e) => setEditTrainerData({ ...editTrainerData, monthly_fee: e.target.value })}
-                                  className="h-9"
-                                />
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-xs">Payment Category *</Label>
-                              <div className="flex gap-4">
-                                <label className="flex items-center gap-2">
-                                  <input
-                                    type="radio"
-                                    checked={editTrainerData.payment_category === "monthly_percentage"}
-                                    onChange={() => setEditTrainerData({ ...editTrainerData, payment_category: "monthly_percentage" })}
-                                    className="accent-primary"
-                                  />
-                                  <span className="text-xs">Monthly + Percentage</span>
-                                </label>
-                                <label className="flex items-center gap-2">
-                                  <input
-                                    type="radio"
-                                    checked={editTrainerData.payment_category === "session_basis"}
-                                    onChange={() => setEditTrainerData({ ...editTrainerData, payment_category: "session_basis" })}
-                                    className="accent-primary"
-                                  />
-                                  <span className="text-xs">Session Basis</span>
-                                </label>
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              {editTrainerData.payment_category === "monthly_percentage" && (
-                                <>
-                                  <div className="space-y-1">
-                                    <Label className="text-xs">Monthly Salary (₹)</Label>
-                                    <Input
-                                      type="number"
-                                      value={editTrainerData.monthly_salary}
-                                      onChange={(e) => setEditTrainerData({ ...editTrainerData, monthly_salary: e.target.value })}
-                                      className="h-9"
-                                      placeholder="Trainer's salary"
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <Label className="text-xs">Percentage Fee (%)</Label>
-                                    <Input
-                                      type="number"
-                                      value={editTrainerData.percentage_fee}
-                                      onChange={(e) => setEditTrainerData({ ...editTrainerData, percentage_fee: e.target.value })}
-                                      className="h-9"
-                                      placeholder="% of PT fee"
-                                    />
-                                  </div>
-                                </>
-                              )}
-                              {editTrainerData.payment_category === "session_basis" && (
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Session Fee (₹) *</Label>
-                                  <Input
-                                    type="number"
-                                    value={editTrainerData.session_fee}
-                                    onChange={(e) => setEditTrainerData({ ...editTrainerData, session_fee: e.target.value })}
-                                    className="h-9"
-                                    placeholder="Per session fee"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <p className="font-medium">{trainer.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {trainer.specialization || "General"} • ₹{trainer.monthly_fee}/month
-                              {trainer.payment_category === "monthly_percentage" && trainer.percentage_fee > 0 && ` + ${trainer.percentage_fee}%`}
-                              {trainer.payment_category === "session_basis" && ` • ₹${trainer.session_fee}/session`}
-                              {trainer.phone && ` • ${trainer.phone}`}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {trainer.payment_category === "monthly_percentage" ? "Monthly + Percentage" : "Session Basis"}
-                              {trainer.payment_category === "monthly_percentage" && trainer.monthly_salary > 0 && ` • Salary: ₹${trainer.monthly_salary}/month`}
-                            </p>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          {editingTrainerId === trainer.id ? (
-                            <>
-                              <Button size="icon" variant="ghost" onClick={() => handleSaveTrainer(trainer.id)}>
-                                <Check className="w-4 h-4 text-success" />
-                              </Button>
-                              <Button size="icon" variant="ghost" onClick={() => setEditingTrainerId(null)}>
-                                <X className="w-4 h-4 text-muted-foreground" />
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <div className="flex items-center gap-2">
-                                <Label htmlFor={`trainer-${trainer.id}`} className="text-sm">Active</Label>
-                                <Switch
-                                  id={`trainer-${trainer.id}`}
-                                  checked={trainer.is_active}
-                                  onCheckedChange={(checked) => handleToggleTrainer(trainer.id, checked)}
-                                />
-                              </div>
-                              <Button variant="ghost" size="icon" onClick={() => handleEditTrainer(trainer)}>
-                                <Pencil className="w-4 h-4 text-muted-foreground" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => handleDeleteTrainer(trainer.id, trainer.name)}
-                              >
-                                <Trash2 className="w-4 h-4 text-destructive" />
+                                <TrashIcon className="w-4 h-4 text-destructive" />
                               </Button>
                             </>
                           )}
@@ -1220,10 +667,10 @@ const AdminSettings = () => {
           {/* WhatsApp Templates */}
           <TabsContent value="whatsapp" className="space-y-6 mt-6">
             {/* WhatsApp Enable/Disable Toggle */}
-            <Card>
+            <Card className="border-0 shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <MessageCircle className="w-5 h-5 text-accent" />
+                  <ChatBubbleLeftEllipsisIcon className="w-5 h-5 text-primary" />
                   WhatsApp Messaging
                 </CardTitle>
                 <CardDescription>Enable or disable all WhatsApp messaging features</CardDescription>
@@ -1287,10 +734,10 @@ const AdminSettings = () => {
 
           {/* General Settings */}
           <TabsContent value="general" className="space-y-6 mt-6">
-            <Card>
+            <Card className="border-0 shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Dumbbell className="w-5 h-5 text-accent" />
+                  <BuildingStorefrontIcon className="w-5 h-5 text-primary" />
                   Gym Information
                 </CardTitle>
                 <CardDescription>Basic gym details and contact information</CardDescription>
@@ -1313,13 +760,13 @@ const AdminSettings = () => {
               </CardContent>
             </Card>
 
-            <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full">
-              <Save className="w-4 h-4 mr-2" />
+            <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full gap-2">
+              <CheckIcon className="w-4 h-4" />
               {isSaving ? "Saving..." : "Save Settings"}
             </Button>
           </TabsContent>
         </Tabs>
-      </main>
+      </div>
 
       <ConfirmDialog
         open={confirmDialog.open}
@@ -1330,7 +777,7 @@ const AdminSettings = () => {
         variant={confirmDialog.variant}
         onConfirm={confirmDialog.onConfirm}
       />
-    </div>
+    </AdminLayout>
   );
 };
 
