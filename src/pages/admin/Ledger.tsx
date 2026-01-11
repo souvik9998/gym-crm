@@ -61,6 +61,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import LedgerDetailDialog from "@/components/admin/LedgerDetailDialog";
 
 interface LedgerEntry {
   id: string;
@@ -132,6 +133,15 @@ const AdminLedger = () => {
     description: "",
     onConfirm: () => {},
   });
+
+  // Ledger detail dialog
+  const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const handleViewEntry = (entry: LedgerEntry) => {
+    setSelectedEntry(entry);
+    setIsDetailOpen(true);
+  };
 
   // Calculate date range based on preset
   const dateRange = useMemo(() => {
@@ -674,19 +684,28 @@ const AdminLedger = () => {
                   <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
+                      <TableHead>Date & Time</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="w-10"></TableHead>
+                      <TableHead className="w-[80px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {entries.map((entry) => (
-                      <TableRow key={entry.id}>
+                      <TableRow 
+                        key={entry.id}
+                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => handleViewEntry(entry)}
+                      >
                         <TableCell className="font-medium">
-                          {format(parseISO(entry.entry_date), "MMM dd, yyyy")}
+                          <div>
+                            <p>{format(parseISO(entry.entry_date), "MMM dd, yyyy")}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(entry.created_at), "hh:mm a")}
+                            </p>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <span className={cn(
@@ -707,8 +726,8 @@ const AdminLedger = () => {
                           {getCategoryLabel(entry.category, entry.entry_type)}
                         </TableCell>
                         <TableCell>
-                          <div>
-                            <p>{entry.description}</p>
+                          <div className="max-w-xs">
+                            <p className="truncate">{entry.description}</p>
                             {entry.is_auto_generated && (
                               <span className="text-xs text-muted-foreground">(Auto-generated)</span>
                             )}
@@ -721,15 +740,30 @@ const AdminLedger = () => {
                           {entry.entry_type === "income" ? "+" : "-"}₹{Number(entry.amount).toLocaleString("en-IN")}
                         </TableCell>
                         <TableCell>
-                          {!entry.is_auto_generated && (
+                          <div className="flex items-center gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleDeleteEntry(entry)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewEntry(entry);
+                              }}
                             >
-                              <Trash2 className="w-4 h-4 text-destructive" />
+                              <BookOpen className="w-4 h-4 text-muted-foreground" />
                             </Button>
-                          )}
+                            {!entry.is_auto_generated && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteEntry(entry);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -750,6 +784,13 @@ const AdminLedger = () => {
         confirmText="Delete"
         variant="destructive"
         onConfirm={confirmDialog.onConfirm}
+      />
+
+      <LedgerDetailDialog
+        entry={selectedEntry}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        getCategoryLabel={getCategoryLabel}
       />
     </div>
   );

@@ -704,6 +704,121 @@ export type Database = {
           },
         ]
       }
+      user_activity_logs: {
+        Row: {
+          activity_type: string
+          amount: number | null
+          created_at: string
+          daily_pass_user_id: string | null
+          description: string
+          duration_days: number | null
+          duration_months: number | null
+          end_date: string | null
+          id: string
+          member_id: string | null
+          member_name: string | null
+          member_phone: string | null
+          metadata: Json | null
+          package_name: string | null
+          payment_id: string | null
+          payment_mode: string | null
+          pt_subscription_id: string | null
+          start_date: string | null
+          subscription_id: string | null
+          trainer_id: string | null
+          trainer_name: string | null
+        }
+        Insert: {
+          activity_type: string
+          amount?: number | null
+          created_at?: string
+          daily_pass_user_id?: string | null
+          description: string
+          duration_days?: number | null
+          duration_months?: number | null
+          end_date?: string | null
+          id?: string
+          member_id?: string | null
+          member_name?: string | null
+          member_phone?: string | null
+          metadata?: Json | null
+          package_name?: string | null
+          payment_id?: string | null
+          payment_mode?: string | null
+          pt_subscription_id?: string | null
+          start_date?: string | null
+          subscription_id?: string | null
+          trainer_id?: string | null
+          trainer_name?: string | null
+        }
+        Update: {
+          activity_type?: string
+          amount?: number | null
+          created_at?: string
+          daily_pass_user_id?: string | null
+          description?: string
+          duration_days?: number | null
+          duration_months?: number | null
+          end_date?: string | null
+          id?: string
+          member_id?: string | null
+          member_name?: string | null
+          member_phone?: string | null
+          metadata?: Json | null
+          package_name?: string | null
+          payment_id?: string | null
+          payment_mode?: string | null
+          pt_subscription_id?: string | null
+          start_date?: string | null
+          subscription_id?: string | null
+          trainer_id?: string | null
+          trainer_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activity_logs_daily_pass_user_id_fkey"
+            columns: ["daily_pass_user_id"]
+            isOneToOne: false
+            referencedRelation: "daily_pass_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_activity_logs_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_activity_logs_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_activity_logs_pt_subscription_id_fkey"
+            columns: ["pt_subscription_id"]
+            isOneToOne: false
+            referencedRelation: "pt_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_activity_logs_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_activity_logs_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "personal_trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null

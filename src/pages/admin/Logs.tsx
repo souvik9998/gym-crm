@@ -11,10 +11,12 @@ import {
   LogOut,
   Settings,
   BarChart3,
+  Users,
 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import WhatsAppLogsTab from "@/components/admin/WhatsAppLogsTab";
 import AdminActivityLogsTab from "@/components/admin/AdminActivityLogsTab";
+import UserActivityLogsTab from "@/components/admin/UserActivityLogsTab";
 
 const Logs = () => {
   const navigate = useNavigate();
@@ -87,7 +89,7 @@ const Logs = () => {
               </div>
               <div>
                 <h1 className="text-lg font-semibold text-foreground">Activity Logs</h1>
-                <p className="text-xs text-muted-foreground">Track all admin activities</p>
+                <p className="text-xs text-muted-foreground">Track all activities</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -135,10 +137,14 @@ const Logs = () => {
       {/* Main Content */}
       <main className="container py-6 space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-lg grid-cols-3">
             <TabsTrigger value="activity">
               <Activity className="w-4 h-4 mr-2" />
               Admin Activity
+            </TabsTrigger>
+            <TabsTrigger value="user">
+              <Users className="w-4 h-4 mr-2" />
+              User Activity
             </TabsTrigger>
             <TabsTrigger value="whatsapp">
               <MessageSquare className="w-4 h-4 mr-2" />
@@ -148,6 +154,10 @@ const Logs = () => {
 
           <TabsContent value="activity" className="mt-6">
             <AdminActivityLogsTab refreshKey={refreshKey} />
+          </TabsContent>
+
+          <TabsContent value="user" className="mt-6">
+            <UserActivityLogsTab refreshKey={refreshKey} />
           </TabsContent>
 
           <TabsContent value="whatsapp" className="mt-6">
