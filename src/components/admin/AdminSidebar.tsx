@@ -268,7 +268,7 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, gymName = "Pro Plus
       )}
     >
       {/* Header - h-16 to match top nav */}
-      <div className="relative h-16 px-4 border-b border-border flex items-center">
+      <div className="h-16 px-4 border-b border-border flex items-center">
         <div className={cn("flex items-center w-full", collapsed ? "justify-center" : "gap-3")}>
           <div className="w-10 h-10 rounded-xl bg-primary overflow-hidden flex-shrink-0 shadow-sm">
             <img
@@ -286,23 +286,6 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, gymName = "Pro Plus
             </div>
           )}
         </div>
-        
-        {/* Toggle button - centered on right edge of header */}
-        <button
-          onClick={() => onCollapsedChange(!collapsed)}
-          className={cn(
-            "absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-card border border-border rounded-full flex items-center justify-center",
-            "text-muted-foreground hover:text-foreground hover:bg-muted",
-            "transition-all duration-200 shadow-sm hover:shadow-md",
-            "focus:outline-none focus:ring-2 focus:ring-primary/50"
-          )}
-        >
-          {collapsed ? (
-            <ChevronRightIcon className="w-3.5 h-3.5" />
-          ) : (
-            <ChevronLeftIcon className="w-3.5 h-3.5" />
-          )}
-        </button>
       </div>
 
       {/* Navigation */}
@@ -319,6 +302,23 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, gymName = "Pro Plus
       <div className="p-3 border-t border-border space-y-1.5">
         {bottomNavItems.map((item) => renderNavItem(item, true))}
       </div>
+
+      {/* Toggle button - centered on right edge at middle of sidebar height */}
+      <button
+        onClick={() => onCollapsedChange(!collapsed)}
+        className={cn(
+          "absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-card border border-border rounded-full flex items-center justify-center",
+          "text-muted-foreground hover:text-foreground hover:bg-muted",
+          "transition-all duration-200 shadow-sm hover:shadow-md",
+          "focus:outline-none focus:ring-2 focus:ring-primary/50"
+        )}
+      >
+        {collapsed ? (
+          <ChevronRightIcon className="w-3.5 h-3.5" />
+        ) : (
+          <ChevronLeftIcon className="w-3.5 h-3.5" />
+        )}
+      </button>
     </aside>
   );
 };
