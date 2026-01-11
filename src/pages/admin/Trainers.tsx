@@ -59,7 +59,7 @@ const TrainersPage = () => {
   });
 
   // Confirm Dialog
-  const [confirmDialog, setConfirmDialog] = useState<{\
+  const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     title: string;
     description: string;
@@ -556,7 +556,7 @@ const TrainersPage = () => {
                       )}
                     </div>
                   </div>
-                )))}
+                ))}
               </div>
             )}
           </CardContent>
