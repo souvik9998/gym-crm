@@ -1,11 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -32,21 +30,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  ArrowLeft,
-  BookOpen,
-  Plus,
-  TrendingUp,
-  TrendingDown,
-  IndianRupee,
+  PlusIcon,
+  ArrowUpRightIcon,
+  ArrowDownRightIcon,
+  TrashIcon,
+  ArrowDownTrayIcon,
   CalendarIcon,
-  ArrowUpRight,
-  ArrowDownRight,
-  Trash2,
-  Download,
-} from "lucide-react";
+} from "@heroicons/react/24/outline";
 import { useToast } from "@/hooks/use-toast";
-import { format, subDays, startOfMonth, endOfMonth, parseISO, isWithinInterval } from "date-fns";
-import type { User } from "@supabase/supabase-js";
+import { format, subDays, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -62,6 +54,7 @@ import {
   Legend,
 } from "recharts";
 import LedgerDetailDialog from "@/components/admin/LedgerDetailDialog";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 
 interface LedgerEntry {
   id: string;
@@ -101,10 +94,7 @@ const INCOME_CATEGORIES = [
 type DateRangePreset = "today" | "7days" | "15days" | "30days" | "this_month" | "custom";
 
 const AdminLedger = () => {
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   
   // Date range state

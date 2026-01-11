@@ -1,35 +1,25 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Users,
-  CreditCard,
-  AlertTriangle,
-  Search,
-  Plus,
-  LogOut,
-  RefreshCw,
-  TrendingUp,
-  QrCode,
-  History,
-  Settings,
-  BarChart3,
-  Clock,
-  MessageSquare,
-  BookOpen,
-} from "lucide-react";
+  UsersIcon,
+  CreditCardIcon,
+  ExclamationTriangleIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+  ArrowTrendingUpIcon,
+  ClockIcon,
+} from "@heroicons/react/24/outline";
 import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
 import DailyPassTable from "@/components/admin/DailyPassTable";
 import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
 import { AddPaymentDialog } from "@/components/admin/AddPaymentDialog";
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
-import { useToast } from "@/hooks/use-toast";
-import type { User } from "@supabase/supabase-js";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 
 interface DashboardStats {
   totalMembers: number;
@@ -43,10 +33,6 @@ interface DashboardStats {
 }
 
 const AdminDashboard = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
@@ -68,31 +54,8 @@ const AdminDashboard = () => {
   const [ptFilterActive, setPtFilterActive] = useState(false);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        if (!session?.user) {
-          navigate("/admin/login");
-        }
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (!session?.user) {
-        navigate("/admin/login");
-      }
-      setIsLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  useEffect(() => {
-    if (user) {
-      fetchStats();
-    }
-  }, [user, refreshKey]);
+    fetchStats();
+  }, [refreshKey]);
 
   const fetchStats = async () => {
     try {
@@ -138,8 +101,6 @@ const AdminDashboard = () => {
           const sub = memberSubscriptions.get(member.id);
           
           if (!sub) {
-            // No subscription at all - this should not count as inactive for display
-            // since we only count members with explicit inactive status
             continue;
           }
 
@@ -208,160 +169,62 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/admin/login");
-  };
-
   const handleRefresh = () => {
     setRefreshKey((k) => k + 1);
-    toast({ title: "Data refreshed" });
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-accent/30 border-t-accent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) return null;
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-card border-b">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow overflow-hidden">
-              <img
-                src="/logo.jpg"
-                alt="Icon"
-                className="w-full h-full object-cover rounded-xl"
-              />
-            </div>
-              <div>
-                <h1 className="text-lg font-semibold text-foreground">
-                  Pro Plus Fitness
-                </h1>
-                <p className="text-xs text-muted-foreground">Admin Dashboard</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => navigate("/admin/ledger")}
-                title="Ledger"
-              >
-                <BookOpen className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => navigate("/admin/logs")}
-                title="Activity Logs"
-              >
-                <MessageSquare className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => navigate("/admin/analytics")}
-                title="Analytics"
-              >
-                <BarChart3 className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => navigate("/admin/settings")}
-                title="Settings"
-              >
-                <Settings className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => navigate("/admin/qr-code")}
-                title="QR Code"
-              >
-                <QrCode className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={handleRefresh}
-              >
-                <RefreshCw className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={handleSignOut}
-              >
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="container py-6 space-y-6 max-w-7xl mx-auto">
+    <AdminLayout
+      title="Dashboard"
+      subtitle="Overview of your gym"
+      onRefresh={handleRefresh}
+    >
+      <div className="space-y-6 max-w-7xl mx-auto">
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="border hover:shadow-md transition-shadow">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="hover-lift border-0 shadow-sm">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-2xl font-bold text-foreground">{stats.totalMembers}</p>
                   <p className="text-xs text-muted-foreground mt-1">Total Members</p>
                 </div>
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <Users className="w-6 h-6 text-primary" />
+                <div className="p-3 bg-primary/10 rounded-xl">
+                  <UsersIcon className="w-6 h-6 text-primary" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border hover:shadow-md transition-shadow">
+          <Card className="hover-lift border-0 shadow-sm">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-2xl font-bold text-success">{stats.activeMembers}</p>
                   <p className="text-xs text-muted-foreground mt-1">Active Members</p>
                 </div>
-                <div className="p-3 bg-success/10 rounded-lg">
-                  <TrendingUp className="w-6 h-6 text-success" />
+                <div className="p-3 bg-success/10 rounded-xl">
+                  <ArrowTrendingUpIcon className="w-6 h-6 text-success" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border hover:shadow-md transition-shadow">
+          <Card className="hover-lift border-0 shadow-sm">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-2xl font-bold text-warning">{stats.expiringSoon}</p>
                   <p className="text-xs text-muted-foreground mt-1">Expiring Soon</p>
                 </div>
-                <div className="p-3 bg-warning/10 rounded-lg">
-                  <AlertTriangle className="w-6 h-6 text-warning" />
+                <div className="p-3 bg-warning/10 rounded-xl">
+                  <ExclamationTriangleIcon className="w-6 h-6 text-warning" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border hover:shadow-md transition-shadow">
+          <Card className="hover-lift border-0 shadow-sm">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
@@ -370,8 +233,8 @@ const AdminDashboard = () => {
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">This Month</p>
                 </div>
-                <div className="p-3 bg-accent/10 rounded-lg">
-                  <CreditCard className="w-6 h-6 text-accent" />
+                <div className="p-3 bg-accent/10 rounded-xl">
+                  <CreditCardIcon className="w-6 h-6 text-accent" />
                 </div>
               </div>
             </CardContent>
@@ -379,31 +242,31 @@ const AdminDashboard = () => {
         </div>
 
         {/* Tabs for Members & Payments */}
-        <Card className="border shadow-sm">
+        <Card className="border-0 shadow-sm">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <CardHeader className="pb-4 border-b">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <TabsList className="bg-muted">
-                    <TabsTrigger value="members" className="gap-2">
-                      <Users className="w-4 h-4" />
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <TabsList className="bg-muted/50 p-1">
+                    <TabsTrigger value="members" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                      <UsersIcon className="w-4 h-4" />
                       Members
                     </TabsTrigger>
-                    <TabsTrigger value="daily_pass" className="gap-2">
-                      <Clock className="w-4 h-4" />
+                    <TabsTrigger value="daily_pass" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                      <ClockIcon className="w-4 h-4" />
                       Daily Pass ({stats.dailyPassUsers})
                     </TabsTrigger>
-                    <TabsTrigger value="payments" className="gap-2">
-                      <History className="w-4 h-4" />
+                    <TabsTrigger value="payments" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                      <CreditCardIcon className="w-4 h-4" />
                       Payments
                     </TabsTrigger>
                   </TabsList>
                   {(activeTab === "members" || activeTab === "daily_pass") && (
                     <div className="relative flex-1 min-w-[250px] max-w-md group">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
+                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
                       <Input
                         placeholder="Search by name or phone..."
-                        className="pl-10 h-10 bg-muted/50 border-transparent hover:bg-muted hover:border-border focus:bg-background focus:border-border"
+                        className="pl-10 h-10 bg-muted/30 border-transparent hover:bg-muted/50 hover:border-border focus:bg-background focus:border-border transition-all duration-200"
                         value={activeTab === "members" ? searchQuery : dailyPassSearchQuery}
                         onChange={(e) => activeTab === "members" ? setSearchQuery(e.target.value) : setDailyPassSearchQuery(e.target.value)}
                       />
@@ -411,13 +274,13 @@ const AdminDashboard = () => {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setIsAddPaymentOpen(true)}>
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    Cash Payment
+                  <Button variant="outline" onClick={() => setIsAddPaymentOpen(true)} className="gap-2">
+                    <CreditCardIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline">Cash Payment</span>
                   </Button>
-                  <Button variant="default" onClick={() => setIsAddMemberOpen(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Member
+                  <Button onClick={() => setIsAddMemberOpen(true)} className="gap-2">
+                    <PlusIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline">Add Member</span>
                   </Button>
                 </div>
               </div>
@@ -428,7 +291,6 @@ const AdminDashboard = () => {
                   value={memberFilter} 
                   onChange={(value) => {
                     setMemberFilter(value);
-                    // Detoggle PT filter when "All Members" is clicked
                     if (value === "all" && ptFilterActive) {
                       setPtFilterActive(false);
                     }
@@ -464,7 +326,7 @@ const AdminDashboard = () => {
             </CardContent>
           </Tabs>
         </Card>
-      </main>
+      </div>
 
       <AddMemberDialog
         open={isAddMemberOpen}
@@ -477,7 +339,7 @@ const AdminDashboard = () => {
         onOpenChange={setIsAddPaymentOpen}
         onSuccess={() => setRefreshKey((k) => k + 1)}
       />
-    </div>
+    </AdminLayout>
   );
 };
 
