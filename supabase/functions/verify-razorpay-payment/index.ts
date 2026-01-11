@@ -41,6 +41,61 @@ async function createLedgerEntry(
   return { error };
 }
 
+// Helper to log user activity
+async function logUserActivity(
+  supabase: any,
+  params: {
+    activityType: "registration" | "renewal" | "pt_subscription" | "pt_extension" | "daily_pass";
+    description: string;
+    memberId?: string;
+    dailyPassUserId?: string;
+    subscriptionId?: string;
+    ptSubscriptionId?: string;
+    paymentId?: string;
+    trainerId?: string;
+    amount?: number;
+    paymentMode?: string;
+    packageName?: string;
+    durationMonths?: number;
+    durationDays?: number;
+    memberName?: string;
+    memberPhone?: string;
+    trainerName?: string;
+    startDate?: string;
+    endDate?: string;
+    metadata?: Record<string, any>;
+  }
+) {
+  const { error } = await supabase.from("user_activity_logs").insert({
+    activity_type: params.activityType,
+    description: params.description,
+    member_id: params.memberId || null,
+    daily_pass_user_id: params.dailyPassUserId || null,
+    subscription_id: params.subscriptionId || null,
+    pt_subscription_id: params.ptSubscriptionId || null,
+    payment_id: params.paymentId || null,
+    trainer_id: params.trainerId || null,
+    amount: params.amount || null,
+    payment_mode: params.paymentMode || "online",
+    package_name: params.packageName || null,
+    duration_months: params.durationMonths || null,
+    duration_days: params.durationDays || null,
+    member_name: params.memberName || null,
+    member_phone: params.memberPhone || null,
+    trainer_name: params.trainerName || null,
+    start_date: params.startDate || null,
+    end_date: params.endDate || null,
+    metadata: params.metadata || null,
+  });
+
+  if (error) {
+    console.error("Error logging user activity:", error);
+  } else {
+    console.log(`Logged user activity: ${params.activityType} - ${params.description}`);
+  }
+  return { error };
+}
+
 // Helper to calculate and create trainer percentage expense
 async function calculateTrainerPercentageExpense(
   supabase: any,
@@ -264,6 +319,29 @@ Deno.serve(async (req) => {
         );
       }
 
+      // ===== LOG USER ACTIVITY FOR DAILY PASS =====
+      await logUserActivity(supabase, {
+        activityType: "daily_pass",
+        description: `Daily Pass purchased - ${memberName} (${customPackage?.name || `${customDays} Day Pass`})`,
+        dailyPassUserId: dailyPassUser.id,
+        paymentId: paymentData?.id,
+        trainerId: trainerId || undefined,
+        amount,
+        paymentMode: "online",
+        packageName: customPackage?.name || `${customDays} Day Pass`,
+        durationDays: customPackage?.duration_days || customDays,
+        memberName,
+        memberPhone,
+        trainerName: trainerId ? undefined : undefined, // Will be fetched if needed
+        startDate: startDate.toISOString().split("T")[0],
+        endDate: endDate.toISOString().split("T")[0],
+        metadata: {
+          hasTrainer: !!trainerId,
+          trainerFee: trainerFee || 0,
+          packagePrice: customPackage?.price || gymFee,
+        },
+      });
+
       return new Response(
         JSON.stringify({
           success: true,
@@ -408,6 +486,29 @@ Deno.serve(async (req) => {
         ptSub.id,
         memberName
       );
+
+      // ===== LOG USER ACTIVITY FOR PT EXTENSION =====
+      await logUserActivity(supabase, {
+        activityType: "pt_extension",
+        description: `PT Extended - ${memberName} with ${trainer.name} (${customDays} days)`,
+        memberId: finalMemberId,
+        ptSubscriptionId: ptSub.id,
+        paymentId: paymentData?.id,
+        trainerId,
+        amount,
+        paymentMode: "online",
+        packageName: `PT - ${customDays} days`,
+        durationDays: customDays,
+        memberName,
+        memberPhone,
+        trainerName: trainer.name,
+        startDate: ptStart.toISOString().split("T")[0],
+        endDate: endDate.toISOString().split("T")[0],
+        metadata: {
+          trainerMonthlyFee: trainer.monthly_fee,
+          totalFee: totalFee,
+        },
+      });
 
       return new Response(
         JSON.stringify({
@@ -584,6 +685,39 @@ Deno.serve(async (req) => {
         memberName
       );
     }
+
+    // ===== LOG USER ACTIVITY FOR REGISTRATION/RENEWAL =====
+    const activityType = isNewMember ? "registration" : "renewal";
+    const activityDescription = isNewMember
+      ? `New Member Registration - ${memberName} (${months} month${months > 1 ? "s" : ""}${isGymWithPT ? " + PT" : ""})`
+      : `Membership Renewed - ${memberName} (${months} month${months > 1 ? "s" : ""}${isGymWithPT ? " + PT" : ""})`;
+
+    await logUserActivity(supabase, {
+      activityType,
+      description: activityDescription,
+      memberId: finalMemberId,
+      subscriptionId: subscription.id,
+      ptSubscriptionId: ptSubscriptionId || undefined,
+      paymentId: paymentData?.id,
+      trainerId: trainerId || undefined,
+      amount,
+      paymentMode: "online",
+      packageName: `${months} Month${months > 1 ? "s" : ""} Gym${isGymWithPT ? " + PT" : ""}`,
+      durationMonths: months,
+      durationDays: isGymWithPT ? customDays : undefined,
+      memberName,
+      memberPhone,
+      trainerName: trainerName || undefined,
+      startDate: startDate.toISOString().split("T")[0],
+      endDate: endDate.toISOString().split("T")[0],
+      metadata: {
+        isNewMember,
+        hasTrainer: isGymWithPT,
+        gymFee: gymFee || 0,
+        trainerFee: trainerFee || 0,
+        joiningFee: joiningFee || 0,
+      },
+    });
 
     return new Response(
       JSON.stringify({
