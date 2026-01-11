@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,13 @@ import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
 import { AddPaymentDialog } from "@/components/admin/AddPaymentDialog";
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { exportToExcel } from "@/utils/exportToExcel";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface DashboardStats {
   totalMembers: number;
@@ -35,6 +42,7 @@ interface DashboardStats {
 }
 
 const AdminDashboard = () => {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
@@ -54,6 +62,8 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("members");
   const [memberFilter, setMemberFilter] = useState<MemberFilterValue>("all");
   const [ptFilterActive, setPtFilterActive] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const membersTableRef = useRef<{ exportData: () => Promise<void> } | null>(null);
 
   useEffect(() => {
     fetchStats();
@@ -175,6 +185,50 @@ const AdminDashboard = () => {
     setRefreshKey((k) => k + 1);
   };
 
+  const handleExport = async () => {
+    try {
+      // Fetch all members with their subscriptions for export
+      const { data: members, error } = await supabase
+        .from("members")
+        .select(`
+          id,
+          name,
+          phone,
+          email,
+          join_date,
+          subscriptions (
+            status,
+            start_date,
+            end_date,
+            plan_months
+          )
+        `)
+        .order("name");
+
+      if (error) throw error;
+
+      const exportData = members?.map((member) => {
+        const latestSub = member.subscriptions?.[0];
+        return {
+          Name: member.name,
+          Phone: member.phone,
+          Email: member.email || "-",
+          "Join Date": member.join_date || "-",
+          Status: latestSub?.status || "No subscription",
+          "Plan (Months)": latestSub?.plan_months || "-",
+          "Start Date": latestSub?.start_date || "-",
+          "End Date": latestSub?.end_date || "-",
+        };
+      }) || [];
+
+      exportToExcel(exportData, "members_export", "Members");
+      toast({ title: "Export successful", description: "Members data exported to Excel" });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({ title: "Export failed", description: "Could not export data", variant: "destructive" });
+    }
+  };
+
   return (
     <AdminLayout
       title="Dashboard"
@@ -249,62 +303,109 @@ const AdminDashboard = () => {
             <CardHeader className="pb-4 border-b">
               <div className="flex flex-col gap-4">
                 {/* Top Row - Tabs and Actions */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <TabsList className="bg-muted/50 p-1 w-full sm:w-auto overflow-x-auto">
-                    <TabsTrigger value="members" className="gap-1.5 text-xs sm:text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  {/* Tabs - Icon only like reference */}
+                  <TabsList className="bg-muted/50 p-1 h-10">
+                    <TabsTrigger 
+                      value="members" 
+                      className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                      title="Members"
+                    >
                       <UsersIcon className="w-4 h-4" />
-                      <span className="hidden xs:inline">Members</span>
                     </TabsTrigger>
-                    <TabsTrigger value="daily_pass" className="gap-1.5 text-xs sm:text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <TabsTrigger 
+                      value="daily_pass" 
+                      className="gap-1 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                      title="Daily Pass"
+                    >
                       <ClockIcon className="w-4 h-4" />
-                      <span className="hidden xs:inline">Daily Pass</span>
                       <span className="text-xs">({stats.dailyPassUsers})</span>
                     </TabsTrigger>
-                    <TabsTrigger value="payments" className="gap-1.5 text-xs sm:text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <TabsTrigger 
+                      value="payments" 
+                      className="px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                      title="Payments"
+                    >
                       <CreditCardIcon className="w-4 h-4" />
-                      <span className="hidden xs:inline">Payments</span>
                     </TabsTrigger>
                   </TabsList>
                   
-                  {/* Action Buttons */}
+                  {/* Action Buttons - Right side */}
                   <div className="flex items-center gap-2">
+                    {/* Filter Button with Popover */}
+                    <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+                      <PopoverTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                          title="Filter"
+                        >
+                          <FunnelIcon className="w-4 h-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-3" align="end">
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-foreground mb-3">Filter Members</p>
+                          <MemberFilter 
+                            value={memberFilter} 
+                            onChange={(value) => {
+                              setMemberFilter(value);
+                              if (value === "all" && ptFilterActive) {
+                                setPtFilterActive(false);
+                              }
+                              setFilterOpen(false);
+                            }}
+                            counts={{
+                              all: stats.totalMembers,
+                              active: stats.activeMembers,
+                              expiring_soon: stats.expiringSoon,
+                              expired: stats.expiredMembers,
+                              inactive: stats.inactiveMembers,
+                              with_pt: stats.withPT,
+                            }}
+                            ptFilterActive={ptFilterActive}
+                            onPtFilterChange={setPtFilterActive}
+                          />
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    
+                    {/* Download/Export Button */}
                     <Button 
                       variant="outline" 
                       size="icon"
-                      className="h-9 w-9"
-                      title="Filter"
-                    >
-                      <FunnelIcon className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      className="h-9 w-9"
+                      className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
                       title="Export Data"
+                      onClick={handleExport}
                     >
                       <ArrowDownTrayIcon className="w-4 h-4" />
                     </Button>
+                    
+                    {/* Cash Payment Button */}
                     <Button 
                       variant="outline" 
-                      size="sm"
+                      size="icon"
                       onClick={() => setIsAddPaymentOpen(true)} 
-                      className="gap-1.5 h-9"
+                      className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                      title="Cash Payment"
                     >
                       <CreditCardIcon className="w-4 h-4" />
-                      <span className="hidden md:inline">Cash</span>
                     </Button>
+                    
+                    {/* Add Member Button */}
                     <Button 
                       size="sm"
                       onClick={() => setIsAddMemberOpen(true)} 
-                      className="gap-1.5 h-9"
+                      className="gap-1.5 h-9 bg-foreground text-background hover:bg-foreground/90"
                     >
                       <PlusIcon className="w-4 h-4" />
-                      <span className="hidden md:inline">Add Member</span>
+                      <span className="hidden sm:inline">Add Member</span>
                     </Button>
                   </div>
                 </div>
                 
-                {/* Search Bar - Below tabs on mobile, inline on desktop */}
+                {/* Search Bar */}
                 {(activeTab === "members" || activeTab === "daily_pass") && (
                   <div className="relative w-full md:max-w-sm group">
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
@@ -319,26 +420,7 @@ const AdminDashboard = () => {
               </div>
             </CardHeader>
             <CardContent className="p-3 sm:p-4 md:p-6">
-              <TabsContent value="members" className="mt-0 space-y-6">
-                <MemberFilter 
-                  value={memberFilter} 
-                  onChange={(value) => {
-                    setMemberFilter(value);
-                    if (value === "all" && ptFilterActive) {
-                      setPtFilterActive(false);
-                    }
-                  }}
-                  counts={{
-                    all: stats.totalMembers,
-                    active: stats.activeMembers,
-                    expiring_soon: stats.expiringSoon,
-                    expired: stats.expiredMembers,
-                    inactive: stats.inactiveMembers,
-                    with_pt: stats.withPT,
-                  }}
-                  ptFilterActive={ptFilterActive}
-                  onPtFilterChange={setPtFilterActive}
-                />
+              <TabsContent value="members" className="mt-0 space-y-4">
                 <MembersTable 
                   searchQuery={searchQuery} 
                   refreshKey={refreshKey} 
