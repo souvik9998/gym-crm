@@ -254,9 +254,6 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, gymName = "Pro Plus
 
         {/* Bottom Navigation */}
         <div className="p-3 border-t border-border space-y-1.5">
-          <div className="px-3 py-2 mb-1">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Settings</p>
-          </div>
           {bottomNavItems.map((item) => renderNavItem(item, true))}
         </div>
       </div>
@@ -306,11 +303,6 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, gymName = "Pro Plus
 
       {/* Bottom Navigation */}
       <div className="p-3 border-t border-border space-y-1.5">
-        {!collapsed && (
-          <div className="px-3 py-2 mb-1">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Settings</p>
-          </div>
-        )}
         {bottomNavItems.map((item) => renderNavItem(item, true))}
       </div>
 

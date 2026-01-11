@@ -12,6 +12,8 @@ import {
   PlusIcon,
   ArrowTrendingUpIcon,
   ClockIcon,
+  ArrowDownTrayIcon,
+  FunnelIcon,
 } from "@heroicons/react/24/outline";
 import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
@@ -181,7 +183,7 @@ const AdminDashboard = () => {
     >
       <div className="space-y-6 max-w-7xl mx-auto">
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <Card className="hover-lift border-0 shadow-sm">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
@@ -245,47 +247,78 @@ const AdminDashboard = () => {
         <Card className="border-0 shadow-sm">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <CardHeader className="pb-4 border-b">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  <TabsList className="bg-muted/50 p-1">
-                    <TabsTrigger value="members" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <div className="flex flex-col gap-4">
+                {/* Top Row - Tabs and Actions */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <TabsList className="bg-muted/50 p-1 w-full sm:w-auto overflow-x-auto">
+                    <TabsTrigger value="members" className="gap-1.5 text-xs sm:text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
                       <UsersIcon className="w-4 h-4" />
-                      Members
+                      <span className="hidden xs:inline">Members</span>
                     </TabsTrigger>
-                    <TabsTrigger value="daily_pass" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <TabsTrigger value="daily_pass" className="gap-1.5 text-xs sm:text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
                       <ClockIcon className="w-4 h-4" />
-                      Daily Pass ({stats.dailyPassUsers})
+                      <span className="hidden xs:inline">Daily Pass</span>
+                      <span className="text-xs">({stats.dailyPassUsers})</span>
                     </TabsTrigger>
-                    <TabsTrigger value="payments" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <TabsTrigger value="payments" className="gap-1.5 text-xs sm:text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
                       <CreditCardIcon className="w-4 h-4" />
-                      Payments
+                      <span className="hidden xs:inline">Payments</span>
                     </TabsTrigger>
                   </TabsList>
-                  {(activeTab === "members" || activeTab === "daily_pass") && (
-                    <div className="relative flex-1 min-w-[250px] max-w-md group">
-                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
-                      <Input
-                        placeholder="Search by name or phone..."
-                        className="pl-10 h-10 bg-muted/30 border-transparent hover:bg-muted/50 hover:border-border focus:bg-background focus:border-border transition-all duration-200"
-                        value={activeTab === "members" ? searchQuery : dailyPassSearchQuery}
-                        onChange={(e) => activeTab === "members" ? setSearchQuery(e.target.value) : setDailyPassSearchQuery(e.target.value)}
-                      />
-                    </div>
-                  )}
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      className="h-9 w-9"
+                      title="Filter"
+                    >
+                      <FunnelIcon className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      className="h-9 w-9"
+                      title="Export Data"
+                    >
+                      <ArrowDownTrayIcon className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setIsAddPaymentOpen(true)} 
+                      className="gap-1.5 h-9"
+                    >
+                      <CreditCardIcon className="w-4 h-4" />
+                      <span className="hidden md:inline">Cash</span>
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={() => setIsAddMemberOpen(true)} 
+                      className="gap-1.5 h-9"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                      <span className="hidden md:inline">Add Member</span>
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setIsAddPaymentOpen(true)} className="gap-2">
-                    <CreditCardIcon className="w-4 h-4" />
-                    <span className="hidden sm:inline">Cash Payment</span>
-                  </Button>
-                  <Button onClick={() => setIsAddMemberOpen(true)} className="gap-2">
-                    <PlusIcon className="w-4 h-4" />
-                    <span className="hidden sm:inline">Add Member</span>
-                  </Button>
-                </div>
+                
+                {/* Search Bar - Below tabs on mobile, inline on desktop */}
+                {(activeTab === "members" || activeTab === "daily_pass") && (
+                  <div className="relative w-full md:max-w-sm group">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
+                    <Input
+                      placeholder="Search by name or phone..."
+                      className="pl-10 h-9 bg-muted/30 border-transparent hover:bg-muted/50 hover:border-border focus:bg-background focus:border-border transition-all duration-200"
+                      value={activeTab === "members" ? searchQuery : dailyPassSearchQuery}
+                      onChange={(e) => activeTab === "members" ? setSearchQuery(e.target.value) : setDailyPassSearchQuery(e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-4 md:p-6">
               <TabsContent value="members" className="mt-0 space-y-6">
                 <MemberFilter 
                   value={memberFilter} 

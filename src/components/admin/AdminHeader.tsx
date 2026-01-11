@@ -68,7 +68,7 @@ export const AdminHeader = ({
           {showMobileMenu && (
             <button
               onClick={onMobileMenuClick}
-              className="lg:hidden p-2 hover:bg-muted rounded-lg transition-colors"
+              className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors"
             >
               <Bars3Icon className="w-5 h-5 text-foreground" />
             </button>
