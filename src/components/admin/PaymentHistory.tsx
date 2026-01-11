@@ -18,8 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell } from "lucide-react";
+import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { exportToExcel } from "@/utils/exportToExcel";
 
 type PaymentMode = Database["public"]["Enums"]["payment_mode"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
@@ -49,6 +50,7 @@ interface PaymentHistoryProps {
 }
 
 export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
+  const { toast } = useToast();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState("");
@@ -178,6 +180,60 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     }
   };
 
+  const getPaymentTypeText = (type: string | null) => {
+    switch (type) {
+      case "gym_and_pt":
+        return "Gym + PT";
+      case "pt_only":
+      case "pt":
+        return "PT";
+      case "gym_membership":
+        return "Gym";
+      default:
+        return type || "-";
+    }
+  };
+
+  const getStatusText = (status: PaymentStatus | null) => {
+    switch (status) {
+      case "success":
+        return "Success";
+      case "pending":
+        return "Pending";
+      case "failed":
+        return "Failed";
+      default:
+        return "Unknown";
+    }
+  };
+
+  const handleExport = () => {
+    try {
+      const exportData = filteredPayments.map((payment) => ({
+        Date: payment.created_at ? new Date(payment.created_at).toLocaleString("en-IN") : "-",
+        "Member Name": payment.member?.name || payment.daily_pass_user?.name || "-",
+        "Member Phone": payment.member?.phone || payment.daily_pass_user?.phone || "-",
+        "Payment Type": getPaymentTypeText(payment.payment_type),
+        "Payment Mode": payment.payment_mode === "online" ? "Online" : "Cash",
+        Amount: `₹${Number(payment.amount).toLocaleString("en-IN")}`,
+        Status: getStatusText(payment.status),
+        Notes: payment.notes || "-",
+      }));
+
+      exportToExcel(exportData, "payments");
+      toast({
+        title: "Export successful",
+        description: `Exported ${exportData.length} payment(s) to Excel`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export failed",
+        description: error.message || "Failed to export payments",
+        variant: "destructive",
+      });
+    }
+  };
+
   const hasActiveFilters = dateFrom || dateTo || paymentMode !== "all" || statusFilter !== "all" || typeFilter !== "all";
 
   if (isLoading) {
@@ -264,9 +320,20 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
         <span>
           Showing {filteredPayments.length} of {payments.length} transactions
         </span>
-        <span className="font-semibold text-foreground">
-          Total: ₹{filteredPayments.reduce((sum, p) => sum + Number(p.amount), 0).toLocaleString("en-IN")}
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="font-semibold text-foreground">
+            Total: ₹{filteredPayments.reduce((sum, p) => sum + Number(p.amount), 0).toLocaleString("en-IN")}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            className="gap-2 hover:bg-accent/50 transition-colors font-medium"
+          >
+            <Download className="w-4 h-4" />
+            Export Data
+          </Button>
+        </div>
       </div>
 
       {/* Table */}

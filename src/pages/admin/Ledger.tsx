@@ -42,6 +42,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Trash2,
+  Download,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, subDays, startOfMonth, endOfMonth, parseISO, isWithinInterval } from "date-fns";
@@ -49,6 +50,7 @@ import type { User } from "@supabase/supabase-js";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { exportToExcel } from "@/utils/exportToExcel";
 import {
   BarChart,
   Bar,
@@ -252,6 +254,31 @@ const AdminLedger = () => {
     setExpenseAmount("");
     setExpenseDate(new Date());
     setExpenseNotes("");
+  };
+
+  const handleExport = () => {
+    try {
+      const exportData = entries.map((entry) => ({
+        Date: format(parseISO(entry.entry_date), "dd MMM yyyy"),
+        Type: entry.entry_type === "income" ? "Income" : "Expense",
+        Category: getCategoryLabel(entry.category, entry.entry_type),
+        Description: entry.description,
+        Amount: `₹${Number(entry.amount).toLocaleString("en-IN")}`,
+        "Auto Generated": entry.is_auto_generated ? "Yes" : "No",
+      }));
+
+      exportToExcel(exportData, "ledger");
+      toast({
+        title: "Export successful",
+        description: `Exported ${exportData.length} ledger entry/entries to Excel`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export failed",
+        description: error.message || "Failed to export ledger entries",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeleteEntry = (entry: LedgerEntry) => {
@@ -631,8 +658,20 @@ const AdminLedger = () => {
                 <p>No entries found for the selected period</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
+              <>
+                <div className="flex justify-end mb-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExport}
+                    className="gap-2 hover:bg-accent/50 transition-colors font-medium"
+                  >
+                    <Download className="w-4 h-4" />
+                    Export Data
+                  </Button>
+                </div>
+                <div className="overflow-x-auto">
+                  <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
@@ -695,8 +734,9 @@ const AdminLedger = () => {
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
-              </div>
+                  </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

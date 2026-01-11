@@ -32,9 +32,12 @@ import {
   Calendar,
   TrendingUp,
   Eye,
+  Download,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ActivityDetailDialog from "./ActivityDetailDialog";
+import { exportToExcel } from "@/utils/exportToExcel";
+import { useToast } from "@/hooks/use-toast";
 
 interface AdminActivityLog {
   id: string;
@@ -64,6 +67,7 @@ interface AdminActivityLogsTabProps {
 }
 
 const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
+  const { toast } = useToast();
   const [logs, setLogs] = useState<AdminActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -234,6 +238,32 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
     });
   };
 
+  const handleExport = () => {
+    try {
+      const exportData = filteredLogs.map((log) => ({
+        Date: formatDateTime(log.created_at),
+        Category: log.activity_category,
+        Type: log.activity_type,
+        Description: log.description,
+        "Entity Type": log.entity_type || "-",
+        "Entity Name": log.entity_name || "-",
+        "Entity ID": log.entity_id || "-",
+      }));
+
+      exportToExcel(exportData, "admin_activity_logs");
+      toast({
+        title: "Export successful",
+        description: `Exported ${exportData.length} activity log(s) to Excel`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export failed",
+        description: error.message || "Failed to export activity logs",
+        variant: "destructive",
+      });
+    }
+  };
+
   const hasActiveFilters = searchQuery || categoryFilter !== "all" || dateFrom || dateTo;
 
   if (isLoading) {
@@ -367,6 +397,15 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
                     Clear
                   </Button>
                 )}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleExport} 
+                  className="gap-2 hover:bg-accent/50 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Export Data
+                </Button>
               </div>
 
               {/* Table */}

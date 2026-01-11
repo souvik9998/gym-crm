@@ -31,8 +31,10 @@ import {
   Users,
   Send,
   Phone,
+  Download,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { exportToExcel } from "@/utils/exportToExcel";
 
 interface WhatsAppLog {
   id: string;
@@ -270,6 +272,42 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
     return true;
   });
 
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const handleExport = () => {
+    try {
+      const exportData = filteredLogs.map((log) => ({
+        "Sent At": formatDateTime(log.sent_at),
+        "Recipient Name": log.recipient_name || log.member?.name || log.daily_pass_user?.name || "-",
+        "Recipient Phone": log.recipient_phone || log.member?.phone || log.daily_pass_user?.phone || "-",
+        "Notification Type": log.notification_type,
+        Status: log.status,
+        "Is Manual": log.is_manual ? "Yes" : "No",
+        "Message Content": log.message_content || "-",
+      }));
+
+      exportToExcel(exportData, "whatsapp_logs");
+      toast({
+        title: "Export successful",
+        description: `Exported ${exportData.length} WhatsApp log(s) to Excel`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export failed",
+        description: error.message || "Failed to export WhatsApp logs",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "sent":
@@ -297,16 +335,6 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
       custom: "Custom",
     };
     return labels[type] || type;
-  };
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
   };
 
   const hasActiveFilters =
@@ -467,6 +495,15 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
                     Clear
                   </Button>
                 )}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleExport} 
+                  className="gap-2 hover:bg-accent/50 transition-colors font-medium"
+                >
+                  <Download className="w-4 h-4" />
+                  Export Data
+                </Button>
               </div>
 
               {/* Table */}

@@ -11,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserCheck, Clock, AlertTriangle } from "lucide-react";
+import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserCheck, Clock, AlertTriangle, Download } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +26,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import type { MemberFilterValue } from "./MemberFilter";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { exportToExcel } from "@/utils/exportToExcel";
 
 interface Member {
   id: string;
@@ -673,6 +674,61 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     }
   };
 
+  const getStatusText = (subscription?: { status: string; end_date: string }) => {
+    if (!subscription) {
+      return "No Subscription";
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(subscription.end_date);
+    endDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const isActuallyExpired = diffDays < 0;
+    const isActuallyExpiringSoon = !isActuallyExpired && diffDays >= 0 && diffDays <= 7;
+
+    if (subscription.status === "inactive") {
+      return "Inactive";
+    }
+
+    if (isActuallyExpired) {
+      return "Expired";
+    }
+    
+    if (isActuallyExpiringSoon) {
+      return "Expiring Soon";
+    }
+
+    return subscription.status === "active" ? "Active" : subscription.status || "Unknown";
+  };
+
+  const handleExport = () => {
+    try {
+      const exportData = sortedMembers.map((member) => ({
+        Name: member.name,
+        Phone: `+91 ${member.phone}`,
+        "Join Date": member.join_date ? new Date(member.join_date).toLocaleDateString("en-IN") : "-",
+        Status: getStatusText(member.subscription),
+        "Subscription Start Date": member.subscription?.start_date ? new Date(member.subscription.start_date).toLocaleDateString("en-IN") : "-",
+        "Subscription End Date": member.subscription?.end_date ? new Date(member.subscription.end_date).toLocaleDateString("en-IN") : "-",
+        "Personal Trainer": member.activePT?.trainer_name || "-",
+        "PT End Date": member.activePT?.end_date ? new Date(member.activePT.end_date).toLocaleDateString("en-IN") : "-",
+      }));
+
+      exportToExcel(exportData, "members");
+      toast({
+        title: "Export successful",
+        description: `Exported ${exportData.length} member(s) to Excel`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export failed",
+        description: error.message || "Failed to export members",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -694,6 +750,18 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
 
   return (
     <div className="w-full space-y-3">
+      {/* Export Data button */}
+      <div className="flex justify-end mb-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExport}
+          className="gap-2 hover:bg-accent/50 transition-colors font-medium"
+        >
+          <Download className="w-4 h-4" />
+          Export Data
+        </Button>
+      </div>
       {/* Bulk action bar */}
       {selectedMembers.size > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">

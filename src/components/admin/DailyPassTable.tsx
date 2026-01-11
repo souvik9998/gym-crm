@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { format, isAfter, addDays, isBefore } from "date-fns";
+import { exportToExcel } from "@/utils/exportToExcel";
 import { 
   MoreHorizontal, 
   Search, 
@@ -16,7 +17,8 @@ import {
   User, 
   RefreshCw,
   Dumbbell,
-  Clock
+  Clock,
+  Download
 } from "lucide-react";
 
 interface DailyPassUser {
@@ -157,6 +159,57 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
     }
   };
 
+  const getStatusText = (subscription?: DailyPassUser["subscription"]) => {
+    if (!subscription) {
+      return "No Pass";
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(subscription.end_date);
+    endDate.setHours(0, 0, 0, 0);
+    const expiringThreshold = addDays(today, 1);
+
+    if (isAfter(today, endDate)) {
+      return "Expired";
+    } else if (isAfter(expiringThreshold, endDate) || endDate.getTime() === today.getTime()) {
+      return "Expiring Today";
+    } else {
+      return "Active";
+    }
+  };
+
+  const handleExport = () => {
+    try {
+      const exportData = filteredUsers.map((user) => ({
+        Name: user.name,
+        Phone: user.phone,
+        Email: user.email || "-",
+        Gender: user.gender || "-",
+        "Package Name": user.subscription?.package_name || "-",
+        "Duration (Days)": user.subscription?.duration_days || "-",
+        "Start Date": user.subscription?.start_date ? format(new Date(user.subscription.start_date), "dd MMM yyyy") : "-",
+        "End Date": user.subscription?.end_date ? format(new Date(user.subscription.end_date), "dd MMM yyyy") : "-",
+        "Price": user.subscription?.price ? `₹${user.subscription.price}` : "-",
+        "Trainer": user.subscription?.trainer?.name || "-",
+        Status: getStatusText(user.subscription),
+        "Created At": format(new Date(user.created_at), "dd MMM yyyy"),
+      }));
+
+      exportToExcel(exportData, "daily_pass_users");
+      toast({
+        title: "Export successful",
+        description: `Exported ${exportData.length} daily pass user(s) to Excel`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export failed",
+        description: error.message || "Failed to export daily pass users",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Filter users based on search and filter value
   const filteredUsers = useMemo(() => {
     let result = users;
@@ -220,6 +273,17 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
 
   return (
     <>
+      <div className="flex justify-end mb-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExport}
+          className="gap-2 hover:bg-accent/50 transition-colors font-medium"
+        >
+          <Download className="w-4 h-4" />
+          Export Data
+        </Button>
+      </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
