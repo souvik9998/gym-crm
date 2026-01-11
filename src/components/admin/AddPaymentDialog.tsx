@@ -473,36 +473,43 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
       if (paymentError) throw paymentError;
 
       // Create ledger entries for cash payment
-      if (gymAmount > 0) {
-        await createMembershipIncomeEntry(
-          gymAmount,
-          "gym_renewal",
-          `Gym renewal - ${member.name} (${selectedPackage!.months} months)`,
-          member.id,
-          undefined,
-          paymentRecord.id
-        );
-      }
+      try {
+        // Gym renewal income entry (for gym_only and gym_and_pt)
+        if (gymAmount > 0 && selectedPackage) {
+          await createMembershipIncomeEntry(
+            gymAmount,
+            "gym_renewal",
+            `Gym renewal - ${member.name} (${selectedPackage.months} months)`,
+            member.id,
+            undefined,
+            paymentRecord.id
+          );
+        }
 
-      if (ptAmount > 0 && selectedTrainer) {
-        await createMembershipIncomeEntry(
-          ptAmount,
-          "pt_subscription",
-          `PT subscription - ${member.name} with ${selectedTrainer.name}`,
-          member.id,
-          undefined,
-          paymentRecord.id
-        );
+        // PT subscription income entry (for gym_and_pt and pt_only)
+        if (ptAmount > 0 && selectedTrainer) {
+          await createMembershipIncomeEntry(
+            ptAmount,
+            "pt_subscription",
+            `PT subscription - ${member.name} with ${selectedTrainer.name}`,
+            member.id,
+            undefined,
+            paymentRecord.id
+          );
 
-        // Calculate trainer percentage expense if applicable
-        await calculateTrainerPercentageExpense(
-          selectedTrainerId,
-          ptAmount,
-          member.id,
-          undefined,
-          undefined,
-          member.name
-        );
+          // Calculate trainer percentage expense if applicable
+          await calculateTrainerPercentageExpense(
+            selectedTrainerId,
+            ptAmount,
+            member.id,
+            undefined,
+            undefined,
+            member.name
+          );
+        }
+      } catch (ledgerError) {
+        console.error("Error creating ledger entries:", ledgerError);
+        // Don't throw - payment was successful, ledger is just for tracking
       }
 
       // Send WhatsApp notification
