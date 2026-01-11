@@ -17,6 +17,7 @@ import {
   IdCard,
   IndianRupee,
   Dumbbell,
+  CalendarDays,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +33,9 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format, addMonths } from "date-fns";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100),
@@ -86,6 +90,14 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const [selectedTrainerId, setSelectedTrainerId] = useState("");
   const [ptMonths, setPtMonths] = useState(1);
   const [ptFee, setPtFee] = useState(0);
+  
+  // Start date selection
+  const [startDate, setStartDate] = useState<Date>(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
   
   const [isLoading, setIsLoading] = useState(false);
 
@@ -237,16 +249,16 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         if (detailsError) throw detailsError;
       }
 
-      // Create subscription
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + (selectedPackage?.months || 1));
+      // Create subscription with selected start date
+      const gymStartDate = new Date(startDate);
+      gymStartDate.setHours(0, 0, 0, 0);
+      const endDate = addMonths(gymStartDate, selectedPackage?.months || 1);
 
       const { data: subscription, error: subError } = await supabase
         .from("subscriptions")
         .insert({
           member_id: member.id,
-          start_date: startDate.toISOString().split("T")[0],
+          start_date: gymStartDate.toISOString().split("T")[0],
           end_date: endDate.toISOString().split("T")[0],
           plan_months: selectedPackage?.months || 1,
           status: "active",
@@ -260,13 +272,12 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
       // Create PT subscription if selected
       if (wantsPT && selectedTrainerId) {
-        const ptEndDate = new Date();
-        ptEndDate.setMonth(ptEndDate.getMonth() + ptMonths);
+        const ptEndDate = addMonths(gymStartDate, ptMonths);
         
         await supabase.from("pt_subscriptions").insert({
           member_id: member.id,
           personal_trainer_id: selectedTrainerId,
-          start_date: startDate.toISOString().split("T")[0],
+          start_date: gymStartDate.toISOString().split("T")[0],
           end_date: ptEndDate.toISOString().split("T")[0],
           monthly_fee: selectedTrainer?.monthly_fee || 0,
           total_fee: ptFee,
@@ -372,6 +383,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setSelectedTrainerId("");
     setPtMonths(1);
     setPtFee(0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    setStartDate(today);
   };
 
   return (
@@ -494,6 +508,43 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
             {/* Package Selection Section */}
             <div className="space-y-4 pt-2 border-t">
               <h3 className="text-sm font-medium text-muted-foreground">Membership Package</h3>
+              
+              {/* Start Date Selection */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-accent" />
+                  Membership Start Date
+                </Label>
+                <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full p-3 rounded-lg border-2 border-input hover:border-accent/50 bg-card flex items-center justify-between transition-colors text-left"
+                    >
+                      <span className="font-medium">{format(startDate, "d MMMM yyyy")}</span>
+                      <CalendarDays className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={startDate}
+                      onSelect={(date) => {
+                        if (date) {
+                          setStartDate(date);
+                          setShowDatePicker(false);
+                        }
+                      }}
+                      disabled={(date) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return date < today;
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
               
               <div className="space-y-2">
                 <Label htmlFor="add-package" className="flex items-center gap-2">

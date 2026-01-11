@@ -3,10 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, Calendar, IndianRupee, Sparkles, User, Dumbbell, Clock, AlertCircle } from "lucide-react";
+import { Check, Calendar, IndianRupee, Sparkles, User, Dumbbell, Clock, AlertCircle, CalendarDays } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { addDays, addMonths, differenceInDays, format, isBefore } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 interface Trainer {
   id: string;
@@ -46,6 +48,7 @@ interface PackageSelectionFormProps {
   ptStartDate?: string; // For existing members with active PT, this is end_date + 1
   existingMembershipEndDate?: string; // For renewals - the current gym membership end date
   existingPTEndDate?: string; // For renewals - the current PT end date (if any)
+  minStartDate?: Date; // Minimum allowed start date (for members with active membership: end_date + 1)
 }
 
 export interface PackageSelectionData {
@@ -60,6 +63,8 @@ export interface PackageSelectionData {
   trainerFee: number;
   ptDays?: number;
   ptEndDate?: string;
+  startDate?: string; // Custom start date for membership
+  ptStartDate?: string; // Custom start date for PT
 }
 
 const PackageSelectionForm = ({ 
@@ -68,9 +73,10 @@ const PackageSelectionForm = ({
   onSubmit, 
   onBack,
   isLoading,
-  ptStartDate,
+  ptStartDate: propPtStartDate,
   existingMembershipEndDate,
-  existingPTEndDate 
+  existingPTEndDate,
+  minStartDate: propMinStartDate
 }: PackageSelectionFormProps) => {
   const [packageType, setPackageType] = useState<"monthly" | "custom">("monthly");
   const [selectedMonthlyPackage, setSelectedMonthlyPackage] = useState<MonthlyPackage | null>(null);
@@ -78,10 +84,45 @@ const PackageSelectionForm = ({
   const [wantsTrainer, setWantsTrainer] = useState(false);
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
   const [selectedPTOption, setSelectedPTOption] = useState<PTDurationOption | null>(null);
+  
+  // Custom start date for membership - defaults to minStartDate or today
+  const [selectedStartDate, setSelectedStartDate] = useState<Date>(() => {
+    if (propMinStartDate) return propMinStartDate;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [customPackages, setCustomPackages] = useState<CustomPackage[]>([]);
+  
+  // Minimum start date: for renewals with active membership, it's end_date + 1; otherwise today
+  const minStartDate = useMemo(() => {
+    if (propMinStartDate) return propMinStartDate;
+    if (existingMembershipEndDate) {
+      const endDate = new Date(existingMembershipEndDate);
+      endDate.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      // If membership is still active, min start is end_date + 1
+      if (endDate >= today) {
+        const minDate = addDays(endDate, 1);
+        return minDate;
+      }
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  }, [existingMembershipEndDate, propMinStartDate]);
+  
+  // Update selected start date when minStartDate changes
+  useEffect(() => {
+    if (selectedStartDate < minStartDate) {
+      setSelectedStartDate(minStartDate);
+    }
+  }, [minStartDate]);
 
   useEffect(() => {
     fetchData();
@@ -124,16 +165,10 @@ const PackageSelectionForm = ({
     }
   };
 
-  // Calculate membership end date based on selection
-  // For renewals: extend from existing end date; for new members: start from today
+  // Calculate membership end date based on selection and selected start date
   const membershipEndDate = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // For renewals with existing membership, extend from existing end date
-    const startDate = existingMembershipEndDate 
-      ? new Date(existingMembershipEndDate) 
-      : today;
+    // Use the selected start date instead of existing end date
+    const startDate = new Date(selectedStartDate);
     startDate.setHours(0, 0, 0, 0);
     
     if (packageType === "custom" && selectedCustomPackage) {
@@ -142,14 +177,25 @@ const PackageSelectionForm = ({
       return addMonths(startDate, selectedMonthlyPackage.months);
     }
     return startDate;
-  }, [packageType, selectedMonthlyPackage, selectedCustomPackage, existingMembershipEndDate]);
+  }, [packageType, selectedMonthlyPackage, selectedCustomPackage, selectedStartDate]);
+
+  // Calculate PT start date: use provided propPtStartDate (for renewals with active PT) or the selected gym start date
+  const ptStartDate = useMemo(() => {
+    if (propPtStartDate) {
+      const ptStart = new Date(propPtStartDate);
+      ptStart.setHours(0, 0, 0, 0);
+      return ptStart;
+    }
+    // For new members or members without active PT, PT starts on gym start date
+    return new Date(selectedStartDate);
+  }, [propPtStartDate, selectedStartDate]);
 
   // Generate dynamic PT duration options based on membership end date and PT start date
   const ptDurationOptions = useMemo((): PTDurationOption[] => {
     if (!selectedTrainer) return [];
 
-    // Determine PT start date: use provided ptStartDate (for renewals with active PT) or today
-    const ptStart = ptStartDate ? new Date(ptStartDate) : new Date();
+    // Use the calculated PT start date
+    const ptStart = new Date(ptStartDate);
     ptStart.setHours(0, 0, 0, 0);
     
     const options: PTDurationOption[] = [];
@@ -277,12 +323,13 @@ const PackageSelectionForm = ({
       trainerFee,
       ptDays: wantsTrainer && selectedPTOption ? selectedPTOption.days : undefined,
       ptEndDate: wantsTrainer && selectedPTOption ? format(selectedPTOption.endDate, "yyyy-MM-dd") : undefined,
+      startDate: format(selectedStartDate, "yyyy-MM-dd"),
+      ptStartDate: wantsTrainer ? format(ptStartDate, "yyyy-MM-dd") : undefined,
     });
   };
   // Parse existing dates for display
   const parsedExistingMembershipEndDate = existingMembershipEndDate ? new Date(existingMembershipEndDate) : null;
   const parsedExistingPTEndDate = existingPTEndDate ? new Date(existingPTEndDate) : null;
-  const parsedPtStartDate = ptStartDate ? new Date(ptStartDate) : null;
 
   // Check if member has active membership (end date is in the future)
   const hasActiveMembership = useMemo(() => {
@@ -353,6 +400,46 @@ const PackageSelectionForm = ({
         )}
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Start Date Selection */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <CalendarDays className="w-4 h-4" />
+              Membership Start Date
+            </span>
+          </div>
+          <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="w-full p-3 rounded-lg border-2 border-border hover:border-accent/50 bg-card flex items-center justify-between transition-colors"
+              >
+                <span className="font-medium">{format(selectedStartDate, "d MMMM yyyy")}</span>
+                <CalendarDays className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={selectedStartDate}
+                onSelect={(date) => {
+                  if (date) {
+                    setSelectedStartDate(date);
+                    setShowDatePicker(false);
+                  }
+                }}
+                disabled={(date) => date < minStartDate}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+          <p className="text-xs text-muted-foreground">
+            {hasActiveMembership 
+              ? `Minimum start date: ${format(minStartDate, "d MMM yyyy")} (day after current membership ends)`
+              : "Select when your membership should begin"}
+          </p>
+        </div>
+
         {/* Package Type Selection */}
         <Tabs value={packageType} onValueChange={(v) => {
           // Prevent switching to custom tab if member has active membership
@@ -522,9 +609,9 @@ const PackageSelectionForm = ({
                   <span className="font-semibold text-accent">
                     {format(parsedExistingPTEndDate, "d MMMM yyyy")}
                   </span>
-                  {parsedPtStartDate && (
+                  {propPtStartDate && (
                     <span className="text-xs text-muted-foreground ml-1">
-                      (New PT starts {format(parsedPtStartDate, "d MMM yyyy")})
+                      (New PT starts {format(new Date(propPtStartDate), "d MMM yyyy")})
                     </span>
                   )}
                 </span>
@@ -673,9 +760,9 @@ const PackageSelectionForm = ({
                   {trainerFee.toLocaleString("en-IN")}
                 </span>
               </div>
-              {parsedPtStartDate && (
+              {ptStartDate && (
                 <div className="text-xs text-muted-foreground">
-                  PT: {format(parsedPtStartDate, "d MMM yyyy")} → {format(selectedPTOption.endDate, "d MMM yyyy")}
+                  PT: {format(ptStartDate, "d MMM yyyy")} → {format(selectedPTOption.endDate, "d MMM yyyy")}
                 </div>
               )}
             </>

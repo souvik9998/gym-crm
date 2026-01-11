@@ -49,6 +49,8 @@ const Register = () => {
       gymFee: packageData.subscriptionAmount + packageData.joiningFee,
       memberDetails: memberDetails,
       isDailyPass,
+      gymStartDate: packageData.startDate, // Pass the custom start date
+      ptStartDate: packageData.ptStartDate, // Pass the PT start date
       customPackage: packageData.customPackage ? {
         id: packageData.customPackage.id,
         name: packageData.customPackage.name,
