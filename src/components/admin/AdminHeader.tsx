@@ -8,6 +8,7 @@ import {
   Cog6ToothIcon,
   UserCircleIcon,
   Bars3Icon,
+  BuildingStorefrontIcon,
 } from "@heroicons/react/24/outline";
 import {
   DropdownMenu,
@@ -57,7 +58,7 @@ export const AdminHeader = ({
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 bg-card/80 backdrop-blur-md border-b border-border h-16 flex items-center px-4 md:px-6",
+        "sticky top-0 z-30 bg-card/95 backdrop-blur-md border-b border-border h-16 flex items-center px-4 md:px-6",
         className
       )}
     >
@@ -81,13 +82,13 @@ export const AdminHeader = ({
         </div>
 
         {/* Right Section */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {onRefresh && (
             <Button
               variant="ghost"
               size="icon"
               onClick={handleRefresh}
-              className="text-muted-foreground hover:text-foreground hover:bg-muted"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted h-9 w-9"
               title="Refresh"
             >
               <ArrowPathIcon className="w-5 h-5" />
@@ -98,7 +99,7 @@ export const AdminHeader = ({
             variant="ghost"
             size="icon"
             onClick={() => navigate("/admin/qr-code")}
-            className="text-muted-foreground hover:text-foreground hover:bg-muted hidden md:flex"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted hidden md:flex h-9 w-9"
             title="QR Code"
           >
             <QrCodeIcon className="w-5 h-5" />
@@ -108,7 +109,7 @@ export const AdminHeader = ({
             variant="ghost"
             size="icon"
             onClick={() => navigate("/admin/settings")}
-            className="text-muted-foreground hover:text-foreground hover:bg-muted hidden md:flex"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted hidden md:flex h-9 w-9"
             title="Settings"
           >
             <Cog6ToothIcon className="w-5 h-5" />
@@ -120,7 +121,7 @@ export const AdminHeader = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                className="text-muted-foreground hover:text-foreground hover:bg-muted h-9 w-9"
               >
                 <UserCircleIcon className="w-6 h-6" />
               </Button>
@@ -133,6 +134,10 @@ export const AdminHeader = ({
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/admin/settings?tab=general")} className="cursor-pointer">
+                <BuildingStorefrontIcon className="w-4 h-4 mr-2" />
+                Gym Profile
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/admin/settings")} className="cursor-pointer">
                 <Cog6ToothIcon className="w-4 h-4 mr-2" />
                 Settings

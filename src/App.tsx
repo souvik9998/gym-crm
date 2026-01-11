@@ -16,6 +16,7 @@ import AdminSettings from "./pages/admin/Settings";
 import AdminAnalytics from "./pages/admin/Analytics";
 import AdminLedger from "./pages/admin/Ledger";
 import Logs from "./pages/admin/Logs";
+import AdminTrainers from "./pages/admin/Trainers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
           <Route path="/admin/ledger" element={<AdminLedger />} />
           <Route path="/admin/logs" element={<Logs />} />
+          <Route path="/admin/trainers" element={<AdminTrainers />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   HomeIcon,
-  UsersIcon,
   ChartBarIcon,
   BookOpenIcon,
   DocumentTextIcon,
@@ -14,15 +13,17 @@ import {
   ClipboardDocumentListIcon,
   ChatBubbleLeftRightIcon,
   UserGroupIcon,
+  AcademicCapIcon,
+  Bars3BottomLeftIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
-  UsersIcon as UsersIconSolid,
   ChartBarIcon as ChartBarIconSolid,
   BookOpenIcon as BookOpenIconSolid,
   DocumentTextIcon as DocumentTextIconSolid,
   Cog6ToothIcon as Cog6ToothIconSolid,
   QrCodeIcon as QrCodeIconSolid,
+  AcademicCapIcon as AcademicCapIconSolid,
 } from "@heroicons/react/24/solid";
 import {
   Tooltip,
@@ -41,6 +42,7 @@ interface SidebarProps {
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
   gymName?: string;
+  isMobile?: boolean;
 }
 
 interface NavItem {
@@ -71,6 +73,12 @@ const navItems: NavItem[] = [
     iconSolid: BookOpenIconSolid,
   },
   {
+    title: "Trainers",
+    href: "/admin/trainers",
+    icon: AcademicCapIcon,
+    iconSolid: AcademicCapIconSolid,
+  },
+  {
     title: "Activity Logs",
     href: "/admin/logs",
     icon: DocumentTextIcon,
@@ -98,7 +106,7 @@ const bottomNavItems: NavItem[] = [
   },
 ];
 
-export const AdminSidebar = ({ collapsed, onCollapsedChange, gymName = "Pro Plus Fitness" }: SidebarProps) => {
+export const AdminSidebar = ({ collapsed, onCollapsedChange, gymName = "Pro Plus Fitness", isMobile = false }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [expandedItems, setExpandedItems] = useState<string[]>(["Activity Logs"]);
@@ -139,7 +147,7 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, gymName = "Pro Plus
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.includes(item.title);
 
-    if (collapsed) {
+    if (collapsed && !isMobile) {
       return (
         <TooltipProvider key={item.title} delayDuration={0}>
           <Tooltip>
@@ -149,14 +157,14 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, gymName = "Pro Plus
                 className={cn(
                   "w-full flex items-center justify-center p-3 rounded-xl transition-all duration-200",
                   active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
                 <Icon className="w-5 h-5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="ml-2">
+            <TooltipContent side="right" className="ml-2 font-medium">
               <p>{item.title}</p>
             </TooltipContent>
           </Tooltip>
@@ -176,8 +184,8 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, gymName = "Pro Plus
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
                 active
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
@@ -201,8 +209,8 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, gymName = "Pro Plus
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-sm",
                     childActive
-                      ? "bg-sidebar-primary/10 text-sidebar-primary font-medium"
-                      : "text-sidebar-foreground/60 hover:bg-sidebar-accent/30 hover:text-sidebar-foreground"
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                   )}
                 >
                   <ChildIcon className="w-4 h-4 flex-shrink-0" />
@@ -222,27 +230,53 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, gymName = "Pro Plus
         className={cn(
           "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
           active
-            ? "bg-sidebar-accent text-sidebar-accent-foreground"
-            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+            ? "bg-primary/10 text-primary"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
       >
         <Icon className="w-5 h-5 flex-shrink-0" />
-        <span className="text-sm font-medium">{item.title}</span>
+        {(!collapsed || isMobile) && <span className="text-sm font-medium">{item.title}</span>}
       </button>
     );
   };
 
+  // For mobile, render without the outer wrapper
+  if (isMobile) {
+    return (
+      <div className="flex flex-col h-full">
+        {/* Navigation */}
+        <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
+          <div className="px-3 py-2 mb-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Menu</p>
+          </div>
+          {navItems.map((item) => renderNavItem(item))}
+        </nav>
+
+        {/* Bottom Navigation */}
+        <div className="p-3 border-t border-border space-y-1.5">
+          <div className="px-3 py-2 mb-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Settings</p>
+          </div>
+          {bottomNavItems.map((item) => renderNavItem(item, true))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border z-40 flex flex-col transition-all duration-300",
-        collapsed ? "w-[72px]" : "w-64"
+        "fixed left-0 top-0 h-screen bg-card border-r border-border z-40 flex flex-col transition-all duration-300 ease-in-out",
+        collapsed ? "w-[68px]" : "w-64"
       )}
     >
       {/* Header */}
-      <div className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center overflow-hidden flex-shrink-0">
+      <div className={cn(
+        "p-4 border-b border-border",
+        collapsed ? "flex justify-center" : ""
+      )}>
+        <div className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
+          <div className="w-10 h-10 rounded-xl bg-primary overflow-hidden flex-shrink-0 shadow-sm">
             <img
               src="/logo.jpg"
               alt="Logo"
@@ -251,10 +285,10 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, gymName = "Pro Plus
           </div>
           {!collapsed && (
             <div className="overflow-hidden">
-              <h1 className="text-sm font-semibold text-sidebar-foreground truncate">
+              <h1 className="text-sm font-semibold text-foreground truncate">
                 {gymName}
               </h1>
-              <p className="text-xs text-sidebar-foreground/60">Admin Panel</p>
+              <p className="text-xs text-muted-foreground">Admin Panel</p>
             </div>
           )}
         </div>
@@ -262,23 +296,38 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, gymName = "Pro Plus
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
+        {!collapsed && (
+          <div className="px-3 py-2 mb-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Menu</p>
+          </div>
+        )}
         {navItems.map((item) => renderNavItem(item))}
       </nav>
 
       {/* Bottom Navigation */}
-      <div className="p-3 border-t border-sidebar-border space-y-1.5">
+      <div className="p-3 border-t border-border space-y-1.5">
+        {!collapsed && (
+          <div className="px-3 py-2 mb-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Settings</p>
+          </div>
+        )}
         {bottomNavItems.map((item) => renderNavItem(item, true))}
       </div>
 
-      {/* Collapse Toggle */}
+      {/* Collapse Toggle - Modern floating button */}
       <button
         onClick={() => onCollapsedChange(!collapsed)}
-        className="absolute -right-3 top-20 w-6 h-6 bg-sidebar border border-sidebar-border rounded-full flex items-center justify-center text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-200 shadow-sm"
+        className={cn(
+          "absolute -right-3 top-20 w-6 h-6 bg-card border border-border rounded-full flex items-center justify-center",
+          "text-muted-foreground hover:text-foreground hover:bg-muted hover:border-primary/50",
+          "transition-all duration-200 shadow-md hover:shadow-lg",
+          "focus:outline-none focus:ring-2 focus:ring-primary/50"
+        )}
       >
         {collapsed ? (
-          <ChevronRightIcon className="w-4 h-4" />
+          <ChevronRightIcon className="w-3.5 h-3.5" />
         ) : (
-          <ChevronLeftIcon className="w-4 h-4" />
+          <ChevronLeftIcon className="w-3.5 h-3.5" />
         )}
       </button>
     </aside>
