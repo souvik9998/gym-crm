@@ -1,171 +1,76 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
+import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  ArrowLeft,
-  MessageSquare,
-  Activity,
-  RefreshCw,
-  LogOut,
-  Settings,
-  BarChart3,
-  Users,
-} from "lucide-react";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
+  ClipboardDocumentListIcon,
+  ChatBubbleLeftRightIcon,
+  UserGroupIcon,
+} from "@heroicons/react/24/outline";
 import WhatsAppLogsTab from "@/components/admin/WhatsAppLogsTab";
 import AdminActivityLogsTab from "@/components/admin/AdminActivityLogsTab";
 import UserActivityLogsTab from "@/components/admin/UserActivityLogsTab";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 
 const Logs = () => {
-  const navigate = useNavigate();
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("activity");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "activity");
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        if (!session?.user) {
-          navigate("/admin/login");
-        }
-      }
-    );
+    const tab = searchParams.get("tab");
+    if (tab && ["activity", "user", "whatsapp"].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (!session?.user) {
-        navigate("/admin/login");
-      }
-      setIsLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setSearchParams({ tab: value });
+  };
 
   const handleRefresh = () => {
     setRefreshKey((prev) => prev + 1);
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/admin/login");
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-accent/30 border-t-accent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) return null;
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-card border-b">
-        <div className="container py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => navigate("/admin/dashboard")}
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-              <div className="w-11 h-11 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow overflow-hidden">
-                <img
-                  src="/logo.jpg"
-                  alt="Icon"
-                  className="w-full h-full object-cover rounded-xl"
-                />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-foreground">Activity Logs</h1>
-                <p className="text-xs text-muted-foreground">Track all activities</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => navigate("/admin/analytics")}
-                title="Analytics"
-              >
-                <BarChart3 className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => navigate("/admin/settings")}
-                title="Settings"
-              >
-                <Settings className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={handleRefresh}
-                title="Refresh"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={handleSignOut}
-                title="Sign Out"
-              >
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container py-6 space-y-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full max-w-lg grid-cols-3">
-            <TabsTrigger value="activity">
-              <Activity className="w-4 h-4 mr-2" />
-              Admin Activity
+    <AdminLayout
+      title="Activity Logs"
+      subtitle="Track all activities"
+      onRefresh={handleRefresh}
+    >
+      <div className="max-w-7xl mx-auto">
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <TabsList className="grid w-full max-w-lg grid-cols-3 mb-6 bg-muted/50 p-1">
+            <TabsTrigger value="activity" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <ClipboardDocumentListIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Admin Activity</span>
+              <span className="sm:hidden">Admin</span>
             </TabsTrigger>
-            <TabsTrigger value="user">
-              <Users className="w-4 h-4 mr-2" />
-              User Activity
+            <TabsTrigger value="user" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <UserGroupIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">User Activity</span>
+              <span className="sm:hidden">User</span>
             </TabsTrigger>
-            <TabsTrigger value="whatsapp">
-              <MessageSquare className="w-4 h-4 mr-2" />
+            <TabsTrigger value="whatsapp" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <ChatBubbleLeftRightIcon className="w-4 h-4" />
               WhatsApp
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="activity" className="mt-6">
+          <TabsContent value="activity" className="mt-0">
             <AdminActivityLogsTab refreshKey={refreshKey} />
           </TabsContent>
 
-          <TabsContent value="user" className="mt-6">
+          <TabsContent value="user" className="mt-0">
             <UserActivityLogsTab refreshKey={refreshKey} />
           </TabsContent>
 
-          <TabsContent value="whatsapp" className="mt-6">
+          <TabsContent value="whatsapp" className="mt-0">
             <WhatsAppLogsTab refreshKey={refreshKey} />
           </TabsContent>
         </Tabs>
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 
