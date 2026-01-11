@@ -22,6 +22,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { createMembershipIncomeEntry, calculateTrainerPercentageExpense } from "@/hooks/useLedger";
 import {
   Select,
   SelectContent,
@@ -459,7 +460,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
         ? "pt_only" 
         : "gym_and_pt";
 
-      const { error: paymentError } = await supabase.from("payments").insert({
+      const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
         member_id: member.id,
         subscription_id: subscriptionId,
         amount: totalAmount,
@@ -467,9 +468,42 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
         status: "success",
         payment_type: paymentTypeValue,
         notes: `Cash payment via admin - ${paymentTypeValue}`,
-      });
+      }).select().single();
 
       if (paymentError) throw paymentError;
+
+      // Create ledger entries for cash payment
+      if (gymAmount > 0) {
+        await createMembershipIncomeEntry(
+          gymAmount,
+          "gym_renewal",
+          `Gym renewal - ${member.name} (${selectedPackage!.months} months)`,
+          member.id,
+          undefined,
+          paymentRecord.id
+        );
+      }
+
+      if (ptAmount > 0 && selectedTrainer) {
+        await createMembershipIncomeEntry(
+          ptAmount,
+          "pt_subscription",
+          `PT subscription - ${member.name} with ${selectedTrainer.name}`,
+          member.id,
+          undefined,
+          paymentRecord.id
+        );
+
+        // Calculate trainer percentage expense if applicable
+        await calculateTrainerPercentageExpense(
+          selectedTrainerId,
+          ptAmount,
+          member.id,
+          undefined,
+          undefined,
+          member.name
+        );
+      }
 
       // Send WhatsApp notification
       try {
