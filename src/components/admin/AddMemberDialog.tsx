@@ -21,6 +21,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { createMembershipIncomeEntry, calculateTrainerPercentageExpense } from "@/hooks/useLedger";
 import { z } from "zod";
 import {
   Select,
@@ -275,7 +276,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
       // Create payment record (cash)
       const paymentType = wantsPT ? "gym_and_pt" : "gym_membership";
-      const { error: paymentError } = await supabase.from("payments").insert({
+      const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
         member_id: member.id,
         subscription_id: subscription.id,
         amount: totalAmount,
@@ -283,9 +284,54 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         status: "success",
         payment_type: paymentType,
         notes: "Added via admin dashboard",
-      });
+      }).select().single();
 
       if (paymentError) throw paymentError;
+
+      // Create ledger entries for cash payment
+      // Gym membership income
+      await createMembershipIncomeEntry(
+        monthlyFee,
+        "gym_membership",
+        `New member - ${name} (${selectedPackage?.months || 1} months)`,
+        member.id,
+        undefined,
+        paymentRecord.id
+      );
+
+      // Joining fee income (if any)
+      if (joiningFee > 0) {
+        await createMembershipIncomeEntry(
+          joiningFee,
+          "joining_fee",
+          `Joining fee - ${name}`,
+          member.id,
+          undefined,
+          paymentRecord.id
+        );
+      }
+
+      // PT subscription income (if any)
+      if (wantsPT && ptFee > 0 && selectedTrainer) {
+        await createMembershipIncomeEntry(
+          ptFee,
+          "pt_subscription",
+          `PT subscription - ${name} with ${selectedTrainer.name}`,
+          member.id,
+          undefined,
+          paymentRecord.id
+        );
+
+        // Calculate trainer percentage expense if applicable
+        await calculateTrainerPercentageExpense(
+          selectedTrainerId,
+          ptFee,
+          member.id,
+          undefined,
+          undefined,
+          name
+        );
+      }
 
       await logAdminActivity({
         category: "members",
