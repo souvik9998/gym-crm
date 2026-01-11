@@ -750,18 +750,6 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
 
   return (
     <div className="w-full space-y-3">
-      {/* Export Data button */}
-      <div className="flex justify-end mb-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExport}
-          className="gap-2 hover:bg-accent/50 transition-colors font-medium"
-        >
-          <Download className="w-4 h-4" />
-          Export Data
-        </Button>
-      </div>
       {/* Bulk action bar */}
       {selectedMembers.size > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
