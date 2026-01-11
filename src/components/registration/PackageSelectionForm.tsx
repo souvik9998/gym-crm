@@ -456,11 +456,14 @@ const PackageSelectionForm = ({
                 disabled={(date) => {
                   const dateNormalized = new Date(date);
                   dateNormalized.setHours(0, 0, 0, 0);
+                  const minNormalized = new Date(minStartDate);
+                  minNormalized.setHours(0, 0, 0, 0);
                   // For expired members: allow dates from minStartDate (can be past dates)
                   // For active/new members: only allow dates from minStartDate onwards
-                  return dateNormalized < minStartDate;
+                  return dateNormalized < minNormalized;
                 }}
-                fromDate={isExpiredMembership ? minStartDate : undefined}
+                fromMonth={isExpiredMembership ? minStartDate : undefined}
+                defaultMonth={selectedStartDate}
                 initialFocus
                 className="pointer-events-auto"
               />
