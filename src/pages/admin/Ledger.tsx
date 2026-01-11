@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,9 @@ import {
   TrashIcon,
   ArrowDownTrayIcon,
   CalendarIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  BookOpenIcon,
 } from "@heroicons/react/24/outline";
 import { useToast } from "@/hooks/use-toast";
 import { format, subDays, startOfMonth, endOfMonth, parseISO } from "date-fns";
@@ -55,6 +58,7 @@ import {
 } from "recharts";
 import LedgerDetailDialog from "@/components/admin/LedgerDetailDialog";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useQuery } from "@tanstack/react-query";
 
 interface LedgerEntry {
   id: string;
@@ -95,7 +99,6 @@ type DateRangePreset = "today" | "7days" | "15days" | "30days" | "this_month" | 
 
 const AdminLedger = () => {
   const { toast } = useToast();
-  const [entries, setEntries] = useState<LedgerEntry[]>([]);
   
   // Date range state
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("this_month");
@@ -161,49 +164,27 @@ const AdminLedger = () => {
     }
   }, [dateRangePreset, customStartDate, customEndDate]);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      if (!session?.user) {
-        navigate("/admin/login");
+  const { data: entries = [], refetch: fetchEntries } = useQuery({
+    queryKey: ["ledger-entries", dateRange.start, dateRange.end],
+    queryFn: async () => {
+      const startStr = format(dateRange.start, "yyyy-MM-dd");
+      const endStr = format(dateRange.end, "yyyy-MM-dd");
+
+      const { data, error } = await supabase
+        .from("ledger_entries")
+        .select("*")
+        .gte("entry_date", startStr)
+        .lte("entry_date", endStr)
+        .order("entry_date", { ascending: false })
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching ledger entries:", error);
+        return [];
       }
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (!session?.user) {
-        navigate("/admin/login");
-      }
-      setIsLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  useEffect(() => {
-    if (user) {
-      fetchEntries();
-    }
-  }, [user, dateRange]);
-
-  const fetchEntries = async () => {
-    const startStr = format(dateRange.start, "yyyy-MM-dd");
-    const endStr = format(dateRange.end, "yyyy-MM-dd");
-
-    const { data, error } = await supabase
-      .from("ledger_entries")
-      .select("*")
-      .gte("entry_date", startStr)
-      .lte("entry_date", endStr)
-      .order("entry_date", { ascending: false })
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching ledger entries:", error);
-    } else {
-      setEntries(data as LedgerEntry[]);
-    }
-  };
+      return data as LedgerEntry[];
+    },
+  });
 
   const handleAddExpense = async () => {
     if (!expenseCategory || !expenseDescription || !expenseAmount) {
@@ -213,6 +194,8 @@ const AdminLedger = () => {
 
     setIsSaving(true);
 
+    const { data: session } = await supabase.auth.getSession();
+
     const { error } = await supabase.from("ledger_entries").insert({
       entry_type: "expense",
       category: expenseCategory,
@@ -221,7 +204,7 @@ const AdminLedger = () => {
       entry_date: format(expenseDate, "yyyy-MM-dd"),
       notes: expenseNotes || null,
       is_auto_generated: false,
-      created_by: user?.id,
+      created_by: session?.session?.user?.id,
     });
 
     setIsSaving(false);
@@ -367,39 +350,9 @@ const AdminLedger = () => {
     return categories.find((c) => c.value === category)?.label || category;
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-accent/30 border-t-accent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) return null;
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-card border-b">
-        <div className="container py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/admin/dashboard")}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-accent/10 rounded-lg">
-                <BookOpen className="w-5 h-5 text-accent" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-foreground">Ledger</h1>
-                <p className="text-xs text-muted-foreground">Track profit & loss</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="container py-6 max-w-6xl mx-auto space-y-6">
+    <AdminLayout title="Ledger" subtitle="Track profit & loss" onRefresh={() => fetchEntries()}>
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* Date Range Selector */}
         <Card>
           <CardContent className="p-4">
@@ -478,7 +431,7 @@ const AdminLedger = () => {
                   </p>
                 </div>
                 <div className="p-3 bg-success/10 rounded-lg">
-                  <ArrowUpRight className="w-6 h-6 text-success" />
+                  <ArrowUpRightIcon className="w-6 h-6 text-success" />
                 </div>
               </div>
             </CardContent>
@@ -494,7 +447,7 @@ const AdminLedger = () => {
                   </p>
                 </div>
                 <div className="p-3 bg-destructive/10 rounded-lg">
-                  <ArrowDownRight className="w-6 h-6 text-destructive" />
+                  <ArrowDownRightIcon className="w-6 h-6 text-destructive" />
                 </div>
               </div>
             </CardContent>
@@ -514,9 +467,9 @@ const AdminLedger = () => {
                 </div>
                 <div className={cn("p-3 rounded-lg", totals.profit >= 0 ? "bg-primary/10" : "bg-destructive/10")}>
                   {totals.profit >= 0 ? (
-                    <TrendingUp className="w-6 h-6 text-primary" />
+                    <ArrowTrendingUpIcon className="w-6 h-6 text-primary" />
                   ) : (
-                    <TrendingDown className="w-6 h-6 text-destructive" />
+                    <ArrowTrendingDownIcon className="w-6 h-6 text-destructive" />
                   )}
                 </div>
               </div>
@@ -567,7 +520,7 @@ const AdminLedger = () => {
               <Dialog open={isAddExpenseOpen} onOpenChange={setIsAddExpenseOpen}>
                 <DialogTrigger asChild>
                   <Button>
-                    <Plus className="w-4 h-4 mr-2" />
+                    <PlusIcon className="w-4 h-4 mr-2" />
                     Add Expense
                   </Button>
                 </DialogTrigger>
@@ -654,7 +607,7 @@ const AdminLedger = () => {
           <CardContent>
             {entries.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
-                <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <BookOpenIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No entries found for the selected period</p>
               </div>
             ) : (
@@ -666,7 +619,7 @@ const AdminLedger = () => {
                     onClick={handleExport}
                     className="gap-2 hover:bg-accent/50 transition-colors font-medium"
                   >
-                    <Download className="w-4 h-4" />
+                    <ArrowDownTrayIcon className="w-4 h-4" />
                     Export Data
                   </Button>
                 </div>
@@ -705,9 +658,9 @@ const AdminLedger = () => {
                               : "bg-destructive/10 text-destructive"
                           )}>
                             {entry.entry_type === "income" ? (
-                              <ArrowUpRight className="w-3 h-3" />
+                              <ArrowUpRightIcon className="w-3 h-3" />
                             ) : (
-                              <ArrowDownRight className="w-3 h-3" />
+                              <ArrowDownRightIcon className="w-3 h-3" />
                             )}
                             {entry.entry_type === "income" ? "Income" : "Expense"}
                           </span>
@@ -739,7 +692,7 @@ const AdminLedger = () => {
                                 handleViewEntry(entry);
                               }}
                             >
-                              <BookOpen className="w-4 h-4 text-muted-foreground" />
+                              <BookOpenIcon className="w-4 h-4 text-muted-foreground" />
                             </Button>
                             {!entry.is_auto_generated && (
                               <Button
@@ -750,7 +703,7 @@ const AdminLedger = () => {
                                   handleDeleteEntry(entry);
                                 }}
                               >
-                                <Trash2 className="w-4 h-4 text-destructive" />
+                                <TrashIcon className="w-4 h-4 text-destructive" />
                               </Button>
                             )}
                           </div>
@@ -764,7 +717,7 @@ const AdminLedger = () => {
             )}
           </CardContent>
         </Card>
-      </main>
+      </div>
 
       <ConfirmDialog
         open={confirmDialog.open}
@@ -782,7 +735,7 @@ const AdminLedger = () => {
         onOpenChange={setIsDetailOpen}
         getCategoryLabel={getCategoryLabel}
       />
-    </div>
+    </AdminLayout>
   );
 };
 
