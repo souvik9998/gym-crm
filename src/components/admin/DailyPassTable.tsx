@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { format, isAfter, addDays, isBefore } from "date-fns";
 import { exportToExcel } from "@/utils/exportToExcel";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { 
   MoreHorizontal, 
   Search, 
@@ -113,6 +114,39 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
     if (!userToDelete) return;
 
     try {
+      // First, delete related records in the correct order to avoid FK constraints
+      
+      // 1. Delete user activity logs referencing this daily pass user
+      await supabase
+        .from("user_activity_logs")
+        .delete()
+        .eq("daily_pass_user_id", userToDelete.id);
+
+      // 2. Delete WhatsApp notifications
+      await supabase
+        .from("whatsapp_notifications")
+        .delete()
+        .eq("daily_pass_user_id", userToDelete.id);
+
+      // 3. Delete ledger entries
+      await supabase
+        .from("ledger_entries")
+        .delete()
+        .eq("daily_pass_user_id", userToDelete.id);
+
+      // 4. Delete payments referencing daily pass subscriptions
+      await supabase
+        .from("payments")
+        .delete()
+        .eq("daily_pass_user_id", userToDelete.id);
+
+      // 5. Delete daily pass subscriptions
+      await supabase
+        .from("daily_pass_subscriptions")
+        .delete()
+        .eq("daily_pass_user_id", userToDelete.id);
+
+      // 6. Finally delete the daily pass user
       const { error } = await supabase
         .from("daily_pass_users")
         .delete()
@@ -120,17 +154,41 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
 
       if (error) throw error;
 
+      // Log the admin activity
+      await logAdminActivity({
+        category: "members",
+        type: "member_deleted",
+        description: `Deleted daily pass user: ${userToDelete.name}`,
+        entityType: "daily_pass_user",
+        entityId: userToDelete.id,
+        entityName: userToDelete.name,
+        oldValue: {
+          name: userToDelete.name,
+          phone: userToDelete.phone,
+          email: userToDelete.email,
+          gender: userToDelete.gender,
+          subscription: userToDelete.subscription ? {
+            package_name: userToDelete.subscription.package_name,
+            end_date: userToDelete.subscription.end_date,
+            trainer: userToDelete.subscription.trainer?.name,
+          } : null,
+        },
+        metadata: {
+          userType: "daily_pass",
+        },
+      });
+
       toast({
         title: "Success",
         description: "Daily pass user deleted successfully",
       });
 
       fetchUsers();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting user:", error);
       toast({
         title: "Error",
-        description: "Failed to delete daily pass user",
+        description: error.message || "Failed to delete daily pass user",
         variant: "destructive",
       });
     } finally {
