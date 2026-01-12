@@ -169,7 +169,7 @@ const Renew = () => {
           onSubmit={handlePackageSubmit}
           onBack={() => navigate("/", { state: { returnToOptions: true, phone: member.phone } })}
           isLoading={isPaymentLoading}
-          ptStartDate={ptStartDate || undefined}
+          ptStartDate={existingPTEndDate ? ptStartDate || undefined : undefined}
           existingMembershipEndDate={existingMembershipEndDate || undefined}
           existingPTEndDate={existingPTEndDate || undefined}
         />
