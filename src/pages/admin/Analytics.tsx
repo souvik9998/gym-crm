@@ -94,7 +94,7 @@ const AdminAnalytics = () => {
         .order("created_at", { ascending: true });
 
       const monthlyData: Record<string, { revenue: number; payments: number }> = {};
-      const last6Months = [];
+      const last6Months: string[] = [];
       for (let i = 5; i >= 0; i--) {
         const date = new Date();
         date.setMonth(date.getMonth() - i);
@@ -169,6 +169,103 @@ const AdminAnalytics = () => {
         activeMembers: activeMembers || 0,
         avgRevenue: totalRevenue / 6,
       });
+
+      // Fetch trainer stats
+      const { data: trainers } = await supabase
+        .from("personal_trainers")
+        .select("id, name")
+        .eq("is_active", true);
+
+      const { data: ptSubscriptions } = await supabase
+        .from("pt_subscriptions")
+        .select("personal_trainer_id, member_id, total_fee, created_at, status");
+
+      if (trainers && ptSubscriptions) {
+        const trainerStatsData: TrainerStats[] = trainers.map((trainer) => {
+          const trainerSubs = ptSubscriptions.filter(
+            (sub) => sub.personal_trainer_id === trainer.id
+          );
+          const uniqueMembers = new Set(trainerSubs.map((sub) => sub.member_id)).size;
+          const trainerRevenue = trainerSubs.reduce((sum, sub) => sum + Number(sub.total_fee || 0), 0);
+
+          // Calculate monthly revenue for this trainer
+          const trainerMonthlyRevenue: Record<string, number> = {};
+          last6Months.forEach((m) => (trainerMonthlyRevenue[m] = 0));
+
+          trainerSubs.forEach((sub) => {
+            const date = new Date(sub.created_at);
+            const key = date.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+            if (trainerMonthlyRevenue[key] !== undefined) {
+              trainerMonthlyRevenue[key] += Number(sub.total_fee || 0);
+            }
+          });
+
+          return {
+            id: trainer.id,
+            name: trainer.name,
+            members: uniqueMembers,
+            revenue: trainerRevenue,
+            monthlyRevenue: last6Months.map((month) => ({
+              month,
+              revenue: trainerMonthlyRevenue[month] || 0,
+              payments: 0,
+            })),
+          };
+        });
+
+        setTrainerStats(trainerStatsData.filter((t) => t.members > 0 || t.revenue > 0));
+      }
+
+      // Fetch package sales data
+      const { data: monthlyPackages } = await supabase
+        .from("monthly_packages")
+        .select("id, months, price")
+        .eq("is_active", true)
+        .order("months", { ascending: true });
+
+      const { data: subscriptions } = await supabase
+        .from("subscriptions")
+        .select("plan_months, created_at, is_custom_package");
+
+      if (monthlyPackages && subscriptions) {
+        const packages: PackageInfo[] = monthlyPackages.map((pkg) => ({
+          id: pkg.id,
+          label: `${pkg.months} Month${pkg.months > 1 ? "s" : ""}`,
+          months: pkg.months,
+        }));
+        setPackageList(packages);
+
+        // Initialize package sales data structure
+        const packageSales: Record<string, Record<number, number>> = {};
+        last6Months.forEach((month) => {
+          packageSales[month] = {};
+          packages.forEach((pkg) => {
+            packageSales[month][pkg.months] = 0;
+          });
+        });
+
+        // Count subscriptions per package per month
+        subscriptions
+          .filter((sub) => !sub.is_custom_package)
+          .forEach((sub) => {
+            const date = new Date(sub.created_at);
+            const key = date.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+            if (packageSales[key] && packageSales[key][sub.plan_months] !== undefined) {
+              packageSales[key][sub.plan_months] += 1;
+            }
+          });
+
+        // Transform to chart data format
+        const salesData: PackageSalesData[] = last6Months.map((month) => {
+          const dataPoint: PackageSalesData = { month };
+          packages.forEach((pkg) => {
+            dataPoint[pkg.label] = packageSales[month][pkg.months] || 0;
+          });
+          return dataPoint;
+        });
+
+        setPackageSalesData(salesData);
+      }
     } catch (error) {
       console.error("Error fetching analytics:", error);
     }
@@ -306,6 +403,114 @@ const AdminAnalytics = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Trainer Performance */}
+        {trainerStats.length > 0 && (
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle>Trainer Performance</CardTitle>
+              <CardDescription>Revenue and client distribution by trainer</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Trainer Revenue Pie Chart */}
+                <div>
+                  <h4 className="text-sm font-medium mb-4 text-center">Revenue Distribution</h4>
+                  <ChartContainer config={chartConfig} className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={trainerStats}
+                          dataKey="revenue"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {trainerStats.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <ChartTooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload as TrainerStats;
+                              return (
+                                <div className="bg-popover p-2 rounded-md shadow-md border text-sm">
+                                  <p className="font-medium">{data.name}</p>
+                                  <p>Revenue: ₹{data.revenue.toLocaleString("en-IN")}</p>
+                                  <p>Clients: {data.members}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </div>
+
+                {/* Trainer Members Bar Chart */}
+                <div>
+                  <h4 className="text-sm font-medium mb-4 text-center">Client Count</h4>
+                  <ChartContainer config={chartConfig} className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={trainerStats} layout="vertical">
+                        <XAxis type="number" tickLine={false} axisLine={false} />
+                        <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} width={80} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar dataKey="members" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Package Sales */}
+        {packageList.length > 0 && (
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle>Package Sales Distribution</CardTitle>
+              <CardDescription>Monthly subscription sales by package type</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={packageSalesData}>
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    {packageList.map((pkg, index) => (
+                      <Bar
+                        key={pkg.id}
+                        dataKey={pkg.label}
+                        stackId="packages"
+                        fill={PACKAGE_COLORS[index % PACKAGE_COLORS.length]}
+                        radius={index === packageList.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+              <div className="flex flex-wrap gap-4 mt-4 justify-center">
+                {packageList.map((pkg, index) => (
+                  <div key={pkg.id} className="flex items-center gap-2">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: PACKAGE_COLORS[index % PACKAGE_COLORS.length] }}
+                    />
+                    <span className="text-sm text-muted-foreground">{pkg.label}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </AdminLayout>
   );
