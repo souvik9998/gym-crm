@@ -204,7 +204,9 @@ const PackageSelectionForm = ({
     return startDate;
   }, [packageType, selectedMonthlyPackage, selectedCustomPackage, selectedStartDate]);
 
-  // Calculate PT start date: use provided propPtStartDate (for renewals with active PT) or the selected gym start date
+  // Calculate PT start date: 
+  // - If user has active PT (propPtStartDate provided): use that date (day after current PT ends)
+  // - Otherwise: PT starts on the selected gym membership start date
   const ptStartDate = useMemo(() => {
     if (propPtStartDate) {
       const ptStart = new Date(propPtStartDate);
@@ -397,32 +399,6 @@ const PackageSelectionForm = ({
                 </span>
               </span>
             </div>
-            {/* Commented out because we don't need to show the new gym membership end date */}
-            {/* <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
-              <Calendar className="w-4 h-4 text-primary" />
-              <span className="text-sm text-muted-foreground">
-                New gym membership ends:{" "}
-                <span className="font-semibold text-primary">
-                  {format(membershipEndDate, "d MMMM yyyy")}
-                </span>
-              </span>
-            </div> */}
-            {/* {parsedExistingPTEndDate && wantsTrainer && (
-              <div className="flex items-center gap-2 p-3 bg-accent/10 rounded-lg border border-accent/20">
-                <Dumbbell className="w-4 h-4 text-accent" />
-                <span className="text-sm text-muted-foreground">
-                  Current PT ends:{" "}
-                  <span className="font-semibold text-accent">
-                    {format(parsedExistingPTEndDate, "d MMMM yyyy")}
-                  </span>
-                  {parsedPtStartDate && (
-                    <span className="text-xs text-muted-foreground ml-1">
-                      (New PT starts {format(parsedPtStartDate, "d MMM yyyy")})
-                    </span>
-                  )}
-                </span>
-              </div>
-            )} */}
           </div>
         )}
       </CardHeader>
@@ -647,11 +623,9 @@ const PackageSelectionForm = ({
                   <span className="font-semibold text-accent">
                     {format(parsedExistingPTEndDate, "d MMMM yyyy")}
                   </span>
-                  {propPtStartDate && (
-                    <span className="text-xs text-muted-foreground ml-1">
-                      (New PT starts {format(new Date(propPtStartDate), "d MMM yyyy")})
-                    </span>
-                  )}
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (New PT starts {format(ptStartDate, "d MMM yyyy")})
+                  </span>
                 </span>
               </div>
             )}
