@@ -467,7 +467,7 @@ const ExtendPT = () => {
                     size="lg"
                     className="flex-1"
                     onClick={handleSubmit}
-                    disabled={isLoading || !selectedTrainer || !selectedOption}
+                    disabled={isLoading || !selectedTrainer || !selectedOption || validOptionsCount === 0}
                   >
                     {isLoading ? (
                       <div className="flex items-center gap-2">
