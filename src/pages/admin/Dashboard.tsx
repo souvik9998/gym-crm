@@ -323,7 +323,8 @@ const AdminDashboard = () => {
                       className="gap-1 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
                     >
                       <ClockIcon className="w-4 h-4" />
-                      <span className="text-xs">({stats.dailyPassUsers})</span>
+                      {/* <span className="text-xs">({stats.dailyPassUsers})</span> */}
+                      <span className="hidden sm:inline">Daily Passes</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="payments" 
