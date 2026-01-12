@@ -39,17 +39,19 @@ const Index = () => {
             .maybeSingle();
 
           if (member) {
+            // Fetch the most recent subscription (including future-dated ones)
             const { data: subscription } = await supabase
               .from("subscriptions")
               .select("start_date, end_date, status")
               .eq("member_id", member.id)
-              .in("status", ["active", "expiring_soon"])
               .order("end_date", { ascending: false })
               .limit(1)
               .maybeSingle();
 
-            setMembershipEndDate(subscription?.end_date || null);
-            setMembershipStartDate(subscription?.start_date || null);
+            // Only consider active/expiring_soon for enabling PT option
+            const isValidForPT = subscription && (subscription.status === 'active' || subscription.status === 'expiring_soon');
+            setMembershipEndDate(isValidForPT ? subscription?.end_date : null);
+            setMembershipStartDate(isValidForPT ? subscription?.start_date : null);
             setExistingMember(member);
             setPhone(state.phone);
             setShowOptions(true);
@@ -90,18 +92,19 @@ const Index = () => {
       if (error) throw error;
 
       if (member) {
-        // Fetch latest subscription (active or expiring_soon) to get membership start and end date
+        // Fetch the most recent subscription (including future-dated ones)
         const { data: subscription } = await supabase
           .from("subscriptions")
           .select("start_date, end_date, status")
           .eq("member_id", member.id)
-          .in("status", ["active", "expiring_soon"])
           .order("end_date", { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        setMembershipEndDate(subscription?.end_date || null);
-        setMembershipStartDate(subscription?.start_date || null);
+        // Only consider active/expiring_soon for enabling PT option
+        const isValidForPT = subscription && (subscription.status === 'active' || subscription.status === 'expiring_soon');
+        setMembershipEndDate(isValidForPT ? subscription?.end_date : null);
+        setMembershipStartDate(isValidForPT ? subscription?.start_date : null);
 
         // Existing member - show options
         setExistingMember(member);
