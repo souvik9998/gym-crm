@@ -510,12 +510,10 @@ const PackageSelectionForm = ({
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 {monthlyPackages.map((pkg) => {
-                  // Calculate end date for this specific package
-                  const startDate = existingMembershipEndDate 
-                    ? new Date(existingMembershipEndDate) 
-                    : new Date();
-                  startDate.setHours(0, 0, 0, 0);
-                  const pkgEndDate = addMonths(startDate, pkg.months);
+                  // Calculate end date for this specific package using selected start date
+                  const pkgStartDate = new Date(selectedStartDate);
+                  pkgStartDate.setHours(0, 0, 0, 0);
+                  const pkgEndDate = addMonths(pkgStartDate, pkg.months);
                   
                   return (
                     <button
