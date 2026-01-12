@@ -211,8 +211,10 @@ const PackageSelectionForm = ({
       ptStart.setHours(0, 0, 0, 0);
       return ptStart;
     }
-    // For new members or members without active PT, PT starts on gym start date
-    return new Date(selectedStartDate);
+    // For new members or members without active PT, PT starts on selected gym start date
+    const start = new Date(selectedStartDate);
+    start.setHours(0, 0, 0, 0);
+    return start;
   }, [propPtStartDate, selectedStartDate]);
 
   // Generate dynamic PT duration options based on membership end date and PT start date
