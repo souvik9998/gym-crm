@@ -216,6 +216,7 @@ const MemberProfile = () => {
                           onClick={() => navigate("/extend-pt", { 
                             state: { 
                               member, 
+                              membershipStartDate: currentSubscription.start_date,
                               membershipEndDate: currentSubscription.end_date 
                             } 
                           })}
