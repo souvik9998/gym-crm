@@ -21,6 +21,7 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [existingMember, setExistingMember] = useState<any>(null);
   const [membershipEndDate, setMembershipEndDate] = useState<string | null>(null);
+  const [membershipStartDate, setMembershipStartDate] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
 
   // Handle return from Renew/ExtendPT pages
@@ -40,7 +41,7 @@ const Index = () => {
           if (member) {
             const { data: subscription } = await supabase
               .from("subscriptions")
-              .select("end_date, status")
+              .select("start_date, end_date, status")
               .eq("member_id", member.id)
               .in("status", ["active", "expiring_soon"])
               .order("end_date", { ascending: false })
@@ -48,6 +49,7 @@ const Index = () => {
               .maybeSingle();
 
             setMembershipEndDate(subscription?.end_date || null);
+            setMembershipStartDate(subscription?.start_date || null);
             setExistingMember(member);
             setPhone(state.phone);
             setShowOptions(true);
@@ -88,10 +90,10 @@ const Index = () => {
       if (error) throw error;
 
       if (member) {
-        // Fetch latest subscription (active or expiring_soon) to get membership end date
+        // Fetch latest subscription (active or expiring_soon) to get membership start and end date
         const { data: subscription } = await supabase
           .from("subscriptions")
-          .select("end_date, status")
+          .select("start_date, end_date, status")
           .eq("member_id", member.id)
           .in("status", ["active", "expiring_soon"])
           .order("end_date", { ascending: false })
@@ -99,6 +101,7 @@ const Index = () => {
           .maybeSingle();
 
         setMembershipEndDate(subscription?.end_date || null);
+        setMembershipStartDate(subscription?.start_date || null);
 
         // Existing member - show options
         setExistingMember(member);
@@ -125,6 +128,7 @@ const Index = () => {
       navigate("/extend-pt", { 
         state: { 
           member: existingMember,
+          membershipStartDate: membershipStartDate,
           membershipEndDate: membershipEndDate
         } 
       });
@@ -135,6 +139,7 @@ const Index = () => {
     setShowOptions(false);
     setExistingMember(null);
     setMembershipEndDate(null);
+    setMembershipStartDate(null);
     setPhone("");
   };
 

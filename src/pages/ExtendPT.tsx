@@ -31,6 +31,7 @@ const ExtendPT = () => {
   const { initiatePayment, isLoading } = useRazorpay();
 
   const member = location.state?.member;
+  const membershipStartDate = location.state?.membershipStartDate ? new Date(location.state.membershipStartDate) : null;
   const membershipEndDate = location.state?.membershipEndDate ? new Date(location.state.membershipEndDate) : null;
 
   const [trainers, setTrainers] = useState<Trainer[]>([]);
@@ -94,17 +95,23 @@ const ExtendPT = () => {
     setIsLoadingData(false);
   };
 
-  // Calculate the PT start date based on existing PT subscriptions
+  // Calculate the PT start date based on existing PT subscriptions or gym membership start
   const ptStartDate = useMemo(() => {
     if (existingPTEndDate) {
       // Start from day after existing PT ends
       return addDays(existingPTEndDate, 1);
     }
-    // No existing PT, start from today
+    // No existing PT - use gym membership start date
+    if (membershipStartDate) {
+      const startDate = new Date(membershipStartDate);
+      startDate.setHours(0, 0, 0, 0);
+      return startDate;
+    }
+    // Fallback to today if no membership start date available
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return today;
-  }, [existingPTEndDate]);
+  }, [existingPTEndDate, membershipStartDate]);
 
   // Generate dynamic PT duration options
   const ptDurationOptions = useMemo((): PTDurationOption[] => {
