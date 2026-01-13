@@ -8,10 +8,10 @@ const corsHeaders = {
 interface SendWhatsAppRequest {
   memberIds?: string[];
   dailyPassUserIds?: string[];
-  type?: "expiring_2days" | "expiring_today" | "manual" | "renewal" | "pt_extension" | "promotional" | "expiry_reminder" | "expired_reminder" | "payment_details" | "custom";
+  type?: "expiring_2days" | "expiring_today" | "manual" | "renewal" | "pt_extension" | "promotional" | "expiry_reminder" | "expired_reminder" | "payment_details" | "custom" | "new_member";
   customMessage?: string;
-  isManual?: boolean; // Flag to indicate manual vs automated
-  adminUserId?: string; // Admin user ID who sent the message
+  isManual?: boolean;
+  adminUserId?: string;
 
   // Direct send
   phone?: string;
@@ -78,7 +78,6 @@ Deno.serve(async (req) => {
         const authHeader = req.headers.get("authorization");
         if (authHeader) {
           const token = authHeader.replace("Bearer ", "").trim();
-          // Create a client with the user's token to verify and get user ID
           const userSupabase = createClient(SUPABASE_URL!, token, {
             auth: { persistSession: false },
           });
@@ -111,15 +110,13 @@ Deno.serve(async (req) => {
           recipient_phone: logData.recipient_phone || null,
           recipient_name: logData.recipient_name || null,
           notification_type: logData.notification_type,
-          message_content: (logData.message_content || "").substring(0, 500), // Limit to 500 chars for preview
+          message_content: (logData.message_content || "").substring(0, 500),
           status: logData.status,
           error_message: logData.error_message || null,
           is_manual: logData.is_manual,
           admin_user_id: logData.admin_user_id || null,
         };
 
-        // Only set member_id or daily_pass_user_id if they exist
-        // This avoids constraint violations
         if (logData.member_id) {
           insertData.member_id = logData.member_id;
         }
@@ -133,7 +130,6 @@ Deno.serve(async (req) => {
 
         if (insertError) {
           console.error("Error logging WhatsApp message:", insertError);
-          // Log to console but don't throw - logging failure shouldn't break message sending
         } else {
           console.log("Successfully logged WhatsApp message:", {
             type: logData.notification_type,
@@ -143,13 +139,10 @@ Deno.serve(async (req) => {
         }
       } catch (error: any) {
         console.error("Exception while logging WhatsApp message:", error);
-        // Don't throw - logging failure shouldn't break message sending
       }
     };
 
-    // ---------------------------
     // Phone formatter
-    // ---------------------------
     const formatPhone = (phoneNum: string): string => {
       let cleaned = phoneNum.replace(/\D/g, "");
 
@@ -164,9 +157,40 @@ Deno.serve(async (req) => {
       return cleaned;
     };
 
-    // ---------------------------
+    // Replace template placeholders with actual values
+    const replacePlaceholders = (
+      template: string,
+      memberName: string,
+      expiryDate: string,
+      diffDays: number,
+      paymentInfo?: { amount: number; date: string; mode: string } | null
+    ): string => {
+      const formattedDate = new Date(expiryDate).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+
+      let message = template
+        .replace(/\{name\}/gi, memberName)
+        .replace(/\{expiry_date\}/gi, formattedDate)
+        .replace(/\{days\}/gi, Math.abs(diffDays).toString());
+
+      if (paymentInfo) {
+        const paymentDate = new Date(paymentInfo.date).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+        message = message
+          .replace(/\{amount\}/gi, `₹${paymentInfo.amount}`)
+          .replace(/\{payment_date\}/gi, paymentDate);
+      }
+
+      return message;
+    };
+
     // MESSAGE GENERATOR
-    // ---------------------------
     const generateMessage = (
       memberName: string, 
       expiryDate: string, 
@@ -185,8 +209,14 @@ Deno.serve(async (req) => {
       endDateObj.setHours(0, 0, 0, 0);
       const diffDays = Math.ceil((endDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
+      // For custom messages with placeholders, replace them
+      if (msgType === "custom" && customMessage) {
+        return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo);
+      }
+
       switch (msgType) {
         case "renewal":
+        case "new_member":
           return (
             `✅ *Membership Renewed Successfully!*\n\n` +
             `Hi ${memberName}, 👋\n\n` +
@@ -223,6 +253,10 @@ Deno.serve(async (req) => {
           );
 
         case "promotional":
+          // Check for saved template and replace placeholders
+          if (customMessage) {
+            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo);
+          }
           return (
             `🎉 *Special Offer for You!*\n\n` +
             `Hi ${memberName}, 👋\n\n` +
@@ -232,6 +266,10 @@ Deno.serve(async (req) => {
           );
 
         case "expiry_reminder":
+          // Check for saved template and replace placeholders
+          if (customMessage) {
+            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo);
+          }
           const daysText = diffDays === 0 
             ? "expires *today*" 
             : diffDays < 0 
@@ -246,6 +284,10 @@ Deno.serve(async (req) => {
           );
 
         case "expired_reminder":
+          // Check for saved template and replace placeholders
+          if (customMessage) {
+            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo);
+          }
           const expiredDays = Math.abs(diffDays);
           return (
             `⛔ *Membership Expired*\n\n` +
@@ -282,17 +324,16 @@ Deno.serve(async (req) => {
             `Thank you! 🙏\n— Team Pro Plus Fitness`
           );
 
-        case "custom":
-          return customMessage || `Hi ${memberName}, 👋\n\nThis is a message from Pro Plus Fitness.\n\n— Team Pro Plus Fitness`;
-
         default:
-          return customMessage || `Hi ${memberName}, 👋\n\nThis is a message from your gym.\n\n— Team Pro Plus Fitness`;
+          // For manual or custom messages with templates
+          if (customMessage) {
+            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo);
+          }
+          return `Hi ${memberName}, 👋\n\nThis is a message from your gym.\n\n— Team Pro Plus Fitness`;
       }
     };
 
-    // ---------------------------
     // SEND VIA PERISKOPE
-    // ---------------------------
     const sendPeriskopeMessage = async (
       chatId: string,
       message: string,
@@ -326,19 +367,15 @@ Deno.serve(async (req) => {
       }
     };
 
-    // ---------------------------
     // DIRECT SEND (NO MEMBER LOOKUP)
-    // ---------------------------
     if (phone && name && endDate) {
       const formattedPhone = formatPhone(phone);
-      const message = customMessage || generateMessage(name, endDate, type);
+      const message = generateMessage(name, endDate, type);
 
       const result = await sendPeriskopeMessage(formattedPhone, message);
 
-      // Determine if this is manual
       const isManualMessage = isManual || type === "manual" || type === "custom";
       
-      // Log the message
       await logWhatsAppMessage({
         member_id: memberIds && memberIds.length > 0 ? memberIds[0] : null,
         daily_pass_user_id: null,
@@ -360,9 +397,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ---------------------------
     // MEMBER/DAILY PASS USER BASED SEND
-    // ---------------------------
     if ((!memberIds || memberIds.length === 0) && (!dailyPassUserIds || dailyPassUserIds.length === 0)) {
       return new Response(JSON.stringify({ error: "No member IDs, daily pass user IDs, or phone provided" }), {
         status: 400,
@@ -436,9 +471,8 @@ Deno.serve(async (req) => {
 
     // Process daily pass users
     for (const dailyPassUser of dailyPassUsers) {
-      // Get latest purchase for expiry date
       const { data: purchase } = await supabase
-        .from("daily_pass_purchases")
+        .from("daily_pass_subscriptions")
         .select("end_date")
         .eq("daily_pass_user_id", dailyPassUser.id)
         .order("end_date", { ascending: false })
@@ -457,14 +491,12 @@ Deno.serve(async (req) => {
 
     for (const recipient of recipientsWithData) {
       const formattedPhone = formatPhone(recipient.phone);
-      const message = customMessage || generateMessage(recipient.name, recipient.end_date, type, recipient.paymentInfo);
+      const message = generateMessage(recipient.name, recipient.end_date, type, recipient.paymentInfo);
 
       const result = await sendPeriskopeMessage(formattedPhone, message);
 
-      // Determine if this is manual
       const isManualMessage = isManual || type === "manual" || type === "custom";
       
-      // Log the message with all details
       await logWhatsAppMessage({
         member_id: recipient.isMember ? recipient.id : null,
         daily_pass_user_id: recipient.isMember ? null : recipient.id,
@@ -498,15 +530,16 @@ Deno.serve(async (req) => {
           ...corsHeaders,
           "Content-Type": "application/json",
         },
-      },
+      }
     );
   } catch (error: any) {
-    return new Response(JSON.stringify({ success: false, error: error.message }), {
-      status: 500,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      },
-    });
+    console.error("Error in send-whatsapp:", error);
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 });
