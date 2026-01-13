@@ -8,7 +8,8 @@ const corsHeaders = {
 interface SendWhatsAppRequest {
   memberIds?: string[];
   dailyPassUserIds?: string[];
-  type?: "expiring_2days" | "expiring_today" | "manual" | "renewal" | "pt_extension" | "promotional" | "expiry_reminder" | "expired_reminder" | "payment_details" | "custom" | "new_member";
+  dailyPassUserId?: string; // Single daily pass user ID for direct send
+  type?: "expiring_2days" | "expiring_today" | "manual" | "renewal" | "pt_extension" | "promotional" | "expiry_reminder" | "expired_reminder" | "payment_details" | "custom" | "new_member" | "new_registration" | "daily_pass";
   customMessage?: string;
   isManual?: boolean;
   adminUserId?: string;
@@ -60,6 +61,7 @@ Deno.serve(async (req) => {
     const {
       memberIds,
       dailyPassUserIds,
+      dailyPassUserId,
       type = "manual",
       customMessage,
       isManual = false,
@@ -215,6 +217,25 @@ Deno.serve(async (req) => {
       }
 
       switch (msgType) {
+        case "new_registration":
+          return (
+            `🎉 *Welcome to Pro Plus Fitness!*\n\n` +
+            `Hi ${memberName}, 👋\n\n` +
+            `Congratulations on starting your fitness journey! 🏋️\n\n` +
+            `Your membership is now *active till ${formattedDate}*.\n\n` +
+            `We're excited to have you on board. Let's crush those fitness goals together 💪🔥\n\n` +
+            `See you at the gym!\n— Team Pro Plus Fitness`
+          );
+
+        case "daily_pass":
+          return (
+            `🎟️ *Daily Pass Activated!*\n\n` +
+            `Hi ${memberName}, 👋\n\n` +
+            `Your daily pass is now *active till ${formattedDate}*.\n\n` +
+            `Make the most of your session today! 💪🔥\n\n` +
+            `See you at the gym!\n— Team Pro Plus Fitness`
+          );
+
         case "renewal":
         case "new_member":
           return (
@@ -378,7 +399,7 @@ Deno.serve(async (req) => {
       
       await logWhatsAppMessage({
         member_id: memberIds && memberIds.length > 0 ? memberIds[0] : null,
-        daily_pass_user_id: null,
+        daily_pass_user_id: dailyPassUserId || null,
         recipient_phone: phone,
         recipient_name: name,
         notification_type: type,
