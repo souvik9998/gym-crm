@@ -385,6 +385,7 @@ Deno.serve(async (req) => {
             photo_id_type: memberDetails.photoIdType || null,
             photo_id_number: memberDetails.photoIdNumber || null,
             address: memberDetails.address || null,
+            date_of_birth: memberDetails.dateOfBirth || null,
           });
 
         if (detailsError) {

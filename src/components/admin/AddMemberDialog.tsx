@@ -239,13 +239,14 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       if (memberError) throw memberError;
 
       // Create member details if any provided
-      if (gender || address || photoIdType || photoIdNumber) {
+      if (gender || address || photoIdType || photoIdNumber || dateOfBirth) {
         const { error: detailsError } = await supabase.from("member_details").insert({
           member_id: member.id,
           gender: gender || null,
           address: address || null,
           photo_id_type: photoIdType || null,
           photo_id_number: photoIdNumber || null,
+          date_of_birth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : null,
           personal_trainer_id: wantsPT ? selectedTrainerId : null,
         });
         if (detailsError) throw detailsError;
