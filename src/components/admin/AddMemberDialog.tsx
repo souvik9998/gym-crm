@@ -75,6 +75,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const [address, setAddress] = useState("");
   const [photoIdType, setPhotoIdType] = useState("");
   const [photoIdNumber, setPhotoIdNumber] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(undefined);
+  const [showDobPicker, setShowDobPicker] = useState(false);
   
   // Package selection
   const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
@@ -397,6 +399,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setAddress("");
     setPhotoIdType("");
     setPhotoIdNumber("");
+    setDateOfBirth(undefined);
     setSelectedPackageId("");
     setMonthlyFee(0);
     setJoiningFee(0);
@@ -408,6 +411,14 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     today.setHours(0, 0, 0, 0);
     setStartDate(today);
   };
+
+  // Calculate max date (user must be at least 10 years old)
+  const maxDobDate = new Date();
+  maxDobDate.setFullYear(maxDobDate.getFullYear() - 10);
+  
+  // Calculate min date (user must be less than 100 years old)
+  const minDobDate = new Date();
+  minDobDate.setFullYear(minDobDate.getFullYear() - 100);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -481,6 +492,42 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                 </div>
 
                 <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <CalendarDays className="w-4 h-4 text-accent" />
+                    Date of Birth
+                  </Label>
+                  <Popover open={showDobPicker} onOpenChange={setShowDobPicker}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal h-10"
+                      >
+                        <CalendarDays className="mr-2 h-4 w-4" />
+                        {dateOfBirth ? format(dateOfBirth, "dd MMM yyyy") : "Select"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={dateOfBirth}
+                        onSelect={(date) => {
+                          setDateOfBirth(date);
+                          setShowDobPicker(false);
+                        }}
+                        disabled={(date) => date > maxDobDate || date < minDobDate}
+                        defaultMonth={dateOfBirth || new Date(2000, 0, 1)}
+                        captionLayout="dropdown-buttons"
+                        fromYear={1925}
+                        toYear={maxDobDate.getFullYear()}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label>Photo ID Type</Label>
                   <Select value={photoIdType} onValueChange={(val) => { setPhotoIdType(val); setPhotoIdNumber(""); }}>
                     <SelectTrigger>
@@ -494,23 +541,23 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
 
-              {photoIdType && (
-                <div className="space-y-2">
-                  <Label htmlFor="add-photo-id" className="flex items-center gap-2">
-                    <IdCard className="w-4 h-4 text-accent" />
-                    {photoIdType === "aadhaar" ? "Aadhaar" : photoIdType === "pan" ? "PAN" : photoIdType === "voter" ? "Voter ID" : "DL"} Number
-                  </Label>
-                  <Input
-                    id="add-photo-id"
-                    placeholder={photoIdType === "aadhaar" ? "XXXX XXXX XXXX" : photoIdType === "pan" ? "ABCDE1234F" : "ID Number"}
-                    value={photoIdNumber}
-                    onChange={(e) => setPhotoIdNumber(formatIdNumber(e.target.value, photoIdType))}
-                    maxLength={photoIdType === "aadhaar" ? 14 : photoIdType === "pan" ? 10 : 20}
-                  />
-                </div>
-              )}
+                {photoIdType && (
+                  <div className="space-y-2">
+                    <Label htmlFor="add-photo-id" className="flex items-center gap-2">
+                      <IdCard className="w-4 h-4 text-accent" />
+                      {photoIdType === "aadhaar" ? "Aadhaar" : photoIdType === "pan" ? "PAN" : photoIdType === "voter" ? "Voter ID" : "DL"} Number
+                    </Label>
+                    <Input
+                      id="add-photo-id"
+                      placeholder={photoIdType === "aadhaar" ? "XXXX XXXX XXXX" : photoIdType === "pan" ? "ABCDE1234F" : "ID Number"}
+                      value={photoIdNumber}
+                      onChange={(e) => setPhotoIdNumber(formatIdNumber(e.target.value, photoIdType))}
+                      maxLength={photoIdType === "aadhaar" ? 14 : photoIdType === "pan" ? 10 : 20}
+                    />
+                  </div>
+                )}
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="add-address" className="flex items-center gap-2">

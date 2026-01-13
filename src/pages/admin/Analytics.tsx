@@ -25,6 +25,7 @@ import {
   Cell,
 } from "recharts";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 interface MonthlyRevenue {
   month: string;
@@ -282,12 +283,17 @@ const AdminAnalytics = () => {
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Summary Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="hover-lift border-0 shadow-sm">
+          <Card className="hover-lift border-0 shadow-sm overflow-hidden">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-2xl font-bold text-accent">
-                    ₹{totals.totalRevenue.toLocaleString("en-IN")}
+                    <AnimatedCounter 
+                      value={totals.totalRevenue} 
+                      prefix="₹" 
+                      duration={1200}
+                      formatValue={(v) => v.toLocaleString("en-IN")}
+                    />
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Total Revenue</p>
                 </div>
@@ -298,11 +304,13 @@ const AdminAnalytics = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover-lift border-0 shadow-sm">
+          <Card className="hover-lift border-0 shadow-sm overflow-hidden">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-primary">{totals.totalMembers}</p>
+                  <p className="text-2xl font-bold text-primary">
+                    <AnimatedCounter value={totals.totalMembers} duration={1000} />
+                  </p>
                   <p className="text-xs text-muted-foreground mt-1">Total Members</p>
                 </div>
                 <div className="p-3 bg-primary/10 rounded-xl">
@@ -312,11 +320,13 @@ const AdminAnalytics = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover-lift border-0 shadow-sm">
+          <Card className="hover-lift border-0 shadow-sm overflow-hidden">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-success">{totals.activeMembers}</p>
+                  <p className="text-2xl font-bold text-success">
+                    <AnimatedCounter value={totals.activeMembers} duration={800} />
+                  </p>
                   <p className="text-xs text-muted-foreground mt-1">Active Members</p>
                 </div>
                 <div className="p-3 bg-success/10 rounded-xl">
@@ -326,12 +336,17 @@ const AdminAnalytics = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover-lift border-0 shadow-sm">
+          <Card className="hover-lift border-0 shadow-sm overflow-hidden">
             <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-2xl font-bold text-warning">
-                    ₹{Math.round(totals.avgRevenue).toLocaleString("en-IN")}
+                    <AnimatedCounter 
+                      value={Math.round(totals.avgRevenue)} 
+                      prefix="₹" 
+                      duration={1000}
+                      formatValue={(v) => v.toLocaleString("en-IN")}
+                    />
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Avg Monthly</p>
                 </div>

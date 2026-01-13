@@ -5,7 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, IdCard, MapPin, User } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { ArrowRight, IdCard, MapPin, User, CalendarDays } from "lucide-react";
+import { format } from "date-fns";
 
 interface MemberDetailsFormProps {
   onSubmit: (data: MemberDetailsData) => void;
@@ -18,6 +21,7 @@ export interface MemberDetailsData {
   photoIdNumber: string;
   address: string;
   gender: string;
+  dateOfBirth?: string;
 }
 
 const MemberDetailsForm = ({ onSubmit, onBack }: MemberDetailsFormProps) => {
@@ -26,6 +30,8 @@ const MemberDetailsForm = ({ onSubmit, onBack }: MemberDetailsFormProps) => {
   const [photoIdNumber, setPhotoIdNumber] = useState("");
   const [address, setAddress] = useState("");
   const [gender, setGender] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(undefined);
+  const [showDobPicker, setShowDobPicker] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +41,7 @@ const MemberDetailsForm = ({ onSubmit, onBack }: MemberDetailsFormProps) => {
       photoIdNumber,
       address,
       gender,
+      dateOfBirth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : undefined,
     });
   };
 
@@ -54,6 +61,14 @@ const MemberDetailsForm = ({ onSubmit, onBack }: MemberDetailsFormProps) => {
     }
     return cleaned;
   };
+
+  // Calculate max date (user must be at least 10 years old)
+  const maxDobDate = new Date();
+  maxDobDate.setFullYear(maxDobDate.getFullYear() - 10);
+  
+  // Calculate min date (user must be less than 100 years old)
+  const minDobDate = new Date();
+  minDobDate.setFullYear(minDobDate.getFullYear() - 100);
 
   return (
     <Card className="max-w-md mx-auto border">
@@ -98,7 +113,42 @@ const MemberDetailsForm = ({ onSubmit, onBack }: MemberDetailsFormProps) => {
                 <RadioGroupItem value="other" id="other" />
                 <Label htmlFor="other" className="cursor-pointer">Other</Label>
               </div>
-            </RadioGroup>
+          </RadioGroup>
+          </div>
+
+          {/* Date of Birth */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-accent" />
+              Date of Birth
+            </Label>
+            <Popover open={showDobPicker} onOpenChange={setShowDobPicker}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                >
+                  <CalendarDays className="mr-2 h-4 w-4" />
+                  {dateOfBirth ? format(dateOfBirth, "dd MMM yyyy") : "Select date of birth"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateOfBirth}
+                  onSelect={(date) => {
+                    setDateOfBirth(date);
+                    setShowDobPicker(false);
+                  }}
+                  disabled={(date) => date > maxDobDate || date < minDobDate}
+                  defaultMonth={dateOfBirth || new Date(2000, 0, 1)}
+                  captionLayout="dropdown-buttons"
+                  fromYear={1925}
+                  toYear={maxDobDate.getFullYear()}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Photo ID Type */}
