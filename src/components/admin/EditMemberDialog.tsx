@@ -94,7 +94,11 @@ export const EditMemberDialog = ({
       if (error) throw error;
 
       const fetchedGender = data?.gender || "";
-      const fetchedPhotoIdType = data?.photo_id_type || "";
+      // Normalize photo_id_type values (handle variations like 'aadhaar' vs 'aadhar')
+      let fetchedPhotoIdType = data?.photo_id_type || "";
+      if (fetchedPhotoIdType.toLowerCase() === "aadhaar") {
+        fetchedPhotoIdType = "aadhar";
+      }
       const fetchedPhotoIdNumber = data?.photo_id_number || "";
       const fetchedAddress = data?.address || "";
 
