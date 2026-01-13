@@ -61,8 +61,27 @@ const Register = () => {
 
     initiatePayment({
       ...paymentData,
-      onSuccess: (data) => {
+      onSuccess: async (data) => {
         const endDate = new Date(data.endDate);
+        
+        // Send WhatsApp notification for new registration
+        try {
+          const notificationType = data.isDailyPass ? "daily_pass" : "new_registration";
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              phone: phone,
+              name: memberDetails.fullName,
+              endDate: data.endDate,
+              type: notificationType,
+              memberIds: data.memberId ? [data.memberId] : [],
+              dailyPassUserId: data.dailyPassUserId,
+              isManual: false, // Automated message from system
+            },
+          });
+        } catch (err) {
+          console.error("Failed to send WhatsApp notification:", err);
+        }
+        
         navigate("/success", {
           state: {
             memberName: memberDetails.fullName,
