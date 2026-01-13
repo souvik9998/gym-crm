@@ -33,7 +33,7 @@ import {
   Phone,
   Download,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 
@@ -71,7 +71,6 @@ interface WhatsAppLogsTabProps {
 }
 
 const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
-  const { toast } = useToast();
   const [logs, setLogs] = useState<WhatsAppLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -190,10 +189,8 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
       setLogs(processedLogs as WhatsAppLog[]);
     } catch (error: any) {
       console.error("Error fetching WhatsApp logs:", error);
-      toast({
-        title: "Error fetching logs",
+      toast.error("Error fetching logs", {
         description: error.message,
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -296,15 +293,12 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
       }));
 
       exportToExcel(exportData, "whatsapp_logs");
-      toast({
-        title: "Export successful",
+      toast.success("Export successful", {
         description: `Exported ${exportData.length} WhatsApp log(s) to Excel`,
       });
     } catch (error: any) {
-      toast({
-        title: "Export failed",
+      toast.error("Export failed", {
         description: error.message || "Failed to export WhatsApp logs",
-        variant: "destructive",
       });
     }
   };

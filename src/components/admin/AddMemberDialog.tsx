@@ -20,7 +20,7 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { createMembershipIncomeEntry, calculateTrainerPercentageExpense } from "@/hooks/useLedger";
 import { z } from "zod";
@@ -64,7 +64,6 @@ interface AddMemberDialogProps {
 }
 
 export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDialogProps) => {
-  const { toast } = useToast();
   
   // Basic info
   const [name, setName] = useState("");
@@ -193,19 +192,14 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
     const result = formSchema.safeParse({ name, phone });
     if (!result.success) {
-      toast({
-        title: "Invalid Input",
+      toast.error("Invalid Input", {
         description: result.error.errors[0].message,
-        variant: "destructive",
       });
       return;
     }
 
     if (!selectedPackageId) {
-      toast({
-        title: "Please select a package",
-        variant: "destructive",
-      });
+      toast.error("Please select a package");
       return;
     }
 
@@ -220,10 +214,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         .maybeSingle();
 
       if (existing) {
-        toast({
-          title: "Member Exists",
+        toast.error("Member Exists", {
           description: "A member with this phone number already exists",
-          variant: "destructive",
         });
         setIsLoading(false);
         return;
@@ -378,15 +370,13 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         // Don't fail the whole operation if WhatsApp fails
       }
 
-      toast({ title: "Member added successfully" });
+      toast.success("Member added successfully");
       onSuccess();
       onOpenChange(false);
       resetForm();
     } catch (error: any) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: error.message,
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);

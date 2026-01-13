@@ -37,7 +37,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ActivityDetailDialog from "./ActivityDetailDialog";
 import { exportToExcel } from "@/utils/exportToExcel";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 
 interface AdminActivityLog {
   id: string;
@@ -67,7 +67,6 @@ interface AdminActivityLogsTabProps {
 }
 
 const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
-  const { toast } = useToast();
   const [logs, setLogs] = useState<AdminActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -251,15 +250,12 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
       }));
 
       exportToExcel(exportData, "admin_activity_logs");
-      toast({
-        title: "Export successful",
+      toast.success("Export successful", {
         description: `Exported ${exportData.length} activity log(s) to Excel`,
       });
     } catch (error: any) {
-      toast({
-        title: "Export failed",
+      toast.error("Export failed", {
         description: error.message || "Failed to export activity logs",
-        variant: "destructive",
       });
     }
   };

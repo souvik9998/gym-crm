@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +56,6 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<DailyPassUser | null>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
     fetchUsers();
@@ -100,10 +99,8 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
       setUsers(usersWithSubs);
     } catch (error) {
       console.error("Error fetching daily pass users:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to load daily pass users",
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -178,18 +175,15 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
         },
       });
 
-      toast({
-        title: "Success",
+      toast.success("Success", {
         description: "Daily pass user deleted successfully",
       });
 
       fetchUsers();
     } catch (error: any) {
       console.error("Error deleting user:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: error.message || "Failed to delete daily pass user",
-        variant: "destructive",
       });
     } finally {
       setDeleteDialogOpen(false);
@@ -255,15 +249,12 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
       }));
 
       exportToExcel(exportData, "daily_pass_users");
-      toast({
-        title: "Export successful",
+      toast.success("Export successful", {
         description: `Exported ${exportData.length} daily pass user(s) to Excel`,
       });
     } catch (error: any) {
-      toast({
-        title: "Export failed",
+      toast.error("Export failed", {
         description: error.message || "Failed to export daily pass users",
-        variant: "destructive",
       });
     }
   };

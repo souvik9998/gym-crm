@@ -240,6 +240,63 @@
   animation: none;
 }
 
+/* Sonner toast color overrides - Light backgrounds with dark text and proper opacity */
+[data-sonner-toast][data-type="success"] {
+  background-color: rgba(240, 253, 244, 0.95) !important;
+  border-left: 4px solid #4ade80 !important;
+  color: #111827 !important;
+  backdrop-filter: blur(8px) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-sonner-toast][data-type="success"] [data-title],
+[data-sonner-toast][data-type="success"] [data-description] {
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  background-color: rgba(254, 242, 242, 0.95) !important;
+  border-left: 4px solid #f87171 !important;
+  color: #111827 !important;
+  backdrop-filter: blur(8px) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-sonner-toast][data-type="error"] [data-title],
+[data-sonner-toast][data-type="error"] [data-description] {
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
+[data-sonner-toast][data-type="info"] {
+  background-color: rgba(239, 246, 255, 0.95) !important;
+  border-left: 4px solid #60a5fa !important;
+  color: #111827 !important;
+  backdrop-filter: blur(8px) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-sonner-toast][data-type="info"] [data-title],
+[data-sonner-toast][data-type="info"] [data-description] {
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
+[data-sonner-toast][data-type="warning"] {
+  background-color: rgba(254, 252, 232, 0.95) !important;
+  border-left: 4px solid #facc15 !important;
+  color: #111827 !important;
+  backdrop-filter: blur(8px) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-sonner-toast][data-type="warning"] [data-title],
+[data-sonner-toast][data-type="warning"] [data-description] {
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
 /* Animation for skeleton loading */
 @keyframes shimmer {
   0% {

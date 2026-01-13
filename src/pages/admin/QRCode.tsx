@@ -10,11 +10,10 @@ import {
   CheckIcon,
   ArrowTopRightOnSquareIcon,
 } from "@heroicons/react/24/outline";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 
 const QRCodePage = () => {
-  const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [gymName, setGymName] = useState("Pro Plus Fitness");
 
@@ -34,10 +33,10 @@ const QRCodePage = () => {
     try {
       await navigator.clipboard.writeText(portalUrl);
       setCopied(true);
-      toast({ title: "Link copied to clipboard!" });
+      toast.success("Link copied to clipboard!");
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      toast({ title: "Failed to copy", variant: "destructive" });
+      toast.error("Failed to copy");
     }
   };
 
@@ -69,7 +68,7 @@ const QRCodePage = () => {
     };
 
     img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
-    toast({ title: "QR Code downloaded!" });
+    toast.success("QR Code downloaded!");
   };
 
   return (

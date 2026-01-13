@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Phone, ArrowRight, Shield, Clock, CreditCard, Dumbbell, UserPlus, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { z } from "zod";
 
 const formSchema = z.object({
@@ -16,7 +16,6 @@ const formSchema = z.object({
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
   const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [existingMember, setExistingMember] = useState<any>(null);
@@ -71,10 +70,8 @@ const Index = () => {
     
     const result = formSchema.safeParse({ phone });
     if (!result.success) {
-      toast({
-        title: "Invalid Input",
+      toast.error("Invalid Input", {
         description: result.error.errors[0].message,
-        variant: "destructive",
       });
       return;
     }
@@ -114,10 +111,8 @@ const Index = () => {
         navigate("/register", { state: { phone } });
       }
     } catch (error: any) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: error.message || "Something went wrong",
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);

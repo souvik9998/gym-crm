@@ -12,7 +12,7 @@ import {
   TrashIcon,
   PencilIcon,
 } from "@heroicons/react/24/outline";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -31,7 +31,6 @@ interface Trainer {
 }
 
 const TrainersPage = () => {
-  const { toast } = useToast();
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Trainers
@@ -94,17 +93,17 @@ const TrainersPage = () => {
 
   const handleAddTrainer = async () => {
     if (!newTrainer.name) {
-      toast({ title: "Please fill trainer name", variant: "destructive" });
+      toast.error("Please fill trainer name");
       return;
     }
 
     if (!newTrainer.monthly_fee) {
-      toast({ title: "Monthly fee (member charge) is required", variant: "destructive" });
+      toast.error("Monthly fee (member charge) is required");
       return;
     }
 
     if (newTrainer.payment_category === "session_basis" && !newTrainer.session_fee) {
-      toast({ title: "Session fee is required for session basis category", variant: "destructive" });
+      toast.error("Session fee is required for session basis category");
       return;
     }
 
@@ -120,7 +119,9 @@ const TrainersPage = () => {
     });
 
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast.error("Error", {
+        description: error.message,
+      });
     } else {
       await logAdminActivity({
         category: "trainers",
@@ -137,7 +138,7 @@ const TrainersPage = () => {
           session_fee: Number(newTrainer.session_fee) || 0,
         },
       });
-      toast({ title: "Trainer added" });
+      toast.success("Trainer added");
       setNewTrainer({ 
         name: "", 
         phone: "", 
@@ -168,12 +169,12 @@ const TrainersPage = () => {
 
   const handleSaveTrainer = async (id: string) => {
     if (!editTrainerData.name) {
-      toast({ title: "Name is required", variant: "destructive" });
+      toast.error("Name is required");
       return;
     }
 
     if (!editTrainerData.monthly_fee) {
-      toast({ title: "Monthly fee (member charge) is required", variant: "destructive" });
+      toast.error("Monthly fee (member charge) is required");
       return;
     }
 
@@ -204,7 +205,9 @@ const TrainersPage = () => {
       .eq("id", id);
 
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast.error("Error", {
+        description: error.message,
+      });
     } else {
       await logAdminActivity({
         category: "trainers",
@@ -225,7 +228,7 @@ const TrainersPage = () => {
           session_fee: Number(editTrainerData.session_fee) || 0,
         },
       });
-      toast({ title: "Trainer updated" });
+      toast.success("Trainer updated");
       setEditingTrainerId(null);
       fetchTrainers();
     }
@@ -271,7 +274,7 @@ const TrainersPage = () => {
           } : null,
         });
         fetchTrainers();
-        toast({ title: "Trainer deleted" });
+        toast.success("Trainer deleted");
       },
     });
   };

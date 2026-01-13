@@ -40,7 +40,7 @@ import {
   ArrowTrendingDownIcon,
   BookOpenIcon,
 } from "@heroicons/react/24/outline";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { format, subDays, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { cn } from "@/lib/utils";
@@ -98,7 +98,6 @@ const INCOME_CATEGORIES = [
 type DateRangePreset = "today" | "7days" | "15days" | "30days" | "this_month" | "custom";
 
 const AdminLedger = () => {
-  const { toast } = useToast();
   
   // Date range state
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("this_month");
@@ -188,7 +187,7 @@ const AdminLedger = () => {
 
   const handleAddExpense = async () => {
     if (!expenseCategory || !expenseDescription || !expenseAmount) {
-      toast({ title: "Please fill all required fields", variant: "destructive" });
+      toast.error("Please fill all required fields");
       return;
     }
 
@@ -210,7 +209,9 @@ const AdminLedger = () => {
     setIsSaving(false);
 
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast.error("Error", {
+        description: error.message,
+      });
     } else {
       await logAdminActivity({
         category: "payments",
@@ -224,7 +225,7 @@ const AdminLedger = () => {
           date: format(expenseDate, "yyyy-MM-dd"),
         },
       });
-      toast({ title: "Expense added successfully" });
+      toast.success("Expense added successfully");
       setIsAddExpenseOpen(false);
       resetExpenseForm();
       fetchEntries();
@@ -251,25 +252,20 @@ const AdminLedger = () => {
       }));
 
       exportToExcel(exportData, "ledger");
-      toast({
-        title: "Export successful",
+      toast.success("Export successful", {
         description: `Exported ${exportData.length} ledger entry/entries to Excel`,
       });
     } catch (error: any) {
-      toast({
-        title: "Export failed",
+      toast.error("Export failed", {
         description: error.message || "Failed to export ledger entries",
-        variant: "destructive",
       });
     }
   };
 
   const handleDeleteEntry = (entry: LedgerEntry) => {
     if (entry.is_auto_generated) {
-      toast({ 
-        title: "Cannot delete", 
-        description: "Auto-generated entries cannot be deleted", 
-        variant: "destructive" 
+      toast.error("Cannot delete", {
+        description: "Auto-generated entries cannot be deleted",
       });
       return;
     }
@@ -285,7 +281,9 @@ const AdminLedger = () => {
           .eq("id", entry.id);
 
         if (error) {
-          toast({ title: "Error", description: error.message, variant: "destructive" });
+          toast.error("Error", {
+        description: error.message,
+      });
         } else {
           await logAdminActivity({
             category: "payments",
@@ -300,7 +298,7 @@ const AdminLedger = () => {
               type: entry.entry_type,
             },
           });
-          toast({ title: "Entry deleted" });
+          toast.success("Entry deleted");
           fetchEntries();
         }
       },

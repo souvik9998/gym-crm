@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { EditMemberDialog } from "./EditMemberDialog";
 import { MemberActivityDialog } from "./MemberActivityDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -56,7 +56,6 @@ type SortField = "name" | "phone" | "status" | "trainer" | "expiry" | "join_date
 type SortOrder = "asc" | "desc";
 
 export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterActive = false }: MembersTableProps) => {
-  const { toast } = useToast();
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
@@ -157,13 +156,11 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
         } : null,
       });
 
-      toast({ title: "Member deleted successfully" });
+      toast.success("Member deleted successfully");
       fetchMembers();
     } catch (error: any) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: error.message,
-        variant: "destructive",
       });
     }
   };
@@ -228,10 +225,8 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
         throw new Error(data.error || "Failed to send WhatsApp");
       }
     } catch (error: any) {
-      toast({
-        title: "Failed to send WhatsApp",
+      toast.error("Failed to send WhatsApp", {
         description: error.message,
-        variant: "destructive",
       });
       return false;
     } finally {
@@ -243,7 +238,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     e.stopPropagation();
     const success = await sendWhatsAppMessage(member.id, member.name, member.phone, "promotional");
     if (success) {
-      toast({ title: `Promotional message sent to ${member.name}` });
+      toast.success(`Promotional message sent to ${member.name}`);
     }
   };
 
@@ -260,7 +255,9 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     const success = await sendWhatsAppMessage(member.id, member.name, member.phone, "expiry_reminder");
     if (success) {
       const dayText = diffDays === 0 ? "today" : diffDays < 0 ? `${Math.abs(diffDays)} days ago` : `in ${diffDays} days`;
-      toast({ title: `Expiry reminder sent to ${member.name}`, description: `Expires ${dayText}` });
+      toast.success(`Expiry reminder sent to ${member.name}`, {
+        description: `Expires ${dayText}`,
+      });
     }
   };
 
@@ -276,7 +273,9 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     
     const success = await sendWhatsAppMessage(member.id, member.name, member.phone, "expired_reminder");
     if (success) {
-      toast({ title: `Expired reminder sent to ${member.name}`, description: `Expired ${diffDays} days ago` });
+      toast.success(`Expired reminder sent to ${member.name}`, {
+        description: `Expired ${diffDays} days ago`,
+      });
     }
   };
 
@@ -284,7 +283,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     e.stopPropagation();
     const success = await sendWhatsAppMessage(member.id, member.name, member.phone, "payment_details");
     if (success) {
-      toast({ title: `Payment details sent to ${member.name}` });
+      toast.success(`Payment details sent to ${member.name}`);
     }
   };
 
@@ -296,10 +295,8 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     if (e) e.stopPropagation();
     try {
       if (!member.subscription?.id) {
-        toast({
-          title: "No subscription found",
+        toast.error("No subscription found", {
           description: "Cannot activate member without a subscription",
-          variant: "destructive",
         });
         return;
       }
@@ -325,12 +322,10 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
           : m
       ));
       
-      toast({ title: `${member.name} moved to active` });
+      toast.success(`${member.name} moved to active`);
     } catch (error: any) {
-      toast({
-        title: "Error moving to active",
+      toast.error("Error moving to active", {
         description: error.message,
-        variant: "destructive",
       });
     }
   };
@@ -449,8 +444,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
         const typeLabel = type === "promotional" ? "Promotional messages" : 
                           type === "expiry_reminder" ? "Expiry reminders" : 
                           type === "expired_reminder" ? "Expired reminders" : "Messages";
-        toast({ 
-          title: `${typeLabel} sent to ${data.sent} members`,
+        toast.success(`${typeLabel} sent to ${data.sent} members`, {
           description: data.failed > 0 ? `${data.failed} failed` : undefined,
         });
         setSelectedMembers(new Set());
@@ -458,10 +452,8 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
         throw new Error(data.error || "Failed to send WhatsApp");
       }
     } catch (error: any) {
-      toast({
-        title: "Failed to send bulk WhatsApp",
+      toast.error("Failed to send bulk WhatsApp", {
         description: error.message,
-        variant: "destructive",
       });
     } finally {
       setBulkActionType(null);
@@ -716,15 +708,12 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
       }));
 
       exportToExcel(exportData, "members");
-      toast({
-        title: "Export successful",
+      toast.success("Export successful", {
         description: `Exported ${exportData.length} member(s) to Excel`,
       });
     } catch (error: any) {
-      toast({
-        title: "Export failed",
+      toast.error("Export failed", {
         description: error.message || "Failed to export members",
-        variant: "destructive",
       });
     }
   };

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageCircle, Copy, Check, Save, Megaphone, Clock, AlertTriangle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 interface MessageTemplate {
   id: string;
@@ -178,7 +178,6 @@ Don't lose your progress! Reply or visit us now.
 type TemplateCategory = "promotional" | "expiry_reminder" | "expired_reminder";
 
 export const WhatsAppTemplates = () => {
-  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TemplateCategory>("promotional");
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -243,7 +242,7 @@ export const WhatsAppTemplates = () => {
   const handleCopyTemplate = (template: MessageTemplate) => {
     navigator.clipboard.writeText(template.template);
     setCopiedId(template.id);
-    toast({ title: "Template copied to clipboard" });
+    toast.success("Template copied to clipboard");
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -270,9 +269,8 @@ export const WhatsAppTemplates = () => {
       metadata: { template_type: activeTab, full_template_length: message.length },
     });
     
-    toast({ 
-      title: `${categoryNames[activeTab]} template saved`,
-      description: "This message will be used when sending this type of notification" 
+    toast.success(`${categoryNames[activeTab]} template saved`, {
+      description: "This message will be used when sending this type of notification",
     });
   };
 

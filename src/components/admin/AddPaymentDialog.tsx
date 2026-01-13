@@ -20,7 +20,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { createMembershipIncomeEntry, calculateTrainerPercentageExpense } from "@/hooks/useLedger";
 import {
@@ -72,7 +72,6 @@ interface AddPaymentDialogProps {
 type PaymentType = "gym_only" | "gym_and_pt" | "pt_only";
 
 export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDialogProps) => {
-  const { toast } = useToast();
   const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -144,10 +143,8 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
 
   const handleSearch = async () => {
     if (phone.length !== 10) {
-      toast({
-        title: "Invalid Phone",
+      toast.error("Invalid Phone", {
         description: "Enter a valid 10-digit phone number",
-        variant: "destructive",
       });
       return;
     }
@@ -167,19 +164,15 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
         // Fetch current membership end date for PT duration calculation
         fetchMembershipEndDate(data.id);
       } else {
-        toast({
-          title: "Member Not Found",
+        toast.error("Member Not Found", {
           description: "No member with this phone number exists",
-          variant: "destructive",
         });
         setMember(null);
         setMembershipEndDate(null);
       }
     } catch (error: any) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: error.message,
-        variant: "destructive",
       });
     } finally {
       setIsSearching(false);
@@ -374,28 +367,22 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
     e.preventDefault();
 
     if (!member) {
-      toast({
-        title: "No Member Selected",
+      toast.error("No Member Selected", {
         description: "Search for a member first",
-        variant: "destructive",
       });
       return;
     }
 
     if (paymentType !== "pt_only" && !selectedPackageId) {
-      toast({
-        title: "Select Package",
+      toast.error("Select Package", {
         description: "Please select a gym membership package",
-        variant: "destructive",
       });
       return;
     }
 
     if ((paymentType === "gym_and_pt" || paymentType === "pt_only") && (!selectedTrainerId || !selectedPTOption)) {
-      toast({
-        title: "Select Trainer",
+      toast.error("Select Trainer", {
         description: "Please select a trainer and duration",
-        variant: "destructive",
       });
       return;
     }
@@ -547,14 +534,12 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
         newValue: { amount: totalAmount, payment_type: paymentTypeValue, member_name: member.name },
       });
 
-      toast({ title: "Payment recorded successfully" });
+      toast.success("Payment recorded successfully");
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: error.message,
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);

@@ -45,7 +45,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { exportToExcel } from "@/utils/exportToExcel";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { format, parseISO } from "date-fns";
 
 interface UserActivityLog {
@@ -85,7 +85,6 @@ interface UserActivityLogsTabProps {
 }
 
 const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
-  const { toast } = useToast();
   const [logs, setLogs] = useState<UserActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -274,15 +273,12 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
       }));
 
       exportToExcel(exportData, "user_activity_logs");
-      toast({
-        title: "Export successful",
+      toast.success("Export successful", {
         description: `Exported ${exportData.length} activity log(s) to Excel`,
       });
     } catch (error: any) {
-      toast({
-        title: "Export failed",
+      toast.error("Export failed", {
         description: error.message || "Failed to export activity logs",
-        variant: "destructive",
       });
     }
   };

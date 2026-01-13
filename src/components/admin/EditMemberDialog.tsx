@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { Calendar, User, Phone, Save, MapPin, CreditCard, Users } from "lucide-react";
 
@@ -54,7 +54,6 @@ export const EditMemberDialog = ({
   member,
   onSuccess,
 }: EditMemberDialogProps) => {
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -238,14 +237,14 @@ export const EditMemberDialog = ({
         newValue,
       });
 
-      toast({ title: "Member updated successfully", description: `Changed: ${changedFields}` });
+      toast.success("Member updated successfully", {
+        description: `Changed: ${changedFields}`,
+      });
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: error.message,
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);

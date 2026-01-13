@@ -18,7 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
 interface AdminHeaderProps {
@@ -41,7 +41,6 @@ export const AdminHeader = ({
   className,
 }: AdminHeaderProps) => {
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -51,7 +50,7 @@ export const AdminHeader = ({
   const handleRefresh = () => {
     if (onRefresh) {
       onRefresh();
-      toast({ title: "Data refreshed" });
+      toast.success("Data refreshed");
     }
   };
 

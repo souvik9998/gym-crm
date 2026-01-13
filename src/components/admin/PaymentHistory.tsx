@@ -21,7 +21,7 @@ import {
 import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { exportToExcel } from "@/utils/exportToExcel";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 
 type PaymentMode = Database["public"]["Enums"]["payment_mode"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
@@ -51,7 +51,6 @@ interface PaymentHistoryProps {
 }
 
 export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
-  const { toast } = useToast();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState("");
@@ -222,15 +221,12 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
       }));
 
       exportToExcel(exportData, "payments");
-      toast({
-        title: "Export successful",
+      toast.success("Export successful", {
         description: `Exported ${exportData.length} payment(s) to Excel`,
       });
     } catch (error: any) {
-      toast({
-        title: "Export failed",
+      toast.error("Export failed", {
         description: error.message || "Failed to export payments",
-        variant: "destructive",
       });
     }
   };

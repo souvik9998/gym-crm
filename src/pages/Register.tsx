@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Dumbbell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
 import MemberDetailsForm, { type MemberDetailsData } from "@/components/registration/MemberDetailsForm";
@@ -14,7 +14,6 @@ type Step = "details" | "package";
 const Register = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { initiatePayment, isLoading: isPaymentLoading, paymentStage } = useRazorpay();
   const { phone } = (location.state as { phone: string }) || {};
   
@@ -101,10 +100,8 @@ const Register = () => {
         });
       },
       onError: (error) => {
-        toast({
-          title: "Payment Failed",
+        toast.error("Payment Failed", {
           description: error,
-          variant: "destructive",
         });
       },
     });

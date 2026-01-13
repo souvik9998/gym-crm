@@ -19,7 +19,7 @@ import {
   BuildingStorefrontIcon,
 } from "@heroicons/react/24/outline";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { User } from "@supabase/supabase-js";
 import { WhatsAppTemplates } from "@/components/admin/WhatsAppTemplates";
@@ -53,7 +53,6 @@ interface GymSettings {
 const AdminSettings = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -168,7 +167,9 @@ const AdminSettings = () => {
     setIsSaving(false);
 
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast.error("Error", {
+        description: error.message,
+      });
     } else {
       await logAdminActivity({
         category: "settings",
@@ -178,21 +179,21 @@ const AdminSettings = () => {
         oldValue: oldSettings,
         newValue: newSettings,
       });
-      toast({ title: "Settings saved successfully" });
+      toast.success("Settings saved successfully");
     }
   };
 
   // Monthly Package handlers
   const handleAddMonthlyPackage = async () => {
     if (!newMonthlyPackage.months || !newMonthlyPackage.price) {
-      toast({ title: "Please fill months and price", variant: "destructive" });
+      toast.error("Please fill months and price");
       return;
     }
 
     const months = Number(newMonthlyPackage.months);
     
     if (monthlyPackages.some((p) => p.months === months)) {
-      toast({ title: "A package with this duration already exists", variant: "destructive" });
+      toast.error("A package with this duration already exists");
       return;
     }
 
@@ -203,7 +204,9 @@ const AdminSettings = () => {
     });
 
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast.error("Error", {
+        description: error.message,
+      });
     } else {
       await logAdminActivity({
         category: "packages",
@@ -213,7 +216,7 @@ const AdminSettings = () => {
         entityName: `${months} Month Package`,
         newValue: { months, price: Number(newMonthlyPackage.price), joining_fee: Number(newMonthlyPackage.joining_fee) || 0 },
       });
-      toast({ title: "Package added" });
+      toast.success("Package added");
       setNewMonthlyPackage({ months: "", price: "", joining_fee: "" });
       fetchData();
     }
@@ -237,7 +240,9 @@ const AdminSettings = () => {
       .eq("id", id);
 
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast.error("Error", {
+        description: error.message,
+      });
     } else {
       await logAdminActivity({
         category: "packages",
@@ -249,7 +254,7 @@ const AdminSettings = () => {
         oldValue,
         newValue: { price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 },
       });
-      toast({ title: "Package updated" });
+      toast.success("Package updated");
       setEditingMonthlyId(null);
       fetchData();
     }
@@ -287,7 +292,7 @@ const AdminSettings = () => {
           entityName: `${months} Month Package`,
         });
         fetchData();
-        toast({ title: "Package deleted" });
+        toast.success("Package deleted");
       },
     });
   };
@@ -295,14 +300,14 @@ const AdminSettings = () => {
   // Custom Package handlers
   const handleAddPackage = async () => {
     if (!newPackage.name || !newPackage.duration_days || !newPackage.price) {
-      toast({ title: "Please fill all fields", variant: "destructive" });
+      toast.error("Please fill all fields");
       return;
     }
 
     const durationDays = Number(newPackage.duration_days);
     
     if (customPackages.some((p) => p.duration_days === durationDays)) {
-      toast({ title: "A package with this duration already exists", variant: "destructive" });
+      toast.error("A package with this duration already exists");
       return;
     }
 
@@ -314,9 +319,11 @@ const AdminSettings = () => {
 
     if (error) {
       if (error.code === "23505") {
-        toast({ title: "A package with this duration already exists", variant: "destructive" });
+        toast.error("A package with this duration already exists");
       } else {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
+        toast.error("Error", {
+          description: error.message,
+        });
       }
     } else {
       await logAdminActivity({
@@ -327,7 +334,7 @@ const AdminSettings = () => {
         entityName: newPackage.name,
         newValue: { name: newPackage.name, duration_days: durationDays, price: Number(newPackage.price) },
       });
-      toast({ title: "Package added" });
+      toast.success("Package added");
       setNewPackage({ name: "", duration_days: "", price: "" });
       fetchData();
     }
@@ -340,7 +347,7 @@ const AdminSettings = () => {
 
   const handleSavePackage = async (id: string) => {
     if (!editPackageData.name || !editPackageData.price) {
-      toast({ title: "Name and price are required", variant: "destructive" });
+      toast.error("Name and price are required");
       return;
     }
 
@@ -356,7 +363,9 @@ const AdminSettings = () => {
       .eq("id", id);
 
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast.error("Error", {
+        description: error.message,
+      });
     } else {
       await logAdminActivity({
         category: "packages",
@@ -368,7 +377,7 @@ const AdminSettings = () => {
         oldValue,
         newValue: { name: editPackageData.name, price: Number(editPackageData.price) },
       });
-      toast({ title: "Package updated" });
+      toast.success("Package updated");
       setEditingPackageId(null);
       fetchData();
     }
@@ -409,7 +418,7 @@ const AdminSettings = () => {
           oldValue: pkg ? { name: pkg.name, duration_days: pkg.duration_days, price: pkg.price } : null,
         });
         fetchData();
-        toast({ title: "Package deleted" });
+        toast.success("Package deleted");
       },
     });
   };
@@ -700,10 +709,8 @@ const AdminSettings = () => {
                           .eq("id", settings.id);
                         
                         if (error) {
-                          toast({ 
-                            title: "Error", 
-                            description: error.message, 
-                            variant: "destructive" 
+                          toast.error("Error", {
+                            description: error.message,
                           });
                         } else {
                           setWhatsappEnabled(checked);
@@ -715,8 +722,7 @@ const AdminSettings = () => {
                             oldValue: { whatsapp_enabled: !checked },
                             newValue: { whatsapp_enabled: checked },
                           });
-                          toast({ 
-                            title: checked ? "WhatsApp Enabled" : "WhatsApp Disabled",
+                          toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled", {
                             description: checked 
                               ? "WhatsApp messaging is now active" 
                               : "All WhatsApp messages are now disabled"

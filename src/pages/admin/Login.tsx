@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Dumbbell, Mail, Lock, ArrowLeft, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { z } from "zod";
 
 const loginSchema = z.object({
@@ -16,7 +16,6 @@ const loginSchema = z.object({
 
 const AdminLogin = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -27,10 +26,8 @@ const AdminLogin = () => {
     
     const result = loginSchema.safeParse({ email, password });
     if (!result.success) {
-      toast({
-        title: "Invalid Input",
+      toast.error("Invalid Input", {
         description: result.error.errors[0].message,
-        variant: "destructive",
       });
       return;
     }
@@ -61,8 +58,7 @@ const AdminLogin = () => {
             console.log("Role assignment note:", roleError.message);
           }
 
-          toast({
-            title: "Account Created",
+          toast.success("Account Created", {
             description: "You can now sign in with your credentials.",
           });
           setIsSignUp(false);
@@ -79,10 +75,8 @@ const AdminLogin = () => {
         navigate("/admin/dashboard");
       }
     } catch (error: any) {
-      toast({
-        title: isSignUp ? "Sign Up Failed" : "Login Failed",
+      toast.error(isSignUp ? "Sign Up Failed" : "Login Failed", {
         description: error.message || "Something went wrong",
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);

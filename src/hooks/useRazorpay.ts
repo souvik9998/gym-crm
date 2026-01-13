@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 
 interface RazorpayOptions {
   amount: number;
@@ -51,7 +51,6 @@ export const useRazorpay = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [paymentStage, setPaymentStage] = useState<PaymentStage>("idle");
   const isVerifyingRef = useRef(false);
-  const { toast } = useToast();
 
   const loadRazorpayScript = useCallback((): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -208,10 +207,8 @@ export const useRazorpay = () => {
               setIsLoading(false);
               setPaymentStage("idle");
               onError?.(errorMessage);
-              toast({
-                title: "Payment Verification Failed",
+              toast.error("Payment Verification Failed", {
                 description: errorMessage,
-                variant: "destructive",
               });
             }
           },
@@ -232,10 +229,8 @@ export const useRazorpay = () => {
           console.error("Payment failed:", response.error);
           isVerifyingRef.current = false;
           onError?.(response.error.description || "Payment failed");
-          toast({
-            title: "Payment Failed",
+          toast.error("Payment Failed", {
             description: response.error.description,
-            variant: "destructive",
           });
           setIsLoading(false);
           setPaymentStage("idle");
@@ -246,16 +241,14 @@ export const useRazorpay = () => {
         const errorMessage = error instanceof Error ? error.message : "Failed to initiate payment";
         console.error("Payment initiation error:", error);
         onError?.(errorMessage);
-        toast({
-          title: "Payment Error",
+        toast.error("Payment Error", {
           description: errorMessage,
-          variant: "destructive",
         });
         setIsLoading(false);
         setPaymentStage("idle");
       }
     },
-    [loadRazorpayScript, toast]
+    [loadRazorpayScript]
   );
 
   return { initiatePayment, isLoading, paymentStage };

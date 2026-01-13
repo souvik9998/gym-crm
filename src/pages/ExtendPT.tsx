@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Dumbbell, Calendar, IndianRupee, User, Check, AlertCircle, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { addDays, addMonths, differenceInDays, format, isBefore, isAfter, parseISO } from "date-fns";
 
@@ -27,7 +27,6 @@ interface PTDurationOption {
 const ExtendPT = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
   const { initiatePayment, isLoading } = useRazorpay();
 
   const member = location.state?.member;
@@ -42,19 +41,15 @@ const ExtendPT = () => {
 
   useEffect(() => {
     if (!member) {
-      toast({
-        title: "Access Denied",
+      toast.error("Access Denied", {
         description: "Please access this page from the home page.",
-        variant: "destructive",
       });
       navigate("/");
       return;
     }
     if (!membershipEndDate) {
-      toast({
-        title: "No Active Membership",
+      toast.error("No Active Membership", {
         description: "You need an active gym membership to add personal training.",
-        variant: "destructive",
       });
       navigate("/");
       return;
@@ -238,10 +233,8 @@ const ExtendPT = () => {
         });
       },
       onError: (error) => {
-        toast({
-          title: "Payment Failed",
+        toast.error("Payment Failed", {
           description: error,
-          variant: "destructive",
         });
       },
     });

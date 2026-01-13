@@ -24,7 +24,7 @@ import { AddPaymentDialog } from "@/components/admin/AddPaymentDialog";
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { exportToExcel } from "@/utils/exportToExcel";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import {
   Popover,
   PopoverContent,
@@ -46,7 +46,6 @@ interface DashboardStats {
 }
 
 const AdminDashboard = () => {
-  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
@@ -227,10 +226,14 @@ const AdminDashboard = () => {
       }) || [];
 
       exportToExcel(exportData, "members_export", "Members");
-      toast({ title: "Export successful", description: "Members data exported to Excel" });
+      toast.success("Export successful", {
+        description: "Members data exported to Excel",
+      });
     } catch (error) {
       console.error("Export error:", error);
-      toast({ title: "Export failed", description: "Could not export data", variant: "destructive" });
+      toast.error("Export failed", {
+        description: "Could not export data",
+      });
     }
   };
 

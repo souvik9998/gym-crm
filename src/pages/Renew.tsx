@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Dumbbell } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { supabase } from "@/integrations/supabase/client";
 import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
@@ -18,7 +18,6 @@ interface Member {
 const Renew = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { initiatePayment, isLoading: isPaymentLoading, paymentStage } = useRazorpay();
   const member = (location.state as { member: Member })?.member;
   const [ptStartDate, setPtStartDate] = useState<string | null>(null);
@@ -128,10 +127,8 @@ const Renew = () => {
         });
       },
       onError: (error) => {
-        toast({
-          title: "Renewal Failed",
+        toast.error("Renewal Failed", {
           description: error,
-          variant: "destructive",
         });
       },
     });
