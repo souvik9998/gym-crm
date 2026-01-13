@@ -354,6 +354,27 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT },
       });
 
+      // Send WhatsApp notification for new member registration
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const adminUserId = session?.user?.id || null;
+
+        await supabase.functions.invoke("send-whatsapp", {
+          body: {
+            phone: phone,
+            name: name,
+            endDate: endDate.toISOString().split("T")[0],
+            type: "renewal", // Use renewal type for welcome message
+            memberIds: [member.id],
+            isManual: true,
+            adminUserId: adminUserId,
+          },
+        });
+      } catch (err) {
+        console.error("Failed to send WhatsApp notification:", err);
+        // Don't fail the whole operation if WhatsApp fails
+      }
+
       toast({ title: "Member added successfully" });
       onSuccess();
       onOpenChange(false);
