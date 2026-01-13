@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { exportToExcel } from "@/utils/exportToExcel";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 interface WhatsAppLog {
   id: string;
@@ -333,8 +334,11 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
       expiring_today: "Expiring Today",
       manual: "Manual",
       custom: "Custom",
+      new_registration: "New Registration",
+      new_member: "New Member",
+      daily_pass: "Daily Pass",
     };
-    return labels[type] || type;
+    return labels[type] || type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
   const hasActiveFilters =
@@ -363,7 +367,9 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
                 <CardTitle className="text-sm font-medium text-muted-foreground">Total Messages</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-accent">{stats.totalMessages}</div>
+                <div className="text-3xl font-bold text-accent">
+                  <AnimatedCounter value={stats.totalMessages} duration={800} />
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">All time</p>
               </CardContent>
             </Card>
@@ -372,7 +378,9 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
                 <CardTitle className="text-sm font-medium text-muted-foreground">Sent</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-success">{stats.sentMessages}</div>
+                <div className="text-3xl font-bold text-success">
+                  <AnimatedCounter value={stats.sentMessages} duration={900} />
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">Successfully delivered</p>
               </CardContent>
             </Card>
@@ -381,7 +389,9 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
                 <CardTitle className="text-sm font-medium text-muted-foreground">Failed</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-destructive">{stats.failedMessages}</div>
+                <div className="text-3xl font-bold text-destructive">
+                  <AnimatedCounter value={stats.failedMessages} duration={700} />
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">Delivery failed</p>
               </CardContent>
             </Card>
@@ -390,7 +400,9 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
                 <CardTitle className="text-sm font-medium text-muted-foreground">Today</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-foreground">{stats.messagesToday}</div>
+                <div className="text-3xl font-bold text-foreground">
+                  <AnimatedCounter value={stats.messagesToday} duration={600} />
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">Messages today</p>
               </CardContent>
             </Card>
@@ -405,11 +417,11 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
                 <div className="flex gap-6">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-accent" />
-                    <span className="text-sm">Manual: {stats.manualMessages}</span>
+                    <span className="text-sm">Manual: <AnimatedCounter value={stats.manualMessages} duration={700} /></span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-muted-foreground" />
-                    <span className="text-sm">Automated: {stats.automatedMessages}</span>
+                    <span className="text-sm">Automated: <AnimatedCounter value={stats.automatedMessages} duration={700} /></span>
                   </div>
                 </div>
               </CardContent>
@@ -421,15 +433,15 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
               <CardContent>
                 <div className="flex gap-6">
                   <div className="text-center">
-                    <p className="text-lg font-bold">{stats.messagesToday}</p>
+                    <p className="text-lg font-bold"><AnimatedCounter value={stats.messagesToday} duration={600} /></p>
                     <p className="text-xs text-muted-foreground">Today</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-lg font-bold">{stats.messagesThisWeek}</p>
+                    <p className="text-lg font-bold"><AnimatedCounter value={stats.messagesThisWeek} duration={700} /></p>
                     <p className="text-xs text-muted-foreground">This Week</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-lg font-bold">{stats.messagesThisMonth}</p>
+                    <p className="text-lg font-bold"><AnimatedCounter value={stats.messagesThisMonth} duration={800} /></p>
                     <p className="text-xs text-muted-foreground">This Month</p>
                   </div>
                 </div>
