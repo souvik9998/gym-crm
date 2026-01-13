@@ -501,13 +501,15 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
-                        className="w-full justify-start text-left font-normal h-10"
+                        className={`w-full justify-start text-left font-normal h-10 ${
+                          !dateOfBirth && "text-muted-foreground"
+                        }`}
                       >
                         <CalendarDays className="mr-2 h-4 w-4" />
-                        {dateOfBirth ? format(dateOfBirth, "dd MMM yyyy") : "Select"}
+                        {dateOfBirth ? format(dateOfBirth, "dd MMM yyyy") : "Select date"}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0" align="start" sideOffset={4}>
                       <CalendarComponent
                         mode="single"
                         selected={dateOfBirth}
@@ -521,6 +523,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                         fromYear={1925}
                         toYear={maxDobDate.getFullYear()}
                         initialFocus
+                        className="rounded-md border bg-popover"
                       />
                     </PopoverContent>
                   </Popover>
