@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -50,6 +50,7 @@ export type PaymentStage = "idle" | "verifying" | "processing" | "success";
 export const useRazorpay = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [paymentStage, setPaymentStage] = useState<PaymentStage>("idle");
+  const isVerifyingRef = useRef(false);
   const { toast } = useToast();
 
   const loadRazorpayScript = useCallback((): Promise<boolean> => {
@@ -88,8 +89,8 @@ export const useRazorpay = () => {
       onError,
     }: RazorpayOptions) => {
       setIsLoading(true);
+      isVerifyingRef.current = false;
       setPaymentStage("idle");
-
       try {
         // Load Razorpay script
         const scriptLoaded = await loadRazorpayScript();
@@ -143,6 +144,9 @@ export const useRazorpay = () => {
             color: "#F97316", // accent color
           },
           handler: async function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
+            // Mark verification in progress so Razorpay's ondismiss doesn't reset our UI
+            isVerifyingRef.current = true;
+
             // Show verification overlay immediately after Razorpay closes
             setPaymentStage("verifying");
 
@@ -200,6 +204,7 @@ export const useRazorpay = () => {
             } catch (error: unknown) {
               const errorMessage = error instanceof Error ? error.message : "Payment verification failed";
               console.error("Verification error:", error);
+              isVerifyingRef.current = false;
               setIsLoading(false);
               setPaymentStage("idle");
               onError?.(errorMessage);
@@ -210,18 +215,22 @@ export const useRazorpay = () => {
               });
             }
           },
-          modal: {
-            ondismiss: function () {
-              setIsLoading(false);
-              setPaymentStage("idle");
-            },
-          },
+           modal: {
+             ondismiss: function () {
+               // Razorpay calls ondismiss even after a successful payment.
+               // If we're already verifying, don't hide the overlay.
+               if (isVerifyingRef.current) return;
+               setIsLoading(false);
+               setPaymentStage("idle");
+             },
+           },
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const razorpay = new (window.Razorpay as any)(options);
         razorpay.on("payment.failed", function (response: { error: { description: string } }) {
           console.error("Payment failed:", response.error);
+          isVerifyingRef.current = false;
           onError?.(response.error.description || "Payment failed");
           toast({
             title: "Payment Failed",
