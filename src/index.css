@@ -204,6 +204,42 @@
   }
 }
 
+/* Toast notification animations */
+@keyframes toast-slide-in {
+  0% {
+    opacity: 0;
+    transform: translateX(100%) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes toast-slide-out {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(100%) scale(0.95);
+  }
+}
+
+/* Sonner toast animation overrides */
+[data-sonner-toast] {
+  animation: toast-slide-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+[data-sonner-toast][data-removed="true"] {
+  animation: toast-slide-out 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+[data-sonner-toast][data-expanded="false"][data-front="false"] {
+  animation: none;
+}
+
 /* Animation for skeleton loading */
 @keyframes shimmer {
   0% {
