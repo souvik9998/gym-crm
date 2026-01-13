@@ -182,14 +182,14 @@ export const useRazorpay = () => {
                 throw new Error(verifyError?.message || "Payment verification failed");
               }
 
-              // Show success state briefly
+              // Show success state and keep overlay visible during navigation
               setPaymentStage("success");
+              setIsLoading(false);
+              
+              // Brief delay to show success state, then navigate (overlay stays visible)
               await new Promise((resolve) => setTimeout(resolve, 800));
 
-              // Reset state BEFORE calling onSuccess to avoid overlay showing during navigation
-              setIsLoading(false);
-              setPaymentStage("idle");
-
+              // Call onSuccess which triggers navigation - overlay will unmount with component
               onSuccess({
                 memberId: verifyData.memberId,
                 dailyPassUserId: verifyData.dailyPassUserId,
