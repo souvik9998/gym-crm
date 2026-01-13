@@ -27,6 +27,7 @@ interface RazorpayOptions {
     photoIdNumber: string;
     address: string;
     gender: string;
+    dateOfBirth?: string;
   };
   onSuccess: (data: {
     memberId?: string;
