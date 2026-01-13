@@ -45,8 +45,11 @@ declare global {
   }
 }
 
+export type PaymentStage = "idle" | "verifying" | "processing" | "success";
+
 export const useRazorpay = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [paymentStage, setPaymentStage] = useState<PaymentStage>("idle");
   const { toast } = useToast();
 
   const loadRazorpayScript = useCallback((): Promise<boolean> => {
@@ -85,6 +88,7 @@ export const useRazorpay = () => {
       onError,
     }: RazorpayOptions) => {
       setIsLoading(true);
+      setPaymentStage("idle");
 
       try {
         // Load Razorpay script
@@ -139,7 +143,14 @@ export const useRazorpay = () => {
             color: "#F97316", // accent color
           },
           handler: async function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
+            // Show verification overlay immediately after Razorpay closes
+            setPaymentStage("verifying");
+
             try {
+              // Small delay for visual feedback
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              setPaymentStage("processing");
+
               // Verify payment
               const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
                 "verify-razorpay-payment",
@@ -171,6 +182,10 @@ export const useRazorpay = () => {
                 throw new Error(verifyError?.message || "Payment verification failed");
               }
 
+              // Show success state briefly
+              setPaymentStage("success");
+              await new Promise((resolve) => setTimeout(resolve, 1500));
+
               onSuccess({
                 memberId: verifyData.memberId,
                 dailyPassUserId: verifyData.dailyPassUserId,
@@ -189,11 +204,13 @@ export const useRazorpay = () => {
               });
             } finally {
               setIsLoading(false);
+              setPaymentStage("idle");
             }
           },
           modal: {
             ondismiss: function () {
               setIsLoading(false);
+              setPaymentStage("idle");
             },
           },
         };
@@ -209,6 +226,7 @@ export const useRazorpay = () => {
             variant: "destructive",
           });
           setIsLoading(false);
+          setPaymentStage("idle");
         });
 
         razorpay.open();
@@ -222,10 +240,11 @@ export const useRazorpay = () => {
           variant: "destructive",
         });
         setIsLoading(false);
+        setPaymentStage("idle");
       }
     },
     [loadRazorpayScript, toast]
   );
 
-  return { initiatePayment, isLoading };
+  return { initiatePayment, isLoading, paymentStage };
 };

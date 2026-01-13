@@ -5,6 +5,7 @@ import { ArrowLeft, Dumbbell } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { supabase } from "@/integrations/supabase/client";
+import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
 import PackageSelectionForm, { type PackageSelectionData } from "@/components/registration/PackageSelectionForm";
 
 interface Member {
@@ -18,7 +19,7 @@ const Renew = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { initiatePayment, isLoading: isPaymentLoading } = useRazorpay();
+  const { initiatePayment, isLoading: isPaymentLoading, paymentStage } = useRazorpay();
   const member = (location.state as { member: Member })?.member;
   const [ptStartDate, setPtStartDate] = useState<string | null>(null);
   const [existingMembershipEndDate, setExistingMembershipEndDate] = useState<string | null>(null);
@@ -140,6 +141,12 @@ const Renew = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Payment Processing Overlay */}
+      <PaymentProcessingOverlay
+        isVisible={paymentStage !== "idle"}
+        stage={paymentStage === "idle" ? "verifying" : paymentStage}
+      />
+
       {/* Header */}
       <header className="px-4 pt-6 pb-4">
         <div className="max-w-md mx-auto">
