@@ -184,7 +184,11 @@ export const useRazorpay = () => {
 
               // Show success state briefly
               setPaymentStage("success");
-              await new Promise((resolve) => setTimeout(resolve, 1500));
+              await new Promise((resolve) => setTimeout(resolve, 800));
+
+              // Reset state BEFORE calling onSuccess to avoid overlay showing during navigation
+              setIsLoading(false);
+              setPaymentStage("idle");
 
               onSuccess({
                 memberId: verifyData.memberId,
@@ -196,15 +200,14 @@ export const useRazorpay = () => {
             } catch (error: unknown) {
               const errorMessage = error instanceof Error ? error.message : "Payment verification failed";
               console.error("Verification error:", error);
+              setIsLoading(false);
+              setPaymentStage("idle");
               onError?.(errorMessage);
               toast({
                 title: "Payment Verification Failed",
                 description: errorMessage,
                 variant: "destructive",
               });
-            } finally {
-              setIsLoading(false);
-              setPaymentStage("idle");
             }
           },
           modal: {
