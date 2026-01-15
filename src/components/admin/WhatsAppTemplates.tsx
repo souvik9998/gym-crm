@@ -422,7 +422,7 @@ export const WhatsAppTemplates = () => {
                   variant="outline"
                   onClick={() => {
                     navigator.clipboard.writeText(currentMessage);
-                    toast({ title: "Message copied to clipboard" });
+                    toast.success("Message copied to clipboard");
                   }}
                   disabled={!currentMessage.trim()}
                 >

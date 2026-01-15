@@ -169,7 +169,7 @@ export const EditMemberDialog = ({
 
       // Only update if there are changes
       if (Object.keys(changes).length === 0) {
-        toast({ title: "No changes to save" });
+        toast.info("No changes to save");
         setIsLoading(false);
         return;
       }
