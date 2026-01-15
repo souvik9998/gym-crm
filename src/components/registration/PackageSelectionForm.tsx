@@ -460,11 +460,18 @@ const PackageSelectionForm = ({
                   dateNormalized.setHours(0, 0, 0, 0);
                   const minNormalized = new Date(minStartDate);
                   minNormalized.setHours(0, 0, 0, 0);
-                  // For expired members: allow dates from minStartDate (can be past dates)
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  
+                  // For expired members: allow dates from minStartDate to today
                   // For active/new members: only allow dates from minStartDate onwards
+                  if (isExpiredMembership) {
+                    return dateNormalized < minNormalized || dateNormalized > today;
+                  }
                   return dateNormalized < minNormalized;
                 }}
                 fromMonth={isExpiredMembership ? minStartDate : undefined}
+                toMonth={isExpiredMembership ? new Date() : undefined}
                 defaultMonth={selectedStartDate}
                 initialFocus
                 className="pointer-events-auto"
@@ -475,7 +482,7 @@ const PackageSelectionForm = ({
             {hasActiveMembership 
               ? `Minimum start date: ${format(minStartDate, "d MMM yyyy")} (day after current membership ends)`
               : isExpiredMembership
-                ? `You can select any date from ${format(minStartDate, "d MMM yyyy")} (day after previous membership ended)`
+                ? `Select any date from ${format(minStartDate, "d MMM yyyy")} to today (defaults to today)`
                 : "Select when your membership should begin"}
           </p>
         </div>
