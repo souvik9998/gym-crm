@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranch } from "@/contexts/BranchContext";
 import { toast } from "@/components/ui/sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,22 +53,28 @@ interface DailyPassTableProps {
 }
 
 const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTableProps) => {
+  const { currentBranch } = useBranch();
   const [users, setUsers] = useState<DailyPassUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<DailyPassUser | null>(null);
 
   useEffect(() => {
-    fetchUsers();
-  }, [refreshKey]);
+    if (currentBranch?.id) {
+      fetchUsers();
+    }
+  }, [refreshKey, currentBranch?.id]);
 
   const fetchUsers = async () => {
+    if (!currentBranch?.id) return;
+    
     setIsLoading(true);
     try {
       // Fetch daily pass users with their latest subscription
       const { data: usersData, error: usersError } = await supabase
         .from("daily_pass_users")
         .select("*")
+        .eq("branch_id", currentBranch.id)
         .order("created_at", { ascending: false });
 
       if (usersError) throw usersError;

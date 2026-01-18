@@ -86,6 +86,7 @@ export const BranchSelector = () => {
         entityId: data.id,
         entityName: newBranch.name,
         newValue: newBranch,
+        branchId: data.id,
       });
 
       toast.success("Branch added successfully");

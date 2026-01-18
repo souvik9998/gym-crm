@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranch } from "@/contexts/BranchContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -98,7 +99,7 @@ const INCOME_CATEGORIES = [
 type DateRangePreset = "today" | "7days" | "15days" | "30days" | "this_month" | "custom";
 
 const AdminLedger = () => {
-  
+  const { currentBranch } = useBranch();
   // Date range state
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("this_month");
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
@@ -164,14 +165,17 @@ const AdminLedger = () => {
   }, [dateRangePreset, customStartDate, customEndDate]);
 
   const { data: entries = [], refetch: fetchEntries } = useQuery({
-    queryKey: ["ledger-entries", dateRange.start, dateRange.end],
+    queryKey: ["ledger-entries", dateRange.start, dateRange.end, currentBranch?.id],
     queryFn: async () => {
+      if (!currentBranch?.id) return [];
+      
       const startStr = format(dateRange.start, "yyyy-MM-dd");
       const endStr = format(dateRange.end, "yyyy-MM-dd");
 
       const { data, error } = await supabase
         .from("ledger_entries")
         .select("*")
+        .eq("branch_id", currentBranch.id)
         .gte("entry_date", startStr)
         .lte("entry_date", endStr)
         .order("entry_date", { ascending: false })
@@ -183,6 +187,7 @@ const AdminLedger = () => {
       }
       return data as LedgerEntry[];
     },
+    enabled: !!currentBranch?.id,
   });
 
   const handleAddExpense = async () => {
@@ -204,6 +209,7 @@ const AdminLedger = () => {
       notes: expenseNotes || null,
       is_auto_generated: false,
       created_by: session?.session?.user?.id,
+      branch_id: currentBranch?.id,
     });
 
     setIsSaving(false);

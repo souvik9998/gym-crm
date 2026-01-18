@@ -85,6 +85,7 @@ export const logAdminActivity = async (params: LogActivityParams) => {
       old_value: params.oldValue || null,
       new_value: params.newValue || null,
       metadata: params.metadata || null,
+      branch_id: params.branchId || null,
     });
 
     if (error) {
