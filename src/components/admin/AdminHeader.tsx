@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import { BranchSelector } from "./BranchSelector";
 
 interface AdminHeaderProps {
   title?: string;
@@ -72,16 +73,28 @@ export const AdminHeader = ({
               <Bars3Icon className="w-5 h-5 text-foreground" />
             </button>
           )}
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">{title}</h1>
-            {subtitle && (
-              <p className="text-xs text-muted-foreground">{subtitle}</p>
-            )}
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-lg font-semibold text-foreground">{title}</h1>
+              {subtitle && (
+                <p className="text-xs text-muted-foreground">{subtitle}</p>
+              )}
+            </div>
           </div>
+        </div>
+
+        {/* Center Section - Branch Selector */}
+        <div className="hidden sm:flex items-center">
+          <BranchSelector />
         </div>
 
         {/* Right Section */}
         <div className="flex items-center gap-1.5">
+          {/* Mobile Branch Selector */}
+          <div className="sm:hidden">
+            <BranchSelector />
+          </div>
+
           {onRefresh && (
             <Button
               variant="ghost"

@@ -17,6 +17,7 @@ import {
   PencilIcon,
   ChatBubbleLeftEllipsisIcon,
   BuildingStorefrontIcon,
+  Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
@@ -427,18 +428,22 @@ const AdminSettings = () => {
     <AdminLayout title="Settings" subtitle="Configure gym settings">
       <div className="max-w-4xl mx-auto space-y-6">
         <Tabs defaultValue={initialTab}>
-          <TabsList className="grid w-full grid-cols-3 bg-muted/50">
+          <TabsList className="grid w-full grid-cols-4 bg-muted/50">
             <TabsTrigger value="packages" className="gap-2 data-[state=active]:bg-background">
               <CubeIcon className="w-4 h-4" />
-              Packages
+              <span className="hidden sm:inline">Packages</span>
+            </TabsTrigger>
+            <TabsTrigger value="branches" className="gap-2 data-[state=active]:bg-background">
+              <BuildingStorefrontIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Branches</span>
             </TabsTrigger>
             <TabsTrigger value="whatsapp" className="gap-2 data-[state=active]:bg-background">
               <ChatBubbleLeftEllipsisIcon className="w-4 h-4" />
-              WhatsApp
+              <span className="hidden sm:inline">WhatsApp</span>
             </TabsTrigger>
             <TabsTrigger value="general" className="gap-2 data-[state=active]:bg-background">
-              <BuildingStorefrontIcon className="w-4 h-4" />
-              General
+              <Cog6ToothIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">General</span>
             </TabsTrigger>
           </TabsList>
 

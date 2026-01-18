@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,12 +16,38 @@ const formSchema = z.object({
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { branchId } = useParams<{ branchId?: string }>();
   const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [existingMember, setExistingMember] = useState<any>(null);
   const [membershipEndDate, setMembershipEndDate] = useState<string | null>(null);
   const [membershipStartDate, setMembershipStartDate] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
+  const [branchName, setBranchName] = useState<string | null>(null);
+  const [gymName, setGymName] = useState("Pro Plus Fitness");
+
+  // Fetch branch info if branchId is in URL
+  useEffect(() => {
+    if (branchId) {
+      supabase
+        .from("branches")
+        .select("name")
+        .eq("id", branchId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.name) {
+            setBranchName(data.name);
+          }
+        });
+    }
+
+    // Fetch gym name
+    supabase.from("gym_settings").select("gym_name").limit(1).maybeSingle().then(({ data }) => {
+      if (data?.gym_name) {
+        setGymName(data.gym_name);
+      }
+    });
+  }, [branchId]);
 
   // Handle return from Renew/ExtendPT pages
   useEffect(() => {
@@ -107,8 +133,9 @@ const Index = () => {
         setExistingMember(member);
         setShowOptions(true);
       } else {
-        // New member - go to registration with phone only
-        navigate("/register", { state: { phone } });
+        // New member - go to registration with phone and branchId
+        const basePath = branchId ? `/b/${branchId}/register` : "/register";
+        navigate(basePath, { state: { phone, branchId } });
       }
     } catch (error: any) {
       toast.error("Error", {
@@ -120,14 +147,16 @@ const Index = () => {
   };
 
   const handleOptionSelect = (option: 'renew' | 'extend-pt') => {
+    const basePath = branchId ? `/b/${branchId}` : "";
     if (option === 'renew') {
-      navigate("/renew", { state: { member: existingMember } });
+      navigate(`${basePath}/renew`, { state: { member: existingMember, branchId } });
     } else {
-      navigate("/extend-pt", { 
+      navigate(`${basePath}/extend-pt`, { 
         state: { 
           member: existingMember,
           membershipStartDate: membershipStartDate,
-          membershipEndDate: membershipEndDate
+          membershipEndDate: membershipEndDate,
+          branchId
         } 
       });
     }
@@ -140,6 +169,8 @@ const Index = () => {
     setMembershipStartDate(null);
     setPhone("");
   };
+
+  const displayName = branchName ? `${gymName} - ${branchName}` : gymName;
 
   return (
     <div className="min-h-screen bg-background">
@@ -158,9 +189,13 @@ const Index = () => {
           </div>
         </div>
         <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
-          Pro Plus Fitness
+          {gymName}
         </h1>
-        <p className="text-muted-foreground text-lg">Dinhata</p>
+        {branchName ? (
+          <p className="text-muted-foreground text-lg">{branchName}</p>
+        ) : (
+          <p className="text-muted-foreground text-lg">Dinhata</p>
+        )}
       </header>
 
       {/* Main Content */}

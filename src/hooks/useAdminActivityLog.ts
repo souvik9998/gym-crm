@@ -8,7 +8,8 @@ export type ActivityCategory =
   | "settings"
   | "whatsapp"
   | "subscriptions"
-  | "ledger";
+  | "ledger"
+  | "branch";
 
 export type ActivityType = 
   // Members
@@ -47,7 +48,12 @@ export type ActivityType =
   // Ledger
   | "expense_added"
   | "expense_deleted"
-  | "income_added";
+  | "income_added"
+  // Branch
+  | "branch_created"
+  | "branch_updated"
+  | "branch_deleted"
+  | "branch_default_changed";
 
 interface LogActivityParams {
   category: ActivityCategory;
@@ -59,6 +65,7 @@ interface LogActivityParams {
   oldValue?: Record<string, any>;
   newValue?: Record<string, any>;
   metadata?: Record<string, any>;
+  branchId?: string;
 }
 
 export const logAdminActivity = async (params: LogActivityParams) => {

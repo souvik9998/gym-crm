@@ -19,6 +19,7 @@ export type Database = {
           activity_category: string
           activity_type: string
           admin_user_id: string | null
+          branch_id: string | null
           created_at: string
           description: string
           entity_id: string | null
@@ -33,6 +34,7 @@ export type Database = {
           activity_category: string
           activity_type: string
           admin_user_id?: string | null
+          branch_id?: string | null
           created_at?: string
           description: string
           entity_id?: string | null
@@ -47,6 +49,7 @@ export type Database = {
           activity_category?: string
           activity_type?: string
           admin_user_id?: string | null
+          branch_id?: string | null
           created_at?: string
           description?: string
           entity_id?: string | null
@@ -57,7 +60,15 @@ export type Database = {
           new_value?: Json | null
           old_value?: Json | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "admin_activity_logs_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       admin_summary_log: {
         Row: {
@@ -83,8 +94,45 @@ export type Database = {
         }
         Relationships: []
       }
+      branches: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       custom_packages: {
         Row: {
+          branch_id: string | null
           created_at: string
           duration_days: number
           id: string
@@ -94,6 +142,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string
           duration_days: number
           id?: string
@@ -103,6 +152,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          branch_id?: string | null
           created_at?: string
           duration_days?: number
           id?: string
@@ -111,10 +161,19 @@ export type Database = {
           price?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "custom_packages_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       daily_pass_subscriptions: {
         Row: {
+          branch_id: string | null
           created_at: string | null
           daily_pass_user_id: string
           duration_days: number
@@ -130,6 +189,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string | null
           daily_pass_user_id: string
           duration_days: number
@@ -145,6 +205,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          branch_id?: string | null
           created_at?: string | null
           daily_pass_user_id?: string
           duration_days?: number
@@ -160,6 +221,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "daily_pass_subscriptions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "daily_pass_subscriptions_daily_pass_user_id_fkey"
             columns: ["daily_pass_user_id"]
@@ -186,6 +254,7 @@ export type Database = {
       daily_pass_users: {
         Row: {
           address: string | null
+          branch_id: string | null
           created_at: string | null
           email: string | null
           gender: string | null
@@ -198,6 +267,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          branch_id?: string | null
           created_at?: string | null
           email?: string | null
           gender?: string | null
@@ -210,6 +280,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          branch_id?: string | null
           created_at?: string | null
           email?: string | null
           gender?: string | null
@@ -220,10 +291,19 @@ export type Database = {
           photo_id_type?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "daily_pass_users_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       gym_settings: {
         Row: {
+          branch_id: string | null
           gym_address: string | null
           gym_name: string | null
           gym_phone: string | null
@@ -235,6 +315,7 @@ export type Database = {
           whatsapp_enabled: boolean | null
         }
         Insert: {
+          branch_id?: string | null
           gym_address?: string | null
           gym_name?: string | null
           gym_phone?: string | null
@@ -246,6 +327,7 @@ export type Database = {
           whatsapp_enabled?: boolean | null
         }
         Update: {
+          branch_id?: string | null
           gym_address?: string | null
           gym_name?: string | null
           gym_phone?: string | null
@@ -256,11 +338,20 @@ export type Database = {
           updated_at?: string | null
           whatsapp_enabled?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "gym_settings_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ledger_entries: {
         Row: {
           amount: number
+          branch_id: string | null
           category: string
           created_at: string
           created_by: string | null
@@ -279,6 +370,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          branch_id?: string | null
           category: string
           created_at?: string
           created_by?: string | null
@@ -297,6 +389,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          branch_id?: string | null
           category?: string
           created_at?: string
           created_by?: string | null
@@ -314,6 +407,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ledger_entries_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ledger_entries_daily_pass_user_id_fkey"
             columns: ["daily_pass_user_id"]
@@ -407,6 +507,7 @@ export type Database = {
       }
       members: {
         Row: {
+          branch_id: string | null
           created_at: string | null
           email: string | null
           id: string
@@ -416,6 +517,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -425,6 +527,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          branch_id?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -433,10 +536,19 @@ export type Database = {
           phone?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "members_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       monthly_packages: {
         Row: {
+          branch_id: string | null
           created_at: string
           id: string
           is_active: boolean
@@ -446,6 +558,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -455,6 +568,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          branch_id?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -463,11 +577,20 @@ export type Database = {
           price?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "monthly_packages_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
           amount: number
+          branch_id: string | null
           created_at: string | null
           daily_pass_subscription_id: string | null
           daily_pass_user_id: string | null
@@ -483,6 +606,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          branch_id?: string | null
           created_at?: string | null
           daily_pass_subscription_id?: string | null
           daily_pass_user_id?: string | null
@@ -498,6 +622,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          branch_id?: string | null
           created_at?: string | null
           daily_pass_subscription_id?: string | null
           daily_pass_user_id?: string | null
@@ -512,6 +637,13 @@ export type Database = {
           subscription_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_daily_pass_subscription_id_fkey"
             columns: ["daily_pass_subscription_id"]
@@ -544,6 +676,7 @@ export type Database = {
       }
       personal_trainers: {
         Row: {
+          branch_id: string | null
           created_at: string
           id: string
           is_active: boolean
@@ -558,6 +691,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -572,6 +706,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          branch_id?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -585,10 +720,19 @@ export type Database = {
           specialization?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "personal_trainers_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pt_subscriptions: {
         Row: {
+          branch_id: string | null
           created_at: string | null
           end_date: string
           id: string
@@ -601,6 +745,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string | null
           end_date: string
           id?: string
@@ -613,6 +758,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          branch_id?: string | null
           created_at?: string | null
           end_date?: string
           id?: string
@@ -625,6 +771,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pt_subscriptions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pt_subscriptions_member_id_fkey"
             columns: ["member_id"]
@@ -643,6 +796,7 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          branch_id: string | null
           created_at: string | null
           custom_days: number | null
           end_date: string
@@ -659,6 +813,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string | null
           custom_days?: number | null
           end_date: string
@@ -675,6 +830,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          branch_id?: string | null
           created_at?: string | null
           custom_days?: number | null
           end_date?: string
@@ -691,6 +847,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "subscriptions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "subscriptions_member_id_fkey"
             columns: ["member_id"]
@@ -711,6 +874,7 @@ export type Database = {
         Row: {
           activity_type: string
           amount: number | null
+          branch_id: string | null
           created_at: string
           daily_pass_user_id: string | null
           description: string
@@ -734,6 +898,7 @@ export type Database = {
         Insert: {
           activity_type: string
           amount?: number | null
+          branch_id?: string | null
           created_at?: string
           daily_pass_user_id?: string | null
           description: string
@@ -757,6 +922,7 @@ export type Database = {
         Update: {
           activity_type?: string
           amount?: number | null
+          branch_id?: string | null
           created_at?: string
           daily_pass_user_id?: string | null
           description?: string
@@ -778,6 +944,13 @@ export type Database = {
           trainer_name?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "user_activity_logs_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_activity_logs_daily_pass_user_id_fkey"
             columns: ["daily_pass_user_id"]
@@ -846,6 +1019,7 @@ export type Database = {
       whatsapp_notifications: {
         Row: {
           admin_user_id: string | null
+          branch_id: string | null
           created_at: string
           daily_pass_user_id: string | null
           error_message: string | null
@@ -861,6 +1035,7 @@ export type Database = {
         }
         Insert: {
           admin_user_id?: string | null
+          branch_id?: string | null
           created_at?: string
           daily_pass_user_id?: string | null
           error_message?: string | null
@@ -876,6 +1051,7 @@ export type Database = {
         }
         Update: {
           admin_user_id?: string | null
+          branch_id?: string | null
           created_at?: string
           daily_pass_user_id?: string | null
           error_message?: string | null
@@ -890,6 +1066,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "whatsapp_notifications_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "whatsapp_notifications_daily_pass_user_id_fkey"
             columns: ["daily_pass_user_id"]
