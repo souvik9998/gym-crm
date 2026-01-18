@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 export const BranchSelector = () => {
   const { branches, currentBranch, setCurrentBranch, refreshBranches } = useBranch();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [newBranch, setNewBranch] = useState({
     name: "",
@@ -43,7 +44,16 @@ export const BranchSelector = () => {
 
   const handleSelectBranch = (branch: Branch) => {
     setCurrentBranch(branch);
+    setIsDropdownOpen(false);
     toast.success(`Switched to ${branch.name}`);
+  };
+
+  const handleOpenAddDialog = () => {
+    setIsDropdownOpen(false);
+    // Small delay to prevent UI conflicts
+    setTimeout(() => {
+      setIsAddDialogOpen(true);
+    }, 100);
   };
 
   const handleAddBranch = async () => {
@@ -96,22 +106,91 @@ export const BranchSelector = () => {
 
   if (branches.length === 0 && !currentBranch) {
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setIsAddDialogOpen(true)}
-        className="gap-2 h-9"
-      >
-        <BuildingOffice2Icon className="w-4 h-4" />
-        <span className="hidden sm:inline">Add Branch</span>
-        <PlusIcon className="w-3 h-3 sm:hidden" />
-      </Button>
+      <>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsAddDialogOpen(true)}
+          className="gap-2 h-9"
+        >
+          <BuildingOffice2Icon className="w-4 h-4" />
+          <span className="hidden sm:inline">Add Branch</span>
+          <PlusIcon className="w-3 h-3 sm:hidden" />
+        </Button>
+
+        {/* Add Branch Dialog */}
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Add New Branch</DialogTitle>
+              <DialogDescription>
+                Create a new gym branch. Each branch will have its own QR code for member registration.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="branch-name">Branch Name *</Label>
+                <Input
+                  id="branch-name"
+                  value={newBranch.name}
+                  onChange={(e) => setNewBranch({ ...newBranch, name: e.target.value })}
+                  placeholder="e.g., Main Branch, Downtown Gym"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="branch-address">Address</Label>
+                <Textarea
+                  id="branch-address"
+                  value={newBranch.address}
+                  onChange={(e) => setNewBranch({ ...newBranch, address: e.target.value })}
+                  placeholder="Full address of the branch"
+                  rows={2}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="branch-phone">Phone</Label>
+                  <Input
+                    id="branch-phone"
+                    type="tel"
+                    value={newBranch.phone}
+                    onChange={(e) => setNewBranch({ ...newBranch, phone: e.target.value })}
+                    placeholder="Phone number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="branch-email">Email</Label>
+                  <Input
+                    id="branch-email"
+                    type="email"
+                    value={newBranch.email}
+                    onChange={(e) => setNewBranch({ ...newBranch, email: e.target.value })}
+                    placeholder="Email address"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsAddDialogOpen(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleAddBranch} disabled={isLoading}>
+                {isLoading ? "Adding..." : "Add Branch"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
@@ -131,7 +210,10 @@ export const BranchSelector = () => {
           {branches.map((branch) => (
             <DropdownMenuItem
               key={branch.id}
-              onClick={() => handleSelectBranch(branch)}
+              onSelect={(e) => {
+                e.preventDefault();
+                handleSelectBranch(branch);
+              }}
               className={cn(
                 "cursor-pointer flex items-center justify-between",
                 currentBranch?.id === branch.id && "bg-primary/10"
@@ -152,7 +234,10 @@ export const BranchSelector = () => {
           ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={() => setIsAddDialogOpen(true)}
+            onSelect={(e) => {
+              e.preventDefault();
+              handleOpenAddDialog();
+            }}
             className="cursor-pointer gap-2"
           >
             <PlusIcon className="w-4 h-4" />

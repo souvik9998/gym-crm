@@ -53,6 +53,7 @@ export type ActivityType =
   | "branch_created"
   | "branch_updated"
   | "branch_deleted"
+  | "branch_default_set"
   | "branch_default_changed";
 
 interface LogActivityParams {

@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import type { MemberFilterValue } from "./MemberFilter";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { exportToExcel } from "@/utils/exportToExcel";
+import { useBranch } from "@/contexts/BranchContext";
 
 interface Member {
   id: string;
@@ -56,6 +57,7 @@ type SortField = "name" | "phone" | "status" | "trainer" | "expiry" | "join_date
 type SortOrder = "asc" | "desc";
 
 export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterActive = false }: MembersTableProps) => {
+  const { currentBranch } = useBranch();
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
@@ -74,15 +76,21 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
 
   useEffect(() => {
     fetchMembers();
-  }, [refreshKey]);
+  }, [refreshKey, currentBranch?.id]);
 
   const fetchMembers = async () => {
     setIsLoading(true);
     try {
-      const { data: membersData, error: membersError } = await supabase
+      let query = supabase
         .from("members")
         .select("*")
         .order("created_at", { ascending: false });
+      
+      if (currentBranch?.id) {
+        query = query.eq("branch_id", currentBranch.id);
+      }
+
+      const { data: membersData, error: membersError } = await query;
 
       if (membersError) throw membersError;
 

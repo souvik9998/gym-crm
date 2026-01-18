@@ -26,6 +26,7 @@ import type { User } from "@supabase/supabase-js";
 import { WhatsAppTemplates } from "@/components/admin/WhatsAppTemplates";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { BranchManagement } from "@/components/admin/BranchManagement";
 
 interface CustomPackage {
   id: string;
@@ -676,6 +677,11 @@ const AdminSettings = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Branches Tab */}
+          <TabsContent value="branches" className="space-y-6 mt-6">
+            <BranchManagement />
           </TabsContent>
 
           {/* WhatsApp Templates */}

@@ -22,6 +22,7 @@ import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download } from "l
 import type { Database } from "@/integrations/supabase/types";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { toast } from "@/components/ui/sonner";
+import { useBranch } from "@/contexts/BranchContext";
 
 type PaymentMode = Database["public"]["Enums"]["payment_mode"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
@@ -51,6 +52,7 @@ interface PaymentHistoryProps {
 }
 
 export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
+  const { currentBranch } = useBranch();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState("");
@@ -61,12 +63,12 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
 
   useEffect(() => {
     fetchPayments();
-  }, [refreshKey]);
+  }, [refreshKey, currentBranch?.id]);
 
   const fetchPayments = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("payments")
         .select(`
           id,
@@ -82,6 +84,12 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
           daily_pass_user:daily_pass_users(name, phone)
         `)
         .order("created_at", { ascending: false });
+
+      if (currentBranch?.id) {
+        query = query.eq("branch_id", currentBranch.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setPayments(data || []);
