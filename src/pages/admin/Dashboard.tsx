@@ -33,6 +33,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
+import { useBranch } from "@/contexts/BranchContext";
 
 interface DashboardStats {
   totalMembers: number;
@@ -46,6 +47,7 @@ interface DashboardStats {
 }
 
 const AdminDashboard = () => {
+  const { currentBranch } = useBranch();
   const [searchQuery, setSearchQuery] = useState("");
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
@@ -71,27 +73,36 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchStats();
-  }, [refreshKey]);
+  }, [refreshKey, currentBranch?.id]);
 
   const fetchStats = async () => {
     try {
       // Refresh subscription statuses first
       await supabase.rpc("refresh_subscription_statuses");
 
-      const { count: totalMembers } = await supabase
-        .from("members")
-        .select("*", { count: "exact", head: true });
+      // Build base query with branch filter
+      let membersQuery = supabase.from("members").select("*", { count: "exact", head: true });
+      if (currentBranch?.id) {
+        membersQuery = membersQuery.eq("branch_id", currentBranch.id);
+      }
+      const { count: totalMembers } = await membersQuery;
 
       // Get all members with their latest subscription
-      const { data: membersData } = await supabase
-        .from("members")
-        .select("id");
+      let memberDataQuery = supabase.from("members").select("id");
+      if (currentBranch?.id) {
+        memberDataQuery = memberDataQuery.eq("branch_id", currentBranch.id);
+      }
+      const { data: membersData } = await memberDataQuery;
 
       // Get subscriptions for status calculations
-      const { data: allSubscriptions } = await supabase
+      let subscriptionsQuery = supabase
         .from("subscriptions")
         .select("member_id, status, end_date")
         .order("end_date", { ascending: false });
+      if (currentBranch?.id) {
+        subscriptionsQuery = subscriptionsQuery.eq("branch_id", currentBranch.id);
+      }
+      const { data: allSubscriptions } = await subscriptionsQuery;
 
       // Group subscriptions by member (latest first)
       const memberSubscriptions = new Map<string, { status: string; end_date: string }>();
@@ -147,28 +158,38 @@ const AdminDashboard = () => {
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
 
-      const { data: payments } = await supabase
+      let paymentsQuery = supabase
         .from("payments")
         .select("amount")
         .eq("status", "success")
         .gte("created_at", startOfMonth.toISOString());
+      if (currentBranch?.id) {
+        paymentsQuery = paymentsQuery.eq("branch_id", currentBranch.id);
+      }
+      const { data: payments } = await paymentsQuery;
 
       const monthlyRevenue = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
       // Get active PT subscriptions count
       const todayStr = new Date().toISOString().split("T")[0];
-      const { data: activePTData } = await supabase
+      let ptQuery = supabase
         .from("pt_subscriptions")
         .select("member_id")
         .eq("status", "active")
         .gte("end_date", todayStr);
+      if (currentBranch?.id) {
+        ptQuery = ptQuery.eq("branch_id", currentBranch.id);
+      }
+      const { data: activePTData } = await ptQuery;
 
       const uniquePTMembers = new Set(activePTData?.map((pt) => pt.member_id) || []).size;
 
       // Get daily pass users count
-      const { count: dailyPassCount } = await supabase
-        .from("daily_pass_users")
-        .select("*", { count: "exact", head: true });
+      let dailyPassQuery = supabase.from("daily_pass_users").select("*", { count: "exact", head: true });
+      if (currentBranch?.id) {
+        dailyPassQuery = dailyPassQuery.eq("branch_id", currentBranch.id);
+      }
+      const { count: dailyPassCount } = await dailyPassQuery;
 
       setStats({
         totalMembers: totalMembers || 0,

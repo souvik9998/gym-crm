@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Dumbbell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,8 +14,10 @@ type Step = "details" | "package";
 const Register = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { branchId: urlBranchId } = useParams<{ branchId?: string }>();
   const { initiatePayment, isLoading: isPaymentLoading, paymentStage } = useRazorpay();
-  const { phone } = (location.state as { phone: string }) || {};
+  const { phone, branchId: stateBranchId } = (location.state as { phone: string; branchId?: string }) || {};
+  const branchId = urlBranchId || stateBranchId;
   
   const [step, setStep] = useState<Step>("details");
   const [memberDetails, setMemberDetails] = useState<MemberDetailsData | null>(null);
@@ -49,8 +51,9 @@ const Register = () => {
       gymFee: packageData.subscriptionAmount + packageData.joiningFee,
       memberDetails: memberDetails,
       isDailyPass,
-      gymStartDate: packageData.startDate, // Pass the custom start date
-      ptStartDate: packageData.ptStartDate, // Pass the PT start date
+      gymStartDate: packageData.startDate,
+      ptStartDate: packageData.ptStartDate,
+      branchId: branchId,
       customPackage: packageData.customPackage ? {
         id: packageData.customPackage.id,
         name: packageData.customPackage.name,

@@ -14,8 +14,9 @@ interface RazorpayOptions {
   trainerFee?: number;
   gymFee?: number;
   ptStartDate?: string;
-  gymStartDate?: string; // For renewals: the day after existing membership ends
-  isDailyPass?: boolean; // Flag for daily pass purchases
+  gymStartDate?: string;
+  isDailyPass?: boolean;
+  branchId?: string;
   customPackage?: {
     id: string;
     name: string;
@@ -82,6 +83,7 @@ export const useRazorpay = () => {
       ptStartDate,
       gymStartDate,
       isDailyPass,
+      branchId,
       customPackage,
       memberDetails,
       onSuccess,
@@ -176,6 +178,7 @@ export const useRazorpay = () => {
                     memberDetails,
                     isNewMember,
                     isDailyPass,
+                    branchId,
                     customPackage,
                   },
                 }
