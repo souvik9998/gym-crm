@@ -68,8 +68,9 @@ interface UserActivityLog {
   trainer_name: string | null;
   start_date: string | null;
   end_date: string | null;
-  metadata: Record<string, any> | null;
+  metadata: any;
   created_at: string;
+  branch_id: string | null;
 }
 
 interface ActivityStats {

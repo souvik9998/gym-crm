@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BranchProvider } from "@/contexts/BranchContext";
 import Index from "./pages/Index";
 import Register from "./pages/Register";
 import Renew from "./pages/Renew";
@@ -23,26 +24,33 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/renew" element={<Renew />} />
-          <Route path="/extend-pt" element={<ExtendPT />} />
-          <Route path="/success" element={<Success />} />
-          <Route path="/profile" element={<MemberProfile />} />
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/qr-code" element={<AdminQRCode />} />
-          <Route path="/admin/settings" element={<AdminSettings />} />
-          <Route path="/admin/analytics" element={<AdminAnalytics />} />
-          <Route path="/admin/ledger" element={<AdminLedger />} />
-          <Route path="/admin/logs" element={<Logs />} />
-          <Route path="/admin/trainers" element={<AdminTrainers />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <BranchProvider>
+        <Toaster />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/renew" element={<Renew />} />
+            <Route path="/extend-pt" element={<ExtendPT />} />
+            <Route path="/success" element={<Success />} />
+            <Route path="/profile" element={<MemberProfile />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/qr-code" element={<AdminQRCode />} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
+            <Route path="/admin/analytics" element={<AdminAnalytics />} />
+            <Route path="/admin/ledger" element={<AdminLedger />} />
+            <Route path="/admin/logs" element={<Logs />} />
+            <Route path="/admin/trainers" element={<AdminTrainers />} />
+            {/* Branch-specific routes */}
+            <Route path="/b/:branchId" element={<Index />} />
+            <Route path="/b/:branchId/register" element={<Register />} />
+            <Route path="/b/:branchId/renew" element={<Renew />} />
+            <Route path="/b/:branchId/extend-pt" element={<ExtendPT />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </BranchProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

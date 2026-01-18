@@ -12,13 +12,26 @@ import {
 } from "@heroicons/react/24/outline";
 import { toast } from "@/components/ui/sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useBranch } from "@/contexts/BranchContext";
 
 const QRCodePage = () => {
   const [copied, setCopied] = useState(false);
   const [gymName, setGymName] = useState("Pro Plus Fitness");
+  const { currentBranch, branches } = useBranch();
 
-  // Generate the portal URL
-  const portalUrl = typeof window !== "undefined" ? `${window.location.origin}/` : "";
+  // Generate the portal URL based on selected branch
+  const getPortalUrl = () => {
+    if (typeof window === "undefined") return "";
+    
+    // If a branch is selected, include it in the URL
+    if (currentBranch) {
+      return `${window.location.origin}/b/${currentBranch.id}`;
+    }
+    
+    return `${window.location.origin}/`;
+  };
+
+  const portalUrl = getPortalUrl();
 
   useEffect(() => {
     // Fetch gym name
@@ -60,7 +73,10 @@ const QRCodePage = () => {
         const pngUrl = canvas.toDataURL("image/png");
         const downloadLink = document.createElement("a");
         downloadLink.href = pngUrl;
-        downloadLink.download = "pro-plus-fitness-qr.png";
+        const fileName = currentBranch 
+          ? `qr-${currentBranch.name.toLowerCase().replace(/\s+/g, '-')}.png`
+          : "pro-plus-fitness-qr.png";
+        downloadLink.download = fileName;
         document.body.appendChild(downloadLink);
         downloadLink.click();
         document.body.removeChild(downloadLink);
@@ -71,13 +87,41 @@ const QRCodePage = () => {
     toast.success("QR Code downloaded!");
   };
 
+  const displayName = currentBranch ? `${gymName} - ${currentBranch.name}` : gymName;
+
   return (
     <AdminLayout title="QR Code" subtitle="Member Registration Portal">
       <div className="max-w-2xl mx-auto space-y-6">
+        {/* Branch Info */}
+        {currentBranch && (
+          <Card className="border-0 shadow-sm bg-primary/5">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-foreground">Branch: {currentBranch.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Members registered through this QR will be added to this branch
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {!currentBranch && branches.length === 0 && (
+          <Card className="border-0 shadow-sm bg-warning/10">
+            <CardContent className="p-4">
+              <p className="text-sm text-warning-foreground">
+                No branches configured. Add a branch in Settings to get branch-specific QR codes.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* QR Code Card */}
         <Card className="border-0 shadow-sm">
           <CardHeader className="text-center pb-4">
-            <CardTitle className="text-2xl font-semibold">{gymName}</CardTitle>
+            <CardTitle className="text-2xl font-semibold">{displayName}</CardTitle>
             <CardDescription>
               Scan this QR code to register or renew your membership
             </CardDescription>
@@ -103,7 +147,7 @@ const QRCodePage = () => {
             {/* Gym logo placeholder */}
             <div className="flex items-center gap-2 text-primary">
               <img src="/logo.jpg" alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
-              <span className="font-semibold text-lg">{gymName}</span>
+              <span className="font-semibold text-lg">{displayName}</span>
             </div>
 
             {/* URL Display */}
@@ -184,6 +228,19 @@ const QRCodePage = () => {
                 </p>
               </div>
             </div>
+            {currentBranch && (
+              <div className="flex gap-4 pt-2 border-t">
+                <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-accent font-bold text-sm">✓</span>
+                </div>
+                <div>
+                  <p className="font-medium">Branch-Specific Registration</p>
+                  <p className="text-sm text-muted-foreground">
+                    Members who register via this QR will automatically be added to <strong>{currentBranch.name}</strong>
+                  </p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
