@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranch } from "@/contexts/BranchContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +32,7 @@ interface Trainer {
 }
 
 const TrainersPage = () => {
+  const { currentBranch } = useBranch();
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Trainers
@@ -73,13 +75,18 @@ const TrainersPage = () => {
   });
 
   useEffect(() => {
-    fetchTrainers();
-  }, [refreshKey]);
+    if (currentBranch?.id) {
+      fetchTrainers();
+    }
+  }, [refreshKey, currentBranch?.id]);
 
   const fetchTrainers = async () => {
+    if (!currentBranch?.id) return;
+    
     const { data: trainersData } = await supabase
       .from("personal_trainers")
       .select("*")
+      .eq("branch_id", currentBranch.id)
       .order("name");
 
     if (trainersData) {
@@ -116,6 +123,7 @@ const TrainersPage = () => {
       payment_category: newTrainer.payment_category,
       percentage_fee: Number(newTrainer.percentage_fee) || 0,
       session_fee: Number(newTrainer.session_fee) || 0,
+      branch_id: currentBranch?.id,
     });
 
     if (error) {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranch } from "@/contexts/BranchContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ArrowTrendingUpIcon,
@@ -70,6 +71,7 @@ const PACKAGE_COLORS = [
 ];
 
 const AdminAnalytics = () => {
+  const { currentBranch } = useBranch();
   const [revenueData, setRevenueData] = useState<MonthlyRevenue[]>([]);
   const [memberGrowth, setMemberGrowth] = useState<MemberGrowth[]>([]);
   const [trainerStats, setTrainerStats] = useState<TrainerStats[]>([]);
@@ -83,14 +85,19 @@ const AdminAnalytics = () => {
   });
 
   useEffect(() => {
-    fetchAnalytics();
-  }, []);
+    if (currentBranch?.id) {
+      fetchAnalytics();
+    }
+  }, [currentBranch?.id]);
 
   const fetchAnalytics = async () => {
+    if (!currentBranch?.id) return;
+    
     try {
       const { data: payments } = await supabase
         .from("payments")
         .select("amount, created_at, status")
+        .eq("branch_id", currentBranch.id)
         .eq("status", "success")
         .order("created_at", { ascending: true });
 
@@ -124,6 +131,7 @@ const AdminAnalytics = () => {
       const { data: members } = await supabase
         .from("members")
         .select("created_at")
+        .eq("branch_id", currentBranch.id)
         .order("created_at", { ascending: true });
 
       const memberMonthly: Record<string, number> = {};
@@ -158,10 +166,12 @@ const AdminAnalytics = () => {
       const totalRevenue = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
       const { count: totalMembers } = await supabase
         .from("members")
-        .select("*", { count: "exact", head: true });
+        .select("*", { count: "exact", head: true })
+        .eq("branch_id", currentBranch.id);
       const { count: activeMembers } = await supabase
         .from("subscriptions")
         .select("*", { count: "exact", head: true })
+        .eq("branch_id", currentBranch.id)
         .eq("status", "active");
 
       setTotals({
@@ -175,11 +185,13 @@ const AdminAnalytics = () => {
       const { data: trainers } = await supabase
         .from("personal_trainers")
         .select("id, name")
+        .eq("branch_id", currentBranch.id)
         .eq("is_active", true);
 
       const { data: ptSubscriptions } = await supabase
         .from("pt_subscriptions")
-        .select("personal_trainer_id, member_id, total_fee, created_at, status");
+        .select("personal_trainer_id, member_id, total_fee, created_at, status")
+        .eq("branch_id", currentBranch.id);
 
       if (trainers && ptSubscriptions) {
         const trainerStatsData: TrainerStats[] = trainers.map((trainer) => {
@@ -221,12 +233,14 @@ const AdminAnalytics = () => {
       const { data: monthlyPackages } = await supabase
         .from("monthly_packages")
         .select("id, months, price")
+        .eq("branch_id", currentBranch.id)
         .eq("is_active", true)
         .order("months", { ascending: true });
 
       const { data: subscriptions } = await supabase
         .from("subscriptions")
-        .select("plan_months, created_at, is_custom_package");
+        .select("plan_months, created_at, is_custom_package")
+        .eq("branch_id", currentBranch.id);
 
       if (monthlyPackages && subscriptions) {
         const packages: PackageInfo[] = monthlyPackages.map((pkg) => ({

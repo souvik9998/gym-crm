@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranch } from "@/contexts/BranchContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,7 @@ interface UserActivityLogsTabProps {
 }
 
 const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
+  const { currentBranch } = useBranch();
   const [logs, setLogs] = useState<UserActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -109,16 +111,21 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
   };
 
   useEffect(() => {
-    fetchLogs();
-    fetchStats();
-  }, [refreshKey]);
+    if (currentBranch?.id) {
+      fetchLogs();
+      fetchStats();
+    }
+  }, [refreshKey, currentBranch?.id]);
 
   const fetchLogs = async () => {
+    if (!currentBranch?.id) return;
+    
     setIsLoading(true);
     try {
       let query = supabase
         .from("user_activity_logs")
         .select("*")
+        .eq("branch_id", currentBranch.id)
         .order("created_at", { ascending: false })
         .limit(500);
 
@@ -144,10 +151,13 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
   };
 
   const fetchStats = async () => {
+    if (!currentBranch?.id) return;
+    
     try {
       const { data: allLogs, error } = await supabase
         .from("user_activity_logs")
         .select("*")
+        .eq("branch_id", currentBranch.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;

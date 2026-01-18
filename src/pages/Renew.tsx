@@ -13,6 +13,7 @@ interface Member {
   name: string;
   phone: string;
   join_date: string;
+  branch_id: string | null;
 }
 
 const Renew = () => {
@@ -91,6 +92,7 @@ const Renew = () => {
       gymFee: packageData.subscriptionAmount + packageData.joiningFee,
       ptStartDate: packageData.ptStartDate,
       gymStartDate: gymStart,
+      branchId: member.branch_id || undefined,
       onSuccess: async (data) => {
         const endDate = new Date(data.endDate);
         

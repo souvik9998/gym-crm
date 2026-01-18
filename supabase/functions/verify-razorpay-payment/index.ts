@@ -18,6 +18,7 @@ async function createLedgerEntry(
     paymentId?: string;
     trainerId?: string;
     ptSubscriptionId?: string;
+    branchId?: string;
   }
 ) {
   const today = new Date().toISOString().split("T")[0];
@@ -32,6 +33,7 @@ async function createLedgerEntry(
     payment_id: params.paymentId || null,
     trainer_id: params.trainerId || null,
     pt_subscription_id: params.ptSubscriptionId || null,
+    branch_id: params.branchId || null,
     is_auto_generated: true,
   });
 
@@ -64,6 +66,7 @@ async function logUserActivity(
     startDate?: string;
     endDate?: string;
     metadata?: Record<string, any>;
+    branchId?: string;
   }
 ) {
   const { error } = await supabase.from("user_activity_logs").insert({
@@ -86,6 +89,7 @@ async function logUserActivity(
     start_date: params.startDate || null,
     end_date: params.endDate || null,
     metadata: params.metadata || null,
+    branch_id: params.branchId || null,
   });
 
   if (error) {
@@ -104,7 +108,8 @@ async function calculateTrainerPercentageExpense(
   memberId?: string,
   dailyPassUserId?: string,
   ptSubscriptionId?: string,
-  memberName?: string
+  memberName?: string,
+  branchId?: string
 ) {
   // Fetch trainer info
   const { data: trainer, error: trainerError } = await supabase
@@ -132,6 +137,7 @@ async function calculateTrainerPercentageExpense(
         dailyPassUserId,
         trainerId,
         ptSubscriptionId,
+        branchId,
       });
       console.log(`Created trainer percentage expense: ₹${percentageAmount} for ${trainer.name}`);
     }
@@ -165,9 +171,10 @@ Deno.serve(async (req) => {
       memberDetails, // Contains gender, photo_id_type, photo_id_number, address
       customPackage, // Contains id, name, duration_days, price
       joiningFee, // Joining fee amount if applicable
+      branchId, // Branch ID for multi-branch support
     } = await req.json();
 
-    console.log("Verifying payment:", { razorpay_order_id, razorpay_payment_id, memberId, isNewMember, isDailyPass, trainerId, months, customDays, ptStartDate, gymStartDate });
+    console.log("Verifying payment:", { razorpay_order_id, razorpay_payment_id, memberId, isNewMember, isDailyPass, trainerId, months, customDays, ptStartDate, gymStartDate, branchId });
 
     const RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -216,6 +223,7 @@ Deno.serve(async (req) => {
           photo_id_type: memberDetails?.photoIdType || null,
           photo_id_number: memberDetails?.photoIdNumber || null,
           address: memberDetails?.address || null,
+          branch_id: branchId || null,
         })
         .select()
         .single();
@@ -247,6 +255,7 @@ Deno.serve(async (req) => {
           personal_trainer_id: trainerId || null,
           trainer_fee: trainerFee || 0,
           status: "active",
+          branch_id: branchId || null,
         })
         .select()
         .single();
@@ -271,6 +280,7 @@ Deno.serve(async (req) => {
         payment_type: paymentType,
         razorpay_order_id: razorpay_order_id,
         razorpay_payment_id: razorpay_payment_id,
+        branch_id: branchId || null,
       }).select().single();
 
       if (paymentError) {
@@ -291,6 +301,7 @@ Deno.serve(async (req) => {
         amount: dailyPassFee,
         dailyPassUserId: dailyPassUser.id,
         paymentId: paymentData?.id,
+        branchId: branchId || undefined,
       });
       console.log(`Created ledger income entry for daily pass: ₹${dailyPassFee}`);
 
@@ -304,6 +315,7 @@ Deno.serve(async (req) => {
           dailyPassUserId: dailyPassUser.id,
           trainerId,
           paymentId: paymentData?.id,
+          branchId: branchId || undefined,
         });
         console.log(`Created ledger income entry for daily pass PT: ₹${trainerFee}`);
 
@@ -315,7 +327,8 @@ Deno.serve(async (req) => {
           undefined,
           dailyPassUser.id,
           undefined,
-          memberName
+          memberName,
+          branchId || undefined
         );
       }
 
@@ -340,6 +353,7 @@ Deno.serve(async (req) => {
           trainerFee: trainerFee || 0,
           packagePrice: customPackage?.price || gymFee,
         },
+        branchId: branchId || undefined,
       });
 
       return new Response(
@@ -364,7 +378,7 @@ Deno.serve(async (req) => {
     if (isNewMember && !memberId) {
       const { data: member, error: memberError } = await supabase
         .from("members")
-        .insert({ name: memberName, phone: memberPhone })
+        .insert({ name: memberName, phone: memberPhone, branch_id: branchId || null })
         .select()
         .single();
 
@@ -543,6 +557,7 @@ Deno.serve(async (req) => {
         end_date: endDate.toISOString().split("T")[0],
         plan_months: months,
         status: "active",
+        branch_id: branchId || null,
       })
       .select()
       .single();
@@ -593,6 +608,7 @@ Deno.serve(async (req) => {
           monthly_fee: trainer.monthly_fee,
           total_fee: totalPTFee,
           status: "active",
+          branch_id: branchId || null,
         })
         .select()
         .single();
@@ -619,6 +635,7 @@ Deno.serve(async (req) => {
       payment_type: paymentType,
       razorpay_order_id: razorpay_order_id,
       razorpay_payment_id: razorpay_payment_id,
+      branch_id: branchId || null,
     }).select().single();
 
     if (paymentError) {

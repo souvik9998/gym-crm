@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranch } from "@/contexts/BranchContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,7 @@ interface WhatsAppLogsTabProps {
 }
 
 const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
+  const { currentBranch } = useBranch();
   const [logs, setLogs] = useState<WhatsAppLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -93,16 +95,21 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
   const [activeSubTab, setActiveSubTab] = useState("logs");
 
   useEffect(() => {
-    fetchLogs();
-    fetchStats();
-  }, [refreshKey]);
+    if (currentBranch?.id) {
+      fetchLogs();
+      fetchStats();
+    }
+  }, [refreshKey, currentBranch?.id]);
 
   const fetchLogs = async () => {
+    if (!currentBranch?.id) return;
+    
     setIsLoading(true);
     try {
       let query = supabase
         .from("whatsapp_notifications")
         .select("*")
+        .eq("branch_id", currentBranch.id)
         .order("sent_at", { ascending: false })
         .limit(1000);
 
@@ -198,10 +205,13 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
   };
 
   const fetchStats = async () => {
+    if (!currentBranch?.id) return;
+    
     try {
       const { data: allLogs, error } = await supabase
         .from("whatsapp_notifications")
         .select("*")
+        .eq("branch_id", currentBranch.id)
         .order("sent_at", { ascending: false });
 
       if (error) {
