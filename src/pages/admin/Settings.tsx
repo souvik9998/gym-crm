@@ -754,10 +754,11 @@ const AdminSettings = () => {
                           await logAdminActivity({
                             category: "settings",
                             type: "whatsapp_toggled",
-                            description: `${checked ? "Enabled" : "Disabled"} WhatsApp messaging`,
+                            description: `${checked ? "Enabled" : "Disabled"} WhatsApp messaging for ${currentBranch?.name || "branch"}`,
                             entityType: "gym_settings",
                             oldValue: { whatsapp_enabled: !checked },
                             newValue: { whatsapp_enabled: checked },
+                            branchId: currentBranch?.id,
                           });
                           toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled", {
                             description: checked 

@@ -76,6 +76,23 @@ export const BranchSelector = () => {
 
       if (error) throw error;
 
+      // Auto-create gym_settings for the new branch
+      if (data) {
+        const { error: settingsError } = await supabase
+          .from("gym_settings")
+          .insert({
+            branch_id: data.id,
+            gym_name: newBranch.name.trim(),
+            gym_phone: newBranch.phone.trim() || null,
+            gym_address: newBranch.address.trim() || null,
+            whatsapp_enabled: false,
+          });
+
+        if (settingsError) {
+          console.error("Failed to create gym_settings for branch:", settingsError);
+        }
+      }
+
       await logAdminActivity({
         category: "branch",
         type: "branch_created",
