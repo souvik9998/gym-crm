@@ -178,6 +178,7 @@ const Renew = () => {
           ptStartDate={existingPTEndDate && ptStartDate ? ptStartDate : undefined}
           existingMembershipEndDate={existingMembershipEndDate || undefined}
           existingPTEndDate={existingPTEndDate || undefined}
+          branchId={member.branch_id || undefined}
         />
       </main>
     </div>

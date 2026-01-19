@@ -27,6 +27,7 @@ import { WhatsAppTemplates } from "@/components/admin/WhatsAppTemplates";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { BranchManagement } from "@/components/admin/BranchManagement";
+import { useBranch } from "@/contexts/BranchContext";
 
 interface CustomPackage {
   id: string;
@@ -55,6 +56,7 @@ interface GymSettings {
 const AdminSettings = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { currentBranch } = useBranch();
   const [user, setUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -108,16 +110,19 @@ const AdminSettings = () => {
   }, []);
 
   useEffect(() => {
-    if (user) {
+    if (user && currentBranch) {
       fetchData();
     }
-  }, [user]);
+  }, [user, currentBranch]);
 
   const fetchData = async () => {
-    // Fetch gym settings
+    if (!currentBranch) return;
+
+    // Fetch gym settings for the current branch
     const { data: settingsData } = await supabase
       .from("gym_settings")
       .select("id, gym_name, gym_phone, gym_address, whatsapp_enabled")
+      .eq("branch_id", currentBranch.id)
       .limit(1)
       .maybeSingle();
 
@@ -129,24 +134,30 @@ const AdminSettings = () => {
       setWhatsappEnabled(settingsData.whatsapp_enabled !== false);
     }
 
-    // Fetch monthly packages
+    // Fetch monthly packages for the current branch
     const { data: monthlyData } = await supabase
       .from("monthly_packages")
       .select("*")
+      .eq("branch_id", currentBranch.id)
       .order("months");
 
     if (monthlyData) {
       setMonthlyPackages(monthlyData);
+    } else {
+      setMonthlyPackages([]);
     }
 
-    // Fetch custom packages
+    // Fetch custom packages for the current branch
     const { data: packagesData } = await supabase
       .from("custom_packages")
       .select("*")
+      .eq("branch_id", currentBranch.id)
       .order("duration_days");
 
     if (packagesData) {
       setCustomPackages(packagesData);
+    } else {
+      setCustomPackages([]);
     }
   };
 
@@ -192,6 +203,11 @@ const AdminSettings = () => {
       return;
     }
 
+    if (!currentBranch) {
+      toast.error("Please select a branch first");
+      return;
+    }
+
     const months = Number(newMonthlyPackage.months);
     
     if (monthlyPackages.some((p) => p.months === months)) {
@@ -203,6 +219,7 @@ const AdminSettings = () => {
       months,
       price: Number(newMonthlyPackage.price),
       joining_fee: Number(newMonthlyPackage.joining_fee) || 0,
+      branch_id: currentBranch.id,
     });
 
     if (error) {
@@ -217,6 +234,7 @@ const AdminSettings = () => {
         entityType: "monthly_packages",
         entityName: `${months} Month Package`,
         newValue: { months, price: Number(newMonthlyPackage.price), joining_fee: Number(newMonthlyPackage.joining_fee) || 0 },
+        branchId: currentBranch.id,
       });
       toast.success("Package added");
       setNewMonthlyPackage({ months: "", price: "", joining_fee: "" });
@@ -306,6 +324,11 @@ const AdminSettings = () => {
       return;
     }
 
+    if (!currentBranch) {
+      toast.error("Please select a branch first");
+      return;
+    }
+
     const durationDays = Number(newPackage.duration_days);
     
     if (customPackages.some((p) => p.duration_days === durationDays)) {
@@ -317,6 +340,7 @@ const AdminSettings = () => {
       name: newPackage.name,
       duration_days: durationDays,
       price: Number(newPackage.price),
+      branch_id: currentBranch.id,
     });
 
     if (error) {
@@ -335,6 +359,7 @@ const AdminSettings = () => {
         entityType: "custom_packages",
         entityName: newPackage.name,
         newValue: { name: newPackage.name, duration_days: durationDays, price: Number(newPackage.price) },
+        branchId: currentBranch.id,
       });
       toast.success("Package added");
       setNewPackage({ name: "", duration_days: "", price: "" });

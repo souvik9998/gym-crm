@@ -18,7 +18,6 @@ import { useBranch, type Branch } from "@/contexts/BranchContext";
 
 const QRCodePage = () => {
   const [copied, setCopied] = useState<string | null>(null);
-  const [gymName, setGymName] = useState("Pro Plus Fitness");
   const { branches } = useBranch();
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
 
@@ -34,14 +33,6 @@ const QRCodePage = () => {
     if (typeof window === "undefined") return "";
     return `${window.location.origin}/b/${branch.id}`;
   };
-
-  useEffect(() => {
-    supabase.from("gym_settings").select("gym_name").limit(1).maybeSingle().then(({ data }) => {
-      if (data?.gym_name) {
-        setGymName(data.gym_name);
-      }
-    });
-  }, []);
 
   const handleCopy = async (url: string, branchId: string) => {
     try {
@@ -135,7 +126,6 @@ const QRCodePage = () => {
 
           {branches.map((branch) => {
             const portalUrl = getPortalUrl(branch);
-            const displayName = `${gymName} - ${branch.name}`;
 
             return (
               <TabsContent key={branch.id} value={branch.id} className="space-y-6 mt-6">
@@ -159,7 +149,7 @@ const QRCodePage = () => {
                 {/* QR Code Card */}
                 <Card className="border-0 shadow-sm">
                   <CardHeader className="text-center pb-4">
-                    <CardTitle className="text-2xl font-semibold">{displayName}</CardTitle>
+                    <CardTitle className="text-2xl font-semibold">{branch.name}</CardTitle>
                     <CardDescription>
                       Scan this QR code to register at <strong>{branch.name}</strong>
                     </CardDescription>
@@ -179,7 +169,7 @@ const QRCodePage = () => {
                     {/* Gym logo and name */}
                     <div className="flex items-center gap-2 text-primary">
                       <img src="/logo.jpg" alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
-                      <span className="font-semibold text-lg">{displayName}</span>
+                      <span className="font-semibold text-lg">{branch.name}</span>
                     </div>
 
                     {/* URL Display */}
