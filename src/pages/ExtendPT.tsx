@@ -30,6 +30,7 @@ const ExtendPT = () => {
   const { initiatePayment, isLoading } = useRazorpay();
 
   const member = location.state?.member;
+  const branchId = location.state?.branchId || member?.branch_id;
   const membershipStartDate = location.state?.membershipStartDate ? new Date(location.state.membershipStartDate) : null;
   const membershipEndDate = location.state?.membershipEndDate ? new Date(location.state.membershipEndDate) : null;
 
@@ -61,11 +62,17 @@ const ExtendPT = () => {
   const fetchData = async () => {
     setIsLoadingData(true);
     
-    // Fetch trainers
-    const { data: trainersData } = await supabase
+    // Fetch trainers - filter by branch if provided
+    let trainersQuery = supabase
       .from("personal_trainers")
       .select("id, name, specialization, monthly_fee")
       .eq("is_active", true);
+    
+    if (branchId) {
+      trainersQuery = trainersQuery.eq("branch_id", branchId);
+    }
+
+    const { data: trainersData } = await trainersQuery;
 
     if (trainersData) {
       setTrainers(trainersData);

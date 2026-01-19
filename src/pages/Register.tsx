@@ -194,6 +194,7 @@ const Register = () => {
             onSubmit={handlePackageSubmit}
             onBack={() => setStep("details")}
             isLoading={isPaymentLoading}
+            branchId={branchId}
           />
         )}
       </main>

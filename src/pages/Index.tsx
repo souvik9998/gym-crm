@@ -170,7 +170,7 @@ const Index = () => {
     setPhone("");
   };
 
-  const displayName = branchName ? `${gymName} - ${branchName}` : gymName;
+  const displayName = branchName ? branchName : gymName;
 
   return (
     <div className="min-h-screen bg-background">
@@ -191,10 +191,8 @@ const Index = () => {
         <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
           {gymName}
         </h1>
-        {branchName ? (
+        {branchName && (
           <p className="text-muted-foreground text-lg">{branchName}</p>
-        ) : (
-          <p className="text-muted-foreground text-lg">Dinhata</p>
         )}
       </header>
 

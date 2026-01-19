@@ -49,6 +49,7 @@ interface PackageSelectionFormProps {
   existingMembershipEndDate?: string; // For renewals - the current gym membership end date
   existingPTEndDate?: string; // For renewals - the current PT end date (if any)
   minStartDate?: Date; // Minimum allowed start date (for members with active membership: end_date + 1)
+  branchId?: string; // Branch ID to filter packages and trainers
 }
 
 export interface PackageSelectionData {
@@ -76,7 +77,8 @@ const PackageSelectionForm = ({
   ptStartDate: propPtStartDate,
   existingMembershipEndDate,
   existingPTEndDate,
-  minStartDate: propMinStartDate
+  minStartDate: propMinStartDate,
+  branchId
 }: PackageSelectionFormProps) => {
   const [packageType, setPackageType] = useState<"monthly" | "custom">("monthly");
   const [selectedMonthlyPackage, setSelectedMonthlyPackage] = useState<MonthlyPackage | null>(null);
@@ -151,15 +153,20 @@ const PackageSelectionForm = ({
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [branchId]);
 
   const fetchData = async () => {
-    // Fetch monthly packages with custom pricing
-    const { data: monthlyData } = await supabase
+    // Fetch monthly packages with custom pricing - filter by branch if provided
+    let monthlyQuery = supabase
       .from("monthly_packages")
       .select("*")
-      .eq("is_active", true)
-      .order("months");
+      .eq("is_active", true);
+    
+    if (branchId) {
+      monthlyQuery = monthlyQuery.eq("branch_id", branchId);
+    }
+
+    const { data: monthlyData } = await monthlyQuery.order("months");
 
     if (monthlyData && monthlyData.length > 0) {
       setMonthlyPackages(monthlyData);
@@ -168,22 +175,33 @@ const PackageSelectionForm = ({
       setSelectedMonthlyPackage(defaultPkg);
     }
 
-    // Fetch trainers
-    const { data: trainersData } = await supabase
+    // Fetch trainers - filter by branch if provided
+    let trainersQuery = supabase
       .from("personal_trainers")
       .select("id, name, specialization, monthly_fee")
       .eq("is_active", true);
+    
+    if (branchId) {
+      trainersQuery = trainersQuery.eq("branch_id", branchId);
+    }
+
+    const { data: trainersData } = await trainersQuery;
 
     if (trainersData) {
       setTrainers(trainersData);
     }
 
-    // Fetch custom packages
-    const { data: packagesData } = await supabase
+    // Fetch custom packages - filter by branch if provided
+    let packagesQuery = supabase
       .from("custom_packages")
       .select("*")
-      .eq("is_active", true)
-      .order("duration_days");
+      .eq("is_active", true);
+    
+    if (branchId) {
+      packagesQuery = packagesQuery.eq("branch_id", branchId);
+    }
+
+    const { data: packagesData } = await packagesQuery.order("duration_days");
 
     if (packagesData) {
       setCustomPackages(packagesData);
