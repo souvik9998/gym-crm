@@ -507,7 +507,7 @@ export type Database = {
       }
       members: {
         Row: {
-          branch_id: string | null
+          branch_id: string
           created_at: string | null
           email: string | null
           id: string
@@ -517,7 +517,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          branch_id?: string | null
+          branch_id: string
           created_at?: string | null
           email?: string | null
           id?: string
@@ -527,7 +527,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          branch_id?: string | null
+          branch_id?: string
           created_at?: string | null
           email?: string | null
           id?: string
