@@ -20,15 +20,34 @@ const Renew = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { initiatePayment, isLoading: isPaymentLoading, paymentStage } = useRazorpay();
-  const member = (location.state as { member: Member })?.member;
+  const { member, branchId: stateBranchId, branchName: stateBranchName } = (location.state as { member: Member; branchId?: string; branchName?: string }) || {};
   const [ptStartDate, setPtStartDate] = useState<string | null>(null);
   const [existingMembershipEndDate, setExistingMembershipEndDate] = useState<string | null>(null);
   const [existingPTEndDate, setExistingPTEndDate] = useState<string | null>(null);
+  const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(null);
+
+  const branchId = stateBranchId || member?.branch_id;
 
   useEffect(() => {
     if (!member) {
       navigate("/");
       return;
+    }
+
+    // Set branch info from state or fetch it
+    if (stateBranchName && branchId) {
+      setBranchInfo({ id: branchId, name: stateBranchName });
+    } else if (branchId) {
+      supabase
+        .from("branches")
+        .select("id, name")
+        .eq("id", branchId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setBranchInfo(data);
+          }
+        });
     }
 
     const fetchMemberData = async () => {
@@ -73,7 +92,7 @@ const Renew = () => {
     };
 
     fetchMemberData();
-  }, [member, navigate]);
+  }, [member, navigate, branchId, stateBranchName]);
 
   const handlePackageSubmit = (packageData: PackageSelectionData) => {
     // Use the custom start date from package selection
@@ -92,7 +111,7 @@ const Renew = () => {
       gymFee: packageData.subscriptionAmount + packageData.joiningFee,
       ptStartDate: packageData.ptStartDate,
       gymStartDate: gymStart,
-      branchId: member.branch_id || undefined,
+      branchId: branchId || undefined,
       onSuccess: async (data) => {
         const endDate = new Date(data.endDate);
         
@@ -105,7 +124,9 @@ const Renew = () => {
               endDate: data.endDate,
               type: "renewal",
               memberIds: [member.id],
-              isManual: false, // Automated message from system
+              isManual: false,
+              branchId: branchId,
+              branchName: branchInfo?.name,
             },
           });
         } catch (err) {
