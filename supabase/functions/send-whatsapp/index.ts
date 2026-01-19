@@ -13,6 +13,8 @@ interface SendWhatsAppRequest {
   customMessage?: string;
   isManual?: boolean;
   adminUserId?: string;
+  branchId?: string;
+  branchName?: string;
 
   // Direct send
   phone?: string;
@@ -66,6 +68,8 @@ Deno.serve(async (req) => {
       customMessage,
       isManual = false,
       adminUserId,
+      branchId,
+      branchName,
       phone,
       name,
       endDate,
@@ -197,7 +201,8 @@ Deno.serve(async (req) => {
       memberName: string, 
       expiryDate: string, 
       msgType: string,
-      paymentInfo?: { amount: number; date: string; mode: string } | null
+      paymentInfo?: { amount: number; date: string; mode: string } | null,
+      msgBranchName?: string | null
     ): string => {
       const formattedDate = new Date(expiryDate).toLocaleDateString("en-IN", {
         day: "numeric",
@@ -211,6 +216,10 @@ Deno.serve(async (req) => {
       endDateObj.setHours(0, 0, 0, 0);
       const diffDays = Math.ceil((endDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
+      // Use branch name if provided, otherwise default gym name
+      const gymDisplayName = msgBranchName ? `Pro Plus Fitness - ${msgBranchName}` : "Pro Plus Fitness";
+      const teamName = msgBranchName ? `Team Pro Plus Fitness (${msgBranchName})` : "Team Pro Plus Fitness";
+
       // For custom messages with placeholders, replace them
       if (msgType === "custom" && customMessage) {
         return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo);
@@ -219,21 +228,21 @@ Deno.serve(async (req) => {
       switch (msgType) {
         case "new_registration":
           return (
-            `🎉 *Welcome to Pro Plus Fitness!*\n\n` +
+            `🎉 *Welcome to ${gymDisplayName}!*\n\n` +
             `Hi ${memberName}, 👋\n\n` +
             `Congratulations on starting your fitness journey! 🏋️\n\n` +
             `Your membership is now *active till ${formattedDate}*.\n\n` +
             `We're excited to have you on board. Let's crush those fitness goals together 💪🔥\n\n` +
-            `See you at the gym!\n— Team Pro Plus Fitness`
+            `See you at the gym!\n— ${teamName}`
           );
 
         case "daily_pass":
           return (
-            `🎟️ *Daily Pass Activated!*\n\n` +
+            `🎟️ *Daily Pass Activated at ${gymDisplayName}!*\n\n` +
             `Hi ${memberName}, 👋\n\n` +
             `Your daily pass is now *active till ${formattedDate}*.\n\n` +
             `Make the most of your session today! 💪🔥\n\n` +
-            `See you at the gym!\n— Team Pro Plus Fitness`
+            `See you at the gym!\n— ${teamName}`
           );
 
         case "renewal":
@@ -243,7 +252,7 @@ Deno.serve(async (req) => {
             `Hi ${memberName}, 👋\n\n` +
             `Your gym membership has been *renewed till ${formattedDate}*.\n\n` +
             `Let's stay consistent and keep pushing towards your fitness goals 💪🔥\n\n` +
-            `See you at the gym!\n— Team Pro Plus Fitness`
+            `See you at the gym!\n— ${teamName}`
           );
 
         case "pt_extension":
@@ -252,7 +261,7 @@ Deno.serve(async (req) => {
             `Hi ${memberName}, 👋\n\n` +
             `Your Personal Training sessions are now extended till *${formattedDate}*.\n\n` +
             `Get ready to level up your performance with focused training 🔥\n\n` +
-            `Train hard!\n— Team Pro Plus Fitness`
+            `Train hard!\n— ${teamName}`
           );
 
         case "expiring_2days":
@@ -261,7 +270,7 @@ Deno.serve(async (req) => {
             `Hi ${memberName}, 👋\n\n` +
             `Your gym membership will expire in *2 days* on *${formattedDate}*.\n\n` +
             `Renew on time to avoid any break in your workouts 💪\n\n` +
-            `Reply to this message or visit the gym to renew.\n— Team Pro Plus Fitness`
+            `Reply to this message or visit the gym to renew.\n— ${teamName}`
           );
 
         case "expiring_today":
@@ -270,7 +279,7 @@ Deno.serve(async (req) => {
             `Hi ${memberName}, 👋\n\n` +
             `Your gym membership expires *today (${formattedDate})*.\n\n` +
             `Renew now to continue your fitness journey without interruption 🔥\n\n` +
-            `Contact us or visit the gym today.\n— Team Pro Plus Fitness`
+            `Contact us or visit the gym today.\n— ${teamName}`
           );
 
         case "promotional":
@@ -281,9 +290,9 @@ Deno.serve(async (req) => {
           return (
             `🎉 *Special Offer for You!*\n\n` +
             `Hi ${memberName}, 👋\n\n` +
-            `We have exciting offers waiting for you at Pro Plus Fitness! 💪\n\n` +
+            `We have exciting offers waiting for you at ${gymDisplayName}! 💪\n\n` +
             `Visit us today or reply to this message to know more about our exclusive deals.\n\n` +
-            `Stay fit, stay strong! 🔥\n— Team Pro Plus Fitness`
+            `Stay fit, stay strong! 🔥\n— ${teamName}`
           );
 
         case "expiry_reminder":
@@ -301,7 +310,7 @@ Deno.serve(async (req) => {
             `Hi ${memberName}, 👋\n\n` +
             `Your gym membership ${daysText} (${formattedDate}).\n\n` +
             `Don't let your fitness journey pause! Renew now to continue your progress 💪\n\n` +
-            `Visit the gym or reply to renew.\n— Team Pro Plus Fitness`
+            `Visit the gym or reply to renew.\n— ${teamName}`
           );
 
         case "expired_reminder":
@@ -316,7 +325,7 @@ Deno.serve(async (req) => {
             `Your gym membership expired ${expiredDays} days ago on ${formattedDate}.\n\n` +
             `We miss seeing you at the gym! 💔 Renew now and get back on track with your fitness goals.\n\n` +
             `🎁 *Special Renewal Offer* - Renew within 7 days and get exclusive benefits!\n\n` +
-            `Visit us or reply to renew today.\n— Team Pro Plus Fitness`
+            `Visit us or reply to renew today.\n— ${teamName}`
           );
 
         case "payment_details":
@@ -334,7 +343,7 @@ Deno.serve(async (req) => {
               `📅 *Date:* ${paymentDate}\n` +
               `💳 *Mode:* ${paymentInfo.mode.charAt(0).toUpperCase() + paymentInfo.mode.slice(1)}\n\n` +
               `Your membership is valid till *${formattedDate}*.\n\n` +
-              `Thank you for being with us! 🙏\n— Team Pro Plus Fitness`
+              `Thank you for being with us! 🙏\n— ${teamName}`
             );
           }
           return (
@@ -342,7 +351,7 @@ Deno.serve(async (req) => {
             `Hi ${memberName}, 👋\n\n` +
             `Your current membership is valid till *${formattedDate}*.\n\n` +
             `For detailed payment history, please visit the gym or contact us.\n\n` +
-            `Thank you! 🙏\n— Team Pro Plus Fitness`
+            `Thank you! 🙏\n— ${teamName}`
           );
 
         default:
@@ -350,7 +359,7 @@ Deno.serve(async (req) => {
           if (customMessage) {
             return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo);
           }
-          return `Hi ${memberName}, 👋\n\nThis is a message from your gym.\n\n— Team Pro Plus Fitness`;
+          return `Hi ${memberName}, 👋\n\nThis is a message from your gym.\n\n— ${teamName}`;
       }
     };
 
@@ -391,7 +400,7 @@ Deno.serve(async (req) => {
     // DIRECT SEND (NO MEMBER LOOKUP)
     if (phone && name && endDate) {
       const formattedPhone = formatPhone(phone);
-      const message = generateMessage(name, endDate, type);
+      const message = generateMessage(name, endDate, type, null, branchName);
 
       const result = await sendPeriskopeMessage(formattedPhone, message);
 

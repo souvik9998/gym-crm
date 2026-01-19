@@ -4,37 +4,38 @@ import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowDownTrayIcon,
   ClipboardDocumentIcon,
   CheckIcon,
   ArrowTopRightOnSquareIcon,
+  BuildingOffice2Icon,
 } from "@heroicons/react/24/outline";
 import { toast } from "@/components/ui/sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { useBranch } from "@/contexts/BranchContext";
+import { useBranch, type Branch } from "@/contexts/BranchContext";
 
 const QRCodePage = () => {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
   const [gymName, setGymName] = useState("Pro Plus Fitness");
-  const { currentBranch, branches } = useBranch();
+  const { branches } = useBranch();
+  const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
 
-  // Generate the portal URL based on selected branch
-  const getPortalUrl = () => {
-    if (typeof window === "undefined") return "";
-    
-    // If a branch is selected, include it in the URL
-    if (currentBranch) {
-      return `${window.location.origin}/b/${currentBranch.id}`;
+  // Set first branch as default when branches load
+  useEffect(() => {
+    if (branches.length > 0 && !selectedBranch) {
+      setSelectedBranch(branches[0]);
     }
-    
-    return `${window.location.origin}/`;
+  }, [branches, selectedBranch]);
+
+  // Generate the portal URL for a specific branch
+  const getPortalUrl = (branch: Branch) => {
+    if (typeof window === "undefined") return "";
+    return `${window.location.origin}/b/${branch.id}`;
   };
 
-  const portalUrl = getPortalUrl();
-
   useEffect(() => {
-    // Fetch gym name
     supabase.from("gym_settings").select("gym_name").limit(1).maybeSingle().then(({ data }) => {
       if (data?.gym_name) {
         setGymName(data.gym_name);
@@ -42,19 +43,19 @@ const QRCodePage = () => {
     });
   }, []);
 
-  const handleCopy = async () => {
+  const handleCopy = async (url: string, branchId: string) => {
     try {
-      await navigator.clipboard.writeText(portalUrl);
-      setCopied(true);
+      await navigator.clipboard.writeText(url);
+      setCopied(branchId);
       toast.success("Link copied to clipboard!");
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(null), 2000);
     } catch (error) {
       toast.error("Failed to copy");
     }
   };
 
-  const handleDownload = () => {
-    const svg = document.getElementById("qr-code-svg");
+  const handleDownload = (branch: Branch) => {
+    const svg = document.getElementById(`qr-code-svg-${branch.id}`);
     if (!svg) return;
 
     const svgData = new XMLSerializer().serializeToString(svg);
@@ -73,9 +74,7 @@ const QRCodePage = () => {
         const pngUrl = canvas.toDataURL("image/png");
         const downloadLink = document.createElement("a");
         downloadLink.href = pngUrl;
-        const fileName = currentBranch 
-          ? `qr-${currentBranch.name.toLowerCase().replace(/\s+/g, '-')}.png`
-          : "pro-plus-fitness-qr.png";
+        const fileName = `qr-${branch.name.toLowerCase().replace(/\s+/g, '-')}.png`;
         downloadLink.download = fileName;
         document.body.appendChild(downloadLink);
         downloadLink.click();
@@ -84,165 +83,194 @@ const QRCodePage = () => {
     };
 
     img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
-    toast.success("QR Code downloaded!");
+    toast.success(`QR Code for ${branch.name} downloaded!`);
   };
 
-  const displayName = currentBranch ? `${gymName} - ${currentBranch.name}` : gymName;
+  if (branches.length === 0) {
+    return (
+      <AdminLayout title="QR Code" subtitle="Member Registration Portal">
+        <div className="max-w-2xl mx-auto">
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-8 text-center">
+              <BuildingOffice2Icon className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">No Branches Configured</h3>
+              <p className="text-muted-foreground mb-4">
+                Please add a branch in Settings first to generate QR codes for member registration.
+              </p>
+              <Button onClick={() => window.location.href = "/admin/settings"}>
+                Go to Settings
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
-    <AdminLayout title="QR Code" subtitle="Member Registration Portal">
-      <div className="max-w-2xl mx-auto space-y-6">
-        {/* Branch Info */}
-        {currentBranch && (
-          <Card className="border-0 shadow-sm bg-primary/5">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-foreground">Branch: {currentBranch.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Members registered through this QR will be added to this branch
-                  </p>
+    <AdminLayout title="QR Codes" subtitle="Branch-specific registration portals">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Branch Tabs */}
+        <Tabs 
+          value={selectedBranch?.id || branches[0]?.id} 
+          onValueChange={(val) => {
+            const branch = branches.find(b => b.id === val);
+            if (branch) setSelectedBranch(branch);
+          }}
+        >
+          <TabsList className="w-full justify-start overflow-x-auto flex-nowrap bg-muted/50 p-1">
+            {branches.map((branch) => (
+              <TabsTrigger 
+                key={branch.id} 
+                value={branch.id}
+                className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm whitespace-nowrap"
+              >
+                <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                  {branch.name.charAt(0)}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                {branch.name}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-        {!currentBranch && branches.length === 0 && (
-          <Card className="border-0 shadow-sm bg-warning/10">
-            <CardContent className="p-4">
-              <p className="text-sm text-warning-foreground">
-                No branches configured. Add a branch in Settings to get branch-specific QR codes.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+          {branches.map((branch) => {
+            const portalUrl = getPortalUrl(branch);
+            const displayName = `${gymName} - ${branch.name}`;
 
-        {/* QR Code Card */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-2xl font-semibold">{displayName}</CardTitle>
-            <CardDescription>
-              Scan this QR code to register or renew your membership
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center space-y-6">
-            {/* QR Code */}
-            <div className="p-6 bg-white rounded-2xl shadow-lg border">
-              <QRCodeSVG
-                id="qr-code-svg"
-                value={portalUrl}
-                size={256}
-                level="H"
-                includeMargin
-                imageSettings={{
-                  src: "",
-                  height: 0,
-                  width: 0,
-                  excavate: false,
-                }}
-              />
-            </div>
+            return (
+              <TabsContent key={branch.id} value={branch.id} className="space-y-6 mt-6">
+                {/* Branch Info Card */}
+                <Card className="border-0 shadow-sm bg-gradient-to-r from-primary/5 to-accent/5">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <BuildingOffice2Icon className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg">{branch.name}</h3>
+                        {branch.address && (
+                          <p className="text-sm text-muted-foreground">{branch.address}</p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            {/* Gym logo placeholder */}
-            <div className="flex items-center gap-2 text-primary">
-              <img src="/logo.jpg" alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
-              <span className="font-semibold text-lg">{displayName}</span>
-            </div>
+                {/* QR Code Card */}
+                <Card className="border-0 shadow-sm">
+                  <CardHeader className="text-center pb-4">
+                    <CardTitle className="text-2xl font-semibold">{displayName}</CardTitle>
+                    <CardDescription>
+                      Scan this QR code to register at <strong>{branch.name}</strong>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col items-center space-y-6">
+                    {/* QR Code */}
+                    <div className="p-6 bg-white rounded-2xl shadow-lg border">
+                      <QRCodeSVG
+                        id={`qr-code-svg-${branch.id}`}
+                        value={portalUrl}
+                        size={256}
+                        level="H"
+                        includeMargin
+                      />
+                    </div>
 
-            {/* URL Display */}
-            <div className="w-full">
-              <label className="text-sm text-muted-foreground mb-2 block">Portal URL</label>
-              <div className="flex gap-2">
-                <Input
-                  value={portalUrl}
-                  readOnly
-                  className="font-mono text-sm"
-                />
-                <Button variant="outline" size="icon" onClick={handleCopy} className="flex-shrink-0">
-                  {copied ? (
-                    <CheckIcon className="w-4 h-4 text-success" />
-                  ) : (
-                    <ClipboardDocumentIcon className="w-4 h-4" />
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => window.open(portalUrl, "_blank")}
-                  className="flex-shrink-0"
-                >
-                  <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
+                    {/* Gym logo and name */}
+                    <div className="flex items-center gap-2 text-primary">
+                      <img src="/logo.jpg" alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
+                      <span className="font-semibold text-lg">{displayName}</span>
+                    </div>
 
-            {/* Download Button */}
-            <Button
-              size="lg"
-              className="w-full max-w-xs gap-2"
-              onClick={handleDownload}
-            >
-              <ArrowDownTrayIcon className="w-4 h-4" />
-              Download QR Code
-            </Button>
-          </CardContent>
-        </Card>
+                    {/* URL Display */}
+                    <div className="w-full max-w-md">
+                      <label className="text-sm text-muted-foreground mb-2 block">Portal URL</label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={portalUrl}
+                          readOnly
+                          className="font-mono text-sm"
+                        />
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          onClick={() => handleCopy(portalUrl, branch.id)} 
+                          className="flex-shrink-0"
+                        >
+                          {copied === branch.id ? (
+                            <CheckIcon className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <ClipboardDocumentIcon className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => window.open(portalUrl, "_blank")}
+                          className="flex-shrink-0"
+                        >
+                          <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
 
-        {/* Instructions */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">How to Use</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-4">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <span className="text-primary font-bold text-sm">1</span>
-              </div>
-              <div>
-                <p className="font-medium">Print the QR Code</p>
-                <p className="text-sm text-muted-foreground">
-                  Download and print the QR code to display at your gym entrance or reception
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <span className="text-primary font-bold text-sm">2</span>
-              </div>
-              <div>
-                <p className="font-medium">Members Scan the Code</p>
-                <p className="text-sm text-muted-foreground">
-                  Members use their phone camera to scan and open the registration portal
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <span className="text-primary font-bold text-sm">3</span>
-              </div>
-              <div>
-                <p className="font-medium">Complete Payment</p>
-                <p className="text-sm text-muted-foreground">
-                  New and existing members can register or renew their membership online
-                </p>
-              </div>
-            </div>
-            {currentBranch && (
-              <div className="flex gap-4 pt-2 border-t">
-                <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
-                  <span className="text-accent font-bold text-sm">✓</span>
-                </div>
-                <div>
-                  <p className="font-medium">Branch-Specific Registration</p>
-                  <p className="text-sm text-muted-foreground">
-                    Members who register via this QR will automatically be added to <strong>{currentBranch.name}</strong>
-                  </p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    {/* Download Button */}
+                    <Button
+                      size="lg"
+                      className="w-full max-w-xs gap-2"
+                      onClick={() => handleDownload(branch)}
+                    >
+                      <ArrowDownTrayIcon className="w-4 h-4" />
+                      Download QR Code
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Instructions */}
+                <Card className="border-0 shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-lg">How to Use This QR Code</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex gap-4">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-primary font-bold text-sm">1</span>
+                      </div>
+                      <div>
+                        <p className="font-medium">Print & Display</p>
+                        <p className="text-sm text-muted-foreground">
+                          Download and print this QR code. Display it at <strong>{branch.name}</strong> entrance or reception.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-primary font-bold text-sm">2</span>
+                      </div>
+                      <div>
+                        <p className="font-medium">Members Scan</p>
+                        <p className="text-sm text-muted-foreground">
+                          Members scan with their phone camera to open the registration portal for <strong>{branch.name}</strong>.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-primary font-bold text-sm">3</span>
+                      </div>
+                      <div>
+                        <p className="font-medium">Auto-Assignment</p>
+                        <p className="text-sm text-muted-foreground">
+                          Members who register via this QR will automatically be added to <strong>{branch.name}</strong>.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            );
+          })}
+        </Tabs>
       </div>
     </AdminLayout>
   );

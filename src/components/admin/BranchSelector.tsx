@@ -5,7 +5,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -50,7 +49,6 @@ export const BranchSelector = () => {
 
   const handleOpenAddDialog = () => {
     setIsDropdownOpen(false);
-    // Small delay to prevent UI conflicts
     setTimeout(() => {
       setIsAddDialogOpen(true);
     }, 100);
@@ -71,7 +69,7 @@ export const BranchSelector = () => {
           address: newBranch.address.trim() || null,
           phone: newBranch.phone.trim() || null,
           email: newBranch.email.trim() || null,
-          is_default: branches.length === 0, // First branch becomes default
+          is_default: branches.length === 0,
         })
         .select()
         .single();
@@ -94,7 +92,6 @@ export const BranchSelector = () => {
       setIsAddDialogOpen(false);
       await refreshBranches();
       
-      // Auto-select the new branch
       if (data) {
         setCurrentBranch(data as Branch);
       }
@@ -119,7 +116,6 @@ export const BranchSelector = () => {
           <PlusIcon className="w-3 h-3 sm:hidden" />
         </Button>
 
-        {/* Add Branch Dialog */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
@@ -194,20 +190,30 @@ export const BranchSelector = () => {
       <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="gap-2 h-9 min-w-0 max-w-[200px]"
+            className="gap-2 h-10 px-3 hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all"
           >
-            <BuildingOffice2Icon className="w-4 h-4 flex-shrink-0" />
-            <span className="truncate hidden sm:inline">
-              {currentBranch?.name || "Select Branch"}
-            </span>
-            <ChevronDownIcon className="w-3 h-3 flex-shrink-0" />
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <BuildingOffice2Icon className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="text-xs text-muted-foreground font-normal leading-none">
+                Branch
+              </span>
+              <span className="font-semibold text-foreground truncate max-w-[140px] leading-tight">
+                {currentBranch?.name || "Select"}
+              </span>
+            </div>
+            <ChevronDownIcon className="w-4 h-4 text-muted-foreground ml-1" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56">
-          <DropdownMenuLabel>Switch Branch</DropdownMenuLabel>
-          <DropdownMenuSeparator />
+        <DropdownMenuContent align="start" className="w-64 p-2">
+          <div className="px-2 py-1.5 mb-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Your Branches
+            </p>
+          </div>
           {branches.map((branch) => (
             <DropdownMenuItem
               key={branch.id}
@@ -216,38 +222,51 @@ export const BranchSelector = () => {
                 handleSelectBranch(branch);
               }}
               className={cn(
-                "cursor-pointer flex items-center justify-between",
-                currentBranch?.id === branch.id && "bg-primary/10"
+                "cursor-pointer flex items-center justify-between p-3 rounded-lg mb-1 transition-colors",
+                currentBranch?.id === branch.id 
+                  ? "bg-primary/10 border border-primary/20" 
+                  : "hover:bg-muted"
               )}
             >
-              <div className="flex flex-col">
-                <span className="font-medium">{branch.name}</span>
-                {branch.address && (
-                  <span className="text-xs text-muted-foreground truncate max-w-[180px]">
-                    {branch.address}
-                  </span>
-                )}
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold",
+                  currentBranch?.id === branch.id 
+                    ? "bg-primary text-primary-foreground" 
+                    : "bg-muted text-muted-foreground"
+                )}>
+                  {branch.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-medium text-foreground">{branch.name}</span>
+                  {branch.address && (
+                    <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                      {branch.address}
+                    </span>
+                  )}
+                </div>
               </div>
               {currentBranch?.id === branch.id && (
-                <CheckIcon className="w-4 h-4 text-primary" />
+                <CheckIcon className="w-5 h-5 text-primary" />
               )}
             </DropdownMenuItem>
           ))}
-          <DropdownMenuSeparator />
+          <DropdownMenuSeparator className="my-2" />
           <DropdownMenuItem
             onSelect={(e) => {
               e.preventDefault();
               handleOpenAddDialog();
             }}
-            className="cursor-pointer gap-2"
+            className="cursor-pointer gap-3 p-3 rounded-lg hover:bg-accent/50"
           >
-            <PlusIcon className="w-4 h-4" />
-            Add New Branch
+            <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
+              <PlusIcon className="w-5 h-5 text-accent" />
+            </div>
+            <span className="font-medium">Add New Branch</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Add Branch Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
