@@ -53,15 +53,18 @@ const Index = () => {
   useEffect(() => {
     const state = location.state as { returnToOptions?: boolean; phone?: string } | null;
     if (state?.returnToOptions && state?.phone) {
-      // Re-fetch member data and show options
+      // Re-fetch member data and show options (branch-specific)
       const fetchMember = async () => {
         setIsLoading(true);
         try {
-          const { data: member } = await supabase
-            .from("members")
-            .select("*")
-            .eq("phone", state.phone)
-            .maybeSingle();
+          // Check for member in the specific branch, or find default branch if no branchId
+          let query = supabase.from("members").select("*").eq("phone", state.phone);
+          
+          if (branchId) {
+            query = query.eq("branch_id", branchId);
+          }
+          
+          const { data: member } = await query.maybeSingle();
 
           if (member) {
             // Fetch the most recent subscription (including future-dated ones)
@@ -105,12 +108,15 @@ const Index = () => {
     setIsLoading(true);
     
     try {
-      // Check if member exists
-      const { data: member, error } = await supabase
-        .from("members")
-        .select("*")
-        .eq("phone", phone)
-        .maybeSingle();
+      // Check if member exists in the specific branch
+      let query = supabase.from("members").select("*").eq("phone", phone);
+      
+      // If we have a branchId (from QR code), check only that branch
+      if (branchId) {
+        query = query.eq("branch_id", branchId);
+      }
+      
+      const { data: member, error } = await query.maybeSingle();
 
       if (error) throw error;
 
