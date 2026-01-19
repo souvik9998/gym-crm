@@ -11,6 +11,11 @@ import PackageSelectionForm, { type PackageSelectionData } from "@/components/re
 
 type Step = "details" | "package";
 
+interface BranchInfo {
+  id: string;
+  name: string;
+}
+
 const Register = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -21,12 +26,31 @@ const Register = () => {
   
   const [step, setStep] = useState<Step>("details");
   const [memberDetails, setMemberDetails] = useState<MemberDetailsData | null>(null);
+  const [branchInfo, setBranchInfo] = useState<BranchInfo | null>(null);
+
+  // Fetch branch info if branchId is present
+  useEffect(() => {
+    if (branchId) {
+      supabase
+        .from("branches")
+        .select("id, name")
+        .eq("id", branchId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setBranchInfo(data);
+          }
+        });
+    }
+  }, [branchId]);
 
   useEffect(() => {
     if (!phone) {
-      navigate("/");
+      // If no phone, redirect to the appropriate landing page
+      const redirectPath = branchId ? `/b/${branchId}` : "/";
+      navigate(redirectPath);
     }
-  }, [phone, navigate]);
+  }, [phone, navigate, branchId]);
 
   const handleDetailsSubmit = (data: MemberDetailsData) => {
     setMemberDetails(data);
@@ -78,7 +102,9 @@ const Register = () => {
               type: notificationType,
               memberIds: data.memberId ? [data.memberId] : [],
               dailyPassUserId: data.dailyPassUserId,
-              isManual: false, // Automated message from system
+              isManual: false,
+              branchId: branchId,
+              branchName: branchInfo?.name,
             },
           });
         } catch (err) {
