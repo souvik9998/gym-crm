@@ -33,6 +33,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { addMonths, differenceInDays, format, isBefore } from "date-fns";
+import { useBranch } from "@/contexts/BranchContext";
 
 interface Member {
   id: string;
@@ -72,6 +73,7 @@ interface AddPaymentDialogProps {
 type PaymentType = "gym_only" | "gym_and_pt" | "pt_only";
 
 export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDialogProps) => {
+  const { currentBranch } = useBranch();
   const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -469,7 +471,8 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
             `Gym renewal - ${member.name} (${selectedPackage.months} months)`,
             member.id,
             undefined,
-            paymentRecord.id
+            paymentRecord.id,
+            currentBranch?.id
           );
         }
 
@@ -481,7 +484,8 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
             `PT subscription - ${member.name} with ${selectedTrainer.name}`,
             member.id,
             undefined,
-            paymentRecord.id
+            paymentRecord.id,
+            currentBranch?.id
           );
 
           // Calculate trainer percentage expense if applicable
@@ -491,7 +495,8 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
             member.id,
             undefined,
             undefined,
-            member.name
+            member.name,
+            currentBranch?.id
           );
         }
       } catch (ledgerError) {
@@ -532,6 +537,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
         entityType: "payments",
         entityName: member.name,
         newValue: { amount: totalAmount, payment_type: paymentTypeValue, member_name: member.name },
+        branchId: currentBranch?.id,
       });
 
       toast.success("Payment recorded successfully");
