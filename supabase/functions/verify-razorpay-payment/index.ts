@@ -488,6 +488,7 @@ Deno.serve(async (req) => {
         trainerId,
         ptSubscriptionId: ptSub.id,
         paymentId: paymentData?.id,
+        branchId: branchId || undefined,
       });
       console.log(`Created ledger income entry for PT subscription: ₹${totalFee}`);
 
@@ -499,7 +500,8 @@ Deno.serve(async (req) => {
         finalMemberId,
         undefined,
         ptSub.id,
-        memberName
+        memberName,
+        branchId || undefined
       );
 
       // ===== LOG USER ACTIVITY FOR PT EXTENSION =====
@@ -662,6 +664,7 @@ Deno.serve(async (req) => {
         amount: gymIncomeAmount,
         memberId: finalMemberId,
         paymentId: paymentData?.id,
+        branchId: branchId || undefined,
       });
       console.log(`Created ledger income entry for gym ${incomeCategory}: ₹${gymIncomeAmount}`);
     }
@@ -675,6 +678,7 @@ Deno.serve(async (req) => {
         amount: actualJoiningFee,
         memberId: finalMemberId,
         paymentId: paymentData?.id,
+        branchId: branchId || undefined,
       });
       console.log(`Created ledger income entry for joining fee: ₹${actualJoiningFee}`);
     }
@@ -690,6 +694,7 @@ Deno.serve(async (req) => {
         trainerId,
         ptSubscriptionId: ptSubscriptionId || undefined,
         paymentId: paymentData?.id,
+        branchId: branchId || undefined,
       });
       console.log(`Created ledger income entry for PT subscription: ₹${trainerFee}`);
 
@@ -701,7 +706,8 @@ Deno.serve(async (req) => {
         finalMemberId,
         undefined,
         ptSubscriptionId || undefined,
-        memberName
+        memberName,
+        branchId || undefined
       );
     }
 
