@@ -31,6 +31,7 @@ const ExtendPT = () => {
 
   const member = location.state?.member;
   const branchId = location.state?.branchId || member?.branch_id;
+  const stateBranchName = location.state?.branchName;
   const membershipStartDate = location.state?.membershipStartDate ? new Date(location.state.membershipStartDate) : null;
   const membershipEndDate = location.state?.membershipEndDate ? new Date(location.state.membershipEndDate) : null;
 
@@ -39,6 +40,7 @@ const ExtendPT = () => {
   const [selectedOption, setSelectedOption] = useState<PTDurationOption | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [existingPTEndDate, setExistingPTEndDate] = useState<Date | null>(null);
+  const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!member) {
@@ -55,6 +57,23 @@ const ExtendPT = () => {
       navigate("/");
       return;
     }
+
+    // Set branch info from state or fetch it
+    if (stateBranchName && branchId) {
+      setBranchInfo({ id: branchId, name: stateBranchName });
+    } else if (branchId) {
+      supabase
+        .from("branches")
+        .select("id, name")
+        .eq("id", branchId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setBranchInfo(data);
+          }
+        });
+    }
+
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -219,7 +238,9 @@ const ExtendPT = () => {
               endDate: format(selectedOption.endDate, "yyyy-MM-dd"),
               type: "pt_extension",
               memberIds: [member.id],
-              isManual: false, // Automated message from system
+              isManual: false,
+              branchId: branchId,
+              branchName: branchInfo?.name,
             },
           });
         } catch (err) {

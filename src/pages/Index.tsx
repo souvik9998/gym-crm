@@ -23,7 +23,7 @@ const Index = () => {
   const [membershipEndDate, setMembershipEndDate] = useState<string | null>(null);
   const [membershipStartDate, setMembershipStartDate] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
-  const [branchName, setBranchName] = useState<string | null>(null);
+  const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(null);
   const [gymName, setGymName] = useState("Pro Plus Fitness");
 
   // Fetch branch info if branchId is in URL
@@ -31,12 +31,12 @@ const Index = () => {
     if (branchId) {
       supabase
         .from("branches")
-        .select("name")
+        .select("id, name")
         .eq("id", branchId)
         .maybeSingle()
         .then(({ data }) => {
-          if (data?.name) {
-            setBranchName(data.name);
+          if (data) {
+            setBranchInfo({ id: data.id, name: data.name });
           }
         });
     }
@@ -135,7 +135,7 @@ const Index = () => {
       } else {
         // New member - go to registration with phone and branchId
         const basePath = branchId ? `/b/${branchId}/register` : "/register";
-        navigate(basePath, { state: { phone, branchId } });
+        navigate(basePath, { state: { phone, branchId, branchName: branchInfo?.name } });
       }
     } catch (error: any) {
       toast.error("Error", {
@@ -149,14 +149,15 @@ const Index = () => {
   const handleOptionSelect = (option: 'renew' | 'extend-pt') => {
     const basePath = branchId ? `/b/${branchId}` : "";
     if (option === 'renew') {
-      navigate(`${basePath}/renew`, { state: { member: existingMember, branchId } });
+      navigate(`${basePath}/renew`, { state: { member: existingMember, branchId, branchName: branchInfo?.name } });
     } else {
       navigate(`${basePath}/extend-pt`, { 
         state: { 
           member: existingMember,
           membershipStartDate: membershipStartDate,
           membershipEndDate: membershipEndDate,
-          branchId
+          branchId,
+          branchName: branchInfo?.name
         } 
       });
     }
@@ -169,8 +170,6 @@ const Index = () => {
     setMembershipStartDate(null);
     setPhone("");
   };
-
-  const displayName = branchName ? branchName : gymName;
 
   return (
     <div className="min-h-screen bg-background">
@@ -189,10 +188,10 @@ const Index = () => {
           </div>
         </div>
         <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
-          {gymName}
+          {branchInfo?.name || gymName}
         </h1>
-        {branchName && (
-          <p className="text-muted-foreground text-lg">{branchName}</p>
+        {branchInfo?.name && branchInfo.name !== gymName && (
+          <p className="text-muted-foreground text-lg">Member Registration Portal</p>
         )}
       </header>
 

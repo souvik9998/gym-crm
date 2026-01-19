@@ -21,16 +21,16 @@ const Register = () => {
   const navigate = useNavigate();
   const { branchId: urlBranchId } = useParams<{ branchId?: string }>();
   const { initiatePayment, isLoading: isPaymentLoading, paymentStage } = useRazorpay();
-  const { phone, branchId: stateBranchId } = (location.state as { phone: string; branchId?: string }) || {};
+  const { phone, branchId: stateBranchId, branchName: stateBranchName } = (location.state as { phone: string; branchId?: string; branchName?: string }) || {};
   const branchId = urlBranchId || stateBranchId;
   
   const [step, setStep] = useState<Step>("details");
   const [memberDetails, setMemberDetails] = useState<MemberDetailsData | null>(null);
   const [branchInfo, setBranchInfo] = useState<BranchInfo | null>(null);
 
-  // Fetch branch info if branchId is present
+  // Fetch branch info if branchId is present and branchName is not already in state
   useEffect(() => {
-    if (branchId) {
+    if (branchId && !stateBranchName) {
       supabase
         .from("branches")
         .select("id, name")
@@ -41,8 +41,10 @@ const Register = () => {
             setBranchInfo(data);
           }
         });
+    } else if (stateBranchName) {
+      setBranchInfo({ id: branchId || '', name: stateBranchName });
     }
-  }, [branchId]);
+  }, [branchId, stateBranchName]);
 
   useEffect(() => {
     if (!phone) {
