@@ -36,6 +36,7 @@ import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format, addMonths } from "date-fns";
+import { useBranch } from "@/contexts/BranchContext";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100),
@@ -64,6 +65,7 @@ interface AddMemberDialogProps {
 }
 
 export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDialogProps) => {
+  const { currentBranch } = useBranch();
   
   // Basic info
   const [name, setName] = useState("");
@@ -224,7 +226,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       // Create member
       const { data: member, error: memberError } = await supabase
         .from("members")
-        .insert({ name, phone })
+        .insert({ name, phone, branch_id: currentBranch?.id || "" })
         .select()
         .single();
 

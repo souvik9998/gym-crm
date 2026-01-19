@@ -18,6 +18,17 @@ export async function addSampleData() {
     const tenDaysAgo = new Date(today);
     tenDaysAgo.setDate(today.getDate() - 10);
 
+    // Fetch a default branch to use for sample data
+    const { data: defaultBranch } = await supabase
+      .from("branches")
+      .select("id")
+      .eq("is_active", true)
+      .order("is_default", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const branchId = defaultBranch?.id || "";
+
     // 1. Add expired member
     const { data: expiredMember, error: expiredMemberError } = await supabase
       .from("members")
@@ -26,6 +37,7 @@ export async function addSampleData() {
         phone: "9876543210",
         email: "rajesh.kumar@example.com",
         join_date: thirtyDaysAgo.toISOString().split("T")[0],
+        branch_id: branchId,
       })
       .select()
       .single();
@@ -86,6 +98,7 @@ export async function addSampleData() {
         phone: "9876543211",
         email: "priya.sharma@example.com",
         join_date: today.toISOString().split("T")[0],
+        branch_id: branchId,
       })
       .select()
       .single();
