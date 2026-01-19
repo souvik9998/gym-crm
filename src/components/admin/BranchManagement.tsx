@@ -120,6 +120,23 @@ export const BranchManagement = () => {
 
         if (error) throw error;
 
+        // Auto-create gym_settings for the new branch
+        if (data) {
+          const { error: settingsError } = await supabase
+            .from("gym_settings")
+            .insert({
+              branch_id: data.id,
+              gym_name: formData.name.trim(),
+              gym_phone: formData.phone.trim() || null,
+              gym_address: formData.address.trim() || null,
+              whatsapp_enabled: false,
+            });
+
+          if (settingsError) {
+            console.error("Failed to create gym_settings for branch:", settingsError);
+          }
+        }
+
         await logAdminActivity({
           category: "branch",
           type: "branch_created",
@@ -128,6 +145,7 @@ export const BranchManagement = () => {
           entityId: data.id,
           entityName: formData.name,
           newValue: formData,
+          branchId: data.id,
         });
 
         toast.success("Branch added successfully");

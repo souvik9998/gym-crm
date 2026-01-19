@@ -178,9 +178,10 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     setViewingMemberName(member.name);
   };
 
-  // Get saved template from localStorage for a specific type
+  // Get saved template from localStorage for a specific type (branch-specific)
   const getSavedTemplate = (type: string): string | undefined => {
-    const templateKey = `whatsapp_${type}_template`;
+    const branchId = currentBranch?.id || "default";
+    const templateKey = `whatsapp_${type}_template_${branchId}`;
     const savedTemplate = localStorage.getItem(templateKey);
     return savedTemplate || undefined;
   };

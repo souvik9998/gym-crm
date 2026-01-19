@@ -187,10 +187,11 @@ const AdminSettings = () => {
       await logAdminActivity({
         category: "settings",
         type: "gym_info_updated",
-        description: `Updated gym information`,
+        description: `Updated gym information for ${currentBranch?.name || "branch"}`,
         entityType: "gym_settings",
         oldValue: oldSettings,
         newValue: newSettings,
+        branchId: currentBranch?.id,
       });
       toast.success("Settings saved successfully");
     }

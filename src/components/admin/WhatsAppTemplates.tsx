@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageCircle, Copy, Check, Save, Megaphone, Clock, AlertTriangle } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { useBranch } from "@/contexts/BranchContext";
 interface MessageTemplate {
   id: string;
   name: string;
@@ -178,6 +179,7 @@ Don't lose your progress! Reply or visit us now.
 type TemplateCategory = "promotional" | "expiry_reminder" | "expired_reminder";
 
 export const WhatsAppTemplates = () => {
+  const { currentBranch } = useBranch();
   const [activeTab, setActiveTab] = useState<TemplateCategory>("promotional");
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -187,16 +189,24 @@ export const WhatsAppTemplates = () => {
   const [expiryReminderMessage, setExpiryReminderMessage] = useState<string>("");
   const [expiredReminderMessage, setExpiredReminderMessage] = useState<string>("");
 
-  // Load saved messages from localStorage on mount
+  // Helper to get branch-specific localStorage key
+  const getBranchTemplateKey = (templateType: string): string => {
+    const branchId = currentBranch?.id || "default";
+    return `whatsapp_${templateType}_template_${branchId}`;
+  };
+
+  // Load saved messages from localStorage on mount or branch change
   useEffect(() => {
-    const savedPromotional = localStorage.getItem("whatsapp_promotional_template");
-    const savedExpiryReminder = localStorage.getItem("whatsapp_expiry_reminder_template");
-    const savedExpiredReminder = localStorage.getItem("whatsapp_expired_reminder_template");
+    if (!currentBranch?.id) return;
     
-    if (savedPromotional) setPromotionalMessage(savedPromotional);
-    if (savedExpiryReminder) setExpiryReminderMessage(savedExpiryReminder);
-    if (savedExpiredReminder) setExpiredReminderMessage(savedExpiredReminder);
-  }, []);
+    const savedPromotional = localStorage.getItem(getBranchTemplateKey("promotional"));
+    const savedExpiryReminder = localStorage.getItem(getBranchTemplateKey("expiry_reminder"));
+    const savedExpiredReminder = localStorage.getItem(getBranchTemplateKey("expired_reminder"));
+    
+    setPromotionalMessage(savedPromotional || "");
+    setExpiryReminderMessage(savedExpiryReminder || "");
+    setExpiredReminderMessage(savedExpiredReminder || "");
+  }, [currentBranch?.id]);
 
   const getTemplatesForCategory = (category: TemplateCategory): MessageTemplate[] => {
     switch (category) {
@@ -248,7 +258,7 @@ export const WhatsAppTemplates = () => {
 
   const handleSaveCustomMessage = async () => {
     const message = getCurrentMessage();
-    const storageKey = `whatsapp_${activeTab}_template`;
+    const storageKey = getBranchTemplateKey(activeTab);
     const oldMessage = localStorage.getItem(storageKey);
     localStorage.setItem(storageKey, message);
     
@@ -261,16 +271,17 @@ export const WhatsAppTemplates = () => {
     await logAdminActivity({
       category: "whatsapp",
       type: "whatsapp_template_saved",
-      description: `Saved ${categoryNames[activeTab]} WhatsApp template`,
+      description: `Saved ${categoryNames[activeTab]} WhatsApp template for ${currentBranch?.name || "branch"}`,
       entityType: "whatsapp_template",
       entityName: categoryNames[activeTab],
       oldValue: oldMessage ? { template: oldMessage.substring(0, 100) + (oldMessage.length > 100 ? "..." : "") } : null,
       newValue: { template: message.substring(0, 100) + (message.length > 100 ? "..." : "") },
       metadata: { template_type: activeTab, full_template_length: message.length },
+      branchId: currentBranch?.id,
     });
     
     toast.success(`${categoryNames[activeTab]} template saved`, {
-      description: "This message will be used when sending this type of notification",
+      description: `This message will be used when sending this type of notification for ${currentBranch?.name || "this branch"}`,
     });
   };
 
