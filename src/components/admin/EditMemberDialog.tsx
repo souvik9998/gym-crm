@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranch } from "@/contexts/BranchContext";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +55,7 @@ export const EditMemberDialog = ({
   member,
   onSuccess,
 }: EditMemberDialogProps) => {
+  const { currentBranch } = useBranch();
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -235,6 +237,7 @@ export const EditMemberDialog = ({
         entityName: name,
         oldValue,
         newValue,
+        branchId: currentBranch?.id,
       });
 
       toast.success("Member updated successfully", {

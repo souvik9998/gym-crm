@@ -145,6 +145,7 @@ const TrainersPage = () => {
           percentage_fee: Number(newTrainer.percentage_fee) || 0,
           session_fee: Number(newTrainer.session_fee) || 0,
         },
+        branchId: currentBranch?.id,
       });
       toast.success("Trainer added");
       setNewTrainer({ 
@@ -235,6 +236,7 @@ const TrainersPage = () => {
           percentage_fee: Number(editTrainerData.percentage_fee) || 0,
           session_fee: Number(editTrainerData.session_fee) || 0,
         },
+        branchId: currentBranch?.id,
       });
       toast.success("Trainer updated");
       setEditingTrainerId(null);
@@ -254,6 +256,7 @@ const TrainersPage = () => {
       entityName: trainer?.name,
       oldValue: { is_active: !isActive },
       newValue: { is_active: isActive },
+      branchId: currentBranch?.id,
     });
     fetchTrainers();
   };
@@ -280,6 +283,7 @@ const TrainersPage = () => {
             specialization: trainer.specialization,
             monthly_fee: trainer.monthly_fee,
           } : null,
+          branchId: currentBranch?.id,
         });
         fetchTrainers();
         toast.success("Trainer deleted");

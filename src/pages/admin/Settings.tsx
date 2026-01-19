@@ -274,6 +274,7 @@ const AdminSettings = () => {
         entityName: `${pkg?.months} Month Package`,
         oldValue,
         newValue: { price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 },
+        branchId: currentBranch?.id,
       });
       toast.success("Package updated");
       setEditingMonthlyId(null);
@@ -292,6 +293,7 @@ const AdminSettings = () => {
       entityId: id,
       entityName: `${pkg?.months} Month Package`,
       newValue: { is_active: isActive },
+      branchId: currentBranch?.id,
     });
     fetchData();
   };
@@ -311,6 +313,7 @@ const AdminSettings = () => {
           entityType: "monthly_packages",
           entityId: id,
           entityName: `${months} Month Package`,
+          branchId: currentBranch?.id,
         });
         fetchData();
         toast.success("Package deleted");
@@ -404,6 +407,7 @@ const AdminSettings = () => {
         entityName: editPackageData.name,
         oldValue,
         newValue: { name: editPackageData.name, price: Number(editPackageData.price) },
+        branchId: currentBranch?.id,
       });
       toast.success("Package updated");
       setEditingPackageId(null);
@@ -423,6 +427,7 @@ const AdminSettings = () => {
       entityName: pkg?.name,
       oldValue: { is_active: !isActive },
       newValue: { is_active: isActive },
+      branchId: currentBranch?.id,
     });
     fetchData();
   };
@@ -444,6 +449,7 @@ const AdminSettings = () => {
           entityId: id,
           entityName: name,
           oldValue: pkg ? { name: pkg.name, duration_days: pkg.duration_days, price: pkg.price } : null,
+          branchId: currentBranch?.id,
         });
         fetchData();
         toast.success("Package deleted");
