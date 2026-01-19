@@ -180,6 +180,7 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
         metadata: {
           userType: "daily_pass",
         },
+        branchId: currentBranch?.id,
       });
 
       toast.success("Success", {

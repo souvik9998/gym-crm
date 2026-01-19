@@ -523,6 +523,7 @@ Deno.serve(async (req) => {
           trainerMonthlyFee: trainer.monthly_fee,
           totalFee: totalFee,
         },
+        branchId: branchId || undefined,
       });
 
       return new Response(
@@ -735,6 +736,7 @@ Deno.serve(async (req) => {
         trainerFee: trainerFee || 0,
         joiningFee: joiningFee || 0,
       },
+      branchId: branchId || undefined,
     });
 
     return new Response(

@@ -28,6 +28,7 @@ interface LogUserActivityParams {
   startDate?: Date;
   endDate?: Date;
   metadata?: Record<string, any>;
+  branchId?: string;
 }
 
 export const logUserActivity = async (params: LogUserActivityParams) => {
@@ -52,6 +53,7 @@ export const logUserActivity = async (params: LogUserActivityParams) => {
       start_date: params.startDate ? format(params.startDate, "yyyy-MM-dd") : null,
       end_date: params.endDate ? format(params.endDate, "yyyy-MM-dd") : null,
       metadata: params.metadata || null,
+      branch_id: params.branchId || null,
     });
 
     if (error) {

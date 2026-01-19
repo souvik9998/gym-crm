@@ -162,6 +162,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
           join_date: memberToDelete.join_date,
           subscription_status: memberToDelete.subscription?.status || "none",
         } : null,
+        branchId: currentBranch?.id,
       });
 
       toast.success("Member deleted successfully");
