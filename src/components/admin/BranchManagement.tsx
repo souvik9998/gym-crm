@@ -101,6 +101,7 @@ export const BranchManagement = () => {
             email: editingBranch.email,
           },
           newValue: formData,
+          branchId: editingBranch.id,
         });
 
         toast.success("Branch updated successfully");
@@ -202,6 +203,7 @@ export const BranchManagement = () => {
         entityType: "branches",
         entityId: branch.id,
         entityName: branch.name,
+        branchId: branch.id,
       });
 
       toast.success(`${branch.name} is now the default branch`);
@@ -248,6 +250,7 @@ export const BranchManagement = () => {
           phone: branch.phone,
           email: branch.email,
         },
+        branchId: currentBranch?.id || branch.id,
       });
 
       toast.success("Branch deleted successfully");
