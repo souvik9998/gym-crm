@@ -232,12 +232,7 @@ export const BranchSelector = () => {
             <ChevronDownIcon className="w-4 h-4 text-muted-foreground ml-auto flex-shrink-0" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-[240px] p-2">
-          <div className="px-2 py-1.5 mb-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Your Branches
-            </p>
-          </div>
+        <DropdownMenuContent align="start" className="w-[240px] p-1 bg-background border shadow-lg">
           {branches.map((branch) => (
             <DropdownMenuItem
               key={branch.id}
@@ -245,48 +240,36 @@ export const BranchSelector = () => {
                 e.preventDefault();
                 handleSelectBranch(branch);
               }}
-              className={cn(
-                "cursor-pointer flex items-center justify-between p-3 rounded-lg mb-1 transition-colors",
-                currentBranch?.id === branch.id 
-                  ? "bg-primary/10 border border-primary/20" 
-                  : "hover:bg-muted"
-              )}
+              className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-muted focus:bg-muted transition-colors"
             >
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0",
-                  currentBranch?.id === branch.id 
-                    ? "bg-primary text-primary-foreground" 
-                    : "bg-muted text-muted-foreground"
-                )}>
-                  {branch.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex flex-col flex-1 min-w-0">
-                  <span className="font-medium text-foreground truncate">{branch.name}</span>
-                  {branch.address && (
-                    <span className="text-xs text-muted-foreground truncate max-w-[150px]">
-                      {branch.address}
-                    </span>
-                  )}
-                </div>
+              <div className="w-8 h-8 rounded-md bg-foreground flex items-center justify-center text-sm font-semibold text-background flex-shrink-0">
+                {branch.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="font-medium text-foreground truncate text-sm">{branch.name}</span>
+                {branch.address && (
+                  <span className="text-xs text-muted-foreground truncate">
+                    {branch.address}
+                  </span>
+                )}
               </div>
               {currentBranch?.id === branch.id && (
-                <CheckIcon className="w-5 h-5 text-primary ml-2 flex-shrink-0" />
+                <CheckIcon className="w-4 h-4 text-primary flex-shrink-0" />
               )}
             </DropdownMenuItem>
           ))}
-          <DropdownMenuSeparator className="my-2" />
+          <DropdownMenuSeparator className="my-1" />
           <DropdownMenuItem
             onSelect={(e) => {
               e.preventDefault();
               handleOpenAddDialog();
             }}
-            className="cursor-pointer gap-3 p-3 rounded-lg hover:bg-accent/50 text-sm"
+            className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-muted focus:bg-muted transition-colors"
           >
-            <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
-              <PlusIcon className="w-5 h-5 text-accent" />
+            <div className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0">
+              <PlusIcon className="w-5 h-5 text-muted-foreground" />
             </div>
-            <span className="font-medium">Add New Branch</span>
+            <span className="font-medium text-sm">Add New Branch</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
