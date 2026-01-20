@@ -310,8 +310,27 @@ export const WhatsAppTemplates = () => {
   const templates = getTemplatesForCategory(activeTab);
   const currentMessage = getCurrentMessage();
 
+  // Get branch-specific templates (replace {branch_name} with actual branch name in preview)
+  const getBranchSpecificTemplate = (template: string): string => {
+    const branchName = currentBranch?.name || "Your Gym";
+    return template.replace(/\{branch_name\}/gi, branchName);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Branch indicator */}
+      {currentBranch && (
+        <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
+          <MessageCircle className="w-4 h-4 text-primary" />
+          <span className="text-sm">
+            Templates for: <strong>{currentBranch.name}</strong>
+          </span>
+          <Badge variant="outline" className="ml-auto text-xs">
+            Messages will use "{currentBranch.name}" as gym name
+          </Badge>
+        </div>
+      )}
+
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TemplateCategory)}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="promotional" className="gap-2">
@@ -337,7 +356,14 @@ export const WhatsAppTemplates = () => {
                 {activeTab === "expiry_reminder" && "Expiry Reminder Templates"}
                 {activeTab === "expired_reminder" && "Expired Reminder Templates"}
               </CardTitle>
-              <CardDescription>{getCategoryDescription(activeTab)}</CardDescription>
+              <CardDescription>
+                {getCategoryDescription(activeTab)}
+                {currentBranch && (
+                  <span className="block mt-1 text-xs text-primary">
+                    All messages will include "{currentBranch.name}" as the gym/branch name.
+                  </span>
+                )}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -388,9 +414,14 @@ export const WhatsAppTemplates = () => {
               <CardTitle className="flex items-center gap-2">
                 <MessageCircle className="w-5 h-5 text-accent" />
                 Custom {activeTab === "promotional" ? "Promotional" : activeTab === "expiry_reminder" ? "Expiry Reminder" : "Expired Reminder"} Message
+                {currentBranch && (
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {currentBranch.name}
+                  </Badge>
+                )}
               </CardTitle>
               <CardDescription>
-                Edit the selected template or write your own. This message will be used when sending {activeTab.replace("_", " ")} notifications.
+                Edit the selected template or write your own. This message will be used when sending {activeTab.replace("_", " ")} notifications for <strong>{currentBranch?.name || "this branch"}</strong>.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -413,8 +444,8 @@ export const WhatsAppTemplates = () => {
                 <Badge variant="outline" className="text-xs">
                   {"{days}"} = Days remaining/expired
                 </Badge>
-                <Badge variant="outline" className="text-xs">
-                  {"{branch_name}"} = Branch name
+                <Badge variant="secondary" className="text-xs bg-primary/10">
+                  {"{branch_name}"} → {currentBranch?.name || "Branch name"}
                 </Badge>
                 {activeTab === "promotional" && (
                   <>
@@ -427,21 +458,43 @@ export const WhatsAppTemplates = () => {
                   </>
                 )}
               </div>
+              
+              {/* Live Preview Section */}
+              {currentMessage.trim() && (
+                <div className="space-y-2 pt-4 border-t">
+                  <Label className="flex items-center gap-2">
+                    Preview 
+                    <Badge variant="secondary" className="text-xs">
+                      How it will look for {currentBranch?.name || "your branch"}
+                    </Badge>
+                  </Label>
+                  <div className="p-4 bg-muted/50 rounded-lg border text-sm whitespace-pre-wrap font-mono">
+                    {getBranchSpecificTemplate(currentMessage)
+                      .replace(/\{name\}/gi, "John Doe")
+                      .replace(/\{expiry_date\}/gi, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }))
+                      .replace(/\{days\}/gi, "7")
+                      .replace(/\{amount\}/gi, "₹2,500")
+                      .replace(/\{payment_date\}/gi, new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }))}
+                  </div>
+                </div>
+              )}
+              
               <div className="flex gap-2">
                 <Button onClick={handleSaveCustomMessage} disabled={!currentMessage.trim()}>
                   <Save className="w-4 h-4 mr-2" />
-                  Save as {activeTab === "promotional" ? "Promotional" : activeTab === "expiry_reminder" ? "Expiry Reminder" : "Expired Reminder"} Template
+                  Save for {currentBranch?.name || "this branch"}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => {
-                    navigator.clipboard.writeText(currentMessage);
-                    toast.success("Message copied to clipboard");
+                    const previewMessage = getBranchSpecificTemplate(currentMessage);
+                    navigator.clipboard.writeText(previewMessage);
+                    toast.success("Message copied with branch name replaced");
                   }}
                   disabled={!currentMessage.trim()}
                 >
                   <Copy className="w-4 h-4 mr-2" />
-                  Copy Message
+                  Copy with Branch Name
                 </Button>
               </div>
             </CardContent>
