@@ -389,6 +389,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
             memberIds: [member.id],
             isManual: true,
             adminUserId: adminUserId,
+            branchId: currentBranch?.id,
+            branchName: currentBranch?.name,
           },
         });
       } catch (err) {

@@ -546,6 +546,8 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
             memberIds: [member.id],
             isManual: true, // Admin manually adding payment
             adminUserId: adminUserId,
+            branchId: currentBranch?.id,
+            branchName: currentBranch?.name,
           },
         });
       } catch (err) {
