@@ -223,6 +223,8 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
             customMessage: messageToSend,
             isManual: true,
             adminUserId: adminUserId,
+            branchId: currentBranch?.id,
+            branchName: currentBranch?.name,
           }),
         }
       );
@@ -444,6 +446,8 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
             customMessage: savedTemplate,
             isManual: true,
             adminUserId: adminUserId,
+            branchId: currentBranch?.id,
+            branchName: currentBranch?.name,
           }),
         }
       );

@@ -131,6 +131,7 @@ Deno.serve(async (req) => {
       error_message?: string | null;
       is_manual: boolean;
       admin_user_id?: string | null;
+      branch_id?: string | null;
     }) => {
       try {
         const insertData: any = {
@@ -142,6 +143,7 @@ Deno.serve(async (req) => {
           error_message: logData.error_message || null,
           is_manual: logData.is_manual,
           admin_user_id: logData.admin_user_id || null,
+          branch_id: logData.branch_id || null,
         };
 
         if (logData.member_id) {
@@ -440,6 +442,7 @@ Deno.serve(async (req) => {
         error_message: result.error || null,
         is_manual: isManualMessage,
         admin_user_id: isManualMessage ? finalAdminUserId : null,
+        branch_id: branchId || null,
       });
 
       return new Response(JSON.stringify(result), {
@@ -561,6 +564,7 @@ Deno.serve(async (req) => {
         error_message: result.error || null,
         is_manual: isManualMessage,
         admin_user_id: isManualMessage ? finalAdminUserId : null,
+        branch_id: branchId || null,
       });
 
       results.push({
