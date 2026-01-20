@@ -42,6 +42,8 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
     }
     return undefined;
   });
+  const [originalDateRange, setOriginalDateRange] = React.useState<DateRange | undefined>(undefined);
+  const [comparisonDateRange, setComparisonDateRange] = React.useState<DateRange | undefined>(undefined);
 
   // Update temp dates when props change
   React.useEffect(() => {
@@ -71,6 +73,11 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
       setTempDateFrom(range.from);
       if (range.to) {
         setTempDateTo(range.to);
+        // Reset comparison when manually selecting dates
+        if (comparisonPeriod !== "none") {
+          setComparisonPeriod("none");
+          setComparisonDateRange(undefined);
+        }
       } else {
         // If only from is selected, clear to date
         setTempDateTo(undefined);
@@ -80,6 +87,8 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
       setDateRange(undefined);
       setTempDateFrom(undefined);
       setTempDateTo(undefined);
+      setComparisonDateRange(undefined);
+      setOriginalDateRange(undefined);
     }
   };
 
@@ -116,6 +125,8 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
       setDateRange(undefined);
     }
     setComparisonPeriod("none");
+    setComparisonDateRange(undefined);
+    setOriginalDateRange(undefined);
     setOpen(false);
   };
 
@@ -124,26 +135,79 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
     
     if (value === "none") {
       // Reset to original dates if comparison is removed
-      if (dateFrom && dateTo) {
+      if (originalDateRange) {
+        setTempDateFrom(originalDateRange.from);
+        setTempDateTo(originalDateRange.to);
+        setDateRange(originalDateRange);
+        setComparisonDateRange(undefined);
+      } else if (dateFrom && dateTo) {
         setTempDateFrom(new Date(dateFrom));
         setTempDateTo(new Date(dateTo));
         setDateRange({ from: new Date(dateFrom), to: new Date(dateTo) });
+        setComparisonDateRange(undefined);
       }
       return;
     }
 
+    // Store original range if not already stored
+    if (!originalDateRange && tempDateFrom && tempDateTo) {
+      setOriginalDateRange({ from: tempDateFrom, to: tempDateTo });
+    }
+
     // Need a date range to calculate comparison
     if (!tempDateFrom || !tempDateTo) {
+      // If no date range selected, use current week/month/etc as base
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      let baseStart: Date;
+      let baseEnd: Date;
+      
+      switch (value) {
+        case "previous_week":
+          baseStart = startOfWeek(subWeeks(today, 1));
+          baseEnd = endOfWeek(subWeeks(today, 1));
+          break;
+        case "previous_month":
+          baseStart = startOfMonth(subMonths(today, 1));
+          baseEnd = endOfMonth(subMonths(today, 1));
+          break;
+        case "previous_quarter":
+          baseStart = startOfQuarter(subQuarters(today, 1));
+          baseEnd = endOfQuarter(subQuarters(today, 1));
+          break;
+        case "previous_year":
+          baseStart = startOfYear(subYears(today, 1));
+          baseEnd = endOfYear(subYears(today, 1));
+          break;
+        default:
+          return;
+      }
+      
+      setTempDateFrom(baseStart);
+      setTempDateTo(baseEnd);
+      setDateRange({ from: baseStart, to: baseEnd });
+      setOriginalDateRange(undefined);
+      setComparisonDateRange(undefined);
       return;
     }
 
+    // Store current range as original if not already stored
+    const currentRange = { from: tempDateFrom, to: tempDateTo };
+    if (!originalDateRange) {
+      setOriginalDateRange(currentRange);
+    }
+
+    // Use original range for calculation if available, otherwise use current
+    const baseFrom = originalDateRange?.from || tempDateFrom;
+    const baseTo = originalDateRange?.to || tempDateTo;
+
     let comparisonStart: Date;
     let comparisonEnd: Date;
-    const rangeDays = Math.ceil((tempDateTo.getTime() - tempDateFrom.getTime()) / (1000 * 60 * 60 * 24));
+    const rangeDays = Math.ceil((baseTo.getTime() - baseFrom.getTime()) / (1000 * 60 * 60 * 24));
     
     switch (value) {
       case "previous_period":
-        comparisonEnd = new Date(tempDateFrom);
+        comparisonEnd = new Date(baseFrom);
         comparisonEnd.setDate(comparisonEnd.getDate() - 1);
         comparisonEnd.setHours(23, 59, 59, 999);
         comparisonStart = new Date(comparisonEnd);
@@ -151,31 +215,43 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
         comparisonStart.setHours(0, 0, 0, 0);
         break;
       case "previous_week":
-        comparisonStart = startOfWeek(subWeeks(tempDateFrom, 1));
-        comparisonEnd = endOfWeek(subWeeks(tempDateTo, 1));
+        // Get the week boundaries for the base range
+        const baseWeekStart = startOfWeek(baseFrom);
+        const baseWeekEnd = endOfWeek(baseTo);
+        // Go back one week
+        comparisonStart = startOfWeek(subWeeks(baseWeekStart, 1));
+        comparisonEnd = endOfWeek(subWeeks(baseWeekEnd, 1));
         break;
       case "previous_month":
-        comparisonStart = startOfMonth(subMonths(tempDateFrom, 1));
-        comparisonEnd = endOfMonth(subMonths(tempDateTo, 1));
+        // Get the month boundaries for the base range
+        const baseMonthStart = startOfMonth(baseFrom);
+        const baseMonthEnd = endOfMonth(baseTo);
+        // Go back one month
+        comparisonStart = startOfMonth(subMonths(baseMonthStart, 1));
+        comparisonEnd = endOfMonth(subMonths(baseMonthEnd, 1));
         break;
       case "previous_quarter":
-        comparisonStart = startOfQuarter(subQuarters(tempDateFrom, 1));
-        comparisonEnd = endOfQuarter(subQuarters(tempDateTo, 1));
+        comparisonStart = startOfQuarter(subQuarters(baseFrom, 1));
+        comparisonEnd = endOfQuarter(subQuarters(baseTo, 1));
         break;
       case "previous_year":
-        comparisonStart = startOfYear(subYears(tempDateFrom, 1));
-        comparisonEnd = endOfYear(subYears(tempDateTo, 1));
+        comparisonStart = startOfYear(subYears(baseFrom, 1));
+        comparisonEnd = endOfYear(subYears(baseTo, 1));
         break;
       case "previous_year_dow":
-        comparisonStart = new Date(tempDateFrom);
+        comparisonStart = new Date(baseFrom);
         comparisonStart.setFullYear(comparisonStart.getFullYear() - 1);
-        comparisonEnd = new Date(tempDateTo);
+        comparisonEnd = new Date(baseTo);
         comparisonEnd.setFullYear(comparisonEnd.getFullYear() - 1);
         break;
       default:
         return;
     }
 
+    // Set comparison range for visualization
+    setComparisonDateRange({ from: comparisonStart, to: comparisonEnd });
+    
+    // Update the displayed dates to the comparison period (for applying)
     setTempDateFrom(comparisonStart);
     setTempDateTo(comparisonEnd);
     setDateRange({ from: comparisonStart, to: comparisonEnd });
@@ -389,6 +465,22 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
                   dropdown_month: "hidden",
                   dropdown_year: "hidden",
                 }}
+                modifiers={{
+                  comparison: comparisonDateRange && comparisonDateRange.from && comparisonDateRange.to
+                    ? (date) => {
+                        const d = new Date(date);
+                        d.setHours(0, 0, 0, 0);
+                        const from = new Date(comparisonDateRange.from);
+                        from.setHours(0, 0, 0, 0);
+                        const to = new Date(comparisonDateRange.to);
+                        to.setHours(0, 0, 0, 0);
+                        return d >= from && d <= to;
+                      }
+                    : undefined,
+                }}
+                modifiersClassNames={{
+                  comparison: "bg-blue-100 text-blue-900 border border-blue-300",
+                }}
                 disabled={(date) => {
                   // Disable future dates
                   const today = new Date();
@@ -396,6 +488,18 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
                   return date > today;
                 }}
               />
+              {comparisonDateRange && originalDateRange && (
+                <div className="mt-2 text-xs text-muted-foreground flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 bg-primary rounded"></div>
+                    <span>Selected: {format(originalDateRange.from, "MMM d")} - {format(originalDateRange.to, "MMM d, yyyy")}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 bg-blue-200 border border-blue-300 rounded"></div>
+                    <span>Comparison: {format(comparisonDateRange.from, "MMM d")} - {format(comparisonDateRange.to, "MMM d, yyyy")}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}

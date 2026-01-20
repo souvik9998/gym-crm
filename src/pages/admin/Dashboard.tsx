@@ -494,6 +494,8 @@ const AdminDashboard = () => {
                   refreshKey={refreshKey} 
                   filterValue={memberFilter}
                   ptFilterActive={ptFilterActive}
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
                 />
               </TabsContent>
               <TabsContent value="daily_pass" className="mt-0">

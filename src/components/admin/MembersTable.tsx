@@ -51,12 +51,21 @@ interface MembersTableProps {
   refreshKey: number;
   filterValue: MemberFilterValue;
   ptFilterActive?: boolean;
+  sortBy?: "name" | "join_date" | "end_date";
+  sortOrder?: "asc" | "desc";
 }
 
-type SortField = "name" | "phone" | "status" | "trainer" | "expiry" | "join_date";
+type SortField = "name" | "phone" | "status" | "trainer" | "expiry" | "end_date" | "join_date";
 type SortOrder = "asc" | "desc";
 
-export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterActive = false }: MembersTableProps) => {
+export const MembersTable = ({ 
+  searchQuery, 
+  refreshKey, 
+  filterValue, 
+  ptFilterActive = false,
+  sortBy: externalSortBy,
+  sortOrder: externalSortOrder
+}: MembersTableProps) => {
   const { currentBranch } = useBranch();
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,8 +77,25 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
     memberId: "",
     memberName: "",
   });
-  const [sortField, setSortField] = useState<SortField>("name");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+  // Map external sortBy to internal sortField
+  const mapSortByToField = (sortBy?: "name" | "join_date" | "end_date"): SortField => {
+    if (!sortBy) return "name";
+    if (sortBy === "end_date") return "expiry";
+    return sortBy;
+  };
+
+  const [sortField, setSortField] = useState<SortField>(mapSortByToField(externalSortBy));
+  const [sortOrder, setSortOrder] = useState<SortOrder>(externalSortOrder || "asc");
+  
+  // Update sort when external props change
+  useEffect(() => {
+    if (externalSortBy) {
+      setSortField(mapSortByToField(externalSortBy));
+    }
+    if (externalSortOrder) {
+      setSortOrder(externalSortOrder);
+    }
+  }, [externalSortBy, externalSortOrder]);
   const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   // Removed sendingBulkWhatsApp - now using bulkActionType
@@ -610,7 +636,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
 
     switch (sortField) {
       case "name":
-        comparison = a.name.localeCompare(b.name);
+        comparison = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
         break;
       case "phone":
         comparison = a.phone.localeCompare(b.phone);
@@ -626,6 +652,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
         comparison = trainerA.localeCompare(trainerB);
         break;
       case "expiry":
+      case "end_date":
         const expiryA = a.subscription?.end_date ? new Date(a.subscription.end_date).getTime() : 0;
         const expiryB = b.subscription?.end_date ? new Date(b.subscription.end_date).getTime() : 0;
         comparison = expiryA - expiryB;
