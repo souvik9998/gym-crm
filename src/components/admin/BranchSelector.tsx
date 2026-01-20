@@ -232,7 +232,7 @@ export const BranchSelector = () => {
             <ChevronDownIcon className="w-4 h-4 text-muted-foreground ml-auto flex-shrink-0" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-[240px] p-1 bg-background border shadow-lg">
+        <DropdownMenuContent align="start" className="w-[240px] p-1 bg-white dark:bg-card border shadow-lg">
           {branches.map((branch) => (
             <DropdownMenuItem
               key={branch.id}
@@ -264,12 +264,12 @@ export const BranchSelector = () => {
               e.preventDefault();
               handleOpenAddDialog();
             }}
-            className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-muted focus:bg-muted transition-colors"
+            className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-primary/10 focus:bg-primary/10 transition-colors"
           >
             <div className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0">
-              <PlusIcon className="w-5 h-5 text-muted-foreground" />
+              <PlusIcon className="w-5 h-5 text-primary" />
             </div>
-            <span className="font-medium text-sm">Add New Branch</span>
+            <span className="font-medium text-sm text-primary">Add New Branch</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
