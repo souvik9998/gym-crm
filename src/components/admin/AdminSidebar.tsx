@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useBranch } from "@/contexts/BranchContext";
 import {
   HomeIcon,
   ChartBarIcon,
@@ -41,7 +42,6 @@ import { ChevronDownIcon } from "@heroicons/react/20/solid";
 interface SidebarProps {
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
-  gymName?: string;
   isMobile?: boolean;
 }
 
@@ -106,10 +106,14 @@ const bottomNavItems: NavItem[] = [
   },
 ];
 
-export const AdminSidebar = ({ collapsed, onCollapsedChange, gymName = "Pro Plus Fitness", isMobile = false }: SidebarProps) => {
+export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { currentBranch } = useBranch();
   const [expandedItems, setExpandedItems] = useState<string[]>(["Activity Logs"]);
+  
+  // Get branch name dynamically from currentBranch
+  const gymName = currentBranch?.name || "Pro Plus Fitness";
 
   const isActive = (href: string) => {
     if (href.includes("?")) {

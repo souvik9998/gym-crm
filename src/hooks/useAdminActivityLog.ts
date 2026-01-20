@@ -74,7 +74,7 @@ export const logAdminActivity = async (params: LogActivityParams) => {
     const { data: { session } } = await supabase.auth.getSession();
     const adminUserId = session?.user?.id || null;
 
-    const { error } = await supabase.from("admin_activity_logs").insert({
+    const { data, error } = await supabase.from("admin_activity_logs").insert({
       admin_user_id: adminUserId,
       activity_category: params.category,
       activity_type: params.type,
@@ -86,13 +86,19 @@ export const logAdminActivity = async (params: LogActivityParams) => {
       new_value: params.newValue || null,
       metadata: params.metadata || null,
       branch_id: params.branchId || null,
-    });
+    }).select();
 
     if (error) {
       console.error("Failed to log admin activity:", error);
+      // Don't throw - we don't want logging failures to break the main operation
+      // But log it clearly for debugging
+      console.error("Activity log params:", params);
+    } else {
+      console.log("Admin activity logged successfully:", data?.[0]?.id);
     }
   } catch (err) {
     console.error("Error logging admin activity:", err);
+    console.error("Activity log params:", params);
   }
 };
 

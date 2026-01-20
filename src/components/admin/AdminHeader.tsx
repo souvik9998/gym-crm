@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { useBranch } from "@/contexts/BranchContext";
 import {
   ArrowRightOnRectangleIcon,
   ArrowPathIcon,
@@ -28,7 +29,6 @@ interface AdminHeaderProps {
   onRefresh?: () => void;
   showMobileMenu?: boolean;
   onMobileMenuClick?: () => void;
-  gymName?: string;
   className?: string;
 }
 
@@ -38,10 +38,13 @@ export const AdminHeader = ({
   onRefresh,
   showMobileMenu = false,
   onMobileMenuClick,
-  gymName = "Pro Plus Fitness",
   className,
 }: AdminHeaderProps) => {
   const navigate = useNavigate();
+  const { currentBranch } = useBranch();
+  
+  // Get branch name dynamically from currentBranch
+  const gymName = currentBranch?.name || "Pro Plus Fitness";
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

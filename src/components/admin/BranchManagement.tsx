@@ -90,17 +90,22 @@ export const BranchManagement = () => {
         await logAdminActivity({
           category: "branch",
           type: "branch_updated",
-          description: `Updated branch: ${formData.name}`,
+          description: `Updated branch: ${formData.name.trim()}`,
           entityType: "branches",
           entityId: editingBranch.id,
-          entityName: formData.name,
+          entityName: formData.name.trim(),
           oldValue: {
             name: editingBranch.name,
-            address: editingBranch.address,
-            phone: editingBranch.phone,
-            email: editingBranch.email,
+            address: editingBranch.address || null,
+            phone: editingBranch.phone || null,
+            email: editingBranch.email || null,
           },
-          newValue: formData,
+          newValue: {
+            name: formData.name.trim(),
+            address: formData.address.trim() || null,
+            phone: formData.phone.trim() || null,
+            email: formData.email.trim() || null,
+          },
           branchId: editingBranch.id,
         });
 

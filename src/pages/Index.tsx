@@ -24,7 +24,6 @@ const Index = () => {
   const [membershipStartDate, setMembershipStartDate] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
   const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(null);
-  const [gymName, setGymName] = useState("Pro Plus Fitness");
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   // Redirect to default branch if no branchId is provided
@@ -60,27 +59,24 @@ const Index = () => {
     }
   }, [branchId, navigate, isRedirecting]);
 
-  // Fetch branch info if branchId is in URL
+  // Fetch branch info immediately if branchId is in URL (prioritize this fetch)
   useEffect(() => {
     if (branchId) {
-      supabase
-        .from("branches")
-        .select("id, name")
-        .eq("id", branchId)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            setBranchInfo({ id: data.id, name: data.name });
-          }
-        });
+      // Fetch branch info immediately and synchronously
+      const fetchBranchInfo = async () => {
+        const { data } = await supabase
+          .from("branches")
+          .select("id, name")
+          .eq("id", branchId)
+          .maybeSingle();
+        
+        if (data) {
+          setBranchInfo({ id: data.id, name: data.name });
+        }
+      };
+      
+      fetchBranchInfo();
     }
-
-    // Fetch gym name
-    supabase.from("gym_settings").select("gym_name").limit(1).maybeSingle().then(({ data }) => {
-      if (data?.gym_name) {
-        setGymName(data.gym_name);
-      }
-    });
   }, [branchId]);
 
   // Handle return from Renew/ExtendPT pages
@@ -228,9 +224,9 @@ const Index = () => {
           </div>
         </div>
         <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
-          {branchInfo?.name || gymName}
+          {branchInfo?.name || "Loading..."}
         </h1>
-        {branchInfo?.name && branchInfo.name !== gymName && (
+        {branchInfo?.name && (
           <p className="text-muted-foreground text-lg">Member Registration Portal</p>
         )}
       </header>

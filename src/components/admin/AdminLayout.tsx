@@ -6,6 +6,7 @@ import { AdminHeader } from "./AdminHeader";
 import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useBranch } from "@/contexts/BranchContext";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -16,11 +17,14 @@ interface AdminLayoutProps {
 
 export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayoutProps) => {
   const navigate = useNavigate();
+  const { currentBranch } = useBranch();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [gymName, setGymName] = useState("Pro Plus Fitness");
+  
+  // Get branch name dynamically from currentBranch
+  const gymName = currentBranch?.name || "Pro Plus Fitness";
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -38,13 +42,6 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
         navigate("/admin/login");
       }
       setIsLoading(false);
-    });
-
-    // Fetch gym name
-    supabase.from("gym_settings").select("gym_name").limit(1).maybeSingle().then(({ data }) => {
-      if (data?.gym_name) {
-        setGymName(data.gym_name);
-      }
     });
 
     // Load sidebar state from localStorage
@@ -78,7 +75,6 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
         <AdminSidebar
           collapsed={sidebarCollapsed}
           onCollapsedChange={handleSidebarCollapse}
-          gymName={gymName}
         />
       </div>
 
@@ -103,7 +99,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
               <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
             </div>
             <div>
-              <h1 className="text-sm font-semibold text-foreground">{gymName}</h1>
+              <h1 className="text-sm font-semibold text-foreground">{currentBranch?.name || "Pro Plus Fitness"}</h1>
               <p className="text-xs text-muted-foreground">Admin Panel</p>
             </div>
           </div>
@@ -117,7 +113,6 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
         <AdminSidebar
           collapsed={false}
           onCollapsedChange={() => {}}
-          gymName={gymName}
           isMobile={true}
         />
       </div>
@@ -135,7 +130,6 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
           onRefresh={onRefresh}
           showMobileMenu={true}
           onMobileMenuClick={() => setMobileMenuOpen(true)}
-          gymName={gymName}
         />
         <main className="p-3 sm:p-4 md:p-6">{children}</main>
       </div>
