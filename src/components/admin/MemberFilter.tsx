@@ -17,6 +17,7 @@ export type MemberFilterValue =
   | "expired"
   | "inactive"
   | "expiring_soon"
+  | "expiring_today"
   | "expiring_2days"
   | "expiring_7days"
   | "expired_recent";
@@ -85,6 +86,7 @@ const filterCategories: {
     hoverBorderColor: "hover:border-amber-300 dark:hover:border-amber-700",
     internalFilters: [
       { value: "expiring_soon", label: "All Expiring" },
+      { value: "expiring_today", label: "Expiring Today" },
       { value: "expiring_2days", label: "In 2 Days" },
       { value: "expiring_7days", label: "In 7 Days" },
     ],

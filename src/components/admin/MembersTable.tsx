@@ -553,6 +553,8 @@ export const MembersTable = ({
           return !isPTExpired && diffDays > 7;
         case "expiring_soon":
           return isPTExpiringSoon;
+        case "expiring_today":
+          return !isPTExpired && diffDays === 0;
         case "expiring_2days":
           return !isPTExpired && diffDays >= 0 && diffDays <= 2;
         case "expiring_7days":
@@ -603,6 +605,8 @@ export const MembersTable = ({
           return isExpired && diffDays >= -30;
         case "expiring_soon":
           return isExpiringSoon;
+        case "expiring_today":
+          return !isExpired && diffDays === 0;
         case "expiring_2days":
           return !isExpired && diffDays >= 0 && diffDays <= 2;
         case "expiring_7days":
