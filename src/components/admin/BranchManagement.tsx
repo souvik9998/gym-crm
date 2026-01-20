@@ -22,10 +22,8 @@ import {
   PencilIcon,
   TrashIcon,
   CheckIcon,
-  StarIcon,
   PlusIcon,
 } from "@heroicons/react/24/outline";
-import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 
 export const BranchManagement = () => {
   const { branches, currentBranch, setCurrentBranch, refreshBranches } = useBranch();
@@ -286,7 +284,7 @@ export const BranchManagement = () => {
               <BuildingOffice2Icon className="w-5 h-5 text-primary" />
               Gym Branches
             </CardTitle>
-            <CardDescription>Manage gym branches and set default branch</CardDescription>
+            <CardDescription>Manage gym branches</CardDescription>
           </div>
           <Button onClick={handleOpenAdd} className="gap-2">
             <PlusIcon className="w-4 h-4" />
@@ -312,11 +310,6 @@ export const BranchManagement = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className="font-medium">{branch.name}</p>
-                      {branch.is_default && (
-                        <Badge variant="secondary" className="text-xs">
-                          Default
-                        </Badge>
-                      )}
                       {currentBranch?.id === branch.id && (
                         <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
                           Active
@@ -333,28 +326,6 @@ export const BranchManagement = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {branch.is_default ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled
-                      className="gap-2 text-xs"
-                    >
-                      <StarIconSolid className="w-4 h-4 text-warning" />
-                      <span>Default</span>
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSetDefault(branch)}
-                      disabled={isLoading}
-                      className="gap-2 text-xs hover:bg-primary/10 hover:text-primary hover:border-primary/30"
-                    >
-                      <StarIcon className="w-4 h-4" />
-                      <span>Set as Default</span>
-                    </Button>
-                  )}
                   <Button
                     variant="ghost"
                     size="icon"

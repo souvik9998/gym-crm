@@ -33,7 +33,15 @@ import {
   Send,
   Phone,
   Download,
+  Check,
+  CheckCheck,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
@@ -93,6 +101,7 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
     messagesThisMonth: 0,
   });
   const [activeSubTab, setActiveSubTab] = useState("logs");
+  const [selectedMessage, setSelectedMessage] = useState<WhatsAppLog | null>(null);
 
   useEffect(() => {
     if (currentBranch?.id) {
@@ -543,7 +552,11 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
                       </TableRow>
                     ) : (
                       filteredLogs.map((log) => (
-                        <TableRow key={log.id}>
+                        <TableRow 
+                          key={log.id}
+                          className="cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => setSelectedMessage(log)}
+                        >
                           <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                             {formatDateTime(log.sent_at)}
                           </TableCell>
@@ -581,6 +594,117 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* WhatsApp Message View Dialog */}
+      <Dialog open={!!selectedMessage} onOpenChange={(open) => !open && setSelectedMessage(null)}>
+        <DialogContent className="sm:max-w-[500px] p-0 gap-0 bg-[#e5ddd5] dark:bg-[#0b141a] overflow-hidden">
+          {selectedMessage && (
+            <>
+              {/* WhatsApp Header */}
+              <div className="bg-[#075e54] dark:bg-[#202c33] text-white px-4 py-3 flex items-center gap-3 shadow-md">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <Phone className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">
+                    {selectedMessage.recipient_name || selectedMessage.member?.name || selectedMessage.daily_pass_user?.name || "Unknown"}
+                  </p>
+                  <p className="text-xs text-white/70 truncate">
+                    {selectedMessage.recipient_phone || selectedMessage.member?.phone || selectedMessage.daily_pass_user?.phone || "-"}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white hover:bg-white/20 h-8 w-8 flex-shrink-0"
+                  onClick={() => setSelectedMessage(null)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {/* WhatsApp Message Area with Pattern Background */}
+              <div 
+                className="flex-1 p-4 space-y-3 min-h-[400px] max-h-[600px] overflow-y-auto relative"
+                style={{
+                  backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'100\' height=\'100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cdefs%3E%3Cpattern id=\'grid\' width=\'40\' height=\'40\' patternUnits=\'userSpaceOnUse\'%3E%3Cpath d=\'M 40 0 L 0 0 0 40\' fill=\'none\' stroke=\'%23ffffff\' stroke-width=\'0.5\' opacity=\'0.1\'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=\'100%25\' height=\'100%25\' fill=\'url(%23grid)\'/%3E%3C/svg%3E")',
+                }}
+              >
+                {/* Message Bubble */}
+                <div className="flex justify-end">
+                  <div className="max-w-[75%]">
+                    <div className="relative">
+                      <div className="bg-[#dcf8c6] dark:bg-[#005c4b] rounded-lg px-3 py-2 shadow-sm">
+                        <p className="text-sm text-[#303030] dark:text-white whitespace-pre-wrap break-words leading-relaxed">
+                          {selectedMessage.message_content || "No message content available"}
+                        </p>
+                      </div>
+                      {/* Tail for message bubble (right side) */}
+                      <svg
+                        className="absolute right-0 top-0 translate-x-[1px]"
+                        width="8"
+                        height="13"
+                        viewBox="0 0 8 13"
+                      >
+                        <path
+                          d="M5.188 1H0v11.193l5.188-5.188V1z"
+                          fill="#dcf8c6"
+                          className="dark:fill-[#005c4b]"
+                        />
+                      </svg>
+                    </div>
+                    <div className="flex items-center justify-end gap-1 mt-1 px-1">
+                      <span className="text-[10px] text-[#667781] dark:text-[#8696a0]">
+                        {new Date(selectedMessage.sent_at).toLocaleTimeString("en-IN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      {selectedMessage.status === "sent" ? (
+                        <CheckCheck className="w-3.5 h-3.5 text-[#4fc3f7] dark:text-[#53bdeb]" />
+                      ) : selectedMessage.status === "failed" ? (
+                        <XCircle className="w-3.5 h-3.5 text-destructive" />
+                      ) : (
+                        <Check className="w-3.5 h-3.5 text-[#8696a0]" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Message Info Card */}
+                <div className="bg-white/90 dark:bg-[#202c33]/90 backdrop-blur-sm rounded-lg p-4 mt-4 shadow-sm border border-white/20">
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-xs">Type:</span>
+                      <Badge variant="outline" className="text-xs">{getTypeLabel(selectedMessage.notification_type)}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-xs">Status:</span>
+                      {getStatusBadge(selectedMessage.status)}
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-xs">Source:</span>
+                      <Badge variant={selectedMessage.is_manual ? "default" : "secondary"} className="text-xs">
+                        {selectedMessage.is_manual ? "Manual" : "Auto"}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground text-xs">Sent At:</span>
+                      <span className="font-medium text-xs">{formatDateTime(selectedMessage.sent_at)}</span>
+                    </div>
+                    {selectedMessage.error_message && (
+                      <div className="pt-3 border-t border-destructive/20">
+                        <span className="text-muted-foreground text-xs block mb-1">Error Message:</span>
+                        <p className="text-xs text-destructive bg-destructive/10 p-2 rounded">{selectedMessage.error_message}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
