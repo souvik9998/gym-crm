@@ -425,12 +425,22 @@ export const WhatsAppTemplates = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Warning if hardcoded gym name detected */}
+              {currentMessage && !currentMessage.includes("{branch_name}") && currentMessage.trim().length > 0 && (
+                <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-warning mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <strong className="text-warning">Tip:</strong> Use <code className="bg-warning/20 px-1 rounded">{"{branch_name}"}</code> instead of hardcoding the gym name. 
+                    This will automatically insert "<strong>{currentBranch?.name}</strong>" when sending messages.
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Message Content</Label>
                 <Textarea
                   value={currentMessage}
                   onChange={(e) => setCurrentMessage(e.target.value)}
-                  placeholder="Write your custom message here..."
+                  placeholder={`Write your custom message here...\n\nUse {branch_name} to automatically insert "${currentBranch?.name || "your gym name"}"`}
                   className="min-h-[250px] font-mono text-sm"
                 />
               </div>
@@ -444,8 +454,8 @@ export const WhatsAppTemplates = () => {
                 <Badge variant="outline" className="text-xs">
                   {"{days}"} = Days remaining/expired
                 </Badge>
-                <Badge variant="secondary" className="text-xs bg-primary/10">
-                  {"{branch_name}"} → {currentBranch?.name || "Branch name"}
+                <Badge variant="destructive" className="text-xs">
+                  {"{branch_name}"} → {currentBranch?.name || "Branch name"} (REQUIRED)
                 </Badge>
                 {activeTab === "promotional" && (
                   <>
