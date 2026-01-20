@@ -21,6 +21,7 @@ import {
 import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { exportToExcel } from "@/utils/exportToExcel";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
 import { useBranch } from "@/contexts/BranchContext";
 
@@ -253,24 +254,14 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     <div className="space-y-4">
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end">
-        <div className="flex-1 min-w-[130px]">
-          <label className="text-xs text-muted-foreground mb-1 block">From Date</label>
-          <Input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="h-9"
-          />
-        </div>
-        <div className="flex-1 min-w-[130px]">
-          <label className="text-xs text-muted-foreground mb-1 block">To Date</label>
-          <Input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="h-9"
-          />
-        </div>
+        <DateRangePicker
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateChange={(from, to) => {
+            setDateFrom(from);
+            setDateTo(to);
+          }}
+        />
         <div className="flex-1 min-w-[100px]">
           <label className="text-xs text-muted-foreground mb-1 block">Mode</label>
           <Select value={paymentMode} onValueChange={setPaymentMode}>

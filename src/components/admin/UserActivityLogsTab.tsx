@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { exportToExcel } from "@/utils/exportToExcel";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
 import { format, parseISO } from "date-fns";
 
@@ -420,19 +421,13 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
                     <SelectItem value="daily_pass">Daily Pass</SelectItem>
                   </SelectContent>
                 </Select>
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-[150px]"
-                  placeholder="From"
-                />
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="w-[150px]"
-                  placeholder="To"
+                <DateRangePicker
+                  dateFrom={dateFrom}
+                  dateTo={dateTo}
+                  onDateChange={(from, to) => {
+                    setDateFrom(from);
+                    setDateTo(to);
+                  }}
                 />
                 {hasActiveFilters && (
                   <Button variant="ghost" size="sm" onClick={clearFilters}>

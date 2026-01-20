@@ -45,6 +45,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 
 interface WhatsAppLog {
   id: string;
@@ -514,6 +515,14 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
                     <SelectItem value="automated">Automated</SelectItem>
                   </SelectContent>
                 </Select>
+                <DateRangePicker
+                  dateFrom={dateFrom}
+                  dateTo={dateTo}
+                  onDateChange={(from, to) => {
+                    setDateFrom(from);
+                    setDateTo(to);
+                  }}
+                />
                 {hasActiveFilters && (
                   <Button variant="ghost" size="sm" onClick={clearFilters}>
                     <X className="w-4 h-4 mr-1" />

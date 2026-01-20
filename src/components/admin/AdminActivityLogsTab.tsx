@@ -38,6 +38,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ActivityDetailDialog from "./ActivityDetailDialog";
 import { exportToExcel } from "@/utils/exportToExcel";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
 
 interface AdminActivityLog {
@@ -384,19 +385,13 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
                     <SelectItem value="subscriptions">Subscriptions</SelectItem>
                   </SelectContent>
                 </Select>
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-[150px]"
-                  placeholder="From"
-                />
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="w-[150px]"
-                  placeholder="To"
+                <DateRangePicker
+                  dateFrom={dateFrom}
+                  dateTo={dateTo}
+                  onDateChange={(from, to) => {
+                    setDateFrom(from);
+                    setDateTo(to);
+                  }}
                 />
                 {hasActiveFilters && (
                   <Button variant="ghost" size="sm" onClick={clearFilters}>
