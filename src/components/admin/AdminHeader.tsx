@@ -159,14 +159,14 @@ export const AdminHeader = ({
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => navigate("/admin/settings")} 
-                className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-primary/10 focus:bg-primary/10 transition-colors"
+                className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground transition-colors"
               >
                 <Cog6ToothIcon className="w-4 h-4" />
                 <span className="text-sm font-medium">Settings</span>
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => navigate("/admin/qr-code")} 
-                className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-primary/10 focus:bg-primary/10 transition-colors"
+                className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground transition-colors"
               >
                 <QrCodeIcon className="w-4 h-4" />
                 <span className="text-sm font-medium">QR Code</span>
