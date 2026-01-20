@@ -227,7 +227,8 @@ Deno.serve(async (req) => {
       expiryDate: string, 
       msgType: string,
       paymentInfo?: { amount: number; date: string; mode: string } | null,
-      msgBranchName?: string | null
+      msgBranchName?: string | null,
+      requestBranchName?: string | null
     ): string => {
       const formattedDate = new Date(expiryDate).toLocaleDateString("en-IN", {
         day: "numeric",
@@ -241,13 +242,20 @@ Deno.serve(async (req) => {
       endDateObj.setHours(0, 0, 0, 0);
       const diffDays = Math.ceil((endDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
+      // Use branch name from request (requestBranchName) if available, otherwise use msgBranchName parameter
+      // This ensures we always use the actual branch name from the admin's current branch
+      // requestBranchName comes from the request body and represents the branch the admin is currently in
+      const actualBranchName = requestBranchName || msgBranchName;
+      
       // Use branch name if provided, otherwise default gym name
-      const gymDisplayName = msgBranchName ? `Pro Plus Fitness - ${msgBranchName}` : "Pro Plus Fitness";
-      const teamName = msgBranchName ? `Team Pro Plus Fitness (${msgBranchName})` : "Team Pro Plus Fitness";
+      // For independent branches, use just the branch name (not "Pro Plus Fitness - Branch")
+      const gymDisplayName = actualBranchName || "Pro Plus Fitness";
+      const teamName = actualBranchName ? `Team ${actualBranchName}` : "Team Pro Plus Fitness";
 
       // For custom messages with placeholders, replace them
+      // Always use actualBranchName which prioritizes branchName from the request
       if (msgType === "custom" && customMessage) {
-        return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, msgBranchName);
+        return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, actualBranchName);
       }
 
       switch (msgType) {
@@ -310,7 +318,7 @@ Deno.serve(async (req) => {
         case "promotional":
           // Check for saved template and replace placeholders
           if (customMessage) {
-            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, msgBranchName);
+            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, actualBranchName);
           }
           return (
             `🎉 *Special Offer for You!*\n\n` +
@@ -323,7 +331,7 @@ Deno.serve(async (req) => {
         case "expiry_reminder":
           // Check for saved template and replace placeholders
           if (customMessage) {
-            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, msgBranchName);
+            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, actualBranchName);
           }
           const daysText = diffDays === 0 
             ? "expires *today*" 
@@ -341,7 +349,7 @@ Deno.serve(async (req) => {
         case "expired_reminder":
           // Check for saved template and replace placeholders
           if (customMessage) {
-            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, msgBranchName);
+            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, actualBranchName);
           }
           const expiredDays = Math.abs(diffDays);
           return (
@@ -382,7 +390,7 @@ Deno.serve(async (req) => {
         default:
           // For manual or custom messages with templates
           if (customMessage) {
-            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, msgBranchName);
+            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, actualBranchName);
           }
           return `Hi ${memberName}, 👋\n\nThis is a message from your gym.\n\n— ${teamName}`;
       }
@@ -425,7 +433,7 @@ Deno.serve(async (req) => {
     // DIRECT SEND (NO MEMBER LOOKUP)
     if (phone && name && endDate) {
       const formattedPhone = formatPhone(phone);
-      const message = generateMessage(name, endDate, type, null, branchName);
+      const message = generateMessage(name, endDate, type, null, branchName, branchName);
 
       const result = await sendPeriskopeMessage(formattedPhone, message);
 
@@ -547,7 +555,7 @@ Deno.serve(async (req) => {
 
     for (const recipient of recipientsWithData) {
       const formattedPhone = formatPhone(recipient.phone);
-      const message = generateMessage(recipient.name, recipient.end_date, type, recipient.paymentInfo);
+      const message = generateMessage(recipient.name, recipient.end_date, type, recipient.paymentInfo, branchName, branchName);
 
       const result = await sendPeriskopeMessage(formattedPhone, message);
 

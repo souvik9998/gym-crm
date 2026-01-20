@@ -104,6 +104,18 @@ export const BranchManagement = () => {
         });
 
         toast.success("Branch updated successfully");
+        
+        // If the updated branch is the current branch, update currentBranch state
+        if (editingBranch.id === currentBranch?.id) {
+          const updatedBranch = {
+            ...currentBranch,
+            name: formData.name.trim(),
+            address: formData.address.trim() || null,
+            phone: formData.phone.trim() || null,
+            email: formData.email.trim() || null,
+          };
+          setCurrentBranch(updatedBranch);
+        }
       } else {
         // Create new branch
         const { data, error } = await supabase

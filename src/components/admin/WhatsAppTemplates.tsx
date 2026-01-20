@@ -25,7 +25,7 @@ const PROMOTIONAL_TEMPLATES: MessageTemplate[] = [
 
 Hi {name}, 👋
 
-We have exciting offers waiting for you at Pro Plus Fitness! 💪
+We have exciting offers waiting for you at {branch_name}! 💪
 
 ✨ Get 20% off on 3-month memberships
 ✨ Free PT session with annual plans
@@ -34,7 +34,7 @@ We have exciting offers waiting for you at Pro Plus Fitness! 💪
 Visit us today or reply to this message to know more.
 
 Stay fit, stay strong! 🔥
-— Team Pro Plus Fitness`,
+— Team {branch_name}`,
   },
   {
     id: "promotional_new_service",
@@ -44,12 +44,12 @@ Stay fit, stay strong! 🔥
 
 Hi {name}, 👋
 
-We're thrilled to announce new additions to Pro Plus Fitness! 🏋️
+We're thrilled to announce new additions to {branch_name}! 🏋️
 
 Come check out our latest equipment and services. Your fitness journey just got even better! 💪
 
 Visit us today!
-— Team Pro Plus Fitness`,
+— Team {branch_name}`,
   },
   {
     id: "promotional_event",
@@ -59,14 +59,14 @@ Visit us today!
 
 Hi {name}, 👋
 
-Join us for a special event at Pro Plus Fitness! 🎯
+Join us for a special event at {branch_name}! 🎯
 
 Don't miss this opportunity to connect with fellow fitness enthusiasts and learn from the best.
 
 Reply to RSVP or visit the gym for details.
 
 See you there! 💪
-— Team Pro Plus Fitness`,
+— Team {branch_name}`,
   },
 ];
 
@@ -84,7 +84,7 @@ Your gym membership expires in {days} days ({expiry_date}).
 Don't let your fitness journey pause! Renew now to continue your progress 💪
 
 Visit the gym or reply to renew.
-— Team Pro Plus Fitness`,
+— Team {branch_name}`,
   },
   {
     id: "expiry_reminder_urgent",
@@ -101,7 +101,7 @@ Your gym membership expires in just {days} days on {expiry_date}!
 💪 Keep your fitness momentum going!
 
 Reply or visit us now.
-— Team Pro Plus Fitness`,
+— Team {branch_name}`,
   },
   {
     id: "expiry_reminder_today",
@@ -116,7 +116,7 @@ Your gym membership expires *today* ({expiry_date}).
 Renew now to continue your fitness journey without interruption 🔥
 
 Contact us or visit the gym today.
-— Team Pro Plus Fitness`,
+— Team {branch_name}`,
   },
 ];
 
@@ -136,7 +136,7 @@ We miss seeing you at the gym! 💔 Renew now and get back on track with your fi
 🎁 *Special Renewal Offer* - Renew within 7 days and get a discount!
 
 Visit us or reply to renew today.
-— Team Pro Plus Fitness`,
+— Team {branch_name}`,
   },
   {
     id: "expired_reminder_comeback",
@@ -154,7 +154,7 @@ Ready to restart your fitness journey? We've got a special comeback offer just f
 ✨ No additional joining fee for returning members
 
 Come back stronger! Visit us today.
-— Team Pro Plus Fitness`,
+— Team {branch_name}`,
   },
   {
     id: "expired_reminder_urgent",
@@ -172,7 +172,7 @@ Your membership expired on {expiry_date}. This is your final reminder before you
 • Continue your fitness streak
 
 Don't lose your progress! Reply or visit us now.
-— Team Pro Plus Fitness`,
+— Team {branch_name}`,
   },
 ];
 
