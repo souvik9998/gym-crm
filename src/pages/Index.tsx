@@ -25,6 +25,40 @@ const Index = () => {
   const [showOptions, setShowOptions] = useState(false);
   const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(null);
   const [gymName, setGymName] = useState("Pro Plus Fitness");
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // Redirect to default branch if no branchId is provided
+  useEffect(() => {
+    if (!branchId && !isRedirecting) {
+      setIsRedirecting(true);
+      supabase
+        .from("branches")
+        .select("id, name")
+        .eq("is_active", true)
+        .eq("is_default", true)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            // Redirect to the default branch URL
+            navigate(`/b/${data.id}`, { replace: true });
+          } else {
+            // If no default, get the first active branch
+            supabase
+              .from("branches")
+              .select("id, name")
+              .eq("is_active", true)
+              .order("name")
+              .limit(1)
+              .maybeSingle()
+              .then(({ data: firstBranch }) => {
+                if (firstBranch) {
+                  navigate(`/b/${firstBranch.id}`, { replace: true });
+                }
+              });
+          }
+        });
+    }
+  }, [branchId, navigate, isRedirecting]);
 
   // Fetch branch info if branchId is in URL
   useEffect(() => {
