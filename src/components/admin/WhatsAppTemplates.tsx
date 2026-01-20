@@ -413,6 +413,9 @@ export const WhatsAppTemplates = () => {
                 <Badge variant="outline" className="text-xs">
                   {"{days}"} = Days remaining/expired
                 </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {"{branch_name}"} = Branch name
+                </Badge>
                 {activeTab === "promotional" && (
                   <>
                     <Badge variant="outline" className="text-xs">

@@ -194,6 +194,9 @@ export const BranchManagement = () => {
 
       toast.success(`${branch.name} is now the default branch`);
       await refreshBranches();
+      
+      // Auto-switch to the newly set default branch
+      setCurrentBranch(branch);
     } catch (error: any) {
       toast.error("Failed to set default branch", { description: error.message });
     } finally {
@@ -310,24 +313,34 @@ export const BranchManagement = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleSetDefault(branch)}
-                    disabled={branch.is_default || isLoading}
-                    title={branch.is_default ? "Default branch" : "Set as default"}
-                  >
-                    {branch.is_default ? (
+                  {branch.is_default ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled
+                      className="gap-2 text-xs"
+                    >
                       <StarIconSolid className="w-4 h-4 text-warning" />
-                    ) : (
-                      <StarIcon className="w-4 h-4 text-muted-foreground" />
-                    )}
-                  </Button>
+                      <span>Default</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSetDefault(branch)}
+                      disabled={isLoading}
+                      className="gap-2 text-xs hover:bg-primary/10 hover:text-primary hover:border-primary/30"
+                    >
+                      <StarIcon className="w-4 h-4" />
+                      <span>Set as Default</span>
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => handleOpenEdit(branch)}
                     disabled={isLoading}
+                    title="Edit branch"
                   >
                     <PencilIcon className="w-4 h-4 text-muted-foreground" />
                   </Button>

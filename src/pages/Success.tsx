@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Calendar, Phone, User, IndianRupee, Home, MessageCircle } from "lucide-react";
+import { CheckCircle2, Calendar, Phone, User, IndianRupee, Home, MessageCircle, Building2 } from "lucide-react";
 
 interface SuccessState {
   memberName: string;
@@ -9,6 +9,7 @@ interface SuccessState {
   amount: number;
   endDate: string;
   isNewMember: boolean;
+  branchName?: string;
 }
 
 const Success = () => {
@@ -31,8 +32,10 @@ const Success = () => {
     );
   }
 
+  const displayName = state.branchName || "the gym";
+  
   const whatsappMessage = encodeURIComponent(
-    `Hi! I just ${state.isNewMember ? "registered" : "renewed my membership"} at Pro Plus Fitness, Dinhata. My membership is valid until ${state.endDate}.`
+    `Hi! I just ${state.isNewMember ? "registered" : "renewed my membership"} at ${state.branchName || "the gym"}. My membership is valid until ${state.endDate}.`
   );
 
   return (
@@ -55,9 +58,20 @@ const Success = () => {
           </h1>
           <p className="text-center text-muted-foreground mb-6">
             {state.isNewMember
-              ? "Welcome to Pro Plus Fitness!"
+              ? `Welcome to ${displayName}!`
               : "Your membership has been renewed!"}
           </p>
+          
+          {state.branchName && (
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Building2 className="w-4 h-4 text-primary" />
+              </div>
+              <p className="text-sm font-medium text-foreground">
+                {state.branchName}
+              </p>
+            </div>
+          )}
 
           {/* Details Card */}
           <div className="bg-muted rounded-xl p-5 space-y-4 mb-6">

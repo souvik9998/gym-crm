@@ -133,12 +133,39 @@ const AdminSettings = () => {
     if (!currentBranch) return;
 
     // Fetch gym settings for the current branch
-    const { data: settingsData } = await supabase
+    let { data: settingsData } = await supabase
       .from("gym_settings")
       .select("id, gym_name, gym_phone, gym_address, whatsapp_enabled")
       .eq("branch_id", currentBranch.id)
       .limit(1)
       .maybeSingle();
+
+    // If no settings exist, create them for this branch
+    if (!settingsData) {
+      const { data: newSettings, error: createError } = await supabase
+        .from("gym_settings")
+        .insert({
+          branch_id: currentBranch.id,
+          gym_name: currentBranch.name || "",
+          gym_phone: currentBranch.phone || null,
+          gym_address: currentBranch.address || null,
+          whatsapp_enabled: false,
+        })
+        .select("id, gym_name, gym_phone, gym_address, whatsapp_enabled")
+        .single();
+
+      if (createError) {
+        console.error("Error creating gym_settings:", createError);
+        // Still set state even if creation fails
+        setSettings(null);
+        setGymName(currentBranch.name || "");
+        setGymPhone(currentBranch.phone || "");
+        setGymAddress(currentBranch.address || "");
+        setWhatsappEnabled(false);
+        return;
+      }
+      settingsData = newSettings;
+    }
 
     if (settingsData) {
       setSettings(settingsData as GymSettings);
@@ -147,7 +174,7 @@ const AdminSettings = () => {
       setGymAddress(settingsData.gym_address || "");
       setWhatsappEnabled(settingsData.whatsapp_enabled === true);
     } else {
-      // No settings found for this branch - reset state
+      // Fallback: reset state
       setSettings(null);
       setGymName("");
       setGymPhone("");
@@ -183,7 +210,7 @@ const AdminSettings = () => {
   };
 
   const handleSaveSettings = async () => {
-    if (!settings?.id) return;
+    if (!settings?.id || !currentBranch?.id) return;
     setIsSaving(true);
 
     const oldSettings = { gym_name: settings.gym_name, gym_phone: settings.gym_phone, gym_address: settings.gym_address };
@@ -196,7 +223,8 @@ const AdminSettings = () => {
         gym_phone: gymPhone,
         gym_address: gymAddress,
       })
-      .eq("id", settings.id);
+      .eq("id", settings.id)
+      .eq("branch_id", currentBranch.id);
 
     setIsSaving(false);
 
@@ -765,12 +793,41 @@ const AdminSettings = () => {
                     <Switch
                       checked={whatsappEnabled}
                       onCheckedChange={async (checked) => {
-                        if (!settings?.id) return;
+                        if (!currentBranch?.id) return;
                         
+                        let settingsId = settings?.id;
+                        
+                        // If settings don't exist, create them first
+                        if (!settingsId) {
+                          const { data: newSettings, error: createError } = await supabase
+                            .from("gym_settings")
+                            .insert({
+                              branch_id: currentBranch.id,
+                              gym_name: currentBranch.name || "",
+                              gym_phone: currentBranch.phone || null,
+                              gym_address: currentBranch.address || null,
+                              whatsapp_enabled: checked,
+                            })
+                            .select("id")
+                            .single();
+                          
+                          if (createError) {
+                            toast.error("Error", {
+                              description: createError.message,
+                            });
+                            return;
+                          }
+                          
+                          settingsId = newSettings.id;
+                          setSettings({ ...settings, id: settingsId } as GymSettings);
+                        }
+                        
+                        // Update the WhatsApp enabled status
                         const { error } = await supabase
                           .from("gym_settings")
                           .update({ whatsapp_enabled: checked })
-                          .eq("id", settings.id);
+                          .eq("id", settingsId)
+                          .eq("branch_id", currentBranch.id);
                         
                         if (error) {
                           toast.error("Error", {
@@ -789,8 +846,8 @@ const AdminSettings = () => {
                           });
                           toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled", {
                             description: checked 
-                              ? "WhatsApp messaging is now active" 
-                              : "All WhatsApp messages are now disabled"
+                              ? `WhatsApp messaging is now active for ${currentBranch?.name || "this branch"}` 
+                              : `All WhatsApp messages are now disabled for ${currentBranch?.name || "this branch"}`
                           });
                         }
                       }}

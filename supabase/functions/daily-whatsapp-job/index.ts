@@ -27,19 +27,26 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Check if WhatsApp is enabled
-    const { data: settings } = await supabase
+    // Fetch all branch WhatsApp settings
+    const { data: branchSettings } = await supabase
       .from("gym_settings")
-      .select("whatsapp_enabled")
-      .limit(1)
-      .maybeSingle();
+      .select("branch_id, whatsapp_enabled");
 
-    if (settings?.whatsapp_enabled === false) {
-      return new Response(
-        JSON.stringify({ success: true, skipped: true, message: "WhatsApp messaging is disabled" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Create a map of branch_id to whatsapp_enabled status
+    const branchWhatsAppMap = new Map<string, boolean>();
+    if (branchSettings) {
+      branchSettings.forEach((setting) => {
+        if (setting.branch_id) {
+          branchWhatsAppMap.set(setting.branch_id, setting.whatsapp_enabled === true);
+        }
+      });
     }
+
+    // Helper function to check if WhatsApp is enabled for a branch
+    const isWhatsAppEnabledForBranch = (branchId: string | null): boolean => {
+      if (!branchId) return false;
+      return branchWhatsAppMap.get(branchId) ?? false;
+    };
 
     // Get today's date and 2 days from now
     const today = new Date();
@@ -110,28 +117,28 @@ Deno.serve(async (req) => {
       }
     };
 
-    // Fetch members expiring in 2 days
+    // Fetch members expiring in 2 days (with branch_id)
     const { data: expiringIn2Days } = await supabase
       .from("subscriptions")
-      .select("member_id, end_date, members!inner(id, name, phone)")
+      .select("member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
       .eq("end_date", twoDaysStr)
       .neq("status", "expired");
 
-    // Fetch members expiring today
+    // Fetch members expiring today (with branch_id)
     const { data: expiringToday } = await supabase
       .from("subscriptions")
-      .select("member_id, end_date, members!inner(id, name, phone)")
+      .select("member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
       .eq("end_date", todayStr)
       .neq("status", "expired");
 
-    // Fetch expired members (for admin summary - last 7 days)
+    // Fetch expired members (for admin summary - last 7 days) (with branch_id)
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
 
     const { data: expiredMembers } = await supabase
       .from("subscriptions")
-      .select("member_id, end_date, members!inner(id, name, phone)")
+      .select("member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
       .eq("status", "expired")
       .gte("end_date", sevenDaysAgoStr)
       .lt("end_date", todayStr);
@@ -143,6 +150,13 @@ Deno.serve(async (req) => {
     // Send notifications to members expiring in 2 days
     for (const sub of expiringIn2Days || []) {
       const member = sub.members as any;
+      const branchId = sub.branch_id || member.branch_id;
+      
+      // Skip if WhatsApp is disabled for this branch
+      if (!isWhatsAppEnabledForBranch(branchId)) {
+        continue;
+      }
+      
       const formattedPhone = formatPhone(member.phone);
       const expiryDate = new Date(sub.end_date).toLocaleDateString("en-IN", {
         day: "numeric",
@@ -158,6 +172,7 @@ Deno.serve(async (req) => {
         member_id: member.id,
         notification_type: "expiring_2days",
         status: success ? "sent" : "failed",
+        branch_id: branchId,
       });
 
       if (success) {
@@ -171,6 +186,13 @@ Deno.serve(async (req) => {
     // Send notifications to members expiring today
     for (const sub of expiringToday || []) {
       const member = sub.members as any;
+      const branchId = sub.branch_id || member.branch_id;
+      
+      // Skip if WhatsApp is disabled for this branch
+      if (!isWhatsAppEnabledForBranch(branchId)) {
+        continue;
+      }
+      
       const formattedPhone = formatPhone(member.phone);
 
       const message = `🚨 Hi ${member.name}!\n\nYour gym membership expires *TODAY*!\n\nPlease renew immediately to continue your fitness journey. 💪`;
@@ -181,6 +203,7 @@ Deno.serve(async (req) => {
         member_id: member.id,
         notification_type: "expiring_today",
         status: success ? "sent" : "failed",
+        branch_id: branchId,
       });
 
       if (success) {

@@ -146,6 +146,7 @@ const Renew = () => {
             isNewMember: false,
             hasTrainer: packageData.wantsTrainer,
             trainerName: packageData.selectedTrainer?.name,
+            branchName: branchInfo?.name,
           },
         });
       },

@@ -43,23 +43,6 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Check if WhatsApp is enabled
-    const { data: settings } = await supabase
-      .from("gym_settings")
-      .select("whatsapp_enabled")
-      .limit(1)
-      .maybeSingle();
-
-    if (settings?.whatsapp_enabled === false) {
-      return new Response(
-        JSON.stringify({ success: false, error: "WhatsApp messaging is disabled" }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
     const {
       memberIds,
       dailyPassUserIds,
@@ -74,6 +57,44 @@ Deno.serve(async (req) => {
       name,
       endDate,
     } = (await req.json()) as SendWhatsAppRequest;
+
+    // Check if WhatsApp is enabled for the specific branch
+    if (branchId) {
+      const { data: settings } = await supabase
+        .from("gym_settings")
+        .select("whatsapp_enabled")
+        .eq("branch_id", branchId)
+        .limit(1)
+        .maybeSingle();
+
+      if (settings?.whatsapp_enabled === false) {
+        return new Response(
+          JSON.stringify({ success: false, error: "WhatsApp messaging is disabled for this branch" }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+    } else {
+      // Fallback: Check if WhatsApp is enabled globally (for backward compatibility)
+      const { data: settings } = await supabase
+        .from("gym_settings")
+        .select("whatsapp_enabled")
+        .is("branch_id", null)
+        .limit(1)
+        .maybeSingle();
+
+      if (settings?.whatsapp_enabled === false) {
+        return new Response(
+          JSON.stringify({ success: false, error: "WhatsApp messaging is disabled" }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+    }
 
     // Get admin user ID from request body if provided
     let finalAdminUserId = adminUserId || null;
@@ -169,7 +190,8 @@ Deno.serve(async (req) => {
       memberName: string,
       expiryDate: string,
       diffDays: number,
-      paymentInfo?: { amount: number; date: string; mode: string } | null
+      paymentInfo?: { amount: number; date: string; mode: string } | null,
+      branchName?: string | null
     ): string => {
       const formattedDate = new Date(expiryDate).toLocaleDateString("en-IN", {
         day: "numeric",
@@ -180,7 +202,8 @@ Deno.serve(async (req) => {
       let message = template
         .replace(/\{name\}/gi, memberName)
         .replace(/\{expiry_date\}/gi, formattedDate)
-        .replace(/\{days\}/gi, Math.abs(diffDays).toString());
+        .replace(/\{days\}/gi, Math.abs(diffDays).toString())
+        .replace(/\{branch_name\}/gi, branchName || "Pro Plus Fitness");
 
       if (paymentInfo) {
         const paymentDate = new Date(paymentInfo.date).toLocaleDateString("en-IN", {
@@ -222,7 +245,7 @@ Deno.serve(async (req) => {
 
       // For custom messages with placeholders, replace them
       if (msgType === "custom" && customMessage) {
-        return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo);
+        return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, msgBranchName);
       }
 
       switch (msgType) {
@@ -285,7 +308,7 @@ Deno.serve(async (req) => {
         case "promotional":
           // Check for saved template and replace placeholders
           if (customMessage) {
-            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo);
+            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, msgBranchName);
           }
           return (
             `🎉 *Special Offer for You!*\n\n` +
@@ -298,7 +321,7 @@ Deno.serve(async (req) => {
         case "expiry_reminder":
           // Check for saved template and replace placeholders
           if (customMessage) {
-            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo);
+            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, msgBranchName);
           }
           const daysText = diffDays === 0 
             ? "expires *today*" 
@@ -316,7 +339,7 @@ Deno.serve(async (req) => {
         case "expired_reminder":
           // Check for saved template and replace placeholders
           if (customMessage) {
-            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo);
+            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, msgBranchName);
           }
           const expiredDays = Math.abs(diffDays);
           return (
@@ -357,7 +380,7 @@ Deno.serve(async (req) => {
         default:
           // For manual or custom messages with templates
           if (customMessage) {
-            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo);
+            return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, msgBranchName);
           }
           return `Hi ${memberName}, 👋\n\nThis is a message from your gym.\n\n— ${teamName}`;
       }

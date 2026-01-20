@@ -2,6 +2,13 @@ import { useState } from "react";
 import { useBranch, type Branch } from "@/contexts/BranchContext";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -209,23 +216,23 @@ export const BranchSelector = () => {
           <Button
             variant="ghost"
             size="sm"
-            className="gap-2 h-10 px-3 hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all"
+            className="gap-2 h-10 px-3 hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all w-[200px] justify-start"
           >
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
               <BuildingOffice2Icon className="w-4 h-4 text-primary" />
             </div>
-            <div className="flex flex-col items-start">
+            <div className="flex flex-col items-start flex-1 min-w-0">
               <span className="text-xs text-muted-foreground font-normal leading-none">
                 Branch
               </span>
-              <span className="font-semibold text-foreground truncate max-w-[140px] leading-tight">
-                {currentBranch?.name || "Select"}
+              <span className="font-semibold text-foreground leading-tight truncate w-full text-left">
+                {currentBranch?.name || "Select Branch"}
               </span>
             </div>
-            <ChevronDownIcon className="w-4 h-4 text-muted-foreground ml-1" />
+            <ChevronDownIcon className="w-4 h-4 text-muted-foreground ml-auto flex-shrink-0" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-64 p-2">
+        <DropdownMenuContent align="start" className="w-[240px] p-2">
           <div className="px-2 py-1.5 mb-1">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Your Branches
@@ -245,17 +252,17 @@ export const BranchSelector = () => {
                   : "hover:bg-muted"
               )}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold",
+                  "w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0",
                   currentBranch?.id === branch.id 
                     ? "bg-primary text-primary-foreground" 
                     : "bg-muted text-muted-foreground"
                 )}>
                   {branch.name.charAt(0).toUpperCase()}
                 </div>
-                <div className="flex flex-col">
-                  <span className="font-medium text-foreground">{branch.name}</span>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className="font-medium text-foreground truncate">{branch.name}</span>
                   {branch.address && (
                     <span className="text-xs text-muted-foreground truncate max-w-[150px]">
                       {branch.address}
@@ -264,7 +271,7 @@ export const BranchSelector = () => {
                 </div>
               </div>
               {currentBranch?.id === branch.id && (
-                <CheckIcon className="w-5 h-5 text-primary" />
+                <CheckIcon className="w-5 h-5 text-primary ml-2 flex-shrink-0" />
               )}
             </DropdownMenuItem>
           ))}
@@ -274,9 +281,9 @@ export const BranchSelector = () => {
               e.preventDefault();
               handleOpenAddDialog();
             }}
-            className="cursor-pointer gap-3 p-3 rounded-lg hover:bg-accent/50"
+            className="cursor-pointer gap-3 p-3 rounded-lg hover:bg-accent/50 text-sm"
           >
-            <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
               <PlusIcon className="w-5 h-5 text-accent" />
             </div>
             <span className="font-medium">Add New Branch</span>

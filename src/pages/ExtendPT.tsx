@@ -257,6 +257,7 @@ const ExtendPT = () => {
             hasTrainer: true,
             trainerName: selectedTrainer.name,
             isPTExtension: true,
+            branchName: branchInfo?.name,
           },
         });
       },

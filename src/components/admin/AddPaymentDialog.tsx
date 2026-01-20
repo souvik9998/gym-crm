@@ -459,6 +459,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
           monthly_fee: selectedTrainer!.monthly_fee,
           total_fee: ptAmount, // Use custom amount if provided, otherwise use calculated fee
           status: "active",
+          branch_id: currentBranch?.id,
         });
       }
 
@@ -477,6 +478,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
         status: "success",
         payment_type: paymentTypeValue,
         notes: `Cash payment via admin - ${paymentTypeValue}`,
+        branch_id: currentBranch?.id,
       }).select().single();
 
       if (paymentError) throw paymentError;

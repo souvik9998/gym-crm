@@ -127,6 +127,7 @@ const Register = () => {
             isDailyPass: data.isDailyPass,
             hasTrainer: packageData.wantsTrainer,
             trainerName: packageData.selectedTrainer?.name,
+            branchName: branchInfo?.name,
           },
         });
       },

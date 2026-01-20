@@ -46,16 +46,14 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
       const branchList = (data || []) as Branch[];
       setBranches(branchList);
 
-      // If no current branch set, try to restore from localStorage or use default
-      if (!currentBranch && branchList.length > 0) {
-        const savedBranchId = localStorage.getItem(CURRENT_BRANCH_KEY);
+      if (branchList.length > 0) {
+        // First, try to find default branch (highest priority on login)
+        let selectedBranch = branchList.find(b => b.is_default);
         
-        // Try to find saved branch
-        let selectedBranch = branchList.find(b => b.id === savedBranchId);
-        
-        // If not found, try default
+        // If no default branch, try saved branch from localStorage
         if (!selectedBranch) {
-          selectedBranch = branchList.find(b => b.is_default);
+          const savedBranchId = localStorage.getItem(CURRENT_BRANCH_KEY);
+          selectedBranch = branchList.find(b => b.id === savedBranchId);
         }
         
         // If still not found, use first branch
@@ -63,8 +61,17 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
           selectedBranch = branchList[0];
         }
 
-        setCurrentBranchState(selectedBranch);
-        localStorage.setItem(CURRENT_BRANCH_KEY, selectedBranch.id);
+        // Only update if current branch is null or if we found a different default branch
+        if (!currentBranch || (selectedBranch.is_default && selectedBranch.id !== currentBranch.id)) {
+          setCurrentBranchState(selectedBranch);
+          localStorage.setItem(CURRENT_BRANCH_KEY, selectedBranch.id);
+        } else if (currentBranch) {
+          // Update current branch data if it exists in the list
+          const updatedCurrentBranch = branchList.find(b => b.id === currentBranch.id);
+          if (updatedCurrentBranch) {
+            setCurrentBranchState(updatedCurrentBranch);
+          }
+        }
       }
     } finally {
       setIsLoading(false);
