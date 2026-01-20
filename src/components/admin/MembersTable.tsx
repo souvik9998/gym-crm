@@ -892,7 +892,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
               <TableRow 
                 key={member.id} 
                 className={cn(
-                  "hover:bg-muted/30 cursor-pointer",
+                  "cursor-pointer transition-colors duration-150 ease-in-out hover:bg-muted/50",
                   selectedMembers.has(member.id) && "bg-primary/5"
                 )}
                 onClick={() => handleMemberClick(member)}
