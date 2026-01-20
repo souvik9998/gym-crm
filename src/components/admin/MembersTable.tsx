@@ -972,12 +972,9 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
                         <MoreVertical className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-white dark:bg-card shadow-lg border">
+                    <DropdownMenuContent align="end">
                       {/* Update User */}
-                      <DropdownMenuItem 
-                        onClick={() => setEditingMember(member)}
-                        className="cursor-pointer hover:bg-destructive/10 focus:bg-destructive/10"
-                      >
+                      <DropdownMenuItem onClick={() => setEditingMember(member)}>
                         <Pencil className="w-4 h-4 mr-2" />
                         Update User
                       </DropdownMenuItem>
@@ -986,7 +983,6 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
                       <DropdownMenuItem 
                         onClick={(e) => handleSendPromotional(member, e)}
                         disabled={sendingWhatsApp === member.id}
-                        className="cursor-pointer hover:bg-destructive/10 focus:bg-destructive/10"
                       >
                         <MessageCircle className="w-4 h-4 mr-2" />
                         {sendingWhatsApp === member.id ? "Sending..." : "Send Promotional Message"}
@@ -997,7 +993,6 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
                         <DropdownMenuItem 
                           onClick={(e) => handleSendExpiryReminder(member, e)}
                           disabled={sendingWhatsApp === member.id}
-                          className="cursor-pointer hover:bg-destructive/10 focus:bg-destructive/10"
                         >
                           <Clock className="w-4 h-4 mr-2" />
                           Send Expiry Reminder
@@ -1009,7 +1004,6 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
                         <DropdownMenuItem 
                           onClick={(e) => handleSendExpiredReminder(member, e)}
                           disabled={sendingWhatsApp === member.id}
-                          className="cursor-pointer hover:bg-destructive/10 focus:bg-destructive/10"
                         >
                           <AlertTriangle className="w-4 h-4 mr-2" />
                           Send Expired Reminder
@@ -1020,7 +1014,6 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
                       <DropdownMenuItem 
                         onClick={(e) => handleSendPaymentDetails(member, e)}
                         disabled={sendingWhatsApp === member.id}
-                        className="cursor-pointer hover:bg-destructive/10 focus:bg-destructive/10"
                       >
                         <Receipt className="w-4 h-4 mr-2" />
                         Send Payment Details
