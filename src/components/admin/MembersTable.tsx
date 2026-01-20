@@ -672,7 +672,7 @@ export const MembersTable = ({ searchQuery, refreshKey, filterValue, ptFilterAct
 
     switch (subscription.status) {
       case "active":
-        return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
+        return <Badge className="bg-success/10 text-success border-success/20 hover:bg-green-200 dark:hover:bg-green-800/50 hover:text-green-900 dark:hover:text-green-100 hover:border-green-400 dark:hover:border-green-600 transition-all duration-150 cursor-default">Active</Badge>;
       case "paused":
         return <Badge variant="outline" className="text-muted-foreground">Paused</Badge>;
       default:

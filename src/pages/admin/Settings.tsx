@@ -578,48 +578,57 @@ const AdminSettings = () => {
                 {monthlyPackages.length > 0 && (
                   <div className="space-y-3 pt-4 border-t">
                     {monthlyPackages.map((pkg) => (
-                      <div key={pkg.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                      <div key={pkg.id} className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
                         {editingMonthlyId === pkg.id ? (
-                          <div className="flex-1 grid grid-cols-2 gap-3 mr-4">
-                            <div className="space-y-1">
-                              <Label className="text-xs">Price (₹)</Label>
-                              <Input
-                                type="number"
-                                value={editMonthlyData.price}
-                                onChange={(e) => setEditMonthlyData({ ...editMonthlyData, price: e.target.value })}
-                                className="h-9"
-                              />
+                          <>
+                            <div className="flex-1 grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Price (₹)</Label>
+                                <Input
+                                  type="number"
+                                  value={editMonthlyData.price}
+                                  onChange={(e) => setEditMonthlyData({ ...editMonthlyData, price: e.target.value })}
+                                  className="h-9"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Joining Fee (₹)</Label>
+                                <Input
+                                  type="number"
+                                  value={editMonthlyData.joining_fee}
+                                  onChange={(e) => setEditMonthlyData({ ...editMonthlyData, joining_fee: e.target.value })}
+                                  className="h-9"
+                                />
+                              </div>
                             </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Joining Fee (₹)</Label>
-                              <Input
-                                type="number"
-                                value={editMonthlyData.joining_fee}
-                                onChange={(e) => setEditMonthlyData({ ...editMonthlyData, joining_fee: e.target.value })}
-                                className="h-9"
-                              />
+                            <div className="flex items-center gap-2 pt-6">
+                              <Button 
+                                size="icon" 
+                                variant="ghost"
+                                onClick={() => handleSaveMonthlyPackage(pkg.id)}
+                                className="h-9 w-9 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 hover:text-green-800 dark:hover:text-green-300 border border-green-200 dark:border-green-800 transition-all duration-150 shadow-sm hover:shadow-md"
+                              >
+                                <CheckIcon className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                size="icon" 
+                                variant="ghost"
+                                onClick={() => setEditingMonthlyId(null)}
+                                className="h-9 w-9 bg-gray-50 dark:bg-gray-900/20 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 border border-gray-200 dark:border-gray-800 transition-all duration-150 shadow-sm hover:shadow-md"
+                              >
+                                <XMarkIcon className="w-4 h-4" />
+                              </Button>
                             </div>
-                          </div>
+                          </>
                         ) : (
-                          <div>
-                            <p className="font-medium">{pkg.months} {pkg.months === 1 ? "Month" : "Months"}</p>
-                            <p className="text-sm text-muted-foreground">
-                              ₹{pkg.price} + ₹{pkg.joining_fee} joining fee
-                            </p>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          {editingMonthlyId === pkg.id ? (
-                            <>
-                              <Button size="icon" variant="ghost" onClick={() => handleSaveMonthlyPackage(pkg.id)}>
-                                <CheckIcon className="w-4 h-4 text-success" />
-                              </Button>
-                              <Button size="icon" variant="ghost" onClick={() => setEditingMonthlyId(null)}>
-                                <XMarkIcon className="w-4 h-4 text-muted-foreground" />
-                              </Button>
-                            </>
-                          ) : (
-                            <>
+                          <>
+                            <div className="flex-1">
+                              <p className="font-medium">{pkg.months} {pkg.months === 1 ? "Month" : "Months"}</p>
+                              <p className="text-sm text-muted-foreground">
+                                ₹{pkg.price} + ₹{pkg.joining_fee} joining fee
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
                               <div className="flex items-center gap-2">
                                 <Label htmlFor={`monthly-${pkg.id}`} className="text-sm">Active</Label>
                                 <Switch
@@ -638,9 +647,9 @@ const AdminSettings = () => {
                               >
                                 <TrashIcon className="w-4 h-4 text-destructive" />
                               </Button>
-                            </>
-                          )}
-                        </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -692,47 +701,56 @@ const AdminSettings = () => {
                 {customPackages.length > 0 && (
                   <div className="space-y-3 pt-4 border-t">
                     {customPackages.map((pkg) => (
-                      <div key={pkg.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                      <div key={pkg.id} className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
                         {editingPackageId === pkg.id ? (
-                          <div className="flex-1 grid grid-cols-2 gap-3 mr-4">
-                            <div className="space-y-1">
-                              <Label className="text-xs">Name</Label>
-                              <Input
-                                value={editPackageData.name}
-                                onChange={(e) => setEditPackageData({ ...editPackageData, name: e.target.value })}
-                                className="h-9"
-                              />
+                          <>
+                            <div className="flex-1 grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Name</Label>
+                                <Input
+                                  value={editPackageData.name}
+                                  onChange={(e) => setEditPackageData({ ...editPackageData, name: e.target.value })}
+                                  className="h-9"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Price (₹)</Label>
+                                <Input
+                                  type="number"
+                                  value={editPackageData.price}
+                                  onChange={(e) => setEditPackageData({ ...editPackageData, price: e.target.value })}
+                                  className="h-9"
+                                />
+                              </div>
                             </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Price (₹)</Label>
-                              <Input
-                                type="number"
-                                value={editPackageData.price}
-                                onChange={(e) => setEditPackageData({ ...editPackageData, price: e.target.value })}
-                                className="h-9"
-                              />
+                            <div className="flex items-center gap-2 pt-6">
+                              <Button 
+                                size="icon" 
+                                variant="ghost"
+                                onClick={() => handleSavePackage(pkg.id)}
+                                className="h-9 w-9 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 hover:text-green-800 dark:hover:text-green-300 border border-green-200 dark:border-green-800 transition-all duration-150 shadow-sm hover:shadow-md"
+                              >
+                                <CheckIcon className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                size="icon" 
+                                variant="ghost"
+                                onClick={() => setEditingPackageId(null)}
+                                className="h-9 w-9 bg-gray-50 dark:bg-gray-900/20 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 border border-gray-200 dark:border-gray-800 transition-all duration-150 shadow-sm hover:shadow-md"
+                              >
+                                <XMarkIcon className="w-4 h-4" />
+                              </Button>
                             </div>
-                          </div>
+                          </>
                         ) : (
-                          <div>
-                            <p className="font-medium">{pkg.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {pkg.duration_days} {pkg.duration_days === 1 ? "Day" : "Days"} • ₹{pkg.price}
-                            </p>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          {editingPackageId === pkg.id ? (
-                            <>
-                              <Button size="icon" variant="ghost" onClick={() => handleSavePackage(pkg.id)}>
-                                <CheckIcon className="w-4 h-4 text-success" />
-                              </Button>
-                              <Button size="icon" variant="ghost" onClick={() => setEditingPackageId(null)}>
-                                <XMarkIcon className="w-4 h-4 text-muted-foreground" />
-                              </Button>
-                            </>
-                          ) : (
-                            <>
+                          <>
+                            <div className="flex-1">
+                              <p className="font-medium">{pkg.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {pkg.duration_days} {pkg.duration_days === 1 ? "Day" : "Days"} • ₹{pkg.price}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
                               <div className="flex items-center gap-2">
                                 <Label htmlFor={`custom-${pkg.id}`} className="text-sm">Active</Label>
                                 <Switch
@@ -751,9 +769,9 @@ const AdminSettings = () => {
                               >
                                 <TrashIcon className="w-4 h-4 text-destructive" />
                               </Button>
-                            </>
-                          )}
-                        </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>
