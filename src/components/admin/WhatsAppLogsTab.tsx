@@ -597,7 +597,7 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
 
       {/* WhatsApp Message View Dialog */}
       <Dialog open={!!selectedMessage} onOpenChange={(open) => !open && setSelectedMessage(null)}>
-        <DialogContent className="sm:max-w-[500px] p-0 gap-0 bg-[#e5ddd5] dark:bg-[#0b141a] overflow-hidden">
+        <DialogContent className="sm:max-w-[500px] p-0 gap-0 bg-[#e5ddd5] dark:bg-[#0b141a] overflow-hidden [&>button]:hidden">
           {selectedMessage && (
             <>
               {/* WhatsApp Header */}
