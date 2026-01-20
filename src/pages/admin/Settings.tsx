@@ -115,6 +115,20 @@ const AdminSettings = () => {
     }
   }, [user, currentBranch]);
 
+  // Reset settings state when branch changes to ensure fresh data
+  useEffect(() => {
+    if (currentBranch) {
+      // Reset to prevent showing old branch data while loading
+      setSettings(null);
+      setGymName("");
+      setGymPhone("");
+      setGymAddress("");
+      setWhatsappEnabled(false);
+      setMonthlyPackages([]);
+      setCustomPackages([]);
+    }
+  }, [currentBranch?.id]);
+
   const fetchData = async () => {
     if (!currentBranch) return;
 
@@ -131,7 +145,14 @@ const AdminSettings = () => {
       setGymName(settingsData.gym_name || "");
       setGymPhone(settingsData.gym_phone || "");
       setGymAddress(settingsData.gym_address || "");
-      setWhatsappEnabled(settingsData.whatsapp_enabled !== false);
+      setWhatsappEnabled(settingsData.whatsapp_enabled === true);
+    } else {
+      // No settings found for this branch - reset state
+      setSettings(null);
+      setGymName("");
+      setGymPhone("");
+      setGymAddress("");
+      setWhatsappEnabled(false);
     }
 
     // Fetch monthly packages for the current branch

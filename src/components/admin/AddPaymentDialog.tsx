@@ -100,7 +100,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
   const [existingPTEndDate, setExistingPTEndDate] = useState<Date | null>(null);
 
   useEffect(() => {
-    if (open) {
+    if (open && currentBranch) {
       fetchPackages();
       fetchTrainers();
       setMember(null);
@@ -115,31 +115,43 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
       setGymEndDate(null);
       setExistingPTEndDate(null);
     }
-  }, [open]);
+  }, [open, currentBranch]);
 
   const fetchPackages = async () => {
+    if (!currentBranch) return;
+    
     const { data } = await supabase
       .from("monthly_packages")
       .select("*")
       .eq("is_active", true)
+      .eq("branch_id", currentBranch.id)
       .order("months");
 
     if (data && data.length > 0) {
       setMonthlyPackages(data);
       setSelectedPackageId(data[0].id);
+    } else {
+      setMonthlyPackages([]);
+      setSelectedPackageId("");
     }
   };
 
   const fetchTrainers = async () => {
+    if (!currentBranch) return;
+    
     const { data } = await supabase
       .from("personal_trainers")
       .select("*")
       .eq("is_active", true)
+      .eq("branch_id", currentBranch.id)
       .order("name");
 
     if (data && data.length > 0) {
       setTrainers(data);
       setSelectedTrainerId(data[0].id);
+    } else {
+      setTrainers([]);
+      setSelectedTrainerId("");
     }
   };
 
@@ -151,12 +163,20 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
       return;
     }
 
+    if (!currentBranch) {
+      toast.error("Error", {
+        description: "Please select a branch first",
+      });
+      return;
+    }
+
     setIsSearching(true);
     try {
       const { data, error } = await supabase
         .from("members")
         .select("id, name, phone")
         .eq("phone", phone)
+        .eq("branch_id", currentBranch.id)
         .maybeSingle();
 
       if (error) throw error;
@@ -167,7 +187,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
         fetchMembershipEndDate(data.id);
       } else {
         toast.error("Member Not Found", {
-          description: "No member with this phone number exists",
+          description: "No member with this phone number exists in this branch",
         });
         setMember(null);
         setMembershipEndDate(null);
