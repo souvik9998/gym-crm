@@ -105,17 +105,20 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (open) {
+    if (open && currentBranch) {
       fetchPackages();
       fetchTrainers();
     }
-  }, [open]);
+  }, [open, currentBranch]);
 
   const fetchPackages = async () => {
+    if (!currentBranch) return;
+    
     const { data } = await supabase
       .from("monthly_packages")
       .select("*")
       .eq("is_active", true)
+      .eq("branch_id", currentBranch.id)
       .order("months");
 
     if (data && data.length > 0) {
@@ -123,20 +126,32 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       setSelectedPackageId(data[0].id);
       setMonthlyFee(Number(data[0].price));
       setJoiningFee(Number(data[0].joining_fee));
+    } else {
+      setMonthlyPackages([]);
+      setSelectedPackageId("");
+      setMonthlyFee(0);
+      setJoiningFee(0);
     }
   };
 
   const fetchTrainers = async () => {
+    if (!currentBranch) return;
+    
     const { data } = await supabase
       .from("personal_trainers")
       .select("*")
       .eq("is_active", true)
+      .eq("branch_id", currentBranch.id)
       .order("name");
 
     if (data && data.length > 0) {
       setTrainers(data);
       setSelectedTrainerId(data[0].id);
       setPtFee(Number(data[0].monthly_fee));
+    } else {
+      setTrainers([]);
+      setSelectedTrainerId("");
+      setPtFee(0);
     }
   };
 
@@ -262,6 +277,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           status: "active",
           personal_trainer_id: wantsPT ? selectedTrainerId : null,
           trainer_fee: wantsPT ? ptFee : null,
+          branch_id: currentBranch?.id,
         })
         .select()
         .single();
@@ -280,6 +296,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           monthly_fee: selectedTrainer?.monthly_fee || 0,
           total_fee: ptFee,
           status: "active",
+          branch_id: currentBranch?.id,
         });
       }
 
@@ -293,6 +310,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         status: "success",
         payment_type: paymentType,
         notes: "Added via admin dashboard",
+        branch_id: currentBranch?.id,
       }).select().single();
 
       if (paymentError) throw paymentError;
@@ -305,7 +323,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         `New member - ${name} (${selectedPackage?.months || 1} months)`,
         member.id,
         undefined,
-        paymentRecord.id
+        paymentRecord.id,
+        currentBranch?.id
       );
 
       // Joining fee income (if any)
@@ -316,7 +335,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           `Joining fee - ${name}`,
           member.id,
           undefined,
-          paymentRecord.id
+          paymentRecord.id,
+          currentBranch?.id
         );
       }
 
@@ -328,7 +348,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           `PT subscription - ${name} with ${selectedTrainer.name}`,
           member.id,
           undefined,
-          paymentRecord.id
+          paymentRecord.id,
+          currentBranch?.id
         );
 
         // Calculate trainer percentage expense if applicable
@@ -338,7 +359,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           member.id,
           undefined,
           undefined,
-          name
+          name,
+          currentBranch?.id
         );
       }
 
@@ -350,6 +372,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         entityId: member.id,
         entityName: name,
         newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT },
+        branchId: currentBranch?.id,
       });
 
       // Send WhatsApp notification for new member registration
