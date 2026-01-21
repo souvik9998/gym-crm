@@ -66,7 +66,7 @@ export const StaffPasswordDialog = ({
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke("staff-auth", {
+      const { data, error } = await supabase.functions.invoke("staff-auth?action=set-password", {
         body: {
           staffId: staff.id,
           password,

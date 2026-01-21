@@ -73,10 +73,10 @@ const navItems: NavItem[] = [
     iconSolid: BookOpenIconSolid,
   },
   {
-    title: "Trainers",
-    href: "/admin/trainers",
-    icon: AcademicCapIcon,
-    iconSolid: AcademicCapIconSolid,
+    title: "Staff",
+    href: "/admin/staff",
+    icon: UserGroupIcon,
+    iconSolid: UserGroupIcon,
   },
   {
     title: "Activity Logs",
