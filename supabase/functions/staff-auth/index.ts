@@ -141,12 +141,16 @@ Deno.serve(async (req) => {
           failure_reason: "pending",
         });
 
-        // Find staff by phone
-        const { data: staff, error: staffError } = await supabase
+        // Find staff by phone - prioritize staff with password set and active
+        const { data: staffList, error: staffError } = await supabase
           .from("staff")
           .select("*")
           .eq("phone", cleanPhone)
-          .single();
+          .eq("is_active", true)
+          .order("password_set_at", { ascending: false, nullsFirst: false });
+
+        // Get the staff with password set, or the first one if none have passwords
+        const staff = staffList?.find(s => s.password_hash) || staffList?.[0];
 
         if (staffError || !staff) {
           // Update login attempt
