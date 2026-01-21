@@ -309,7 +309,8 @@ Deno.serve(async (req) => {
             permissions: permissions || {
               can_view_members: false,
               can_manage_members: false,
-              can_access_financials: false,
+              can_access_ledger: false,
+              can_access_payments: false,
               can_access_analytics: false,
               can_change_settings: false,
             },
@@ -387,7 +388,8 @@ Deno.serve(async (req) => {
             permissions: permissions || {
               can_view_members: false,
               can_manage_members: false,
-              can_access_financials: false,
+              can_access_ledger: false,
+              can_access_payments: false,
               can_access_analytics: false,
               can_change_settings: false,
             },

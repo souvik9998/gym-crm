@@ -26,7 +26,8 @@ interface StaffPermissionsDialogProps {
 interface Permissions {
   can_view_members: boolean;
   can_manage_members: boolean;
-  can_access_financials: boolean;
+  can_access_ledger: boolean;
+  can_access_payments: boolean;
   can_access_analytics: boolean;
   can_change_settings: boolean;
 }
@@ -40,9 +41,13 @@ const PERMISSION_LABELS: Record<keyof Permissions, { label: string; description:
     label: "Manage Members",
     description: "Can create, edit, and update member records",
   },
-  can_access_financials: {
-    label: "Financial Records",
-    description: "Can access ledger, payments, and financial reports",
+  can_access_ledger: {
+    label: "Ledger Access",
+    description: "Can access income and expense ledger",
+  },
+  can_access_payments: {
+    label: "Payment Logs",
+    description: "Can view payment history and records",
   },
   can_access_analytics: {
     label: "Analytics Access",
@@ -64,7 +69,8 @@ export const StaffPermissionsDialog = ({
   const [permissions, setPermissions] = useState<Permissions>({
     can_view_members: false,
     can_manage_members: false,
-    can_access_financials: false,
+    can_access_ledger: false,
+    can_access_payments: false,
     can_access_analytics: false,
     can_change_settings: false,
   });
@@ -75,7 +81,8 @@ export const StaffPermissionsDialog = ({
       setPermissions({
         can_view_members: staff.permissions.can_view_members,
         can_manage_members: staff.permissions.can_manage_members,
-        can_access_financials: staff.permissions.can_access_financials,
+        can_access_ledger: (staff.permissions as any).can_access_ledger ?? false,
+        can_access_payments: (staff.permissions as any).can_access_payments ?? false,
         can_access_analytics: staff.permissions.can_access_analytics,
         can_change_settings: staff.permissions.can_change_settings,
       });
@@ -84,7 +91,8 @@ export const StaffPermissionsDialog = ({
       const defaults: Permissions = {
         can_view_members: true,
         can_manage_members: staff?.role === "admin" || staff?.role === "manager",
-        can_access_financials: staff?.role === "admin" || staff?.role === "accountant",
+        can_access_ledger: staff?.role === "admin" || staff?.role === "accountant",
+        can_access_payments: staff?.role === "admin" || staff?.role === "accountant" || staff?.role === "manager",
         can_access_analytics: staff?.role === "admin" || staff?.role === "manager",
         can_change_settings: staff?.role === "admin",
       };
