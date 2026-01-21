@@ -1,7 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { encodeBase64 } from "https://deno.land/std@0.220.1/encoding/base64.ts";
+import { encodeBase64, decodeBase64 } from "https://deno.land/std@0.220.1/encoding/base64.ts";
 
 const base64Encode = encodeBase64;
+const base64Decode = decodeBase64;
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -51,8 +52,8 @@ async function hashPassword(password: string): Promise<string> {
 
 async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
   try {
-    // Decode stored hash
-    const decoded = Uint8Array.from(atob(storedHash), c => c.charCodeAt(0));
+    // Decode stored hash using the same library as encoding
+    const decoded = base64Decode(storedHash);
     
     // Extract salt (first 16 bytes)
     const salt = decoded.slice(0, 16);
