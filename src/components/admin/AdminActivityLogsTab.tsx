@@ -208,6 +208,8 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
         return <Package className="w-4 h-4" />;
       case "trainers":
         return <Dumbbell className="w-4 h-4" />;
+      case "staff":
+        return <Users className="w-4 h-4" />;
       case "settings":
         return <Settings className="w-4 h-4" />;
       case "whatsapp":
@@ -225,6 +227,7 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
       payments: "bg-green-500/10 text-green-500 border-green-500/20",
       packages: "bg-purple-500/10 text-purple-500 border-purple-500/20",
       trainers: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+      staff: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
       settings: "bg-gray-500/10 text-gray-500 border-gray-500/20",
       whatsapp: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
       subscriptions: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",
@@ -380,6 +383,7 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
                     <SelectItem value="payments">Payments</SelectItem>
                     <SelectItem value="packages">Packages</SelectItem>
                     <SelectItem value="trainers">Trainers</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
                     <SelectItem value="settings">Settings</SelectItem>
                     <SelectItem value="whatsapp">WhatsApp</SelectItem>
                     <SelectItem value="subscriptions">Subscriptions</SelectItem>
