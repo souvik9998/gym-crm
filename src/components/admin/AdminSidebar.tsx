@@ -51,6 +51,7 @@ interface NavItem {
     | "can_access_analytics"
     | "can_change_settings";
   adminOnly?: boolean;
+  staffOnly?: boolean; // Only visible to staff users
 }
 
 // Navigation items with permission requirements
@@ -61,6 +62,15 @@ const allNavItems: NavItem[] = [
     icon: HomeIcon,
     iconSolid: HomeIconSolid,
     requiresPermission: "can_view_members", // Basic access
+    adminOnly: true, // Only for admin users - staff use /staff/dashboard
+  },
+  {
+    title: "Dashboard",
+    href: "/staff/dashboard",
+    icon: HomeIcon,
+    iconSolid: HomeIconSolid,
+    requiresPermission: "can_view_members",
+    staffOnly: true, // Only for staff users
   },
   {
     title: "Analytics",
@@ -127,17 +137,17 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
 
   // Filter nav items based on permissions
   const filterNavItems = (items: NavItem[]): NavItem[] => {
-    if (!isStaffUser) {
-      // Admin users see everything
-      return items;
-    }
-
     return items.filter((item) => {
+      // Staff-only items should only show for staff users
+      if (item.staffOnly && !isStaffUser) return false;
+      
       // Admin-only items are hidden for staff
-      if (item.adminOnly) return false;
+      if (item.adminOnly && isStaffUser) return false;
 
       // Check specific permission requirement
       if (item.requiresPermission) {
+        // Admin users (non-staff) have all permissions
+        if (!isStaffUser) return true;
         // Staff role 'admin' has all permissions
         if (staffUser?.role === "admin") return true;
         return permissions?.[item.requiresPermission] || false;

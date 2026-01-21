@@ -117,7 +117,8 @@ const AdminLogin = () => {
       toast.success("Login Successful", {
         description: "Welcome back!",
       });
-      navigate("/admin/dashboard");
+      // Staff users go to their dedicated dashboard
+      navigate("/staff/dashboard");
     } catch (error: any) {
       toast.error("Login Failed", {
         description: error.message || "Invalid phone number or password",
