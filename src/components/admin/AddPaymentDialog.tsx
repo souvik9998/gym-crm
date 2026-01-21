@@ -22,6 +22,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { createMembershipIncomeEntry, calculateTrainerPercentageExpense } from "@/hooks/useLedger";
 import {
   Select,
@@ -34,6 +35,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { addMonths, differenceInDays, format, isBefore } from "date-fns";
 import { useBranch } from "@/contexts/BranchContext";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
 
 interface Member {
   id: string;
@@ -74,6 +76,7 @@ type PaymentType = "gym_only" | "gym_and_pt" | "pt_only";
 
 export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDialogProps) => {
   const { currentBranch } = useBranch();
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
   const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -554,15 +557,32 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
         console.error("Failed to send WhatsApp notification:", err);
       }
 
-      await logAdminActivity({
-        category: "payments",
-        type: "cash_payment_added",
-        description: `Added cash payment of ₹${totalAmount} for ${member.name}`,
-        entityType: "payments",
-        entityName: member.name,
-        newValue: { amount: totalAmount, payment_type: paymentTypeValue, member_name: member.name },
-        branchId: currentBranch?.id,
-      });
+      // Log activity - use staff logging if staff is logged in, otherwise admin logging
+      if (isStaffLoggedIn && staffUser) {
+        await logStaffActivity({
+          category: "payments",
+          type: "cash_payment_added",
+          description: `Staff "${staffUser.fullName}" added cash payment of ₹${totalAmount} for ${member.name}`,
+          entityType: "payments",
+          entityName: member.name,
+          newValue: { amount: totalAmount, payment_type: paymentTypeValue, member_name: member.name },
+          branchId: currentBranch?.id,
+          staffId: staffUser.id,
+          staffName: staffUser.fullName,
+          staffPhone: staffUser.phone,
+          metadata: { staff_role: staffUser.role },
+        });
+      } else {
+        await logAdminActivity({
+          category: "payments",
+          type: "cash_payment_added",
+          description: `Added cash payment of ₹${totalAmount} for ${member.name}`,
+          entityType: "payments",
+          entityName: member.name,
+          newValue: { amount: totalAmount, payment_type: paymentTypeValue, member_name: member.name },
+          branchId: currentBranch?.id,
+        });
+      }
 
       toast.success("Payment recorded successfully");
       onSuccess();

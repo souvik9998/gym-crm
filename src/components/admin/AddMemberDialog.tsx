@@ -22,6 +22,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { createMembershipIncomeEntry, calculateTrainerPercentageExpense } from "@/hooks/useLedger";
 import { z } from "zod";
 import {
@@ -37,6 +38,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format, addMonths } from "date-fns";
 import { useBranch } from "@/contexts/BranchContext";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100),
@@ -66,6 +68,7 @@ interface AddMemberDialogProps {
 
 export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDialogProps) => {
   const { currentBranch } = useBranch();
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
   
   // Basic info
   const [name, setName] = useState("");
@@ -364,16 +367,34 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         );
       }
 
-      await logAdminActivity({
-        category: "members",
-        type: "member_added",
-        description: `Added new member "${name}" with ${selectedPackage?.months || 1} month package`,
-        entityType: "members",
-        entityId: member.id,
-        entityName: name,
-        newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT },
-        branchId: currentBranch?.id,
-      });
+      // Log activity - use staff logging if staff is logged in, otherwise admin logging
+      if (isStaffLoggedIn && staffUser) {
+        await logStaffActivity({
+          category: "members",
+          type: "member_added",
+          description: `Staff "${staffUser.fullName}" added new member "${name}" with ${selectedPackage?.months || 1} month package`,
+          entityType: "members",
+          entityId: member.id,
+          entityName: name,
+          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT },
+          branchId: currentBranch?.id,
+          staffId: staffUser.id,
+          staffName: staffUser.fullName,
+          staffPhone: staffUser.phone,
+          metadata: { staff_role: staffUser.role },
+        });
+      } else {
+        await logAdminActivity({
+          category: "members",
+          type: "member_added",
+          description: `Added new member "${name}" with ${selectedPackage?.months || 1} month package`,
+          entityType: "members",
+          entityId: member.id,
+          entityName: name,
+          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT },
+          branchId: currentBranch?.id,
+        });
+      }
 
       // Send WhatsApp notification for new member registration
       try {

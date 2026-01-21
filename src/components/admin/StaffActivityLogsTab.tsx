@@ -70,10 +70,10 @@ interface StaffLoginAttempt {
 interface StaffActivityStats {
   totalActivities: number;
   activitiesToday: number;
-  staffAdded: number;
-  staffUpdated: number;
-  passwordChanges: number;
-  permissionChanges: number;
+  membersAdded: number;
+  membersUpdated: number;
+  paymentsRecorded: number;
+  loginLogout: number;
   loginAttempts: number;
   failedLogins: number;
 }
@@ -94,10 +94,10 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
   const [stats, setStats] = useState<StaffActivityStats>({
     totalActivities: 0,
     activitiesToday: 0,
-    staffAdded: 0,
-    staffUpdated: 0,
-    passwordChanges: 0,
-    permissionChanges: 0,
+    membersAdded: 0,
+    membersUpdated: 0,
+    paymentsRecorded: 0,
+    loginLogout: 0,
     loginAttempts: 0,
     failedLogins: 0,
   });
@@ -151,10 +151,10 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
       const statsData: StaffActivityStats = {
         totalActivities: activityData?.length || 0,
         activitiesToday: 0,
-        staffAdded: 0,
-        staffUpdated: 0,
-        passwordChanges: 0,
-        permissionChanges: 0,
+        membersAdded: 0,
+        membersUpdated: 0,
+        paymentsRecorded: 0,
+        loginLogout: 0,
         loginAttempts: loginData?.length || 0,
         failedLogins: loginData?.filter((l: StaffLoginAttempt) => !l.success).length || 0,
       };
@@ -163,11 +163,12 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
         const createdAt = new Date(log.created_at);
         if (createdAt >= today) statsData.activitiesToday++;
         
-        if (log.activity_type === "staff_added") statsData.staffAdded++;
-        if (log.activity_type === "staff_updated") statsData.staffUpdated++;
-        if (log.activity_type === "staff_password_set" || log.activity_type === "staff_password_updated") 
-          statsData.passwordChanges++;
-        if (log.activity_type === "staff_permissions_updated") statsData.permissionChanges++;
+        if (log.activity_type === "member_added") statsData.membersAdded++;
+        if (log.activity_type === "member_updated") statsData.membersUpdated++;
+        if (log.activity_type === "cash_payment_added" || log.activity_type === "online_payment_received") 
+          statsData.paymentsRecorded++;
+        if (log.activity_type === "staff_logged_in" || log.activity_type === "staff_logged_out") 
+          statsData.loginLogout++;
       });
 
       setStats(statsData);
@@ -400,11 +401,11 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
             </Card>
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Password Changes</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Payments Recorded</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-foreground">{stats.passwordChanges}</div>
-                <p className="text-xs text-muted-foreground mt-1">Credential updates</p>
+                <div className="text-3xl font-bold text-foreground">{stats.paymentsRecorded}</div>
+                <p className="text-xs text-muted-foreground mt-1">By staff members</p>
               </CardContent>
             </Card>
           </div>
@@ -412,36 +413,36 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
           <Card>
             <CardHeader>
               <CardTitle>Activity Breakdown</CardTitle>
-              <CardDescription>Staff management activities summary</CardDescription>
+              <CardDescription>Staff performed activities summary</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/10">
-                  <UserPlus className="w-5 h-5 text-green-500" />
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10">
+                  <UserPlus className="w-5 h-5 text-success" />
                   <div>
-                    <p className="text-sm font-medium">Staff Added</p>
-                    <p className="text-lg font-bold">{stats.staffAdded}</p>
+                    <p className="text-sm font-medium">Members Added</p>
+                    <p className="text-lg font-bold">{stats.membersAdded}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-500/10">
-                  <RefreshCw className="w-5 h-5 text-blue-500" />
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10">
+                  <RefreshCw className="w-5 h-5 text-primary" />
                   <div>
-                    <p className="text-sm font-medium">Staff Updated</p>
-                    <p className="text-lg font-bold">{stats.staffUpdated}</p>
+                    <p className="text-sm font-medium">Members Updated</p>
+                    <p className="text-lg font-bold">{stats.membersUpdated}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-500/10">
-                  <Key className="w-5 h-5 text-purple-500" />
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-accent/10">
+                  <Key className="w-5 h-5 text-accent" />
                   <div>
-                    <p className="text-sm font-medium">Password Changes</p>
-                    <p className="text-lg font-bold">{stats.passwordChanges}</p>
+                    <p className="text-sm font-medium">Payments</p>
+                    <p className="text-lg font-bold">{stats.paymentsRecorded}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-indigo-500/10">
-                  <ShieldCheck className="w-5 h-5 text-indigo-500" />
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-warning/10">
+                  <LogIn className="w-5 h-5 text-warning" />
                   <div>
-                    <p className="text-sm font-medium">Permission Updates</p>
-                    <p className="text-lg font-bold">{stats.permissionChanges}</p>
+                    <p className="text-sm font-medium">Login/Logout</p>
+                    <p className="text-lg font-bold">{stats.loginLogout}</p>
                   </div>
                 </div>
               </div>

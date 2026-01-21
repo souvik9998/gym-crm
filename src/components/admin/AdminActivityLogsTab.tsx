@@ -109,6 +109,7 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
         .from("admin_activity_logs")
         .select("*")
         .eq("branch_id", currentBranch.id)
+        .not("admin_user_id", "is", null) // Only show admin activities (exclude staff activities)
         .order("created_at", { ascending: false })
         .limit(500);
 
@@ -141,6 +142,7 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
         .from("admin_activity_logs")
         .select("*")
         .eq("branch_id", currentBranch.id)
+        .not("admin_user_id", "is", null) // Only count admin activities (exclude staff activities)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
