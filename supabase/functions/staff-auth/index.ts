@@ -297,6 +297,30 @@ Deno.serve(async (req) => {
           .order("created_at", { ascending: false })
           .limit(1);
 
+        // Log staff login activity - uses NULL admin_user_id to indicate staff action
+        const primaryBranch = branchAssignments?.find(b => b.is_primary);
+        const branchId = primaryBranch?.branch_id || branchAssignments?.[0]?.branch_id;
+        
+        await supabase.from("admin_activity_logs").insert({
+          admin_user_id: null, // NULL indicates staff action, not admin
+          activity_category: "staff",
+          activity_type: "staff_logged_in",
+          description: `Staff "${staff.full_name}" logged in successfully`,
+          entity_type: "staff",
+          entity_id: staff.id,
+          entity_name: staff.full_name,
+          branch_id: branchId,
+          metadata: {
+            performed_by: "staff",
+            staff_id: staff.id,
+            staff_name: staff.full_name,
+            staff_phone: staff.phone,
+            staff_role: staff.role,
+            ip_address: clientIP,
+            user_agent: userAgent,
+          },
+        });
+
         return new Response(
           JSON.stringify({
             success: true,
@@ -412,10 +436,53 @@ Deno.serve(async (req) => {
         const authHeader = req.headers.get("authorization");
         if (authHeader && authHeader.startsWith("Bearer ")) {
           const token = authHeader.replace("Bearer ", "");
+          
+          // Get session info before revoking
+          const { data: sessionData } = await supabase
+            .from("staff_sessions")
+            .select(`
+              *,
+              staff:staff_id (id, full_name, phone, role)
+            `)
+            .eq("session_token", token)
+            .single();
+          
           await supabase
             .from("staff_sessions")
             .update({ is_revoked: true })
             .eq("session_token", token);
+          
+          // Log staff logout activity
+          if (sessionData?.staff) {
+            const staffInfo = sessionData.staff as any;
+            
+            // Get primary branch for this staff
+            const { data: branchAssignments } = await supabase
+              .from("staff_branch_assignments")
+              .select("branch_id, is_primary")
+              .eq("staff_id", staffInfo.id);
+            
+            const primaryBranch = branchAssignments?.find(b => b.is_primary);
+            const branchId = primaryBranch?.branch_id || branchAssignments?.[0]?.branch_id;
+            
+            await supabase.from("admin_activity_logs").insert({
+              admin_user_id: null, // NULL indicates staff action
+              activity_category: "staff",
+              activity_type: "staff_logged_out",
+              description: `Staff "${staffInfo.full_name}" logged out`,
+              entity_type: "staff",
+              entity_id: staffInfo.id,
+              entity_name: staffInfo.full_name,
+              branch_id: branchId,
+              metadata: {
+                performed_by: "staff",
+                staff_id: staffInfo.id,
+                staff_name: staffInfo.full_name,
+                staff_phone: staffInfo.phone,
+                staff_role: staffInfo.role,
+              },
+            });
+          }
         }
 
         return new Response(
