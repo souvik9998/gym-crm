@@ -13,6 +13,7 @@ import {
   TrashIcon,
   PencilIcon,
   KeyIcon,
+  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "@/components/ui/sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -21,6 +22,8 @@ import { Staff, StaffPermissions } from "@/pages/admin/StaffManagement";
 import { StaffPasswordDialog } from "./StaffPasswordDialog";
 import { StaffPermissionsDialog } from "./StaffPermissionsDialog";
 import { StaffBranchSelector } from "./StaffBranchSelector";
+import { StaffCredentialsSection } from "./StaffCredentialsSection";
+import { StaffInlinePermissions, InlinePermissions, getDefaultPermissions } from "./StaffInlinePermissions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface StaffTrainersTabProps {
@@ -30,6 +33,18 @@ interface StaffTrainersTabProps {
   onRefresh: () => void;
   isLoading: boolean;
 }
+
+// Hash password for storage
+const hashPassword = async (password: string): Promise<string> => {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + saltHex);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return `${saltHex}:${hashHex}`;
+};
 
 export const StaffTrainersTab = ({
   trainers,
@@ -49,6 +64,9 @@ export const StaffTrainersTab = ({
     session_fee: "",
     percentage_fee: "",
     selected_branches: [] as string[],
+    enableLogin: false,
+    password: "",
+    permissions: getDefaultPermissions("trainer"),
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<any>({});
@@ -82,6 +100,10 @@ export const StaffTrainersTab = ({
       toast.error("Please enter phone number");
       return;
     }
+    if (newTrainer.enableLogin && !newTrainer.password) {
+      toast.error("Please enter a password or disable login access");
+      return;
+    }
 
     // Check for duplicate phone
     const { data: existing } = await supabase
@@ -97,6 +119,12 @@ export const StaffTrainersTab = ({
 
     const cleanPhone = newTrainer.phone.replace(/\D/g, "").replace(/^0/, "");
 
+    // Hash password if login is enabled
+    let passwordHash = null;
+    if (newTrainer.enableLogin && newTrainer.password) {
+      passwordHash = await hashPassword(newTrainer.password);
+    }
+
     // Insert staff record
     const { data: staffData, error: staffError } = await supabase
       .from("staff")
@@ -111,6 +139,8 @@ export const StaffTrainersTab = ({
         monthly_salary: Number(newTrainer.monthly_salary) || 0,
         session_fee: Number(newTrainer.session_fee) || 0,
         percentage_fee: Number(newTrainer.percentage_fee) || 0,
+        password_hash: passwordHash,
+        password_set_at: passwordHash ? new Date().toISOString() : null,
       })
       .select()
       .single();
@@ -135,23 +165,19 @@ export const StaffTrainersTab = ({
       await supabase.from("staff_branch_assignments").insert(assignments);
     }
 
-    // Create default permissions
+    // Insert permissions
     await supabase.from("staff_permissions").insert({
       staff_id: staffData.id,
-      can_view_members: true,
-      can_manage_members: false,
-      can_access_financials: false,
-      can_access_analytics: false,
-      can_change_settings: false,
+      ...newTrainer.permissions,
     });
 
     await logAdminActivity({
       category: "staff",
       type: "staff_added",
-      description: `Added trainer "${newTrainer.full_name}"`,
+      description: `Added trainer "${newTrainer.full_name}"${newTrainer.enableLogin ? " with login access" : ""}`,
       entityType: "staff",
       entityName: newTrainer.full_name,
-      newValue: { ...newTrainer, role: "trainer" },
+      newValue: { ...newTrainer, password: undefined, role: "trainer" },
       branchId: currentBranch?.id,
     });
 
@@ -167,6 +193,9 @@ export const StaffTrainersTab = ({
       session_fee: "",
       percentage_fee: "",
       selected_branches: [],
+      enableLogin: false,
+      password: "",
+      permissions: getDefaultPermissions("trainer"),
     });
     onRefresh();
   };
@@ -401,6 +430,26 @@ export const StaffTrainersTab = ({
             />
           </div>
 
+          {/* Permissions Section */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <ShieldCheckIcon className="w-4 h-4" />
+              Access Permissions
+            </Label>
+            <StaffInlinePermissions
+              permissions={newTrainer.permissions}
+              onChange={(permissions) => setNewTrainer({ ...newTrainer, permissions })}
+            />
+          </div>
+
+          {/* Login Credentials Section */}
+          <StaffCredentialsSection
+            enableLogin={newTrainer.enableLogin}
+            onEnableLoginChange={(enabled) => setNewTrainer({ ...newTrainer, enableLogin: enabled })}
+            password={newTrainer.password}
+            onPasswordChange={(password) => setNewTrainer({ ...newTrainer, password })}
+          />
+
           <Button onClick={handleAddTrainer} className="gap-2">
             <PlusIcon className="w-4 h-4" />
             Add Trainer
@@ -489,8 +538,9 @@ export const StaffTrainersTab = ({
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <p className="font-medium">{trainer.full_name}</p>
+                          <Badge variant="secondary" className="text-xs">Trainer</Badge>
                           {!trainer.is_active && (
-                            <Badge variant="secondary" className="text-xs">Inactive</Badge>
+                            <Badge variant="secondary" className="text-xs bg-red-100 text-red-800">Inactive</Badge>
                           )}
                           {trainer.password_hash && (
                             <Badge variant="outline" className="text-xs text-green-600">Has Login</Badge>
@@ -498,8 +548,19 @@ export const StaffTrainersTab = ({
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
                           {trainer.phone && <span>📱 {trainer.phone}</span>}
-                          {trainer.specialization && <span>🏋️ {trainer.specialization}</span>}
-                          <span>💰 {trainer.salary_type.replace("_", " ")}</span>
+                          {trainer.specialization && <span>🎯 {trainer.specialization}</span>}
+                          {trainer.salary_type === "monthly" && trainer.monthly_salary > 0 && (
+                            <span>💰 ₹{trainer.monthly_salary}/month</span>
+                          )}
+                          {trainer.salary_type === "session_based" && trainer.session_fee > 0 && (
+                            <span>💰 ₹{trainer.session_fee}/session</span>
+                          )}
+                          {trainer.salary_type === "percentage" && trainer.percentage_fee > 0 && (
+                            <span>💰 {trainer.percentage_fee}%</span>
+                          )}
+                          {trainer.salary_type === "both" && (
+                            <span>💰 ₹{trainer.monthly_salary}/mo + {trainer.percentage_fee}%</span>
+                          )}
                           {trainer.branch_assignments && trainer.branch_assignments.length > 0 && (
                             <span>
                               📍 {trainer.branch_assignments.map((a) => a.branch_name).join(", ")}
@@ -510,7 +571,7 @@ export const StaffTrainersTab = ({
                       <div className="flex items-center gap-2">
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="outline"
                           onClick={() => setPasswordDialog({ open: true, staff: trainer })}
                           title="Set Password"
                         >
@@ -518,13 +579,17 @@ export const StaffTrainersTab = ({
                         </Button>
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="outline"
                           onClick={() => setPermissionsDialog({ open: true, staff: trainer })}
-                          title="Permissions"
+                          title="Manage Permissions"
                         >
-                          🔐
+                          <ShieldCheckIcon className="w-4 h-4" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleEdit(trainer)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(trainer)}
+                        >
                           <PencilIcon className="w-4 h-4" />
                         </Button>
                         <Switch
@@ -533,8 +598,7 @@ export const StaffTrainersTab = ({
                         />
                         <Button
                           size="sm"
-                          variant="ghost"
-                          className="text-destructive"
+                          variant="destructive"
                           onClick={() => handleDelete(trainer.id, trainer.full_name)}
                         >
                           <TrashIcon className="w-4 h-4" />
