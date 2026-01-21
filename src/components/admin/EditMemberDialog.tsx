@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { Calendar, User, Phone, Save, MapPin, CreditCard, Users } from "lucide-react";
 
 interface Member {
@@ -56,6 +58,7 @@ export const EditMemberDialog = ({
   onSuccess,
 }: EditMemberDialogProps) => {
   const { currentBranch } = useBranch();
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -228,17 +231,36 @@ export const EditMemberDialog = ({
         key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
       ).join(", ");
 
-      await logAdminActivity({
-        category: "members",
-        type: "member_updated",
-        description: `Updated ${changedFields} for "${name}"`,
-        entityType: "members",
-        entityId: member.id,
-        entityName: name,
-        oldValue,
-        newValue,
-        branchId: currentBranch?.id,
-      });
+      // Log activity - use staff logging if staff is logged in, otherwise admin logging
+      if (isStaffLoggedIn && staffUser) {
+        await logStaffActivity({
+          category: "members",
+          type: "member_updated",
+          description: `Staff "${staffUser.fullName}" updated ${changedFields} for "${name}"`,
+          entityType: "members",
+          entityId: member.id,
+          entityName: name,
+          oldValue,
+          newValue,
+          branchId: currentBranch?.id,
+          staffId: staffUser.id,
+          staffName: staffUser.fullName,
+          staffPhone: staffUser.phone,
+          metadata: { staff_role: staffUser.role },
+        });
+      } else {
+        await logAdminActivity({
+          category: "members",
+          type: "member_updated",
+          description: `Updated ${changedFields} for "${name}"`,
+          entityType: "members",
+          entityId: member.id,
+          entityName: name,
+          oldValue,
+          newValue,
+          branchId: currentBranch?.id,
+        });
+      }
 
       toast.success("Member updated successfully", {
         description: `Changed: ${changedFields}`,
