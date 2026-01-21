@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback, memo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Table,
@@ -28,6 +29,10 @@ import type { MemberFilterValue } from "./MemberFilter";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { useBranch } from "@/contexts/BranchContext";
+import { usePagination } from "@/hooks/usePagination";
+import { PaginationControls } from "@/components/ui/pagination-controls";
+import { CACHE_KEYS, STALE_TIMES, persistCache, getCachedData, useInvalidateQueries } from "@/hooks/useQueryCache";
+import { TableSkeleton } from "@/components/ui/skeleton-loaders";
 
 interface Member {
   id: string;
@@ -763,12 +768,11 @@ export const MembersTable = ({
     }
   };
 
+  // Pagination
+  const pagination = usePagination(sortedMembers, { initialPageSize: 25 });
+
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-      </div>
-    );
+    return <TableSkeleton rows={8} columns={6} />;
   }
 
   if (sortedMembers.length === 0) {
