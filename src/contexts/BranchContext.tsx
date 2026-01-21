@@ -139,6 +139,7 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
     setStaffRestriction(restriction);
   }, []);
 
+  // Separate effect for initial fetch
   useEffect(() => {
     fetchBranches();
   }, [fetchBranches]);
