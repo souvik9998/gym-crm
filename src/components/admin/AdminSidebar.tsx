@@ -15,7 +15,6 @@ import {
   ClipboardDocumentListIcon,
   ChatBubbleLeftRightIcon,
   UserGroupIcon,
-  UsersIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
@@ -25,17 +24,8 @@ import {
   Cog6ToothIcon as Cog6ToothIconSolid,
   QrCodeIcon as QrCodeIconSolid,
 } from "@heroicons/react/24/solid";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 
 interface SidebarProps {
@@ -52,7 +42,13 @@ interface NavItem {
   iconSolid?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   children?: { title: string; href: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }[];
   // Permission requirements
-  requiresPermission?: "can_view_members" | "can_manage_members" | "can_access_ledger" | "can_access_payments" | "can_access_analytics" | "can_change_settings";
+  requiresPermission?:
+    | "can_view_members"
+    | "can_manage_members"
+    | "can_access_ledger"
+    | "can_access_payments"
+    | "can_access_analytics"
+    | "can_change_settings";
   adminOnly?: boolean;
 }
 
@@ -80,7 +76,7 @@ const allNavItems: NavItem[] = [
     requiresPermission: "can_access_ledger",
   },
   {
-    title: "Staff",
+    title: "Staff Control",
     href: "/admin/staff",
     icon: UserGroupIcon,
     iconSolid: UserGroupIcon,
@@ -95,7 +91,6 @@ const allNavItems: NavItem[] = [
     children: [
       { title: "Admin Activity", href: "/admin/logs?tab=activity", icon: ClipboardDocumentListIcon },
       { title: "User Activity", href: "/admin/logs?tab=user", icon: UserGroupIcon },
-      { title: "Staff Activity", href: "/admin/logs?tab=staff", icon: UsersIcon },
       { title: "WhatsApp Logs", href: "/admin/logs?tab=whatsapp", icon: ChatBubbleLeftRightIcon },
     ],
   },
@@ -124,7 +119,7 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
   const { currentBranch } = useBranch();
   const { permissions, staffUser } = useStaffAuth();
   const [expandedItems, setExpandedItems] = useState<string[]>(["Activity Logs"]);
-  
+
   // Get branch name dynamically from currentBranch
   const gymName = currentBranch?.name || "Pro Plus Fitness";
 
@@ -168,9 +163,7 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
   };
 
   const toggleExpanded = (title: string) => {
-    setExpandedItems((prev) =>
-      prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title]
-    );
+    setExpandedItems((prev) => (prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title]));
   };
 
   const handleNavClick = (href: string) => {
@@ -198,9 +191,7 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
                 onClick={() => handleNavClick(item.href)}
                 className={cn(
                   "w-full flex items-center justify-center p-3 rounded-xl transition-all duration-200",
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 <Icon className="w-5 h-5" />
@@ -216,27 +207,18 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
 
     if (hasChildren) {
       return (
-        <Collapsible
-          key={item.title}
-          open={isExpanded}
-          onOpenChange={() => toggleExpanded(item.title)}
-        >
+        <Collapsible key={item.title} open={isExpanded} onOpenChange={() => toggleExpanded(item.title)}>
           <CollapsibleTrigger asChild>
             <button
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
-                active
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
               <span className="flex-1 text-left text-sm font-medium">{item.title}</span>
               <ChevronDownIcon
-                className={cn(
-                  "w-4 h-4 transition-transform duration-200",
-                  isExpanded ? "rotate-180" : ""
-                )}
+                className={cn("w-4 h-4 transition-transform duration-200", isExpanded ? "rotate-180" : "")}
               />
             </button>
           </CollapsibleTrigger>
@@ -252,7 +234,7 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
                     "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-sm",
                     childActive
                       ? "bg-primary/10 text-primary font-medium"
-                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                   )}
                 >
                   <ChildIcon className="w-4 h-4 flex-shrink-0" />
@@ -271,9 +253,7 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
         onClick={() => handleNavClick(item.href)}
         className={cn(
           "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
-          active
-            ? "bg-primary/10 text-primary"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
         )}
       >
         <Icon className="w-5 h-5 flex-shrink-0" />
@@ -308,26 +288,22 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
     <aside
       className={cn(
         "fixed left-0 top-0 h-screen bg-card border-r border-border z-40 flex flex-col transition-all duration-300 ease-in-out",
-        collapsed ? "w-[68px]" : "w-64"
+        collapsed ? "w-[68px]" : "w-64",
       )}
     >
       {/* Header - h-16 to match top nav */}
       <div className="h-16 px-4 border-b border-border flex items-center">
         <div className={cn("flex items-center w-full", collapsed ? "justify-center" : "gap-3")}>
           <div className="w-10 h-10 rounded-xl bg-primary overflow-hidden flex-shrink-0 shadow-sm">
-            <img
-              src="/logo.jpg"
-              alt="Logo"
-              className="w-full h-full object-cover"
-            />
+            <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
           </div>
           {!collapsed && (
             <div className="flex-1 overflow-hidden min-w-0">
-              <h1 className="text-sm font-semibold text-foreground truncate">
-                {gymName}
-              </h1>
+              <h1 className="text-sm font-semibold text-foreground truncate">{gymName}</h1>
               <p className="text-xs text-muted-foreground">
-                {isStaffUser ? `${staffUser?.role ? staffUser.role.charAt(0).toUpperCase() + staffUser.role.slice(1) : "Staff"} Panel` : "Admin Panel"}
+                {isStaffUser
+                  ? `${staffUser?.role ? staffUser.role.charAt(0).toUpperCase() + staffUser.role.slice(1) : "Staff"} Panel`
+                  : "Admin Panel"}
               </p>
             </div>
           )}
@@ -358,14 +334,10 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
           "absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-card border border-border rounded-full flex items-center justify-center",
           "text-muted-foreground hover:text-foreground hover:bg-muted",
           "transition-all duration-200 shadow-sm hover:shadow-md",
-          "focus:outline-none focus:ring-2 focus:ring-primary/50"
+          "focus:outline-none focus:ring-2 focus:ring-primary/50",
         )}
       >
-        {collapsed ? (
-          <ChevronRightIcon className="w-3.5 h-3.5" />
-        ) : (
-          <ChevronLeftIcon className="w-3.5 h-3.5" />
-        )}
+        {collapsed ? <ChevronRightIcon className="w-3.5 h-3.5" /> : <ChevronLeftIcon className="w-3.5 h-3.5" />}
       </button>
     </aside>
   );
