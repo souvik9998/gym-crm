@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { BranchProvider } from "@/contexts/BranchContext";
+import { StaffAuthProvider } from "@/contexts/StaffAuthContext";
 import Index from "./pages/Index";
 import Register from "./pages/Register";
 import Renew from "./pages/Renew";
@@ -16,7 +17,7 @@ import AdminSettings from "./pages/admin/Settings";
 import AdminAnalytics from "./pages/admin/Analytics";
 import AdminLedger from "./pages/admin/Ledger";
 import Logs from "./pages/admin/Logs";
-import AdminTrainers from "./pages/admin/Trainers";
+import StaffManagement from "./pages/admin/StaffManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,8 +26,9 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <BranchProvider>
-        <Toaster />
-        <BrowserRouter>
+        <StaffAuthProvider>
+          <Toaster />
+          <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/register" element={<Register />} />
@@ -41,7 +43,7 @@ const App = () => (
             <Route path="/admin/analytics" element={<AdminAnalytics />} />
             <Route path="/admin/ledger" element={<AdminLedger />} />
             <Route path="/admin/logs" element={<Logs />} />
-            <Route path="/admin/trainers" element={<AdminTrainers />} />
+            <Route path="/admin/staff" element={<StaffManagement />} />
             {/* Branch-specific routes */}
             <Route path="/b/:branchId" element={<Index />} />
             <Route path="/b/:branchId/register" element={<Register />} />
@@ -49,7 +51,8 @@ const App = () => (
             <Route path="/b/:branchId/extend-pt" element={<ExtendPT />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
+          </BrowserRouter>
+        </StaffAuthProvider>
       </BranchProvider>
     </TooltipProvider>
   </QueryClientProvider>

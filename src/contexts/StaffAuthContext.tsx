@@ -61,7 +61,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const verifySession = async (token: string): Promise<boolean> => {
     try {
-      const { data } = await supabase.functions.invoke("staff-auth", {
+      const { data } = await supabase.functions.invoke("staff-auth?action=verify-session", {
         body: {},
         headers: {
           Authorization: `Bearer ${token}`,
@@ -118,7 +118,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const login = async (phone: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const { data, error } = await supabase.functions.invoke("staff-auth", {
+      const { data, error } = await supabase.functions.invoke("staff-auth?action=login", {
         body: { phone, password },
       });
 
@@ -155,7 +155,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
   const logout = async () => {
     try {
       if (session?.token) {
-        await supabase.functions.invoke("staff-auth", {
+        await supabase.functions.invoke("staff-auth?action=logout", {
           body: {},
           headers: {
             Authorization: `Bearer ${session.token}`,

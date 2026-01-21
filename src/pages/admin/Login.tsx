@@ -4,27 +4,42 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Dumbbell, Mail, Lock, ArrowLeft, Shield } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dumbbell, Mail, Lock, ArrowLeft, Phone, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { z } from "zod";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
 
-const loginSchema = z.object({
+const adminLoginSchema = z.object({
   email: z.string().email("Enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+const staffLoginSchema = z.object({
+  phone: z.string().min(10, "Enter a valid phone number"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 const AdminLogin = () => {
   const navigate = useNavigate();
+  const { login: staffLogin } = useStaffAuth();
+  
+  // Admin state
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [isAdminLoading, setIsAdminLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  
+  // Staff state
+  const [phone, setPhone] = useState("");
+  const [staffPassword, setStaffPassword] = useState("");
+  const [isStaffLoading, setIsStaffLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const result = loginSchema.safeParse({ email, password });
+    const result = adminLoginSchema.safeParse({ email, password: adminPassword });
     if (!result.success) {
       toast.error("Invalid Input", {
         description: result.error.errors[0].message,
@@ -32,14 +47,13 @@ const AdminLogin = () => {
       return;
     }
 
-    setIsLoading(true);
+    setIsAdminLoading(true);
     
     try {
       if (isSignUp) {
-        // Sign up
         const { data, error } = await supabase.auth.signUp({
           email,
-          password,
+          password: adminPassword,
           options: {
             emailRedirectTo: `${window.location.origin}/admin/dashboard`,
           },
@@ -48,13 +62,11 @@ const AdminLogin = () => {
         if (error) throw error;
 
         if (data.user) {
-          // Add admin role
           const { error: roleError } = await supabase
             .from("user_roles")
             .insert({ user_id: data.user.id, role: "admin" });
 
           if (roleError) {
-            // Role might already exist or there might be RLS issues for first admin
             console.log("Role assignment note:", roleError.message);
           }
 
@@ -64,10 +76,9 @@ const AdminLogin = () => {
           setIsSignUp(false);
         }
       } else {
-        // Sign in
         const { error } = await supabase.auth.signInWithPassword({
           email,
-          password,
+          password: adminPassword,
         });
 
         if (error) throw error;
@@ -79,7 +90,40 @@ const AdminLogin = () => {
         description: error.message || "Something went wrong",
       });
     } finally {
-      setIsLoading(false);
+      setIsAdminLoading(false);
+    }
+  };
+
+  const handleStaffSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const result = staffLoginSchema.safeParse({ phone, password: staffPassword });
+    if (!result.success) {
+      toast.error("Invalid Input", {
+        description: result.error.errors[0].message,
+      });
+      return;
+    }
+
+    setIsStaffLoading(true);
+    
+    try {
+      const { success, error } = await staffLogin(phone, staffPassword);
+      
+      if (!success) {
+        throw new Error(error || "Login failed");
+      }
+
+      toast.success("Login Successful", {
+        description: "Welcome back!",
+      });
+      navigate("/admin/dashboard");
+    } catch (error: any) {
+      toast.error("Login Failed", {
+        description: error.message || "Invalid phone number or password",
+      });
+    } finally {
+      setIsStaffLoading(false);
     }
   };
 
@@ -100,92 +144,162 @@ const AdminLogin = () => {
         <Card className="border">
           <CardHeader className="text-center pb-4">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <div  style={{ height: "4rem" }} className="flex items-center justify-center gap-3 mb-4 w-full h-20">
-          <div
-            style={{ width: "4rem" }}
-            className="h-full rounded-xl overflow-hidden"
-          >
-            <img
-              src="/logo.jpg"
-              alt="Icon"
-              className="w-full h-full object-contain"
-            />
-          </div>
-        </div>
+              <div style={{ height: "4rem" }} className="flex items-center justify-center gap-3 mb-4 w-full h-20">
+                <div
+                  style={{ width: "4rem" }}
+                  className="h-full rounded-xl overflow-hidden"
+                >
+                  <img
+                    src="/logo.jpg"
+                    alt="Icon"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              </div>
             </div>
             <CardTitle className="flex items-center justify-center gap-2">
               <Dumbbell className="w-5 h-5 text-accent" />
-              Admin {isSignUp ? "Sign Up" : "Login"}
+              Login Portal
             </CardTitle>
             <CardDescription>
-              {isSignUp
-                ? "Create an admin account to manage the gym"
-                : "Sign in to access the admin dashboard"}
+              Sign in to access the admin dashboard
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-accent" />
-                  Email Address
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-accent" />
-                  Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete={isSignUp ? "new-password" : "current-password"}
-                />
-              </div>
+            <Tabs defaultValue="admin" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="admin" className="gap-2">
+                  <Mail className="w-4 h-4" />
+                  Admin
+                </TabsTrigger>
+                <TabsTrigger value="staff" className="gap-2">
+                  <User className="w-4 h-4" />
+                  Staff
+                </TabsTrigger>
+              </TabsList>
 
-              <Button
-                type="submit"
-                variant="accent"
-                size="lg"
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
-                    {isSignUp ? "Creating Account..." : "Signing In..."}
+              <TabsContent value="admin">
+                <form onSubmit={handleAdminSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-accent" />
+                      Email Address
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email address"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      autoComplete="email"
+                    />
                   </div>
-                ) : (
-                  isSignUp ? "Create Account" : "Sign In"
-                )}
-              </Button>
-            </form>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-password" className="text-sm font-medium flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-accent" />
+                      Password
+                    </Label>
+                    <Input
+                      id="admin-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      required
+                      autoComplete={isSignUp ? "new-password" : "current-password"}
+                    />
+                  </div>
 
-            <div className="mt-6 text-center">
-              <button
-                type="button"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => setIsSignUp(!isSignUp)}
-              >
-                {isSignUp
-                  ? "Already have an account? Sign in"
-                  : "Need an account? Sign up"}
-              </button>
-            </div>
+                  <Button
+                    type="submit"
+                    variant="accent"
+                    size="lg"
+                    className="w-full"
+                    disabled={isAdminLoading}
+                  >
+                    {isAdminLoading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
+                        {isSignUp ? "Creating Account..." : "Signing In..."}
+                      </div>
+                    ) : (
+                      isSignUp ? "Create Account" : "Sign In"
+                    )}
+                  </Button>
+
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => setIsSignUp(!isSignUp)}
+                    >
+                      {isSignUp
+                        ? "Already have an account? Sign in"
+                        : "Need an account? Sign up"}
+                    </button>
+                  </div>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="staff">
+                <form onSubmit={handleStaffSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-accent" />
+                      Phone Number
+                    </Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="Enter your phone number"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      required
+                      autoComplete="tel"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="staff-password" className="text-sm font-medium flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-accent" />
+                      Password
+                    </Label>
+                    <Input
+                      id="staff-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={staffPassword}
+                      onChange={(e) => setStaffPassword(e.target.value)}
+                      required
+                      autoComplete="current-password"
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    variant="accent"
+                    size="lg"
+                    className="w-full"
+                    disabled={isStaffLoading}
+                  >
+                    {isStaffLoading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
+                        Signing In...
+                      </div>
+                    ) : (
+                      "Sign In"
+                    )}
+                  </Button>
+
+                  <p className="text-center text-xs text-muted-foreground">
+                    Staff credentials are provided by your admin
+                  </p>
+                </form>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>
