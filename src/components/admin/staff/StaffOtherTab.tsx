@@ -107,17 +107,29 @@ export const StaffOtherTab = ({
       return;
     }
 
-    // Check for duplicate phone
     const cleanPhone = newStaff.phone.replace(/\D/g, "").replace(/^0/, "");
-    const { data: existing } = await supabase
-      .from("staff")
-      .select("id")
-      .eq("phone", cleanPhone)
-      .single();
-
-    if (existing) {
-      toast.error("A staff member with this phone number already exists");
-      return;
+    
+    // Check for duplicate phone within selected branches
+    const branchesToAssign = newStaff.selected_branches.length > 0 
+      ? newStaff.selected_branches 
+      : currentBranch?.id ? [currentBranch.id] : [];
+    
+    if (branchesToAssign.length > 0) {
+      // Check if phone already exists in any of the selected branches
+      const { data: existingAssignments } = await supabase
+        .from("staff_branch_assignments")
+        .select("staff_id, branch_id, staff!inner(phone)")
+        .in("branch_id", branchesToAssign);
+      
+      const existingInBranch = existingAssignments?.find(
+        (a: any) => a.staff?.phone === cleanPhone
+      );
+      
+      if (existingInBranch) {
+        const branchName = branches.find(b => b.id === existingInBranch.branch_id)?.name || "selected branch";
+        toast.error(`A staff member with this phone already exists in ${branchName}`);
+        return;
+      }
     }
 
     // Hash password if login is enabled (using same algorithm as edge function)
@@ -148,11 +160,7 @@ export const StaffOtherTab = ({
       return;
     }
 
-    // Add branch assignments
-    const branchesToAssign = newStaff.selected_branches.length > 0
-      ? newStaff.selected_branches
-      : currentBranch?.id ? [currentBranch.id] : [];
-
+    // Add branch assignments (reuse branchesToAssign from validation)
     if (branchesToAssign.length > 0) {
       const assignments = branchesToAssign.map((branchId, index) => ({
         staff_id: staffData.id,
