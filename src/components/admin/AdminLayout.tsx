@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useBranch } from "@/contexts/BranchContext";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -18,7 +19,8 @@ interface AdminLayoutProps {
 export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayoutProps) => {
   const navigate = useNavigate();
   const { currentBranch } = useBranch();
-  const [user, setUser] = useState<User | null>(null);
+  const { isStaffLoggedIn, staffUser, isLoading: staffLoading } = useStaffAuth();
+  const [adminUser, setAdminUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -29,18 +31,12 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        setUser(session?.user ?? null);
-        if (!session?.user) {
-          navigate("/admin/login");
-        }
+        setAdminUser(session?.user ?? null);
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (!session?.user) {
-        navigate("/admin/login");
-      }
+      setAdminUser(session?.user ?? null);
       setIsLoading(false);
     });
 
@@ -53,12 +49,22 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Check authentication - either admin user OR staff user
+  useEffect(() => {
+    if (!isLoading && !staffLoading) {
+      const isAuthenticated = !!adminUser || isStaffLoggedIn;
+      if (!isAuthenticated) {
+        navigate("/admin/login");
+      }
+    }
+  }, [isLoading, staffLoading, adminUser, isStaffLoggedIn, navigate]);
+
   const handleSidebarCollapse = (collapsed: boolean) => {
     setSidebarCollapsed(collapsed);
     localStorage.setItem("admin-sidebar-collapsed", String(collapsed));
   };
 
-  if (isLoading) {
+  if (isLoading || staffLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -66,7 +72,13 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
     );
   }
 
-  if (!user) return null;
+  // Check if either admin or staff is logged in
+  const isAuthenticated = !!adminUser || isStaffLoggedIn;
+  if (!isAuthenticated) return null;
+
+  // Determine display name for header
+  const displayName = adminUser?.email || staffUser?.fullName || "User";
+  const isStaffSession = !adminUser && isStaffLoggedIn;
 
   return (
     <div className="min-h-screen bg-background">
@@ -75,6 +87,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
         <AdminSidebar
           collapsed={sidebarCollapsed}
           onCollapsedChange={handleSidebarCollapse}
+          isStaffUser={isStaffSession}
         />
       </div>
 
@@ -100,7 +113,9 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
             </div>
             <div>
               <h1 className="text-sm font-semibold text-foreground">{currentBranch?.name || "Pro Plus Fitness"}</h1>
-              <p className="text-xs text-muted-foreground">Admin Panel</p>
+              <p className="text-xs text-muted-foreground">
+                {isStaffSession ? `${staffUser?.role} Panel` : "Admin Panel"}
+              </p>
             </div>
           </div>
           <button
@@ -114,6 +129,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
           collapsed={false}
           onCollapsedChange={() => {}}
           isMobile={true}
+          isStaffUser={isStaffSession}
         />
       </div>
 
@@ -130,6 +146,8 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
           onRefresh={onRefresh}
           showMobileMenu={true}
           onMobileMenuClick={() => setMobileMenuOpen(true)}
+          isStaffUser={isStaffSession}
+          staffName={staffUser?.fullName}
         />
         <main className="p-3 sm:p-4 md:p-6">{children}</main>
       </div>
