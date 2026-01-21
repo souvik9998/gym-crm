@@ -22,7 +22,7 @@ import { Staff } from "@/pages/admin/StaffManagement";
 import { StaffPasswordDialog } from "./StaffPasswordDialog";
 import { StaffPermissionsDialog } from "./StaffPermissionsDialog";
 import { StaffBranchSelector } from "./StaffBranchSelector";
-import { StaffCredentialsSection } from "./StaffCredentialsSection";
+import { StaffCredentialsSection, hashPasswordForStorage } from "./StaffCredentialsSection";
 import { StaffInlinePermissions, InlinePermissions, getDefaultPermissions } from "./StaffInlinePermissions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -41,17 +41,6 @@ const ROLE_LABELS: Record<string, string> = {
   accountant: "Accountant",
 };
 
-// Hash password for storage
-const hashPassword = async (password: string): Promise<string> => {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + saltHex);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return `${saltHex}:${hashHex}`;
-};
 
 export const StaffOtherTab = ({
   staff,
@@ -130,10 +119,10 @@ export const StaffOtherTab = ({
       return;
     }
 
-    // Hash password if login is enabled
+    // Hash password if login is enabled (using same algorithm as edge function)
     let passwordHash = null;
     if (newStaff.enableLogin && newStaff.password) {
-      passwordHash = await hashPassword(newStaff.password);
+      passwordHash = await hashPasswordForStorage(newStaff.password);
     }
 
     // Insert staff record
