@@ -60,12 +60,7 @@ export type ActivityType =
   | "staff_added"
   | "staff_updated"
   | "staff_deleted"
-  | "staff_toggled"
-  | "staff_logged_in"
-  | "staff_logged_out"
-  | "staff_password_set"
-  | "staff_password_changed"
-  | "staff_permissions_updated";
+  | "staff_toggled";
 
 interface LogActivityParams {
   category: ActivityCategory;
