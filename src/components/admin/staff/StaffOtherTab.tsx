@@ -13,6 +13,7 @@ import {
   TrashIcon,
   PencilIcon,
   KeyIcon,
+  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "@/components/ui/sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -21,6 +22,8 @@ import { Staff } from "@/pages/admin/StaffManagement";
 import { StaffPasswordDialog } from "./StaffPasswordDialog";
 import { StaffPermissionsDialog } from "./StaffPermissionsDialog";
 import { StaffBranchSelector } from "./StaffBranchSelector";
+import { StaffCredentialsSection } from "./StaffCredentialsSection";
+import { StaffInlinePermissions, InlinePermissions, getDefaultPermissions } from "./StaffInlinePermissions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface StaffOtherTabProps {
@@ -38,6 +41,18 @@ const ROLE_LABELS: Record<string, string> = {
   accountant: "Accountant",
 };
 
+// Hash password for storage
+const hashPassword = async (password: string): Promise<string> => {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + saltHex);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return `${saltHex}:${hashHex}`;
+};
+
 export const StaffOtherTab = ({
   staff,
   branches,
@@ -53,6 +68,9 @@ export const StaffOtherTab = ({
     id_number: "",
     monthly_salary: "",
     selected_branches: [] as string[],
+    enableLogin: false,
+    password: "",
+    permissions: getDefaultPermissions("reception"),
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<any>({});
@@ -77,6 +95,14 @@ export const StaffOtherTab = ({
     staff: null,
   });
 
+  const handleRoleChange = (role: "admin" | "manager" | "reception" | "accountant") => {
+    setNewStaff({
+      ...newStaff,
+      role,
+      permissions: getDefaultPermissions(role),
+    });
+  };
+
   const handleAddStaff = async () => {
     if (!newStaff.full_name) {
       toast.error("Please enter staff name");
@@ -84,6 +110,10 @@ export const StaffOtherTab = ({
     }
     if (!newStaff.phone) {
       toast.error("Please enter phone number");
+      return;
+    }
+    if (newStaff.enableLogin && !newStaff.password) {
+      toast.error("Please enter a password or disable login access");
       return;
     }
 
@@ -100,6 +130,12 @@ export const StaffOtherTab = ({
       return;
     }
 
+    // Hash password if login is enabled
+    let passwordHash = null;
+    if (newStaff.enableLogin && newStaff.password) {
+      passwordHash = await hashPassword(newStaff.password);
+    }
+
     // Insert staff record
     const { data: staffData, error: staffError } = await supabase
       .from("staff")
@@ -111,6 +147,8 @@ export const StaffOtherTab = ({
         id_number: newStaff.id_number || null,
         salary_type: "monthly",
         monthly_salary: Number(newStaff.monthly_salary) || 0,
+        password_hash: passwordHash,
+        password_set_at: passwordHash ? new Date().toISOString() : null,
       })
       .select()
       .single();
@@ -135,25 +173,19 @@ export const StaffOtherTab = ({
       await supabase.from("staff_branch_assignments").insert(assignments);
     }
 
-    // Create default permissions based on role
-    const defaultPermissions = {
+    // Insert permissions
+    await supabase.from("staff_permissions").insert({
       staff_id: staffData.id,
-      can_view_members: true,
-      can_manage_members: newStaff.role === "admin" || newStaff.role === "manager",
-      can_access_financials: newStaff.role === "admin" || newStaff.role === "accountant",
-      can_access_analytics: newStaff.role === "admin" || newStaff.role === "manager",
-      can_change_settings: newStaff.role === "admin",
-    };
-
-    await supabase.from("staff_permissions").insert(defaultPermissions);
+      ...newStaff.permissions,
+    });
 
     await logAdminActivity({
       category: "staff",
       type: "staff_added",
-      description: `Added ${ROLE_LABELS[newStaff.role]} "${newStaff.full_name}"`,
+      description: `Added ${ROLE_LABELS[newStaff.role]} "${newStaff.full_name}"${newStaff.enableLogin ? " with login access" : ""}`,
       entityType: "staff",
       entityName: newStaff.full_name,
-      newValue: { ...newStaff },
+      newValue: { ...newStaff, password: undefined },
       branchId: currentBranch?.id,
     });
 
@@ -166,6 +198,9 @@ export const StaffOtherTab = ({
       id_number: "",
       monthly_salary: "",
       selected_branches: [],
+      enableLogin: false,
+      password: "",
+      permissions: getDefaultPermissions("reception"),
     });
     onRefresh();
   };
@@ -309,7 +344,7 @@ export const StaffOtherTab = ({
               <Label>Role *</Label>
               <Select
                 value={newStaff.role}
-                onValueChange={(value: any) => setNewStaff({ ...newStaff, role: value })}
+                onValueChange={(value: any) => handleRoleChange(value)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -368,6 +403,26 @@ export const StaffOtherTab = ({
               onChange={(selected) => setNewStaff({ ...newStaff, selected_branches: selected })}
             />
           </div>
+
+          {/* Permissions Section */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <ShieldCheckIcon className="w-4 h-4" />
+              Access Permissions
+            </Label>
+            <StaffInlinePermissions
+              permissions={newStaff.permissions}
+              onChange={(permissions) => setNewStaff({ ...newStaff, permissions })}
+            />
+          </div>
+
+          {/* Login Credentials Section */}
+          <StaffCredentialsSection
+            enableLogin={newStaff.enableLogin}
+            onEnableLoginChange={(enabled) => setNewStaff({ ...newStaff, enableLogin: enabled })}
+            password={newStaff.password}
+            onPasswordChange={(password) => setNewStaff({ ...newStaff, password })}
+          />
 
           <Button onClick={handleAddStaff} className="gap-2">
             <PlusIcon className="w-4 h-4" />
@@ -481,7 +536,7 @@ export const StaffOtherTab = ({
                       <div className="flex items-center gap-2">
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="outline"
                           onClick={() => setPasswordDialog({ open: true, staff: member })}
                           title="Set Password"
                         >
@@ -489,13 +544,17 @@ export const StaffOtherTab = ({
                         </Button>
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="outline"
                           onClick={() => setPermissionsDialog({ open: true, staff: member })}
-                          title="Permissions"
+                          title="Manage Permissions"
                         >
-                          🔐
+                          <ShieldCheckIcon className="w-4 h-4" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleEdit(member)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(member)}
+                        >
                           <PencilIcon className="w-4 h-4" />
                         </Button>
                         <Switch
@@ -504,8 +563,7 @@ export const StaffOtherTab = ({
                         />
                         <Button
                           size="sm"
-                          variant="ghost"
-                          className="text-destructive"
+                          variant="destructive"
                           onClick={() => handleDelete(member.id, member.full_name)}
                         >
                           <TrashIcon className="w-4 h-4" />
