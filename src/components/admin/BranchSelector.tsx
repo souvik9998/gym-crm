@@ -2,13 +2,6 @@ import { useState } from "react";
 import { useBranch, type Branch } from "@/contexts/BranchContext";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -33,11 +26,12 @@ import {
   ChevronDownIcon,
   PlusIcon,
   CheckIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 
 export const BranchSelector = () => {
-  const { branches, currentBranch, setCurrentBranch, refreshBranches } = useBranch();
+  const { branches, currentBranch, setCurrentBranch, refreshBranches, isStaffRestricted } = useBranch();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -126,7 +120,37 @@ export const BranchSelector = () => {
     }
   };
 
+  // For staff with only one branch, show a simpler view
+  if (isStaffRestricted && branches.length === 1) {
+    return (
+      <div className="flex items-center gap-2 h-10 px-3 border border-border/50 rounded-md bg-muted/30">
+        <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <BuildingOffice2Icon className="w-4 h-4 text-primary" />
+        </div>
+        <div className="flex flex-col items-start flex-1 min-w-0">
+          <span className="text-xs text-muted-foreground font-normal leading-none">
+            Branch
+          </span>
+          <span className="font-semibold text-foreground leading-tight truncate w-full text-left">
+            {currentBranch?.name || branches[0]?.name}
+          </span>
+        </div>
+        <LockClosedIcon className="w-4 h-4 text-muted-foreground" title="Assigned to this branch" />
+      </div>
+    );
+  }
+
   if (branches.length === 0 && !currentBranch) {
+    // Don't show add button for staff users
+    if (isStaffRestricted) {
+      return (
+        <div className="flex items-center gap-2 h-10 px-3 border border-destructive/30 rounded-md bg-destructive/5">
+          <BuildingOffice2Icon className="w-4 h-4 text-destructive" />
+          <span className="text-sm text-destructive">No branch assigned</span>
+        </div>
+      );
+    }
+    
     return (
       <>
         <Button
@@ -233,6 +257,14 @@ export const BranchSelector = () => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[240px] p-1 bg-white dark:bg-card border shadow-lg">
+          {/* Show restricted indicator for staff */}
+          {isStaffRestricted && (
+            <div className="px-3 py-2 text-xs text-muted-foreground border-b mb-1 flex items-center gap-2">
+              <LockClosedIcon className="w-3 h-3" />
+              <span>Assigned branches only</span>
+            </div>
+          )}
+          
           {branches.map((branch) => (
             <DropdownMenuItem
               key={branch.id}
@@ -258,87 +290,96 @@ export const BranchSelector = () => {
               )}
             </DropdownMenuItem>
           ))}
-          <DropdownMenuSeparator className="my-1" />
-          <DropdownMenuItem
-            onSelect={(e) => {
-              e.preventDefault();
-              handleOpenAddDialog();
-            }}
-            className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-primary/10 focus:bg-primary/10 transition-colors"
-          >
-            <div className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0">
-              <PlusIcon className="w-5 h-5 text-primary" />
-            </div>
-            <span className="font-medium text-sm text-primary">Add New Branch</span>
-          </DropdownMenuItem>
+          
+          {/* Only show "Add New Branch" for non-staff users */}
+          {!isStaffRestricted && (
+            <>
+              <DropdownMenuSeparator className="my-1" />
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  handleOpenAddDialog();
+                }}
+                className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-primary/10 focus:bg-primary/10 transition-colors"
+              >
+                <div className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0">
+                  <PlusIcon className="w-5 h-5 text-primary" />
+                </div>
+                <span className="font-medium text-sm text-primary">Add New Branch</span>
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Add New Branch</DialogTitle>
-            <DialogDescription>
-              Create a new gym branch. Each branch will have its own QR code for member registration.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="branch-name">Branch Name *</Label>
-              <Input
-                id="branch-name"
-                value={newBranch.name}
-                onChange={(e) => setNewBranch({ ...newBranch, name: e.target.value })}
-                placeholder="e.g., Main Branch, Downtown Gym"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="branch-address">Address</Label>
-              <Textarea
-                id="branch-address"
-                value={newBranch.address}
-                onChange={(e) => setNewBranch({ ...newBranch, address: e.target.value })}
-                placeholder="Full address of the branch"
-                rows={2}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+      {/* Add branch dialog - only for non-staff users */}
+      {!isStaffRestricted && (
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Add New Branch</DialogTitle>
+              <DialogDescription>
+                Create a new gym branch. Each branch will have its own QR code for member registration.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="branch-phone">Phone</Label>
+                <Label htmlFor="branch-name">Branch Name *</Label>
                 <Input
-                  id="branch-phone"
-                  type="tel"
-                  value={newBranch.phone}
-                  onChange={(e) => setNewBranch({ ...newBranch, phone: e.target.value })}
-                  placeholder="Phone number"
+                  id="branch-name"
+                  value={newBranch.name}
+                  onChange={(e) => setNewBranch({ ...newBranch, name: e.target.value })}
+                  placeholder="e.g., Main Branch, Downtown Gym"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="branch-email">Email</Label>
-                <Input
-                  id="branch-email"
-                  type="email"
-                  value={newBranch.email}
-                  onChange={(e) => setNewBranch({ ...newBranch, email: e.target.value })}
-                  placeholder="Email address"
+                <Label htmlFor="branch-address">Address</Label>
+                <Textarea
+                  id="branch-address"
+                  value={newBranch.address}
+                  onChange={(e) => setNewBranch({ ...newBranch, address: e.target.value })}
+                  placeholder="Full address of the branch"
+                  rows={2}
                 />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="branch-phone">Phone</Label>
+                  <Input
+                    id="branch-phone"
+                    type="tel"
+                    value={newBranch.phone}
+                    onChange={(e) => setNewBranch({ ...newBranch, phone: e.target.value })}
+                    placeholder="Phone number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="branch-email">Email</Label>
+                  <Input
+                    id="branch-email"
+                    type="email"
+                    value={newBranch.email}
+                    onChange={(e) => setNewBranch({ ...newBranch, email: e.target.value })}
+                    placeholder="Email address"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsAddDialogOpen(false)}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleAddBranch} disabled={isLoading}>
-              {isLoading ? "Adding..." : "Add Branch"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsAddDialogOpen(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleAddBranch} disabled={isLoading}>
+                {isLoading ? "Adding..." : "Add Branch"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 };

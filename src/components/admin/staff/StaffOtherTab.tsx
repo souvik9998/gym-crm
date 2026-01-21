@@ -216,6 +216,23 @@ export const StaffOtherTab = ({
     const member = staff.find((s) => s.id === id);
     const cleanPhone = editData.phone.replace(/\D/g, "").replace(/^0/, "");
 
+    // Check if phone is being changed and if new phone already exists
+    if (cleanPhone !== member?.phone) {
+      const { data: existingStaff } = await supabase
+        .from("staff")
+        .select("id")
+        .eq("phone", cleanPhone)
+        .neq("id", id)
+        .single();
+
+      if (existingStaff) {
+        toast.error("Phone number already in use", {
+          description: "Another staff member is already registered with this phone number.",
+        });
+        return;
+      }
+    }
+
     const { error } = await supabase
       .from("staff")
       .update({
