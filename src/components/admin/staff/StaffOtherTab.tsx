@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,7 +57,7 @@ export const StaffOtherTab = ({
     id_type: "aadhaar",
     id_number: "",
     monthly_salary: "",
-    selected_branches: [] as string[],
+    selected_branches: currentBranch?.id ? [currentBranch.id] : [] as string[],
     enableLogin: false,
     password: "",
     permissions: getDefaultPermissions("reception"),
@@ -84,6 +84,18 @@ export const StaffOtherTab = ({
     open: false,
     staff: null,
   });
+
+  // Update selected branches when currentBranch changes
+  useEffect(() => {
+    if (currentBranch?.id && !newStaff.selected_branches.includes(currentBranch.id)) {
+      setNewStaff((prev) => ({
+        ...prev,
+        selected_branches: prev.selected_branches.length === 0 
+          ? [currentBranch.id] 
+          : prev.selected_branches,
+      }));
+    }
+  }, [currentBranch?.id]);
 
   const handleRoleChange = (role: "admin" | "manager" | "reception" | "accountant") => {
     setNewStaff({
@@ -195,7 +207,7 @@ export const StaffOtherTab = ({
       id_type: "aadhaar",
       id_number: "",
       monthly_salary: "",
-      selected_branches: [],
+      selected_branches: currentBranch?.id ? [currentBranch.id] : [],
       enableLogin: false,
       password: "",
       permissions: getDefaultPermissions("reception"),
@@ -419,18 +431,6 @@ export const StaffOtherTab = ({
             />
           </div>
 
-          {/* Permissions Section */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <ShieldCheckIcon className="w-4 h-4" />
-              Access Permissions
-            </Label>
-            <StaffInlinePermissions
-              permissions={newStaff.permissions}
-              onChange={(permissions) => setNewStaff({ ...newStaff, permissions })}
-            />
-          </div>
-
           {/* Login Credentials Section */}
           <StaffCredentialsSection
             enableLogin={newStaff.enableLogin}
@@ -438,6 +438,20 @@ export const StaffOtherTab = ({
             password={newStaff.password}
             onPasswordChange={(password) => setNewStaff({ ...newStaff, password })}
           />
+
+          {/* Permissions Section - Only show when login is enabled */}
+          {newStaff.enableLogin && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <ShieldCheckIcon className="w-4 h-4" />
+                Access Permissions
+              </Label>
+              <StaffInlinePermissions
+                permissions={newStaff.permissions}
+                onChange={(permissions) => setNewStaff({ ...newStaff, permissions })}
+              />
+            </div>
+          )}
 
           <Button onClick={handleAddStaff} className="gap-2">
             <PlusIcon className="w-4 h-4" />

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,7 @@ export const StaffTrainersTab = ({
     monthly_salary: "",
     percentage_fee: "",
     session_fee: "",
-    selected_branches: [] as string[],
+    selected_branches: currentBranch?.id ? [currentBranch.id] : [] as string[],
     enableLogin: false,
     password: "",
     permissions: getDefaultPermissions("trainer"),
@@ -81,6 +81,18 @@ export const StaffTrainersTab = ({
     open: false,
     staff: null,
   });
+
+  // Update selected branches when currentBranch changes
+  useEffect(() => {
+    if (currentBranch?.id && !newTrainer.selected_branches.includes(currentBranch.id)) {
+      setNewTrainer((prev) => ({
+        ...prev,
+        selected_branches: prev.selected_branches.length === 0 
+          ? [currentBranch.id] 
+          : prev.selected_branches,
+      }));
+    }
+  }, [currentBranch?.id]);
 
   const handleAddTrainer = async () => {
     if (!newTrainer.full_name) {
@@ -202,7 +214,7 @@ export const StaffTrainersTab = ({
       monthly_salary: "",
       percentage_fee: "",
       session_fee: "",
-      selected_branches: [],
+      selected_branches: currentBranch?.id ? [currentBranch.id] : [],
       enableLogin: false,
       password: "",
       permissions: getDefaultPermissions("trainer"),
@@ -477,18 +489,6 @@ export const StaffTrainersTab = ({
             />
           </div>
 
-          {/* Permissions Section */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <ShieldCheckIcon className="w-4 h-4" />
-              Access Permissions
-            </Label>
-            <StaffInlinePermissions
-              permissions={newTrainer.permissions}
-              onChange={(permissions) => setNewTrainer({ ...newTrainer, permissions })}
-            />
-          </div>
-
           {/* Login Credentials Section */}
           <StaffCredentialsSection
             enableLogin={newTrainer.enableLogin}
@@ -496,6 +496,20 @@ export const StaffTrainersTab = ({
             password={newTrainer.password}
             onPasswordChange={(password) => setNewTrainer({ ...newTrainer, password })}
           />
+
+          {/* Permissions Section - Only show when login is enabled */}
+          {newTrainer.enableLogin && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <ShieldCheckIcon className="w-4 h-4" />
+                Access Permissions
+              </Label>
+              <StaffInlinePermissions
+                permissions={newTrainer.permissions}
+                onChange={(permissions) => setNewTrainer({ ...newTrainer, permissions })}
+              />
+            </div>
+          )}
 
           <Button onClick={handleAddTrainer} className="gap-2">
             <PlusIcon className="w-4 h-4" />
