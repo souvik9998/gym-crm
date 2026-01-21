@@ -258,7 +258,7 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
               >
                 <div className="flex items-center gap-1.5">
                   <span className={cn("transition-colors", category.color, category.hoverTextColor)}>
-                    {category.icon}
+                  {category.icon}
                   </span>
                   <span className={cn("text-xs font-medium transition-colors", category.color, category.hoverTextColor)}>
                     {category.label}

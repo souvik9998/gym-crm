@@ -15,6 +15,7 @@ import {
   ClipboardDocumentListIcon,
   ChatBubbleLeftRightIcon,
   UserGroupIcon,
+  UsersIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
@@ -94,6 +95,7 @@ const allNavItems: NavItem[] = [
     children: [
       { title: "Admin Activity", href: "/admin/logs?tab=activity", icon: ClipboardDocumentListIcon },
       { title: "User Activity", href: "/admin/logs?tab=user", icon: UserGroupIcon },
+      { title: "Staff Activity", href: "/admin/logs?tab=staff", icon: UsersIcon },
       { title: "WhatsApp Logs", href: "/admin/logs?tab=whatsapp", icon: ChatBubbleLeftRightIcon },
     ],
   },

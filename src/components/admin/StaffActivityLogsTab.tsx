@@ -121,12 +121,14 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
     
     setIsLoading(true);
     try {
-      // Fetch staff activity logs
+      // Fetch staff activity logs - only actions performed BY staff (not admin)
+      // Staff actions have admin_user_id = NULL, admin actions have admin_user_id set
       const { data: activityData, error: activityError } = await supabase
         .from("admin_activity_logs")
         .select("*")
         .eq("branch_id", currentBranch.id)
         .eq("activity_category", "staff")
+        .is("admin_user_id", null) // Only show actions performed by staff, not admin
         .order("created_at", { ascending: false })
         .limit(500);
 
@@ -192,6 +194,7 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
         .select("*")
         .eq("branch_id", currentBranch.id)
         .eq("activity_category", "staff")
+        .is("admin_user_id", null) // Only show actions performed by staff, not admin
         .order("created_at", { ascending: false })
         .limit(500);
 
@@ -425,7 +428,7 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
           <Card>
             <CardHeader>
               <CardTitle>Staff Activity Logs</CardTitle>
-              <CardDescription>Track all staff management activities</CardDescription>
+              <CardDescription>Track activities performed by staff members (excluding admin actions)</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Filters */}
