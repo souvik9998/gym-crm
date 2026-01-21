@@ -794,6 +794,232 @@ export type Database = {
           },
         ]
       }
+      staff: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          failed_login_attempts: number
+          full_name: string
+          id: string
+          id_number: string | null
+          id_type: string | null
+          is_active: boolean
+          last_login_at: string | null
+          last_login_ip: string | null
+          locked_until: string | null
+          monthly_salary: number | null
+          password_hash: string | null
+          password_set_at: string | null
+          percentage_fee: number | null
+          phone: string
+          role: Database["public"]["Enums"]["staff_role"]
+          salary_type: Database["public"]["Enums"]["salary_type"]
+          session_fee: number | null
+          specialization: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          failed_login_attempts?: number
+          full_name: string
+          id?: string
+          id_number?: string | null
+          id_type?: string | null
+          is_active?: boolean
+          last_login_at?: string | null
+          last_login_ip?: string | null
+          locked_until?: string | null
+          monthly_salary?: number | null
+          password_hash?: string | null
+          password_set_at?: string | null
+          percentage_fee?: number | null
+          phone: string
+          role: Database["public"]["Enums"]["staff_role"]
+          salary_type?: Database["public"]["Enums"]["salary_type"]
+          session_fee?: number | null
+          specialization?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          failed_login_attempts?: number
+          full_name?: string
+          id?: string
+          id_number?: string | null
+          id_type?: string | null
+          is_active?: boolean
+          last_login_at?: string | null
+          last_login_ip?: string | null
+          locked_until?: string | null
+          monthly_salary?: number | null
+          password_hash?: string | null
+          password_set_at?: string | null
+          percentage_fee?: number | null
+          phone?: string
+          role?: Database["public"]["Enums"]["staff_role"]
+          salary_type?: Database["public"]["Enums"]["salary_type"]
+          session_fee?: number | null
+          specialization?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      staff_branch_assignments: {
+        Row: {
+          branch_id: string
+          created_at: string
+          id: string
+          is_primary: boolean
+          staff_id: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          staff_id: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_branch_assignments_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_branch_assignments_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_login_attempts: {
+        Row: {
+          created_at: string
+          failure_reason: string | null
+          id: string
+          ip_address: string | null
+          phone: string
+          success: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          ip_address?: string | null
+          phone: string
+          success?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          ip_address?: string | null
+          phone?: string
+          success?: boolean
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      staff_permissions: {
+        Row: {
+          can_access_analytics: boolean
+          can_access_financials: boolean
+          can_change_settings: boolean
+          can_manage_members: boolean
+          can_view_members: boolean
+          created_at: string
+          id: string
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          can_access_analytics?: boolean
+          can_access_financials?: boolean
+          can_change_settings?: boolean
+          can_manage_members?: boolean
+          can_view_members?: boolean
+          created_at?: string
+          id?: string
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          can_access_analytics?: boolean
+          can_access_financials?: boolean
+          can_change_settings?: boolean
+          can_manage_members?: boolean
+          can_view_members?: boolean
+          created_at?: string
+          id?: string
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_permissions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: true
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          is_revoked: boolean
+          session_token: string
+          staff_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          ip_address?: string | null
+          is_revoked?: boolean
+          session_token: string
+          staff_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          is_revoked?: boolean
+          session_token?: string
+          staff_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_sessions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           branch_id: string | null
@@ -1107,6 +1333,8 @@ export type Database = {
       app_role: "admin" | "member"
       payment_mode: "online" | "cash"
       payment_status: "pending" | "success" | "failed"
+      salary_type: "monthly" | "session_based" | "percentage" | "both"
+      staff_role: "admin" | "manager" | "trainer" | "reception" | "accountant"
       subscription_status:
         | "active"
         | "expired"
@@ -1243,6 +1471,8 @@ export const Constants = {
       app_role: ["admin", "member"],
       payment_mode: ["online", "cash"],
       payment_status: ["pending", "success", "failed"],
+      salary_type: ["monthly", "session_based", "percentage", "both"],
+      staff_role: ["admin", "manager", "trainer", "reception", "accountant"],
       subscription_status: [
         "active",
         "expired",

@@ -1,0 +1,547 @@
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import {
+  CheckIcon,
+  XMarkIcon,
+  PlusIcon,
+  TrashIcon,
+  PencilIcon,
+  KeyIcon,
+} from "@heroicons/react/24/outline";
+import { toast } from "@/components/ui/sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { Staff } from "@/pages/admin/StaffManagement";
+import { StaffPasswordDialog } from "./StaffPasswordDialog";
+import { StaffPermissionsDialog } from "./StaffPermissionsDialog";
+import { StaffBranchSelector } from "./StaffBranchSelector";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+interface StaffOtherTabProps {
+  staff: Staff[];
+  branches: any[];
+  currentBranch: any;
+  onRefresh: () => void;
+  isLoading: boolean;
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  manager: "Manager",
+  reception: "Reception",
+  accountant: "Accountant",
+};
+
+export const StaffOtherTab = ({
+  staff,
+  branches,
+  currentBranch,
+  onRefresh,
+  isLoading,
+}: StaffOtherTabProps) => {
+  const [newStaff, setNewStaff] = useState({
+    full_name: "",
+    phone: "",
+    role: "reception" as "admin" | "manager" | "reception" | "accountant",
+    id_type: "aadhaar",
+    id_number: "",
+    monthly_salary: "",
+    selected_branches: [] as string[],
+  });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<any>({});
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+    variant?: "default" | "destructive";
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  });
+  const [passwordDialog, setPasswordDialog] = useState<{ open: boolean; staff: Staff | null }>({
+    open: false,
+    staff: null,
+  });
+  const [permissionsDialog, setPermissionsDialog] = useState<{ open: boolean; staff: Staff | null }>({
+    open: false,
+    staff: null,
+  });
+
+  const handleAddStaff = async () => {
+    if (!newStaff.full_name) {
+      toast.error("Please enter staff name");
+      return;
+    }
+    if (!newStaff.phone) {
+      toast.error("Please enter phone number");
+      return;
+    }
+
+    // Check for duplicate phone
+    const cleanPhone = newStaff.phone.replace(/\D/g, "").replace(/^0/, "");
+    const { data: existing } = await supabase
+      .from("staff")
+      .select("id")
+      .eq("phone", cleanPhone)
+      .single();
+
+    if (existing) {
+      toast.error("A staff member with this phone number already exists");
+      return;
+    }
+
+    // Insert staff record
+    const { data: staffData, error: staffError } = await supabase
+      .from("staff")
+      .insert({
+        full_name: newStaff.full_name,
+        phone: cleanPhone,
+        role: newStaff.role,
+        id_type: newStaff.id_type || null,
+        id_number: newStaff.id_number || null,
+        salary_type: "monthly",
+        monthly_salary: Number(newStaff.monthly_salary) || 0,
+      })
+      .select()
+      .single();
+
+    if (staffError) {
+      toast.error("Error adding staff", { description: staffError.message });
+      return;
+    }
+
+    // Add branch assignments
+    const branchesToAssign = newStaff.selected_branches.length > 0
+      ? newStaff.selected_branches
+      : currentBranch?.id ? [currentBranch.id] : [];
+
+    if (branchesToAssign.length > 0) {
+      const assignments = branchesToAssign.map((branchId, index) => ({
+        staff_id: staffData.id,
+        branch_id: branchId,
+        is_primary: index === 0,
+      }));
+
+      await supabase.from("staff_branch_assignments").insert(assignments);
+    }
+
+    // Create default permissions based on role
+    const defaultPermissions = {
+      staff_id: staffData.id,
+      can_view_members: true,
+      can_manage_members: newStaff.role === "admin" || newStaff.role === "manager",
+      can_access_financials: newStaff.role === "admin" || newStaff.role === "accountant",
+      can_access_analytics: newStaff.role === "admin" || newStaff.role === "manager",
+      can_change_settings: newStaff.role === "admin",
+    };
+
+    await supabase.from("staff_permissions").insert(defaultPermissions);
+
+    await logAdminActivity({
+      category: "staff",
+      type: "staff_added",
+      description: `Added ${ROLE_LABELS[newStaff.role]} "${newStaff.full_name}"`,
+      entityType: "staff",
+      entityName: newStaff.full_name,
+      newValue: { ...newStaff },
+      branchId: currentBranch?.id,
+    });
+
+    toast.success("Staff member added successfully");
+    setNewStaff({
+      full_name: "",
+      phone: "",
+      role: "reception",
+      id_type: "aadhaar",
+      id_number: "",
+      monthly_salary: "",
+      selected_branches: [],
+    });
+    onRefresh();
+  };
+
+  const handleEdit = (member: Staff) => {
+    setEditingId(member.id);
+    setEditData({
+      full_name: member.full_name,
+      phone: member.phone,
+      role: member.role,
+      id_type: member.id_type || "aadhaar",
+      id_number: member.id_number || "",
+      monthly_salary: String(member.monthly_salary || 0),
+    });
+  };
+
+  const handleSave = async (id: string) => {
+    if (!editData.full_name) {
+      toast.error("Name is required");
+      return;
+    }
+
+    const member = staff.find((s) => s.id === id);
+    const cleanPhone = editData.phone.replace(/\D/g, "").replace(/^0/, "");
+
+    const { error } = await supabase
+      .from("staff")
+      .update({
+        full_name: editData.full_name,
+        phone: cleanPhone,
+        role: editData.role,
+        id_type: editData.id_type || null,
+        id_number: editData.id_number || null,
+        monthly_salary: Number(editData.monthly_salary) || 0,
+      })
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Error updating staff", { description: error.message });
+      return;
+    }
+
+    await logAdminActivity({
+      category: "staff",
+      type: "staff_updated",
+      description: `Updated ${ROLE_LABELS[editData.role]} "${editData.full_name}"`,
+      entityType: "staff",
+      entityId: id,
+      entityName: editData.full_name,
+      oldValue: member,
+      newValue: editData,
+      branchId: currentBranch?.id,
+    });
+
+    toast.success("Staff updated");
+    setEditingId(null);
+    onRefresh();
+  };
+
+  const handleToggle = async (id: string, isActive: boolean) => {
+    const member = staff.find((s) => s.id === id);
+    await supabase.from("staff").update({ is_active: isActive }).eq("id", id);
+    
+    await logAdminActivity({
+      category: "staff",
+      type: "staff_toggled",
+      description: `${isActive ? "Activated" : "Deactivated"} ${ROLE_LABELS[member?.role || "reception"]} "${member?.full_name}"`,
+      entityType: "staff",
+      entityId: id,
+      entityName: member?.full_name,
+      oldValue: { is_active: !isActive },
+      newValue: { is_active: isActive },
+      branchId: currentBranch?.id,
+    });
+
+    onRefresh();
+  };
+
+  const handleDelete = (id: string, name: string) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete Staff",
+      description: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+      variant: "destructive",
+      onConfirm: async () => {
+        await supabase.from("staff").delete().eq("id", id);
+        
+        await logAdminActivity({
+          category: "staff",
+          type: "staff_deleted",
+          description: `Deleted staff "${name}"`,
+          entityType: "staff",
+          entityId: id,
+          entityName: name,
+          branchId: currentBranch?.id,
+        });
+
+        toast.success("Staff member deleted");
+        onRefresh();
+      },
+    });
+  };
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case "admin": return "bg-red-100 text-red-800";
+      case "manager": return "bg-blue-100 text-blue-800";
+      case "accountant": return "bg-green-100 text-green-800";
+      case "reception": return "bg-yellow-100 text-yellow-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Add Staff Card */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle>Add New Staff</CardTitle>
+          <CardDescription>Add admin, manager, reception, or accountant staff</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label>Full Name *</Label>
+              <Input
+                value={newStaff.full_name}
+                onChange={(e) => setNewStaff({ ...newStaff, full_name: e.target.value })}
+                placeholder="Enter full name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone Number *</Label>
+              <Input
+                value={newStaff.phone}
+                onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
+                placeholder="10-digit phone number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Role *</Label>
+              <Select
+                value={newStaff.role}
+                onValueChange={(value: any) => setNewStaff({ ...newStaff, role: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
+                  <SelectItem value="reception">Reception</SelectItem>
+                  <SelectItem value="accountant">Accountant</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label>ID Type</Label>
+              <Select
+                value={newStaff.id_type}
+                onValueChange={(value) => setNewStaff({ ...newStaff, id_type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="aadhaar">Aadhaar</SelectItem>
+                  <SelectItem value="pan">PAN</SelectItem>
+                  <SelectItem value="voter">Voter ID</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>ID Number</Label>
+              <Input
+                value={newStaff.id_number}
+                onChange={(e) => setNewStaff({ ...newStaff, id_number: e.target.value })}
+                placeholder="ID number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Monthly Salary (₹)</Label>
+              <Input
+                type="number"
+                value={newStaff.monthly_salary}
+                onChange={(e) => setNewStaff({ ...newStaff, monthly_salary: e.target.value })}
+                placeholder="Monthly salary"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Assigned Branches</Label>
+            <StaffBranchSelector
+              branches={branches}
+              selectedBranches={newStaff.selected_branches}
+              onChange={(selected) => setNewStaff({ ...newStaff, selected_branches: selected })}
+            />
+          </div>
+
+          <Button onClick={handleAddStaff} className="gap-2">
+            <PlusIcon className="w-4 h-4" />
+            Add Staff
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Existing Staff */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle>Existing Staff</CardTitle>
+          <CardDescription>
+            {staff.length} staff member{staff.length !== 1 ? "s" : ""} registered
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">Loading...</div>
+          ) : staff.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">No staff members added yet</p>
+          ) : (
+            <div className="space-y-3">
+              {staff.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center justify-between p-4 bg-muted/50 rounded-lg transition-colors duration-150 hover:bg-muted/70"
+                >
+                  {editingId === member.id ? (
+                    <div className="flex-1 space-y-3 mr-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Name *</Label>
+                          <Input
+                            value={editData.full_name}
+                            onChange={(e) => setEditData({ ...editData, full_name: e.target.value })}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Phone</Label>
+                          <Input
+                            value={editData.phone}
+                            onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Role</Label>
+                          <Select
+                            value={editData.role}
+                            onValueChange={(value) => setEditData({ ...editData, role: value })}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="manager">Manager</SelectItem>
+                              <SelectItem value="reception">Reception</SelectItem>
+                              <SelectItem value="accountant">Accountant</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Monthly Salary (₹)</Label>
+                          <Input
+                            type="number"
+                            value={editData.monthly_salary}
+                            onChange={(e) => setEditData({ ...editData, monthly_salary: e.target.value })}
+                            className="h-9"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => handleSave(member.id)} className="gap-1">
+                          <CheckIcon className="w-4 h-4" />
+                          Save
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingId(null)} className="gap-1">
+                          <XMarkIcon className="w-4 h-4" />
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{member.full_name}</p>
+                          <Badge className={`text-xs ${getRoleBadgeColor(member.role)}`}>
+                            {ROLE_LABELS[member.role] || member.role}
+                          </Badge>
+                          {!member.is_active && (
+                            <Badge variant="secondary" className="text-xs">Inactive</Badge>
+                          )}
+                          {member.password_hash && (
+                            <Badge variant="outline" className="text-xs text-green-600">Has Login</Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
+                          {member.phone && <span>📱 {member.phone}</span>}
+                          {member.monthly_salary > 0 && <span>💰 ₹{member.monthly_salary}/month</span>}
+                          {member.branch_assignments && member.branch_assignments.length > 0 && (
+                            <span>
+                              📍 {member.branch_assignments.map((a) => a.branch_name).join(", ")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setPasswordDialog({ open: true, staff: member })}
+                          title="Set Password"
+                        >
+                          <KeyIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setPermissionsDialog({ open: true, staff: member })}
+                          title="Permissions"
+                        >
+                          🔐
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleEdit(member)}>
+                          <PencilIcon className="w-4 h-4" />
+                        </Button>
+                        <Switch
+                          checked={member.is_active}
+                          onCheckedChange={(checked) => handleToggle(member.id, checked)}
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() => handleDelete(member.id, member.full_name)}
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        onConfirm={confirmDialog.onConfirm}
+        variant={confirmDialog.variant}
+      />
+
+      <StaffPasswordDialog
+        open={passwordDialog.open}
+        onOpenChange={(open) => setPasswordDialog({ ...passwordDialog, open })}
+        staff={passwordDialog.staff}
+        onSuccess={onRefresh}
+      />
+
+      <StaffPermissionsDialog
+        open={permissionsDialog.open}
+        onOpenChange={(open) => setPermissionsDialog({ ...permissionsDialog, open })}
+        staff={permissionsDialog.staff}
+        onSuccess={onRefresh}
+      />
+    </div>
+  );
+};
