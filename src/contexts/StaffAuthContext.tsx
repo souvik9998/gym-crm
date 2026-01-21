@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useBranch } from "@/contexts/BranchContext";
+import type { StaffBranchRestriction } from "@/contexts/BranchContext";
 
 export interface StaffUser {
   id: string;
@@ -40,6 +40,7 @@ interface StaffAuthContextType {
   login: (phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  setBranchRestrictionCallback: (callback: ((restriction: StaffBranchRestriction | null) => void) | null) => void;
 }
 
 const StaffAuthContext = createContext<StaffAuthContextType | undefined>(undefined);
@@ -53,33 +54,37 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [session, setSession] = useState<StaffSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Get branch context to update restrictions
-  const { setStaffBranchRestriction } = useBranch();
+  // Use a ref for the branch restriction callback to avoid circular dependency
+  const branchRestrictionCallbackRef = useRef<((restriction: StaffBranchRestriction | null) => void) | null>(null);
+  
+  const setBranchRestrictionCallback = useCallback((callback: ((restriction: StaffBranchRestriction | null) => void) | null) => {
+    branchRestrictionCallbackRef.current = callback;
+  }, []);
 
-  const clearAuth = () => {
+  const clearAuth = useCallback(() => {
     setStaffUser(null);
     setPermissions(null);
     setBranches([]);
     setSession(null);
     localStorage.removeItem(STORAGE_KEY);
     // Clear branch restrictions when logging out
-    setStaffBranchRestriction(null);
-  };
+    branchRestrictionCallbackRef.current?.(null);
+  }, []);
 
   // Apply branch restrictions based on staff branches
-  const applyBranchRestrictions = (staffBranches: StaffBranch[]) => {
+  const applyBranchRestrictions = useCallback((staffBranches: StaffBranch[]) => {
     if (staffBranches.length > 0) {
       const primaryBranch = staffBranches.find(b => b.isPrimary);
-      setStaffBranchRestriction({
+      branchRestrictionCallbackRef.current?.({
         branchIds: staffBranches.map(b => b.id),
         primaryBranchId: primaryBranch?.id,
       });
     } else {
-      setStaffBranchRestriction(null);
+      branchRestrictionCallbackRef.current?.(null);
     }
-  };
+  }, []);
 
-  const verifySession = async (token: string): Promise<boolean> => {
+  const verifySession = useCallback(async (token: string): Promise<boolean> => {
     try {
       const { data } = await supabase.functions.invoke("staff-auth?action=verify-session", {
         body: {},
@@ -105,7 +110,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       console.error("Session verification failed:", error);
       return false;
     }
-  };
+  }, [applyBranchRestrictions]);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -137,7 +142,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     };
 
     initAuth();
-  }, []);
+  }, [clearAuth, verifySession]);
 
   const login = async (phone: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -212,6 +217,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     login,
     logout,
     refreshSession,
+    setBranchRestrictionCallback,
   };
 
   return (
