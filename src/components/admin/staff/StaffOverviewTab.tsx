@@ -65,7 +65,8 @@ export const StaffOverviewTab = ({
     const badges = [];
     if (perms.can_view_members) badges.push("View Members");
     if (perms.can_manage_members) badges.push("Manage Members");
-    if (perms.can_access_financials) badges.push("Financials");
+    if ((perms as any).can_access_ledger) badges.push("Ledger");
+    if ((perms as any).can_access_payments) badges.push("Payments");
     if (perms.can_access_analytics) badges.push("Analytics");
     if (perms.can_change_settings) badges.push("Settings");
 

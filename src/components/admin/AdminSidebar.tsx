@@ -51,7 +51,7 @@ interface NavItem {
   iconSolid?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   children?: { title: string; href: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }[];
   // Permission requirements
-  requiresPermission?: "can_view_members" | "can_manage_members" | "can_access_financials" | "can_access_analytics" | "can_change_settings";
+  requiresPermission?: "can_view_members" | "can_manage_members" | "can_access_ledger" | "can_access_payments" | "can_access_analytics" | "can_change_settings";
   adminOnly?: boolean;
 }
 
@@ -76,7 +76,7 @@ const allNavItems: NavItem[] = [
     href: "/admin/ledger",
     icon: BookOpenIcon,
     iconSolid: BookOpenIconSolid,
-    requiresPermission: "can_access_financials",
+    requiresPermission: "can_access_ledger",
   },
   {
     title: "Staff",

@@ -938,7 +938,8 @@ export type Database = {
       staff_permissions: {
         Row: {
           can_access_analytics: boolean
-          can_access_financials: boolean
+          can_access_ledger: boolean
+          can_access_payments: boolean
           can_change_settings: boolean
           can_manage_members: boolean
           can_view_members: boolean
@@ -949,7 +950,8 @@ export type Database = {
         }
         Insert: {
           can_access_analytics?: boolean
-          can_access_financials?: boolean
+          can_access_ledger?: boolean
+          can_access_payments?: boolean
           can_change_settings?: boolean
           can_manage_members?: boolean
           can_view_members?: boolean
@@ -960,7 +962,8 @@ export type Database = {
         }
         Update: {
           can_access_analytics?: boolean
-          can_access_financials?: boolean
+          can_access_ledger?: boolean
+          can_access_payments?: boolean
           can_change_settings?: boolean
           can_manage_members?: boolean
           can_view_members?: boolean

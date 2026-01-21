@@ -4,7 +4,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 export interface InlinePermissions {
   can_view_members: boolean;
   can_manage_members: boolean;
-  can_access_financials: boolean;
+  can_access_ledger: boolean;
+  can_access_payments: boolean;
   can_access_analytics: boolean;
   can_change_settings: boolean;
 }
@@ -18,7 +19,8 @@ interface StaffInlinePermissionsProps {
 const PERMISSION_OPTIONS = [
   { key: "can_view_members" as const, label: "View Members", description: "Can view member list and profiles" },
   { key: "can_manage_members" as const, label: "Edit/Create Members", description: "Can create, edit, and update members" },
-  { key: "can_access_financials" as const, label: "Financial Records", description: "Access ledger and payments" },
+  { key: "can_access_ledger" as const, label: "Ledger Access", description: "Access income/expense ledger" },
+  { key: "can_access_payments" as const, label: "Payment Logs", description: "View payment history and records" },
   { key: "can_access_analytics" as const, label: "Analytics Access", description: "View analytics dashboards" },
   { key: "can_change_settings" as const, label: "Settings Access", description: "Modify gym settings" },
 ];
@@ -79,7 +81,8 @@ export const StaffInlinePermissions = ({
 export const getDefaultPermissions = (role: string): InlinePermissions => ({
   can_view_members: true,
   can_manage_members: role === "admin" || role === "manager",
-  can_access_financials: role === "admin" || role === "accountant",
+  can_access_ledger: role === "admin" || role === "accountant",
+  can_access_payments: role === "admin" || role === "accountant" || role === "manager",
   can_access_analytics: role === "admin" || role === "manager",
   can_change_settings: role === "admin",
 });

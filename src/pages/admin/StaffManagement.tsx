@@ -35,7 +35,8 @@ export interface StaffPermissions {
   staff_id: string;
   can_view_members: boolean;
   can_manage_members: boolean;
-  can_access_financials: boolean;
+  can_access_ledger: boolean;
+  can_access_payments: boolean;
   can_access_analytics: boolean;
   can_change_settings: boolean;
 }
