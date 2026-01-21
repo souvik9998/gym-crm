@@ -96,19 +96,30 @@ export const StaffTrainersTab = ({
       return;
     }
 
-    // Check for duplicate phone
-    const { data: existing } = await supabase
-      .from("staff")
-      .select("id")
-      .eq("phone", newTrainer.phone.replace(/\D/g, ""))
-      .single();
-
-    if (existing) {
-      toast.error("A staff member with this phone number already exists");
-      return;
-    }
-
     const cleanPhone = newTrainer.phone.replace(/\D/g, "").replace(/^0/, "");
+    
+    // Check for duplicate phone within selected branches
+    const branchesToAssign = newTrainer.selected_branches.length > 0 
+      ? newTrainer.selected_branches 
+      : currentBranch?.id ? [currentBranch.id] : [];
+    
+    if (branchesToAssign.length > 0) {
+      // Check if phone already exists in any of the selected branches
+      const { data: existingAssignments } = await supabase
+        .from("staff_branch_assignments")
+        .select("staff_id, branch_id, staff!inner(phone)")
+        .in("branch_id", branchesToAssign);
+      
+      const existingInBranch = existingAssignments?.find(
+        (a: any) => a.staff?.phone === cleanPhone
+      );
+      
+      if (existingInBranch) {
+        const branchName = branches.find(b => b.id === existingInBranch.branch_id)?.name || "selected branch";
+        toast.error(`A trainer with this phone already exists in ${branchName}`);
+        return;
+      }
+    }
 
     // Hash password if login is enabled (using same algorithm as edge function)
     let passwordHash = null;
@@ -152,11 +163,7 @@ export const StaffTrainersTab = ({
       return;
     }
 
-    // Add branch assignments
-    const branchesToAssign = newTrainer.selected_branches.length > 0
-      ? newTrainer.selected_branches
-      : currentBranch?.id ? [currentBranch.id] : [];
-
+    // Add branch assignments (reuse branchesToAssign from validation)
     if (branchesToAssign.length > 0) {
       const assignments = branchesToAssign.map((branchId, index) => ({
         staff_id: staffData.id,
