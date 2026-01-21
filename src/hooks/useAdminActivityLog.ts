@@ -9,7 +9,8 @@ export type ActivityCategory =
   | "whatsapp"
   | "subscriptions"
   | "ledger"
-  | "branch";
+  | "branch"
+  | "staff";
 
 export type ActivityType = 
   // Members
@@ -54,7 +55,12 @@ export type ActivityType =
   | "branch_updated"
   | "branch_deleted"
   | "branch_default_set"
-  | "branch_default_changed";
+  | "branch_default_changed"
+  // Staff
+  | "staff_added"
+  | "staff_updated"
+  | "staff_deleted"
+  | "staff_toggled";
 
 interface LogActivityParams {
   category: ActivityCategory;
