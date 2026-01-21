@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound";
 
 // Lazy load admin pages for better initial load time
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const StaffDashboard = lazy(() => import("./pages/admin/StaffDashboard"));
 const AdminQRCode = lazy(() => import("./pages/admin/QRCode"));
 const AdminSettings = lazy(() => import("./pages/admin/Settings"));
 const AdminAnalytics = lazy(() => import("./pages/admin/Analytics"));
@@ -110,6 +111,12 @@ const App = () => (
               <Route path="/admin/staff" element={
                 <Suspense fallback={<PageLoader />}>
                   <StaffManagement />
+                </Suspense>
+              } />
+              {/* Staff Dashboard Route */}
+              <Route path="/staff/dashboard" element={
+                <Suspense fallback={<PageLoader />}>
+                  <StaffDashboard />
                 </Suspense>
               } />
               {/* Branch-specific routes */}
