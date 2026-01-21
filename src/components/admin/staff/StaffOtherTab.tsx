@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   CheckIcon,
   XMarkIcon,
@@ -24,7 +25,7 @@ import { StaffPermissionsDialog } from "./StaffPermissionsDialog";
 import { StaffBranchSelector } from "./StaffBranchSelector";
 import { StaffCredentialsSection, hashPasswordForStorage } from "./StaffCredentialsSection";
 import { StaffInlinePermissions, InlinePermissions, getDefaultPermissions } from "./StaffInlinePermissions";
-import { StaffWhatsAppButton } from "./StaffWhatsAppButton";
+import { StaffWhatsAppButton, sendStaffCredentialsWhatsApp } from "./StaffWhatsAppButton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface StaffOtherTabProps {
@@ -61,7 +62,9 @@ export const StaffOtherTab = ({
     enableLogin: false,
     password: "",
     permissions: getDefaultPermissions("reception"),
+    sendWhatsApp: true, // Default to send WhatsApp
   });
+  const [isAddingStaff, setIsAddingStaff] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<any>({});
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -119,100 +122,129 @@ export const StaffOtherTab = ({
       return;
     }
 
+    setIsAddingStaff(true);
     const cleanPhone = newStaff.phone.replace(/\D/g, "").replace(/^0/, "");
     
-    // Check for duplicate phone within selected branches
-    const branchesToAssign = newStaff.selected_branches.length > 0 
-      ? newStaff.selected_branches 
-      : currentBranch?.id ? [currentBranch.id] : [];
-    
-    if (branchesToAssign.length > 0) {
-      // Check if phone already exists in any of the selected branches
-      const { data: existingAssignments } = await supabase
-        .from("staff_branch_assignments")
-        .select("staff_id, branch_id, staff!inner(phone)")
-        .in("branch_id", branchesToAssign);
+    try {
+      // Check for duplicate phone within selected branches
+      const branchesToAssign = newStaff.selected_branches.length > 0 
+        ? newStaff.selected_branches 
+        : currentBranch?.id ? [currentBranch.id] : [];
       
-      const existingInBranch = existingAssignments?.find(
-        (a: any) => a.staff?.phone === cleanPhone
-      );
-      
-      if (existingInBranch) {
-        const branchName = branches.find(b => b.id === existingInBranch.branch_id)?.name || "selected branch";
-        toast.error(`A staff member with this phone already exists in ${branchName}`);
+      if (branchesToAssign.length > 0) {
+        // Check if phone already exists in any of the selected branches
+        const { data: existingAssignments } = await supabase
+          .from("staff_branch_assignments")
+          .select("staff_id, branch_id, staff!inner(phone)")
+          .in("branch_id", branchesToAssign);
+        
+        const existingInBranch = existingAssignments?.find(
+          (a: any) => a.staff?.phone === cleanPhone
+        );
+        
+        if (existingInBranch) {
+          const branchName = branches.find(b => b.id === existingInBranch.branch_id)?.name || "selected branch";
+          toast.error(`A staff member with this phone already exists in ${branchName}`);
+          return;
+        }
+      }
+
+      // Hash password if login is enabled (using same algorithm as edge function)
+      let passwordHash = null;
+      if (newStaff.enableLogin && newStaff.password) {
+        passwordHash = await hashPasswordForStorage(newStaff.password);
+      }
+
+      // Insert staff record
+      const { data: staffData, error: staffError } = await supabase
+        .from("staff")
+        .insert({
+          full_name: newStaff.full_name,
+          phone: cleanPhone,
+          role: newStaff.role,
+          id_type: newStaff.id_type || null,
+          id_number: newStaff.id_number || null,
+          salary_type: "monthly",
+          monthly_salary: Number(newStaff.monthly_salary) || 0,
+          password_hash: passwordHash,
+          password_set_at: passwordHash ? new Date().toISOString() : null,
+        })
+        .select()
+        .single();
+
+      if (staffError) {
+        toast.error("Error adding staff", { description: staffError.message });
         return;
       }
-    }
 
-    // Hash password if login is enabled (using same algorithm as edge function)
-    let passwordHash = null;
-    if (newStaff.enableLogin && newStaff.password) {
-      passwordHash = await hashPasswordForStorage(newStaff.password);
-    }
+      // Add branch assignments (reuse branchesToAssign from validation)
+      const branchNames: string[] = [];
+      if (branchesToAssign.length > 0) {
+        const assignments = branchesToAssign.map((branchId, index) => ({
+          staff_id: staffData.id,
+          branch_id: branchId,
+          is_primary: index === 0,
+        }));
 
-    // Insert staff record
-    const { data: staffData, error: staffError } = await supabase
-      .from("staff")
-      .insert({
-        full_name: newStaff.full_name,
-        phone: cleanPhone,
-        role: newStaff.role,
-        id_type: newStaff.id_type || null,
-        id_number: newStaff.id_number || null,
-        salary_type: "monthly",
-        monthly_salary: Number(newStaff.monthly_salary) || 0,
-        password_hash: passwordHash,
-        password_set_at: passwordHash ? new Date().toISOString() : null,
-      })
-      .select()
-      .single();
+        await supabase.from("staff_branch_assignments").insert(assignments);
+        
+        // Get branch names for WhatsApp
+        branchNames.push(...branchesToAssign.map(bid => branches.find(b => b.id === bid)?.name).filter(Boolean));
+      }
 
-    if (staffError) {
-      toast.error("Error adding staff", { description: staffError.message });
-      return;
-    }
-
-    // Add branch assignments (reuse branchesToAssign from validation)
-    if (branchesToAssign.length > 0) {
-      const assignments = branchesToAssign.map((branchId, index) => ({
+      // Insert permissions
+      await supabase.from("staff_permissions").insert({
         staff_id: staffData.id,
-        branch_id: branchId,
-        is_primary: index === 0,
-      }));
+        ...newStaff.permissions,
+      });
 
-      await supabase.from("staff_branch_assignments").insert(assignments);
+      await logAdminActivity({
+        category: "staff",
+        type: "staff_added",
+        description: `Added ${ROLE_LABELS[newStaff.role]} "${newStaff.full_name}"${newStaff.enableLogin ? " with login access" : ""}`,
+        entityType: "staff",
+        entityName: newStaff.full_name,
+        newValue: { ...newStaff, password: undefined },
+        branchId: currentBranch?.id,
+      });
+
+      // Send WhatsApp credentials if enabled and login is enabled
+      let whatsAppSent = false;
+      if (newStaff.enableLogin && newStaff.sendWhatsApp && newStaff.password && cleanPhone) {
+        whatsAppSent = await sendStaffCredentialsWhatsApp(
+          { full_name: newStaff.full_name, phone: cleanPhone, role: newStaff.role },
+          newStaff.password,
+          currentBranch?.id,
+          currentBranch?.name,
+          branchNames
+        );
+      }
+
+      toast.success("Staff member added successfully", {
+        description: newStaff.enableLogin && newStaff.sendWhatsApp
+          ? whatsAppSent
+            ? "Login credentials sent via WhatsApp"
+            : "Staff added but WhatsApp delivery failed"
+          : undefined,
+      });
+      
+      setNewStaff({
+        full_name: "",
+        phone: "",
+        role: "reception",
+        id_type: "aadhaar",
+        id_number: "",
+        monthly_salary: "",
+        selected_branches: currentBranch?.id ? [currentBranch.id] : [],
+        enableLogin: false,
+        password: "",
+        permissions: getDefaultPermissions("reception"),
+        sendWhatsApp: true,
+      });
+      onRefresh();
+    } finally {
+      setIsAddingStaff(false);
     }
-
-    // Insert permissions
-    await supabase.from("staff_permissions").insert({
-      staff_id: staffData.id,
-      ...newStaff.permissions,
-    });
-
-    await logAdminActivity({
-      category: "staff",
-      type: "staff_added",
-      description: `Added ${ROLE_LABELS[newStaff.role]} "${newStaff.full_name}"${newStaff.enableLogin ? " with login access" : ""}`,
-      entityType: "staff",
-      entityName: newStaff.full_name,
-      newValue: { ...newStaff, password: undefined },
-      branchId: currentBranch?.id,
-    });
-
-    toast.success("Staff member added successfully");
-    setNewStaff({
-      full_name: "",
-      phone: "",
-      role: "reception",
-      id_type: "aadhaar",
-      id_number: "",
-      monthly_salary: "",
-      selected_branches: currentBranch?.id ? [currentBranch.id] : [],
-      enableLogin: false,
-      password: "",
-      permissions: getDefaultPermissions("reception"),
-    });
-    onRefresh();
   };
 
   const handleEdit = (member: Staff) => {
@@ -441,21 +473,35 @@ export const StaffOtherTab = ({
 
           {/* Permissions Section - Only show when login is enabled */}
           {newStaff.enableLogin && (
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <ShieldCheckIcon className="w-4 h-4" />
-                Access Permissions
-              </Label>
-              <StaffInlinePermissions
-                permissions={newStaff.permissions}
-                onChange={(permissions) => setNewStaff({ ...newStaff, permissions })}
-              />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <ShieldCheckIcon className="w-4 h-4" />
+                  Access Permissions
+                </Label>
+                <StaffInlinePermissions
+                  permissions={newStaff.permissions}
+                  onChange={(permissions) => setNewStaff({ ...newStaff, permissions })}
+                />
+              </div>
+              
+              {/* WhatsApp Checkbox */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="sendWhatsAppStaff"
+                  checked={newStaff.sendWhatsApp}
+                  onCheckedChange={(checked) => setNewStaff({ ...newStaff, sendWhatsApp: checked === true })}
+                />
+                <Label htmlFor="sendWhatsAppStaff" className="text-sm cursor-pointer">
+                  Send login credentials via WhatsApp after adding
+                </Label>
+              </div>
+            </>
           )}
 
-          <Button onClick={handleAddStaff} className="gap-2">
+          <Button onClick={handleAddStaff} disabled={isAddingStaff} className="gap-2">
             <PlusIcon className="w-4 h-4" />
-            Add Staff
+            {isAddingStaff ? "Adding Staff..." : "Add Staff"}
           </Button>
         </CardContent>
       </Card>

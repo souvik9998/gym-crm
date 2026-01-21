@@ -7,6 +7,7 @@ import { useBranch } from "@/contexts/BranchContext";
 
 interface StaffWhatsAppButtonProps {
   staff: Staff;
+  password?: string; // Plain password to send (optional - if provided, sends with password)
   variant?: "outline" | "default" | "ghost";
   size?: "sm" | "default" | "lg" | "icon";
   showLabel?: boolean;
@@ -14,6 +15,7 @@ interface StaffWhatsAppButtonProps {
 
 export const StaffWhatsAppButton = ({
   staff,
+  password,
   variant = "outline",
   size = "sm",
   showLabel = false,
@@ -27,7 +29,8 @@ export const StaffWhatsAppButton = ({
       return;
     }
 
-    if (!staff.password_hash) {
+    // Only require password_hash if we're not providing a password directly
+    if (!password && !staff.password_hash) {
       toast.error("Staff does not have login credentials set", {
         description: "Please set a password first before sending credentials via WhatsApp.",
       });
@@ -48,10 +51,9 @@ export const StaffWhatsAppButton = ({
           staffCredentials: {
             staffName: staff.full_name,
             staffPhone: staff.phone,
+            password: password, // Include plain password if provided
             role: staff.role,
             branches: branchNames,
-            // Note: We don't send the actual password here since it's hashed
-            // The message will just indicate credentials are set
           },
         },
       });
@@ -74,17 +76,54 @@ export const StaffWhatsAppButton = ({
     }
   };
 
+  // Can send if we have a password OR if staff already has credentials set
+  const canSend = !!(password || staff.password_hash);
+
   return (
     <Button
       size={size}
       variant={variant}
       onClick={handleSendCredentials}
-      disabled={isSending || !staff.password_hash}
-      title={staff.password_hash ? "Send credentials via WhatsApp" : "Set password first to send credentials"}
+      disabled={isSending || !canSend}
+      title={canSend ? "Send credentials via WhatsApp" : "Set password first to send credentials"}
       className="gap-1"
     >
       <span className="text-base">📱</span>
       {showLabel && (isSending ? "Sending..." : "WhatsApp")}
     </Button>
   );
+};
+
+// Helper function to send staff credentials via WhatsApp
+export const sendStaffCredentialsWhatsApp = async (
+  staff: { full_name: string; phone: string; role: string },
+  password: string,
+  branchId?: string,
+  branchName?: string,
+  branchNames?: string[]
+): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.functions.invoke("send-whatsapp", {
+      body: {
+        type: "staff_credentials",
+        branchId,
+        branchName,
+        staffCredentials: {
+          staffName: staff.full_name,
+          staffPhone: staff.phone,
+          password,
+          role: staff.role,
+          branches: branchNames,
+        },
+      },
+    });
+
+    if (error) throw error;
+
+    const response = typeof data === "string" ? JSON.parse(data) : data;
+    return response.success;
+  } catch (error) {
+    console.error("Failed to send staff credentials WhatsApp:", error);
+    return false;
+  }
 };
