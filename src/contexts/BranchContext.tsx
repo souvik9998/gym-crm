@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Branch {
@@ -24,7 +24,7 @@ interface BranchContextType {
   setCurrentBranch: (branch: Branch) => void;
   refreshBranches: () => Promise<void>;
   isLoading: boolean;
-  isStaffRestricted: boolean; // Indicates if the current user is a staff with limited branch access
+  isStaffRestricted: boolean;
   setStaffBranchRestriction: (restriction: StaffBranchRestriction | null) => void;
 }
 
@@ -37,6 +37,14 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
   const [currentBranch, setCurrentBranchState] = useState<Branch | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [staffRestriction, setStaffRestriction] = useState<StaffBranchRestriction | null>(null);
+  
+  // Use ref to track current branch without causing re-renders in fetchBranches
+  const currentBranchRef = useRef<Branch | null>(null);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    currentBranchRef.current = currentBranch;
+  }, [currentBranch]);
   
   const isStaffRestricted = staffRestriction !== null && staffRestriction.branchIds.length > 0;
   
@@ -68,13 +76,14 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
 
       if (filteredBranches.length > 0) {
         let selectedBranch: Branch | undefined;
+        const currentBranchValue = currentBranchRef.current;
         
         // For staff users, prioritize their primary branch
         if (staffRestriction?.primaryBranchId) {
           selectedBranch = filteredBranches.find(b => b.id === staffRestriction.primaryBranchId);
         }
         
-        // If no primary branch, try default branch (only if not restricted or if default is in allowed list)
+        // If no primary branch, try default branch
         if (!selectedBranch) {
           selectedBranch = filteredBranches.find(b => b.is_default);
         }
@@ -91,15 +100,15 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
         }
 
         // Only update if current branch is null or if the current branch is not in the allowed list
-        const currentIsAllowed = currentBranch && filteredBranches.some(b => b.id === currentBranch.id);
+        const currentIsAllowed = currentBranchValue && filteredBranches.some(b => b.id === currentBranchValue.id);
         
-        if (!currentBranch || !currentIsAllowed) {
+        if (!currentBranchValue || !currentIsAllowed) {
           setCurrentBranchState(selectedBranch);
           localStorage.setItem(CURRENT_BRANCH_KEY, selectedBranch.id);
-        } else if (currentBranch) {
-          // Update current branch data if it exists in the list
-          const updatedCurrentBranch = filteredBranches.find(b => b.id === currentBranch.id);
-          if (updatedCurrentBranch) {
+        } else if (currentBranchValue) {
+          // Update current branch data if it exists in the list (in case branch details changed)
+          const updatedCurrentBranch = filteredBranches.find(b => b.id === currentBranchValue.id);
+          if (updatedCurrentBranch && JSON.stringify(updatedCurrentBranch) !== JSON.stringify(currentBranchValue)) {
             setCurrentBranchState(updatedCurrentBranch);
           }
         }
@@ -110,7 +119,7 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [staffRestriction, currentBranch]);
+  }, [staffRestriction]);
 
   const setCurrentBranch = (branch: Branch) => {
     // For staff users, verify the branch is in their allowed list
