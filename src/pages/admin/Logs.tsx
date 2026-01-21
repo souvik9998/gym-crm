@@ -5,10 +5,12 @@ import {
   ClipboardDocumentListIcon,
   ChatBubbleLeftRightIcon,
   UserGroupIcon,
+  UsersIcon,
 } from "@heroicons/react/24/outline";
 import WhatsAppLogsTab from "@/components/admin/WhatsAppLogsTab";
 import AdminActivityLogsTab from "@/components/admin/AdminActivityLogsTab";
 import UserActivityLogsTab from "@/components/admin/UserActivityLogsTab";
+import StaffActivityLogsTab from "@/components/admin/StaffActivityLogsTab";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 
 const Logs = () => {
@@ -18,7 +20,7 @@ const Logs = () => {
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab && ["activity", "user", "whatsapp"].includes(tab)) {
+    if (tab && ["activity", "user", "staff", "whatsapp"].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -40,20 +42,22 @@ const Logs = () => {
     >
       <div className="max-w-7xl mx-auto">
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="grid w-full max-w-lg grid-cols-3 mb-6 bg-muted/50 p-1">
+          <TabsList className="grid w-full max-w-2xl grid-cols-4 mb-6 bg-muted/50 p-1">
             <TabsTrigger value="activity" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <ClipboardDocumentListIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">Admin Activity</span>
-              <span className="sm:hidden">Admin</span>
+              <span className="hidden sm:inline">Admin</span>
             </TabsTrigger>
             <TabsTrigger value="user" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <UserGroupIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">User Activity</span>
-              <span className="sm:hidden">User</span>
+              <span className="hidden sm:inline">User</span>
+            </TabsTrigger>
+            <TabsTrigger value="staff" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <UsersIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Staff</span>
             </TabsTrigger>
             <TabsTrigger value="whatsapp" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <ChatBubbleLeftRightIcon className="w-4 h-4" />
-              WhatsApp
+              <span className="hidden sm:inline">WhatsApp</span>
             </TabsTrigger>
           </TabsList>
 
@@ -63,6 +67,10 @@ const Logs = () => {
 
           <TabsContent value="user" className="mt-0">
             <UserActivityLogsTab refreshKey={refreshKey} />
+          </TabsContent>
+
+          <TabsContent value="staff" className="mt-0">
+            <StaffActivityLogsTab refreshKey={refreshKey} />
           </TabsContent>
 
           <TabsContent value="whatsapp" className="mt-0">
