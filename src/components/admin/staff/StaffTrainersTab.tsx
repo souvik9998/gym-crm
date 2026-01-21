@@ -24,6 +24,7 @@ import { StaffPermissionsDialog } from "./StaffPermissionsDialog";
 import { StaffBranchSelector } from "./StaffBranchSelector";
 import { StaffCredentialsSection, hashPasswordForStorage } from "./StaffCredentialsSection";
 import { StaffInlinePermissions, InlinePermissions, getDefaultPermissions } from "./StaffInlinePermissions";
+import { StaffWhatsAppButton } from "./StaffWhatsAppButton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface StaffTrainersTabProps {
@@ -636,6 +637,7 @@ export const StaffTrainersTab = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <StaffWhatsAppButton staff={trainer} />
                         <Button
                           size="sm"
                           variant="outline"
