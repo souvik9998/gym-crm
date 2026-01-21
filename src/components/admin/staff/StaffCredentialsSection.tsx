@@ -21,6 +21,33 @@ const generatePassword = () => {
   return password;
 };
 
+// Hash password using the same algorithm as the edge function
+export const hashPasswordForStorage = async (password: string): Promise<string> => {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const encoder = new TextEncoder();
+  const passwordData = encoder.encode(password);
+  
+  // Combine salt and password
+  const combined = new Uint8Array(salt.length + passwordData.length);
+  combined.set(salt);
+  combined.set(passwordData, salt.length);
+  
+  // Hash using SHA-256 multiple rounds (PBKDF2-like) - must match edge function
+  let hash = await crypto.subtle.digest("SHA-256", combined);
+  for (let i = 0; i < 10000; i++) {
+    hash = await crypto.subtle.digest("SHA-256", hash);
+  }
+  
+  // Combine salt and hash for storage
+  const hashArray = new Uint8Array(hash);
+  const result = new Uint8Array(salt.length + hashArray.length);
+  result.set(salt);
+  result.set(hashArray, salt.length);
+  
+  // Encode as base64 - must match edge function
+  return btoa(String.fromCharCode(...result));
+};
+
 export const StaffCredentialsSection = ({
   enableLogin,
   onEnableLoginChange,
