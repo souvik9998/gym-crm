@@ -48,10 +48,11 @@ export const StaffTrainersTab = ({
     specialization: "",
     id_type: "aadhaar",
     id_number: "",
-    salary_type: "monthly" as "monthly" | "session_based" | "percentage" | "both",
+    payment_category: "monthly_percentage" as "monthly_percentage" | "session_basis",
+    monthly_fee: "",
     monthly_salary: "",
-    session_fee: "",
     percentage_fee: "",
+    session_fee: "",
     selected_branches: [] as string[],
     enableLogin: false,
     password: "",
@@ -114,6 +115,17 @@ export const StaffTrainersTab = ({
       passwordHash = await hashPasswordForStorage(newTrainer.password);
     }
 
+    // Validate monthly fee for trainers
+    if (!newTrainer.monthly_fee) {
+      toast.error("Monthly fee (member charge) is required");
+      return;
+    }
+
+    if (newTrainer.payment_category === "session_basis" && !newTrainer.session_fee) {
+      toast.error("Session fee is required for session basis category");
+      return;
+    }
+
     // Insert staff record
     const { data: staffData, error: staffError } = await supabase
       .from("staff")
@@ -124,7 +136,7 @@ export const StaffTrainersTab = ({
         specialization: newTrainer.specialization || null,
         id_type: newTrainer.id_type || null,
         id_number: newTrainer.id_number || null,
-        salary_type: newTrainer.salary_type,
+        salary_type: newTrainer.payment_category === "monthly_percentage" ? "both" : "session_based",
         monthly_salary: Number(newTrainer.monthly_salary) || 0,
         session_fee: Number(newTrainer.session_fee) || 0,
         percentage_fee: Number(newTrainer.percentage_fee) || 0,
@@ -177,10 +189,11 @@ export const StaffTrainersTab = ({
       specialization: "",
       id_type: "aadhaar",
       id_number: "",
-      salary_type: "monthly",
+      payment_category: "monthly_percentage",
+      monthly_fee: "",
       monthly_salary: "",
-      session_fee: "",
       percentage_fee: "",
+      session_fee: "",
       selected_branches: [],
       enableLogin: false,
       password: "",
@@ -191,16 +204,19 @@ export const StaffTrainersTab = ({
 
   const handleEdit = (trainer: Staff) => {
     setEditingId(trainer.id);
+    // Determine payment_category from salary_type
+    const paymentCategory = trainer.salary_type === "session_based" ? "session_basis" : "monthly_percentage";
     setEditData({
       full_name: trainer.full_name,
       phone: trainer.phone,
       specialization: trainer.specialization || "",
       id_type: trainer.id_type || "aadhaar",
       id_number: trainer.id_number || "",
-      salary_type: trainer.salary_type,
+      payment_category: paymentCategory as "monthly_percentage" | "session_basis",
+      monthly_fee: String((trainer as any).monthly_fee || 0),
       monthly_salary: String(trainer.monthly_salary || 0),
-      session_fee: String(trainer.session_fee || 0),
       percentage_fee: String(trainer.percentage_fee || 0),
+      session_fee: String(trainer.session_fee || 0),
     });
   };
 
@@ -221,7 +237,7 @@ export const StaffTrainersTab = ({
         specialization: editData.specialization || null,
         id_type: editData.id_type || null,
         id_number: editData.id_number || null,
-        salary_type: editData.salary_type,
+        salary_type: editData.payment_category === "monthly_percentage" ? "both" : "session_based",
         monthly_salary: Number(editData.monthly_salary) || 0,
         session_fee: Number(editData.session_fee) || 0,
         percentage_fee: Number(editData.percentage_fee) || 0,
@@ -355,56 +371,73 @@ export const StaffTrainersTab = ({
                 placeholder="ID number"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Salary Type</Label>
-              <Select
-                value={newTrainer.salary_type}
-                onValueChange={(value: any) => setNewTrainer({ ...newTrainer, salary_type: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monthly">Monthly Salary</SelectItem>
-                  <SelectItem value="session_based">Session Based</SelectItem>
-                  <SelectItem value="percentage">Percentage</SelectItem>
-                  <SelectItem value="both">Monthly + Percentage</SelectItem>
-                </SelectContent>
-              </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Payment Category *</Label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={newTrainer.payment_category === "monthly_percentage"}
+                  onChange={() => setNewTrainer({ ...newTrainer, payment_category: "monthly_percentage" })}
+                  className="accent-primary"
+                />
+                <span className="text-sm">Monthly + Percentage</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={newTrainer.payment_category === "session_basis"}
+                  onChange={() => setNewTrainer({ ...newTrainer, payment_category: "session_basis" })}
+                  className="accent-primary"
+                />
+                <span className="text-sm">Session Basis</span>
+              </label>
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            {(newTrainer.salary_type === "monthly" || newTrainer.salary_type === "both") && (
-              <div className="space-y-2">
-                <Label>Monthly Salary (₹)</Label>
-                <Input
-                  type="number"
-                  value={newTrainer.monthly_salary}
-                  onChange={(e) => setNewTrainer({ ...newTrainer, monthly_salary: e.target.value })}
-                  placeholder="Monthly salary"
-                />
-              </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-2">
+              <Label>Monthly Fee (₹) * <span className="text-xs text-muted-foreground">(Member charge)</span></Label>
+              <Input
+                type="number"
+                value={newTrainer.monthly_fee}
+                onChange={(e) => setNewTrainer({ ...newTrainer, monthly_fee: e.target.value })}
+                placeholder="What members pay per month"
+              />
+            </div>
+            
+            {newTrainer.payment_category === "monthly_percentage" && (
+              <>
+                <div className="space-y-2">
+                  <Label>Monthly Salary (₹) <span className="text-xs text-muted-foreground">(Trainer's salary)</span></Label>
+                  <Input
+                    type="number"
+                    value={newTrainer.monthly_salary}
+                    onChange={(e) => setNewTrainer({ ...newTrainer, monthly_salary: e.target.value })}
+                    placeholder="Trainer's monthly salary"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Percentage Fee (%) <span className="text-xs text-muted-foreground">(% of PT fee)</span></Label>
+                  <Input
+                    type="number"
+                    value={newTrainer.percentage_fee}
+                    onChange={(e) => setNewTrainer({ ...newTrainer, percentage_fee: e.target.value })}
+                    placeholder="e.g., 20"
+                  />
+                </div>
+              </>
             )}
-            {newTrainer.salary_type === "session_based" && (
+            {newTrainer.payment_category === "session_basis" && (
               <div className="space-y-2">
-                <Label>Session Fee (₹)</Label>
+                <Label>Session Fee (₹) * <span className="text-xs text-muted-foreground">(Per session/day)</span></Label>
                 <Input
                   type="number"
                   value={newTrainer.session_fee}
                   onChange={(e) => setNewTrainer({ ...newTrainer, session_fee: e.target.value })}
                   placeholder="Per session fee"
-                />
-              </div>
-            )}
-            {(newTrainer.salary_type === "percentage" || newTrainer.salary_type === "both") && (
-              <div className="space-y-2">
-                <Label>Percentage Fee (%)</Label>
-                <Input
-                  type="number"
-                  value={newTrainer.percentage_fee}
-                  onChange={(e) => setNewTrainer({ ...newTrainer, percentage_fee: e.target.value })}
-                  placeholder="e.g., 20"
                 />
               </div>
             )}
@@ -494,22 +527,72 @@ export const StaffTrainersTab = ({
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Salary Type</Label>
-                          <Select
-                            value={editData.salary_type}
-                            onValueChange={(value) => setEditData({ ...editData, salary_type: value })}
-                          >
-                            <SelectTrigger className="h-9">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="monthly">Monthly</SelectItem>
-                              <SelectItem value="session_based">Session</SelectItem>
-                              <SelectItem value="percentage">Percentage</SelectItem>
-                              <SelectItem value="both">Both</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Label className="text-xs">Monthly Fee (₹) * (Member charge)</Label>
+                          <Input
+                            type="number"
+                            value={editData.monthly_fee}
+                            onChange={(e) => setEditData({ ...editData, monthly_fee: e.target.value })}
+                            className="h-9"
+                          />
                         </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Payment Category *</Label>
+                        <div className="flex gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              checked={editData.payment_category === "monthly_percentage"}
+                              onChange={() => setEditData({ ...editData, payment_category: "monthly_percentage" })}
+                              className="accent-primary"
+                            />
+                            <span className="text-sm">Monthly + Percentage</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              checked={editData.payment_category === "session_basis"}
+                              onChange={() => setEditData({ ...editData, payment_category: "session_basis" })}
+                              className="accent-primary"
+                            />
+                            <span className="text-sm">Session Basis</span>
+                          </label>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        {editData.payment_category === "monthly_percentage" && (
+                          <>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Monthly Salary (₹)</Label>
+                              <Input
+                                type="number"
+                                value={editData.monthly_salary}
+                                onChange={(e) => setEditData({ ...editData, monthly_salary: e.target.value })}
+                                className="h-9"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Percentage Fee (%)</Label>
+                              <Input
+                                type="number"
+                                value={editData.percentage_fee}
+                                onChange={(e) => setEditData({ ...editData, percentage_fee: e.target.value })}
+                                className="h-9"
+                              />
+                            </div>
+                          </>
+                        )}
+                        {editData.payment_category === "session_basis" && (
+                          <div className="space-y-1">
+                            <Label className="text-xs">Session Fee (₹) *</Label>
+                            <Input
+                              type="number"
+                              value={editData.session_fee}
+                              onChange={(e) => setEditData({ ...editData, session_fee: e.target.value })}
+                              className="h-9"
+                            />
+                          </div>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => handleSave(trainer.id)} className="gap-1">
@@ -529,26 +612,21 @@ export const StaffTrainersTab = ({
                           <p className="font-medium">{trainer.full_name}</p>
                           <Badge variant="secondary" className="text-xs">Trainer</Badge>
                           {!trainer.is_active && (
-                            <Badge variant="secondary" className="text-xs bg-red-100 text-red-800">Inactive</Badge>
+                            <Badge variant="secondary" className="text-xs bg-destructive/10 text-destructive">Inactive</Badge>
                           )}
                           {trainer.password_hash && (
-                            <Badge variant="outline" className="text-xs text-green-600">Has Login</Badge>
+                            <Badge variant="outline" className="text-xs text-primary">Has Login</Badge>
                           )}
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
                           {trainer.phone && <span>📱 {trainer.phone}</span>}
                           {trainer.specialization && <span>🎯 {trainer.specialization}</span>}
-                          {trainer.salary_type === "monthly" && trainer.monthly_salary > 0 && (
-                            <span>💰 ₹{trainer.monthly_salary}/month</span>
+                          {/* Show payment info based on salary_type which maps to payment_category */}
+                          {trainer.salary_type === "both" && (
+                            <span>💰 ₹{trainer.monthly_salary}/mo + {trainer.percentage_fee}% of PT fees</span>
                           )}
                           {trainer.salary_type === "session_based" && trainer.session_fee > 0 && (
                             <span>💰 ₹{trainer.session_fee}/session</span>
-                          )}
-                          {trainer.salary_type === "percentage" && trainer.percentage_fee > 0 && (
-                            <span>💰 {trainer.percentage_fee}%</span>
-                          )}
-                          {trainer.salary_type === "both" && (
-                            <span>💰 ₹{trainer.monthly_salary}/mo + {trainer.percentage_fee}%</span>
                           )}
                           {trainer.branch_assignments && trainer.branch_assignments.length > 0 && (
                             <span>
