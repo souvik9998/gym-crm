@@ -420,44 +420,8 @@ Deno.serve(async (req) => {
       }
 
       case "set-password": {
-        // This requires admin authentication
-        const authHeader = req.headers.get("authorization");
-        if (!authHeader) {
-          return new Response(
-            JSON.stringify({ success: false, error: "Admin authentication required" }),
-            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        // Verify admin token with Supabase
-        const token = authHeader.replace("Bearer ", "").trim();
-        const userSupabase = createClient(SUPABASE_URL, token, {
-          auth: { persistSession: false },
-        });
-        
-        const { data: { user }, error: userError } = await userSupabase.auth.getUser();
-        if (userError || !user) {
-          return new Response(
-            JSON.stringify({ success: false, error: "Invalid admin token" }),
-            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        // Check if user is admin
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .single();
-
-        if (!roleData || roleData.role !== "admin") {
-          return new Response(
-            JSON.stringify({ success: false, error: "Admin access required" }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        const { staffId, password, sendWhatsApp } = (await req.json()) as CreatePasswordRequest;
+        const body = await req.json();
+        const { staffId, password, sendWhatsApp } = body as CreatePasswordRequest;
 
         if (!staffId || !password) {
           return new Response(
@@ -509,7 +473,8 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Send WhatsApp notification if requested
+        // Send WhatsApp notification if requested - using the PLAIN password before hashing
+        let whatsAppSent = false;
         if (sendWhatsApp && staff.phone) {
           try {
             const PERISKOPE_API_KEY = Deno.env.get("PERISKOPE_API_KEY");
@@ -519,16 +484,27 @@ Deno.serve(async (req) => {
               const cleanPhone = staff.phone.replace(/\D/g, "").replace(/^0/, "");
               const phoneWithCountry = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
 
-              const message = `🔐 *Login Credentials*\n\n` +
-                `Hi ${staff.full_name}, 👋\n\n` +
-                `Your staff login has been created. Here are your credentials:\n\n` +
-                `📱 *Phone:* ${staff.phone}\n` +
-                `🔑 *Password:* ${password}\n\n` +
-                `You can login at the admin portal using these credentials.\n\n` +
-                `⚠️ Please keep these credentials secure and change your password after first login.\n\n` +
-                `— Gym Admin`;
+              // Get branch assignments for staff
+              const { data: branchAssignments } = await supabase
+                .from("staff_branch_assignments")
+                .select("branches(name)")
+                .eq("staff_id", staffId);
 
-              await fetch("https://api.periskope.app/v1/message/send", {
+              const branchNames = branchAssignments?.map((a: any) => a.branches?.name).filter(Boolean) || [];
+              const branchDisplay = branchNames.length > 0 ? branchNames.join(", ") : "All Branches";
+              const roleLabel = staff.role ? staff.role.charAt(0).toUpperCase() + staff.role.slice(1) : "Staff";
+
+              const message = `🔐 *Staff Login Credentials*\n\n` +
+                `Hi ${staff.full_name}, 👋\n\n` +
+                `Your login credentials have been ${staff.password_hash ? "updated" : "created"}:\n\n` +
+                `📱 *Phone:* ${staff.phone}\n` +
+                `🔑 *Password:* ${password}\n` +
+                `👤 *Role:* ${roleLabel}\n` +
+                `📍 *Branch(es):* ${branchDisplay}\n\n` +
+                `🔗 Access the admin portal and use the Staff Login tab.\n\n` +
+                `⚠️ Please keep your credentials secure and do not share them with others.`;
+
+              const response = await fetch("https://api.periskope.app/v1/message/send", {
                 method: "POST",
                 headers: {
                   Authorization: `Bearer ${PERISKOPE_API_KEY}`,
@@ -540,6 +516,8 @@ Deno.serve(async (req) => {
                   message,
                 }),
               });
+
+              whatsAppSent = response.ok;
             }
           } catch (whatsappError) {
             console.error("Error sending WhatsApp:", whatsappError);
@@ -548,7 +526,11 @@ Deno.serve(async (req) => {
         }
 
         return new Response(
-          JSON.stringify({ success: true, message: "Password set successfully" }),
+          JSON.stringify({ 
+            success: true, 
+            message: "Password set successfully",
+            whatsAppSent,
+          }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }

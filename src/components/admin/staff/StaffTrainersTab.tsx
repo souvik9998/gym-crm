@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   CheckIcon,
   XMarkIcon,
@@ -24,7 +25,7 @@ import { StaffPermissionsDialog } from "./StaffPermissionsDialog";
 import { StaffBranchSelector } from "./StaffBranchSelector";
 import { StaffCredentialsSection, hashPasswordForStorage } from "./StaffCredentialsSection";
 import { StaffInlinePermissions, InlinePermissions, getDefaultPermissions } from "./StaffInlinePermissions";
-import { StaffWhatsAppButton } from "./StaffWhatsAppButton";
+import { StaffWhatsAppButton, sendStaffCredentialsWhatsApp } from "./StaffWhatsAppButton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface StaffTrainersTabProps {
@@ -58,7 +59,9 @@ export const StaffTrainersTab = ({
     enableLogin: false,
     password: "",
     permissions: getDefaultPermissions("trainer"),
+    sendWhatsApp: true, // Default to send WhatsApp
   });
+  const [isAddingTrainer, setIsAddingTrainer] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<any>({});
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -108,118 +111,147 @@ export const StaffTrainersTab = ({
       return;
     }
 
+    setIsAddingTrainer(true);
     const cleanPhone = newTrainer.phone.replace(/\D/g, "").replace(/^0/, "");
     
-    // Check for duplicate phone within selected branches
-    const branchesToAssign = newTrainer.selected_branches.length > 0 
-      ? newTrainer.selected_branches 
-      : currentBranch?.id ? [currentBranch.id] : [];
-    
-    if (branchesToAssign.length > 0) {
-      // Check if phone already exists in any of the selected branches
-      const { data: existingAssignments } = await supabase
-        .from("staff_branch_assignments")
-        .select("staff_id, branch_id, staff!inner(phone)")
-        .in("branch_id", branchesToAssign);
+    try {
+      // Check for duplicate phone within selected branches
+      const branchesToAssign = newTrainer.selected_branches.length > 0 
+        ? newTrainer.selected_branches 
+        : currentBranch?.id ? [currentBranch.id] : [];
       
-      const existingInBranch = existingAssignments?.find(
-        (a: any) => a.staff?.phone === cleanPhone
-      );
-      
-      if (existingInBranch) {
-        const branchName = branches.find(b => b.id === existingInBranch.branch_id)?.name || "selected branch";
-        toast.error(`A trainer with this phone already exists in ${branchName}`);
+      if (branchesToAssign.length > 0) {
+        // Check if phone already exists in any of the selected branches
+        const { data: existingAssignments } = await supabase
+          .from("staff_branch_assignments")
+          .select("staff_id, branch_id, staff!inner(phone)")
+          .in("branch_id", branchesToAssign);
+        
+        const existingInBranch = existingAssignments?.find(
+          (a: any) => a.staff?.phone === cleanPhone
+        );
+        
+        if (existingInBranch) {
+          const branchName = branches.find(b => b.id === existingInBranch.branch_id)?.name || "selected branch";
+          toast.error(`A trainer with this phone already exists in ${branchName}`);
+          return;
+        }
+      }
+
+      // Hash password if login is enabled (using same algorithm as edge function)
+      let passwordHash = null;
+      if (newTrainer.enableLogin && newTrainer.password) {
+        passwordHash = await hashPasswordForStorage(newTrainer.password);
+      }
+
+      // Validate monthly fee for trainers
+      if (!newTrainer.monthly_fee) {
+        toast.error("Monthly fee (member charge) is required");
         return;
       }
-    }
 
-    // Hash password if login is enabled (using same algorithm as edge function)
-    let passwordHash = null;
-    if (newTrainer.enableLogin && newTrainer.password) {
-      passwordHash = await hashPasswordForStorage(newTrainer.password);
-    }
+      if (newTrainer.payment_category === "session_basis" && !newTrainer.session_fee) {
+        toast.error("Session fee is required for session basis category");
+        return;
+      }
 
-    // Validate monthly fee for trainers
-    if (!newTrainer.monthly_fee) {
-      toast.error("Monthly fee (member charge) is required");
-      return;
-    }
+      // Insert staff record
+      const { data: staffData, error: staffError } = await supabase
+        .from("staff")
+        .insert({
+          full_name: newTrainer.full_name,
+          phone: cleanPhone,
+          role: "trainer",
+          specialization: newTrainer.specialization || null,
+          id_type: newTrainer.id_type || null,
+          id_number: newTrainer.id_number || null,
+          salary_type: newTrainer.payment_category === "monthly_percentage" ? "both" : "session_based",
+          monthly_salary: Number(newTrainer.monthly_salary) || 0,
+          session_fee: Number(newTrainer.session_fee) || 0,
+          percentage_fee: Number(newTrainer.percentage_fee) || 0,
+          password_hash: passwordHash,
+          password_set_at: passwordHash ? new Date().toISOString() : null,
+        })
+        .select()
+        .single();
 
-    if (newTrainer.payment_category === "session_basis" && !newTrainer.session_fee) {
-      toast.error("Session fee is required for session basis category");
-      return;
-    }
+      if (staffError) {
+        toast.error("Error adding trainer", { description: staffError.message });
+        return;
+      }
 
-    // Insert staff record
-    const { data: staffData, error: staffError } = await supabase
-      .from("staff")
-      .insert({
-        full_name: newTrainer.full_name,
-        phone: cleanPhone,
-        role: "trainer",
-        specialization: newTrainer.specialization || null,
-        id_type: newTrainer.id_type || null,
-        id_number: newTrainer.id_number || null,
-        salary_type: newTrainer.payment_category === "monthly_percentage" ? "both" : "session_based",
-        monthly_salary: Number(newTrainer.monthly_salary) || 0,
-        session_fee: Number(newTrainer.session_fee) || 0,
-        percentage_fee: Number(newTrainer.percentage_fee) || 0,
-        password_hash: passwordHash,
-        password_set_at: passwordHash ? new Date().toISOString() : null,
-      })
-      .select()
-      .single();
+      // Add branch assignments (reuse branchesToAssign from validation)
+      const branchNames: string[] = [];
+      if (branchesToAssign.length > 0) {
+        const assignments = branchesToAssign.map((branchId, index) => ({
+          staff_id: staffData.id,
+          branch_id: branchId,
+          is_primary: index === 0,
+        }));
 
-    if (staffError) {
-      toast.error("Error adding trainer", { description: staffError.message });
-      return;
-    }
+        await supabase.from("staff_branch_assignments").insert(assignments);
+        
+        // Get branch names for WhatsApp
+        branchNames.push(...branchesToAssign.map(bid => branches.find(b => b.id === bid)?.name).filter(Boolean));
+      }
 
-    // Add branch assignments (reuse branchesToAssign from validation)
-    if (branchesToAssign.length > 0) {
-      const assignments = branchesToAssign.map((branchId, index) => ({
+      // Insert permissions
+      await supabase.from("staff_permissions").insert({
         staff_id: staffData.id,
-        branch_id: branchId,
-        is_primary: index === 0,
-      }));
+        ...newTrainer.permissions,
+      });
 
-      await supabase.from("staff_branch_assignments").insert(assignments);
+      await logAdminActivity({
+        category: "staff",
+        type: "staff_added",
+        description: `Added trainer "${newTrainer.full_name}"${newTrainer.enableLogin ? " with login access" : ""}`,
+        entityType: "staff",
+        entityName: newTrainer.full_name,
+        newValue: { ...newTrainer, password: undefined, role: "trainer" },
+        branchId: currentBranch?.id,
+      });
+
+      // Send WhatsApp credentials if enabled and login is enabled
+      let whatsAppSent = false;
+      if (newTrainer.enableLogin && newTrainer.sendWhatsApp && newTrainer.password && cleanPhone) {
+        whatsAppSent = await sendStaffCredentialsWhatsApp(
+          { full_name: newTrainer.full_name, phone: cleanPhone, role: "trainer" },
+          newTrainer.password,
+          currentBranch?.id,
+          currentBranch?.name,
+          branchNames
+        );
+      }
+
+      toast.success("Trainer added successfully", {
+        description: newTrainer.enableLogin && newTrainer.sendWhatsApp
+          ? whatsAppSent
+            ? "Login credentials sent via WhatsApp"
+            : "Trainer added but WhatsApp delivery failed"
+          : undefined,
+      });
+      
+      setNewTrainer({
+        full_name: "",
+        phone: "",
+        specialization: "",
+        id_type: "aadhaar",
+        id_number: "",
+        payment_category: "monthly_percentage",
+        monthly_fee: "",
+        monthly_salary: "",
+        percentage_fee: "",
+        session_fee: "",
+        selected_branches: currentBranch?.id ? [currentBranch.id] : [],
+        enableLogin: false,
+        password: "",
+        permissions: getDefaultPermissions("trainer"),
+        sendWhatsApp: true,
+      });
+      onRefresh();
+    } finally {
+      setIsAddingTrainer(false);
     }
-
-    // Insert permissions
-    await supabase.from("staff_permissions").insert({
-      staff_id: staffData.id,
-      ...newTrainer.permissions,
-    });
-
-    await logAdminActivity({
-      category: "staff",
-      type: "staff_added",
-      description: `Added trainer "${newTrainer.full_name}"${newTrainer.enableLogin ? " with login access" : ""}`,
-      entityType: "staff",
-      entityName: newTrainer.full_name,
-      newValue: { ...newTrainer, password: undefined, role: "trainer" },
-      branchId: currentBranch?.id,
-    });
-
-    toast.success("Trainer added successfully");
-    setNewTrainer({
-      full_name: "",
-      phone: "",
-      specialization: "",
-      id_type: "aadhaar",
-      id_number: "",
-      payment_category: "monthly_percentage",
-      monthly_fee: "",
-      monthly_salary: "",
-      percentage_fee: "",
-      session_fee: "",
-      selected_branches: currentBranch?.id ? [currentBranch.id] : [],
-      enableLogin: false,
-      password: "",
-      permissions: getDefaultPermissions("trainer"),
-    });
-    onRefresh();
   };
 
   const handleEdit = (trainer: Staff) => {
@@ -497,23 +529,36 @@ export const StaffTrainersTab = ({
             onPasswordChange={(password) => setNewTrainer({ ...newTrainer, password })}
           />
 
-          {/* Permissions Section - Only show when login is enabled */}
           {newTrainer.enableLogin && (
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <ShieldCheckIcon className="w-4 h-4" />
-                Access Permissions
-              </Label>
-              <StaffInlinePermissions
-                permissions={newTrainer.permissions}
-                onChange={(permissions) => setNewTrainer({ ...newTrainer, permissions })}
-              />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <ShieldCheckIcon className="w-4 h-4" />
+                  Access Permissions
+                </Label>
+                <StaffInlinePermissions
+                  permissions={newTrainer.permissions}
+                  onChange={(permissions) => setNewTrainer({ ...newTrainer, permissions })}
+                />
+              </div>
+              
+              {/* WhatsApp Checkbox */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="sendWhatsAppTrainer"
+                  checked={newTrainer.sendWhatsApp}
+                  onCheckedChange={(checked) => setNewTrainer({ ...newTrainer, sendWhatsApp: checked === true })}
+                />
+                <Label htmlFor="sendWhatsAppTrainer" className="text-sm cursor-pointer">
+                  Send login credentials via WhatsApp after adding
+                </Label>
+              </div>
+            </>
           )}
 
-          <Button onClick={handleAddTrainer} className="gap-2">
+          <Button onClick={handleAddTrainer} disabled={isAddingTrainer} className="gap-2">
             <PlusIcon className="w-4 h-4" />
-            Add Trainer
+            {isAddingTrainer ? "Adding Trainer..." : "Add Trainer"}
           </Button>
         </CardContent>
       </Card>
