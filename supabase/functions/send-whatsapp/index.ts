@@ -9,7 +9,7 @@ interface SendWhatsAppRequest {
   memberIds?: string[];
   dailyPassUserIds?: string[];
   dailyPassUserId?: string; // Single daily pass user ID for direct send
-  type?: "expiring_2days" | "expiring_today" | "manual" | "renewal" | "pt_extension" | "promotional" | "expiry_reminder" | "expired_reminder" | "payment_details" | "custom" | "new_member" | "new_registration" | "daily_pass";
+  type?: "expiring_2days" | "expiring_today" | "manual" | "renewal" | "pt_extension" | "promotional" | "expiry_reminder" | "expired_reminder" | "payment_details" | "custom" | "new_member" | "new_registration" | "daily_pass" | "staff_credentials";
   customMessage?: string;
   isManual?: boolean;
   adminUserId?: string;
@@ -20,6 +20,15 @@ interface SendWhatsAppRequest {
   phone?: string;
   name?: string;
   endDate?: string;
+  
+  // Staff credentials specific
+  staffCredentials?: {
+    staffName: string;
+    staffPhone: string;
+    password?: string;
+    role?: string;
+    branches?: string[];
+  };
 }
 
 Deno.serve(async (req) => {
@@ -56,6 +65,7 @@ Deno.serve(async (req) => {
       phone,
       name,
       endDate,
+      staffCredentials,
     } = (await req.json()) as SendWhatsAppRequest;
 
     // Check if WhatsApp is enabled for the specific branch
@@ -429,6 +439,48 @@ Deno.serve(async (req) => {
         return { success: false, error: error.message };
       }
     };
+
+    // STAFF CREDENTIALS SEND
+    if (type === "staff_credentials" && staffCredentials) {
+      const { staffName, staffPhone, password, role, branches } = staffCredentials;
+      const formattedPhone = formatPhone(staffPhone);
+      
+      // Build staff credentials message
+      const roleLabel = role ? role.charAt(0).toUpperCase() + role.slice(1) : "Staff";
+      const branchList = branches && branches.length > 0 ? branches.join(", ") : branchName || "All Branches";
+      const gymDisplayName = branchName || "Pro Plus Fitness";
+      
+      let message = `🔐 *Staff Login Credentials*\n\n`;
+      message += `Hi ${staffName}, 👋\n\n`;
+      message += `Your login credentials for *${gymDisplayName}* Admin Portal:\n\n`;
+      message += `📱 *Phone:* ${staffPhone}\n`;
+      if (password) {
+        message += `🔑 *Password:* ${password}\n`;
+      }
+      message += `👤 *Role:* ${roleLabel}\n`;
+      message += `📍 *Branch(es):* ${branchList}\n\n`;
+      message += `🔗 *Login URL:* Access the admin portal and use the Staff Login tab.\n\n`;
+      message += `⚠️ Please keep your credentials secure and do not share them with others.\n\n`;
+      message += `— Team ${gymDisplayName}`;
+      
+      const result = await sendPeriskopeMessage(formattedPhone, message);
+      
+      // Log to a generic entry (using a placeholder member_id since it's required)
+      // We'll create a simple log without member_id reference
+      console.log("Staff credentials WhatsApp sent:", {
+        staffName,
+        staffPhone,
+        success: result.success,
+        error: result.error,
+      });
+      
+      return new Response(JSON.stringify(result), {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      });
+    }
 
     // DIRECT SEND (NO MEMBER LOOKUP)
     if (phone && name && endDate) {

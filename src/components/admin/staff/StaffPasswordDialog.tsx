@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/sonner";
 import { Staff } from "@/pages/admin/StaffManagement";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { useBranch } from "@/contexts/BranchContext";
 
 interface StaffPasswordDialogProps {
   open: boolean;
@@ -43,11 +44,41 @@ export const StaffPasswordDialog = ({
   const [showPassword, setShowPassword] = useState(false);
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const { currentBranch } = useBranch();
 
   const handleGeneratePassword = () => {
     const newPassword = generatePassword();
     setPassword(newPassword);
     setShowPassword(true);
+  };
+
+  const sendCredentialsViaWhatsApp = async (staffData: Staff, plainPassword: string) => {
+    try {
+      const branchNames = staffData.branch_assignments?.map((a) => a.branch_name) || [];
+      
+      const { data, error } = await supabase.functions.invoke("send-whatsapp", {
+        body: {
+          type: "staff_credentials",
+          branchId: currentBranch?.id,
+          branchName: currentBranch?.name,
+          staffCredentials: {
+            staffName: staffData.full_name,
+            staffPhone: staffData.phone,
+            password: plainPassword, // Send the plain password before it's hashed
+            role: staffData.role,
+            branches: branchNames,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      const response = typeof data === "string" ? JSON.parse(data) : data;
+      return response.success;
+    } catch (error) {
+      console.error("Failed to send WhatsApp:", error);
+      return false;
+    }
   };
 
   const handleSubmit = async () => {
@@ -70,7 +101,7 @@ export const StaffPasswordDialog = ({
         body: {
           staffId: staff.id,
           password,
-          sendWhatsApp,
+          sendWhatsApp: false, // We'll handle WhatsApp ourselves with the plain password
         },
       });
 
@@ -82,9 +113,17 @@ export const StaffPasswordDialog = ({
         throw new Error(response.error || "Failed to set password");
       }
 
+      // Send WhatsApp with credentials if enabled (before we lose the plain password)
+      let whatsAppSent = false;
+      if (sendWhatsApp && staff.phone) {
+        whatsAppSent = await sendCredentialsViaWhatsApp(staff, password);
+      }
+
       toast.success("Password set successfully", {
         description: sendWhatsApp
-          ? "Login credentials sent via WhatsApp"
+          ? whatsAppSent
+            ? "Login credentials sent via WhatsApp"
+            : "Password set but WhatsApp delivery failed"
           : "Staff can now login with this password",
       });
 
@@ -172,7 +211,7 @@ export const StaffPasswordDialog = ({
           </div>
 
           {staff?.password_hash && (
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+            <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning-foreground">
               ⚠️ This staff member already has a password. Setting a new password will replace the existing one.
             </div>
           )}
