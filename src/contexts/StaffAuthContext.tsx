@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranch } from "@/contexts/BranchContext";
 
 export interface StaffUser {
   id: string;
@@ -51,6 +52,9 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [branches, setBranches] = useState<StaffBranch[]>([]);
   const [session, setSession] = useState<StaffSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Get branch context to update restrictions
+  const { setStaffBranchRestriction } = useBranch();
 
   const clearAuth = () => {
     setStaffUser(null);
@@ -58,6 +62,21 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     setBranches([]);
     setSession(null);
     localStorage.removeItem(STORAGE_KEY);
+    // Clear branch restrictions when logging out
+    setStaffBranchRestriction(null);
+  };
+
+  // Apply branch restrictions based on staff branches
+  const applyBranchRestrictions = (staffBranches: StaffBranch[]) => {
+    if (staffBranches.length > 0) {
+      const primaryBranch = staffBranches.find(b => b.isPrimary);
+      setStaffBranchRestriction({
+        branchIds: staffBranches.map(b => b.id),
+        primaryBranchId: primaryBranch?.id,
+      });
+    } else {
+      setStaffBranchRestriction(null);
+    }
   };
 
   const verifySession = async (token: string): Promise<boolean> => {
@@ -75,7 +94,10 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       if (response?.valid) {
         setStaffUser(response.staff);
         setPermissions(response.permissions);
-        setBranches(response.branches || []);
+        const staffBranches = response.branches || [];
+        setBranches(staffBranches);
+        // Apply branch restrictions for staff
+        applyBranchRestrictions(staffBranches);
         return true;
       }
       return false;
@@ -144,7 +166,11 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       setSession(sessionData);
       setStaffUser(response.staff);
       setPermissions(response.permissions);
-      setBranches(response.branches || []);
+      const staffBranches = response.branches || [];
+      setBranches(staffBranches);
+      
+      // Apply branch restrictions for staff
+      applyBranchRestrictions(staffBranches);
 
       return { success: true };
     } catch (error: any) {
