@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useBranch } from "@/contexts/BranchContext";
+import { useStaffAuth, useStaffPermission } from "@/contexts/StaffAuthContext";
 import {
   HomeIcon,
   ChartBarIcon,
@@ -14,8 +15,6 @@ import {
   ClipboardDocumentListIcon,
   ChatBubbleLeftRightIcon,
   UserGroupIcon,
-  AcademicCapIcon,
-  Bars3BottomLeftIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
@@ -24,7 +23,6 @@ import {
   DocumentTextIcon as DocumentTextIconSolid,
   Cog6ToothIcon as Cog6ToothIconSolid,
   QrCodeIcon as QrCodeIconSolid,
-  AcademicCapIcon as AcademicCapIconSolid,
 } from "@heroicons/react/24/solid";
 import {
   Tooltip,
@@ -43,6 +41,7 @@ interface SidebarProps {
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
   isMobile?: boolean;
+  isStaffUser?: boolean;
 }
 
 interface NavItem {
@@ -51,38 +50,47 @@ interface NavItem {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   iconSolid?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   children?: { title: string; href: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }[];
+  // Permission requirements
+  requiresPermission?: "can_view_members" | "can_manage_members" | "can_access_financials" | "can_access_analytics" | "can_change_settings";
+  adminOnly?: boolean;
 }
 
-const navItems: NavItem[] = [
+// Navigation items with permission requirements
+const allNavItems: NavItem[] = [
   {
     title: "Dashboard",
     href: "/admin/dashboard",
     icon: HomeIcon,
     iconSolid: HomeIconSolid,
+    requiresPermission: "can_view_members", // Basic access
   },
   {
     title: "Analytics",
     href: "/admin/analytics",
     icon: ChartBarIcon,
     iconSolid: ChartBarIconSolid,
+    requiresPermission: "can_access_analytics",
   },
   {
     title: "Ledger",
     href: "/admin/ledger",
     icon: BookOpenIcon,
     iconSolid: BookOpenIconSolid,
+    requiresPermission: "can_access_financials",
   },
   {
     title: "Staff",
     href: "/admin/staff",
     icon: UserGroupIcon,
     iconSolid: UserGroupIcon,
+    adminOnly: true, // Only for admin users
   },
   {
     title: "Activity Logs",
     href: "/admin/logs",
     icon: DocumentTextIcon,
     iconSolid: DocumentTextIconSolid,
+    adminOnly: true,
     children: [
       { title: "Admin Activity", href: "/admin/logs?tab=activity", icon: ClipboardDocumentListIcon },
       { title: "User Activity", href: "/admin/logs?tab=user", icon: UserGroupIcon },
@@ -91,29 +99,57 @@ const navItems: NavItem[] = [
   },
 ];
 
-const bottomNavItems: NavItem[] = [
+const allBottomNavItems: NavItem[] = [
   {
     title: "QR Code",
     href: "/admin/qr-code",
     icon: QrCodeIcon,
     iconSolid: QrCodeIconSolid,
+    adminOnly: true,
   },
   {
     title: "Settings",
     href: "/admin/settings",
     icon: Cog6ToothIcon,
     iconSolid: Cog6ToothIconSolid,
+    requiresPermission: "can_change_settings",
   },
 ];
 
-export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false }: SidebarProps) => {
+export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, isStaffUser = false }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentBranch } = useBranch();
+  const { permissions, staffUser } = useStaffAuth();
   const [expandedItems, setExpandedItems] = useState<string[]>(["Activity Logs"]);
   
   // Get branch name dynamically from currentBranch
   const gymName = currentBranch?.name || "Pro Plus Fitness";
+
+  // Filter nav items based on permissions
+  const filterNavItems = (items: NavItem[]): NavItem[] => {
+    if (!isStaffUser) {
+      // Admin users see everything
+      return items;
+    }
+
+    return items.filter((item) => {
+      // Admin-only items are hidden for staff
+      if (item.adminOnly) return false;
+
+      // Check specific permission requirement
+      if (item.requiresPermission) {
+        // Staff role 'admin' has all permissions
+        if (staffUser?.role === "admin") return true;
+        return permissions?.[item.requiresPermission] || false;
+      }
+
+      return true;
+    });
+  };
+
+  const navItems = filterNavItems(allNavItems);
+  const bottomNavItems = filterNavItems(allBottomNavItems);
 
   const isActive = (href: string) => {
     if (href.includes("?")) {
@@ -257,9 +293,11 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false }:
         </nav>
 
         {/* Bottom Navigation */}
-        <div className="p-3 border-t border-border space-y-1.5">
-          {bottomNavItems.map((item) => renderNavItem(item, true))}
-        </div>
+        {bottomNavItems.length > 0 && (
+          <div className="p-3 border-t border-border space-y-1.5">
+            {bottomNavItems.map((item) => renderNavItem(item, true))}
+          </div>
+        )}
       </div>
     );
   }
@@ -286,7 +324,9 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false }:
               <h1 className="text-sm font-semibold text-foreground truncate">
                 {gymName}
               </h1>
-              <p className="text-xs text-muted-foreground">Admin Panel</p>
+              <p className="text-xs text-muted-foreground">
+                {isStaffUser ? `${staffUser?.role ? staffUser.role.charAt(0).toUpperCase() + staffUser.role.slice(1) : "Staff"} Panel` : "Admin Panel"}
+              </p>
             </div>
           )}
         </div>
@@ -303,9 +343,11 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false }:
       </nav>
 
       {/* Bottom Navigation */}
-      <div className="p-3 border-t border-border space-y-1.5">
-        {bottomNavItems.map((item) => renderNavItem(item, true))}
-      </div>
+      {bottomNavItems.length > 0 && (
+        <div className="p-3 border-t border-border space-y-1.5">
+          {bottomNavItems.map((item) => renderNavItem(item, true))}
+        </div>
+      )}
 
       {/* Toggle button - centered on right edge at middle of sidebar height */}
       <button
