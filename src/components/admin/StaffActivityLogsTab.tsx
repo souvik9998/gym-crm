@@ -121,13 +121,12 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
     
     setIsLoading(true);
     try {
-      // Fetch staff activity logs - only actions performed BY staff (not admin)
-      // Staff actions have admin_user_id = NULL, admin actions have admin_user_id set
+      // Fetch staff activity logs - actions performed BY staff (admin_user_id = NULL)
+      // This includes: login/logout, member actions, payment actions when done by staff
       const { data: activityData, error: activityError } = await supabase
         .from("admin_activity_logs")
         .select("*")
         .eq("branch_id", currentBranch.id)
-        .eq("activity_category", "staff")
         .is("admin_user_id", null) // Only show actions performed by staff, not admin
         .order("created_at", { ascending: false })
         .limit(500);
@@ -193,7 +192,6 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
         .from("admin_activity_logs")
         .select("*")
         .eq("branch_id", currentBranch.id)
-        .eq("activity_category", "staff")
         .is("admin_user_id", null) // Only show actions performed by staff, not admin
         .order("created_at", { ascending: false })
         .limit(500);
@@ -256,9 +254,25 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
         return <RefreshCw className="w-4 h-4 text-amber-500" />;
       case "staff_password_set":
       case "staff_password_updated":
+      case "staff_password_changed":
         return <Key className="w-4 h-4 text-purple-500" />;
       case "staff_permissions_updated":
         return <ShieldCheck className="w-4 h-4 text-indigo-500" />;
+      case "staff_logged_in":
+        return <LogIn className="w-4 h-4 text-green-500" />;
+      case "staff_logged_out":
+        return <LogOut className="w-4 h-4 text-orange-500" />;
+      case "member_added":
+      case "member_updated":
+      case "member_viewed":
+        return <UserPlus className="w-4 h-4 text-blue-500" />;
+      case "subscription_created":
+      case "subscription_renewed":
+      case "subscription_extended":
+        return <RefreshCw className="w-4 h-4 text-green-500" />;
+      case "cash_payment_added":
+      case "online_payment_received":
+        return <RefreshCw className="w-4 h-4 text-emerald-500" />;
       default:
         return <RefreshCw className="w-4 h-4 text-muted-foreground" />;
     }
@@ -272,7 +286,18 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
       staff_toggled: { label: "Status Changed", color: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
       staff_password_set: { label: "Password Set", color: "bg-purple-500/10 text-purple-500 border-purple-500/20" },
       staff_password_updated: { label: "Password Updated", color: "bg-purple-500/10 text-purple-500 border-purple-500/20" },
+      staff_password_changed: { label: "Password Changed", color: "bg-purple-500/10 text-purple-500 border-purple-500/20" },
       staff_permissions_updated: { label: "Permissions", color: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20" },
+      staff_logged_in: { label: "Logged In", color: "bg-green-500/10 text-green-500 border-green-500/20" },
+      staff_logged_out: { label: "Logged Out", color: "bg-orange-500/10 text-orange-500 border-orange-500/20" },
+      member_added: { label: "Member Added", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
+      member_updated: { label: "Member Updated", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
+      member_viewed: { label: "Member Viewed", color: "bg-slate-500/10 text-slate-500 border-slate-500/20" },
+      subscription_created: { label: "Subscription", color: "bg-green-500/10 text-green-500 border-green-500/20" },
+      subscription_renewed: { label: "Renewed", color: "bg-green-500/10 text-green-500 border-green-500/20" },
+      subscription_extended: { label: "Extended", color: "bg-green-500/10 text-green-500 border-green-500/20" },
+      cash_payment_added: { label: "Payment", color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
+      online_payment_received: { label: "Payment", color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
     };
     
     const config = labels[activityType] || { label: activityType.replace(/_/g, " "), color: "bg-muted text-muted-foreground" };
@@ -449,12 +474,16 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="staff_logged_in">Staff Logged In</SelectItem>
+                    <SelectItem value="staff_logged_out">Staff Logged Out</SelectItem>
+                    <SelectItem value="member_added">Member Added</SelectItem>
+                    <SelectItem value="member_updated">Member Updated</SelectItem>
+                    <SelectItem value="subscription_created">Subscription Created</SelectItem>
+                    <SelectItem value="subscription_renewed">Subscription Renewed</SelectItem>
+                    <SelectItem value="cash_payment_added">Payment Added</SelectItem>
                     <SelectItem value="staff_added">Staff Added</SelectItem>
                     <SelectItem value="staff_updated">Staff Updated</SelectItem>
-                    <SelectItem value="staff_deleted">Staff Deleted</SelectItem>
                     <SelectItem value="staff_toggled">Status Changed</SelectItem>
-                    <SelectItem value="staff_password_set">Password Set</SelectItem>
-                    <SelectItem value="staff_permissions_updated">Permissions Updated</SelectItem>
                   </SelectContent>
                 </Select>
                 <DateRangePicker
