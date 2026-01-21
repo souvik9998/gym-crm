@@ -15,6 +15,14 @@ import { toast } from "@/components/ui/sonner";
 import { Staff } from "@/pages/admin/StaffManagement";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { useBranch } from "@/contexts/BranchContext";
+import {
+  EyeIcon,
+  PencilSquareIcon,
+  BookOpenIcon,
+  CurrencyRupeeIcon,
+  ChartBarIcon,
+  Cog6ToothIcon,
+} from "@heroicons/react/24/outline";
 
 interface StaffPermissionsDialogProps {
   open: boolean;
@@ -32,30 +40,36 @@ interface Permissions {
   can_change_settings: boolean;
 }
 
-const PERMISSION_LABELS: Record<keyof Permissions, { label: string; description: string }> = {
+const PERMISSION_LABELS: Record<keyof Permissions, { label: string; description: string; icon: React.ComponentType<{ className?: string }> }> = {
   can_view_members: {
     label: "View Members",
     description: "Can view member list and profiles",
+    icon: EyeIcon,
   },
   can_manage_members: {
     label: "Manage Members",
     description: "Can create, edit, and update member records",
+    icon: PencilSquareIcon,
   },
   can_access_ledger: {
     label: "Ledger Access",
     description: "Can access income and expense ledger",
+    icon: BookOpenIcon,
   },
   can_access_payments: {
     label: "Payment Logs",
     description: "Can view payment history and records",
+    icon: CurrencyRupeeIcon,
   },
   can_access_analytics: {
     label: "Analytics Access",
     description: "Can view analytics and statistics dashboards",
+    icon: ChartBarIcon,
   },
   can_change_settings: {
     label: "Settings Access",
     description: "Can modify gym settings and configurations",
+    icon: Cog6ToothIcon,
   },
 };
 
@@ -181,25 +195,32 @@ export const StaffPermissionsDialog = ({
           </div>
 
           <div className="space-y-4">
-            {(Object.keys(PERMISSION_LABELS) as Array<keyof Permissions>).map((key) => (
-              <div
-                key={key}
-                className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
-              >
-                <div className="space-y-0.5">
-                  <Label className="text-sm font-medium">
-                    {PERMISSION_LABELS[key].label}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {PERMISSION_LABELS[key].description}
-                  </p>
+            {(Object.keys(PERMISSION_LABELS) as Array<keyof Permissions>).map((key) => {
+              const Icon = PERMISSION_LABELS[key].icon;
+              return (
+                <div
+                  key={key}
+                  className="flex items-center justify-between gap-3 p-3 bg-muted/30 rounded-lg"
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Icon className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                    <div className="space-y-0.5 flex-1 min-w-0">
+                      <Label className="text-sm font-medium block">
+                        {PERMISSION_LABELS[key].label}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {PERMISSION_LABELS[key].description}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={permissions[key]}
+                    onCheckedChange={() => togglePermission(key)}
+                    className="flex-shrink-0"
+                  />
                 </div>
-                <Switch
-                  checked={permissions[key]}
-                  onCheckedChange={() => togglePermission(key)}
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

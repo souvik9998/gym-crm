@@ -15,6 +15,7 @@ import {
   PencilIcon,
   KeyIcon,
   ShieldCheckIcon,
+  BuildingOfficeIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "@/components/ui/sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -23,6 +24,7 @@ import { Staff, StaffPermissions } from "@/pages/admin/StaffManagement";
 import { StaffPasswordDialog } from "./StaffPasswordDialog";
 import { StaffPermissionsDialog } from "./StaffPermissionsDialog";
 import { StaffBranchSelector } from "./StaffBranchSelector";
+import { StaffBranchAssignmentDialog } from "./StaffBranchAssignmentDialog";
 import { StaffCredentialsSection, hashPasswordForStorage } from "./StaffCredentialsSection";
 import { StaffInlinePermissions, InlinePermissions, getDefaultPermissions } from "./StaffInlinePermissions";
 import { StaffWhatsAppButton, sendStaffCredentialsWhatsApp } from "./StaffWhatsAppButton";
@@ -81,6 +83,10 @@ export const StaffTrainersTab = ({
     staff: null,
   });
   const [permissionsDialog, setPermissionsDialog] = useState<{ open: boolean; staff: Staff | null }>({
+    open: false,
+    staff: null,
+  });
+  const [branchAssignmentDialog, setBranchAssignmentDialog] = useState<{ open: boolean; staff: Staff | null }>({
     open: false,
     staff: null,
   });
@@ -724,6 +730,14 @@ export const StaffTrainersTab = ({
                         <Button
                           size="sm"
                           variant="outline"
+                          onClick={() => setBranchAssignmentDialog({ open: true, staff: trainer })}
+                          title="Manage Branch Assignments"
+                        >
+                          <BuildingOfficeIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={() => setPasswordDialog({ open: true, staff: trainer })}
                           title="Set Password"
                         >
@@ -785,6 +799,14 @@ export const StaffTrainersTab = ({
         open={permissionsDialog.open}
         onOpenChange={(open) => setPermissionsDialog({ ...permissionsDialog, open })}
         staff={permissionsDialog.staff}
+        onSuccess={onRefresh}
+      />
+
+      <StaffBranchAssignmentDialog
+        open={branchAssignmentDialog.open}
+        onOpenChange={(open) => setBranchAssignmentDialog({ ...branchAssignmentDialog, open })}
+        staff={branchAssignmentDialog.staff}
+        branches={branches}
         onSuccess={onRefresh}
       />
     </div>

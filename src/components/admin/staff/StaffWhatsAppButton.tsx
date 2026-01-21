@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import { Staff } from "@/pages/admin/StaffManagement";
 import { useBranch } from "@/contexts/BranchContext";
+import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 
 interface StaffWhatsAppButtonProps {
   staff: Staff;
@@ -88,7 +89,7 @@ export const StaffWhatsAppButton = ({
       title={canSend ? "Send credentials via WhatsApp" : "Set password first to send credentials"}
       className="gap-1"
     >
-      <span className="text-base">📱</span>
+      <ChatBubbleLeftRightIcon className="w-4 h-4" />
       {showLabel && (isSending ? "Sending..." : "WhatsApp")}
     </Button>
   );

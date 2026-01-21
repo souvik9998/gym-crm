@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Staff } from "@/pages/admin/StaffManagement";
-import { UserGroupIcon, AcademicCapIcon, CurrencyRupeeIcon, BuildingOfficeIcon } from "@heroicons/react/24/outline";
+import { UserGroupIcon, AcademicCapIcon, CurrencyRupeeIcon, BuildingOfficeIcon, KeyIcon } from "@heroicons/react/24/outline";
 
 interface StaffOverviewTabProps {
   allStaff: Staff[];
@@ -242,8 +242,8 @@ export const StaffOverviewTab = ({
                             <Badge variant="secondary">Inactive</Badge>
                           )}
                           {member.password_hash && (
-                            <Badge variant="outline" className="text-xs text-blue-600">
-                              🔑
+                            <Badge variant="outline" className="text-xs text-blue-600 flex items-center gap-1">
+                              <KeyIcon className="w-3 h-3" />
                             </Badge>
                           )}
                         </div>
