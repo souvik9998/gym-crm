@@ -529,6 +529,64 @@ async function handleDeleteCustomPackage(supabase: any, body: any, staffId: stri
   return { data: { success: true }, status: 200 };
 }
 
+// ============= BRANCH OPERATIONS =============
+
+async function handleUpdateBranch(supabase: any, body: any, staffId: string, staffDetails: any) {
+  const { branchId, name, address, phone, email } = body;
+
+  const hasPermission = await checkStaffPermission(supabase, staffId, "can_change_settings");
+  if (!hasPermission) {
+    return { error: "You don't have permission to change settings", status: 403 };
+  }
+
+  const hasBranchAccess = await checkStaffBranchAccess(supabase, staffId, branchId);
+  if (!hasBranchAccess) {
+    return { error: "You don't have access to this branch", status: 403 };
+  }
+
+  // Get old values for logging
+  const { data: oldBranch } = await supabase
+    .from("branches")
+    .select("*")
+    .eq("id", branchId)
+    .single();
+
+  // Prepare update data
+  const updateData: any = { updated_at: new Date().toISOString() };
+  if (name !== undefined) updateData.name = name;
+  if (address !== undefined) updateData.address = address;
+  if (phone !== undefined) updateData.phone = phone;
+  if (email !== undefined) updateData.email = email;
+
+  const { data, error } = await supabase
+    .from("branches")
+    .update(updateData)
+    .eq("id", branchId)
+    .select()
+    .single();
+
+  if (error) {
+    return { error: error.message, status: 500 };
+  }
+
+  await logStaffActivity(supabase, {
+    staffId,
+    staffName: staffDetails.full_name,
+    staffPhone: staffDetails.phone,
+    category: "branch",
+    type: "branch_updated",
+    description: `Staff "${staffDetails.full_name}" updated branch "${name || oldBranch?.name}"`,
+    branchId,
+    entityType: "branches",
+    entityId: branchId,
+    entityName: name || oldBranch?.name,
+    oldValue: oldBranch,
+    newValue: updateData,
+  });
+
+  return { data, status: 200 };
+}
+
 // ============= MEMBER OPERATIONS =============
 
 // Add a cash payment (requires can_manage_members)
@@ -835,6 +893,10 @@ Deno.serve(async (req) => {
         break;
       case "delete-custom-package":
         result = await handleDeleteCustomPackage(supabase, body, staffId, staffDetails);
+        break;
+      // Branch operations
+      case "update-branch":
+        result = await handleUpdateBranch(supabase, body, staffId, staffDetails);
         break;
       // Member operations
       case "add-cash-payment":

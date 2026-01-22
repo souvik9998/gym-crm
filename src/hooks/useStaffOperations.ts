@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 
 interface StaffOperationResult<T = any> {
@@ -18,16 +17,6 @@ export const useStaffOperations = () => {
     }
 
     try {
-      const { data, error } = await supabase.functions.invoke("staff-operations", {
-        body,
-        headers: {
-          Authorization: `Bearer ${session.token}`,
-        },
-      });
-
-      // The function URL includes the action as a query param
-      // But supabase.functions.invoke doesn't support query params directly
-      // So we'll pass action in the body instead
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-operations?action=${action}`,
         {
@@ -130,6 +119,17 @@ export const useStaffOperations = () => {
     return invokeStaffOperation("delete-custom-package", params);
   };
 
+  // Branch Operations (requires can_change_settings)
+  const updateBranch = async (params: {
+    branchId: string;
+    name?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+  }) => {
+    return invokeStaffOperation("update-branch", params);
+  };
+
   // Member Operations (requires can_manage_members)
   const addCashPayment = async (params: {
     branchId: string;
@@ -188,6 +188,8 @@ export const useStaffOperations = () => {
     addCustomPackage,
     updateCustomPackage,
     deleteCustomPackage,
+    // Branch Operations
+    updateBranch,
     // Member Operations
     addCashPayment,
     updateMember,
