@@ -28,6 +28,8 @@ import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { BranchManagement } from "@/components/admin/BranchManagement";
 import { useBranch } from "@/contexts/BranchContext";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { useStaffOperations } from "@/hooks/useStaffOperations";
 
 interface CustomPackage {
   id: string;
@@ -57,6 +59,8 @@ const AdminSettings = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { currentBranch } = useBranch();
+  const { isStaffLoggedIn, permissions } = useStaffAuth();
+  const staffOps = useStaffOperations();
   const [user, setUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -216,6 +220,25 @@ const AdminSettings = () => {
     const oldSettings = { gym_name: settings.gym_name, gym_phone: settings.gym_phone, gym_address: settings.gym_address };
     const newSettings = { gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress };
 
+    // Use staff operations if staff is logged in
+    if (isStaffLoggedIn) {
+      const { error } = await staffOps.updateGymSettings({
+        settingsId: settings.id,
+        branchId: currentBranch.id,
+        gymName,
+        gymPhone,
+        gymAddress,
+      });
+      setIsSaving(false);
+      if (error) {
+        toast.error("Error", { description: error });
+      } else {
+        toast.success("Settings saved successfully");
+      }
+      return;
+    }
+
+    // Admin flow
     const { error } = await supabase
       .from("gym_settings")
       .update({
@@ -267,6 +290,25 @@ const AdminSettings = () => {
       return;
     }
 
+    // Use staff operations if staff is logged in
+    if (isStaffLoggedIn) {
+      const { error } = await staffOps.addMonthlyPackage({
+        branchId: currentBranch.id,
+        months,
+        price: Number(newMonthlyPackage.price),
+        joiningFee: Number(newMonthlyPackage.joining_fee) || 0,
+      });
+      if (error) {
+        toast.error("Error", { description: error });
+      } else {
+        toast.success("Package added");
+        setNewMonthlyPackage({ months: "", price: "", joining_fee: "" });
+        fetchData();
+      }
+      return;
+    }
+
+    // Admin flow
     const { error } = await supabase.from("monthly_packages").insert({
       months,
       price: Number(newMonthlyPackage.price),
@@ -303,6 +345,25 @@ const AdminSettings = () => {
     const pkg = monthlyPackages.find(p => p.id === id);
     const oldValue = pkg ? { price: pkg.price, joining_fee: pkg.joining_fee } : null;
     
+    // Use staff operations if staff is logged in
+    if (isStaffLoggedIn && currentBranch) {
+      const { error } = await staffOps.updateMonthlyPackage({
+        packageId: id,
+        branchId: currentBranch.id,
+        price: Number(editMonthlyData.price),
+        joiningFee: Number(editMonthlyData.joining_fee) || 0,
+      });
+      if (error) {
+        toast.error("Error", { description: error });
+      } else {
+        toast.success("Package updated");
+        setEditingMonthlyId(null);
+        fetchData();
+      }
+      return;
+    }
+
+    // Admin flow
     const { error } = await supabase
       .from("monthly_packages")
       .update({
@@ -335,6 +396,23 @@ const AdminSettings = () => {
 
   const handleToggleMonthlyPackage = async (id: string, isActive: boolean) => {
     const pkg = monthlyPackages.find(p => p.id === id);
+    
+    // Use staff operations if staff is logged in
+    if (isStaffLoggedIn && currentBranch) {
+      const { error } = await staffOps.updateMonthlyPackage({
+        packageId: id,
+        branchId: currentBranch.id,
+        isActive,
+      });
+      if (error) {
+        toast.error("Error", { description: error });
+      } else {
+        fetchData();
+      }
+      return;
+    }
+
+    // Admin flow
     await supabase.from("monthly_packages").update({ is_active: isActive }).eq("id", id);
     await logAdminActivity({
       category: "packages",
@@ -356,6 +434,22 @@ const AdminSettings = () => {
       description: `Are you sure you want to delete the ${months} month package?`,
       variant: "destructive",
       onConfirm: async () => {
+        // Use staff operations if staff is logged in
+        if (isStaffLoggedIn && currentBranch) {
+          const { error } = await staffOps.deleteMonthlyPackage({
+            packageId: id,
+            branchId: currentBranch.id,
+          });
+          if (error) {
+            toast.error("Error", { description: error });
+          } else {
+            fetchData();
+            toast.success("Package deleted");
+          }
+          return;
+        }
+
+        // Admin flow
         await supabase.from("monthly_packages").delete().eq("id", id);
         await logAdminActivity({
           category: "packages",
@@ -391,6 +485,25 @@ const AdminSettings = () => {
       return;
     }
 
+    // Use staff operations if staff is logged in
+    if (isStaffLoggedIn) {
+      const { error } = await staffOps.addCustomPackage({
+        branchId: currentBranch.id,
+        name: newPackage.name,
+        durationDays,
+        price: Number(newPackage.price),
+      });
+      if (error) {
+        toast.error("Error", { description: error });
+      } else {
+        toast.success("Package added");
+        setNewPackage({ name: "", duration_days: "", price: "" });
+        fetchData();
+      }
+      return;
+    }
+
+    // Admin flow
     const { error } = await supabase.from("custom_packages").insert({
       name: newPackage.name,
       duration_days: durationDays,
@@ -436,6 +549,25 @@ const AdminSettings = () => {
     const pkg = customPackages.find(p => p.id === id);
     const oldValue = pkg ? { name: pkg.name, price: pkg.price } : null;
 
+    // Use staff operations if staff is logged in
+    if (isStaffLoggedIn && currentBranch) {
+      const { error } = await staffOps.updateCustomPackage({
+        packageId: id,
+        branchId: currentBranch.id,
+        name: editPackageData.name,
+        price: Number(editPackageData.price),
+      });
+      if (error) {
+        toast.error("Error", { description: error });
+      } else {
+        toast.success("Package updated");
+        setEditingPackageId(null);
+        fetchData();
+      }
+      return;
+    }
+
+    // Admin flow
     const { error } = await supabase
       .from("custom_packages")
       .update({
@@ -468,6 +600,23 @@ const AdminSettings = () => {
 
   const handleTogglePackage = async (id: string, isActive: boolean) => {
     const pkg = customPackages.find(p => p.id === id);
+    
+    // Use staff operations if staff is logged in
+    if (isStaffLoggedIn && currentBranch) {
+      const { error } = await staffOps.updateCustomPackage({
+        packageId: id,
+        branchId: currentBranch.id,
+        isActive,
+      });
+      if (error) {
+        toast.error("Error", { description: error });
+      } else {
+        fetchData();
+      }
+      return;
+    }
+
+    // Admin flow
     await supabase.from("custom_packages").update({ is_active: isActive }).eq("id", id);
     await logAdminActivity({
       category: "packages",
@@ -491,6 +640,23 @@ const AdminSettings = () => {
       variant: "destructive",
       onConfirm: async () => {
         const pkg = customPackages.find(p => p.id === id);
+        
+        // Use staff operations if staff is logged in
+        if (isStaffLoggedIn && currentBranch) {
+          const { error } = await staffOps.deleteCustomPackage({
+            packageId: id,
+            branchId: currentBranch.id,
+          });
+          if (error) {
+            toast.error("Error", { description: error });
+          } else {
+            fetchData();
+            toast.success("Package deleted");
+          }
+          return;
+        }
+
+        // Admin flow
         await supabase.from("custom_packages").delete().eq("id", id);
         await logAdminActivity({
           category: "packages",
@@ -817,8 +983,8 @@ const AdminSettings = () => {
                         
                         let settingsId = settings?.id;
                         
-                        // If settings don't exist, create them first
-                        if (!settingsId) {
+                        // If settings don't exist, create them first (admin only)
+                        if (!settingsId && !isStaffLoggedIn) {
                           const { data: newSettings, error: createError } = await supabase
                             .from("gym_settings")
                             .insert({
@@ -840,9 +1006,48 @@ const AdminSettings = () => {
                           
                           settingsId = newSettings.id;
                           setSettings({ ...settings, id: settingsId } as GymSettings);
+                          setWhatsappEnabled(checked);
+                          await logAdminActivity({
+                            category: "settings",
+                            type: "whatsapp_toggled",
+                            description: `${checked ? "Enabled" : "Disabled"} WhatsApp messaging for ${currentBranch?.name || "branch"}`,
+                            entityType: "gym_settings",
+                            entityId: settingsId,
+                            entityName: currentBranch?.name || "Gym Settings",
+                            oldValue: { whatsapp_enabled: !checked },
+                            newValue: { whatsapp_enabled: checked },
+                            branchId: currentBranch?.id,
+                          });
+                          toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled");
+                          return;
+                        }
+
+                        if (!settingsId) {
+                          toast.error("Settings not found");
+                          return;
                         }
                         
-                        // Update the WhatsApp enabled status
+                        // Use staff operations if staff is logged in
+                        if (isStaffLoggedIn) {
+                          const { error } = await staffOps.toggleWhatsApp({
+                            settingsId,
+                            branchId: currentBranch.id,
+                            enabled: checked,
+                          });
+                          if (error) {
+                            toast.error("Error", { description: error });
+                          } else {
+                            setWhatsappEnabled(checked);
+                            toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled", {
+                              description: checked 
+                                ? `WhatsApp messaging is now active for ${currentBranch?.name || "this branch"}` 
+                                : `All WhatsApp messages are now disabled for ${currentBranch?.name || "this branch"}`
+                            });
+                          }
+                          return;
+                        }
+                        
+                        // Admin flow - Update the WhatsApp enabled status
                         const { error } = await supabase
                           .from("gym_settings")
                           .update({ whatsapp_enabled: checked })
