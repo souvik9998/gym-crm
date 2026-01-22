@@ -29,7 +29,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 export const BranchManagement = () => {
-  const { branches, currentBranch, setCurrentBranch, refreshBranches } = useBranch();
+  const { branches, allBranches, currentBranch, setCurrentBranch, refreshBranches, isStaffRestricted } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
   const { isAdmin } = useIsAdmin();
   const staffOps = useStaffOperations();
@@ -40,6 +40,13 @@ export const BranchManagement = () => {
     open: false,
     branch: null,
   });
+  const [finalDeleteConfirm, setFinalDeleteConfirm] = useState<{ open: boolean; branch: Branch | null }>({
+    open: false,
+    branch: null,
+  });
+  
+  // For admins, show all branches. For staff, show only their assigned branches.
+  const displayBranches = isAdmin ? allBranches : branches;
   
   const [formData, setFormData] = useState({
     name: "",
@@ -171,7 +178,7 @@ export const BranchManagement = () => {
             address: formData.address.trim() || null,
             phone: formData.phone.trim() || null,
             email: formData.email.trim() || null,
-            is_default: branches.length === 0,
+            is_default: displayBranches.length === 0,
           })
           .select()
           .single();
@@ -209,7 +216,7 @@ export const BranchManagement = () => {
         toast.success("Branch added successfully");
         
         // Auto-select if first branch
-        if (branches.length === 0 && data) {
+        if (displayBranches.length === 0 && data) {
           setCurrentBranch(data as Branch);
         }
       }
@@ -263,18 +270,30 @@ export const BranchManagement = () => {
     }
   };
 
-  const handleDelete = async () => {
+  // First confirmation handler - triggers second confirmation
+  const handleFirstDeleteConfirm = () => {
     if (!deleteConfirm.branch) return;
-
+    
     const branch = deleteConfirm.branch;
 
-    if (branch.is_default && branches.length > 1) {
+    if (branch.is_default && displayBranches.length > 1) {
       toast.error("Cannot delete default branch", {
         description: "Please set another branch as default first",
       });
       setDeleteConfirm({ open: false, branch: null });
       return;
     }
+    
+    // Close first dialog and open second (final) confirmation
+    setDeleteConfirm({ open: false, branch: null });
+    setFinalDeleteConfirm({ open: true, branch });
+  };
+
+  // Final delete handler
+  const handleFinalDelete = async () => {
+    if (!finalDeleteConfirm.branch) return;
+
+    const branch = finalDeleteConfirm.branch;
 
     setIsLoading(true);
     try {
@@ -302,7 +321,7 @@ export const BranchManagement = () => {
       
       // If deleted branch was current, switch to another branch
       if (currentBranch?.id === branch.id) {
-        const otherBranch = branches.find(b => b.id !== branch.id);
+        const otherBranch = displayBranches.find(b => b.id !== branch.id);
         if (otherBranch) {
           setCurrentBranch(otherBranch);
         }
@@ -313,7 +332,7 @@ export const BranchManagement = () => {
       toast.error("Failed to delete branch", { description: error.message });
     } finally {
       setIsLoading(false);
-      setDeleteConfirm({ open: false, branch: null });
+      setFinalDeleteConfirm({ open: false, branch: null });
     }
   };
 
@@ -342,7 +361,7 @@ export const BranchManagement = () => {
         </div>
       </CardHeader>
       <CardContent>
-        {branches.length === 0 ? (
+        {displayBranches.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <BuildingOffice2Icon className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p className="font-medium">No branches yet</p>
@@ -350,7 +369,7 @@ export const BranchManagement = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {branches.map((branch) => (
+            {displayBranches.map((branch) => (
               <div
                 key={branch.id}
                 className="flex items-center justify-between p-4 bg-muted/50 rounded-lg"
@@ -390,8 +409,8 @@ export const BranchManagement = () => {
                       variant="ghost"
                       size="icon"
                       onClick={() => setDeleteConfirm({ open: true, branch })}
-                      disabled={isLoading || (branch.is_default && branches.length > 1)}
-                      title={branch.is_default && branches.length > 1 ? "Cannot delete default branch" : "Delete branch"}
+                      disabled={isLoading || (branch.is_default && displayBranches.length > 1)}
+                      title={branch.is_default && displayBranches.length > 1 ? "Cannot delete default branch" : "Delete branch"}
                     >
                       <TrashIcon className="w-4 h-4 text-destructive" />
                     </Button>
@@ -476,15 +495,27 @@ export const BranchManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
+      {/* First Delete Confirmation */}
       <ConfirmDialog
         open={deleteConfirm.open}
         onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
         title="Delete Branch"
-        description={`Are you sure you want to delete "${deleteConfirm.branch?.name}"? This action cannot be undone.`}
-        confirmText="Delete"
+        description={`Are you sure you want to delete "${deleteConfirm.branch?.name}"? This action cannot be undone and will remove all associated data.`}
+        confirmText="Yes, Delete"
         variant="destructive"
-        onConfirm={handleDelete}
+        onConfirm={handleFirstDeleteConfirm}
+      />
+
+      {/* Final Delete Confirmation (Double Confirmation) */}
+      <ConfirmDialog
+        open={finalDeleteConfirm.open}
+        onOpenChange={(open) => setFinalDeleteConfirm({ ...finalDeleteConfirm, open })}
+        title="⚠️ Final Confirmation"
+        description={`This is your FINAL confirmation. Deleting "${finalDeleteConfirm.branch?.name}" will permanently remove all members, payments, packages, and settings associated with this branch. Are you absolutely sure?`}
+        confirmText="Delete Permanently"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={handleFinalDelete}
       />
     </Card>
   );
