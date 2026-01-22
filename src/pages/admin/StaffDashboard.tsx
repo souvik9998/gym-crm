@@ -482,6 +482,19 @@ const StaffDashboard = () => {
                         </PopoverContent>
                       </Popover>
 
+                      {/* Cash Payment Button - Only for staff with can_manage_members */}
+                      {canRecordPayments && (
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={() => setIsAddPaymentOpen(true)} 
+                          className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                          title="Record Cash Payment"
+                        >
+                          <CreditCardIcon className="w-4 h-4" />
+                        </Button>
+                      )}
+
                       {/* Add Member Button */}
                       {canManageMembers && (
                         <Button

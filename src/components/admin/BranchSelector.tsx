@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import {
   BuildingOffice2Icon,
   ChevronDownIcon,
@@ -32,6 +33,7 @@ import { cn } from "@/lib/utils";
 
 export const BranchSelector = () => {
   const { branches, currentBranch, setCurrentBranch, refreshBranches, isStaffRestricted } = useBranch();
+  const { isAdmin } = useIsAdmin();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -120,8 +122,8 @@ export const BranchSelector = () => {
     }
   };
 
-  // For staff with only one branch, show a simpler view
-  if (isStaffRestricted && branches.length === 1) {
+  // For staff with only one branch, show a simpler view (but not for admins)
+  if (isStaffRestricted && !isAdmin && branches.length === 1) {
     return (
       <div className="flex items-center gap-2 h-10 px-3 border border-border/50 rounded-md bg-muted/30">
         <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -141,8 +143,8 @@ export const BranchSelector = () => {
   }
 
   if (branches.length === 0 && !currentBranch) {
-    // Don't show add button for staff users
-    if (isStaffRestricted) {
+    // Don't show add button for staff users (but allow for admins)
+    if (isStaffRestricted && !isAdmin) {
       return (
         <div className="flex items-center gap-2 h-10 px-3 border border-destructive/30 rounded-md bg-destructive/5">
           <BuildingOffice2Icon className="w-4 h-4 text-destructive" />
@@ -257,8 +259,8 @@ export const BranchSelector = () => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[240px] p-1 bg-white dark:bg-card border shadow-lg">
-          {/* Show restricted indicator for staff */}
-          {isStaffRestricted && (
+          {/* Show restricted indicator for staff (not for admins) */}
+          {isStaffRestricted && !isAdmin && (
             <div className="px-3 py-2 text-xs text-muted-foreground border-b mb-1 flex items-center gap-2">
               <LockClosedIcon className="w-3 h-3" />
               <span>Assigned branches only</span>
@@ -291,8 +293,8 @@ export const BranchSelector = () => {
             </DropdownMenuItem>
           ))}
           
-          {/* Only show "Add New Branch" for non-staff users */}
-          {!isStaffRestricted && (
+          {/* Show "Add New Branch" for admins (not for staff) */}
+          {(!isStaffRestricted || isAdmin) && (
             <>
               <DropdownMenuSeparator className="my-1" />
               <DropdownMenuItem
@@ -312,8 +314,8 @@ export const BranchSelector = () => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Add branch dialog - only for non-staff users */}
-      {!isStaffRestricted && (
+      {/* Add branch dialog - for admins (not for staff) */}
+      {(!isStaffRestricted || isAdmin) && (
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>

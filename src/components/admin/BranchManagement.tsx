@@ -12,6 +12,7 @@ import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useStaffOperations } from "@/hooks/useStaffOperations";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,7 @@ import {
 export const BranchManagement = () => {
   const { branches, currentBranch, setCurrentBranch, refreshBranches } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
+  const { isAdmin } = useIsAdmin();
   const staffOps = useStaffOperations();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
@@ -157,7 +159,7 @@ export const BranchManagement = () => {
         }
       } else {
         // Staff cannot create new branches - only admins can
-        if (isStaffLoggedIn) {
+        if (isStaffLoggedIn && !isAdmin) {
           toast.error("Only admins can create new branches");
           setIsLoading(false);
           return;
@@ -325,13 +327,13 @@ export const BranchManagement = () => {
               Gym Branches
             </CardTitle>
             <CardDescription>
-              {isStaffLoggedIn 
+              {isStaffLoggedIn && !isAdmin
                 ? "View and edit branch details for your assigned branches" 
                 : "Manage gym branches"}
             </CardDescription>
           </div>
-          {/* Only show Add Branch button for admins */}
-          {!isStaffLoggedIn && (
+          {/* Show Add Branch button for admins (not for staff) */}
+          {(!isStaffLoggedIn || isAdmin) && (
             <Button onClick={handleOpenAdd} className="gap-2">
               <PlusIcon className="w-4 h-4" />
               Add Branch
@@ -382,8 +384,8 @@ export const BranchManagement = () => {
                   >
                     <PencilIcon className="w-4 h-4 text-muted-foreground" />
                   </Button>
-                  {/* Only show delete button for admins */}
-                  {!isStaffLoggedIn && (
+                  {/* Show delete button for admins (not for staff) */}
+                  {(!isStaffLoggedIn || isAdmin) && (
                     <Button
                       variant="ghost"
                       size="icon"

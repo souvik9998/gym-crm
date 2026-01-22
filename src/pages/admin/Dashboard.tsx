@@ -35,6 +35,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { useBranch } from "@/contexts/BranchContext";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useDebounce } from "@/hooks/useDebounce";
 import { CACHE_KEYS, STALE_TIMES, useInvalidateQueries, persistCache, getCachedData } from "@/hooks/useQueryCache";
 import { DashboardStatsSkeleton } from "@/components/ui/skeleton-loaders";
@@ -212,8 +214,13 @@ const fetchDashboardStats = async (branchId?: string): Promise<DashboardStats> =
 
 const AdminDashboard = () => {
   const { currentBranch } = useBranch();
+  const { isStaffLoggedIn, permissions } = useStaffAuth();
+  const { isAdmin } = useIsAdmin();
   const queryClient = useQueryClient();
   const { invalidateMembers, invalidatePayments } = useInvalidateQueries();
+  
+  // Check if user can manage members (admin or staff with can_manage_members permission)
+  const canManageMembers = isAdmin || (isStaffLoggedIn && permissions?.can_manage_members === true);
   
   // Search with debouncing
   const [searchInput, setSearchInput] = useState("");
@@ -492,26 +499,30 @@ const AdminDashboard = () => {
                       <ArrowDownTrayIcon className="w-4 h-4" />
                     </Button>
                     
-                    {/* Cash Payment Button */}
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      onClick={() => setIsAddPaymentOpen(true)} 
-                      className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
-                      title="Cash Payment"
-                    >
-                      <CreditCardIcon className="w-4 h-4" />
-                    </Button>
+                    {/* Cash Payment Button - Only for admins or staff with can_manage_members */}
+                    {canManageMembers && (
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={() => setIsAddPaymentOpen(true)} 
+                        className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                        title="Cash Payment"
+                      >
+                        <CreditCardIcon className="w-4 h-4" />
+                      </Button>
+                    )}
                     
-                    {/* Add Member Button */}
-                    <Button 
-                      size="sm"
-                      onClick={() => setIsAddMemberOpen(true)} 
-                      className="gap-1.5 h-9 bg-foreground text-background hover:bg-foreground/90"
-                    >
-                      <PlusIcon className="w-4 h-4" />
-                      <span className="hidden sm:inline">Add Member</span>
-                    </Button>
+                    {/* Add Member Button - Only for admins or staff with can_manage_members */}
+                    {canManageMembers && (
+                      <Button 
+                        size="sm"
+                        onClick={() => setIsAddMemberOpen(true)} 
+                        className="gap-1.5 h-9 bg-foreground text-background hover:bg-foreground/90"
+                      >
+                        <PlusIcon className="w-4 h-4" />
+                        <span className="hidden sm:inline">Add Member</span>
+                      </Button>
+                    )}
                   </div>
                 </div>
                 

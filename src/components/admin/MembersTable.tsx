@@ -28,6 +28,8 @@ import { cn } from "@/lib/utils";
 import type { MemberFilterValue } from "./MemberFilter";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { exportToExcel } from "@/utils/exportToExcel";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useBranch } from "@/contexts/BranchContext";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/ui/pagination-controls";
@@ -72,6 +74,8 @@ export const MembersTable = ({
   sortOrder: externalSortOrder
 }: MembersTableProps) => {
   const { currentBranch } = useBranch();
+  const { isStaffLoggedIn, permissions } = useStaffAuth();
+  const { isAdmin } = useIsAdmin();
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
@@ -82,6 +86,9 @@ export const MembersTable = ({
     memberId: "",
     memberName: "",
   });
+  
+  // Check if user can manage members (admin or staff with can_manage_members permission)
+  const canManageMembers = isAdmin || (isStaffLoggedIn && permissions?.can_manage_members === true);
   // Map external sortBy to internal sortField
   const mapSortByToField = (sortBy?: "name" | "join_date" | "end_date"): SortField => {
     if (!sortBy) return "name";
@@ -1008,53 +1015,63 @@ export const MembersTable = ({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {/* Update User */}
-                      <DropdownMenuItem onClick={() => setEditingMember(member)}>
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Update User
-                      </DropdownMenuItem>
-                      
-                      {/* Send Promotional Message */}
-                      <DropdownMenuItem 
-                        onClick={(e) => handleSendPromotional(member, e)}
-                        disabled={sendingWhatsApp === member.id}
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        {sendingWhatsApp === member.id ? "Sending..." : "Send Promotional Message"}
-                      </DropdownMenuItem>
-                      
-                      {/* Send Subscription Expiry Reminder - Only for Expiring Soon */}
-                      {isExpiringSoon(member) && (
-                        <DropdownMenuItem 
-                          onClick={(e) => handleSendExpiryReminder(member, e)}
-                          disabled={sendingWhatsApp === member.id}
-                        >
-                          <Clock className="w-4 h-4 mr-2" />
-                          Send Expiry Reminder
-                        </DropdownMenuItem>
+                      {/* Only show edit/update options if user can manage members */}
+                      {canManageMembers && (
+                        <>
+                          {/* Update User */}
+                          <DropdownMenuItem onClick={() => setEditingMember(member)}>
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Update User
+                          </DropdownMenuItem>
+                          
+                          {/* Send Promotional Message */}
+                          <DropdownMenuItem 
+                            onClick={(e) => handleSendPromotional(member, e)}
+                            disabled={sendingWhatsApp === member.id}
+                          >
+                            <MessageCircle className="w-4 h-4 mr-2" />
+                            {sendingWhatsApp === member.id ? "Sending..." : "Send Promotional Message"}
+                          </DropdownMenuItem>
+                          
+                          {/* Send Subscription Expiry Reminder - Only for Expiring Soon */}
+                          {isExpiringSoon(member) && (
+                            <DropdownMenuItem 
+                              onClick={(e) => handleSendExpiryReminder(member, e)}
+                              disabled={sendingWhatsApp === member.id}
+                            >
+                              <Clock className="w-4 h-4 mr-2" />
+                              Send Expiry Reminder
+                            </DropdownMenuItem>
+                          )}
+                          
+                          {/* Send Expired Reminder - Only for Expired members */}
+                          {isExpired(member) && !isInactive(member) && (
+                            <DropdownMenuItem 
+                              onClick={(e) => handleSendExpiredReminder(member, e)}
+                              disabled={sendingWhatsApp === member.id}
+                            >
+                              <AlertTriangle className="w-4 h-4 mr-2" />
+                              Send Expired Reminder
+                            </DropdownMenuItem>
+                          )}
+                          
+                          {/* Send Payment Details/Bill */}
+                          <DropdownMenuItem 
+                            onClick={(e) => handleSendPaymentDetails(member, e)}
+                            disabled={sendingWhatsApp === member.id}
+                          >
+                            <Receipt className="w-4 h-4 mr-2" />
+                            Send Payment Details
+                          </DropdownMenuItem>
+                        </>
                       )}
                       
-                      {/* Send Expired Reminder - Only for Expired members */}
-                      {isExpired(member) && !isInactive(member) && (
-                        <DropdownMenuItem 
-                          onClick={(e) => handleSendExpiredReminder(member, e)}
-                          disabled={sendingWhatsApp === member.id}
-                        >
-                          <AlertTriangle className="w-4 h-4 mr-2" />
-                          Send Expired Reminder
+                      {/* If user only has view access, show message */}
+                      {!canManageMembers && (
+                        <DropdownMenuItem disabled>
+                          <span className="text-muted-foreground text-sm">View only - No edit permissions</span>
                         </DropdownMenuItem>
                       )}
-                      
-                      {/* Send Payment Details/Bill */}
-                      <DropdownMenuItem 
-                        onClick={(e) => handleSendPaymentDetails(member, e)}
-                        disabled={sendingWhatsApp === member.id}
-                      >
-                        <Receipt className="w-4 h-4 mr-2" />
-                        Send Payment Details
-                      </DropdownMenuItem>
-                      
-                      
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
