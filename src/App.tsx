@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { BranchProvider, useBranch } from "@/contexts/BranchContext";
 import { StaffAuthProvider, useStaffAuth } from "@/contexts/StaffAuthContext";
 import { PageLoader } from "@/components/ui/skeleton-loaders";
+import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import Index from "./pages/Index";
 import Register from "./pages/Register";
 import Renew from "./pages/Renew";
@@ -24,6 +25,7 @@ const AdminAnalytics = lazy(() => import("./pages/admin/Analytics"));
 const AdminLedger = lazy(() => import("./pages/admin/Ledger"));
 const Logs = lazy(() => import("./pages/admin/Logs"));
 const StaffManagement = lazy(() => import("./pages/admin/StaffManagement"));
+const TrainersPage = lazy(() => import("./pages/admin/Trainers"));
 
 // Optimized QueryClient configuration
 const queryClient = new QueryClient({
@@ -71,6 +73,7 @@ const App = () => (
             <Toaster />
             <BrowserRouter>
             <Routes>
+              {/* Public routes */}
               <Route path="/" element={<Index />} />
               <Route path="/register" element={<Register />} />
               <Route path="/renew" element={<Renew />} />
@@ -78,47 +81,76 @@ const App = () => (
               <Route path="/success" element={<Success />} />
               <Route path="/profile" element={<MemberProfile />} />
               <Route path="/admin/login" element={<AdminLogin />} />
+              
+              {/* Admin-only routes */}
               <Route path="/admin/dashboard" element={
                 <Suspense fallback={<PageLoader />}>
-                  <AdminDashboard />
-                </Suspense>
-              } />
-              <Route path="/admin/qr-code" element={
-                <Suspense fallback={<PageLoader />}>
-                  <AdminQRCode />
-                </Suspense>
-              } />
-              <Route path="/admin/settings" element={
-                <Suspense fallback={<PageLoader />}>
-                  <AdminSettings />
-                </Suspense>
-              } />
-              <Route path="/admin/analytics" element={
-                <Suspense fallback={<PageLoader />}>
-                  <AdminAnalytics />
-                </Suspense>
-              } />
-              <Route path="/admin/ledger" element={
-                <Suspense fallback={<PageLoader />}>
-                  <AdminLedger />
-                </Suspense>
-              } />
-              <Route path="/admin/logs" element={
-                <Suspense fallback={<PageLoader />}>
-                  <Logs />
+                  <ProtectedRoute requiredPermission="admin_only">
+                    <AdminDashboard />
+                  </ProtectedRoute>
                 </Suspense>
               } />
               <Route path="/admin/staff" element={
                 <Suspense fallback={<PageLoader />}>
-                  <StaffManagement />
+                  <ProtectedRoute requiredPermission="admin_only">
+                    <StaffManagement />
+                  </ProtectedRoute>
                 </Suspense>
               } />
-              {/* Staff Dashboard Route */}
+              <Route path="/admin/trainers" element={
+                <Suspense fallback={<PageLoader />}>
+                  <ProtectedRoute requiredPermission="admin_only">
+                    <TrainersPage />
+                  </ProtectedRoute>
+                </Suspense>
+              } />
+              <Route path="/admin/logs" element={
+                <Suspense fallback={<PageLoader />}>
+                  <ProtectedRoute requiredPermission="admin_only">
+                    <Logs />
+                  </ProtectedRoute>
+                </Suspense>
+              } />
+              
+              {/* Permission-gated routes for staff */}
+              <Route path="/admin/qr-code" element={
+                <Suspense fallback={<PageLoader />}>
+                  <ProtectedRoute requiredPermission="can_change_settings">
+                    <AdminQRCode />
+                  </ProtectedRoute>
+                </Suspense>
+              } />
+              <Route path="/admin/settings" element={
+                <Suspense fallback={<PageLoader />}>
+                  <ProtectedRoute requiredPermission="can_change_settings">
+                    <AdminSettings />
+                  </ProtectedRoute>
+                </Suspense>
+              } />
+              <Route path="/admin/analytics" element={
+                <Suspense fallback={<PageLoader />}>
+                  <ProtectedRoute requiredPermission="can_access_analytics">
+                    <AdminAnalytics />
+                  </ProtectedRoute>
+                </Suspense>
+              } />
+              <Route path="/admin/ledger" element={
+                <Suspense fallback={<PageLoader />}>
+                  <ProtectedRoute requiredPermission="can_access_ledger">
+                    <AdminLedger />
+                  </ProtectedRoute>
+                </Suspense>
+              } />
+              
+              {/* Staff Dashboard Route - staff only */}
               <Route path="/staff/dashboard" element={
                 <Suspense fallback={<PageLoader />}>
-                  <StaffDashboard />
+                  <ProtectedRoute staffOnly>
+                    <StaffDashboard />
+                  </ProtectedRoute>
                 </Suspense>
               } />
+              
               {/* Branch-specific routes */}
               <Route path="/b/:branchId" element={<Index />} />
               <Route path="/b/:branchId/register" element={<Register />} />

@@ -529,6 +529,243 @@ async function handleDeleteCustomPackage(supabase: any, body: any, staffId: stri
   return { data: { success: true }, status: 200 };
 }
 
+// ============= MEMBER OPERATIONS =============
+
+// Add a cash payment (requires can_manage_members)
+async function handleAddCashPayment(supabase: any, body: any, staffId: string, staffDetails: any) {
+  const { branchId, memberId, amount, notes, paymentType } = body;
+
+  // Can manage members permission allows recording cash payments
+  const hasPermission = await checkStaffPermission(supabase, staffId, "can_manage_members");
+  if (!hasPermission) {
+    return { error: "You don't have permission to record payments", status: 403 };
+  }
+
+  const hasBranchAccess = await checkStaffBranchAccess(supabase, staffId, branchId);
+  if (!hasBranchAccess) {
+    return { error: "You don't have access to this branch", status: 403 };
+  }
+
+  // Get member info for logging
+  const { data: member } = await supabase
+    .from("members")
+    .select("name, phone")
+    .eq("id", memberId)
+    .single();
+
+  // Insert payment
+  const { data, error } = await supabase
+    .from("payments")
+    .insert({
+      member_id: memberId,
+      branch_id: branchId,
+      amount,
+      payment_mode: "cash",
+      status: "success",
+      payment_type: paymentType || "gym_membership",
+      notes: notes || "Cash payment recorded by staff",
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return { error: error.message, status: 500 };
+  }
+
+  // Add ledger entry for the income
+  await supabase.from("ledger_entries").insert({
+    branch_id: branchId,
+    entry_type: "income",
+    category: "gym_membership",
+    amount,
+    description: `Cash payment from ${member?.name || "Member"}`,
+    payment_id: data.id,
+    member_id: memberId,
+    is_auto_generated: true,
+  });
+
+  await logStaffActivity(supabase, {
+    staffId,
+    staffName: staffDetails.full_name,
+    staffPhone: staffDetails.phone,
+    category: "payment",
+    type: "cash_payment_recorded",
+    description: `Staff "${staffDetails.full_name}" recorded cash payment of ₹${amount} for ${member?.name || "member"}`,
+    branchId,
+    entityType: "payments",
+    entityId: data.id,
+    entityName: member?.name,
+    newValue: { amount, payment_type: paymentType },
+    metadata: { member_phone: member?.phone },
+  });
+
+  return { data, status: 200 };
+}
+
+// Add ledger entry (requires can_access_ledger)
+async function handleAddLedgerEntry(supabase: any, body: any, staffId: string, staffDetails: any) {
+  const { branchId, entryType, category, amount, description, notes, entryDate } = body;
+
+  const hasPermission = await checkStaffPermission(supabase, staffId, "can_access_ledger");
+  if (!hasPermission) {
+    return { error: "You don't have permission to access the ledger", status: 403 };
+  }
+
+  const hasBranchAccess = await checkStaffBranchAccess(supabase, staffId, branchId);
+  if (!hasBranchAccess) {
+    return { error: "You don't have access to this branch", status: 403 };
+  }
+
+  const { data, error } = await supabase
+    .from("ledger_entries")
+    .insert({
+      branch_id: branchId,
+      entry_type: entryType,
+      category,
+      amount,
+      description,
+      notes,
+      entry_date: entryDate || new Date().toISOString().split("T")[0],
+      is_auto_generated: false,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return { error: error.message, status: 500 };
+  }
+
+  await logStaffActivity(supabase, {
+    staffId,
+    staffName: staffDetails.full_name,
+    staffPhone: staffDetails.phone,
+    category: "ledger",
+    type: "ledger_entry_added",
+    description: `Staff "${staffDetails.full_name}" added ${entryType} entry: ${description}`,
+    branchId,
+    entityType: "ledger_entries",
+    entityId: data.id,
+    newValue: { entry_type: entryType, category, amount, description },
+  });
+
+  return { data, status: 200 };
+}
+
+// Delete ledger entry (requires can_access_ledger)
+async function handleDeleteLedgerEntry(supabase: any, body: any, staffId: string, staffDetails: any) {
+  const { branchId, entryId } = body;
+
+  const hasPermission = await checkStaffPermission(supabase, staffId, "can_access_ledger");
+  if (!hasPermission) {
+    return { error: "You don't have permission to access the ledger", status: 403 };
+  }
+
+  const hasBranchAccess = await checkStaffBranchAccess(supabase, staffId, branchId);
+  if (!hasBranchAccess) {
+    return { error: "You don't have access to this branch", status: 403 };
+  }
+
+  // Get entry for logging
+  const { data: oldEntry } = await supabase
+    .from("ledger_entries")
+    .select("*")
+    .eq("id", entryId)
+    .single();
+
+  const { error } = await supabase
+    .from("ledger_entries")
+    .delete()
+    .eq("id", entryId);
+
+  if (error) {
+    return { error: error.message, status: 500 };
+  }
+
+  await logStaffActivity(supabase, {
+    staffId,
+    staffName: staffDetails.full_name,
+    staffPhone: staffDetails.phone,
+    category: "ledger",
+    type: "ledger_entry_deleted",
+    description: `Staff "${staffDetails.full_name}" deleted ledger entry: ${oldEntry?.description}`,
+    branchId,
+    entityType: "ledger_entries",
+    entityId: entryId,
+    oldValue: oldEntry,
+  });
+
+  return { data: { success: true }, status: 200 };
+}
+
+// Update member details (requires can_manage_members)
+async function handleUpdateMember(supabase: any, body: any, staffId: string, staffDetails: any) {
+  const { branchId, memberId, name, email, phone, address, gender, photoIdType, photoIdNumber, dateOfBirth } = body;
+
+  const hasPermission = await checkStaffPermission(supabase, staffId, "can_manage_members");
+  if (!hasPermission) {
+    return { error: "You don't have permission to manage members", status: 403 };
+  }
+
+  const hasBranchAccess = await checkStaffBranchAccess(supabase, staffId, branchId);
+  if (!hasBranchAccess) {
+    return { error: "You don't have access to this branch", status: 403 };
+  }
+
+  // Get old values
+  const { data: oldMember } = await supabase
+    .from("members")
+    .select("*")
+    .eq("id", memberId)
+    .single();
+
+  // Update member table
+  const memberUpdate: any = { updated_at: new Date().toISOString() };
+  if (name !== undefined) memberUpdate.name = name;
+  if (email !== undefined) memberUpdate.email = email;
+  if (phone !== undefined) memberUpdate.phone = phone;
+
+  const { error: memberError } = await supabase
+    .from("members")
+    .update(memberUpdate)
+    .eq("id", memberId);
+
+  if (memberError) {
+    return { error: memberError.message, status: 500 };
+  }
+
+  // Update member_details table if applicable
+  if (address !== undefined || gender !== undefined || photoIdType !== undefined || photoIdNumber !== undefined || dateOfBirth !== undefined) {
+    const detailsUpdate: any = { updated_at: new Date().toISOString() };
+    if (address !== undefined) detailsUpdate.address = address;
+    if (gender !== undefined) detailsUpdate.gender = gender;
+    if (photoIdType !== undefined) detailsUpdate.photo_id_type = photoIdType;
+    if (photoIdNumber !== undefined) detailsUpdate.photo_id_number = photoIdNumber;
+    if (dateOfBirth !== undefined) detailsUpdate.date_of_birth = dateOfBirth;
+
+    await supabase
+      .from("member_details")
+      .update(detailsUpdate)
+      .eq("member_id", memberId);
+  }
+
+  await logStaffActivity(supabase, {
+    staffId,
+    staffName: staffDetails.full_name,
+    staffPhone: staffDetails.phone,
+    category: "members",
+    type: "member_updated",
+    description: `Staff "${staffDetails.full_name}" updated member "${name || oldMember?.name}"`,
+    branchId,
+    entityType: "members",
+    entityId: memberId,
+    entityName: name || oldMember?.name,
+    oldValue: oldMember,
+    newValue: memberUpdate,
+  });
+
+  return { data: { success: true }, status: 200 };
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -598,6 +835,20 @@ Deno.serve(async (req) => {
         break;
       case "delete-custom-package":
         result = await handleDeleteCustomPackage(supabase, body, staffId, staffDetails);
+        break;
+      // Member operations
+      case "add-cash-payment":
+        result = await handleAddCashPayment(supabase, body, staffId, staffDetails);
+        break;
+      case "update-member":
+        result = await handleUpdateMember(supabase, body, staffId, staffDetails);
+        break;
+      // Ledger operations
+      case "add-ledger-entry":
+        result = await handleAddLedgerEntry(supabase, body, staffId, staffDetails);
+        break;
+      case "delete-ledger-entry":
+        result = await handleDeleteLedgerEntry(supabase, body, staffId, staffDetails);
         break;
       default:
         result = { error: `Unknown action: ${action}`, status: 400 };
