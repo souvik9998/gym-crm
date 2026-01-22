@@ -76,6 +76,8 @@ interface StaffActivityStats {
   loginLogout: number;
   loginAttempts: number;
   failedLogins: number;
+  ledgerEntries: number;
+  settingsChanges: number;
 }
 
 interface StaffActivityLogsTabProps {
@@ -100,6 +102,8 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
     loginLogout: 0,
     loginAttempts: 0,
     failedLogins: 0,
+    ledgerEntries: 0,
+    settingsChanges: 0,
   });
   const [activeSubTab, setActiveSubTab] = useState("logs");
   const [selectedActivity, setSelectedActivity] = useState<StaffActivityLog | null>(null);
@@ -157,6 +161,8 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
         loginLogout: 0,
         loginAttempts: loginData?.length || 0,
         failedLogins: loginData?.filter((l: StaffLoginAttempt) => !l.success).length || 0,
+        ledgerEntries: 0,
+        settingsChanges: 0,
       };
 
       activityData?.forEach((log: StaffActivityLog) => {
@@ -164,11 +170,17 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
         if (createdAt >= today) statsData.activitiesToday++;
         
         if (log.activity_type === "member_added") statsData.membersAdded++;
-        if (log.activity_type === "member_updated") statsData.membersUpdated++;
+        if (log.activity_type === "member_updated" || log.activity_type === "member_deleted") statsData.membersUpdated++;
         if (log.activity_type === "cash_payment_added" || log.activity_type === "online_payment_received") 
           statsData.paymentsRecorded++;
         if (log.activity_type === "staff_logged_in" || log.activity_type === "staff_logged_out") 
           statsData.loginLogout++;
+        // Ledger activities
+        if (["expense_added", "expense_deleted", "income_added", "ledger_entry_added", "ledger_entry_deleted"].includes(log.activity_type)) 
+          statsData.ledgerEntries++;
+        // Settings activities
+        if (["gym_info_updated", "whatsapp_toggled", "package_updated", "package_added", "package_deleted", "branch_updated"].includes(log.activity_type)) 
+          statsData.settingsChanges++;
       });
 
       setStats(statsData);
@@ -267,6 +279,8 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
       case "member_updated":
       case "member_viewed":
         return <UserPlus className="w-4 h-4 text-blue-500" />;
+      case "member_deleted":
+        return <UserMinus className="w-4 h-4 text-red-500" />;
       case "subscription_created":
       case "subscription_renewed":
       case "subscription_extended":
@@ -274,6 +288,21 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
       case "cash_payment_added":
       case "online_payment_received":
         return <RefreshCw className="w-4 h-4 text-emerald-500" />;
+      // Ledger activities
+      case "expense_added":
+      case "expense_deleted":
+      case "ledger_entry_added":
+      case "ledger_entry_deleted":
+      case "income_added":
+        return <RefreshCw className="w-4 h-4 text-amber-500" />;
+      // Settings activities
+      case "gym_info_updated":
+      case "whatsapp_toggled":
+      case "package_updated":
+      case "package_added":
+      case "package_deleted":
+      case "branch_updated":
+        return <ShieldCheck className="w-4 h-4 text-purple-500" />;
       default:
         return <RefreshCw className="w-4 h-4 text-muted-foreground" />;
     }
@@ -293,12 +322,26 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
       staff_logged_out: { label: "Logged Out", color: "bg-orange-500/10 text-orange-500 border-orange-500/20" },
       member_added: { label: "Member Added", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
       member_updated: { label: "Member Updated", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
+      member_deleted: { label: "Member Deleted", color: "bg-red-500/10 text-red-500 border-red-500/20" },
       member_viewed: { label: "Member Viewed", color: "bg-slate-500/10 text-slate-500 border-slate-500/20" },
       subscription_created: { label: "Subscription", color: "bg-green-500/10 text-green-500 border-green-500/20" },
       subscription_renewed: { label: "Renewed", color: "bg-green-500/10 text-green-500 border-green-500/20" },
       subscription_extended: { label: "Extended", color: "bg-green-500/10 text-green-500 border-green-500/20" },
       cash_payment_added: { label: "Payment", color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
       online_payment_received: { label: "Payment", color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
+      // Ledger activities
+      expense_added: { label: "Expense Added", color: "bg-red-500/10 text-red-500 border-red-500/20" },
+      expense_deleted: { label: "Expense Deleted", color: "bg-red-500/10 text-red-500 border-red-500/20" },
+      income_added: { label: "Income Added", color: "bg-green-500/10 text-green-500 border-green-500/20" },
+      ledger_entry_added: { label: "Ledger Entry", color: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
+      ledger_entry_deleted: { label: "Entry Deleted", color: "bg-red-500/10 text-red-500 border-red-500/20" },
+      // Settings activities
+      gym_info_updated: { label: "Settings Updated", color: "bg-purple-500/10 text-purple-500 border-purple-500/20" },
+      whatsapp_toggled: { label: "WhatsApp Toggle", color: "bg-green-500/10 text-green-500 border-green-500/20" },
+      package_updated: { label: "Package Updated", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
+      package_added: { label: "Package Added", color: "bg-green-500/10 text-green-500 border-green-500/20" },
+      package_deleted: { label: "Package Deleted", color: "bg-red-500/10 text-red-500 border-red-500/20" },
+      branch_updated: { label: "Branch Updated", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
     };
     
     const config = labels[activityType] || { label: activityType.replace(/_/g, " "), color: "bg-muted text-muted-foreground" };
@@ -416,7 +459,7 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
               <CardDescription>Staff performed activities summary</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10">
                   <UserPlus className="w-5 h-5 text-success" />
                   <div>
@@ -443,6 +486,20 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
                   <div>
                     <p className="text-sm font-medium">Login/Logout</p>
                     <p className="text-lg font-bold">{stats.loginLogout}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/10">
+                  <RefreshCw className="w-5 h-5 text-amber-500" />
+                  <div>
+                    <p className="text-sm font-medium">Ledger Entries</p>
+                    <p className="text-lg font-bold">{stats.ledgerEntries}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-500/10">
+                  <ShieldCheck className="w-5 h-5 text-purple-500" />
+                  <div>
+                    <p className="text-sm font-medium">Settings Changes</p>
+                    <p className="text-lg font-bold">{stats.settingsChanges}</p>
                   </div>
                 </div>
               </div>
@@ -479,9 +536,16 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
                     <SelectItem value="staff_logged_out">Staff Logged Out</SelectItem>
                     <SelectItem value="member_added">Member Added</SelectItem>
                     <SelectItem value="member_updated">Member Updated</SelectItem>
+                    <SelectItem value="member_deleted">Member Deleted</SelectItem>
                     <SelectItem value="subscription_created">Subscription Created</SelectItem>
                     <SelectItem value="subscription_renewed">Subscription Renewed</SelectItem>
                     <SelectItem value="cash_payment_added">Payment Added</SelectItem>
+                    <SelectItem value="expense_added">Expense Added</SelectItem>
+                    <SelectItem value="expense_deleted">Expense Deleted</SelectItem>
+                    <SelectItem value="gym_info_updated">Settings Updated</SelectItem>
+                    <SelectItem value="whatsapp_toggled">WhatsApp Toggle</SelectItem>
+                    <SelectItem value="package_updated">Package Updated</SelectItem>
+                    <SelectItem value="branch_updated">Branch Updated</SelectItem>
                     <SelectItem value="staff_added">Staff Added</SelectItem>
                     <SelectItem value="staff_updated">Staff Updated</SelectItem>
                     <SelectItem value="staff_toggled">Status Changed</SelectItem>

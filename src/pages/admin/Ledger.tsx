@@ -44,6 +44,8 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { format, subDays, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { exportToExcel } from "@/utils/exportToExcel";
@@ -100,6 +102,7 @@ type DateRangePreset = "today" | "7days" | "15days" | "30days" | "this_month" | 
 
 const AdminLedger = () => {
   const { currentBranch } = useBranch();
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
   // Date range state
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("this_month");
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
@@ -219,18 +222,40 @@ const AdminLedger = () => {
         description: error.message,
       });
     } else {
-      await logAdminActivity({
-        category: "payments",
-        type: "cash_payment_added",
-        description: `Added expense: ${expenseDescription} - ₹${expenseAmount}`,
-        entityType: "ledger_entries",
-        newValue: {
-          category: expenseCategory,
-          description: expenseDescription,
-          amount: Number(expenseAmount),
-          date: format(expenseDate, "yyyy-MM-dd"),
-        },
-      });
+      // Log activity - use staff logging if staff is logged in
+      if (isStaffLoggedIn && staffUser) {
+        await logStaffActivity({
+          category: "ledger",
+          type: "expense_added",
+          description: `Staff "${staffUser.fullName}" added expense: ${expenseDescription} - ₹${expenseAmount}`,
+          entityType: "ledger_entries",
+          newValue: {
+            category: expenseCategory,
+            description: expenseDescription,
+            amount: Number(expenseAmount),
+            date: format(expenseDate, "yyyy-MM-dd"),
+          },
+          branchId: currentBranch?.id,
+          staffId: staffUser.id,
+          staffName: staffUser.fullName,
+          staffPhone: staffUser.phone,
+          metadata: { staff_role: staffUser.role },
+        });
+      } else {
+        await logAdminActivity({
+          category: "ledger",
+          type: "expense_added",
+          description: `Added expense: ${expenseDescription} - ₹${expenseAmount}`,
+          entityType: "ledger_entries",
+          newValue: {
+            category: expenseCategory,
+            description: expenseDescription,
+            amount: Number(expenseAmount),
+            date: format(expenseDate, "yyyy-MM-dd"),
+          },
+          branchId: currentBranch?.id,
+        });
+      }
       toast.success("Expense added successfully");
       setIsAddExpenseOpen(false);
       resetExpenseForm();
@@ -288,22 +313,45 @@ const AdminLedger = () => {
 
         if (error) {
           toast.error("Error", {
-        description: error.message,
-      });
-        } else {
-          await logAdminActivity({
-            category: "payments",
-            type: "payment_deleted",
-            description: `Deleted ledger entry: ${entry.description}`,
-            entityType: "ledger_entries",
-            entityId: entry.id,
-            oldValue: {
-              category: entry.category,
-              description: entry.description,
-              amount: entry.amount,
-              type: entry.entry_type,
-            },
+            description: error.message,
           });
+        } else {
+          // Log activity - use staff logging if staff is logged in
+          if (isStaffLoggedIn && staffUser) {
+            await logStaffActivity({
+              category: "ledger",
+              type: "expense_deleted",
+              description: `Staff "${staffUser.fullName}" deleted ledger entry: ${entry.description}`,
+              entityType: "ledger_entries",
+              entityId: entry.id,
+              oldValue: {
+                category: entry.category,
+                description: entry.description,
+                amount: entry.amount,
+                type: entry.entry_type,
+              },
+              branchId: currentBranch?.id,
+              staffId: staffUser.id,
+              staffName: staffUser.fullName,
+              staffPhone: staffUser.phone,
+              metadata: { staff_role: staffUser.role },
+            });
+          } else {
+            await logAdminActivity({
+              category: "ledger",
+              type: "expense_deleted",
+              description: `Deleted ledger entry: ${entry.description}`,
+              entityType: "ledger_entries",
+              entityId: entry.id,
+              oldValue: {
+                category: entry.category,
+                description: entry.description,
+                amount: entry.amount,
+                type: entry.entry_type,
+              },
+              branchId: currentBranch?.id,
+            });
+          }
           toast.success("Entry deleted");
           fetchEntries();
         }
