@@ -42,36 +42,45 @@ interface NavItem {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   iconSolid?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   children?: { title: string; href: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }[];
-  // Permission requirements
+  // Permission requirements - can be a single permission or array (OR logic)
   requiresPermission?:
     | "can_view_members"
     | "can_manage_members"
     | "can_access_ledger"
     | "can_access_payments"
     | "can_access_analytics"
-    | "can_change_settings";
+    | "can_change_settings"
+    | ("can_view_members" | "can_manage_members" | "can_access_ledger" | "can_access_payments" | "can_access_analytics" | "can_change_settings")[];
   adminOnly?: boolean;
   staffOnly?: boolean; // Only visible to staff users
 }
 
-// Navigation items with permission requirements
+// Navigation items with STRICT permission requirements based on policy:
+// 1. View Members - can ONLY view members
+// 2. Edit/Create Members - can view, add, edit members AND record cash payments
+// 3. Ledger Access - can ONLY access ledger
+// 4. Payment Logs - can ONLY view payment logs
+// 5. Analytics Access - can ONLY view analytics
+// 6. Settings Access - can add/modify everything in settings
 const allNavItems: NavItem[] = [
+  // Admin Dashboard - only for admin users
   {
     title: "Dashboard",
     href: "/admin/dashboard",
     icon: HomeIcon,
     iconSolid: HomeIconSolid,
-    requiresPermission: "can_view_members", // Basic access
     adminOnly: true, // Only for admin users - staff use /staff/dashboard
   },
+  // Staff Dashboard - for staff users with view or manage permission
   {
     title: "Dashboard",
     href: "/staff/dashboard",
     icon: HomeIcon,
     iconSolid: HomeIconSolid,
-    requiresPermission: "can_view_members",
+    requiresPermission: ["can_view_members", "can_manage_members"], // Either permission allows access
     staffOnly: true, // Only for staff users
   },
+  // Analytics - requires ONLY analytics permission
   {
     title: "Analytics",
     href: "/admin/analytics",
@@ -79,6 +88,7 @@ const allNavItems: NavItem[] = [
     iconSolid: ChartBarIconSolid,
     requiresPermission: "can_access_analytics",
   },
+  // Ledger - requires ONLY ledger permission
   {
     title: "Ledger",
     href: "/admin/ledger",
@@ -86,6 +96,7 @@ const allNavItems: NavItem[] = [
     iconSolid: BookOpenIconSolid,
     requiresPermission: "can_access_ledger",
   },
+  // Staff Control - admin only
   {
     title: "Staff Control",
     href: "/admin/staff",
@@ -93,6 +104,7 @@ const allNavItems: NavItem[] = [
     iconSolid: UserGroupIcon,
     adminOnly: true, // Only for admin users
   },
+  // Activity Logs - admin only
   {
     title: "Activity Logs",
     href: "/admin/logs",
@@ -109,13 +121,15 @@ const allNavItems: NavItem[] = [
 ];
 
 const allBottomNavItems: NavItem[] = [
+  // QR Code - requires settings permission
   {
     title: "QR Code",
     href: "/admin/qr-code",
     icon: QrCodeIcon,
     iconSolid: QrCodeIconSolid,
-    adminOnly: true,
+    requiresPermission: "can_change_settings",
   },
+  // Settings - requires settings permission
   {
     title: "Settings",
     href: "/admin/settings",
@@ -148,7 +162,14 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
       if (item.requiresPermission) {
         // Admin users (non-staff) have all permissions
         if (!isStaffUser) return true;
-        return permissions?.[item.requiresPermission] || false;
+        
+        // For staff, check if they have the required permission(s)
+        if (Array.isArray(item.requiresPermission)) {
+          // OR logic - need at least one of the permissions
+          return item.requiresPermission.some(perm => permissions?.[perm] === true);
+        } else {
+          return permissions?.[item.requiresPermission] === true;
+        }
       }
 
       return true;

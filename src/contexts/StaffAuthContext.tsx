@@ -146,6 +146,10 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const login = async (phone: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
+      // CRITICAL: Clear any existing Supabase admin session before staff login
+      // This prevents the bug where staff gets admin access due to lingering session
+      await supabase.auth.signOut();
+      
       const { data, error } = await supabase.functions.invoke("staff-auth?action=login", {
         body: { phone, password },
       });

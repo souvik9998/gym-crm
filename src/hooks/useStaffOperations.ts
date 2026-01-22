@@ -130,6 +130,52 @@ export const useStaffOperations = () => {
     return invokeStaffOperation("delete-custom-package", params);
   };
 
+  // Member Operations (requires can_manage_members)
+  const addCashPayment = async (params: {
+    branchId: string;
+    memberId: string;
+    amount: number;
+    notes?: string;
+    paymentType?: string;
+  }) => {
+    return invokeStaffOperation("add-cash-payment", params);
+  };
+
+  const updateMember = async (params: {
+    branchId: string;
+    memberId: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    gender?: string;
+    photoIdType?: string;
+    photoIdNumber?: string;
+    dateOfBirth?: string;
+  }) => {
+    return invokeStaffOperation("update-member", params);
+  };
+
+  // Ledger Operations (requires can_access_ledger)
+  const addLedgerEntry = async (params: {
+    branchId: string;
+    entryType: "income" | "expense";
+    category: string;
+    amount: number;
+    description: string;
+    notes?: string;
+    entryDate?: string;
+  }) => {
+    return invokeStaffOperation("add-ledger-entry", params);
+  };
+
+  const deleteLedgerEntry = async (params: {
+    branchId: string;
+    entryId: string;
+  }) => {
+    return invokeStaffOperation("delete-ledger-entry", params);
+  };
+
   return {
     // Gym Settings
     updateGymSettings,
@@ -142,6 +188,12 @@ export const useStaffOperations = () => {
     addCustomPackage,
     updateCustomPackage,
     deleteCustomPackage,
+    // Member Operations
+    addCashPayment,
+    updateMember,
+    // Ledger Operations
+    addLedgerEntry,
+    deleteLedgerEntry,
     // Utility
     isStaffLoggedIn,
   };

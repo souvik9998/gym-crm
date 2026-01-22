@@ -217,10 +217,24 @@ const StaffDashboard = () => {
   const queryClient = useQueryClient();
   const { invalidateMembers, invalidatePayments } = useInvalidateQueries();
   
-  // Permission checks
+  // STRICT Permission checks based on policy:
+  // 1. View Members - can ONLY view members and their details
+  // 2. Edit/Create Members - can view, add, edit members AND record cash payments
+  // 3. Ledger Access - can ONLY access ledger (handled by route guard)
+  // 4. Payment Logs - can ONLY view payment logs
+  // 5. Analytics Access - can ONLY view analytics (handled by route guard)
+  // 6. Settings Access - can add/modify everything in settings (handled by route guard)
   const canViewMembers = useStaffPermission("can_view_members");
   const canManageMembers = useStaffPermission("can_manage_members");
   const canAccessPayments = useStaffPermission("can_access_payments");
+  
+  // Derived permissions based on strict rules:
+  // - View members tab: needs can_view_members OR can_manage_members
+  // - Add/Edit members: needs can_manage_members
+  // - Record cash payments: needs can_manage_members (part of Edit/Create Members)
+  // - View payment history: needs can_access_payments ONLY
+  const canSeeMembers = canViewMembers || canManageMembers;
+  const canRecordPayments = canManageMembers; // Only manage_members can record payments
   
   // Search with debouncing
   const [searchInput, setSearchInput] = useState("");
@@ -329,8 +343,8 @@ const StaffDashboard = () => {
       onRefresh={handleRefresh}
     >
       <div className="space-y-6 max-w-7xl mx-auto">
-        {/* Stats Grid - Only show if permitted */}
-        {canViewMembers && (
+        {/* Stats Grid - Only show if can see members */}
+        {canSeeMembers && (
           <>
             {statsLoading && !stats ? (
               <DashboardStatsSkeleton />
@@ -357,7 +371,8 @@ const StaffDashboard = () => {
                   bgClass="bg-warning/10"
                   iconClass="text-warning"
                 />
-                {canAccessPayments && (
+                {/* Revenue stat - only if can access payments OR can manage members */}
+                {(canAccessPayments || canRecordPayments) && (
                   <StatCard 
                     value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
                     label="This Month" 
@@ -373,7 +388,7 @@ const StaffDashboard = () => {
         )}
 
         {/* Tabs for Members & Payments */}
-        {canViewMembers && (
+        {canSeeMembers && (
           <Card className="border-0 shadow-sm">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <CardHeader className="pb-4 border-b">
@@ -543,8 +558,8 @@ const StaffDashboard = () => {
           </Card>
         )}
 
-        {/* No Access Message */}
-        {!canViewMembers && (
+        {/* No Access Message - show if user can't see members AND can't access payments */}
+        {!canSeeMembers && !canAccessPayments && (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-12 text-center">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
@@ -560,9 +575,22 @@ const StaffDashboard = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Payment-only access: show just payment history */}
+        {!canSeeMembers && canAccessPayments && (
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="border-b pb-4">
+              <div className="flex items-center gap-2">
+                <CreditCardIcon className="w-5 h-5 text-primary" />
+                <h3 className="text-lg font-semibold">Payment History</h3>
+              </div>
+            </CardHeader>
+            <PaymentHistory refreshKey={refreshKey} />
+          </Card>
+        )}
       </div>
 
-      {/* Dialogs */}
+      {/* Dialogs - Only canManageMembers can add members */}
       {canManageMembers && (
         <AddMemberDialog
           open={isAddMemberOpen}
@@ -570,11 +598,14 @@ const StaffDashboard = () => {
           onSuccess={handleMemberSuccess}
         />
       )}
-      <AddPaymentDialog
-        open={isAddPaymentOpen}
-        onOpenChange={setIsAddPaymentOpen}
-        onSuccess={handlePaymentSuccess}
-      />
+      {/* Only canRecordPayments (= canManageMembers) can record cash payments */}
+      {canRecordPayments && (
+        <AddPaymentDialog
+          open={isAddPaymentOpen}
+          onOpenChange={setIsAddPaymentOpen}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </AdminLayout>
   );
 };
