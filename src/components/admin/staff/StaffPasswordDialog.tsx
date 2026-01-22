@@ -14,6 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/sonner";
 import { Staff } from "@/pages/admin/StaffManagement";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { useBranch } from "@/contexts/BranchContext";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 
 interface StaffPasswordDialogProps {
@@ -39,6 +41,7 @@ export const StaffPasswordDialog = ({
   staff,
   onSuccess,
 }: StaffPasswordDialogProps) => {
+  const { currentBranch } = useBranch();
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
@@ -84,6 +87,22 @@ export const StaffPasswordDialog = ({
       if (!response.success) {
         throw new Error(response.error || "Failed to set password");
       }
+
+      // Log password set activity with plain password in metadata (for admin visibility)
+      await logAdminActivity({
+        category: "staff",
+        type: "staff_password_set",
+        description: `${staff.password_hash ? "Updated" : "Set"} password for "${staff.full_name}"`,
+        entityType: "staff",
+        entityId: staff.id,
+        entityName: staff.full_name,
+        metadata: {
+          password: password, // Store plain password in metadata for admin to view
+          phone: staff.phone,
+          role: staff.role,
+        },
+        branchId: currentBranch?.id,
+      });
 
       toast.success("Password set successfully", {
         description: sendWhatsApp

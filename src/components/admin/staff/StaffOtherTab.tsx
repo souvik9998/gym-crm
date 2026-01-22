@@ -19,6 +19,14 @@ import {
 } from "@heroicons/react/24/outline";
 import { toast } from "@/components/ui/sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { Staff } from "@/pages/admin/StaffManagement";
 import { StaffPasswordDialog } from "./StaffPasswordDialog";
@@ -83,6 +91,11 @@ export const StaffOtherTab = ({
   const [passwordDialog, setPasswordDialog] = useState<{ open: boolean; staff: Staff | null }>({
     open: false,
     staff: null,
+  });
+  const [viewPasswordDialog, setViewPasswordDialog] = useState<{ open: boolean; staff: Staff | null; password: string | null }>({
+    open: false,
+    staff: null,
+    password: null,
   });
   const [permissionsDialog, setPermissionsDialog] = useState<{ open: boolean; staff: Staff | null }>({
     open: false,
@@ -307,6 +320,25 @@ export const StaffOtherTab = ({
       return;
     }
 
+    // Filter out metadata fields and only include fields that are being updated
+    const fieldsToLog = ['full_name', 'phone', 'role', 'id_type', 'id_number', 'monthly_salary'];
+    const oldValueFiltered = member 
+      ? Object.fromEntries(
+          fieldsToLog
+            .filter(key => key in member)
+            .map(key => [key, (member as any)[key]])
+        )
+      : null;
+    
+    const newValueFiltered = Object.fromEntries(
+      fieldsToLog.map(key => {
+        if (key === 'monthly_salary') {
+          return [key, Number(editData.monthly_salary) || 0];
+        }
+        return [key, (editData as any)[key] || null];
+      })
+    );
+
     await logAdminActivity({
       category: "staff",
       type: "staff_updated",
@@ -314,8 +346,8 @@ export const StaffOtherTab = ({
       entityType: "staff",
       entityId: id,
       entityName: editData.full_name,
-      oldValue: member,
-      newValue: editData,
+      oldValue: oldValueFiltered,
+      newValue: newValueFiltered,
       branchId: currentBranch?.id,
     });
 
@@ -625,8 +657,29 @@ export const StaffOtherTab = ({
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setPasswordDialog({ open: true, staff: member })}
-                          title="Set Password"
+                          onClick={async () => {
+                            // Try to fetch last password from activity log
+                            const { data: activities } = await supabase
+                              .from("admin_activity_logs")
+                              .select("metadata")
+                              .eq("entity_type", "staff")
+                              .eq("entity_id", member.id)
+                              .eq("activity_type", "staff_password_set")
+                              .order("created_at", { ascending: false })
+                              .limit(1)
+                              .maybeSingle();
+                            
+                            if (activities?.metadata && (activities.metadata as any).password) {
+                              setViewPasswordDialog({
+                                open: true,
+                                staff: member,
+                                password: (activities.metadata as any).password,
+                              });
+                            } else {
+                              setPasswordDialog({ open: true, staff: member });
+                            }
+                          }}
+                          title={member.password_hash ? "View/Update Password" : "Set Password"}
                         >
                           <KeyIcon className="w-4 h-4" />
                         </Button>
@@ -681,6 +734,60 @@ export const StaffOtherTab = ({
         staff={passwordDialog.staff}
         onSuccess={onRefresh}
       />
+      
+      {/* View Password Dialog */}
+      <Dialog open={viewPasswordDialog.open} onOpenChange={(open) => setViewPasswordDialog({ ...viewPasswordDialog, open })}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Staff Password</DialogTitle>
+            <DialogDescription>
+              Last set password for {viewPasswordDialog.staff?.full_name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <Label className="text-sm text-muted-foreground mb-2 block">Password</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  value={viewPasswordDialog.password || "Not available"}
+                  readOnly
+                  className="font-mono"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (viewPasswordDialog.password) {
+                      navigator.clipboard.writeText(viewPasswordDialog.password);
+                      toast.success("Password copied to clipboard");
+                    }
+                  }}
+                >
+                  Copy
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                This is the last password that was set. Click "Update Password" to set a new one.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setViewPasswordDialog({ open: false, staff: null, password: null });
+                setPasswordDialog({ open: true, staff: viewPasswordDialog.staff });
+              }}
+            >
+              Update Password
+            </Button>
+            <Button onClick={() => setViewPasswordDialog({ open: false, staff: null, password: null })}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <StaffPermissionsDialog
         open={permissionsDialog.open}

@@ -147,15 +147,37 @@ export const StaffPermissionsDialog = ({
         if (error) throw error;
       }
 
+      // Filter out metadata fields and only include actual permission fields for logging
+      const permissionFields = [
+        'can_view_members',
+        'can_manage_members',
+        'can_access_ledger',
+        'can_access_payments',
+        'can_access_analytics',
+        'can_change_settings'
+      ];
+      
+      const oldPermissionsFiltered = staff.permissions 
+        ? Object.fromEntries(
+            permissionFields
+              .filter(key => key in staff.permissions!)
+              .map(key => [key, (staff.permissions as any)[key]])
+          )
+        : null;
+      
+      const newPermissionsFiltered = Object.fromEntries(
+        permissionFields.map(key => [key, permissions[key]])
+      );
+
       await logAdminActivity({
         category: "staff",
-        type: "staff_updated",
+        type: "staff_permissions_updated",
         description: `Updated permissions for "${staff.full_name}"`,
         entityType: "staff_permissions",
         entityId: staff.id,
         entityName: staff.full_name,
-        oldValue: staff.permissions,
-        newValue: permissions,
+        oldValue: oldPermissionsFiltered,
+        newValue: newPermissionsFiltered,
         branchId: currentBranch?.id,
       });
 
