@@ -148,8 +148,6 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
       if (item.requiresPermission) {
         // Admin users (non-staff) have all permissions
         if (!isStaffUser) return true;
-        // Staff role 'admin' has all permissions
-        if (staffUser?.role === "admin") return true;
         return permissions?.[item.requiresPermission] || false;
       }
 

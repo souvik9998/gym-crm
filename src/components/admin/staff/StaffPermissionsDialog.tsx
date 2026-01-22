@@ -104,11 +104,11 @@ export const StaffPermissionsDialog = ({
       // Default permissions based on role
       const defaults: Permissions = {
         can_view_members: true,
-        can_manage_members: staff?.role === "admin" || staff?.role === "manager",
-        can_access_ledger: staff?.role === "admin" || staff?.role === "accountant",
-        can_access_payments: staff?.role === "admin" || staff?.role === "accountant" || staff?.role === "manager",
-        can_access_analytics: staff?.role === "admin" || staff?.role === "manager",
-        can_change_settings: staff?.role === "admin",
+        can_manage_members: staff?.role === "manager",
+        can_access_ledger: staff?.role === "accountant",
+        can_access_payments: staff?.role === "accountant" || staff?.role === "manager",
+        can_access_analytics: staff?.role === "manager",
+        can_change_settings: false,
       };
       setPermissions(defaults);
     }

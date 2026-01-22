@@ -128,9 +128,9 @@ export const StaffInlinePermissions = ({
 
 export const getDefaultPermissions = (role: string): InlinePermissions => ({
   can_view_members: true,
-  can_manage_members: role === "admin" || role === "manager",
-  can_access_ledger: role === "admin" || role === "accountant",
-  can_access_payments: role === "admin" || role === "accountant" || role === "manager",
-  can_access_analytics: role === "admin" || role === "manager",
-  can_change_settings: role === "admin",
+  can_manage_members: role === "manager",
+  can_access_ledger: role === "accountant",
+  can_access_payments: role === "accountant" || role === "manager",
+  can_access_analytics: role === "manager",
+  can_change_settings: false,
 });

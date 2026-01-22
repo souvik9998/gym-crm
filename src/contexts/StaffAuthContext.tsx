@@ -6,7 +6,7 @@ export interface StaffUser {
   id: string;
   fullName: string;
   phone: string;
-  role: "admin" | "manager" | "trainer" | "reception" | "accountant";
+  role: "manager" | "trainer" | "reception" | "accountant";
   isActive: boolean;
 }
 
@@ -237,10 +237,6 @@ export const useStaffAuth = () => {
 
 // Helper hook to check permissions
 export const useStaffPermission = (permission: keyof StaffPermissions): boolean => {
-  const { permissions, staffUser } = useStaffAuth();
-  
-  // Admin always has all permissions
-  if (staffUser?.role === "admin") return true;
-  
+  const { permissions } = useStaffAuth();
   return permissions?.[permission] || false;
 };

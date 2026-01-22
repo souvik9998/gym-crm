@@ -12,7 +12,7 @@ export interface Staff {
   id: string;
   phone: string;
   full_name: string;
-  role: "admin" | "manager" | "trainer" | "reception" | "accountant";
+  role: "manager" | "trainer" | "reception" | "accountant";
   id_type: string | null;
   id_number: string | null;
   salary_type: "monthly" | "session_based" | "percentage" | "both";
