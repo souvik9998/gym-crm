@@ -20,6 +20,7 @@ export interface StaffBranchRestriction {
 
 interface BranchContextType {
   branches: Branch[];
+  allBranches: Branch[];
   currentBranch: Branch | null;
   setCurrentBranch: (branch: Branch) => void;
   refreshBranches: () => Promise<void>;
@@ -148,6 +149,7 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
     <BranchContext.Provider
       value={{
         branches,
+        allBranches,
         currentBranch,
         setCurrentBranch,
         refreshBranches: fetchBranches,

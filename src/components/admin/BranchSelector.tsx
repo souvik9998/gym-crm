@@ -32,7 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export const BranchSelector = () => {
-  const { branches, currentBranch, setCurrentBranch, refreshBranches, isStaffRestricted } = useBranch();
+  const { branches, allBranches, currentBranch, setCurrentBranch, refreshBranches, isStaffRestricted } = useBranch();
   const { isAdmin } = useIsAdmin();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -43,6 +43,9 @@ export const BranchSelector = () => {
     phone: "",
     email: "",
   });
+
+  // For admins, show all branches. For staff, show only their assigned branches.
+  const displayBranches = isAdmin ? allBranches : branches;
 
   const handleSelectBranch = (branch: Branch) => {
     setCurrentBranch(branch);
@@ -72,7 +75,7 @@ export const BranchSelector = () => {
           address: newBranch.address.trim() || null,
           phone: newBranch.phone.trim() || null,
           email: newBranch.email.trim() || null,
-          is_default: branches.length === 0,
+          is_default: displayBranches.length === 0,
         })
         .select()
         .single();
@@ -123,7 +126,7 @@ export const BranchSelector = () => {
   };
 
   // For staff with only one branch, show a simpler view (but not for admins)
-  if (isStaffRestricted && !isAdmin && branches.length === 1) {
+  if (isStaffRestricted && !isAdmin && displayBranches.length === 1) {
     return (
       <div className="flex items-center gap-2 h-10 px-3 border border-border/50 rounded-md bg-muted/30">
         <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -134,7 +137,7 @@ export const BranchSelector = () => {
             Branch
           </span>
           <span className="font-semibold text-foreground leading-tight truncate w-full text-left">
-            {currentBranch?.name || branches[0]?.name}
+            {currentBranch?.name || displayBranches[0]?.name}
           </span>
         </div>
         <LockClosedIcon className="w-4 h-4 text-muted-foreground" title="Assigned to this branch" />
@@ -142,7 +145,7 @@ export const BranchSelector = () => {
     );
   }
 
-  if (branches.length === 0 && !currentBranch) {
+  if (displayBranches.length === 0 && !currentBranch) {
     // Don't show add button for staff users (but allow for admins)
     if (isStaffRestricted && !isAdmin) {
       return (
@@ -267,7 +270,7 @@ export const BranchSelector = () => {
             </div>
           )}
           
-          {branches.map((branch) => (
+          {displayBranches.map((branch) => (
             <DropdownMenuItem
               key={branch.id}
               onSelect={(e) => {
