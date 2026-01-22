@@ -27,6 +27,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import type { MemberFilterValue } from "./MemberFilter";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -74,7 +75,7 @@ export const MembersTable = ({
   sortOrder: externalSortOrder
 }: MembersTableProps) => {
   const { currentBranch } = useBranch();
-  const { isStaffLoggedIn, permissions } = useStaffAuth();
+  const { isStaffLoggedIn, permissions, staffUser } = useStaffAuth();
   const { isAdmin } = useIsAdmin();
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -187,21 +188,44 @@ export const MembersTable = ({
 
       if (error) throw error;
 
-      await logAdminActivity({
-        category: "members",
-        type: "member_deleted",
-        description: `Deleted member "${deleteConfirm.memberName}"`,
-        entityType: "members",
-        entityId: deleteConfirm.memberId,
-        entityName: deleteConfirm.memberName,
-        oldValue: memberToDelete ? {
-          name: memberToDelete.name,
-          phone: memberToDelete.phone,
-          join_date: memberToDelete.join_date,
-          subscription_status: memberToDelete.subscription?.status || "none",
-        } : null,
-        branchId: currentBranch?.id,
-      });
+      // Log activity - use staff logging if staff is logged in
+      if (isStaffLoggedIn && staffUser) {
+        await logStaffActivity({
+          category: "members",
+          type: "member_deleted",
+          description: `Staff "${staffUser.fullName}" deleted member "${deleteConfirm.memberName}"`,
+          entityType: "members",
+          entityId: deleteConfirm.memberId,
+          entityName: deleteConfirm.memberName,
+          oldValue: memberToDelete ? {
+            name: memberToDelete.name,
+            phone: memberToDelete.phone,
+            join_date: memberToDelete.join_date,
+            subscription_status: memberToDelete.subscription?.status || "none",
+          } : null,
+          branchId: currentBranch?.id,
+          staffId: staffUser.id,
+          staffName: staffUser.fullName,
+          staffPhone: staffUser.phone,
+          metadata: { staff_role: staffUser.role },
+        });
+      } else {
+        await logAdminActivity({
+          category: "members",
+          type: "member_deleted",
+          description: `Deleted member "${deleteConfirm.memberName}"`,
+          entityType: "members",
+          entityId: deleteConfirm.memberId,
+          entityName: deleteConfirm.memberName,
+          oldValue: memberToDelete ? {
+            name: memberToDelete.name,
+            phone: memberToDelete.phone,
+            join_date: memberToDelete.join_date,
+            subscription_status: memberToDelete.subscription?.status || "none",
+          } : null,
+          branchId: currentBranch?.id,
+        });
+      }
 
       toast.success("Member deleted successfully");
       fetchMembers();
