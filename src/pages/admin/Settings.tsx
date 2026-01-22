@@ -102,6 +102,7 @@ const AdminSettings = () => {
   const initialTab = searchParams.get("tab") || "packages";
 
   useEffect(() => {
+    // For admin: watch auth state
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
     });
@@ -114,10 +115,11 @@ const AdminSettings = () => {
   }, []);
 
   useEffect(() => {
-    if (user && currentBranch) {
+    // Fetch data when: admin is logged in OR staff is logged in
+    if ((user || isStaffLoggedIn) && currentBranch) {
       fetchData();
     }
-  }, [user, currentBranch]);
+  }, [user, isStaffLoggedIn, currentBranch]);
 
   // Reset settings state when branch changes to ensure fresh data
   useEffect(() => {

@@ -10,6 +10,8 @@ import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { useStaffOperations } from "@/hooks/useStaffOperations";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +29,8 @@ import {
 
 export const BranchManagement = () => {
   const { branches, currentBranch, setCurrentBranch, refreshBranches } = useBranch();
+  const { isStaffLoggedIn } = useStaffAuth();
+  const staffOps = useStaffOperations();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -72,56 +76,92 @@ export const BranchManagement = () => {
     setIsLoading(true);
     try {
       if (editingBranch) {
-        // Update existing branch
-        const { error } = await supabase
-          .from("branches")
-          .update({
+        // Use staff operations if staff is logged in
+        if (isStaffLoggedIn) {
+          const { error } = await staffOps.updateBranch({
+            branchId: editingBranch.id,
             name: formData.name.trim(),
-            address: formData.address.trim() || null,
-            phone: formData.phone.trim() || null,
-            email: formData.email.trim() || null,
-          })
-          .eq("id", editingBranch.id);
+            address: formData.address.trim() || undefined,
+            phone: formData.phone.trim() || undefined,
+            email: formData.email.trim() || undefined,
+          });
 
-        if (error) throw error;
+          if (error) {
+            toast.error("Failed to update branch", { description: error });
+            setIsLoading(false);
+            return;
+          }
 
-        await logAdminActivity({
-          category: "branch",
-          type: "branch_updated",
-          description: `Updated branch: ${formData.name.trim()}`,
-          entityType: "branches",
-          entityId: editingBranch.id,
-          entityName: formData.name.trim(),
-          oldValue: {
-            name: editingBranch.name,
-            address: editingBranch.address || null,
-            phone: editingBranch.phone || null,
-            email: editingBranch.email || null,
-          },
-          newValue: {
-            name: formData.name.trim(),
-            address: formData.address.trim() || null,
-            phone: formData.phone.trim() || null,
-            email: formData.email.trim() || null,
-          },
-          branchId: editingBranch.id,
-        });
+          toast.success("Branch updated successfully");
+          
+          // If the updated branch is the current branch, update currentBranch state
+          if (editingBranch.id === currentBranch?.id) {
+            const updatedBranch = {
+              ...currentBranch,
+              name: formData.name.trim(),
+              address: formData.address.trim() || null,
+              phone: formData.phone.trim() || null,
+              email: formData.email.trim() || null,
+            };
+            setCurrentBranch(updatedBranch);
+          }
+        } else {
+          // Admin flow - Update existing branch
+          const { error } = await supabase
+            .from("branches")
+            .update({
+              name: formData.name.trim(),
+              address: formData.address.trim() || null,
+              phone: formData.phone.trim() || null,
+              email: formData.email.trim() || null,
+            })
+            .eq("id", editingBranch.id);
 
-        toast.success("Branch updated successfully");
-        
-        // If the updated branch is the current branch, update currentBranch state
-        if (editingBranch.id === currentBranch?.id) {
-          const updatedBranch = {
-            ...currentBranch,
-            name: formData.name.trim(),
-            address: formData.address.trim() || null,
-            phone: formData.phone.trim() || null,
-            email: formData.email.trim() || null,
-          };
-          setCurrentBranch(updatedBranch);
+          if (error) throw error;
+
+          await logAdminActivity({
+            category: "branch",
+            type: "branch_updated",
+            description: `Updated branch: ${formData.name.trim()}`,
+            entityType: "branches",
+            entityId: editingBranch.id,
+            entityName: formData.name.trim(),
+            oldValue: {
+              name: editingBranch.name,
+              address: editingBranch.address || null,
+              phone: editingBranch.phone || null,
+              email: editingBranch.email || null,
+            },
+            newValue: {
+              name: formData.name.trim(),
+              address: formData.address.trim() || null,
+              phone: formData.phone.trim() || null,
+              email: formData.email.trim() || null,
+            },
+            branchId: editingBranch.id,
+          });
+
+          toast.success("Branch updated successfully");
+          
+          // If the updated branch is the current branch, update currentBranch state
+          if (editingBranch.id === currentBranch?.id) {
+            const updatedBranch = {
+              ...currentBranch,
+              name: formData.name.trim(),
+              address: formData.address.trim() || null,
+              phone: formData.phone.trim() || null,
+              email: formData.email.trim() || null,
+            };
+            setCurrentBranch(updatedBranch);
+          }
         }
       } else {
-        // Create new branch
+        // Staff cannot create new branches - only admins can
+        if (isStaffLoggedIn) {
+          toast.error("Only admins can create new branches");
+          setIsLoading(false);
+          return;
+        }
         const { data, error } = await supabase
           .from("branches")
           .insert({
@@ -284,12 +324,19 @@ export const BranchManagement = () => {
               <BuildingOffice2Icon className="w-5 h-5 text-primary" />
               Gym Branches
             </CardTitle>
-            <CardDescription>Manage gym branches</CardDescription>
+            <CardDescription>
+              {isStaffLoggedIn 
+                ? "View and edit branch details for your assigned branches" 
+                : "Manage gym branches"}
+            </CardDescription>
           </div>
-          <Button onClick={handleOpenAdd} className="gap-2">
-            <PlusIcon className="w-4 h-4" />
-            Add Branch
-          </Button>
+          {/* Only show Add Branch button for admins */}
+          {!isStaffLoggedIn && (
+            <Button onClick={handleOpenAdd} className="gap-2">
+              <PlusIcon className="w-4 h-4" />
+              Add Branch
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -335,15 +382,18 @@ export const BranchManagement = () => {
                   >
                     <PencilIcon className="w-4 h-4 text-muted-foreground" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setDeleteConfirm({ open: true, branch })}
-                    disabled={isLoading || (branch.is_default && branches.length > 1)}
-                    title={branch.is_default && branches.length > 1 ? "Cannot delete default branch" : "Delete branch"}
-                  >
-                    <TrashIcon className="w-4 h-4 text-destructive" />
-                  </Button>
+                  {/* Only show delete button for admins */}
+                  {!isStaffLoggedIn && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDeleteConfirm({ open: true, branch })}
+                      disabled={isLoading || (branch.is_default && branches.length > 1)}
+                      title={branch.is_default && branches.length > 1 ? "Cannot delete default branch" : "Delete branch"}
+                    >
+                      <TrashIcon className="w-4 h-4 text-destructive" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
