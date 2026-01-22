@@ -39,7 +39,6 @@ interface StaffOtherTabProps {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
   manager: "Manager",
   reception: "Reception",
   accountant: "Accountant",
@@ -56,7 +55,7 @@ export const StaffOtherTab = ({
   const [newStaff, setNewStaff] = useState({
     full_name: "",
     phone: "",
-    role: "reception" as "admin" | "manager" | "reception" | "accountant",
+    role: "reception" as "manager" | "reception" | "accountant",
     id_type: "aadhaar",
     id_number: "",
     monthly_salary: "",
@@ -106,7 +105,7 @@ export const StaffOtherTab = ({
     }
   }, [currentBranch?.id]);
 
-  const handleRoleChange = (role: "admin" | "manager" | "reception" | "accountant") => {
+  const handleRoleChange = (role: "manager" | "reception" | "accountant") => {
     setNewStaff({
       ...newStaff,
       role,
@@ -415,7 +414,6 @@ export const StaffOtherTab = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="reception">Reception</SelectItem>
                   <SelectItem value="accountant">Accountant</SelectItem>

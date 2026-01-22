@@ -1323,6 +1323,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_staff_id_from_session: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1331,13 +1332,17 @@ export type Database = {
         Returns: boolean
       }
       refresh_subscription_statuses: { Args: never; Returns: undefined }
+      staff_has_permission: {
+        Args: { _permission: string; _staff_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "member"
       payment_mode: "online" | "cash"
       payment_status: "pending" | "success" | "failed"
       salary_type: "monthly" | "session_based" | "percentage" | "both"
-      staff_role: "admin" | "manager" | "trainer" | "reception" | "accountant"
+      staff_role: "manager" | "trainer" | "reception" | "accountant"
       subscription_status:
         | "active"
         | "expired"
@@ -1475,7 +1480,7 @@ export const Constants = {
       payment_mode: ["online", "cash"],
       payment_status: ["pending", "success", "failed"],
       salary_type: ["monthly", "session_based", "percentage", "both"],
-      staff_role: ["admin", "manager", "trainer", "reception", "accountant"],
+      staff_role: ["manager", "trainer", "reception", "accountant"],
       subscription_status: [
         "active",
         "expired",
