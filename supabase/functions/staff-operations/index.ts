@@ -142,6 +142,43 @@ async function logStaffActivity(
 }
 
 // Action handlers
+// Helper to get only changed fields between old and new values
+function getChangedFields(oldVal: any, newVal: any): { oldValue: any; newValue: any } | null {
+  if (!oldVal && !newVal) return null;
+  if (!oldVal) return { oldValue: null, newValue: newVal };
+  
+  const changedOld: any = {};
+  const changedNew: any = {};
+  
+  // Keys to exclude from comparison (internal fields)
+  const excludeKeys = ['updated_at', 'created_at', 'id', 'branch_id', 'is_active'];
+  
+  const allKeys = new Set([
+    ...Object.keys(oldVal || {}),
+    ...Object.keys(newVal || {}),
+  ]);
+  
+  for (const key of allKeys) {
+    if (excludeKeys.includes(key)) continue;
+    
+    const oldValue = oldVal?.[key];
+    const newValue = newVal?.[key];
+    
+    // Only include if values are different
+    if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+      changedOld[key] = oldValue ?? null;
+      changedNew[key] = newValue ?? null;
+    }
+  }
+  
+  // Return null if no actual changes
+  if (Object.keys(changedOld).length === 0 && Object.keys(changedNew).length === 0) {
+    return null;
+  }
+  
+  return { oldValue: changedOld, newValue: changedNew };
+}
+
 async function handleUpdateGymSettings(supabase: any, body: any, staffId: string, staffDetails: any) {
   const { settingsId, branchId, gymName, gymPhone, gymAddress, whatsappEnabled } = body;
 
@@ -166,10 +203,24 @@ async function handleUpdateGymSettings(supabase: any, body: any, staffId: string
 
   // Prepare update data
   const updateData: any = { updated_at: new Date().toISOString() };
-  if (gymName !== undefined) updateData.gym_name = gymName;
-  if (gymPhone !== undefined) updateData.gym_phone = gymPhone;
-  if (gymAddress !== undefined) updateData.gym_address = gymAddress;
-  if (whatsappEnabled !== undefined) updateData.whatsapp_enabled = whatsappEnabled;
+  const newSettingsForCompare: any = {};
+  
+  if (gymName !== undefined) {
+    updateData.gym_name = gymName;
+    newSettingsForCompare.gym_name = gymName;
+  }
+  if (gymPhone !== undefined) {
+    updateData.gym_phone = gymPhone;
+    newSettingsForCompare.gym_phone = gymPhone;
+  }
+  if (gymAddress !== undefined) {
+    updateData.gym_address = gymAddress;
+    newSettingsForCompare.gym_address = gymAddress;
+  }
+  if (whatsappEnabled !== undefined) {
+    updateData.whatsapp_enabled = whatsappEnabled;
+    newSettingsForCompare.whatsapp_enabled = whatsappEnabled;
+  }
 
   // Update settings
   const { data, error } = await supabase
@@ -183,19 +234,23 @@ async function handleUpdateGymSettings(supabase: any, body: any, staffId: string
     return { error: error.message, status: 500 };
   }
 
-  // Log activity
+  // Get only the changed fields for logging
+  const changes = getChangedFields(oldSettings, newSettingsForCompare);
+  const changedFieldNames = changes ? Object.keys(changes.newValue).map(k => k.replace(/_/g, ' ')).join(', ') : 'settings';
+
+  // Log activity with only changed values
   await logStaffActivity(supabase, {
     staffId,
     staffName: staffDetails.full_name,
     staffPhone: staffDetails.phone,
     category: "settings",
     type: "gym_info_updated",
-    description: `Staff "${staffDetails.full_name}" updated gym settings`,
+    description: `Staff "${staffDetails.full_name}" updated ${changedFieldNames}`,
     branchId,
     entityType: "gym_settings",
     entityId: settingsId,
-    oldValue: oldSettings,
-    newValue: updateData,
+    oldValue: changes?.oldValue || null,
+    newValue: changes?.newValue || null,
   });
 
   return { data, status: 200 };
@@ -303,15 +358,28 @@ async function handleUpdateMonthlyPackage(supabase: any, body: any, staffId: str
   // Get old values
   const { data: oldPackage } = await supabase
     .from("monthly_packages")
-    .select("*")
+    .select("months, price, joining_fee")
     .eq("id", packageId)
     .single();
 
   const updateData: any = { updated_at: new Date().toISOString() };
-  if (months !== undefined) updateData.months = months;
-  if (price !== undefined) updateData.price = price;
-  if (joiningFee !== undefined) updateData.joining_fee = joiningFee;
-  if (isActive !== undefined) updateData.is_active = isActive;
+  const newValuesForCompare: any = {};
+  
+  if (months !== undefined) {
+    updateData.months = months;
+    newValuesForCompare.months = months;
+  }
+  if (price !== undefined) {
+    updateData.price = price;
+    newValuesForCompare.price = price;
+  }
+  if (joiningFee !== undefined) {
+    updateData.joining_fee = joiningFee;
+    newValuesForCompare.joining_fee = joiningFee;
+  }
+  if (isActive !== undefined) {
+    updateData.is_active = isActive;
+  }
 
   const { data, error } = await supabase
     .from("monthly_packages")
@@ -324,18 +392,23 @@ async function handleUpdateMonthlyPackage(supabase: any, body: any, staffId: str
     return { error: error.message, status: 500 };
   }
 
+  // Get only changed fields
+  const changes = getChangedFields(oldPackage, newValuesForCompare);
+  const changedFieldNames = changes ? Object.keys(changes.newValue).map(k => k.replace(/_/g, ' ')).join(', ') : 'package';
+
   await logStaffActivity(supabase, {
     staffId,
     staffName: staffDetails.full_name,
     staffPhone: staffDetails.phone,
     category: "settings",
     type: "package_updated",
-    description: `Staff "${staffDetails.full_name}" updated ${months || oldPackage?.months}-month package`,
+    description: `Staff "${staffDetails.full_name}" updated ${months || oldPackage?.months}-month package (${changedFieldNames})`,
     branchId,
     entityType: "monthly_packages",
     entityId: packageId,
-    oldValue: oldPackage,
-    newValue: updateData,
+    entityName: `${months || oldPackage?.months} Month Package`,
+    oldValue: changes?.oldValue || null,
+    newValue: changes?.newValue || null,
   });
 
   return { data, status: 200 };
@@ -447,15 +520,28 @@ async function handleUpdateCustomPackage(supabase: any, body: any, staffId: stri
 
   const { data: oldPackage } = await supabase
     .from("custom_packages")
-    .select("*")
+    .select("name, duration_days, price")
     .eq("id", packageId)
     .single();
 
   const updateData: any = { updated_at: new Date().toISOString() };
-  if (name !== undefined) updateData.name = name;
-  if (durationDays !== undefined) updateData.duration_days = durationDays;
-  if (price !== undefined) updateData.price = price;
-  if (isActive !== undefined) updateData.is_active = isActive;
+  const newValuesForCompare: any = {};
+  
+  if (name !== undefined) {
+    updateData.name = name;
+    newValuesForCompare.name = name;
+  }
+  if (durationDays !== undefined) {
+    updateData.duration_days = durationDays;
+    newValuesForCompare.duration_days = durationDays;
+  }
+  if (price !== undefined) {
+    updateData.price = price;
+    newValuesForCompare.price = price;
+  }
+  if (isActive !== undefined) {
+    updateData.is_active = isActive;
+  }
 
   const { data, error } = await supabase
     .from("custom_packages")
@@ -468,18 +554,23 @@ async function handleUpdateCustomPackage(supabase: any, body: any, staffId: stri
     return { error: error.message, status: 500 };
   }
 
+  // Get only changed fields
+  const changes = getChangedFields(oldPackage, newValuesForCompare);
+  const changedFieldNames = changes ? Object.keys(changes.newValue).map(k => k.replace(/_/g, ' ')).join(', ') : 'package';
+
   await logStaffActivity(supabase, {
     staffId,
     staffName: staffDetails.full_name,
     staffPhone: staffDetails.phone,
     category: "settings",
     type: "custom_package_updated",
-    description: `Staff "${staffDetails.full_name}" updated custom package "${name || oldPackage?.name}"`,
+    description: `Staff "${staffDetails.full_name}" updated custom package "${name || oldPackage?.name}" (${changedFieldNames})`,
     branchId,
     entityType: "custom_packages",
     entityId: packageId,
-    oldValue: oldPackage,
-    newValue: updateData,
+    entityName: name || oldPackage?.name,
+    oldValue: changes?.oldValue || null,
+    newValue: changes?.newValue || null,
   });
 
   return { data, status: 200 };
@@ -544,19 +635,33 @@ async function handleUpdateBranch(supabase: any, body: any, staffId: string, sta
     return { error: "You don't have access to this branch", status: 403 };
   }
 
-  // Get old values for logging
+  // Get old values for logging (only relevant fields)
   const { data: oldBranch } = await supabase
     .from("branches")
-    .select("*")
+    .select("name, address, phone, email")
     .eq("id", branchId)
     .single();
 
   // Prepare update data
   const updateData: any = { updated_at: new Date().toISOString() };
-  if (name !== undefined) updateData.name = name;
-  if (address !== undefined) updateData.address = address;
-  if (phone !== undefined) updateData.phone = phone;
-  if (email !== undefined) updateData.email = email;
+  const newValuesForCompare: any = {};
+  
+  if (name !== undefined) {
+    updateData.name = name;
+    newValuesForCompare.name = name;
+  }
+  if (address !== undefined) {
+    updateData.address = address;
+    newValuesForCompare.address = address;
+  }
+  if (phone !== undefined) {
+    updateData.phone = phone;
+    newValuesForCompare.phone = phone;
+  }
+  if (email !== undefined) {
+    updateData.email = email;
+    newValuesForCompare.email = email;
+  }
 
   const { data, error } = await supabase
     .from("branches")
@@ -569,19 +674,23 @@ async function handleUpdateBranch(supabase: any, body: any, staffId: string, sta
     return { error: error.message, status: 500 };
   }
 
+  // Get only changed fields
+  const changes = getChangedFields(oldBranch, newValuesForCompare);
+  const changedFieldNames = changes ? Object.keys(changes.newValue).map(k => k.replace(/_/g, ' ')).join(', ') : 'branch details';
+
   await logStaffActivity(supabase, {
     staffId,
     staffName: staffDetails.full_name,
     staffPhone: staffDetails.phone,
     category: "branch",
     type: "branch_updated",
-    description: `Staff "${staffDetails.full_name}" updated branch "${name || oldBranch?.name}"`,
+    description: `Staff "${staffDetails.full_name}" updated branch "${name || oldBranch?.name}" (${changedFieldNames})`,
     branchId,
     entityType: "branches",
     entityId: branchId,
     entityName: name || oldBranch?.name,
-    oldValue: oldBranch,
-    newValue: updateData,
+    oldValue: changes?.oldValue || null,
+    newValue: changes?.newValue || null,
   });
 
   return { data, status: 200 };
