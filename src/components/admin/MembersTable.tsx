@@ -294,6 +294,29 @@ export const MembersTable = ({
       const data = await response.json();
       
       if (data.success && data.sent > 0) {
+        // Log WhatsApp activity for staff
+        if (isStaffLoggedIn && staffUser) {
+          const activityType = type === "promotional" ? "whatsapp_promotional_sent" 
+            : type === "expiry_reminder" ? "whatsapp_expiry_reminder_sent"
+            : type === "expired_reminder" ? "whatsapp_expired_reminder_sent"
+            : type === "payment_details" ? "whatsapp_payment_details_sent"
+            : "whatsapp_message_sent";
+          
+          await logStaffActivity({
+            category: "whatsapp",
+            type: activityType as any,
+            description: `Staff "${staffUser.fullName}" sent ${type.replace(/_/g, " ")} message to "${memberName}"`,
+            entityType: "members",
+            entityId: memberId,
+            entityName: memberName,
+            newValue: { message_type: type, recipient_phone: memberPhone },
+            branchId: currentBranch?.id,
+            staffId: staffUser.id,
+            staffName: staffUser.fullName,
+            staffPhone: staffUser.phone,
+            metadata: { staff_role: staffUser.role },
+          });
+        }
         return true;
       } else {
         throw new Error(data.error || "Failed to send WhatsApp");
@@ -395,6 +418,37 @@ export const MembersTable = ({
             } 
           : m
       ));
+
+      // Log activity for staff
+      if (isStaffLoggedIn && staffUser) {
+        await logStaffActivity({
+          category: "members",
+          type: "member_moved_to_active",
+          description: `Staff "${staffUser.fullName}" moved "${member.name}" to active status`,
+          entityType: "members",
+          entityId: member.id,
+          entityName: member.name,
+          oldValue: { status: member.subscription.status },
+          newValue: { status: "active" },
+          branchId: currentBranch?.id,
+          staffId: staffUser.id,
+          staffName: staffUser.fullName,
+          staffPhone: staffUser.phone,
+          metadata: { staff_role: staffUser.role },
+        });
+      } else {
+        await logAdminActivity({
+          category: "members",
+          type: "member_status_changed",
+          description: `Moved "${member.name}" to active status`,
+          entityType: "members",
+          entityId: member.id,
+          entityName: member.name,
+          oldValue: { status: member.subscription.status },
+          newValue: { status: "active" },
+          branchId: currentBranch?.id,
+        });
+      }
       
       toast.success(`${member.name} moved to active`);
     } catch (error: any) {
@@ -523,6 +577,27 @@ export const MembersTable = ({
         toast.success(`${typeLabel} sent to ${data.sent} members`, {
           description: data.failed > 0 ? `${data.failed} failed` : undefined,
         });
+
+        // Log bulk WhatsApp activity for staff
+        if (isStaffLoggedIn && staffUser && data.sent > 0) {
+          await logStaffActivity({
+            category: "whatsapp",
+            type: "whatsapp_bulk_message_sent",
+            description: `Staff "${staffUser.fullName}" sent bulk ${type.replace(/_/g, " ")} to ${data.sent} members`,
+            entityType: "members",
+            newValue: { 
+              message_type: type, 
+              recipients_count: data.sent,
+              failed_count: data.failed || 0,
+            },
+            branchId: currentBranch?.id,
+            staffId: staffUser.id,
+            staffName: staffUser.fullName,
+            staffPhone: staffUser.phone,
+            metadata: { staff_role: staffUser.role },
+          });
+        }
+
         setSelectedMembers(new Set());
       } else {
         throw new Error(data.error || "Failed to send WhatsApp");

@@ -34,6 +34,8 @@ import {
   LogIn,
   LogOut,
   AlertTriangle,
+  MessageCircle,
+  Send,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ActivityDetailDialog from "./ActivityDetailDialog";
@@ -78,6 +80,7 @@ interface StaffActivityStats {
   failedLogins: number;
   ledgerEntries: number;
   settingsChanges: number;
+  whatsappMessages: number;
 }
 
 interface StaffActivityLogsTabProps {
@@ -104,6 +107,7 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
     failedLogins: 0,
     ledgerEntries: 0,
     settingsChanges: 0,
+    whatsappMessages: 0,
   });
   const [activeSubTab, setActiveSubTab] = useState("logs");
   const [selectedActivity, setSelectedActivity] = useState<StaffActivityLog | null>(null);
@@ -163,6 +167,7 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
         failedLogins: loginData?.filter((l: StaffLoginAttempt) => !l.success).length || 0,
         ledgerEntries: 0,
         settingsChanges: 0,
+        whatsappMessages: 0,
       };
 
       activityData?.forEach((log: StaffActivityLog) => {
@@ -170,7 +175,8 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
         if (createdAt >= today) statsData.activitiesToday++;
         
         if (log.activity_type === "member_added") statsData.membersAdded++;
-        if (log.activity_type === "member_updated" || log.activity_type === "member_deleted") statsData.membersUpdated++;
+        if (["member_updated", "member_deleted", "member_moved_to_active", "member_moved_to_inactive", "member_status_changed"].includes(log.activity_type)) 
+          statsData.membersUpdated++;
         if (log.activity_type === "cash_payment_added" || log.activity_type === "online_payment_received") 
           statsData.paymentsRecorded++;
         if (log.activity_type === "staff_logged_in" || log.activity_type === "staff_logged_out") 
@@ -179,8 +185,11 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
         if (["expense_added", "expense_deleted", "income_added", "ledger_entry_added", "ledger_entry_deleted"].includes(log.activity_type)) 
           statsData.ledgerEntries++;
         // Settings activities
-        if (["gym_info_updated", "whatsapp_toggled", "package_updated", "package_added", "package_deleted", "branch_updated"].includes(log.activity_type)) 
+        if (["gym_info_updated", "whatsapp_toggled", "package_updated", "package_added", "package_deleted", "custom_package_added", "custom_package_updated", "custom_package_deleted", "branch_updated"].includes(log.activity_type)) 
           statsData.settingsChanges++;
+        // WhatsApp activities
+        if (["whatsapp_message_sent", "whatsapp_promotional_sent", "whatsapp_expiry_reminder_sent", "whatsapp_expired_reminder_sent", "whatsapp_payment_details_sent", "whatsapp_bulk_message_sent"].includes(log.activity_type)) 
+          statsData.whatsappMessages++;
       });
 
       setStats(statsData);
@@ -281,6 +290,11 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
         return <UserPlus className="w-4 h-4 text-blue-500" />;
       case "member_deleted":
         return <UserMinus className="w-4 h-4 text-red-500" />;
+      case "member_moved_to_active":
+      case "member_status_changed":
+        return <RefreshCw className="w-4 h-4 text-green-500" />;
+      case "member_moved_to_inactive":
+        return <RefreshCw className="w-4 h-4 text-amber-500" />;
       case "subscription_created":
       case "subscription_renewed":
       case "subscription_extended":
@@ -301,8 +315,19 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
       case "package_updated":
       case "package_added":
       case "package_deleted":
+      case "custom_package_added":
+      case "custom_package_updated":
+      case "custom_package_deleted":
       case "branch_updated":
         return <ShieldCheck className="w-4 h-4 text-purple-500" />;
+      // WhatsApp activities
+      case "whatsapp_message_sent":
+      case "whatsapp_promotional_sent":
+      case "whatsapp_expiry_reminder_sent":
+      case "whatsapp_expired_reminder_sent":
+      case "whatsapp_payment_details_sent":
+      case "whatsapp_bulk_message_sent":
+        return <Send className="w-4 h-4 text-green-500" />;
       default:
         return <RefreshCw className="w-4 h-4 text-muted-foreground" />;
     }
@@ -324,6 +349,9 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
       member_updated: { label: "Member Updated", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
       member_deleted: { label: "Member Deleted", color: "bg-red-500/10 text-red-500 border-red-500/20" },
       member_viewed: { label: "Member Viewed", color: "bg-slate-500/10 text-slate-500 border-slate-500/20" },
+      member_moved_to_active: { label: "Moved to Active", color: "bg-green-500/10 text-green-500 border-green-500/20" },
+      member_moved_to_inactive: { label: "Moved to Inactive", color: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
+      member_status_changed: { label: "Status Changed", color: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
       subscription_created: { label: "Subscription", color: "bg-green-500/10 text-green-500 border-green-500/20" },
       subscription_renewed: { label: "Renewed", color: "bg-green-500/10 text-green-500 border-green-500/20" },
       subscription_extended: { label: "Extended", color: "bg-green-500/10 text-green-500 border-green-500/20" },
@@ -341,7 +369,17 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
       package_updated: { label: "Package Updated", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
       package_added: { label: "Package Added", color: "bg-green-500/10 text-green-500 border-green-500/20" },
       package_deleted: { label: "Package Deleted", color: "bg-red-500/10 text-red-500 border-red-500/20" },
+      custom_package_added: { label: "Custom Package Added", color: "bg-green-500/10 text-green-500 border-green-500/20" },
+      custom_package_updated: { label: "Custom Package Updated", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
+      custom_package_deleted: { label: "Custom Package Deleted", color: "bg-red-500/10 text-red-500 border-red-500/20" },
       branch_updated: { label: "Branch Updated", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
+      // WhatsApp activities
+      whatsapp_message_sent: { label: "WhatsApp Sent", color: "bg-green-500/10 text-green-500 border-green-500/20" },
+      whatsapp_promotional_sent: { label: "Promotional", color: "bg-teal-500/10 text-teal-500 border-teal-500/20" },
+      whatsapp_expiry_reminder_sent: { label: "Expiry Reminder", color: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
+      whatsapp_expired_reminder_sent: { label: "Expired Reminder", color: "bg-red-500/10 text-red-500 border-red-500/20" },
+      whatsapp_payment_details_sent: { label: "Payment Details", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
+      whatsapp_bulk_message_sent: { label: "Bulk WhatsApp", color: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20" },
     };
     
     const config = labels[activityType] || { label: activityType.replace(/_/g, " "), color: "bg-muted text-muted-foreground" };
@@ -502,6 +540,13 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
                     <p className="text-lg font-bold">{stats.settingsChanges}</p>
                   </div>
                 </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/10">
+                  <Send className="w-5 h-5 text-green-500" />
+                  <div>
+                    <p className="text-sm font-medium">WhatsApp Sent</p>
+                    <p className="text-lg font-bold">{stats.whatsappMessages}</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -537,6 +582,7 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
                     <SelectItem value="member_added">Member Added</SelectItem>
                     <SelectItem value="member_updated">Member Updated</SelectItem>
                     <SelectItem value="member_deleted">Member Deleted</SelectItem>
+                    <SelectItem value="member_moved_to_active">Moved to Active</SelectItem>
                     <SelectItem value="subscription_created">Subscription Created</SelectItem>
                     <SelectItem value="subscription_renewed">Subscription Renewed</SelectItem>
                     <SelectItem value="cash_payment_added">Payment Added</SelectItem>
@@ -545,7 +591,11 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
                     <SelectItem value="gym_info_updated">Settings Updated</SelectItem>
                     <SelectItem value="whatsapp_toggled">WhatsApp Toggle</SelectItem>
                     <SelectItem value="package_updated">Package Updated</SelectItem>
+                    <SelectItem value="package_added">Package Added</SelectItem>
                     <SelectItem value="branch_updated">Branch Updated</SelectItem>
+                    <SelectItem value="whatsapp_message_sent">WhatsApp Sent</SelectItem>
+                    <SelectItem value="whatsapp_promotional_sent">Promotional Sent</SelectItem>
+                    <SelectItem value="whatsapp_bulk_message_sent">Bulk WhatsApp</SelectItem>
                     <SelectItem value="staff_added">Staff Added</SelectItem>
                     <SelectItem value="staff_updated">Staff Updated</SelectItem>
                     <SelectItem value="staff_toggled">Status Changed</SelectItem>
