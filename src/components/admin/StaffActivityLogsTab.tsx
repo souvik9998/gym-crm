@@ -87,13 +87,21 @@ interface StaffActivityLogsTabProps {
   refreshKey: number;
 }
 
+interface Staff {
+  id: string;
+  full_name: string;
+  phone: string;
+}
+
 const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
   const { currentBranch } = useBranch();
   const [logs, setLogs] = useState<StaffActivityLog[]>([]);
   const [loginAttempts, setLoginAttempts] = useState<StaffLoginAttempt[]>([]);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [staffFilter, setStaffFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [stats, setStats] = useState<StaffActivityStats>({
@@ -121,8 +129,40 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
   useEffect(() => {
     if (currentBranch?.id) {
       fetchData();
+      fetchStaffList();
     }
   }, [refreshKey, currentBranch?.id]);
+
+  const fetchStaffList = async () => {
+    if (!currentBranch?.id) return;
+
+    try {
+      // Fetch staff assigned to current branch
+      const { data: assignments } = await supabase
+        .from("staff_branch_assignments")
+        .select("staff_id")
+        .eq("branch_id", currentBranch.id);
+
+      const staffIds = assignments?.map((a) => a.staff_id) || [];
+
+      if (staffIds.length === 0) {
+        setStaffList([]);
+        return;
+      }
+
+      const { data: staffData, error } = await supabase
+        .from("staff")
+        .select("id, full_name, phone")
+        .in("id", staffIds)
+        .eq("is_active", true)
+        .order("full_name");
+
+      if (error) throw error;
+      setStaffList((staffData as Staff[]) || []);
+    } catch (error: any) {
+      console.error("Error fetching staff list:", error);
+    }
+  };
 
   const fetchData = async () => {
     if (!currentBranch?.id) return;
@@ -204,7 +244,7 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
     if (currentBranch?.id) {
       fetchFilteredLogs();
     }
-  }, [typeFilter, dateFrom, dateTo]);
+  }, [typeFilter, staffFilter, dateFrom, dateTo]);
 
   const fetchFilteredLogs = async () => {
     if (!currentBranch?.id) return;
@@ -231,7 +271,18 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
       const { data, error } = await query;
 
       if (error) throw error;
-      setLogs((data as StaffActivityLog[]) || []);
+      
+      // Filter by staff if selected (staff_id is in metadata)
+      let filteredData = (data as StaffActivityLog[]) || [];
+      
+      if (staffFilter !== "all") {
+        filteredData = filteredData.filter((log) => {
+          const metadata = log.metadata as any;
+          return metadata?.staff_id === staffFilter;
+        });
+      }
+      
+      setLogs(filteredData);
     } catch (error: any) {
       console.error("Error fetching filtered logs:", error);
     }
@@ -240,6 +291,7 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
   const clearFilters = () => {
     setSearchQuery("");
     setTypeFilter("all");
+    setStaffFilter("all");
     setDateFrom("");
     setDateTo("");
   };
@@ -247,10 +299,14 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
   const filteredLogs = logs.filter((log) => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
+      const metadata = log.metadata as any;
+      const staffName = metadata?.staff_name?.toLowerCase() || "";
+      
       return (
         log.description.toLowerCase().includes(query) ||
         log.activity_type.toLowerCase().includes(query) ||
-        (log.entity_name && log.entity_name.toLowerCase().includes(query))
+        (log.entity_name && log.entity_name.toLowerCase().includes(query)) ||
+        staffName.includes(query)
       );
     }
     return true;
@@ -430,7 +486,7 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
     }
   };
 
-  const hasActiveFilters = searchQuery || typeFilter !== "all" || dateFrom || dateTo;
+  const hasActiveFilters = searchQuery || typeFilter !== "all" || staffFilter !== "all" || dateFrom || dateTo;
 
   if (isLoading) {
     return (
@@ -604,6 +660,20 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
                     <SelectItem value="staff_toggled">Status Changed</SelectItem>
                   </SelectContent>
                 </Select>
+                <Select value={staffFilter} onValueChange={setStaffFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <Filter className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="Staff Member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Staff</SelectItem>
+                    {staffList.map((staff) => (
+                      <SelectItem key={staff.id} value={staff.id}>
+                        {staff.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <DateRangePicker
                   dateFrom={dateFrom}
                   dateTo={dateTo}
@@ -665,11 +735,18 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {log.entity_name && (
-                              <Badge variant="outline" className="text-xs">
-                                {log.entity_name}
-                              </Badge>
-                            )}
+                            {(() => {
+                              const metadata = log.metadata as any;
+                              const staffName = metadata?.staff_name;
+                              if (staffName) {
+                                return (
+                                  <Badge variant="outline" className="text-xs">
+                                    {staffName}
+                                  </Badge>
+                                );
+                              }
+                              return <span className="text-xs text-muted-foreground">-</span>;
+                            })()}
                           </TableCell>
                           <TableCell>
                             <Button

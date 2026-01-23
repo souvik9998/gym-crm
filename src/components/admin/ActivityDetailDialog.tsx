@@ -132,8 +132,14 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
   const renderValueComparison = () => {
     const oldValue = activity.old_value;
     const newValue = activity.new_value;
+    const activityType = activity.activity_type || "";
 
     if (!oldValue && !newValue) return null;
+
+    // Determine operation type from activity_type
+    const isAddOperation = activityType.endsWith("_added") || activityType.endsWith("_created");
+    const isDeleteOperation = activityType.endsWith("_deleted");
+    const isUpdateOperation = activityType.endsWith("_updated") || activityType.endsWith("_toggled") || activityType.endsWith("_changed");
 
     // Keys to exclude from display (internal/system fields)
     const excludeKeys = [
@@ -154,8 +160,8 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
       return JSON.stringify(oldVal) !== JSON.stringify(newVal);
     });
 
-    if (changedKeys.length === 0 && !oldValue && newValue) {
-      // New entry created - filter out internal fields
+    // Handle ADD operations
+    if (isAddOperation && (!oldValue || Object.keys(oldValue).length === 0) && newValue) {
       const filteredNewValue = Object.fromEntries(
         Object.entries(newValue).filter(([key]) => !excludeKeys.includes(key))
       );
@@ -166,7 +172,7 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
         <div className="space-y-3">
           <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <FileText className="w-4 h-4" />
-            New Values
+            Added
           </h4>
           <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-4 space-y-2">
             {Object.entries(filteredNewValue).map(([key, value]) => (
@@ -182,8 +188,67 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
       );
     }
 
-    if (changedKeys.length === 0) return null;
+    // Handle DELETE operations
+    if (isDeleteOperation && oldValue && (!newValue || Object.keys(newValue).length === 0)) {
+      const filteredOldValue = Object.fromEntries(
+        Object.entries(oldValue).filter(([key]) => !excludeKeys.includes(key))
+      );
+      
+      if (Object.keys(filteredOldValue).length === 0) return null;
+      
+      return (
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            Deleted
+          </h4>
+          <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4 space-y-2">
+            {Object.entries(filteredOldValue).map(([key, value]) => (
+              <div key={key} className="flex justify-between items-start gap-4">
+                <span className="text-sm text-muted-foreground">{formatFieldName(key)}:</span>
+                <span className="text-sm font-medium text-red-600 text-right max-w-[60%] break-words">
+                  {formatFieldValue(value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
 
+    // Handle UPDATE operations or fallback for other cases
+    if (changedKeys.length === 0) {
+      // If no changes detected but we have values, show new values for add operations
+      if (isAddOperation && newValue) {
+        const filteredNewValue = Object.fromEntries(
+          Object.entries(newValue).filter(([key]) => !excludeKeys.includes(key))
+        );
+        
+        if (Object.keys(filteredNewValue).length === 0) return null;
+        
+        return (
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Added
+            </h4>
+            <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-4 space-y-2">
+              {Object.entries(filteredNewValue).map(([key, value]) => (
+                <div key={key} className="flex justify-between items-start gap-4">
+                  <span className="text-sm text-muted-foreground">{formatFieldName(key)}:</span>
+                  <span className="text-sm font-medium text-green-600 text-right max-w-[60%] break-words">
+                    {formatFieldValue(value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+      return null;
+    }
+
+    // Show changes for UPDATE operations
     return (
       <div className="space-y-3">
         <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
