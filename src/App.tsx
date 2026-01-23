@@ -22,6 +22,7 @@ const StaffDashboard = lazy(() => import("./pages/admin/StaffDashboard"));
 const AdminQRCode = lazy(() => import("./pages/admin/QRCode"));
 const AdminSettings = lazy(() => import("./pages/admin/Settings"));
 const AdminAnalytics = lazy(() => import("./pages/admin/Analytics"));
+const BranchAnalytics = lazy(() => import("./pages/admin/BranchAnalytics"));
 const AdminLedger = lazy(() => import("./pages/admin/Ledger"));
 const Logs = lazy(() => import("./pages/admin/Logs"));
 const StaffManagement = lazy(() => import("./pages/admin/StaffManagement"));
@@ -131,6 +132,13 @@ const App = () => (
                 <Suspense fallback={<PageLoader />}>
                   <ProtectedRoute requiredPermission="can_access_analytics">
                     <AdminAnalytics />
+                  </ProtectedRoute>
+                </Suspense>
+              } />
+              <Route path="/admin/branch-analytics" element={
+                <Suspense fallback={<PageLoader />}>
+                  <ProtectedRoute requiredPermission="admin_only">
+                    <BranchAnalytics />
                   </ProtectedRoute>
                 </Suspense>
               } />

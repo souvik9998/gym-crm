@@ -16,6 +16,7 @@ import {
   ChatBubbleLeftRightIcon,
   UserGroupIcon,
   UsersIcon,
+  BuildingOffice2Icon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
@@ -87,6 +88,14 @@ const allNavItems: NavItem[] = [
     icon: ChartBarIcon,
     iconSolid: ChartBarIconSolid,
     requiresPermission: "can_access_analytics",
+  },
+  // Branch Analytics - admin only
+  {
+    title: "Branch Analytics",
+    href: "/admin/branch-analytics",
+    icon: BuildingOffice2Icon,
+    iconSolid: BuildingOffice2Icon,
+    adminOnly: true,
   },
   // Ledger - requires ONLY ledger permission
   {

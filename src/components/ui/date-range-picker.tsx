@@ -1,14 +1,35 @@
 import * as React from "react";
-import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear, subWeeks, subMonths, subQuarters, subYears, isSameDay } from "date-fns";
-import { Calendar as CalendarIcon, Check } from "lucide-react";
+import {
+  format,
+  subDays,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  startOfQuarter,
+  endOfQuarter,
+  startOfYear,
+  endOfYear,
+  subWeeks,
+  subMonths,
+  subQuarters,
+  subYears,
+  isSameDay,
+  isToday,
+  isYesterday,
+  startOfToday,
+  endOfToday,
+} from "date-fns";
+import { Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-type ComparisonPeriod = 
+type ComparisonPeriod =
   | "none"
   | "previous_period"
   | "previous_week"
@@ -16,6 +37,21 @@ type ComparisonPeriod =
   | "previous_quarter"
   | "previous_year"
   | "previous_year_dow";
+
+type DatePreset =
+  | "today"
+  | "yesterday"
+  | "last_7_days"
+  | "last_30_days"
+  | "last_90_days"
+  | "this_week"
+  | "last_week"
+  | "this_month"
+  | "last_month"
+  | "this_quarter"
+  | "last_quarter"
+  | "this_year"
+  | "last_year";
 
 interface DateRangePickerProps {
   dateFrom: string;
@@ -44,6 +80,7 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
   });
   const [originalDateRange, setOriginalDateRange] = React.useState<DateRange | undefined>(undefined);
   const [comparisonDateRange, setComparisonDateRange] = React.useState<DateRange | undefined>(undefined);
+  const [activeTab, setActiveTab] = React.useState<"presets" | "custom">("presets");
 
   // Update temp dates when props change
   React.useEffect(() => {
@@ -92,12 +129,86 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
     }
   };
 
+  const handlePresetSelect = (preset: DatePreset) => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    let from: Date;
+    let to: Date = today;
+
+    switch (preset) {
+      case "today":
+        from = startOfToday();
+        to = endOfToday();
+        break;
+      case "yesterday":
+        from = startOfToday();
+        from.setDate(from.getDate() - 1);
+        to = new Date(from);
+        to.setHours(23, 59, 59, 999);
+        break;
+      case "last_7_days":
+        from = subDays(today, 6);
+        from.setHours(0, 0, 0, 0);
+        break;
+      case "last_30_days":
+        from = subDays(today, 29);
+        from.setHours(0, 0, 0, 0);
+        break;
+      case "last_90_days":
+        from = subDays(today, 89);
+        from.setHours(0, 0, 0, 0);
+        break;
+      case "this_week":
+        from = startOfWeek(today);
+        to = endOfWeek(today);
+        break;
+      case "last_week":
+        from = startOfWeek(subWeeks(today, 1));
+        to = endOfWeek(subWeeks(today, 1));
+        break;
+      case "this_month":
+        from = startOfMonth(today);
+        to = endOfMonth(today);
+        break;
+      case "last_month":
+        from = startOfMonth(subMonths(today, 1));
+        to = endOfMonth(subMonths(today, 1));
+        break;
+      case "this_quarter":
+        from = startOfQuarter(today);
+        to = endOfQuarter(today);
+        break;
+      case "last_quarter":
+        from = startOfQuarter(subQuarters(today, 1));
+        to = endOfQuarter(subQuarters(today, 1));
+        break;
+      case "this_year":
+        from = startOfYear(today);
+        to = endOfYear(today);
+        break;
+      case "last_year":
+        from = startOfYear(subYears(today, 1));
+        to = endOfYear(subYears(today, 1));
+        break;
+      default:
+        return;
+    }
+
+    setTempDateFrom(from);
+    setTempDateTo(to);
+    setDateRange({ from, to });
+    setComparisonPeriod("none");
+    setComparisonDateRange(undefined);
+    setOriginalDateRange(undefined);
+    setActiveTab("custom");
+  };
+
   const handleApply = () => {
     if (tempDateFrom && tempDateTo) {
       // Ensure from is before to
       const from = tempDateFrom < tempDateTo ? tempDateFrom : tempDateTo;
       const to = tempDateFrom < tempDateTo ? tempDateTo : tempDateFrom;
-      
+
       const fromStr = format(from, "yyyy-MM-dd");
       const toStr = format(to, "yyyy-MM-dd");
       onDateChange(fromStr, toStr);
@@ -132,7 +243,7 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
 
   const handleComparisonChange = (value: ComparisonPeriod) => {
     setComparisonPeriod(value);
-    
+
     if (value === "none") {
       // Reset to original dates if comparison is removed
       if (originalDateRange) {
@@ -161,7 +272,7 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
       today.setHours(23, 59, 59, 999);
       let baseStart: Date;
       let baseEnd: Date;
-      
+
       switch (value) {
         case "previous_week":
           baseStart = startOfWeek(subWeeks(today, 1));
@@ -182,7 +293,7 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
         default:
           return;
       }
-      
+
       setTempDateFrom(baseStart);
       setTempDateTo(baseEnd);
       setDateRange({ from: baseStart, to: baseEnd });
@@ -204,7 +315,7 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
     let comparisonStart: Date;
     let comparisonEnd: Date;
     const rangeDays = Math.ceil((baseTo.getTime() - baseFrom.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     switch (value) {
       case "previous_period":
         comparisonEnd = new Date(baseFrom);
@@ -250,7 +361,7 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
 
     // Set comparison range for visualization
     setComparisonDateRange({ from: comparisonStart, to: comparisonEnd });
-    
+
     // Update the displayed dates to the comparison period (for applying)
     setTempDateFrom(comparisonStart);
     setTempDateTo(comparisonEnd);
@@ -271,13 +382,29 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
     return "Select date range";
   };
 
+  const presetOptions: { value: DatePreset; label: string; description: string }[] = [
+    { value: "today", label: "Today", description: format(startOfToday(), "MMM d, yyyy") },
+    { value: "yesterday", label: "Yesterday", description: format(subDays(startOfToday(), 1), "MMM d, yyyy") },
+    { value: "last_7_days", label: "Last 7 days", description: `${format(subDays(new Date(), 6), "MMM d")} - ${format(new Date(), "MMM d")}` },
+    { value: "last_30_days", label: "Last 30 days", description: `${format(subDays(new Date(), 29), "MMM d")} - ${format(new Date(), "MMM d")}` },
+    { value: "last_90_days", label: "Last 90 days", description: `${format(subDays(new Date(), 89), "MMM d")} - ${format(new Date(), "MMM d")}` },
+    { value: "this_week", label: "This week", description: `${format(startOfWeek(new Date()), "MMM d")} - ${format(endOfWeek(new Date()), "MMM d")}` },
+    { value: "last_week", label: "Last week", description: `${format(startOfWeek(subWeeks(new Date(), 1)), "MMM d")} - ${format(endOfWeek(subWeeks(new Date(), 1)), "MMM d")}` },
+    { value: "this_month", label: "This month", description: format(new Date(), "MMMM yyyy") },
+    { value: "last_month", label: "Last month", description: format(subMonths(new Date(), 1), "MMMM yyyy") },
+    { value: "this_quarter", label: "This quarter", description: `${format(startOfQuarter(new Date()), "MMM d")} - ${format(endOfQuarter(new Date()), "MMM d")}` },
+    { value: "last_quarter", label: "Last quarter", description: `${format(startOfQuarter(subQuarters(new Date(), 1)), "MMM d")} - ${format(endOfQuarter(subQuarters(new Date(), 1)), "MMM d")}` },
+    { value: "this_year", label: "This year", description: format(new Date(), "yyyy") },
+    { value: "last_year", label: "Last year", description: format(subYears(new Date(), 1), "yyyy") },
+  ];
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           className={cn(
-            "w-[240px] justify-start text-left font-normal",
+            "w-[280px] justify-start text-left font-normal",
             !dateFrom && !dateTo && "text-muted-foreground",
             className
           )}
@@ -288,102 +415,129 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <div className="flex">
-          {/* Left Side - Comparison Period List */}
-          <div className="border-r p-4 w-[240px]">
-            <p className="text-sm font-medium mb-3">Comparison Period</p>
-            <div className="space-y-1">
-              <button
-                onClick={() => handleComparisonChange("none")}
-                className={cn(
-                  "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
-                  comparisonPeriod === "none"
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent/50"
-                )}
-              >
-                <span>No comparison</span>
-                {comparisonPeriod === "none" && <Check className="w-4 h-4" />}
-              </button>
-              <button
-                onClick={() => handleComparisonChange("previous_period")}
-                className={cn(
-                  "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
-                  comparisonPeriod === "previous_period"
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent/50"
-                )}
-              >
-                <span>Previous period</span>
-                {comparisonPeriod === "previous_period" && <Check className="w-4 h-4" />}
-              </button>
-              <button
-                onClick={() => handleComparisonChange("previous_week")}
-                className={cn(
-                  "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
-                  comparisonPeriod === "previous_week"
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent/50"
-                )}
-              >
-                <span>Previous week</span>
-                {comparisonPeriod === "previous_week" && <Check className="w-4 h-4" />}
-              </button>
-              <button
-                onClick={() => handleComparisonChange("previous_month")}
-                className={cn(
-                  "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
-                  comparisonPeriod === "previous_month"
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent/50"
-                )}
-              >
-                <span>Previous month</span>
-                {comparisonPeriod === "previous_month" && <Check className="w-4 h-4" />}
-              </button>
-              <button
-                onClick={() => handleComparisonChange("previous_quarter")}
-                className={cn(
-                  "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
-                  comparisonPeriod === "previous_quarter"
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent/50"
-                )}
-              >
-                <span>Previous quarter</span>
-                {comparisonPeriod === "previous_quarter" && <Check className="w-4 h-4" />}
-              </button>
-              <button
-                onClick={() => handleComparisonChange("previous_year")}
-                className={cn(
-                  "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
-                  comparisonPeriod === "previous_year"
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent/50"
-                )}
-              >
-                <span>Previous year</span>
-                {comparisonPeriod === "previous_year" && <Check className="w-4 h-4" />}
-              </button>
-              <button
-                onClick={() => handleComparisonChange("previous_year_dow")}
-                className={cn(
-                  "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
-                  comparisonPeriod === "previous_year_dow"
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent/50"
-                )}
-              >
-                <span>Previous year (match day of week)</span>
-                {comparisonPeriod === "previous_year_dow" && <Check className="w-4 h-4" />}
-              </button>
-            </div>
+          {/* Left Side - Presets and Comparison Period */}
+          <div className="border-r p-4 w-[280px] bg-muted/30">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "presets" | "custom")} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="presets" className="text-xs">Presets</TabsTrigger>
+                <TabsTrigger value="custom" className="text-xs">Custom</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="presets" className="mt-0 space-y-1 max-h-[400px] overflow-y-auto">
+                <p className="text-xs font-semibold text-muted-foreground mb-2 px-1">Quick Select</p>
+                {presetOptions.map((preset) => (
+                  <button
+                    key={preset.value}
+                    onClick={() => handlePresetSelect(preset.value)}
+                    className={cn(
+                      "w-full text-left px-3 py-2.5 text-sm rounded-md transition-all hover:bg-accent hover:text-accent-foreground",
+                      "flex flex-col gap-0.5 border border-transparent hover:border-accent-foreground/20"
+                    )}
+                  >
+                    <span className="font-medium">{preset.label}</span>
+                    <span className="text-xs text-muted-foreground">{preset.description}</span>
+                  </button>
+                ))}
+              </TabsContent>
+
+              <TabsContent value="custom" className="mt-0">
+                <p className="text-xs font-semibold text-muted-foreground mb-3 px-1">Comparison Period</p>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => handleComparisonChange("none")}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
+                      comparisonPeriod === "none"
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : "hover:bg-accent/50"
+                    )}
+                  >
+                    <span>No comparison</span>
+                    {comparisonPeriod === "none" && <Check className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={() => handleComparisonChange("previous_period")}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
+                      comparisonPeriod === "previous_period"
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : "hover:bg-accent/50"
+                    )}
+                  >
+                    <span>Previous period</span>
+                    {comparisonPeriod === "previous_period" && <Check className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={() => handleComparisonChange("previous_week")}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
+                      comparisonPeriod === "previous_week"
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : "hover:bg-accent/50"
+                    )}
+                  >
+                    <span>Previous week</span>
+                    {comparisonPeriod === "previous_week" && <Check className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={() => handleComparisonChange("previous_month")}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
+                      comparisonPeriod === "previous_month"
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : "hover:bg-accent/50"
+                    )}
+                  >
+                    <span>Previous month</span>
+                    {comparisonPeriod === "previous_month" && <Check className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={() => handleComparisonChange("previous_quarter")}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
+                      comparisonPeriod === "previous_quarter"
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : "hover:bg-accent/50"
+                    )}
+                  >
+                    <span>Previous quarter</span>
+                    {comparisonPeriod === "previous_quarter" && <Check className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={() => handleComparisonChange("previous_year")}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
+                      comparisonPeriod === "previous_year"
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : "hover:bg-accent/50"
+                    )}
+                  >
+                    <span>Previous year</span>
+                    {comparisonPeriod === "previous_year" && <Check className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={() => handleComparisonChange("previous_year_dow")}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
+                      comparisonPeriod === "previous_year_dow"
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : "hover:bg-accent/50"
+                    )}
+                  >
+                    <span>Previous year (match day)</span>
+                    {comparisonPeriod === "previous_year_dow" && <Check className="w-4 h-4" />}
+                  </button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Right Side - Date Picker */}
-          <div className="p-4">
+          <div className="p-5 min-w-[600px]">
             {/* Date Inputs */}
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-3 mb-5">
               <div className="flex-1">
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Start Date</label>
                 <Input
                   type="date"
                   value={tempDateFrom ? format(tempDateFrom, "yyyy-MM-dd") : ""}
@@ -392,7 +546,6 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
                       const date = new Date(e.target.value + "T00:00:00");
                       setTempDateFrom(date);
                       if (tempDateTo && date > tempDateTo) {
-                        // If from date is after to date, clear to date
                         setTempDateTo(undefined);
                         setDateRange({ from: date, to: undefined });
                       } else if (tempDateTo) {
@@ -409,8 +562,11 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
                   className="text-sm"
                 />
               </div>
-              <span className="text-muted-foreground">→</span>
+              <div className="pt-6">
+                <span className="text-muted-foreground text-lg">→</span>
+              </div>
               <div className="flex-1">
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">End Date</label>
                 <Input
                   type="date"
                   value={tempDateTo ? format(tempDateTo, "yyyy-MM-dd") : ""}
@@ -418,7 +574,6 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
                     if (e.target.value) {
                       const date = new Date(e.target.value + "T00:00:00");
                       if (tempDateFrom && date < tempDateFrom) {
-                        // If to date is before from date, swap them
                         setTempDateTo(tempDateFrom);
                         setTempDateFrom(date);
                         setDateRange({ from: date, to: tempDateFrom });
@@ -446,24 +601,43 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
               </div>
             </div>
 
-            {/* Dual Calendar - Smaller */}
-            <div className="scale-90 origin-top-left w-fit">
+            {/* Enhanced Calendar */}
+            <div className="border rounded-lg p-4 bg-background">
               <Calendar
                 mode="range"
                 selected={dateRange}
                 onSelect={handleDateRangeSelect}
                 numberOfMonths={2}
                 defaultMonth={tempDateFrom || new Date()}
-                className="rounded-md border-0"
+                className="rounded-md"
                 classNames={{
-                  months: "flex flex-row space-x-4",
-                  month: "space-y-3",
-                  caption: "flex justify-center pt-1 relative items-center",
-                  caption_label: "text-sm font-medium",
-                  caption_dropdowns: "hidden",
-                  dropdown: "hidden",
-                  dropdown_month: "hidden",
-                  dropdown_year: "hidden",
+                  months: "flex flex-row space-x-6",
+                  month: "space-y-4",
+                  caption: "flex justify-center pt-1 relative items-center mb-2",
+                  caption_label: "text-sm font-semibold",
+                  nav: "space-x-1 flex items-center",
+                  nav_button: cn(
+                    "h-7 w-7 bg-transparent p-0 opacity-70 hover:opacity-100 rounded-md border border-input hover:bg-accent"
+                  ),
+                  nav_button_previous: "absolute left-1",
+                  nav_button_next: "absolute right-1",
+                  table: "w-full border-collapse space-y-1",
+                  head_row: "flex mb-2",
+                  head_cell: "text-muted-foreground rounded-md w-10 font-medium text-xs",
+                  row: "flex w-full mt-1",
+                  cell: "h-10 w-10 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                  day: cn(
+                    "h-10 w-10 p-0 font-normal aria-selected:opacity-100 rounded-md hover:bg-accent transition-colors"
+                  ),
+                  day_range_end: "day-range-end",
+                  day_selected:
+                    "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground font-semibold",
+                  day_today: "bg-accent text-accent-foreground font-semibold border border-primary/20",
+                  day_outside:
+                    "day-outside text-muted-foreground opacity-40 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
+                  day_disabled: "text-muted-foreground opacity-30",
+                  day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+                  day_hidden: "invisible",
                 }}
                 modifiers={{
                   comparison: comparisonDateRange && comparisonDateRange.from && comparisonDateRange.to
@@ -479,35 +653,38 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
                     : undefined,
                 }}
                 modifiersClassNames={{
-                  comparison: "bg-blue-100 text-blue-900 border border-blue-300",
+                  comparison: "bg-blue-100 text-blue-900 border-2 border-blue-400 font-medium",
                 }}
                 disabled={(date) => {
-                  // Disable future dates
                   const today = new Date();
                   today.setHours(23, 59, 59, 999);
                   return date > today;
                 }}
               />
               {comparisonDateRange && originalDateRange && (
-                <div className="mt-2 text-xs text-muted-foreground flex items-center gap-4 flex-wrap">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 bg-primary rounded"></div>
-                    <span>Selected: {format(originalDateRange.from, "MMM d")} - {format(originalDateRange.to, "MMM d, yyyy")}</span>
+                <div className="mt-4 pt-4 border-t flex items-center gap-6 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-primary rounded border-2 border-primary/20"></div>
+                    <span className="text-muted-foreground">
+                      <span className="font-medium text-foreground">Selected:</span> {format(originalDateRange.from, "MMM d")} - {format(originalDateRange.to, "MMM d, yyyy")}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 bg-blue-200 border border-blue-300 rounded"></div>
-                    <span>Comparison: {format(comparisonDateRange.from, "MMM d")} - {format(comparisonDateRange.to, "MMM d, yyyy")}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-blue-100 border-2 border-blue-400 rounded"></div>
+                    <span className="text-muted-foreground">
+                      <span className="font-medium text-foreground">Comparison:</span> {format(comparisonDateRange.from, "MMM d")} - {format(comparisonDateRange.to, "MMM d, yyyy")}
+                    </span>
                   </div>
                 </div>
               )}
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+            <div className="flex justify-end gap-2 mt-5 pt-4 border-t">
               <Button variant="outline" size="sm" onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button size="sm" onClick={handleApply} disabled={!tempDateFrom}>
+              <Button size="sm" onClick={handleApply} disabled={!tempDateFrom || !tempDateTo}>
                 Apply
               </Button>
             </div>

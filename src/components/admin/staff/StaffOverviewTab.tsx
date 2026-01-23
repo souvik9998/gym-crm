@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Staff } from "@/pages/admin/StaffManagement";
 import { UserGroupIcon, AcademicCapIcon, CurrencyRupeeIcon, BuildingOfficeIcon, KeyIcon } from "@heroicons/react/24/outline";
+import { StaffDetailDialog } from "./StaffDetailDialog";
 
 interface StaffOverviewTabProps {
   allStaff: Staff[];
@@ -31,9 +33,17 @@ export const StaffOverviewTab = ({
   branches,
   currentBranch,
 }: StaffOverviewTabProps) => {
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  
   const activeStaff = allStaff.filter((s) => s.is_active);
   const trainers = allStaff.filter((s) => s.role === "trainer");
   const otherStaff = allStaff.filter((s) => s.role !== "trainer");
+  
+  const handleStaffClick = (staff: Staff) => {
+    setSelectedStaff(staff);
+    setIsDetailOpen(true);
+  };
   
   // Calculate total monthly salary
   const totalMonthlySalary = activeStaff.reduce((sum, s) => sum + (s.monthly_salary || 0), 0);
@@ -175,7 +185,11 @@ export const StaffOverviewTab = ({
                   </TableRow>
                 ) : (
                   allStaff.map((member) => (
-                    <TableRow key={member.id} className="transition-colors duration-150 hover:bg-muted/50">
+                    <TableRow 
+                      key={member.id} 
+                      className="transition-colors duration-150 hover:bg-muted/50 cursor-pointer"
+                      onClick={() => handleStaffClick(member)}
+                    >
                       <TableCell>
                         <div>
                           <p className="font-medium">{member.full_name}</p>
@@ -256,6 +270,13 @@ export const StaffOverviewTab = ({
           </div>
         </CardContent>
       </Card>
+
+      {/* Staff Detail Dialog */}
+      <StaffDetailDialog
+        staff={selectedStaff}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+      />
     </div>
   );
 };
