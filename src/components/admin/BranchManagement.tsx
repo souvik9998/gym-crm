@@ -311,7 +311,7 @@ export const BranchManagement = () => {
       await logAdminActivity({
         category: "branch",
         type: "branch_deleted",
-        description: `Soft deleted branch: ${branch.name}`,
+        description: `Deleted branch: ${branch.name}`,
         entityType: "branches",
         entityId: branch.id,
         entityName: branch.name,
