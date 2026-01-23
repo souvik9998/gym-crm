@@ -135,11 +135,17 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
 
     if (!oldValue && !newValue) return null;
 
-    // Get all unique keys from both objects
+    // Keys to exclude from display (internal/system fields)
+    const excludeKeys = [
+      'id', 'created_at', 'updated_at', 'branch_id', 'is_active', 
+      'is_default', 'admin_user_id', 'staff_id', 'member_id', 'user_id'
+    ];
+
+    // Get all unique keys from both objects (excluding internal fields)
     const allKeys = new Set([
       ...(oldValue ? Object.keys(oldValue) : []),
       ...(newValue ? Object.keys(newValue) : []),
-    ]);
+    ].filter(key => !excludeKeys.includes(key)));
 
     // Filter out keys with no changes or irrelevant data
     const changedKeys = Array.from(allKeys).filter((key) => {
@@ -149,7 +155,13 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
     });
 
     if (changedKeys.length === 0 && !oldValue && newValue) {
-      // New entry created
+      // New entry created - filter out internal fields
+      const filteredNewValue = Object.fromEntries(
+        Object.entries(newValue).filter(([key]) => !excludeKeys.includes(key))
+      );
+      
+      if (Object.keys(filteredNewValue).length === 0) return null;
+      
       return (
         <div className="space-y-3">
           <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -157,7 +169,7 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
             New Values
           </h4>
           <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-4 space-y-2">
-            {Object.entries(newValue).map(([key, value]) => (
+            {Object.entries(filteredNewValue).map(([key, value]) => (
               <div key={key} className="flex justify-between items-start gap-4">
                 <span className="text-sm text-muted-foreground">{formatFieldName(key)}:</span>
                 <span className="text-sm font-medium text-green-600 text-right max-w-[60%] break-words">
@@ -213,6 +225,14 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
   const renderMetadata = () => {
     if (!activity.metadata || Object.keys(activity.metadata).length === 0) return null;
 
+    // Filter out internal metadata fields
+    const excludeMetadataKeys = ['performed_by', 'staff_id'];
+    const displayableMetadata = Object.entries(activity.metadata).filter(
+      ([key]) => !excludeMetadataKeys.includes(key)
+    );
+
+    if (displayableMetadata.length === 0) return null;
+
     return (
       <div className="space-y-3">
         <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -220,7 +240,7 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
           Additional Details
         </h4>
         <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-          {Object.entries(activity.metadata).map(([key, value]) => (
+          {displayableMetadata.map(([key, value]) => (
             <div key={key} className="flex justify-between items-start gap-4">
               <span className="text-sm text-muted-foreground">{formatFieldName(key)}:</span>
               <span className="text-sm font-medium text-foreground text-right max-w-[60%] break-words">
