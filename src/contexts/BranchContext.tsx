@@ -11,6 +11,7 @@ export interface Branch {
   is_default: boolean;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface StaffBranchRestriction {
@@ -67,7 +68,8 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      const branchList = (data || []) as Branch[];
+      // Filter out soft-deleted branches for regular display
+      const branchList = ((data || []) as Branch[]).filter(b => !b.deleted_at);
       setAllBranches(branchList);
 
       // Get the filtered list based on staff restriction

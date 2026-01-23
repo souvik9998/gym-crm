@@ -289,7 +289,7 @@ export const BranchManagement = () => {
     setFinalDeleteConfirm({ open: true, branch });
   };
 
-  // Final delete handler
+  // Final delete handler - Soft delete (set deleted_at instead of actual delete)
   const handleFinalDelete = async () => {
     if (!finalDeleteConfirm.branch) return;
 
@@ -297,14 +297,21 @@ export const BranchManagement = () => {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.from("branches").delete().eq("id", branch.id);
+      // Soft delete: set deleted_at timestamp instead of actually deleting
+      const { error } = await supabase
+        .from("branches")
+        .update({ 
+          deleted_at: new Date().toISOString(),
+          is_active: false 
+        })
+        .eq("id", branch.id);
 
       if (error) throw error;
 
       await logAdminActivity({
         category: "branch",
         type: "branch_deleted",
-        description: `Deleted branch: ${branch.name}`,
+        description: `Soft deleted branch: ${branch.name}`,
         entityType: "branches",
         entityId: branch.id,
         entityName: branch.name,
@@ -313,15 +320,22 @@ export const BranchManagement = () => {
           address: branch.address,
           phone: branch.phone,
           email: branch.email,
+          deleted_at: null,
+        },
+        newValue: {
+          deleted_at: new Date().toISOString(),
+          is_active: false,
         },
         branchId: currentBranch?.id || branch.id,
       });
 
-      toast.success("Branch deleted successfully");
+      toast.success("Branch deleted successfully", {
+        description: "All related data has been preserved for reporting purposes.",
+      });
       
-      // If deleted branch was current, switch to another branch
+      // If deleted branch was current, switch to another active branch
       if (currentBranch?.id === branch.id) {
-        const otherBranch = displayBranches.find(b => b.id !== branch.id);
+        const otherBranch = displayBranches.find(b => b.id !== branch.id && !b.deleted_at);
         if (otherBranch) {
           setCurrentBranch(otherBranch);
         }
