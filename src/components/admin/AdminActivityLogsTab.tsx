@@ -254,6 +254,16 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
     });
   };
 
+  // Format description to clean up old "Soft deleted" text
+  const formatDescription = (description: string) => {
+    return description.replace(/^Soft deleted /i, "Deleted ");
+  };
+
+  // Check if activity type is a delete action
+  const isDeleteActivity = (activityType: string) => {
+    return activityType.includes("deleted") || activityType.includes("delete");
+  };
+
   const handleExport = () => {
     try {
       const exportData = filteredLogs.map((log) => ({
@@ -448,8 +458,10 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
                           <TableCell>{getCategoryBadge(log.activity_category)}</TableCell>
                           <TableCell>
                             <div className="max-w-md">
-                              <p className="text-sm font-medium">{log.description}</p>
-                              <p className="text-xs text-muted-foreground">
+                              <p className={`text-sm font-medium ${isDeleteActivity(log.activity_type) ? "text-red-500" : ""}`}>
+                                {formatDescription(log.description)}
+                              </p>
+                              <p className={`text-xs ${isDeleteActivity(log.activity_type) ? "text-red-400" : "text-muted-foreground"}`}>
                                 {log.activity_type.replace(/_/g, " ")}
                               </p>
                             </div>
