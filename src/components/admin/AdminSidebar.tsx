@@ -308,9 +308,6 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
       <div className="flex flex-col h-full">
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
-          <div className="px-3 py-2 mb-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Menu</p>
-          </div>
           {navItems.map((item) => renderNavItem(item))}
         </nav>
 
@@ -352,11 +349,6 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
-        {!collapsed && (
-          <div className="px-3 py-2 mb-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Menu</p>
-          </div>
-        )}
         {navItems.map((item) => renderNavItem(item))}
       </nav>
 

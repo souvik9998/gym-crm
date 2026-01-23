@@ -413,10 +413,10 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
           {getDisplayText()}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <div className="flex">
+      <PopoverContent className="w-auto p-0 max-w-[95vw] sm:max-w-none" align="start">
+        <div className="flex flex-col sm:flex-row">
           {/* Left Side - Presets and Comparison Period */}
-          <div className="border-r p-4 w-[280px] bg-muted/30">
+          <div className="border-r border-b sm:border-b-0 p-3 sm:p-4 w-full sm:w-[280px] bg-muted/30 max-h-[60vh] sm:max-h-none overflow-y-auto">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "presets" | "custom")} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="presets" className="text-xs">Presets</TabsTrigger>
@@ -533,7 +533,7 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
           </div>
 
           {/* Right Side - Date Picker */}
-          <div className="p-5 min-w-[600px]">
+          <div className="p-3 sm:p-5 w-full sm:min-w-[600px] max-h-[60vh] sm:max-h-none overflow-y-auto">
             {/* Date Inputs */}
             <div className="flex items-center gap-3 mb-5">
               <div className="flex-1">

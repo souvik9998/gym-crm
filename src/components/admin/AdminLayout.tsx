@@ -149,7 +149,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
           isStaffUser={isStaffSession}
           staffName={staffUser?.fullName}
         />
-        <main className="p-3 sm:p-4 md:p-6">{children}</main>
+        <main className="p-3 sm:p-4 md:p-6 max-w-full overflow-x-hidden">{children}</main>
       </div>
     </div>
   );

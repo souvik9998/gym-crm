@@ -69,14 +69,14 @@ const StatCard = memo(({
   iconClass?: string;
 }) => (
   <Card className="hover-lift border-0 shadow-sm">
-    <CardContent className="p-5">
+    <CardContent className="p-3 sm:p-5">
       <div className="flex items-center justify-between">
-        <div>
-          <p className={`text-2xl font-bold ${colorClass}`}>{value}</p>
-          <p className="text-xs text-muted-foreground mt-1">{label}</p>
+        <div className="min-w-0 flex-1">
+          <p className={`text-xl sm:text-2xl font-bold ${colorClass} truncate`}>{value}</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{label}</p>
         </div>
-        <div className={`p-3 ${bgClass} rounded-xl`}>
-          <Icon className={`w-6 h-6 ${iconClass}`} />
+        <div className={`p-2 sm:p-3 ${bgClass} rounded-xl flex-shrink-0 ml-2`}>
+          <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${iconClass}`} />
         </div>
       </div>
     </CardContent>
@@ -402,7 +402,7 @@ const AdminDashboard = () => {
             <CardHeader className="pb-4 border-b">
               <div className="flex flex-col gap-4">
                 {/* Top Row - Tabs and Actions */}
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                   {/* Tabs - With text labels */}
                   <TabsList className="bg-muted/50 p-1 h-10">
                     <TabsTrigger 
@@ -429,7 +429,7 @@ const AdminDashboard = () => {
                   </TabsList>
                   
                   {/* Action Buttons - Right side */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {/* Sort Button with Popover */}
                     <Popover open={sortOpen} onOpenChange={setSortOpen}>
                       <PopoverTrigger asChild>

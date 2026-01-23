@@ -296,12 +296,12 @@ const AdminAnalytics = () => {
     <AdminLayout title="Analytics" subtitle="Business insights and trends">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card className="hover-lift border-0 shadow-sm overflow-hidden">
-            <CardContent className="p-5">
+            <CardContent className="p-3 sm:p-5">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-accent">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xl sm:text-2xl font-bold text-accent truncate">
                     <AnimatedCounter 
                       value={totals.totalRevenue} 
                       prefix="₹" 
@@ -309,10 +309,10 @@ const AdminAnalytics = () => {
                       formatValue={(v) => v.toLocaleString("en-IN")}
                     />
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">Total Revenue</p>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">Total Revenue</p>
                 </div>
-                <div className="p-3 bg-accent/10 rounded-xl">
-                  <ArrowTrendingUpIcon className="w-6 h-6 text-accent" />
+                <div className="p-2 sm:p-3 bg-accent/10 rounded-xl flex-shrink-0 ml-2">
+                  <ArrowTrendingUpIcon className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
                 </div>
               </div>
             </CardContent>
@@ -393,7 +393,7 @@ const AdminAnalytics = () => {
         </Card>
 
         {/* Member Growth */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
           <Card className="border-0 shadow-sm">
             <CardHeader>
               <CardTitle>Member Growth</CardTitle>

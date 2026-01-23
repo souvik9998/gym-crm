@@ -93,11 +93,11 @@ export const AdminHeader = ({
               <Bars3Icon className="w-5 h-5 text-foreground" />
             </button>
           )}
-          <div className="flex items-center gap-3">
-            <div>
-              <h1 className="text-lg font-semibold text-foreground">{title}</h1>
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-semibold text-foreground truncate">{title}</h1>
               {subtitle && (
-                <p className="text-xs text-muted-foreground">{subtitle}</p>
+                <p className="text-xs text-muted-foreground truncate hidden sm:block">{subtitle}</p>
               )}
             </div>
           </div>

@@ -934,7 +934,8 @@ export const MembersTable = ({
         </div>
       )}
       <div className="rounded-lg border overflow-hidden">
-        <Table>
+        <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+          <Table className="min-w-[600px]">
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead className="w-10">
@@ -1178,6 +1179,7 @@ export const MembersTable = ({
             ))}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       <EditMemberDialog

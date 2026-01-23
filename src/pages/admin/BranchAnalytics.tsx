@@ -774,21 +774,23 @@ const BranchAnalytics = () => {
     <AdminLayout title="Branch Analytics" subtitle="Comprehensive multi-branch performance insights">
       <div className="space-y-6">
         {/* Header with Date Range */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col gap-4">
           <div>
-            <h2 className="text-2xl font-bold">Branch Performance Dashboard</h2>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="text-xl sm:text-2xl font-bold">Branch Performance Dashboard</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               Compare branches, track trends, and identify opportunities
             </p>
           </div>
-          <DateRangePicker
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-            onDateChange={(from, to) => {
-              setDateFrom(from);
-              setDateTo(to);
-            }}
-          />
+          <div className="w-full sm:w-auto">
+            <DateRangePicker
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateChange={(from, to) => {
+                setDateFrom(from);
+                setDateTo(to);
+              }}
+            />
+          </div>
         </div>
 
         {isLoading ? (
@@ -820,7 +822,7 @@ const BranchAnalytics = () => {
             </Card>
 
             {/* Loading Skeleton for Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <Card key={i}>
                   <CardContent className="p-6">
@@ -970,7 +972,7 @@ const BranchAnalytics = () => {
         )}
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -1171,7 +1173,7 @@ const BranchAnalytics = () => {
                 config={{
                   revenue: { label: "Revenue", color: "hsl(var(--accent))" },
                 }}
-                className="h-[400px]"
+                className="h-[300px] sm:h-[400px]"
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={timeSeriesData}>
@@ -1237,22 +1239,23 @@ const BranchAnalytics = () => {
             <CardDescription>Click on any branch to view detailed analytics</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3 font-medium">Branch</th>
-                    <th className="text-right p-3 font-medium">Revenue</th>
-                    <th className="text-right p-3 font-medium">Profit</th>
-                    <th className="text-right p-3 font-medium">Margin</th>
-                    <th className="text-right p-3 font-medium">Members</th>
-                    <th className="text-right p-3 font-medium">Growth</th>
-                    <th className="text-right p-3 font-medium">Churn</th>
-                    <th className="text-right p-3 font-medium">Conversion</th>
-                    <th className="text-right p-3 font-medium">ROI</th>
-                    <th className="text-center p-3 font-medium">Action</th>
-                  </tr>
-                </thead>
+            <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+              <div className="min-w-[800px]">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm">Branch</th>
+                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Revenue</th>
+                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Profit</th>
+                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Margin</th>
+                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Members</th>
+                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Growth</th>
+                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Churn</th>
+                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Conversion</th>
+                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">ROI</th>
+                      <th className="text-center p-2 sm:p-3 font-medium text-xs sm:text-sm">Action</th>
+                    </tr>
+                  </thead>
                 <tbody>
                   {branchMetrics
                     .sort((a, b) => b.revenue - a.revenue)
@@ -1262,8 +1265,8 @@ const BranchAnalytics = () => {
                         className="border-b hover:bg-muted/50 cursor-pointer"
                         onClick={() => openBranchDetail(metric)}
                       >
-                        <td className="p-3 font-medium">{metric.branchName}</td>
-                        <td className="p-3 text-right">{formatCurrency(metric.revenue)}</td>
+                        <td className="p-2 sm:p-3 font-medium text-xs sm:text-sm">{metric.branchName}</td>
+                        <td className="p-2 sm:p-3 text-right text-xs sm:text-sm">{formatCurrency(metric.revenue)}</td>
                         <td
                           className={cn(
                             "p-3 text-right font-medium",
@@ -1300,8 +1303,9 @@ const BranchAnalytics = () => {
                         </td>
                       </tr>
                     ))}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </CardContent>
         </Card>
