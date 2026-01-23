@@ -6,7 +6,8 @@ export type StaffActivityCategory =
   | "settings"
   | "subscriptions"
   | "ledger"
-  | "staff";
+  | "staff"
+  | "whatsapp";
 
 export type StaffActivityType = 
   // Members
@@ -15,6 +16,8 @@ export type StaffActivityType =
   | "member_updated"
   | "member_deleted"
   | "member_status_changed"
+  | "member_moved_to_active"
+  | "member_moved_to_inactive"
   // Payments
   | "cash_payment_added"
   | "online_payment_received"
@@ -32,6 +35,20 @@ export type StaffActivityType =
   // Settings
   | "gym_info_updated"
   | "whatsapp_toggled"
+  | "package_added"
+  | "package_updated"
+  | "package_deleted"
+  | "custom_package_added"
+  | "custom_package_updated"
+  | "custom_package_deleted"
+  | "branch_updated"
+  // WhatsApp messages
+  | "whatsapp_message_sent"
+  | "whatsapp_promotional_sent"
+  | "whatsapp_expiry_reminder_sent"
+  | "whatsapp_expired_reminder_sent"
+  | "whatsapp_payment_details_sent"
+  | "whatsapp_bulk_message_sent"
   // Staff specific actions (by staff themselves)
   | "staff_logged_in"
   | "staff_logged_out"
