@@ -320,6 +320,8 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
       case "custom_package_deleted":
       case "branch_updated":
         return <ShieldCheck className="w-4 h-4 text-purple-500" />;
+      case "branch_deleted":
+        return <UserMinus className="w-4 h-4 text-red-500" />;
       // WhatsApp activities
       case "whatsapp_message_sent":
       case "whatsapp_promotional_sent":
@@ -373,6 +375,7 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
       custom_package_updated: { label: "Custom Package Updated", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
       custom_package_deleted: { label: "Custom Package Deleted", color: "bg-red-500/10 text-red-500 border-red-500/20" },
       branch_updated: { label: "Branch Updated", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
+      branch_deleted: { label: "Branch Deleted", color: "bg-red-500/10 text-red-500 border-red-500/20" },
       // WhatsApp activities
       whatsapp_message_sent: { label: "WhatsApp Sent", color: "bg-green-500/10 text-green-500 border-green-500/20" },
       whatsapp_promotional_sent: { label: "Promotional", color: "bg-teal-500/10 text-teal-500 border-teal-500/20" },
