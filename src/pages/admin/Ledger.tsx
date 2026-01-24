@@ -81,6 +81,7 @@ interface LedgerEntry {
 const EXPENSE_CATEGORIES = [
   { value: "trainer_session", label: "Trainer Expense (Session)" },
   { value: "trainer_percentage", label: "Trainer Expense (Percentage)" },
+  { value: "staff_salary", label: "Other Staff Expense" },
   { value: "bill_payment", label: "Bill Payment" },
   { value: "service_repair", label: "Service/Repair" },
   { value: "equipment", label: "Equipment Purchase" },
@@ -119,6 +120,9 @@ const AdminLedger = () => {
   const [selectedTrainerId, setSelectedTrainerId] = useState<string>("");
   const [trainers, setTrainers] = useState<Array<{ id: string; full_name: string; monthly_salary: number; phone: string | null }>>([]);
   const [isLoadingTrainers, setIsLoadingTrainers] = useState(false);
+  const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+  const [otherStaff, setOtherStaff] = useState<Array<{ id: string; full_name: string; monthly_salary: number; phone: string | null; role: string }>>([]);
+  const [isLoadingStaff, setIsLoadingStaff] = useState(false);
 
   // Confirm dialog for delete
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -205,6 +209,12 @@ const AdminLedger = () => {
     // For trainer_percentage category, trainer must be selected
     if (expenseCategory === "trainer_percentage" && !selectedTrainerId) {
       toast.error("Please select a trainer");
+      return;
+    }
+
+    // For staff_salary category, staff must be selected
+    if (expenseCategory === "staff_salary" && !selectedStaffId) {
+      toast.error("Please select a staff member");
       return;
     }
 
@@ -326,6 +336,7 @@ const AdminLedger = () => {
     setExpenseDate(new Date());
     setExpenseNotes("");
     setSelectedTrainerId("");
+    setSelectedStaffId("");
   };
 
   // Fetch trainers when dialog opens and category is trainer_percentage
@@ -335,6 +346,16 @@ const AdminLedger = () => {
     } else if (!isAddExpenseOpen) {
       setTrainers([]);
       setSelectedTrainerId("");
+    }
+  }, [isAddExpenseOpen, expenseCategory, currentBranch?.id]);
+
+  // Fetch other staff when dialog opens and category is staff_salary
+  useEffect(() => {
+    if (isAddExpenseOpen && expenseCategory === "staff_salary" && currentBranch?.id) {
+      fetchOtherStaff();
+    } else if (!isAddExpenseOpen) {
+      setOtherStaff([]);
+      setSelectedStaffId("");
     }
   }, [isAddExpenseOpen, expenseCategory, currentBranch?.id]);
 
@@ -385,6 +406,56 @@ const AdminLedger = () => {
     if (trainer) {
       setExpenseAmount(String(trainer.monthly_salary || 0));
       setExpenseDescription(`${trainer.full_name} - Monthly Salary`);
+    }
+  };
+
+  const fetchOtherStaff = async () => {
+    if (!currentBranch?.id) return;
+    
+    setIsLoadingStaff(true);
+    try {
+      // Get staff assigned to current branch
+      const { data: assignments } = await supabase
+        .from("staff_branch_assignments")
+        .select("staff_id")
+        .eq("branch_id", currentBranch.id);
+
+      const staffIds = assignments?.map((a) => a.staff_id) || [];
+
+      if (staffIds.length === 0) {
+        setOtherStaff([]);
+        setIsLoadingStaff(false);
+        return;
+      }
+
+      // Fetch active staff excluding trainers
+      const { data: staffData, error } = await supabase
+        .from("staff")
+        .select("id, full_name, monthly_salary, phone, role")
+        .in("id", staffIds)
+        .neq("role", "trainer")
+        .eq("is_active", true)
+        .order("full_name");
+
+      if (error) throw error;
+      setOtherStaff((staffData || []) as Array<{ id: string; full_name: string; monthly_salary: number; phone: string | null; role: string }>);
+    } catch (error: any) {
+      console.error("Error fetching staff:", error);
+      toast.error("Error", {
+        description: "Failed to fetch staff",
+      });
+    } finally {
+      setIsLoadingStaff(false);
+    }
+  };
+
+  // Handle staff selection - populate amount with monthly_salary
+  const handleStaffSelect = (staffId: string) => {
+    setSelectedStaffId(staffId);
+    const staff = otherStaff.find((s) => s.id === staffId);
+    if (staff) {
+      setExpenseAmount(String(staff.monthly_salary || 0));
+      setExpenseDescription(`${staff.full_name} - Monthly Salary`);
     }
   };
 
@@ -705,9 +776,14 @@ const AdminLedger = () => {
                         value={expenseCategory} 
                         onValueChange={(value) => {
                           setExpenseCategory(value);
-                          // Reset trainer selection when category changes
+                          // Reset selections when category changes
                           if (value !== "trainer_percentage") {
                             setSelectedTrainerId("");
+                          }
+                          if (value !== "staff_salary") {
+                            setSelectedStaffId("");
+                          }
+                          if (value !== "trainer_percentage" && value !== "staff_salary") {
                             setExpenseAmount("");
                           }
                         }}
@@ -751,13 +827,40 @@ const AdminLedger = () => {
                         </Select>
                       </div>
                     )}
+                    {expenseCategory === "staff_salary" && (
+                      <div className="space-y-2">
+                        <Label>Staff Member *</Label>
+                        <Select 
+                          value={selectedStaffId} 
+                          onValueChange={handleStaffSelect}
+                          disabled={isLoadingStaff}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={isLoadingStaff ? "Loading staff..." : "Select staff member"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {otherStaff.length === 0 ? (
+                              <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                {isLoadingStaff ? "Loading..." : "No staff found"}
+                              </div>
+                            ) : (
+                              otherStaff.map((staff) => (
+                                <SelectItem key={staff.id} value={staff.id}>
+                                  {staff.full_name} {staff.monthly_salary > 0 && `(₹${staff.monthly_salary.toLocaleString()}/mo)`}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label>Description *</Label>
                       <Input
                         value={expenseDescription}
                         onChange={(e) => setExpenseDescription(e.target.value)}
-                        placeholder={expenseCategory === "trainer_percentage" ? "e.g., Monthly Salary" : "e.g., Electricity bill for January"}
-                        disabled={expenseCategory === "trainer_percentage" && selectedTrainerId !== ""}
+                        placeholder={expenseCategory === "trainer_percentage" || expenseCategory === "staff_salary" ? "e.g., Monthly Salary" : "e.g., Electricity bill for January"}
+                        disabled={(expenseCategory === "trainer_percentage" && selectedTrainerId !== "") || (expenseCategory === "staff_salary" && selectedStaffId !== "")}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">

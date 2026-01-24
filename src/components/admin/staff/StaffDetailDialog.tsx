@@ -115,9 +115,31 @@ export const StaffDetailDialog = ({ staff, open, onOpenChange }: StaffDetailDial
           personalTrainer = trainerByName;
         }
 
-        if (personalTrainer) {
-          // Fetch auto-generated percentage expenses
-          const { data: percentageExpenses } = await supabase
+        // Fetch trainer percentage expenses - both by trainer_id and by description
+        const [percentageExpensesByTrainerId, percentageExpensesByDescription] = await Promise.all([
+          // Fetch by trainer_id (if personal_trainer exists)
+          personalTrainer
+            ? supabase
+                .from("ledger_entries")
+                .select(`
+                  id,
+                  entry_date,
+                  description,
+                  amount,
+                  category,
+                  is_auto_generated,
+                  member_id,
+                  payment_id,
+                  members:member_id (name)
+                `)
+                .eq("trainer_id", personalTrainer.id)
+                .eq("entry_type", "expense")
+                .eq("category", "trainer_percentage")
+                .eq("branch_id", currentBranch.id)
+                .order("entry_date", { ascending: false })
+            : Promise.resolve({ data: null }),
+          // Also fetch by description matching (for manual entries added via Ledger)
+          supabase
             .from("ledger_entries")
             .select(`
               id,
@@ -130,27 +152,36 @@ export const StaffDetailDialog = ({ staff, open, onOpenChange }: StaffDetailDial
               payment_id,
               members:member_id (name)
             `)
-            .eq("trainer_id", personalTrainer.id)
             .eq("entry_type", "expense")
             .eq("category", "trainer_percentage")
+            .ilike("description", `%${staff.full_name}%`)
             .eq("branch_id", currentBranch.id)
-            .order("entry_date", { ascending: false });
+            .order("entry_date", { ascending: false })
+        ]);
 
-          if (percentageExpenses) {
-            percentageExpenses.forEach((expense: any) => {
-              salaryEntries.push({
-                id: expense.id,
-                entry_date: expense.entry_date,
-                description: expense.description,
-                amount: Number(expense.amount),
-                category: expense.category,
-                is_auto_generated: expense.is_auto_generated,
-                member_name: expense.members?.name,
-                payment_id: expense.payment_id,
-              });
-            });
-          }
-        }
+        // Combine both results
+        const allPercentageExpenses = [
+          ...(percentageExpensesByTrainerId.data || []),
+          ...(percentageExpensesByDescription.data || [])
+        ];
+
+        // Remove duplicates based on id
+        const uniquePercentageExpenses = allPercentageExpenses.filter(
+          (expense, index, self) => index === self.findIndex((e) => e.id === expense.id)
+        );
+
+        uniquePercentageExpenses.forEach((expense: any) => {
+          salaryEntries.push({
+            id: expense.id,
+            entry_date: expense.entry_date,
+            description: expense.description,
+            amount: Number(expense.amount),
+            category: expense.category,
+            is_auto_generated: expense.is_auto_generated,
+            member_name: expense.members?.name,
+            payment_id: expense.payment_id,
+          });
+        });
 
         // Fetch manual session-based expenses (trainer_session category)
         // Match by staff name in description
@@ -189,39 +220,66 @@ export const StaffDetailDialog = ({ staff, open, onOpenChange }: StaffDetailDial
         }
       } else {
         // For non-trainer staff, look for manual salary expenses
-        // Check for expenses with staff name in description
-        const { data: salaryExpenses } = await supabase
-          .from("ledger_entries")
-          .select(`
-            id,
-            entry_date,
-            description,
-            amount,
-            category,
-            is_auto_generated,
-            member_id,
-            payment_id,
-            members:member_id (name)
-          `)
-          .eq("entry_type", "expense")
-          .ilike("description", `%${staff.full_name}%`)
-          .eq("branch_id", currentBranch.id)
-          .order("entry_date", { ascending: false });
+        // Check for expenses with staff_salary category OR staff name in description
+        // Fetch both types and combine
+        const [categoryExpenses, nameExpenses] = await Promise.all([
+          // Expenses with staff_salary category
+          supabase
+            .from("ledger_entries")
+            .select(`
+              id,
+              entry_date,
+              description,
+              amount,
+              category,
+              is_auto_generated,
+              member_id,
+              payment_id,
+              members:member_id (name)
+            `)
+            .eq("entry_type", "expense")
+            .eq("category", "staff_salary")
+            .ilike("description", `%${staff.full_name}%`)
+            .eq("branch_id", currentBranch.id)
+            .order("entry_date", { ascending: false }),
+          // Expenses with staff name in description (for backward compatibility)
+          supabase
+            .from("ledger_entries")
+            .select(`
+              id,
+              entry_date,
+              description,
+              amount,
+              category,
+              is_auto_generated,
+              member_id,
+              payment_id,
+              members:member_id (name)
+            `)
+            .eq("entry_type", "expense")
+            .neq("category", "staff_salary") // Exclude staff_salary to avoid duplicates
+            .ilike("description", `%${staff.full_name}%`)
+            .eq("branch_id", currentBranch.id)
+            .order("entry_date", { ascending: false })
+        ]);
 
-        if (salaryExpenses) {
-          salaryExpenses.forEach((expense: any) => {
-            salaryEntries.push({
-              id: expense.id,
-              entry_date: expense.entry_date,
-              description: expense.description,
-              amount: Number(expense.amount),
-              category: expense.category,
-              is_auto_generated: expense.is_auto_generated,
-              member_name: expense.members?.name,
-              payment_id: expense.payment_id,
-            });
+        const salaryExpenses = [
+          ...(categoryExpenses.data || []),
+          ...(nameExpenses.data || [])
+        ];
+
+        salaryExpenses.forEach((expense: any) => {
+          salaryEntries.push({
+            id: expense.id,
+            entry_date: expense.entry_date,
+            description: expense.description,
+            amount: Number(expense.amount),
+            category: expense.category,
+            is_auto_generated: expense.is_auto_generated,
+            member_name: expense.members?.name,
+            payment_id: expense.payment_id,
           });
-        }
+        });
       }
 
       // Sort by date descending and remove duplicates

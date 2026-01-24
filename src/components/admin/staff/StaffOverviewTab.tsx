@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,6 +12,8 @@ import {
 import { Staff } from "@/pages/admin/StaffManagement";
 import { UserGroupIcon, AcademicCapIcon, CurrencyRupeeIcon, BuildingOfficeIcon, KeyIcon } from "@heroicons/react/24/outline";
 import { StaffDetailDialog } from "./StaffDetailDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useBranch } from "@/contexts/BranchContext";
 
 interface StaffOverviewTabProps {
   allStaff: Staff[];
@@ -33,8 +35,11 @@ export const StaffOverviewTab = ({
   branches,
   currentBranch,
 }: StaffOverviewTabProps) => {
+  const { currentBranch: branchContext } = useBranch();
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [totalPaidToStaff, setTotalPaidToStaff] = useState(0);
+  const [isLoadingTotalPaid, setIsLoadingTotalPaid] = useState(false);
   
   const activeStaff = allStaff.filter((s) => s.is_active);
   const trainers = allStaff.filter((s) => s.role === "trainer");
@@ -47,6 +52,84 @@ export const StaffOverviewTab = ({
   
   // Calculate total monthly salary
   const totalMonthlySalary = activeStaff.reduce((sum, s) => sum + (s.monthly_salary || 0), 0);
+
+  // Fetch total paid to all staff
+  useEffect(() => {
+    if (currentBranch?.id || branchContext?.id) {
+      fetchTotalPaidToStaff();
+    }
+  }, [currentBranch?.id, branchContext?.id, allStaff]);
+
+  const fetchTotalPaidToStaff = async () => {
+    const branchId = currentBranch?.id || branchContext?.id;
+    if (!branchId) return;
+
+    setIsLoadingTotalPaid(true);
+    try {
+      // Get all staff names for matching
+      const staffNames = allStaff.map((s) => s.full_name);
+
+      // Fetch all trainer and staff expenses
+      const [trainerPercentageExpenses, trainerSessionExpenses, staffSalaryExpenses] = await Promise.all([
+        // Trainer percentage expenses (auto-generated and manual)
+        supabase
+          .from("ledger_entries")
+          .select("amount")
+          .eq("entry_type", "expense")
+          .eq("category", "trainer_percentage")
+          .eq("branch_id", branchId),
+        
+        // Trainer session expenses
+        supabase
+          .from("ledger_entries")
+          .select("amount")
+          .eq("entry_type", "expense")
+          .eq("category", "trainer_session")
+          .eq("branch_id", branchId),
+        
+        // Staff salary expenses
+        supabase
+          .from("ledger_entries")
+          .select("amount")
+          .eq("entry_type", "expense")
+          .eq("category", "staff_salary")
+          .eq("branch_id", branchId)
+      ]);
+
+      // Also fetch expenses with staff names in description (for backward compatibility)
+      let nameBasedExpenses: any[] = [];
+      if (staffNames.length > 0) {
+        // Build OR conditions for staff names
+        const nameQueries = staffNames.map((name) => 
+          supabase
+            .from("ledger_entries")
+            .select("amount")
+            .eq("entry_type", "expense")
+            .neq("category", "trainer_percentage") // Exclude already counted
+            .neq("category", "trainer_session") // Exclude already counted
+            .neq("category", "staff_salary") // Exclude already counted
+            .ilike("description", `%${name}%`)
+            .eq("branch_id", branchId)
+        );
+        
+        const nameResults = await Promise.all(nameQueries);
+        nameBasedExpenses = nameResults.flatMap((result) => result.data || []);
+      }
+
+      // Calculate total
+      const total = 
+        (trainerPercentageExpenses.data?.reduce((sum, e) => sum + Number(e.amount || 0), 0) || 0) +
+        (trainerSessionExpenses.data?.reduce((sum, e) => sum + Number(e.amount || 0), 0) || 0) +
+        (staffSalaryExpenses.data?.reduce((sum, e) => sum + Number(e.amount || 0), 0) || 0) +
+        (nameBasedExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0));
+
+      setTotalPaidToStaff(total);
+    } catch (error: any) {
+      console.error("Error fetching total paid to staff:", error);
+    } finally {
+      setIsLoadingTotalPaid(false);
+    }
+  };
   
   // Group by role
   const staffByRole = allStaff.reduce((acc, s) => {
@@ -134,6 +217,30 @@ export const StaffOverviewTab = ({
             <p className="text-xs text-muted-foreground">
               {allStaff.length - staffWithLogin.length} without credentials
             </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm border-l-4 border-l-green-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Paid to Staff</CardTitle>
+            <CurrencyRupeeIcon className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            {isLoadingTotalPaid ? (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-green-600/30 border-t-green-600 rounded-full animate-spin" />
+                <span className="text-xs text-muted-foreground">Loading...</span>
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-green-600">
+                  ₹{totalPaidToStaff.toLocaleString("en-IN")}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  All salary expenses (trainers + staff)
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
