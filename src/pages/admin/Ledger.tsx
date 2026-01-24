@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
 import { Button } from "@/components/ui/button";
@@ -116,6 +116,9 @@ const AdminLedger = () => {
   const [expenseDate, setExpenseDate] = useState<Date>(new Date());
   const [expenseNotes, setExpenseNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedTrainerId, setSelectedTrainerId] = useState<string>("");
+  const [trainers, setTrainers] = useState<Array<{ id: string; full_name: string; monthly_salary: number; phone: string | null }>>([]);
+  const [isLoadingTrainers, setIsLoadingTrainers] = useState(false);
 
   // Confirm dialog for delete
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -199,9 +202,61 @@ const AdminLedger = () => {
       return;
     }
 
+    // For trainer_percentage category, trainer must be selected
+    if (expenseCategory === "trainer_percentage" && !selectedTrainerId) {
+      toast.error("Please select a trainer");
+      return;
+    }
+
     setIsSaving(true);
 
     const { data: session } = await supabase.auth.getSession();
+
+    // For trainer_percentage, find the personal_trainer id
+    let trainerId: string | null = null;
+    if (expenseCategory === "trainer_percentage" && selectedTrainerId) {
+      const selectedTrainer = trainers.find((t) => t.id === selectedTrainerId);
+      if (selectedTrainer) {
+        // Try to find personal_trainer by phone match first
+        if (selectedTrainer.phone) {
+          const { data: trainerByPhone } = await supabase
+            .from("personal_trainers")
+            .select("id")
+            .eq("phone", selectedTrainer.phone)
+            .eq("branch_id", currentBranch?.id)
+            .maybeSingle();
+          
+          if (trainerByPhone) {
+            trainerId = trainerByPhone.id;
+          } else {
+            // Try without branch_id constraint
+            const { data: trainerByPhoneOnly } = await supabase
+              .from("personal_trainers")
+              .select("id")
+              .eq("phone", selectedTrainer.phone)
+              .maybeSingle();
+            
+            if (trainerByPhoneOnly) {
+              trainerId = trainerByPhoneOnly.id;
+            }
+          }
+        }
+
+        // If phone match failed, try name match
+        if (!trainerId) {
+          const { data: trainerByName } = await supabase
+            .from("personal_trainers")
+            .select("id")
+            .ilike("name", selectedTrainer.full_name)
+            .eq("branch_id", currentBranch?.id)
+            .maybeSingle();
+          
+          if (trainerByName) {
+            trainerId = trainerByName.id;
+          }
+        }
+      }
+    }
 
     const { error } = await supabase.from("ledger_entries").insert({
       entry_type: "expense",
@@ -213,6 +268,7 @@ const AdminLedger = () => {
       is_auto_generated: false,
       created_by: session?.session?.user?.id,
       branch_id: currentBranch?.id,
+      trainer_id: trainerId || null,
     });
 
     setIsSaving(false);
@@ -269,6 +325,67 @@ const AdminLedger = () => {
     setExpenseAmount("");
     setExpenseDate(new Date());
     setExpenseNotes("");
+    setSelectedTrainerId("");
+  };
+
+  // Fetch trainers when dialog opens and category is trainer_percentage
+  useEffect(() => {
+    if (isAddExpenseOpen && expenseCategory === "trainer_percentage" && currentBranch?.id) {
+      fetchTrainers();
+    } else if (!isAddExpenseOpen) {
+      setTrainers([]);
+      setSelectedTrainerId("");
+    }
+  }, [isAddExpenseOpen, expenseCategory, currentBranch?.id]);
+
+  const fetchTrainers = async () => {
+    if (!currentBranch?.id) return;
+    
+    setIsLoadingTrainers(true);
+    try {
+      // Get staff assigned to current branch
+      const { data: assignments } = await supabase
+        .from("staff_branch_assignments")
+        .select("staff_id")
+        .eq("branch_id", currentBranch.id);
+
+      const staffIds = assignments?.map((a) => a.staff_id) || [];
+
+      if (staffIds.length === 0) {
+        setTrainers([]);
+        setIsLoadingTrainers(false);
+        return;
+      }
+
+      // Fetch active trainers
+      const { data: staffData, error } = await supabase
+        .from("staff")
+        .select("id, full_name, monthly_salary, phone")
+        .in("id", staffIds)
+        .eq("role", "trainer")
+        .eq("is_active", true)
+        .order("full_name");
+
+      if (error) throw error;
+      setTrainers((staffData || []) as Array<{ id: string; full_name: string; monthly_salary: number; phone: string | null }>);
+    } catch (error: any) {
+      console.error("Error fetching trainers:", error);
+      toast.error("Error", {
+        description: "Failed to fetch trainers",
+      });
+    } finally {
+      setIsLoadingTrainers(false);
+    }
+  };
+
+  // Handle trainer selection - populate amount with monthly_salary
+  const handleTrainerSelect = (trainerId: string) => {
+    setSelectedTrainerId(trainerId);
+    const trainer = trainers.find((t) => t.id === trainerId);
+    if (trainer) {
+      setExpenseAmount(String(trainer.monthly_salary || 0));
+      setExpenseDescription(`${trainer.full_name} - Monthly Salary`);
+    }
   };
 
   const handleExport = () => {
@@ -584,7 +701,17 @@ const AdminLedger = () => {
                   <div className="space-y-4 pt-4">
                     <div className="space-y-2">
                       <Label>Category *</Label>
-                      <Select value={expenseCategory} onValueChange={setExpenseCategory}>
+                      <Select 
+                        value={expenseCategory} 
+                        onValueChange={(value) => {
+                          setExpenseCategory(value);
+                          // Reset trainer selection when category changes
+                          if (value !== "trainer_percentage") {
+                            setSelectedTrainerId("");
+                            setExpenseAmount("");
+                          }
+                        }}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
@@ -597,12 +724,40 @@ const AdminLedger = () => {
                         </SelectContent>
                       </Select>
                     </div>
+                    {expenseCategory === "trainer_percentage" && (
+                      <div className="space-y-2">
+                        <Label>Trainer *</Label>
+                        <Select 
+                          value={selectedTrainerId} 
+                          onValueChange={handleTrainerSelect}
+                          disabled={isLoadingTrainers}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={isLoadingTrainers ? "Loading trainers..." : "Select trainer"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {trainers.length === 0 ? (
+                              <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                {isLoadingTrainers ? "Loading..." : "No trainers found"}
+                              </div>
+                            ) : (
+                              trainers.map((trainer) => (
+                                <SelectItem key={trainer.id} value={trainer.id}>
+                                  {trainer.full_name} {trainer.monthly_salary > 0 && `(₹${trainer.monthly_salary.toLocaleString()}/mo)`}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label>Description *</Label>
                       <Input
                         value={expenseDescription}
                         onChange={(e) => setExpenseDescription(e.target.value)}
-                        placeholder="e.g., Electricity bill for January"
+                        placeholder={expenseCategory === "trainer_percentage" ? "e.g., Monthly Salary" : "e.g., Electricity bill for January"}
+                        disabled={expenseCategory === "trainer_percentage" && selectedTrainerId !== ""}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
