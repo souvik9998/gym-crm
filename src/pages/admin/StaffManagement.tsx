@@ -25,6 +25,10 @@ export interface Staff {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  last_login_at: string | null;
+  last_login_ip: string | null;
+  failed_login_attempts: number;
+  locked_until: string | null;
   // Joined data
   permissions?: StaffPermissions;
   branch_assignments?: StaffBranchAssignment[];
