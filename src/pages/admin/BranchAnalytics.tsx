@@ -50,12 +50,13 @@ import {
   TrophyIcon,
   FireIcon,
 } from "@heroicons/react/24/outline";
-import { format, subDays, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { format, subDays, startOfMonth, endOfMonth, parseISO, startOfWeek, endOfWeek, subMonths } from "date-fns";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PeriodSelector, PeriodType, getPeriodDates, getPeriodLabel } from "@/components/admin/PeriodSelector";
 
 interface BranchMetrics {
   branchId: string;
@@ -137,12 +138,19 @@ const COLORS = [
 const BranchAnalytics = () => {
   const { allBranches } = useBranch();
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
-  const [dateFrom, setDateFrom] = useState<string>(
-    format(startOfMonth(subDays(new Date(), 30)), "yyyy-MM-dd")
+  
+  // Period selection state
+  const [period, setPeriod] = useState<PeriodType>("this_month");
+  const [customDateFrom, setCustomDateFrom] = useState<string>(
+    format(subDays(new Date(), 30), "yyyy-MM-dd")
   );
-  const [dateTo, setDateTo] = useState<string>(
-    format(endOfMonth(new Date()), "yyyy-MM-dd")
+  const [customDateTo, setCustomDateTo] = useState<string>(
+    format(new Date(), "yyyy-MM-dd")
   );
+  
+  // Calculate actual dates based on period selection
+  const { from: dateFrom, to: dateTo } = getPeriodDates(period, customDateFrom, customDateTo);
+  
   const [branchMetrics, setBranchMetrics] = useState<BranchMetrics[]>([]);
   const [insights, setInsights] = useState<Insight[]>([]);
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
@@ -165,7 +173,7 @@ const BranchAnalytics = () => {
     branchName: string,
     from: string,
     to: string
-  ): Promise<Omit<BranchMetrics, "previousPeriodRevenue" | "revenueGrowth" | "previousPeriodMembers" | "memberGrowth">> => {
+  ): Promise<BranchMetrics> => {
     // Execute all queries in parallel for maximum performance
     const [
       { data: payments },
@@ -481,8 +489,8 @@ const BranchAnalytics = () => {
   const generateInsights = (metric: BranchMetrics): Insight[] => {
     const insights: Insight[] = [];
 
-    // Revenue drop alert
-    if (metric.revenueGrowth < -10) {
+    // Revenue drop alert - only show if there was previous revenue
+    if (metric.previousPeriodRevenue > 0 && metric.revenueGrowth < -10) {
       insights.push({
         type: "warning",
         title: "Revenue Drop Detected",
@@ -507,8 +515,8 @@ const BranchAnalytics = () => {
       });
     }
 
-    // Low conversion rate alert
-    if (metric.conversionRate < 20) {
+    // Low conversion rate alert - only show if there are leads
+    if (metric.newMembers > 0 && metric.conversionRate < 20) {
       insights.push({
         type: "warning",
         title: "Low Conversion Rate",
@@ -520,8 +528,8 @@ const BranchAnalytics = () => {
       });
     }
 
-    // Negative profit margin
-    if (metric.profitMargin < 0) {
+    // Negative profit margin - only show if there's revenue
+    if (metric.revenue > 0 && metric.profitMargin < 0) {
       insights.push({
         type: "warning",
         title: "Negative Profit Margin",
@@ -533,8 +541,8 @@ const BranchAnalytics = () => {
       });
     }
 
-    // Positive growth
-    if (metric.revenueGrowth > 20) {
+    // Positive growth - only show if there was previous revenue (not just new revenue)
+    if (metric.previousPeriodRevenue > 0 && metric.revenueGrowth > 20) {
       insights.push({
         type: "success",
         title: "Strong Revenue Growth",
@@ -755,7 +763,7 @@ const BranchAnalytics = () => {
       : trainerMetrics.filter((t) => t.branchId === selectedBranchForTrainers);
   }, [trainerMetrics, selectedBranchForTrainers]);
 
-  // Memoize best/worst trainers
+  // Memoize best/worst trainers - only show worst if different from best
   const bestTrainer = useMemo(() => {
     if (filteredTrainerMetrics.length === 0) return null;
     return filteredTrainerMetrics.reduce((best, current) =>
@@ -764,16 +772,20 @@ const BranchAnalytics = () => {
   }, [filteredTrainerMetrics]);
 
   const worstTrainer = useMemo(() => {
-    if (filteredTrainerMetrics.length === 0) return null;
-    return filteredTrainerMetrics.reduce((worst, current) =>
+    // Only show worst trainer if there are at least 2 trainers and the worst is different from best
+    if (filteredTrainerMetrics.length < 2) return null;
+    const worst = filteredTrainerMetrics.reduce((worst, current) =>
       current.efficiencyScore < worst.efficiencyScore ? current : worst
     );
-  }, [filteredTrainerMetrics]);
+    // Don't show worst if it's the same as best (same efficiency score)
+    if (bestTrainer && worst.trainerId === bestTrainer.trainerId) return null;
+    return worst;
+  }, [filteredTrainerMetrics, bestTrainer]);
 
   return (
     <AdminLayout title="Branch Analytics" subtitle="Comprehensive multi-branch performance insights">
       <div className="space-y-6">
-        {/* Header with Date Range */}
+        {/* Header with Period Selector */}
         <div className="flex flex-col gap-4">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold">Branch Performance Dashboard</h2>
@@ -781,15 +793,20 @@ const BranchAnalytics = () => {
               Compare branches, track trends, and identify opportunities
             </p>
           </div>
-          <div className="w-full sm:w-auto">
-            <DateRangePicker
-              dateFrom={dateFrom}
-              dateTo={dateTo}
-              onDateChange={(from, to) => {
-                setDateFrom(from);
-                setDateTo(to);
+          <div className="w-full sm:w-auto flex flex-wrap items-center gap-3">
+            <PeriodSelector
+              period={period}
+              onPeriodChange={setPeriod}
+              customDateFrom={customDateFrom}
+              customDateTo={customDateTo}
+              onCustomDateChange={(from, to) => {
+                setCustomDateFrom(from);
+                setCustomDateTo(to);
               }}
             />
+            <span className="text-sm text-muted-foreground">
+              {format(new Date(dateFrom), "dd MMM yyyy")} - {format(new Date(dateTo), "dd MMM yyyy")}
+            </span>
           </div>
         </div>
 
@@ -1756,7 +1773,7 @@ const BranchAnalytics = () => {
                                   <div className="bg-popover p-3 rounded-md shadow-md border text-sm">
                                     {payload.map((entry, index) => (
                                       <p key={index} className="font-medium">
-                                        {entry.name}: {typeof entry.value === "number" && entry.name?.includes("Revenue")
+                                        {entry.name}: {typeof entry.value === "number" && typeof entry.name === "string" && entry.name.includes("Revenue")
                                           ? formatCurrency(entry.value)
                                           : entry.value}
                                       </p>
