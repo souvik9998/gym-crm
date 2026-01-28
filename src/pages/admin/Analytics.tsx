@@ -27,6 +27,8 @@ import {
 } from "recharts";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { PeriodSelector, PeriodType, getPeriodDates } from "@/components/admin/PeriodSelector";
+import { format, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, differenceInDays, parseISO } from "date-fns";
 
 interface MonthlyRevenue {
   month: string;
@@ -72,6 +74,9 @@ const PACKAGE_COLORS = [
 
 const AdminAnalytics = () => {
   const { currentBranch } = useBranch();
+  const [period, setPeriod] = useState<PeriodType>("this_month");
+  const [customDateFrom, setCustomDateFrom] = useState<string>("");
+  const [customDateTo, setCustomDateTo] = useState<string>("");
   const [revenueData, setRevenueData] = useState<MonthlyRevenue[]>([]);
   const [memberGrowth, setMemberGrowth] = useState<MemberGrowth[]>([]);
   const [trainerStats, setTrainerStats] = useState<TrainerStats[]>([]);
@@ -84,81 +89,151 @@ const AdminAnalytics = () => {
     avgRevenue: 0,
   });
 
+  const { from: dateFromStr, to: dateToStr } = getPeriodDates(period, customDateFrom, customDateTo);
+  const dateFrom = parseISO(dateFromStr);
+  const dateTo = parseISO(dateToStr);
+
   useEffect(() => {
     if (currentBranch?.id) {
       fetchAnalytics();
     }
-  }, [currentBranch?.id]);
+  }, [currentBranch?.id, dateFromStr, dateToStr]);
+
+  const getTimeIntervals = () => {
+    const daysDiff = differenceInDays(dateTo, dateFrom);
+    
+    if (daysDiff <= 14) {
+      // Daily intervals for up to 2 weeks
+      return eachDayOfInterval({ start: dateFrom, end: dateTo }).map(date => ({
+        date,
+        label: format(date, "dd MMM"),
+        key: format(date, "yyyy-MM-dd")
+      }));
+    } else if (daysDiff <= 90) {
+      // Weekly intervals for up to 3 months
+      return eachWeekOfInterval({ start: dateFrom, end: dateTo }).map(date => ({
+        date,
+        label: format(date, "dd MMM"),
+        key: format(date, "yyyy-'W'ww")
+      }));
+    } else {
+      // Monthly intervals for longer periods
+      return eachMonthOfInterval({ start: dateFrom, end: dateTo }).map(date => ({
+        date,
+        label: format(date, "MMM yy"),
+        key: format(date, "yyyy-MM")
+      }));
+    }
+  };
+
+  const handleCustomDateChange = (from: string, to: string) => {
+    setCustomDateFrom(from);
+    setCustomDateTo(to);
+  };
 
   const fetchAnalytics = async () => {
     if (!currentBranch?.id) return;
     
     try {
+      const intervals = getTimeIntervals();
+      const daysDiff = differenceInDays(dateTo, dateFrom);
+
       const { data: payments } = await supabase
         .from("payments")
         .select("amount, created_at, status")
         .eq("branch_id", currentBranch.id)
         .eq("status", "success")
+        .gte("created_at", dateFrom.toISOString())
+        .lte("created_at", dateTo.toISOString())
         .order("created_at", { ascending: true });
 
-      const monthlyData: Record<string, { revenue: number; payments: number }> = {};
-      const last6Months: string[] = [];
-      for (let i = 5; i >= 0; i--) {
-        const date = new Date();
-        date.setMonth(date.getMonth() - i);
-        const key = date.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
-        monthlyData[key] = { revenue: 0, payments: 0 };
-        last6Months.push(key);
-      }
+      // Build revenue data based on intervals
+      const revenueByInterval: Record<string, { revenue: number; payments: number }> = {};
+      intervals.forEach(interval => {
+        revenueByInterval[interval.label] = { revenue: 0, payments: 0 };
+      });
 
       payments?.forEach((payment) => {
         const date = new Date(payment.created_at);
-        const key = date.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
-        if (monthlyData[key]) {
-          monthlyData[key].revenue += Number(payment.amount);
-          monthlyData[key].payments += 1;
+        let label: string;
+        
+        if (daysDiff <= 14) {
+          label = format(date, "dd MMM");
+        } else if (daysDiff <= 90) {
+          const weekStart = eachWeekOfInterval({ start: dateFrom, end: dateTo })
+            .find((w, i, arr) => {
+              const nextWeek = arr[i + 1];
+              return date >= w && (!nextWeek || date < nextWeek);
+            });
+          label = weekStart ? format(weekStart, "dd MMM") : format(date, "dd MMM");
+        } else {
+          label = format(date, "MMM yy");
+        }
+        
+        if (revenueByInterval[label]) {
+          revenueByInterval[label].revenue += Number(payment.amount);
+          revenueByInterval[label].payments += 1;
         }
       });
 
       setRevenueData(
-        last6Months.map((month) => ({
-          month,
-          revenue: monthlyData[month]?.revenue || 0,
-          payments: monthlyData[month]?.payments || 0,
+        intervals.map((interval) => ({
+          month: interval.label,
+          revenue: revenueByInterval[interval.label]?.revenue || 0,
+          payments: revenueByInterval[interval.label]?.payments || 0,
         }))
       );
 
+      // Fetch members within date range
       const { data: members } = await supabase
         .from("members")
         .select("created_at")
         .eq("branch_id", currentBranch.id)
+        .gte("created_at", dateFrom.toISOString())
+        .lte("created_at", dateTo.toISOString())
         .order("created_at", { ascending: true });
 
-      const memberMonthly: Record<string, number> = {};
-      last6Months.forEach((m) => (memberMonthly[m] = 0));
+      // Count members before the period for cumulative calculation
+      const { count: membersBefore } = await supabase
+        .from("members")
+        .select("*", { count: "exact", head: true })
+        .eq("branch_id", currentBranch.id)
+        .lt("created_at", dateFrom.toISOString());
+
+      const membersByInterval: Record<string, number> = {};
+      intervals.forEach((interval) => (membersByInterval[interval.label] = 0));
 
       members?.forEach((member) => {
         const date = new Date(member.created_at);
-        const key = date.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
-        if (memberMonthly[key] !== undefined) {
-          memberMonthly[key] += 1;
+        let label: string;
+        
+        if (daysDiff <= 14) {
+          label = format(date, "dd MMM");
+        } else if (daysDiff <= 90) {
+          const weekStart = eachWeekOfInterval({ start: dateFrom, end: dateTo })
+            .find((w, i, arr) => {
+              const nextWeek = arr[i + 1];
+              return date >= w && (!nextWeek || date < nextWeek);
+            });
+          label = weekStart ? format(weekStart, "dd MMM") : format(date, "dd MMM");
+        } else {
+          label = format(date, "MMM yy");
+        }
+        
+        if (membersByInterval[label] !== undefined) {
+          membersByInterval[label] += 1;
         }
       });
 
-      let cumulative = members?.filter((m) => {
-        const date = new Date(m.created_at);
-        const sixMonthsAgo = new Date();
-        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-        return date < sixMonthsAgo;
-      }).length || 0;
+      let cumulative = membersBefore || 0;
 
       setMemberGrowth(
-        last6Months.map((month) => {
-          cumulative += memberMonthly[month] || 0;
+        intervals.map((interval) => {
+          cumulative += membersByInterval[interval.label] || 0;
           return {
-            month,
+            month: interval.label,
             members: cumulative,
-            newMembers: memberMonthly[month] || 0,
+            newMembers: membersByInterval[interval.label] || 0,
           };
         })
       );
@@ -174,14 +249,17 @@ const AdminAnalytics = () => {
         .eq("branch_id", currentBranch.id)
         .eq("status", "active");
 
+      const periodDays = Math.max(1, daysDiff);
+      const avgDailyRevenue = totalRevenue / periodDays;
+
       setTotals({
         totalRevenue,
         totalMembers: totalMembers || 0,
         activeMembers: activeMembers || 0,
-        avgRevenue: totalRevenue / 6,
+        avgRevenue: avgDailyRevenue * 30, // Monthly average
       });
 
-      // Fetch trainer stats
+      // Fetch trainer stats within date range
       const { data: trainers } = await supabase
         .from("personal_trainers")
         .select("id, name")
@@ -191,7 +269,9 @@ const AdminAnalytics = () => {
       const { data: ptSubscriptions } = await supabase
         .from("pt_subscriptions")
         .select("personal_trainer_id, member_id, total_fee, created_at, status")
-        .eq("branch_id", currentBranch.id);
+        .eq("branch_id", currentBranch.id)
+        .gte("created_at", dateFrom.toISOString())
+        .lte("created_at", dateTo.toISOString());
 
       if (trainers && ptSubscriptions) {
         const trainerStatsData: TrainerStats[] = trainers.map((trainer) => {
@@ -201,15 +281,29 @@ const AdminAnalytics = () => {
           const uniqueMembers = new Set(trainerSubs.map((sub) => sub.member_id)).size;
           const trainerRevenue = trainerSubs.reduce((sum, sub) => sum + Number(sub.total_fee || 0), 0);
 
-          // Calculate monthly revenue for this trainer
-          const trainerMonthlyRevenue: Record<string, number> = {};
-          last6Months.forEach((m) => (trainerMonthlyRevenue[m] = 0));
+          // Calculate interval-based revenue for this trainer
+          const trainerIntervalRevenue: Record<string, number> = {};
+          intervals.forEach((interval) => (trainerIntervalRevenue[interval.label] = 0));
 
           trainerSubs.forEach((sub) => {
             const date = new Date(sub.created_at);
-            const key = date.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
-            if (trainerMonthlyRevenue[key] !== undefined) {
-              trainerMonthlyRevenue[key] += Number(sub.total_fee || 0);
+            let label: string;
+            
+            if (daysDiff <= 14) {
+              label = format(date, "dd MMM");
+            } else if (daysDiff <= 90) {
+              const weekStart = eachWeekOfInterval({ start: dateFrom, end: dateTo })
+                .find((w, i, arr) => {
+                  const nextWeek = arr[i + 1];
+                  return date >= w && (!nextWeek || date < nextWeek);
+                });
+              label = weekStart ? format(weekStart, "dd MMM") : format(date, "dd MMM");
+            } else {
+              label = format(date, "MMM yy");
+            }
+            
+            if (trainerIntervalRevenue[label] !== undefined) {
+              trainerIntervalRevenue[label] += Number(sub.total_fee || 0);
             }
           });
 
@@ -218,9 +312,9 @@ const AdminAnalytics = () => {
             name: trainer.name,
             members: uniqueMembers,
             revenue: trainerRevenue,
-            monthlyRevenue: last6Months.map((month) => ({
-              month,
-              revenue: trainerMonthlyRevenue[month] || 0,
+            monthlyRevenue: intervals.map((interval) => ({
+              month: interval.label,
+              revenue: trainerIntervalRevenue[interval.label] || 0,
               payments: 0,
             })),
           };
@@ -229,7 +323,7 @@ const AdminAnalytics = () => {
         setTrainerStats(trainerStatsData.filter((t) => t.members > 0 || t.revenue > 0));
       }
 
-      // Fetch package sales data
+      // Fetch package sales data within date range
       const { data: monthlyPackages } = await supabase
         .from("monthly_packages")
         .select("id, months, price")
@@ -240,7 +334,9 @@ const AdminAnalytics = () => {
       const { data: subscriptions } = await supabase
         .from("subscriptions")
         .select("plan_months, created_at, is_custom_package")
-        .eq("branch_id", currentBranch.id);
+        .eq("branch_id", currentBranch.id)
+        .gte("created_at", dateFrom.toISOString())
+        .lte("created_at", dateTo.toISOString());
 
       if (monthlyPackages && subscriptions) {
         const packages: PackageInfo[] = monthlyPackages.map((pkg) => ({
@@ -252,29 +348,43 @@ const AdminAnalytics = () => {
 
         // Initialize package sales data structure
         const packageSales: Record<string, Record<number, number>> = {};
-        last6Months.forEach((month) => {
-          packageSales[month] = {};
+        intervals.forEach((interval) => {
+          packageSales[interval.label] = {};
           packages.forEach((pkg) => {
-            packageSales[month][pkg.months] = 0;
+            packageSales[interval.label][pkg.months] = 0;
           });
         });
 
-        // Count subscriptions per package per month
+        // Count subscriptions per package per interval
         subscriptions
           .filter((sub) => !sub.is_custom_package)
           .forEach((sub) => {
             const date = new Date(sub.created_at);
-            const key = date.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
-            if (packageSales[key] && packageSales[key][sub.plan_months] !== undefined) {
-              packageSales[key][sub.plan_months] += 1;
+            let label: string;
+            
+            if (daysDiff <= 14) {
+              label = format(date, "dd MMM");
+            } else if (daysDiff <= 90) {
+              const weekStart = eachWeekOfInterval({ start: dateFrom, end: dateTo })
+                .find((w, i, arr) => {
+                  const nextWeek = arr[i + 1];
+                  return date >= w && (!nextWeek || date < nextWeek);
+                });
+              label = weekStart ? format(weekStart, "dd MMM") : format(date, "dd MMM");
+            } else {
+              label = format(date, "MMM yy");
+            }
+            
+            if (packageSales[label] && packageSales[label][sub.plan_months] !== undefined) {
+              packageSales[label][sub.plan_months] += 1;
             }
           });
 
         // Transform to chart data format
-        const salesData: PackageSalesData[] = last6Months.map((month) => {
-          const dataPoint: PackageSalesData = { month };
+        const salesData: PackageSalesData[] = intervals.map((interval) => {
+          const dataPoint: PackageSalesData = { month: interval.label };
           packages.forEach((pkg) => {
-            dataPoint[pkg.label] = packageSales[month][pkg.months] || 0;
+            dataPoint[pkg.label] = packageSales[interval.label][pkg.months] || 0;
           });
           return dataPoint;
         });
@@ -295,6 +405,16 @@ const AdminAnalytics = () => {
   return (
     <AdminLayout title="Analytics" subtitle="Business insights and trends">
       <div className="max-w-6xl mx-auto space-y-6">
+        {/* Period Selector */}
+        <div className="flex justify-end">
+          <PeriodSelector
+            period={period}
+            onPeriodChange={setPeriod}
+            customDateFrom={customDateFrom}
+            customDateTo={customDateTo}
+            onCustomDateChange={handleCustomDateChange}
+          />
+        </div>
         {/* Summary Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card className="hover-lift border-0 shadow-sm overflow-hidden">
