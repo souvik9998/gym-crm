@@ -69,17 +69,19 @@ const StatCard = memo(({
   iconClass?: string;
 }) => (
   <Card className="hover-lift border-0 shadow-sm h-full">
-    {/* Mobile layout - icon, number, text on separate lines, smaller and tighter */}
-    <CardContent className="p-2 flex flex-col gap-1 md:hidden">
-      <div className={`w-6 h-6 ${bgClass} rounded-lg flex items-center justify-center`}>
-        <Icon className={`w-3.5 h-3.5 ${iconClass}`} />
+    {/* Mobile layout - icon on right, text and number on left */}
+    <CardContent className="p-2 flex items-center justify-between md:hidden">
+      <div className="flex-1 min-w-0 pr-2">
+        <p className={`text-base font-bold ${colorClass} leading-tight break-words`}>
+          {value}
+        </p>
+        <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+          {label}
+        </p>
       </div>
-      <p className={`text-sm font-semibold ${colorClass} leading-tight break-words`}>
-        {value}
-      </p>
-      <p className="text-[10px] text-muted-foreground leading-tight">
-        {label}
-      </p>
+      <div className={`w-8 h-8 ${bgClass} rounded-lg flex items-center justify-center flex-shrink-0`}>
+        <Icon className={`w-4 h-4 ${iconClass}`} />
+      </div>
     </CardContent>
 
     {/* Desktop / tablet layout - keep existing design */}

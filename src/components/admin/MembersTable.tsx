@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback, memo } from "react";
+import React, { useEffect, useState, useMemo, useCallback, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -111,6 +111,7 @@ export const MembersTable = ({
   }, [externalSortBy, externalSortOrder]);
   const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
+  const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   // Removed sendingBulkWhatsApp - now using bulkActionType
 
   useEffect(() => {
@@ -1071,13 +1072,23 @@ export const MembersTable = ({
           </TableHeader>
           <TableBody>
             {sortedMembers.map((member) => (
+              <React.Fragment key={member.id}>
               <TableRow 
-                key={member.id} 
                 className={cn(
-                  "cursor-pointer transition-colors duration-150 ease-in-out hover:bg-muted/50",
-                  selectedMembers.has(member.id) && "bg-primary/5"
+                  "transition-colors duration-150 ease-in-out hover:bg-muted/50",
+                  selectedMembers.has(member.id) && "bg-primary/5",
+                  expandedMemberId === member.id && "bg-muted/30"
                 )}
-                onClick={() => handleMemberClick(member)}
+                onClick={(e) => {
+                  // On mobile, toggle expand/collapse
+                  if (window.innerWidth < 768) {
+                    e.stopPropagation();
+                    setExpandedMemberId(expandedMemberId === member.id ? null : member.id);
+                  } else {
+                    // On desktop, use existing click handler
+                    handleMemberClick(member);
+                  }
+                }}
               >
                 <TableCell className="hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
                   <Checkbox
@@ -1232,6 +1243,61 @@ export const MembersTable = ({
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
+              {/* Mobile: Expanded details row */}
+              {expandedMemberId === member.id && (
+                <TableRow className="md:hidden">
+                  <TableCell colSpan={5} className="py-2 px-3 bg-muted/20">
+                    <div className="space-y-1.5">
+                      {/* Phone */}
+                      <div className="flex items-center gap-2 text-[10px]">
+                        <Phone className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        <span className="text-muted-foreground">Phone:</span>
+                        <span>+91 {member.phone}</span>
+                      </div>
+                      {/* Trainer */}
+                      {member.activePT ? (
+                        <div className="flex items-center gap-2 text-[10px]">
+                          <Dumbbell className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          <span className="text-muted-foreground">Trainer:</span>
+                          <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 text-purple-700 dark:text-purple-300 border-purple-300/50 dark:border-purple-700/50 text-[9px] px-1.5 py-0.5">
+                            {member.activePT.trainer_name}
+                          </Badge>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-[10px]">
+                          <Dumbbell className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          <span className="text-muted-foreground">Trainer:</span>
+                          <span className="text-muted-foreground">No PT</span>
+                        </div>
+                      )}
+                      {/* Expiry Date */}
+                      {member.subscription ? (
+                        <div className="flex items-center gap-2 text-[10px]">
+                          <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          <span className="text-muted-foreground">Expires:</span>
+                          <span>{new Date(member.subscription.end_date).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-[10px]">
+                          <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          <span className="text-muted-foreground">Expires:</span>
+                          <span className="text-muted-foreground">-</span>
+                        </div>
+                      )}
+                      {/* Status Badge (mobile expanded view) */}
+                      <div className="flex items-center gap-2 text-[10px]">
+                        <span className="text-muted-foreground">Status:</span>
+                        {getStatusBadge(member.subscription)}
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+              </React.Fragment>
             ))}
           </TableBody>
         </Table>
