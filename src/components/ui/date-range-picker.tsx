@@ -406,13 +406,13 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
         <Button
           variant="outline"
           className={cn(
-            "w-full sm:w-[280px] justify-start text-left font-normal text-xs sm:text-sm h-9 sm:h-10",
+            "w-full sm:w-[280px] justify-start text-left font-normal text-xs sm:text-sm h-9 sm:h-10 overflow-hidden",
             !dateFrom && !dateTo && "text-muted-foreground",
             className
           )}
         >
-          <CalendarIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-          <span className="truncate">{getDisplayText()}</span>
+          <CalendarIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+          <span className="truncate min-w-0 flex-1">{getDisplayText()}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[95vw] sm:w-auto p-0 max-w-[95vw] sm:max-w-none" align="start">

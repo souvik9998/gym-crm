@@ -512,17 +512,17 @@ const AdminAnalytics = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={revenueData}
-                  margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 8 } : undefined}
+                  margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 8 } : undefined}
                 >
                   <XAxis
                     dataKey="month"
                     tickLine={false}
                     axisLine={false}
-                    tick={isMobile ? { fontSize: 10 } : undefined}
+                    tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined}
                     minTickGap={isMobile ? 24 : undefined}
                     interval={isMobile ? "preserveStartEnd" : undefined}
                     tickMargin={isMobile ? 8 : undefined}
-                    padding={isMobile ? { left: 4, right: 12 } : undefined}
+                    padding={isMobile ? { left: 4, right: 16 } : undefined}
                   />
                   <YAxis
                     tickLine={false}
@@ -554,17 +554,17 @@ const AdminAnalytics = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     data={memberGrowth}
-                    margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 8 } : undefined}
+                    margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 8 } : undefined}
                   >
                     <XAxis
                       dataKey="month"
                       tickLine={false}
                       axisLine={false}
-                      tick={isMobile ? { fontSize: 10 } : undefined}
+                      tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined}
                       minTickGap={isMobile ? 24 : undefined}
                       interval={isMobile ? "preserveStartEnd" : undefined}
                       tickMargin={isMobile ? 8 : undefined}
-                      padding={isMobile ? { left: 4, right: 12 } : undefined}
+                      padding={isMobile ? { left: 4, right: 16 } : undefined}
                     />
                     <YAxis
                       tickLine={false}
@@ -600,17 +600,17 @@ const AdminAnalytics = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={memberGrowth}
-                    margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 8 } : undefined}
+                    margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 8 } : undefined}
                   >
                     <XAxis
                       dataKey="month"
                       tickLine={false}
                       axisLine={false}
-                      tick={isMobile ? { fontSize: 10 } : undefined}
+                      tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined}
                       minTickGap={isMobile ? 24 : undefined}
                       interval={isMobile ? "preserveStartEnd" : undefined}
                       tickMargin={isMobile ? 8 : undefined}
-                      padding={isMobile ? { left: 4, right: 12 } : undefined}
+                      padding={isMobile ? { left: 4, right: 16 } : undefined}
                     />
                     <YAxis
                       tickLine={false}
@@ -719,17 +719,17 @@ const AdminAnalytics = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={packageSalesData}
-                    margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 8 } : undefined}
+                    margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 8 } : undefined}
                   >
                     <XAxis
                       dataKey="month"
                       tickLine={false}
                       axisLine={false}
-                      tick={isMobile ? { fontSize: 10 } : undefined}
+                      tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined}
                       minTickGap={isMobile ? 24 : undefined}
                       interval={isMobile ? "preserveStartEnd" : undefined}
                       tickMargin={isMobile ? 8 : undefined}
-                      padding={isMobile ? { left: 4, right: 12 } : undefined}
+                      padding={isMobile ? { left: 4, right: 16 } : undefined}
                     />
                     <YAxis
                       tickLine={false}
