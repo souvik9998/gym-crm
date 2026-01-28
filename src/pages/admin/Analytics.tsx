@@ -405,16 +405,6 @@ const AdminAnalytics = () => {
   return (
     <AdminLayout title="Analytics" subtitle="Business insights and trends">
       <div className="max-w-6xl mx-auto space-y-6">
-        {/* Period Selector */}
-        <div className="flex justify-end">
-          <PeriodSelector
-            period={period}
-            onPeriodChange={setPeriod}
-            customDateFrom={customDateFrom}
-            customDateTo={customDateTo}
-            onCustomDateChange={handleCustomDateChange}
-          />
-        </div>
         {/* Summary Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card className="hover-lift border-0 shadow-sm overflow-hidden">
@@ -439,42 +429,42 @@ const AdminAnalytics = () => {
           </Card>
 
           <Card className="hover-lift border-0 shadow-sm overflow-hidden">
-            <CardContent className="p-5">
+            <CardContent className="p-3 sm:p-5">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-primary">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xl sm:text-2xl font-bold text-primary truncate">
                     <AnimatedCounter value={totals.totalMembers} duration={1000} />
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Total Members</p>
                 </div>
-                <div className="p-3 bg-primary/10 rounded-xl">
-                  <UsersIcon className="w-6 h-6 text-primary" />
+                <div className="p-2 sm:p-3 bg-primary/10 rounded-xl flex-shrink-0 ml-2">
+                  <UsersIcon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="hover-lift border-0 shadow-sm overflow-hidden">
-            <CardContent className="p-5">
+            <CardContent className="p-3 sm:p-5">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-success">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xl sm:text-2xl font-bold text-success truncate">
                     <AnimatedCounter value={totals.activeMembers} duration={800} />
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Active Members</p>
                 </div>
-                <div className="p-3 bg-success/10 rounded-xl">
-                  <CalendarIcon className="w-6 h-6 text-success" />
+                <div className="p-2 sm:p-3 bg-success/10 rounded-xl flex-shrink-0 ml-2">
+                  <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-success" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="hover-lift border-0 shadow-sm overflow-hidden">
-            <CardContent className="p-5">
+            <CardContent className="p-3 sm:p-5">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-warning">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xl sm:text-2xl font-bold text-warning truncate">
                     <AnimatedCounter 
                       value={Math.round(totals.avgRevenue)} 
                       prefix="₹" 
@@ -484,12 +474,24 @@ const AdminAnalytics = () => {
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Avg Monthly</p>
                 </div>
-                <div className="p-3 bg-warning/10 rounded-xl">
-                  <CurrencyRupeeIcon className="w-6 h-6 text-warning" />
+                <div className="p-2 sm:p-3 bg-warning/10 rounded-xl flex-shrink-0 ml-2">
+                  <CurrencyRupeeIcon className="w-5 h-5 sm:w-6 sm:h-6 text-warning" />
                 </div>
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Period Selector - Compact */}
+        <div className="flex justify-start">
+          <PeriodSelector
+            period={period}
+            onPeriodChange={setPeriod}
+            customDateFrom={customDateFrom}
+            customDateTo={customDateTo}
+            onCustomDateChange={handleCustomDateChange}
+            compact
+          />
         </div>
 
         {/* Revenue Chart */}
