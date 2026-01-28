@@ -949,20 +949,20 @@ const BranchAnalytics = () => {
             {/* Smart Insights & Alerts */}
             {insights.length > 0 && (
           <Card className="border-l-4 border-l-warning">
-            <CardHeader>
+            <CardHeader className="p-3 sm:p-6">
               <CardTitle className="flex items-center gap-2 text-base sm:text-xl">
                 <SparklesIcon className="w-5 h-5" />
                 Smart Insights & Alerts
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">Automated insights based on performance metrics</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
               <div className="space-y-3">
                 {insights.slice(0, 5).map((insight, index) => (
                   <div
                     key={index}
                     className={cn(
-                      "p-4 rounded-lg border",
+                      "p-3 sm:p-4 rounded-lg border",
                       insight.type === "warning" && "bg-warning/5 border-warning/20",
                       insight.type === "success" && "bg-success/5 border-success/20",
                       insight.type === "info" && "bg-primary/5 border-primary/20"
@@ -982,7 +982,7 @@ const BranchAnalytics = () => {
                             {insight.branchName}
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground">{insight.description}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">{insight.description}</p>
                       </div>
                     </div>
                   </div>
@@ -993,13 +993,13 @@ const BranchAnalytics = () => {
         )}
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Revenue</p>
-                  <p className="text-2xl font-bold mt-1">
+                  <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Total Revenue</p>
+                  <p className="text-base sm:text-2xl font-bold mt-0.5 sm:mt-1 leading-tight">
                     <AnimatedCounter
                       value={branchMetrics.reduce((sum, m) => sum + m.revenue, 0)}
                       prefix="₹"
@@ -1008,17 +1008,17 @@ const BranchAnalytics = () => {
                     />
                   </p>
                 </div>
-                <CurrencyRupeeIcon className="w-8 h-8 text-accent opacity-50" />
+                <CurrencyRupeeIcon className="w-6 h-6 sm:w-8 sm:h-8 text-accent opacity-50 flex-shrink-0 ml-2" />
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Profit</p>
-                  <p className="text-2xl font-bold mt-1">
+                  <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Total Profit</p>
+                  <p className="text-base sm:text-2xl font-bold mt-0.5 sm:mt-1 leading-tight">
                     <AnimatedCounter
                       value={branchMetrics.reduce((sum, m) => sum + m.profit, 0)}
                       prefix="₹"
@@ -1027,34 +1027,34 @@ const BranchAnalytics = () => {
                     />
                   </p>
                 </div>
-                <ChartBarIcon className="w-8 h-8 text-success opacity-50" />
+                <ChartBarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-success opacity-50 flex-shrink-0 ml-2" />
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Members</p>
-                  <p className="text-2xl font-bold mt-1">
+                  <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Total Members</p>
+                  <p className="text-base sm:text-2xl font-bold mt-0.5 sm:mt-1 leading-tight">
                     <AnimatedCounter
                       value={branchMetrics.reduce((sum, m) => sum + m.totalMembers, 0)}
                       duration={1000}
                     />
                   </p>
                 </div>
-                <UsersIcon className="w-8 h-8 text-primary opacity-50" />
+                <UsersIcon className="w-6 h-6 sm:w-8 sm:h-8 text-primary opacity-50 flex-shrink-0 ml-2" />
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Avg Churn Rate</p>
-                  <p className="text-2xl font-bold mt-1">
+                  <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Avg Churn Rate</p>
+                  <p className="text-base sm:text-2xl font-bold mt-0.5 sm:mt-1 leading-tight">
                     <AnimatedCounter
                       value={
                         branchMetrics.length > 0
@@ -1067,7 +1067,7 @@ const BranchAnalytics = () => {
                     />
                   </p>
                 </div>
-                <ArrowTrendingDownIcon className="w-8 h-8 text-warning opacity-50" />
+                <ArrowTrendingDownIcon className="w-6 h-6 sm:w-8 sm:h-8 text-warning opacity-50 flex-shrink-0 ml-2" />
               </div>
             </CardContent>
           </Card>
@@ -1075,36 +1075,36 @@ const BranchAnalytics = () => {
 
         {/* Best & Worst Performers */}
         {(bestPerformer || worstPerformer) && (
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 gap-3 sm:gap-4">
             {bestPerformer && (
               <Card className="border-l-4 border-l-success">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                <CardHeader className="p-3 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                     <CheckCircleIcon className="w-5 h-5 text-success" />
                     Best Performer
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
                   <div className="space-y-2">
-                    <p className="text-2xl font-bold">{bestPerformer.branchName}</p>
-                    <div className="grid grid-cols-2 gap-4 mt-4">
+                    <p className="text-base sm:text-2xl font-bold">{bestPerformer.branchName}</p>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
                       <div>
-                        <p className="text-sm text-muted-foreground">Revenue</p>
-                        <p className="text-lg font-semibold">{formatCurrency(bestPerformer.revenue)}</p>
+                        <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Revenue</p>
+                        <p className="text-sm sm:text-lg font-semibold break-words">{formatCurrency(bestPerformer.revenue)}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Profit</p>
-                        <p className="text-lg font-semibold text-success">
+                        <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Profit</p>
+                        <p className="text-sm sm:text-lg font-semibold text-success break-words">
                           {formatCurrency(bestPerformer.profit)}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Members</p>
-                        <p className="text-lg font-semibold">{bestPerformer.totalMembers}</p>
+                        <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Members</p>
+                        <p className="text-sm sm:text-lg font-semibold">{bestPerformer.totalMembers}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Growth</p>
-                        <p className="text-lg font-semibold text-success">
+                        <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Growth</p>
+                        <p className="text-sm sm:text-lg font-semibold text-success">
                           {bestPerformer.revenueGrowth > 0 ? "+" : ""}
                           {bestPerformer.revenueGrowth.toFixed(1)}%
                         </p>
@@ -1113,7 +1113,7 @@ const BranchAnalytics = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full mt-4"
+                      className="w-full mt-3 sm:mt-4"
                       onClick={() => openBranchDetail(bestPerformer)}
                     >
                       View Details
@@ -1125,25 +1125,25 @@ const BranchAnalytics = () => {
 
             {worstPerformer && (
               <Card className="border-l-4 border-l-warning">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                <CardHeader className="p-3 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                     <ExclamationTriangleIcon className="w-5 h-5 text-warning" />
                     Needs Attention
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
                   <div className="space-y-2">
-                    <p className="text-2xl font-bold">{worstPerformer.branchName}</p>
-                    <div className="grid grid-cols-2 gap-4 mt-4">
+                    <p className="text-base sm:text-2xl font-bold">{worstPerformer.branchName}</p>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
                       <div>
-                        <p className="text-sm text-muted-foreground">Revenue</p>
-                        <p className="text-lg font-semibold">{formatCurrency(worstPerformer.revenue)}</p>
+                        <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Revenue</p>
+                        <p className="text-sm sm:text-lg font-semibold break-words">{formatCurrency(worstPerformer.revenue)}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Profit</p>
+                        <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Profit</p>
                         <p
                           className={cn(
-                            "text-lg font-semibold",
+                            "text-sm sm:text-lg font-semibold break-words",
                             worstPerformer.profit >= 0 ? "text-success" : "text-red-600"
                           )}
                         >
@@ -1151,14 +1151,14 @@ const BranchAnalytics = () => {
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Members</p>
-                        <p className="text-lg font-semibold">{worstPerformer.totalMembers}</p>
+                        <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Members</p>
+                        <p className="text-sm sm:text-lg font-semibold">{worstPerformer.totalMembers}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Growth</p>
+                        <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Growth</p>
                         <p
                           className={cn(
-                            "text-lg font-semibold",
+                            "text-sm sm:text-lg font-semibold",
                             worstPerformer.revenueGrowth >= 0 ? "text-success" : "text-red-600"
                           )}
                         >
@@ -1170,7 +1170,7 @@ const BranchAnalytics = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full mt-4"
+                      className="w-full mt-3 sm:mt-4"
                       onClick={() => openBranchDetail(worstPerformer)}
                     >
                       View Details
@@ -1197,7 +1197,7 @@ const BranchAnalytics = () => {
                 className="h-[min(400px,42vh)] overflow-hidden"
               >
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={timeSeriesData} margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 8 } : undefined}>
+                  <AreaChart data={timeSeriesData} margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 8 } : undefined}>
                     <defs>
                       {allBranches?.map((branch, index) => (
                         <linearGradient
@@ -1216,9 +1216,9 @@ const BranchAnalytics = () => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="date" 
-                      tick={isMobile ? { fontSize: 10 } : undefined} 
+                      tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined} 
                       minTickGap={isMobile ? 24 : undefined}
-                      padding={isMobile ? { left: 4, right: 12 } : undefined}
+                      padding={isMobile ? { left: 4, right: 16 } : undefined}
                     />
                     <YAxis tick={isMobile ? { fontSize: 10 } : undefined} width={isMobile ? 36 : undefined} tickFormatter={(v) => `₹${v / 1000}k`} />
                     <ChartTooltip
@@ -1435,15 +1435,15 @@ const BranchAnalytics = () => {
             ) : (
               <Tabs defaultValue="overview" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
-                  <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
-                  <TabsTrigger value="performance" className="text-xs sm:text-sm">Performance</TabsTrigger>
-                  <TabsTrigger value="comparison" className="text-xs sm:text-sm">Comparison</TabsTrigger>
-                  <TabsTrigger value="insights" className="text-xs sm:text-sm">Insights</TabsTrigger>
+                  <TabsTrigger value="overview" className="text-xs sm:text-sm h-9 sm:h-10">Overview</TabsTrigger>
+                  <TabsTrigger value="performance" className="text-xs sm:text-sm h-9 sm:h-10">Performance</TabsTrigger>
+                  <TabsTrigger value="comparison" className="text-xs sm:text-sm h-9 sm:h-10">Comparison</TabsTrigger>
+                  <TabsTrigger value="insights" className="text-xs sm:text-sm h-9 sm:h-10">Insights</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="overview" className="space-y-6">
+                <TabsContent value="overview" className="space-y-3 sm:space-y-6">
                 {/* Trainer Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 sm:gap-4">
                   <Card>
                     <CardContent className="p-3 sm:p-4">
                       <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Total Trainers</p>
@@ -1484,43 +1484,43 @@ const BranchAnalytics = () => {
 
                 {/* Best & Worst Trainers */}
                 {(bestTrainer || worstTrainer) && (
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid md:grid-cols-2 gap-3 sm:gap-4">
                     {bestTrainer && (
                       <Card className="border-l-4 border-l-success">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
+                        <CardHeader className="p-3 sm:p-6">
+                          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                             <TrophyIcon className="w-5 h-5 text-success" />
                             Top Performer
                           </CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
                           <div className="space-y-2">
-                            <p className="text-xl font-bold">{bestTrainer.trainerName}</p>
-                            <p className="text-sm text-muted-foreground">{bestTrainer.branchName}</p>
-                            <div className="grid grid-cols-2 gap-4 mt-4">
+                            <p className="text-base sm:text-xl font-bold">{bestTrainer.trainerName}</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground">{bestTrainer.branchName}</p>
+                            <div className="grid grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
                               <div>
-                                <p className="text-sm text-muted-foreground">Revenue</p>
-                                <p className="text-lg font-semibold">{formatCurrency(bestTrainer.revenue)}</p>
+                                <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Revenue</p>
+                                <p className="text-sm sm:text-lg font-semibold break-words">{formatCurrency(bestTrainer.revenue)}</p>
                               </div>
                               <div>
-                                <p className="text-sm text-muted-foreground">Clients</p>
-                                <p className="text-lg font-semibold">{bestTrainer.totalClients}</p>
+                                <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Clients</p>
+                                <p className="text-sm sm:text-lg font-semibold">{bestTrainer.totalClients}</p>
                               </div>
                               <div>
-                                <p className="text-sm text-muted-foreground">Efficiency</p>
-                                <p className="text-lg font-semibold text-success">
+                                <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Efficiency</p>
+                                <p className="text-sm sm:text-lg font-semibold text-success">
                                   {bestTrainer.efficiencyScore.toFixed(1)}%
                                 </p>
                               </div>
                               <div>
-                                <p className="text-sm text-muted-foreground">Retention</p>
-                                <p className="text-lg font-semibold">{bestTrainer.clientRetentionRate.toFixed(1)}%</p>
+                                <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Retention</p>
+                                <p className="text-sm sm:text-lg font-semibold">{bestTrainer.clientRetentionRate.toFixed(1)}%</p>
                               </div>
                             </div>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="w-full mt-4"
+                              className="w-full mt-3 sm:mt-4"
                               onClick={() => openTrainerDetail(bestTrainer)}
                             >
                               View Details
@@ -1532,40 +1532,40 @@ const BranchAnalytics = () => {
 
                     {worstTrainer && (
                       <Card className="border-l-4 border-l-warning">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
+                        <CardHeader className="p-3 sm:p-6">
+                          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                             <ExclamationTriangleIcon className="w-5 h-5 text-warning" />
                             Needs Improvement
                           </CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
                           <div className="space-y-2">
-                            <p className="text-xl font-bold">{worstTrainer.trainerName}</p>
-                            <p className="text-sm text-muted-foreground">{worstTrainer.branchName}</p>
-                            <div className="grid grid-cols-2 gap-4 mt-4">
+                            <p className="text-base sm:text-xl font-bold">{worstTrainer.trainerName}</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground">{worstTrainer.branchName}</p>
+                            <div className="grid grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
                               <div>
-                                <p className="text-sm text-muted-foreground">Revenue</p>
-                                <p className="text-lg font-semibold">{formatCurrency(worstTrainer.revenue)}</p>
+                                <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Revenue</p>
+                                <p className="text-sm sm:text-lg font-semibold break-words">{formatCurrency(worstTrainer.revenue)}</p>
                               </div>
                               <div>
-                                <p className="text-sm text-muted-foreground">Clients</p>
-                                <p className="text-lg font-semibold">{worstTrainer.totalClients}</p>
+                                <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Clients</p>
+                                <p className="text-sm sm:text-lg font-semibold">{worstTrainer.totalClients}</p>
                               </div>
                               <div>
-                                <p className="text-sm text-muted-foreground">Efficiency</p>
-                                <p className="text-lg font-semibold text-warning">
+                                <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Efficiency</p>
+                                <p className="text-sm sm:text-lg font-semibold text-warning">
                                   {worstTrainer.efficiencyScore.toFixed(1)}%
                                 </p>
                               </div>
                               <div>
-                                <p className="text-sm text-muted-foreground">Retention</p>
-                                <p className="text-lg font-semibold">{worstTrainer.clientRetentionRate.toFixed(1)}%</p>
+                                <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Retention</p>
+                                <p className="text-sm sm:text-lg font-semibold">{worstTrainer.clientRetentionRate.toFixed(1)}%</p>
                               </div>
                             </div>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="w-full mt-4"
+                              className="w-full mt-3 sm:mt-4"
                               onClick={() => openTrainerDetail(worstTrainer)}
                             >
                               View Details
@@ -1642,7 +1642,7 @@ const BranchAnalytics = () => {
                 </div>
               </TabsContent>
 
-              <TabsContent value="performance" className="space-y-6">
+              <TabsContent value="performance" className="space-y-3 sm:space-y-6">
                 {/* Revenue Distribution by Trainer */}
                 <Card className="overflow-hidden">
                   <CardHeader className="p-3 sm:p-6">
@@ -1661,7 +1661,7 @@ const BranchAnalytics = () => {
                           data={filteredTrainerMetrics
                             .sort((a, b) => b.revenue - a.revenue)
                             .slice(0, 10)}
-                          margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 12 } : undefined}
+                          margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 12 } : undefined}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
@@ -1669,12 +1669,12 @@ const BranchAnalytics = () => {
                             angle={isMobile ? 0 : -45}
                             textAnchor={isMobile ? "middle" : "end"}
                             height={isMobile ? 30 : 100}
-                            tick={isMobile ? { fontSize: 10 } : undefined}
+                            tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined}
                             interval={isMobile ? "preserveStartEnd" : undefined}
                             tickFormatter={(v) =>
                               typeof v === "string" && v.length > 10 ? `${v.slice(0, 10)}…` : v
                             }
-                            padding={isMobile ? { left: 4, right: 12 } : undefined}
+                            padding={isMobile ? { left: 4, right: 16 } : undefined}
                           />
                           <YAxis
                             tick={isMobile ? { fontSize: 10 } : undefined}
@@ -1723,7 +1723,7 @@ const BranchAnalytics = () => {
                           data={filteredTrainerMetrics
                             .sort((a, b) => b.efficiencyScore - a.efficiencyScore)
                             .slice(0, 10)}
-                          margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 12 } : undefined}
+                          margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 12 } : undefined}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
@@ -1731,12 +1731,12 @@ const BranchAnalytics = () => {
                             angle={isMobile ? 0 : -45}
                             textAnchor={isMobile ? "middle" : "end"}
                             height={isMobile ? 30 : 100}
-                            tick={isMobile ? { fontSize: 10 } : undefined}
+                            tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined}
                             interval={isMobile ? "preserveStartEnd" : undefined}
                             tickFormatter={(v) =>
                               typeof v === "string" && v.length > 10 ? `${v.slice(0, 10)}…` : v
                             }
-                            padding={isMobile ? { left: 4, right: 12 } : undefined}
+                            padding={isMobile ? { left: 4, right: 16 } : undefined}
                           />
                           <YAxis
                             domain={[0, 100]}
@@ -1768,7 +1768,7 @@ const BranchAnalytics = () => {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="comparison" className="space-y-6">
+              <TabsContent value="comparison" className="space-y-3 sm:space-y-6">
                 {/* Branch-wise Trainer Comparison */}
                 <Card className="overflow-hidden">
                   <CardHeader className="p-3 sm:p-6">
@@ -1802,17 +1802,17 @@ const BranchAnalytics = () => {
                                   : 0,
                               };
                             }) || []}
-                          margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 8 } : undefined}
+                          margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 8 } : undefined}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis
                             dataKey="branch"
-                            tick={isMobile ? { fontSize: 10 } : undefined}
+                            tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined}
                             interval={isMobile ? "preserveStartEnd" : undefined}
                             tickFormatter={(v) =>
                               typeof v === "string" && v.length > 10 ? `${v.slice(0, 10)}…` : v
                             }
-                            padding={isMobile ? { left: 4, right: 12 } : undefined}
+                            padding={isMobile ? { left: 4, right: 16 } : undefined}
                           />
                           <YAxis
                             yAxisId="left"
@@ -1906,7 +1906,7 @@ const BranchAnalytics = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="insights" className="space-y-6">
+              <TabsContent value="insights" className="space-y-3 sm:space-y-6">
                 {/* Trainer Insights */}
                 <div className="grid md:grid-cols-2 gap-4">
                   {/* High Performers */}
