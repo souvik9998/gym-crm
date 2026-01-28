@@ -113,9 +113,9 @@ export const PeriodSelector = ({
   const isCustom = period === "custom";
 
   return (
-    <div className={`flex flex-wrap items-center gap-2 ${className}`}>
+    <div className={`flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto ${className}`}>
       <Select value={period} onValueChange={(value) => onPeriodChange(value as PeriodType)}>
-        <SelectTrigger className={compact ? "w-[140px]" : "w-[160px]"}>
+        <SelectTrigger className={compact ? "w-full sm:w-[140px] text-xs sm:text-sm h-9 sm:h-10" : "w-full sm:w-[160px]"}>
           <SelectValue placeholder="Select period" />
         </SelectTrigger>
         <SelectContent>

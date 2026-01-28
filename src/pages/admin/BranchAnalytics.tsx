@@ -2,11 +2,11 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch, type Branch } from "@/contexts/BranchContext";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ChartContainer,
@@ -137,6 +137,7 @@ const COLORS = [
 
 const BranchAnalytics = () => {
   const { allBranches } = useBranch();
+  const isMobile = useIsMobile();
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
   
   // Period selection state
@@ -784,30 +785,33 @@ const BranchAnalytics = () => {
 
   return (
     <AdminLayout title="Branch Analytics" subtitle="Comprehensive multi-branch performance insights">
-      <div className="space-y-6">
+      <div className="space-y-3 sm:space-y-6">
         {/* Header with Period Selector */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 sm:gap-4">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold">Branch Performance Dashboard</h2>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               Compare branches, track trends, and identify opportunities
             </p>
           </div>
-          <div className="w-full sm:w-auto flex flex-wrap items-center gap-3">
-            <PeriodSelector
-              period={period}
-              onPeriodChange={setPeriod}
-              customDateFrom={customDateFrom}
-              customDateTo={customDateTo}
-              onCustomDateChange={(from, to) => {
-                setCustomDateFrom(from);
-                setCustomDateTo(to);
-              }}
-            />
-            <span className="text-sm text-muted-foreground">
-              {format(new Date(dateFrom), "dd MMM yyyy")} - {format(new Date(dateTo), "dd MMM yyyy")}
-            </span>
-          </div>
+          <Card className="border-0 shadow-sm p-3 sm:p-4">
+            <div className="w-full flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3">
+              <PeriodSelector
+                period={period}
+                onPeriodChange={setPeriod}
+                customDateFrom={customDateFrom}
+                customDateTo={customDateTo}
+                onCustomDateChange={(from, to) => {
+                  setCustomDateFrom(from);
+                  setCustomDateTo(to);
+                }}
+                compact
+              />
+              <span className="text-xs sm:text-sm text-muted-foreground break-words text-center sm:text-left">
+                {format(new Date(dateFrom), "dd MMM yyyy")} - {format(new Date(dateTo), "dd MMM yyyy")}
+              </span>
+            </div>
+          </Card>
         </div>
 
         {isLoading ? (
@@ -946,11 +950,11 @@ const BranchAnalytics = () => {
             {insights.length > 0 && (
           <Card className="border-l-4 border-l-warning">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-xl">
                 <SparklesIcon className="w-5 h-5" />
                 Smart Insights & Alerts
               </CardTitle>
-              <CardDescription>Automated insights based on performance metrics</CardDescription>
+              <CardDescription className="text-xs sm:text-sm">Automated insights based on performance metrics</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -1180,20 +1184,20 @@ const BranchAnalytics = () => {
 
         {/* Revenue Trend Comparison */}
         {timeSeriesData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Revenue Trend Comparison</CardTitle>
-              <CardDescription>Revenue over time across all branches</CardDescription>
+          <Card className="overflow-hidden">
+            <CardHeader className="p-3 sm:p-6">
+                <CardTitle className="text-base sm:text-xl">Revenue Trend Comparison</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Revenue over time across all branches</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
               <ChartContainer
                 config={{
                   revenue: { label: "Revenue", color: "hsl(var(--accent))" },
                 }}
-                className="h-[300px] sm:h-[400px]"
+                className="h-[min(400px,42vh)] overflow-hidden"
               >
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={timeSeriesData}>
+                  <AreaChart data={timeSeriesData} margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 8 } : undefined}>
                     <defs>
                       {allBranches?.map((branch, index) => (
                         <linearGradient
@@ -1210,8 +1214,13 @@ const BranchAnalytics = () => {
                       ))}
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis tickFormatter={(v) => `₹${v / 1000}k`} />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={isMobile ? { fontSize: 10 } : undefined} 
+                      minTickGap={isMobile ? 24 : undefined}
+                      padding={isMobile ? { left: 4, right: 12 } : undefined}
+                    />
+                    <YAxis tick={isMobile ? { fontSize: 10 } : undefined} width={isMobile ? 36 : undefined} tickFormatter={(v) => `₹${v / 1000}k`} />
                     <ChartTooltip
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
@@ -1228,7 +1237,7 @@ const BranchAnalytics = () => {
                         return null;
                       }}
                     />
-                    <Legend />
+                    {!isMobile && <Legend />}
                     {allBranches?.map((branch, index) => {
                       if (!branch.is_active || branch.deleted_at) return null;
                       return (
@@ -1251,9 +1260,9 @@ const BranchAnalytics = () => {
 
         {/* Branch Comparison Table */}
         <Card>
-          <CardHeader>
-            <CardTitle>Branch Performance Comparison</CardTitle>
-            <CardDescription>Click on any branch to view detailed analytics</CardDescription>
+          <CardHeader className="p-3 sm:p-6">
+            <CardTitle className="text-base sm:text-xl">Branch Performance Comparison</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Click on any branch to view detailed analytics</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
@@ -1329,20 +1338,20 @@ const BranchAnalytics = () => {
 
         {/* Trainer Analytics Section */}
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+          <CardHeader className="p-3 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-xl">
                   <AcademicCapIcon className="w-5 h-5" />
                   Branch-Wise Trainer Analytics
                 </CardTitle>
-                <CardDescription>Advanced trainer performance insights and comparisons</CardDescription>
+                <CardDescription className="text-xs sm:text-sm">Advanced trainer performance insights and comparisons</CardDescription>
               </div>
               <Select
                 value={selectedBranchForTrainers}
                 onValueChange={(value) => setSelectedBranchForTrainers(value)}
               >
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-full sm:w-[200px]">
                   <SelectValue placeholder="Select branch" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1425,42 +1434,42 @@ const BranchAnalytics = () => {
               </div>
             ) : (
               <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="performance">Performance</TabsTrigger>
-                  <TabsTrigger value="comparison">Comparison</TabsTrigger>
-                  <TabsTrigger value="insights">Insights</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+                  <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+                  <TabsTrigger value="performance" className="text-xs sm:text-sm">Performance</TabsTrigger>
+                  <TabsTrigger value="comparison" className="text-xs sm:text-sm">Comparison</TabsTrigger>
+                  <TabsTrigger value="insights" className="text-xs sm:text-sm">Insights</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-6">
                 {/* Trainer Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <Card>
-                    <CardContent className="p-4">
-                      <p className="text-sm text-muted-foreground">Total Trainers</p>
-                      <p className="text-2xl font-bold mt-1">{filteredTrainerMetrics.length}</p>
+                    <CardContent className="p-3 sm:p-4">
+                      <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Total Trainers</p>
+                      <p className="text-base sm:text-2xl font-bold mt-0.5 sm:mt-1 leading-tight">{filteredTrainerMetrics.length}</p>
                     </CardContent>
                   </Card>
                   <Card>
-                    <CardContent className="p-4">
-                      <p className="text-sm text-muted-foreground">Total Revenue</p>
-                      <p className="text-2xl font-bold mt-1">
+                    <CardContent className="p-3 sm:p-4">
+                      <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Total Revenue</p>
+                      <p className="text-base sm:text-2xl font-bold mt-0.5 sm:mt-1 leading-tight break-words">
                         {formatCurrency(filteredTrainerMetrics.reduce((sum, t) => sum + t.revenue, 0))}
                       </p>
                     </CardContent>
                   </Card>
                   <Card>
-                    <CardContent className="p-4">
-                      <p className="text-sm text-muted-foreground">Total Clients</p>
-                      <p className="text-2xl font-bold mt-1">
+                    <CardContent className="p-3 sm:p-4">
+                      <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Total Clients</p>
+                      <p className="text-base sm:text-2xl font-bold mt-0.5 sm:mt-1 leading-tight">
                         {filteredTrainerMetrics.reduce((sum, t) => sum + t.totalClients, 0)}
                       </p>
                     </CardContent>
                   </Card>
                   <Card>
-                    <CardContent className="p-4">
-                      <p className="text-sm text-muted-foreground">Avg Efficiency</p>
-                      <p className="text-2xl font-bold mt-1">
+                    <CardContent className="p-3 sm:p-4">
+                      <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Avg Efficiency</p>
+                      <p className="text-base sm:text-2xl font-bold mt-0.5 sm:mt-1 leading-tight">
                         {filteredTrainerMetrics.length > 0
                           ? (
                               filteredTrainerMetrics.reduce((sum, t) => sum + t.efficiencyScore, 0) /
@@ -1635,27 +1644,43 @@ const BranchAnalytics = () => {
 
               <TabsContent value="performance" className="space-y-6">
                 {/* Revenue Distribution by Trainer */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Revenue Distribution</CardTitle>
-                    <CardDescription>Revenue share by trainer</CardDescription>
+                <Card className="overflow-hidden">
+                  <CardHeader className="p-3 sm:p-6">
+                    <CardTitle className="text-base sm:text-xl">Revenue Distribution</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">Revenue share by trainer</CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
                     <ChartContainer
                       config={{
                         revenue: { label: "Revenue", color: "hsl(var(--accent))" },
                       }}
-                      className="h-[400px]"
+                      className="h-[min(400px,42vh)] overflow-hidden"
                     >
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                           data={filteredTrainerMetrics
                             .sort((a, b) => b.revenue - a.revenue)
                             .slice(0, 10)}
+                          margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 12 } : undefined}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="trainerName" angle={-45} textAnchor="end" height={100} />
-                          <YAxis tickFormatter={(v) => `₹${v / 1000}k`} />
+                          <XAxis
+                            dataKey="trainerName"
+                            angle={isMobile ? 0 : -45}
+                            textAnchor={isMobile ? "middle" : "end"}
+                            height={isMobile ? 30 : 100}
+                            tick={isMobile ? { fontSize: 10 } : undefined}
+                            interval={isMobile ? "preserveStartEnd" : undefined}
+                            tickFormatter={(v) =>
+                              typeof v === "string" && v.length > 10 ? `${v.slice(0, 10)}…` : v
+                            }
+                            padding={isMobile ? { left: 4, right: 12 } : undefined}
+                          />
+                          <YAxis
+                            tick={isMobile ? { fontSize: 10 } : undefined}
+                            width={isMobile ? 36 : undefined}
+                            tickFormatter={(v) => `₹${v / 1000}k`}
+                          />
                           <ChartTooltip
                             content={({ active, payload }) => {
                               if (active && payload && payload.length) {
@@ -1681,27 +1706,43 @@ const BranchAnalytics = () => {
                 </Card>
 
                 {/* Efficiency Score Chart */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Efficiency Score Comparison</CardTitle>
-                    <CardDescription>Composite performance metric</CardDescription>
+                <Card className="overflow-hidden">
+                  <CardHeader className="p-3 sm:p-6">
+                    <CardTitle className="text-base sm:text-xl">Efficiency Score Comparison</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">Composite performance metric</CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
                     <ChartContainer
                       config={{
                         efficiency: { label: "Efficiency", color: "hsl(var(--success))" },
                       }}
-                      className="h-[400px]"
+                      className="h-[min(400px,42vh)] overflow-hidden"
                     >
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                           data={filteredTrainerMetrics
                             .sort((a, b) => b.efficiencyScore - a.efficiencyScore)
                             .slice(0, 10)}
+                          margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 12 } : undefined}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="trainerName" angle={-45} textAnchor="end" height={100} />
-                          <YAxis domain={[0, 100]} />
+                          <XAxis
+                            dataKey="trainerName"
+                            angle={isMobile ? 0 : -45}
+                            textAnchor={isMobile ? "middle" : "end"}
+                            height={isMobile ? 30 : 100}
+                            tick={isMobile ? { fontSize: 10 } : undefined}
+                            interval={isMobile ? "preserveStartEnd" : undefined}
+                            tickFormatter={(v) =>
+                              typeof v === "string" && v.length > 10 ? `${v.slice(0, 10)}…` : v
+                            }
+                            padding={isMobile ? { left: 4, right: 12 } : undefined}
+                          />
+                          <YAxis
+                            domain={[0, 100]}
+                            tick={isMobile ? { fontSize: 10 } : undefined}
+                            width={isMobile ? 30 : undefined}
+                          />
                           <ChartTooltip
                             content={({ active, payload }) => {
                               if (active && payload && payload.length) {
@@ -1729,17 +1770,17 @@ const BranchAnalytics = () => {
 
               <TabsContent value="comparison" className="space-y-6">
                 {/* Branch-wise Trainer Comparison */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Branch-Wise Trainer Performance</CardTitle>
-                    <CardDescription>Compare trainers across branches</CardDescription>
+                <Card className="overflow-hidden">
+                  <CardHeader className="p-3 sm:p-6">
+                    <CardTitle className="text-base sm:text-xl">Branch-Wise Trainer Performance</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">Compare trainers across branches</CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
                     <ChartContainer
                       config={{
                         revenue: { label: "Revenue", color: "hsl(var(--accent))" },
                       }}
-                      className="h-[400px]"
+                      className="h-[min(400px,42vh)] overflow-hidden"
                     >
                       <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart
@@ -1761,11 +1802,30 @@ const BranchAnalytics = () => {
                                   : 0,
                               };
                             }) || []}
+                          margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 8 } : undefined}
                         >
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="branch" />
-                          <YAxis yAxisId="left" tickFormatter={(v) => `₹${v / 1000}k`} />
-                          <YAxis yAxisId="right" orientation="right" />
+                          <XAxis
+                            dataKey="branch"
+                            tick={isMobile ? { fontSize: 10 } : undefined}
+                            interval={isMobile ? "preserveStartEnd" : undefined}
+                            tickFormatter={(v) =>
+                              typeof v === "string" && v.length > 10 ? `${v.slice(0, 10)}…` : v
+                            }
+                            padding={isMobile ? { left: 4, right: 12 } : undefined}
+                          />
+                          <YAxis
+                            yAxisId="left"
+                            tick={isMobile ? { fontSize: 10 } : undefined}
+                            width={isMobile ? 36 : undefined}
+                            tickFormatter={(v) => `₹${v / 1000}k`}
+                          />
+                          <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            tick={isMobile ? { fontSize: 10 } : undefined}
+                            width={isMobile ? 30 : undefined}
+                          />
                           <ChartTooltip
                             content={({ active, payload }) => {
                               if (active && payload && payload.length) {
@@ -1784,7 +1844,7 @@ const BranchAnalytics = () => {
                               return null;
                             }}
                           />
-                          <Legend />
+                          {!isMobile && <Legend />}
                           <Bar yAxisId="left" dataKey="totalRevenue" fill="hsl(var(--accent))" />
                           <Line yAxisId="right" type="monotone" dataKey="avgEfficiency" stroke="hsl(var(--success))" strokeWidth={2} />
                         </ComposedChart>
@@ -1795,17 +1855,17 @@ const BranchAnalytics = () => {
 
                 {/* Trainer Performance Radar */}
                 {filteredTrainerMetrics.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Top Trainers Performance Radar</CardTitle>
-                      <CardDescription>Multi-metric comparison (normalized)</CardDescription>
+                  <Card className="overflow-hidden">
+                    <CardHeader className="p-3 sm:p-6">
+                      <CardTitle className="text-base sm:text-xl">Top Trainers Performance Radar</CardTitle>
+                      <CardDescription className="text-xs sm:text-sm">Multi-metric comparison (normalized)</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
                       <ChartContainer
                         config={{
                           revenue: { label: "Revenue", color: "hsl(var(--accent))" },
                         }}
-                        className="h-[400px]"
+                        className="h-[min(400px,42vh)] overflow-hidden"
                       >
                         <ResponsiveContainer width="100%" height="100%">
                           <RadarChart
@@ -1822,10 +1882,11 @@ const BranchAnalytics = () => {
                                   Efficiency: t.efficiencyScore,
                                 };
                               })}
+                            margin={isMobile ? { top: 8, right: 24, left: 8, bottom: 8 } : undefined}
                           >
                             <PolarGrid />
-                            <PolarAngleAxis dataKey="trainer" />
-                            <PolarRadiusAxis angle={90} domain={[0, 100]} />
+                            <PolarAngleAxis dataKey="trainer" tick={isMobile ? { fontSize: 10 } : undefined} />
+                            <PolarRadiusAxis angle={90} domain={[0, 100]} tick={isMobile ? { fontSize: 10 } : undefined} />
                             {filteredTrainerMetrics.slice(0, 5).map((trainer, index) => (
                               <Radar
                                 key={trainer.trainerId}
@@ -1836,7 +1897,7 @@ const BranchAnalytics = () => {
                                 fillOpacity={0.6}
                               />
                             ))}
-                            <Legend />
+                            {!isMobile && <Legend />}
                           </RadarChart>
                         </ResponsiveContainer>
                       </ChartContainer>
@@ -1926,7 +1987,7 @@ const BranchAnalytics = () => {
                 {/* Key Insights */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Key Insights</CardTitle>
+                    <CardTitle className="text-base sm:text-xl">Key Insights</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -1987,15 +2048,15 @@ const BranchAnalytics = () => {
               {/* Revenue Distribution */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Revenue Distribution</CardTitle>
-                  <CardDescription>Revenue share by branch</CardDescription>
+                  <CardTitle className="text-base sm:text-xl">Revenue Distribution</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Revenue share by branch</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ChartContainer
                     config={{
                       revenue: { label: "Revenue", color: "hsl(var(--accent))" },
                     }}
-                    className="h-[300px]"
+                    className="h-[min(300px,36vh)] overflow-hidden"
                   >
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -2005,8 +2066,12 @@ const BranchAnalytics = () => {
                           nameKey="branchName"
                           cx="50%"
                           cy="50%"
-                          outerRadius={100}
-                          label={({ branchName, percent }) => `${branchName}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={isMobile ? 70 : 100}
+                          label={
+                            isMobile
+                              ? undefined
+                              : ({ branchName, percent }) => `${branchName}: ${(percent * 100).toFixed(0)}%`
+                          }
                         >
                           {branchMetrics.map((_, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -2037,15 +2102,15 @@ const BranchAnalytics = () => {
               {/* Performance Radar Chart */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Performance Radar</CardTitle>
-                  <CardDescription>Multi-metric comparison (normalized)</CardDescription>
+                  <CardTitle className="text-base sm:text-xl">Performance Radar</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Multi-metric comparison (normalized)</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ChartContainer
                     config={{
                       revenue: { label: "Revenue", color: "hsl(var(--accent))" },
                     }}
-                    className="h-[300px]"
+                    className="h-[min(300px,36vh)] overflow-hidden"
                   >
                     <ResponsiveContainer width="100%" height="100%">
                       <RadarChart data={branchMetrics.slice(0, 3).map((m) => {
@@ -2061,8 +2126,8 @@ const BranchAnalytics = () => {
                         };
                       })}>
                         <PolarGrid />
-                        <PolarAngleAxis dataKey="branch" />
-                        <PolarRadiusAxis angle={90} domain={[0, 100]} />
+                        <PolarAngleAxis dataKey="branch" tick={isMobile ? { fontSize: 10 } : undefined} />
+                        <PolarRadiusAxis angle={90} domain={[0, 100]} tick={isMobile ? { fontSize: 10 } : undefined} />
                         {branchMetrics.slice(0, 3).map((metric, index) => (
                           <Radar
                             key={metric.branchId}
@@ -2073,7 +2138,7 @@ const BranchAnalytics = () => {
                             fillOpacity={0.6}
                           />
                         ))}
-                        <Legend />
+                        {!isMobile && <Legend />}
                       </RadarChart>
                     </ResponsiveContainer>
                   </ChartContainer>

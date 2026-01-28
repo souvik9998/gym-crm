@@ -29,6 +29,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { PeriodSelector, PeriodType, getPeriodDates } from "@/components/admin/PeriodSelector";
 import { format, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, differenceInDays, parseISO } from "date-fns";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface MonthlyRevenue {
   month: string;
@@ -74,6 +75,7 @@ const PACKAGE_COLORS = [
 
 const AdminAnalytics = () => {
   const { currentBranch } = useBranch();
+  const isMobile = useIsMobile();
   const [period, setPeriod] = useState<PeriodType>("this_month");
   const [customDateFrom, setCustomDateFrom] = useState<string>("");
   const [customDateTo, setCustomDateTo] = useState<string>("");
@@ -404,14 +406,14 @@ const AdminAnalytics = () => {
 
   return (
     <AdminLayout title="Analytics" subtitle="Business insights and trends">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-3 sm:space-y-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           <Card className="hover-lift border-0 shadow-sm overflow-hidden">
-            <CardContent className="p-3 sm:p-5">
+            <CardContent className="p-2 sm:p-5">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xl sm:text-2xl font-bold text-accent truncate">
+                  <p className="text-base sm:text-2xl font-bold text-accent truncate leading-tight">
                     <AnimatedCounter 
                       value={totals.totalRevenue} 
                       prefix="₹" 
@@ -419,52 +421,52 @@ const AdminAnalytics = () => {
                       formatValue={(v) => v.toLocaleString("en-IN")}
                     />
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">Total Revenue</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 line-clamp-2">Total Revenue</p>
                 </div>
-                <div className="p-2 sm:p-3 bg-accent/10 rounded-xl flex-shrink-0 ml-2">
-                  <ArrowTrendingUpIcon className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
+                <div className="w-8 h-8 sm:w-auto sm:h-auto p-0 sm:p-3 bg-accent/10 rounded-xl flex items-center justify-center flex-shrink-0 ml-2">
+                  <ArrowTrendingUpIcon className="w-4 h-4 sm:w-6 sm:h-6 text-accent" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="hover-lift border-0 shadow-sm overflow-hidden">
-            <CardContent className="p-3 sm:p-5">
+            <CardContent className="p-2 sm:p-5">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xl sm:text-2xl font-bold text-primary truncate">
+                  <p className="text-base sm:text-2xl font-bold text-primary truncate leading-tight">
                     <AnimatedCounter value={totals.totalMembers} duration={1000} />
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">Total Members</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">Total Members</p>
                 </div>
-                <div className="p-2 sm:p-3 bg-primary/10 rounded-xl flex-shrink-0 ml-2">
-                  <UsersIcon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                <div className="w-8 h-8 sm:w-auto sm:h-auto p-0 sm:p-3 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 ml-2">
+                  <UsersIcon className="w-4 h-4 sm:w-6 sm:h-6 text-primary" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="hover-lift border-0 shadow-sm overflow-hidden">
-            <CardContent className="p-3 sm:p-5">
+            <CardContent className="p-2 sm:p-5">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xl sm:text-2xl font-bold text-success truncate">
+                  <p className="text-base sm:text-2xl font-bold text-success truncate leading-tight">
                     <AnimatedCounter value={totals.activeMembers} duration={800} />
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">Active Members</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">Active Members</p>
                 </div>
-                <div className="p-2 sm:p-3 bg-success/10 rounded-xl flex-shrink-0 ml-2">
-                  <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-success" />
+                <div className="w-8 h-8 sm:w-auto sm:h-auto p-0 sm:p-3 bg-success/10 rounded-xl flex items-center justify-center flex-shrink-0 ml-2">
+                  <CalendarIcon className="w-4 h-4 sm:w-6 sm:h-6 text-success" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="hover-lift border-0 shadow-sm overflow-hidden">
-            <CardContent className="p-3 sm:p-5">
+            <CardContent className="p-2 sm:p-5">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xl sm:text-2xl font-bold text-warning truncate">
+                  <p className="text-base sm:text-2xl font-bold text-warning truncate leading-tight">
                     <AnimatedCounter 
                       value={Math.round(totals.avgRevenue)} 
                       prefix="₹" 
@@ -472,10 +474,10 @@ const AdminAnalytics = () => {
                       formatValue={(v) => v.toLocaleString("en-IN")}
                     />
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">Avg Monthly</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">Avg Monthly</p>
                 </div>
-                <div className="p-2 sm:p-3 bg-warning/10 rounded-xl flex-shrink-0 ml-2">
-                  <CurrencyRupeeIcon className="w-5 h-5 sm:w-6 sm:h-6 text-warning" />
+                <div className="w-8 h-8 sm:w-auto sm:h-auto p-0 sm:p-3 bg-warning/10 rounded-xl flex items-center justify-center flex-shrink-0 ml-2">
+                  <CurrencyRupeeIcon className="w-4 h-4 sm:w-6 sm:h-6 text-warning" />
                 </div>
               </div>
             </CardContent>
@@ -483,29 +485,52 @@ const AdminAnalytics = () => {
         </div>
 
         {/* Period Selector - Compact */}
-        <div className="flex justify-start">
-          <PeriodSelector
-            period={period}
-            onPeriodChange={setPeriod}
-            customDateFrom={customDateFrom}
-            customDateTo={customDateTo}
-            onCustomDateChange={handleCustomDateChange}
-            compact
-          />
-        </div>
+        <Card className="border-0 shadow-sm p-3 sm:p-4">
+          <div className="flex justify-start">
+            <PeriodSelector
+              period={period}
+              onPeriodChange={setPeriod}
+              customDateFrom={customDateFrom}
+              customDateTo={customDateTo}
+              onCustomDateChange={handleCustomDateChange}
+              compact
+            />
+          </div>
+        </Card>
 
         {/* Revenue Chart */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle>Monthly Revenue</CardTitle>
-            <CardDescription>Revenue trend over the last 6 months</CardDescription>
+        <Card className="border-0 shadow-sm overflow-hidden">
+          <CardHeader className="p-3 sm:p-6">
+            <CardTitle className="text-base sm:text-xl">Monthly Revenue</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Revenue trend over the last 6 months</CardDescription>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[300px]">
+          <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
+            <ChartContainer
+              config={chartConfig}
+              className="h-[clamp(220px,34vh,360px)] md:h-[clamp(260px,34vh,420px)] overflow-hidden"
+            >
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={revenueData}>
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v / 1000}k`} />
+                <BarChart
+                  data={revenueData}
+                  margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 8 } : undefined}
+                >
+                  <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={isMobile ? { fontSize: 10 } : undefined}
+                    minTickGap={isMobile ? 24 : undefined}
+                    interval={isMobile ? "preserveStartEnd" : undefined}
+                    tickMargin={isMobile ? 8 : undefined}
+                    padding={isMobile ? { left: 4, right: 12 } : undefined}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={isMobile ? { fontSize: 10 } : undefined}
+                    width={isMobile ? 36 : undefined}
+                    tickFormatter={(v) => `₹${v / 1000}k`}
+                  />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="revenue" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -515,37 +540,84 @@ const AdminAnalytics = () => {
         </Card>
 
         {/* Member Growth */}
-        <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle>Member Growth</CardTitle>
-              <CardDescription>Total members over time</CardDescription>
+        <div className="grid md:grid-cols-2 gap-3 sm:gap-6">
+          <Card className="border-0 shadow-sm overflow-hidden">
+            <CardHeader className="p-3 sm:p-6">
+              <CardTitle className="text-base sm:text-xl">Member Growth</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Total members over time</CardDescription>
             </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig} className="h-[250px]">
+            <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
+              <ChartContainer
+                config={chartConfig}
+                className="h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)] overflow-hidden"
+              >
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={memberGrowth}>
-                    <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                    <YAxis tickLine={false} axisLine={false} />
+                  <LineChart
+                    data={memberGrowth}
+                    margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 8 } : undefined}
+                  >
+                    <XAxis
+                      dataKey="month"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={isMobile ? { fontSize: 10 } : undefined}
+                      minTickGap={isMobile ? 24 : undefined}
+                      interval={isMobile ? "preserveStartEnd" : undefined}
+                      tickMargin={isMobile ? 8 : undefined}
+                      padding={isMobile ? { left: 4, right: 12 } : undefined}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tick={isMobile ? { fontSize: 10 } : undefined}
+                      width={isMobile ? 30 : undefined}
+                    />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line type="monotone" dataKey="members" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))" }} />
+                    <Line
+                      type="monotone"
+                      dataKey="members"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      dot={isMobile ? { r: 2, fill: "hsl(var(--primary))" } : { fill: "hsl(var(--primary))" }}
+                      activeDot={isMobile ? { r: 3 } : undefined}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </ChartContainer>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle>New Members</CardTitle>
-              <CardDescription>New registrations per month</CardDescription>
+          <Card className="border-0 shadow-sm overflow-hidden">
+            <CardHeader className="p-3 sm:p-6">
+              <CardTitle className="text-base sm:text-xl">New Members</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">New registrations per month</CardDescription>
             </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig} className="h-[250px]">
+            <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
+              <ChartContainer
+                config={chartConfig}
+                className="h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)] overflow-hidden"
+              >
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={memberGrowth}>
-                    <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                    <YAxis tickLine={false} axisLine={false} />
+                  <BarChart
+                    data={memberGrowth}
+                    margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 8 } : undefined}
+                  >
+                    <XAxis
+                      dataKey="month"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={isMobile ? { fontSize: 10 } : undefined}
+                      minTickGap={isMobile ? 24 : undefined}
+                      interval={isMobile ? "preserveStartEnd" : undefined}
+                      tickMargin={isMobile ? 8 : undefined}
+                      padding={isMobile ? { left: 4, right: 12 } : undefined}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tick={isMobile ? { fontSize: 10 } : undefined}
+                      width={isMobile ? 30 : undefined}
+                    />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Bar dataKey="newMembers" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -557,17 +629,20 @@ const AdminAnalytics = () => {
 
         {/* Trainer Performance */}
         {trainerStats.length > 0 && (
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle>Trainer Performance</CardTitle>
-              <CardDescription>Revenue and client distribution by trainer</CardDescription>
+          <Card className="border-0 shadow-sm overflow-hidden">
+            <CardHeader className="p-3 sm:p-6">
+              <CardTitle className="text-base sm:text-xl">Trainer Performance</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Revenue and client distribution by trainer</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 overflow-hidden">
               <div className="grid md:grid-cols-2 gap-6">
                 {/* Trainer Revenue Pie Chart */}
-                <div>
-                  <h4 className="text-sm font-medium mb-4 text-center">Revenue Distribution</h4>
-                  <ChartContainer config={chartConfig} className="h-[250px]">
+                <div className="overflow-hidden">
+                  <h4 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4 text-center">Revenue Distribution</h4>
+                  <ChartContainer
+                    config={chartConfig}
+                    className="h-[clamp(200px,28vh,300px)] md:h-[clamp(220px,26vh,320px)] overflow-hidden"
+                  >
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -576,8 +651,8 @@ const AdminAnalytics = () => {
                           nameKey="name"
                           cx="50%"
                           cy="50%"
-                          outerRadius={80}
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={isMobile ? "70%" : 80}
+                          label={isMobile ? undefined : ({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                         >
                           {trainerStats.map((_, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -604,13 +679,20 @@ const AdminAnalytics = () => {
                 </div>
 
                 {/* Trainer Members Bar Chart */}
-                <div>
-                  <h4 className="text-sm font-medium mb-4 text-center">Client Count</h4>
-                  <ChartContainer config={chartConfig} className="h-[250px]">
+                <div className="overflow-hidden">
+                  <h4 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4 text-center">Client Count</h4>
+                  <ChartContainer
+                    config={chartConfig}
+                    className="h-[clamp(200px,28vh,300px)] md:h-[clamp(220px,26vh,320px)] overflow-hidden"
+                  >
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={trainerStats} layout="vertical">
-                        <XAxis type="number" tickLine={false} axisLine={false} />
-                        <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} width={80} />
+                      <BarChart
+                        data={trainerStats}
+                        layout="vertical"
+                        margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 8 } : undefined}
+                      >
+                        <XAxis type="number" tickLine={false} axisLine={false} tick={isMobile ? { fontSize: 10 } : undefined} />
+                        <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} width={isMobile ? 60 : 80} tick={isMobile ? { fontSize: 10 } : undefined} />
                         <ChartTooltip content={<ChartTooltipContent />} />
                         <Bar dataKey="members" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                       </BarChart>
@@ -624,17 +706,37 @@ const AdminAnalytics = () => {
 
         {/* Package Sales */}
         {packageList.length > 0 && (
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle>Package Sales Distribution</CardTitle>
-              <CardDescription>Monthly subscription sales by package type</CardDescription>
+          <Card className="border-0 shadow-sm overflow-hidden">
+            <CardHeader className="p-3 sm:p-6">
+              <CardTitle className="text-base sm:text-xl">Package Sales Distribution</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Monthly subscription sales by package type</CardDescription>
             </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig} className="h-[300px]">
+            <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
+              <ChartContainer
+                config={chartConfig}
+                className="h-[clamp(220px,34vh,380px)] md:h-[clamp(260px,34vh,440px)] overflow-hidden"
+              >
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={packageSalesData}>
-                    <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                    <YAxis tickLine={false} axisLine={false} />
+                  <BarChart
+                    data={packageSalesData}
+                    margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 8 } : undefined}
+                  >
+                    <XAxis
+                      dataKey="month"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={isMobile ? { fontSize: 10 } : undefined}
+                      minTickGap={isMobile ? 24 : undefined}
+                      interval={isMobile ? "preserveStartEnd" : undefined}
+                      tickMargin={isMobile ? 8 : undefined}
+                      padding={isMobile ? { left: 4, right: 12 } : undefined}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tick={isMobile ? { fontSize: 10 } : undefined}
+                      width={isMobile ? 30 : undefined}
+                    />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     {packageList.map((pkg, index) => (
                       <Bar
@@ -655,7 +757,7 @@ const AdminAnalytics = () => {
                       className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: PACKAGE_COLORS[index % PACKAGE_COLORS.length] }}
                     />
-                    <span className="text-sm text-muted-foreground">{pkg.label}</span>
+                    <span className="text-xs sm:text-sm text-muted-foreground">{pkg.label}</span>
                   </div>
                 ))}
               </div>

@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type ComparisonPeriod =
   | "none"
@@ -62,6 +63,7 @@ interface DateRangePickerProps {
 
 export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: DateRangePickerProps) => {
   const [open, setOpen] = React.useState(false);
+  const isMobile = useIsMobile();
   const [tempDateFrom, setTempDateFrom] = React.useState<Date | undefined>(
     dateFrom ? new Date(dateFrom) : undefined
   );
@@ -404,16 +406,16 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
         <Button
           variant="outline"
           className={cn(
-            "w-[280px] justify-start text-left font-normal",
+            "w-full sm:w-[280px] justify-start text-left font-normal text-xs sm:text-sm h-9 sm:h-10",
             !dateFrom && !dateTo && "text-muted-foreground",
             className
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {getDisplayText()}
+          <CalendarIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+          <span className="truncate">{getDisplayText()}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 max-w-[95vw] sm:max-w-none" align="start">
+      <PopoverContent className="w-[95vw] sm:w-auto p-0 max-w-[95vw] sm:max-w-none" align="start">
         <div className="flex flex-col sm:flex-row">
           {/* Left Side - Presets and Comparison Period */}
           <div className="border-r border-b sm:border-b-0 p-3 sm:p-4 w-full sm:w-[280px] bg-muted/30 max-h-[60vh] sm:max-h-none overflow-y-auto">
@@ -535,7 +537,7 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
           {/* Right Side - Date Picker */}
           <div className="p-3 sm:p-5 w-full sm:min-w-[600px] max-h-[60vh] sm:max-h-none overflow-y-auto">
             {/* Date Inputs */}
-            <div className="flex items-center gap-3 mb-5">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-3 mb-5">
               <div className="flex-1">
                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Start Date</label>
                 <Input
@@ -562,7 +564,7 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
                   className="text-sm"
                 />
               </div>
-              <div className="pt-6">
+              <div className="hidden sm:block pt-6">
                 <span className="text-muted-foreground text-lg">→</span>
               </div>
               <div className="flex-1">
@@ -602,16 +604,16 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
             </div>
 
             {/* Enhanced Calendar */}
-            <div className="border rounded-lg p-4 bg-background">
+            <div className="border rounded-lg p-2 sm:p-4 bg-background">
               <Calendar
                 mode="range"
                 selected={dateRange}
                 onSelect={handleDateRangeSelect}
-                numberOfMonths={2}
+                numberOfMonths={isMobile ? 1 : 2}
                 defaultMonth={tempDateFrom || new Date()}
                 className="rounded-md"
                 classNames={{
-                  months: "flex flex-row space-x-6",
+                  months: isMobile ? "flex flex-col space-y-6" : "flex flex-row space-x-6",
                   month: "space-y-4",
                   caption: "flex justify-center pt-1 relative items-center mb-2",
                   caption_label: "text-sm font-semibold",
@@ -623,11 +625,18 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
                   nav_button_next: "absolute right-1",
                   table: "w-full border-collapse space-y-1",
                   head_row: "flex mb-2",
-                  head_cell: "text-muted-foreground rounded-md w-10 font-medium text-xs",
+                  head_cell: cn(
+                    "text-muted-foreground rounded-md font-medium text-xs",
+                    isMobile ? "w-9" : "w-10"
+                  ),
                   row: "flex w-full mt-1",
-                  cell: "h-10 w-10 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                  cell: cn(
+                    "text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                    isMobile ? "h-9 w-9" : "h-10 w-10"
+                  ),
                   day: cn(
-                    "h-10 w-10 p-0 font-normal aria-selected:opacity-100 rounded-md hover:bg-accent transition-colors"
+                    "p-0 font-normal aria-selected:opacity-100 rounded-md hover:bg-accent transition-colors",
+                    isMobile ? "h-9 w-9 text-xs" : "h-10 w-10 text-sm"
                   ),
                   day_range_end: "day-range-end",
                   day_selected:
@@ -662,7 +671,7 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
                 }}
               />
               {comparisonDateRange && originalDateRange && (
-                <div className="mt-4 pt-4 border-t flex items-center gap-6 text-xs">
+                <div className="mt-4 pt-4 border-t flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-primary rounded border-2 border-primary/20"></div>
                     <span className="text-muted-foreground">
@@ -680,11 +689,11 @@ export const DateRangePicker = ({ dateFrom, dateTo, onDateChange, className }: D
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end gap-2 mt-5 pt-4 border-t">
-              <Button variant="outline" size="sm" onClick={handleCancel}>
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-2 mt-5 pt-4 border-t">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button size="sm" onClick={handleApply} disabled={!tempDateFrom || !tempDateTo}>
+              <Button size="sm" className="w-full sm:w-auto" onClick={handleApply} disabled={!tempDateFrom || !tempDateTo}>
                 Apply
               </Button>
             </div>
