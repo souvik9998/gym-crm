@@ -784,9 +784,9 @@ export const MembersTable = ({
     return sortOrder === "asc" ? comparison : -comparison;
   });
 
-  const getStatusBadge = (subscription?: { status: string; end_date: string }) => {
+  const getStatusCircle = (subscription?: { status: string; end_date: string }) => {
     if (!subscription) {
-      return <Badge variant="outline" className="text-muted-foreground">No Subscription</Badge>;
+      return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></div>;
     }
 
     // Calculate actual status based on end_date
@@ -800,25 +800,65 @@ export const MembersTable = ({
 
     // If status is inactive, show inactive
     if (subscription.status === "inactive") {
-      return <Badge variant="outline" className="bg-muted text-muted-foreground">Inactive</Badge>;
+      return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></div>;
     }
 
     // Use actual calculated status for display
     if (isActuallyExpired) {
-      return <Badge className="bg-destructive/10 text-destructive border-destructive/20">Expired</Badge>;
+      return <div className="w-2.5 h-2.5 rounded-full bg-red-500 dark:bg-red-400"></div>;
     }
     
     if (isActuallyExpiringSoon) {
-      return <Badge className="bg-warning/10 text-warning border-warning/20">Expiring Soon</Badge>;
+      return <div className="w-2.5 h-2.5 rounded-full bg-amber-500 dark:bg-amber-400"></div>;
     }
 
     switch (subscription.status) {
       case "active":
-        return <Badge className="bg-success/10 text-success border-success/20 hover:bg-green-200 dark:hover:bg-green-800/50 hover:text-green-900 dark:hover:text-green-100 hover:border-green-400 dark:hover:border-green-600 transition-all duration-150 cursor-default">Active</Badge>;
+        return <div className="w-2.5 h-2.5 rounded-full bg-green-500 dark:bg-green-400"></div>;
       case "paused":
-        return <Badge variant="outline" className="text-muted-foreground">Paused</Badge>;
+        return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></div>;
       default:
-        return <Badge variant="outline">{subscription.status}</Badge>;
+        return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></div>;
+    }
+  };
+
+  const getStatusBadge = (subscription?: { status: string; end_date: string }) => {
+    const badgeBaseClass = "text-[9px] md:text-xs px-1.5 md:px-2 py-0.5 md:py-1";
+    
+    if (!subscription) {
+      return <Badge variant="outline" className={`text-muted-foreground ${badgeBaseClass}`}>No Subscription</Badge>;
+    }
+
+    // Calculate actual status based on end_date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(subscription.end_date);
+    endDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const isActuallyExpired = diffDays < 0;
+    const isActuallyExpiringSoon = !isActuallyExpired && diffDays >= 0 && diffDays <= 7;
+
+    // If status is inactive, show inactive
+    if (subscription.status === "inactive") {
+      return <Badge variant="outline" className={`bg-muted text-muted-foreground ${badgeBaseClass}`}>Inactive</Badge>;
+    }
+
+    // Use actual calculated status for display
+    if (isActuallyExpired) {
+      return <Badge className={`bg-destructive/10 text-destructive border-destructive/20 ${badgeBaseClass}`}>Expired</Badge>;
+    }
+    
+    if (isActuallyExpiringSoon) {
+      return <Badge className={`bg-warning/10 text-warning border-warning/20 ${badgeBaseClass}`}>Expiring Soon</Badge>;
+    }
+
+    switch (subscription.status) {
+      case "active":
+        return <Badge className={`bg-success/10 text-success border-success/20 hover:bg-green-200 dark:hover:bg-green-800/50 hover:text-green-900 dark:hover:text-green-100 hover:border-green-400 dark:hover:border-green-600 transition-all duration-150 cursor-default ${badgeBaseClass}`}>Active</Badge>;
+      case "paused":
+        return <Badge variant="outline" className={`text-muted-foreground ${badgeBaseClass}`}>Paused</Badge>;
+      default:
+        return <Badge variant="outline" className={badgeBaseClass}>{subscription.status}</Badge>;
     }
   };
 
@@ -934,34 +974,34 @@ export const MembersTable = ({
         </div>
       )}
       <div className="rounded-lg border overflow-hidden">
-        <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-          <Table className="min-w-[600px]">
+        <div className="overflow-hidden md:overflow-x-auto -mx-2 md:-mx-4 sm:mx-0 px-2 md:px-4 sm:px-0">
+          <Table className="w-full md:min-w-[600px] table-fixed md:table-auto">
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="w-10">
+              <TableHead className="w-10 hidden md:table-cell">
                 <Checkbox
                   checked={selectedMembers.size === sortedMembers.length && sortedMembers.length > 0}
                   onCheckedChange={toggleSelectAll}
                   aria-label="Select all"
                 />
               </TableHead>
-              <TableHead className="font-semibold">
+              <TableHead className="font-semibold text-[10px] md:text-sm py-1.5 md:py-3 w-auto md:w-auto">
                 <Button
                   variant="ghost"
                   size="sm"
                   className={cn(
-                    "h-8 px-2 -ml-2 hover:bg-muted/50",
+                    "h-5 md:h-8 px-0.5 md:px-2 -ml-0.5 md:-ml-2 hover:bg-muted/50",
                     sortField === "name" && "bg-muted"
                   )}
                   onClick={() => handleSort("name")}
                 >
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-0.5 md:gap-1 text-[10px] md:text-sm">
                     Member
                     {getSortIcon("name")}
                   </span>
                 </Button>
               </TableHead>
-              <TableHead className="hidden sm:table-cell font-semibold">
+              <TableHead className="hidden sm:table-cell font-semibold text-xs md:text-sm">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -971,29 +1011,29 @@ export const MembersTable = ({
                   )}
                   onClick={() => handleSort("phone")}
                 >
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 text-xs md:text-sm">
                     Phone
                     {getSortIcon("phone")}
                   </span>
                 </Button>
               </TableHead>
-              <TableHead className="font-semibold">
+              <TableHead className="font-semibold text-[10px] md:text-sm py-1.5 md:py-3 md:table-cell w-6">
                 <Button
                   variant="ghost"
                   size="sm"
                   className={cn(
-                    "h-8 px-2 -ml-2 hover:bg-muted/50",
+                    "h-5 md:h-8 px-0 md:px-2 -ml-0 md:-ml-2 hover:bg-muted/50",
                     sortField === "status" && "bg-muted"
                   )}
                   onClick={() => handleSort("status")}
                 >
-                  <span className="flex items-center gap-1">
+                  <span className="hidden md:flex items-center gap-0.5 md:gap-1 text-[10px] md:text-sm">
                     Status
                     {getSortIcon("status")}
                   </span>
                 </Button>
               </TableHead>
-              <TableHead className="hidden lg:table-cell font-semibold">
+              <TableHead className="hidden lg:table-cell font-semibold text-xs md:text-sm">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1003,14 +1043,14 @@ export const MembersTable = ({
                   )}
                   onClick={() => handleSort("trainer")}
                 >
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 text-xs md:text-sm">
                     <Dumbbell className="w-4 h-4" />
                     Trainer
                     {getSortIcon("trainer")}
                   </span>
                 </Button>
               </TableHead>
-              <TableHead className="hidden md:table-cell font-semibold">
+              <TableHead className="hidden md:table-cell font-semibold text-xs md:text-sm">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1020,13 +1060,13 @@ export const MembersTable = ({
                   )}
                   onClick={() => handleSort("expiry")}
                 >
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 text-xs md:text-sm">
                     Expires
                     {getSortIcon("expiry")}
                   </span>
                 </Button>
               </TableHead>
-              <TableHead className="w-10"></TableHead>
+              <TableHead className="w-10 md:w-auto"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1039,7 +1079,7 @@ export const MembersTable = ({
                 )}
                 onClick={() => handleMemberClick(member)}
               >
-                <TableCell onClick={(e) => e.stopPropagation()}>
+                <TableCell className="hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     checked={selectedMembers.has(member.id)}
                     onCheckedChange={() => {
@@ -1056,19 +1096,15 @@ export const MembersTable = ({
                     aria-label={`Select ${member.name}`}
                   />
                 </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-sm font-semibold text-primary">
+                <TableCell className="py-1.5 md:py-3">
+                  <div className="flex items-center gap-1 md:gap-3">
+                    <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[9px] md:text-sm font-semibold text-primary">
                         {member.name.charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    <div>
-                      <p className="font-medium">{member.name}</p>
-                      <p className="text-xs text-muted-foreground sm:hidden flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        {member.phone}
-                      </p>
+                    <div className="flex-1 min-w-0 pr-1">
+                      <p className="font-medium text-[10px] md:text-xs lg:text-sm truncate">{member.name}</p>
                     </div>
                   </div>
                 </TableCell>
@@ -1078,7 +1114,23 @@ export const MembersTable = ({
                     +91 {member.phone}
                   </div>
                 </TableCell>
-                <TableCell>{getStatusBadge(member.subscription)}</TableCell>
+                <TableCell className="py-1.5 md:py-3 md:table-cell w-6">
+                  {/* Mobile: Small circle button with transparent background */}
+                  <div className="flex items-center justify-center md:hidden">
+                    <button
+                      type="button"
+                      className="focus:outline-none focus:ring-0"
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label="Member status"
+                    >
+                      {getStatusCircle(member.subscription)}
+                    </button>
+                  </div>
+                  {/* Desktop: Status badge */}
+                  <div className="hidden md:flex items-center">
+                    {getStatusBadge(member.subscription)}
+                  </div>
+                </TableCell>
                 <TableCell className="hidden lg:table-cell">
                   {member.activePT ? (
                     <div className="flex items-center gap-2">
@@ -1107,20 +1159,20 @@ export const MembersTable = ({
                     <span className="text-muted-foreground">-</span>
                   )}
                 </TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
+                <TableCell className="w-5 md:w-auto py-1.5 md:py-3" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="w-4 h-4" />
+                      <Button variant="ghost" size="icon" className="h-5 w-5 md:h-8 md:w-8 p-0">
+                        <MoreVertical className="w-3 h-3 md:w-4 md:h-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="w-[200px] md:w-auto md:min-w-[200px] p-1 md:p-2">
                       {/* Only show edit/update options if user can manage members */}
                       {canManageMembers && (
                         <>
                           {/* Update User */}
-                          <DropdownMenuItem onClick={() => setEditingMember(member)}>
-                            <Pencil className="w-4 h-4 mr-2" />
+                          <DropdownMenuItem onClick={() => setEditingMember(member)} className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2">
+                            <Pencil className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
                             Update User
                           </DropdownMenuItem>
                           
@@ -1128,9 +1180,10 @@ export const MembersTable = ({
                           <DropdownMenuItem 
                             onClick={(e) => handleSendPromotional(member, e)}
                             disabled={sendingWhatsApp === member.id}
+                            className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2 whitespace-nowrap"
                           >
-                            <MessageCircle className="w-4 h-4 mr-2" />
-                            {sendingWhatsApp === member.id ? "Sending..." : "Send Promotional Message"}
+                            <MessageCircle className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2 flex-shrink-0" />
+                            <span className="md:whitespace-normal">{sendingWhatsApp === member.id ? "Sending..." : "Send Promotional Message"}</span>
                           </DropdownMenuItem>
                           
                           {/* Send Subscription Expiry Reminder - Only for Expiring Soon */}
@@ -1138,8 +1191,9 @@ export const MembersTable = ({
                             <DropdownMenuItem 
                               onClick={(e) => handleSendExpiryReminder(member, e)}
                               disabled={sendingWhatsApp === member.id}
+                              className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
                             >
-                              <Clock className="w-4 h-4 mr-2" />
+                              <Clock className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
                               Send Expiry Reminder
                             </DropdownMenuItem>
                           )}
@@ -1149,8 +1203,9 @@ export const MembersTable = ({
                             <DropdownMenuItem 
                               onClick={(e) => handleSendExpiredReminder(member, e)}
                               disabled={sendingWhatsApp === member.id}
+                              className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
                             >
-                              <AlertTriangle className="w-4 h-4 mr-2" />
+                              <AlertTriangle className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
                               Send Expired Reminder
                             </DropdownMenuItem>
                           )}
@@ -1159,8 +1214,9 @@ export const MembersTable = ({
                           <DropdownMenuItem 
                             onClick={(e) => handleSendPaymentDetails(member, e)}
                             disabled={sendingWhatsApp === member.id}
+                            className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
                           >
-                            <Receipt className="w-4 h-4 mr-2" />
+                            <Receipt className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
                             Send Payment Details
                           </DropdownMenuItem>
                         </>
@@ -1168,8 +1224,8 @@ export const MembersTable = ({
                       
                       {/* If user only has view access, show message */}
                       {!canManageMembers && (
-                        <DropdownMenuItem disabled>
-                          <span className="text-muted-foreground text-sm">View only - No edit permissions</span>
+                        <DropdownMenuItem disabled className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2">
+                          <span className="text-muted-foreground text-[10px] md:text-sm">View only - No edit permissions</span>
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>

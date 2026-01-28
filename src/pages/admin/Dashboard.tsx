@@ -68,15 +68,29 @@ const StatCard = memo(({
   bgClass?: string;
   iconClass?: string;
 }) => (
-  <Card className="hover-lift border-0 shadow-sm">
-    <CardContent className="p-3 sm:p-5">
+  <Card className="hover-lift border-0 shadow-sm h-full">
+    {/* Mobile layout - icon, number, text on separate lines, smaller and tighter */}
+    <CardContent className="p-2 flex flex-col gap-1 md:hidden">
+      <div className={`w-6 h-6 ${bgClass} rounded-lg flex items-center justify-center`}>
+        <Icon className={`w-3.5 h-3.5 ${iconClass}`} />
+      </div>
+      <p className={`text-sm font-semibold ${colorClass} leading-tight break-words`}>
+        {value}
+      </p>
+      <p className="text-[10px] text-muted-foreground leading-tight">
+        {label}
+      </p>
+    </CardContent>
+
+    {/* Desktop / tablet layout - keep existing design */}
+    <CardContent className="hidden md:block md:p-5">
       <div className="flex items-center justify-between">
         <div className="min-w-0 flex-1">
-          <p className={`text-xl sm:text-2xl font-bold ${colorClass} truncate`}>{value}</p>
+          <p className={`text-xl lg:text-2xl font-bold ${colorClass} truncate`}>{value}</p>
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{label}</p>
         </div>
-        <div className={`p-2 sm:p-3 ${bgClass} rounded-xl flex-shrink-0 ml-2`}>
-          <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${iconClass}`} />
+        <div className={`p-3 ${bgClass} rounded-xl flex-shrink-0 ml-2`}>
+          <Icon className={`w-6 h-6 ${iconClass}`} />
         </div>
       </div>
     </CardContent>
@@ -358,12 +372,12 @@ const AdminDashboard = () => {
       subtitle="Overview of your gym"
       onRefresh={handleRefresh}
     >
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-3 md:space-y-6 max-w-7xl mx-auto">
         {/* Stats Grid */}
         {statsLoading && !stats ? (
           <DashboardStatsSkeleton />
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3 lg:gap-4">
             <StatCard 
               value={displayStats.totalMembers} 
               label="Total Members" 
@@ -399,37 +413,50 @@ const AdminDashboard = () => {
         {/* Tabs for Members & Payments */}
         <Card className="border-0 shadow-sm">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <CardHeader className="pb-4 border-b">
-              <div className="flex flex-col gap-4">
-                {/* Top Row - Tabs and Actions */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                  {/* Tabs - With text labels */}
+            <CardHeader className="pb-2 md:pb-4 border-b px-2 md:px-6 pt-2 md:pt-6">
+              <div className="flex flex-col gap-2 md:gap-4">
+                {/* Top Row - Tabs (Desktop), Search Bar (Desktop), and Actions (Desktop) */}
+                <div className="hidden md:flex flex-row items-center gap-3">
+                  {/* Tabs - With icons and text on desktop */}
                   <TabsList className="bg-muted/50 p-1 h-10">
                     <TabsTrigger 
                       value="members" 
-                      className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                      className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
                     >
                       <UsersIcon className="w-4 h-4" />
-                      <span className="hidden sm:inline">Members</span>
+                      <span>Members</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="daily_pass" 
-                      className="gap-1 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                      className="gap-1 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
                     >
                       <ClockIcon className="w-4 h-4" />
-                      <span className="hidden sm:inline">Daily Passes</span>
+                      <span>Daily Passes</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="payments" 
-                      className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                      className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
                     >
                       <CreditCardIcon className="w-4 h-4" />
-                      <span className="hidden sm:inline">Payments</span>
+                      <span>Payments</span>
                     </TabsTrigger>
                   </TabsList>
                   
-                  {/* Action Buttons - Right side */}
-                  <div className="flex items-center gap-2 flex-wrap">
+                  {/* Search Bar - Desktop (between tabs and actions) */}
+                  {(activeTab === "members" || activeTab === "daily_pass") && (
+                    <div className="relative flex-1 max-w-md group">
+                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200 z-10" />
+                      <Input
+                        placeholder="Search by name or phone..."
+                        className="pl-10 h-9 text-sm bg-muted/40 border border-border/50 hover:bg-muted/60 hover:border-border focus:bg-background focus:border-border focus:ring-2 focus:ring-ring/20 shadow-sm hover:shadow transition-all duration-200"
+                        value={activeTab === "members" ? searchInput : dailyPassSearchInput}
+                        onChange={(e) => activeTab === "members" ? setSearchInput(e.target.value) : setDailyPassSearchInput(e.target.value)}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Action Buttons - Right side (Desktop) */}
+                  <div className="flex items-center gap-2 flex-wrap ml-auto">
                     {/* Sort Button with Popover */}
                     <Popover open={sortOpen} onOpenChange={setSortOpen}>
                       <PopoverTrigger asChild>
@@ -520,19 +547,43 @@ const AdminDashboard = () => {
                         className="gap-1.5 h-9 bg-foreground text-background hover:bg-foreground/90"
                       >
                         <PlusIcon className="w-4 h-4" />
-                        <span className="hidden sm:inline">Add Member</span>
+                        <span>Add Member</span>
                       </Button>
                     )}
                   </div>
                 </div>
+
+                {/* Mobile: Text-only Tabs */}
+                <div className="md:hidden">
+                  <TabsList className="bg-muted/50 p-0.5 h-8 w-full">
+                    <TabsTrigger 
+                      value="members" 
+                      className="flex-1 text-[10px] leading-tight px-1.5 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                    >
+                      Members
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="daily_pass" 
+                      className="flex-1 text-[10px] leading-tight px-1.5 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                    >
+                      Daily Passes
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="payments" 
+                      className="flex-1 text-[10px] leading-tight px-1.5 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                    >
+                      Payments
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
                 
-                {/* Search Bar - With debouncing */}
+                {/* Search Bar - Mobile only */}
                 {(activeTab === "members" || activeTab === "daily_pass") && (
-                  <div className="relative w-full md:max-w-sm group">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
+                  <div className="relative w-full md:hidden group">
+                    <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
                     <Input
                       placeholder="Search by name or phone..."
-                      className="pl-10 h-9 bg-muted/30 border-transparent hover:bg-muted/50 hover:border-border focus:bg-background focus:border-border transition-all duration-200"
+                      className="pl-8 h-8 text-xs bg-muted/30 border-transparent hover:bg-muted/50 hover:border-border focus:bg-background focus:border-border transition-all duration-200"
                       value={activeTab === "members" ? searchInput : dailyPassSearchInput}
                       onChange={(e) => activeTab === "members" ? setSearchInput(e.target.value) : setDailyPassSearchInput(e.target.value)}
                     />
@@ -540,16 +591,134 @@ const AdminDashboard = () => {
                 )}
               </div>
             </CardHeader>
-            <CardContent className="p-3 sm:p-4 md:p-6">
-              <TabsContent value="members" className="mt-0 space-y-4">
-                {/* Inline Member Filter Chips */}
-                <MemberFilter 
-                  value={memberFilter} 
-                  onChange={handleMemberFilterChange}
-                  counts={filterCounts}
-                  ptFilterActive={ptFilterActive}
-                  onPtFilterChange={setPtFilterActive}
-                />
+            <CardContent className="p-2 sm:p-4 md:pt-2 md:px-6 md:pb-6">
+              <TabsContent value="members" className="mt-0 space-y-1.5 md:space-y-4">
+                {/* Mobile: Filter Dropdown and Action Buttons Row */}
+                <div className="md:hidden flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1.5">
+                    {/* Member Filter Dropdown (Mobile) */}
+                    <div className="flex-1">
+                      <MemberFilter 
+                        value={memberFilter} 
+                        onChange={handleMemberFilterChange}
+                        counts={filterCounts}
+                        ptFilterActive={ptFilterActive}
+                        onPtFilterChange={setPtFilterActive}
+                        mobileMode={true}
+                      />
+                    </div>
+                    
+                    {/* Action Buttons - Mobile */}
+                    <div className="flex items-center gap-1">
+                      {/* Sort Button */}
+                      <Popover open={sortOpen} onOpenChange={setSortOpen}>
+                        <PopoverTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            className="h-6 w-6 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                            title="Sort"
+                          >
+                            {sortOrder === "asc" ? (
+                              <BarsArrowUpIcon className="w-3 h-3" />
+                            ) : (
+                              <BarsArrowDownIcon className="w-3 h-3" />
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56 p-0" align="end">
+                          <div className="p-3 border-b border-border">
+                            <p className="text-sm font-medium text-foreground">Sort by</p>
+                          </div>
+                          <RadioGroup 
+                            value={sortBy} 
+                            onValueChange={(value) => setSortBy(value as typeof sortBy)}
+                            className="p-2"
+                          >
+                            <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                              <RadioGroupItem value="name" id="sort-name-mobile" />
+                              <Label htmlFor="sort-name-mobile" className="cursor-pointer flex-1 text-sm">Name</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                              <RadioGroupItem value="join_date" id="sort-join-mobile" />
+                              <Label htmlFor="sort-join-mobile" className="cursor-pointer flex-1 text-sm">Join Date</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                              <RadioGroupItem value="end_date" id="sort-expiry-mobile" />
+                              <Label htmlFor="sort-expiry-mobile" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
+                            </div>
+                          </RadioGroup>
+                          <Separator />
+                          <div className="p-2 space-y-1">
+                            <button
+                              onClick={() => setSortOrder("asc")}
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "asc" ? "bg-muted font-medium" : ""}`}
+                            >
+                              <BarsArrowUpIcon className="w-4 h-4" />
+                              Oldest first
+                            </button>
+                            <button
+                              onClick={() => setSortOrder("desc")}
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "desc" ? "bg-muted font-medium" : ""}`}
+                            >
+                              <BarsArrowDownIcon className="w-4 h-4" />
+                              Newest first
+                            </button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      
+                      {/* Export Button */}
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        className="h-6 w-6 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                        title="Export Data"
+                        onClick={handleExport}
+                      >
+                        <ArrowDownTrayIcon className="w-3 h-3" />
+                      </Button>
+                      
+                      {/* Cash Payment Button */}
+                      {canManageMembers && (
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={() => setIsAddPaymentOpen(true)} 
+                          className="h-6 w-6 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                          title="Cash Payment"
+                        >
+                          <CreditCardIcon className="w-3 h-3" />
+                        </Button>
+                      )}
+                      
+                      {/* Add Member Button */}
+                      {canManageMembers && (
+                        <Button 
+                          size="sm"
+                          onClick={() => setIsAddMemberOpen(true)} 
+                          className="gap-0.5 h-6 bg-foreground text-background hover:bg-foreground/90 text-[10px] px-1.5"
+                        >
+                          <PlusIcon className="w-2.5 h-2.5" />
+                          <span className="hidden sm:inline">Add</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Desktop: Inline Member Filter Chips */}
+                <div className="hidden md:block">
+                  <MemberFilter 
+                    value={memberFilter} 
+                    onChange={handleMemberFilterChange}
+                    counts={filterCounts}
+                    ptFilterActive={ptFilterActive}
+                    onPtFilterChange={setPtFilterActive}
+                    mobileMode={false}
+                  />
+                </div>
+
                 <MembersTable 
                   searchQuery={searchQuery} 
                   refreshKey={refreshKey} 

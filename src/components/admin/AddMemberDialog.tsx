@@ -462,23 +462,23 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
-        <DialogHeader className="p-6 pb-4 flex-shrink-0 border-b">
-          <DialogTitle>Add New Member</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="w-[90vw] sm:max-w-2xl max-h-[90vh] md:max-h-[90vh] flex flex-col p-0 mx-auto my-4 md:mx-4 md:my-0">
+        <DialogHeader className="p-2.5 md:p-6 pb-2 md:pb-4 flex-shrink-0 border-b">
+          <DialogTitle className="text-sm md:text-lg">Add New Member</DialogTitle>
+          <DialogDescription className="text-[10px] md:text-sm">
             Add a new member with cash payment
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
-            <form onSubmit={handleSubmit} className="space-y-5 pr-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-2.5 md:px-6 py-2 md:py-4">
+            <form onSubmit={handleSubmit} className="space-y-2.5 md:space-y-5 pr-0.5 md:pr-4">
             {/* Contact Details Section */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium text-muted-foreground">Contact Details</h3>
+            <div className="space-y-1.5 md:space-y-4">
+              <h3 className="text-[10px] md:text-sm font-medium text-muted-foreground">Contact Details</h3>
               
-              <div className="space-y-2">
-                <Label htmlFor="add-name" className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-accent" />
+              <div className="space-y-1 md:space-y-2">
+                <Label htmlFor="add-name" className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm">
+                  <User className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
                   Full Name *
                 </Label>
                 <Input
@@ -486,17 +486,18 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   placeholder="Enter member name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  className="h-8 md:h-10 text-xs md:text-sm"
                   required
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="add-phone" className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-accent" />
+              <div className="space-y-1 md:space-y-2">
+                <Label htmlFor="add-phone" className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm">
+                  <Phone className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
                   Phone Number *
                 </Label>
                 <div className="flex">
-                  <span className="inline-flex items-center px-4 rounded-l-lg border-2 border-r-0 border-input bg-muted text-muted-foreground text-sm">
+                  <span className="inline-flex items-center px-1.5 md:px-4 rounded-l-lg border-2 border-r-0 border-input bg-muted text-muted-foreground text-[10px] md:text-sm">
                     +91
                   </span>
                   <Input
@@ -505,7 +506,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     placeholder="9876543210"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                    className="rounded-l-none"
+                    className="rounded-l-none h-8 md:h-10 text-xs md:text-sm"
                     required
                   />
                 </div>
@@ -513,14 +514,14 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
             </div>
 
             {/* Personal Details Section */}
-            <div className="space-y-4 pt-2 border-t">
-              <h3 className="text-sm font-medium text-muted-foreground">Personal Details</h3>
+            <div className="space-y-1.5 md:space-y-4 pt-1 md:pt-2 border-t">
+              <h3 className="text-[10px] md:text-sm font-medium text-muted-foreground">Personal Details</h3>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Gender</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 md:gap-4">
+                <div className="space-y-1 md:space-y-2">
+                  <Label className="text-[10px] md:text-sm">Gender</Label>
                   <Select value={gender} onValueChange={setGender}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8 md:h-10 text-xs md:text-sm">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
@@ -531,20 +532,20 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <CalendarDays className="w-4 h-4 text-accent" />
+                <div className="space-y-1 md:space-y-2">
+                  <Label className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm">
+                    <CalendarDays className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
                     Date of Birth
                   </Label>
                   <Popover open={showDobPicker} onOpenChange={setShowDobPicker}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
-                        className={`w-full justify-start text-left font-normal h-10 ${
+                        className={`w-full justify-start text-left font-normal h-8 md:h-10 text-xs md:text-sm ${
                           !dateOfBirth && "text-muted-foreground"
                         }`}
                       >
-                        <CalendarDays className="mr-2 h-4 w-4" />
+                        <CalendarDays className="mr-1.5 md:mr-2 h-2.5 w-2.5 md:h-4 md:w-4" />
                         {dateOfBirth ? format(dateOfBirth, "dd MMM yyyy") : "Select date"}
                       </Button>
                     </PopoverTrigger>
@@ -569,11 +570,11 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Photo ID Type</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 md:gap-4">
+                <div className="space-y-1 md:space-y-2">
+                  <Label className="text-[10px] md:text-sm">Photo ID Type</Label>
                   <Select value={photoIdType} onValueChange={(val) => { setPhotoIdType(val); setPhotoIdNumber(""); }}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8 md:h-10 text-xs md:text-sm">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
@@ -586,9 +587,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                 </div>
 
                 {photoIdType && (
-                  <div className="space-y-2">
-                    <Label htmlFor="add-photo-id" className="flex items-center gap-2">
-                      <IdCard className="w-4 h-4 text-accent" />
+                  <div className="space-y-1 md:space-y-2">
+                    <Label htmlFor="add-photo-id" className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm">
+                      <IdCard className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
                       {photoIdType === "aadhaar" ? "Aadhaar" : photoIdType === "pan" ? "PAN" : photoIdType === "voter" ? "Voter ID" : "DL"} Number
                     </Label>
                     <Input
@@ -597,14 +598,15 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                       value={photoIdNumber}
                       onChange={(e) => setPhotoIdNumber(formatIdNumber(e.target.value, photoIdType))}
                       maxLength={photoIdType === "aadhaar" ? 14 : photoIdType === "pan" ? 10 : 20}
+                      className="h-8 md:h-10 text-xs md:text-sm"
                     />
                   </div>
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="add-address" className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-accent" />
+              <div className="space-y-1 md:space-y-2">
+                <Label htmlFor="add-address" className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm">
+                  <MapPin className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
                   Address
                 </Label>
                 <Input
@@ -612,28 +614,29 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   placeholder="Enter address"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
+                  className="h-8 md:h-10 text-xs md:text-sm"
                 />
               </div>
             </div>
 
             {/* Package Selection Section */}
-            <div className="space-y-4 pt-2 border-t">
-              <h3 className="text-sm font-medium text-muted-foreground">Membership Package</h3>
+            <div className="space-y-1.5 md:space-y-4 pt-1 md:pt-2 border-t">
+              <h3 className="text-[10px] md:text-sm font-medium text-muted-foreground">Membership Package</h3>
               
               {/* Start Date Selection */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <CalendarDays className="w-4 h-4 text-accent" />
+              <div className="space-y-1 md:space-y-2">
+                <Label className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm">
+                  <CalendarDays className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
                   Membership Start Date
                 </Label>
                 <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="w-full p-3 rounded-lg border-2 border-input hover:border-accent/50 bg-card flex items-center justify-between transition-colors text-left"
+                      className="w-full p-1.5 md:p-3 rounded-lg border-2 border-input hover:border-accent/50 bg-card flex items-center justify-between transition-colors text-left"
                     >
-                      <span className="font-medium">{format(startDate, "d MMMM yyyy")}</span>
-                      <CalendarDays className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium text-[10px] md:text-sm">{format(startDate, "d MMMM yyyy")}</span>
+                      <CalendarDays className="w-2.5 h-2.5 md:w-4 md:h-4 text-muted-foreground" />
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -657,13 +660,13 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                 </Popover>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="add-package" className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-accent" />
+              <div className="space-y-1 md:space-y-2">
+                <Label htmlFor="add-package" className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm">
+                  <Calendar className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
                   Duration *
                 </Label>
                 <Select value={selectedPackageId} onValueChange={handlePackageChange}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 md:h-10 text-xs md:text-sm">
                     <SelectValue placeholder="Select package" />
                   </SelectTrigger>
                   <SelectContent>
@@ -676,10 +679,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-monthly" className="flex items-center gap-2">
-                    <IndianRupee className="w-4 h-4 text-accent" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 md:gap-4">
+                <div className="space-y-1 md:space-y-2">
+                  <Label htmlFor="edit-monthly" className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm">
+                    <IndianRupee className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
                     Monthly Fee (₹)
                   </Label>
                   <Input
@@ -687,11 +690,12 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     type="number"
                     value={monthlyFee}
                     onChange={(e) => setMonthlyFee(Number(e.target.value) || 0)}
+                    className="h-8 md:h-10 text-xs md:text-sm"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-joining" className="flex items-center gap-2">
-                    <IndianRupee className="w-4 h-4 text-accent" />
+                <div className="space-y-1 md:space-y-2">
+                  <Label htmlFor="edit-joining" className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm">
+                    <IndianRupee className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
                     Joining Fee (₹)
                   </Label>
                   <Input
@@ -699,27 +703,28 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     type="number"
                     value={joiningFee}
                     onChange={(e) => setJoiningFee(Number(e.target.value) || 0)}
+                    className="h-8 md:h-10 text-xs md:text-sm"
                   />
                 </div>
               </div>
             </div>
 
             {/* Personal Training Section */}
-            <div className="space-y-4 pt-2 border-t">
+            <div className="space-y-1.5 md:space-y-4 pt-1 md:pt-2 border-t">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <Dumbbell className="w-4 h-4" />
+                <h3 className="text-[10px] md:text-sm font-medium text-muted-foreground flex items-center gap-1 md:gap-2">
+                  <Dumbbell className="w-2.5 h-2.5 md:w-4 md:h-4" />
                   Personal Training Add-on
                 </h3>
                 <Switch checked={wantsPT} onCheckedChange={setWantsPT} />
               </div>
 
               {wantsPT && trainers.length > 0 && (
-                <div className="space-y-4 animate-in slide-in-from-top-2">
-                  <div className="space-y-2">
-                    <Label>Select Trainer</Label>
+                <div className="space-y-1.5 md:space-y-4 animate-in slide-in-from-top-2">
+                  <div className="space-y-1 md:space-y-2">
+                    <Label className="text-[10px] md:text-sm">Select Trainer</Label>
                     <Select value={selectedTrainerId} onValueChange={handleTrainerChange}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-8 md:h-10 text-xs md:text-sm">
                         <SelectValue placeholder="Choose trainer" />
                       </SelectTrigger>
                       <SelectContent>
@@ -733,10 +738,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>PT Duration</Label>
+                  <div className="space-y-1 md:space-y-2">
+                    <Label className="text-[10px] md:text-sm">PT Duration</Label>
                     <Select value={String(ptMonths)} onValueChange={(v) => handlePtMonthsChange(Number(v))}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-8 md:h-10 text-xs md:text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -747,20 +752,21 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[9px] md:text-xs text-muted-foreground">
                       Max {maxPtMonths} {maxPtMonths === 1 ? "month" : "months"} (matches gym membership)
                     </p>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="pt-fee">PT Fee (₹)</Label>
+                  <div className="space-y-1 md:space-y-2">
+                    <Label htmlFor="pt-fee" className="text-[10px] md:text-sm">PT Fee (₹)</Label>
                     <Input
                       id="pt-fee"
                       type="number"
                       value={ptFee}
                       onChange={(e) => setPtFee(Number(e.target.value) || 0)}
+                      className="h-8 md:h-10 text-xs md:text-sm"
                     />
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[9px] md:text-xs text-muted-foreground">
                       Default: ₹{(selectedTrainer?.monthly_fee || 0) * ptMonths}
                     </p>
                   </div>
@@ -768,42 +774,42 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
               )}
 
               {wantsPT && trainers.length === 0 && (
-                <p className="text-sm text-muted-foreground">No active trainers available. Add trainers in settings.</p>
+                <p className="text-[10px] md:text-sm text-muted-foreground">No active trainers available. Add trainers in settings.</p>
               )}
             </div>
 
             {/* Price Summary */}
-            <div className="bg-muted rounded-xl p-4 space-y-2">
-              <div className="flex justify-between text-sm">
+            <div className="bg-muted rounded-xl p-2 md:p-4 space-y-1 md:space-y-2">
+              <div className="flex justify-between text-[10px] md:text-sm">
                 <span className="text-muted-foreground">Gym Membership ({selectedPackage?.months || 0} {selectedPackage?.months === 1 ? "month" : "months"})</span>
                 <span>₹{monthlyFee.toLocaleString("en-IN")}</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-[10px] md:text-sm">
                 <span className="text-muted-foreground">Joining Fee</span>
                 <span>₹{joiningFee.toLocaleString("en-IN")}</span>
               </div>
               {wantsPT && (
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-[10px] md:text-sm">
                   <span className="text-muted-foreground">Personal Training ({ptMonths} {ptMonths === 1 ? "month" : "months"})</span>
                   <span>₹{ptFee.toLocaleString("en-IN")}</span>
                 </div>
               )}
-              <div className="flex justify-between font-bold pt-2 border-t border-border">
+              <div className="flex justify-between font-bold pt-1 md:pt-2 border-t border-border text-xs md:text-base">
                 <span>Total (Cash)</span>
                 <span className="text-accent">₹{totalAmount.toLocaleString("en-IN")}</span>
               </div>
             </div>
 
-            <div className="flex gap-3 pb-2">
+            <div className="flex gap-1.5 md:gap-3 pb-1 md:pb-2">
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="flex-1 h-8 md:h-10 text-xs md:text-sm"
                 onClick={() => onOpenChange(false)}
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="accent" className="flex-1" disabled={isLoading}>
+              <Button type="submit" variant="accent" className="flex-1 h-8 md:h-10 text-xs md:text-sm" disabled={isLoading}>
                 {isLoading ? "Adding..." : "Add Member"}
               </Button>
             </div>

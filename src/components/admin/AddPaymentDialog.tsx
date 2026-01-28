@@ -598,24 +598,24 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
-        <DialogHeader className="p-6 pb-4 flex-shrink-0 border-b">
-          <DialogTitle>Record Cash Payment</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="w-[90vw] sm:max-w-2xl max-h-[90vh] md:max-h-[90vh] flex flex-col p-0 mx-auto my-4 md:mx-4 md:my-0">
+        <DialogHeader className="p-2.5 md:p-6 pb-2 md:pb-4 flex-shrink-0 border-b">
+          <DialogTitle className="text-sm md:text-lg">Record Cash Payment</DialogTitle>
+          <DialogDescription className="text-[10px] md:text-sm">
             Add a cash payment for an existing member
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
-            <form onSubmit={handleSubmit} className="space-y-5 pr-4">
-          <div className="space-y-2">
-            <Label htmlFor="search-phone" className="flex items-center gap-2">
-              <Phone className="w-4 h-4 text-accent" />
+        <div className="flex-1 min-h-0 overflow-y-auto px-2.5 md:px-6 py-2 md:py-4">
+            <form onSubmit={handleSubmit} className="space-y-2.5 md:space-y-5 pr-0.5 md:pr-4">
+          <div className="space-y-1 md:space-y-2">
+            <Label htmlFor="search-phone" className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm">
+              <Phone className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
               Find Member by Phone
             </Label>
-            <div className="flex gap-2">
+            <div className="flex gap-1 md:gap-2">
               <div className="flex flex-1">
-                <span className="inline-flex items-center px-3 rounded-l-lg border-2 border-r-0 border-input bg-muted text-muted-foreground text-sm">
+                <span className="inline-flex items-center px-1.5 md:px-3 rounded-l-lg border-2 border-r-0 border-input bg-muted text-muted-foreground text-[10px] md:text-sm">
                   +91
                 </span>
                 <Input
@@ -624,7 +624,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                   placeholder="9876543210"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  className="rounded-l-none"
+                  className="rounded-l-none h-8 md:h-10 text-xs md:text-sm"
                 />
               </div>
               <Button
@@ -632,27 +632,29 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                 variant="outline"
                 onClick={handleSearch}
                 disabled={isSearching}
+                className="h-8 md:h-10 w-8 md:w-auto px-1.5 md:px-4"
               >
-                <Search className="w-4 h-4" />
+                <Search className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden md:inline ml-2">Search</span>
               </Button>
             </div>
           </div>
 
           {member && (
             <>
-              <div className="bg-success/10 border border-success/20 rounded-xl p-4">
-                <p className="font-medium text-success">{member.name}</p>
-                <p className="text-sm text-muted-foreground">+91 {member.phone}</p>
+              <div className="bg-success/10 border border-success/20 rounded-xl p-2 md:p-4">
+                <p className="font-medium text-success text-xs md:text-base">{member.name}</p>
+                <p className="text-[10px] md:text-sm text-muted-foreground">+91 {member.phone}</p>
               </div>
 
                 {/* Payment Type Selection */}
-              <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-accent" />
+              <div className="space-y-1 md:space-y-2">
+                  <Label className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm">
+                  <Calendar className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
                     Payment Type
                 </Label>
                   <Select value={paymentType} onValueChange={(v) => setPaymentType(v as PaymentType)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8 md:h-10 text-xs md:text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -665,13 +667,13 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
 
                 {/* Gym Membership Section */}
                 {paymentType !== "pt_only" && (
-                  <div className="space-y-4 pt-2 border-t">
-                    <h3 className="text-sm font-medium text-muted-foreground">Gym Membership</h3>
+                  <div className="space-y-1.5 md:space-y-4 pt-1 md:pt-2 border-t">
+                    <h3 className="text-[10px] md:text-sm font-medium text-muted-foreground">Gym Membership</h3>
                     
-                    <div className="space-y-2">
-                      <Label>Select Package</Label>
+                    <div className="space-y-1 md:space-y-2">
+                      <Label className="text-[10px] md:text-sm">Select Package</Label>
                       <Select value={selectedPackageId} onValueChange={setSelectedPackageId}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-8 md:h-10 text-xs md:text-sm">
                           <SelectValue placeholder="Select package" />
                         </SelectTrigger>
                         <SelectContent>
@@ -685,14 +687,14 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                       
                       {/* Display effective gym end date */}
                       {gymEndDate && (
-                        <div className="p-3 bg-accent/10 border border-accent/20 rounded-lg">
-                          <div className="flex items-center gap-2 text-sm">
-                            <Calendar className="w-4 h-4 text-accent" />
+                        <div className="p-1.5 md:p-3 bg-accent/10 border border-accent/20 rounded-lg">
+                          <div className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm">
+                            <Calendar className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
                             <span className="text-muted-foreground">New gym membership ends:</span>
                             <span className="font-medium text-accent">{format(gymEndDate, "d MMMM yyyy")}</span>
                           </div>
                           {membershipEndDate && (
-                            <p className="text-xs text-muted-foreground mt-1 ml-6">
+                            <p className="text-[9px] md:text-xs text-muted-foreground mt-0.5 md:mt-1 ml-4 md:ml-6">
                               Current ends: {format(membershipEndDate, "d MMM yyyy")}
                             </p>
                           )}
@@ -700,10 +702,10 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                       )}
               </div>
 
-              <div className="space-y-2">
-                      <Label htmlFor="gym-amount">Amount (₹)</Label>
+              <div className="space-y-1 md:space-y-2">
+                      <Label htmlFor="gym-amount" className="text-[10px] md:text-sm">Amount (₹)</Label>
                 <div className="flex">
-                  <span className="inline-flex items-center px-3 rounded-l-lg border-2 border-r-0 border-input bg-muted text-muted-foreground text-sm">
+                  <span className="inline-flex items-center px-1.5 md:px-3 rounded-l-lg border-2 border-r-0 border-input bg-muted text-muted-foreground text-[10px] md:text-sm">
                     ₹
                   </span>
                   <Input
@@ -711,12 +713,12 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                     type="number"
                           value={gymCustomAmount || (selectedPackage?.price || 0)}
                           onChange={(e) => setGymCustomAmount(e.target.value)}
-                    className="rounded-l-none"
+                    className="rounded-l-none h-8 md:h-10 text-xs md:text-sm"
                     min="0"
                   />
                 </div>
                       {!gymCustomAmount && selectedPackage && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[9px] md:text-xs text-muted-foreground">
                           Default: ₹{selectedPackage.price.toLocaleString("en-IN")} ({selectedPackage.months} {selectedPackage.months === 1 ? "month" : "months"})
                         </p>
                       )}
@@ -726,17 +728,17 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
 
                 {/* Personal Training Section */}
                 {(paymentType === "gym_and_pt" || paymentType === "pt_only") && (
-                  <div className="space-y-4 pt-2 border-t">
-                    <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                      <Dumbbell className="w-4 h-4" />
+                  <div className="space-y-1.5 md:space-y-4 pt-1 md:pt-2 border-t">
+                    <h3 className="text-[10px] md:text-sm font-medium text-muted-foreground flex items-center gap-1 md:gap-2">
+                      <Dumbbell className="w-2.5 h-2.5 md:w-4 md:h-4" />
                       Personal Training
                     </h3>
 
                     {paymentType === "pt_only" && !membershipEndDate && (
-                      <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                        <div className="flex items-center gap-2 text-destructive">
-                          <AlertCircle className="w-4 h-4" />
-                          <p className="text-sm font-medium">
+                      <div className="p-1.5 md:p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                        <div className="flex items-center gap-1 md:gap-2 text-destructive">
+                          <AlertCircle className="w-2.5 h-2.5 md:w-4 md:h-4" />
+                          <p className="text-[10px] md:text-sm font-medium">
                             Member needs an active gym membership to add PT
                           </p>
                         </div>
@@ -745,10 +747,10 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
 
                     {trainers.length > 0 && (
                       <>
-                        <div className="space-y-2">
-                          <Label>Select Trainer</Label>
+                        <div className="space-y-1 md:space-y-2">
+                          <Label className="text-[10px] md:text-sm">Select Trainer</Label>
                           <Select value={selectedTrainerId} onValueChange={setSelectedTrainerId}>
-                            <SelectTrigger>
+                            <SelectTrigger className="h-8 md:h-10 text-xs md:text-sm">
                               <SelectValue placeholder="Choose trainer" />
                             </SelectTrigger>
                             <SelectContent>
@@ -764,20 +766,20 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
 
                         {selectedTrainer && ptDurationOptions.length > 0 && (
                           <>
-                            <div className="space-y-2">
-                              <Label>PT Duration</Label>
+                            <div className="space-y-1 md:space-y-2">
+                              <Label className="text-[10px] md:text-sm">PT Duration</Label>
                               {/* Show existing PT and gym membership info */}
-                              <div className="p-3 bg-muted/50 rounded-lg space-y-1">
+                              <div className="p-1.5 md:p-3 bg-muted/50 rounded-lg space-y-0.5 md:space-y-1">
                                 {existingPTEndDate && (
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="text-[9px] md:text-xs text-muted-foreground">
                                     Current PT ends: <span className="font-medium">{format(existingPTEndDate, "d MMM yyyy")}</span>
                                   </p>
                                 )}
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-[9px] md:text-xs text-muted-foreground">
                                   PT starts: <span className="font-medium text-accent">{format(ptStartDate, "d MMM yyyy")}</span>
                                 </p>
                                 {(paymentType === "pt_only" && membershipEndDate) || (paymentType === "gym_and_pt" && gymEndDate) ? (
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="text-[9px] md:text-xs text-muted-foreground">
                                     Gym membership ends: <span className="font-medium">
                                       {paymentType === "gym_and_pt" 
                                         ? format(gymEndDate!, "d MMM yyyy")
@@ -787,7 +789,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                                   </p>
                                 ) : null}
                               </div>
-                              <div className="space-y-2">
+                              <div className="space-y-1 md:space-y-2">
                                 {ptDurationOptions.map((option, idx) => (
                                   <button
                                     key={idx}
@@ -799,7 +801,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                                       }
                                     }}
                                     disabled={!option.isValid}
-                                    className={`w-full p-3 rounded-xl border-2 transition-all duration-200 text-left ${
+                                    className={`w-full p-1.5 md:p-3 rounded-xl border-2 transition-all duration-200 text-left ${
                                       !option.isValid
                                         ? "border-border/50 bg-muted/30 opacity-50 cursor-not-allowed"
                                         : selectedPTOption?.label === option.label
@@ -809,21 +811,21 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                                   >
                                     <div className="flex justify-between items-center">
                                       <div>
-                                        <div className="flex items-center gap-2">
-                                          <p className="font-medium text-sm">{option.label}</p>
+                                        <div className="flex items-center gap-1 md:gap-2">
+                                          <p className="font-medium text-[10px] md:text-sm">{option.label}</p>
                                           {!option.isValid && (
-                                            <Badge variant="outline" className="text-destructive border-destructive/30 text-xs">
+                                            <Badge variant="outline" className="text-destructive border-destructive/30 text-[9px] md:text-xs">
                                               Exceeds membership
                                             </Badge>
                                           )}
                                         </div>
-                                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                                          <Clock className="w-3 h-3" />
+                                        <p className="text-[9px] md:text-xs text-muted-foreground flex items-center gap-0.5 md:gap-1 mt-0.5">
+                                          <Clock className="w-2 h-2 md:w-3 md:h-3" />
                                           {option.days} days • Ends {format(option.endDate, "d MMM yyyy")}
                                         </p>
                                       </div>
-                                      <span className="font-bold text-accent flex items-center text-sm">
-                                        <IndianRupee className="w-3 h-3" />
+                                      <span className="font-bold text-accent flex items-center text-[10px] md:text-sm">
+                                        <IndianRupee className="w-2 h-2 md:w-3 md:h-3" />
                                         {option.fee.toLocaleString("en-IN")}
                                       </span>
                                     </div>
@@ -832,10 +834,10 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                               </div>
                             </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="pt-amount">PT Fee (₹)</Label>
+                            <div className="space-y-1 md:space-y-2">
+                              <Label htmlFor="pt-amount" className="text-[10px] md:text-sm">PT Fee (₹)</Label>
                               <div className="flex">
-                                <span className="inline-flex items-center px-3 rounded-l-lg border-2 border-r-0 border-input bg-muted text-muted-foreground text-sm">
+                                <span className="inline-flex items-center px-1.5 md:px-3 rounded-l-lg border-2 border-r-0 border-input bg-muted text-muted-foreground text-[10px] md:text-sm">
                                   ₹
                                 </span>
                                 <Input
@@ -843,12 +845,12 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                                   type="number"
                                   value={ptCustomAmount || (selectedPTOption?.fee || 0)}
                                   onChange={(e) => setPtCustomAmount(e.target.value)}
-                                  className="rounded-l-none"
+                                  className="rounded-l-none h-8 md:h-10 text-xs md:text-sm"
                                   min="0"
                                 />
                               </div>
                               {selectedPTOption && !ptCustomAmount && (
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-[9px] md:text-xs text-muted-foreground">
                                   Default: ₹{selectedPTOption.fee.toLocaleString("en-IN")} ({selectedPTOption.days} days)
                                 </p>
                               )}
@@ -859,28 +861,28 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                     )}
 
                     {trainers.length === 0 && (
-                      <p className="text-sm text-muted-foreground">No active trainers available</p>
+                      <p className="text-[10px] md:text-sm text-muted-foreground">No active trainers available</p>
                     )}
                   </div>
                 )}
 
                 {/* Price Summary */}
-                <div className="bg-muted rounded-xl p-4 space-y-2">
+                <div className="bg-muted rounded-xl p-2 md:p-4 space-y-1 md:space-y-2">
                   {paymentType !== "pt_only" && (
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-[10px] md:text-sm">
                       <span className="text-muted-foreground">Gym Membership</span>
                       <span>₹{gymAmount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
                   {(paymentType === "gym_and_pt" || paymentType === "pt_only") && selectedPTOption && (
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-[10px] md:text-sm">
                       <span className="text-muted-foreground">
                         Personal Training ({selectedPTOption.days} days)
                       </span>
                       <span>₹{ptAmount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
-                  <div className="flex justify-between font-bold pt-2 border-t border-border">
+                  <div className="flex justify-between font-bold pt-1 md:pt-2 border-t border-border text-xs md:text-base">
                     <span>Total (Cash)</span>
                     <span className="text-accent">₹{totalAmount.toLocaleString("en-IN")}</span>
                   </div>
@@ -888,11 +890,11 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
             </>
           )}
 
-            <div className="flex gap-3 pb-2">
+            <div className="flex gap-1.5 md:gap-3 pb-1 md:pb-2">
             <Button
               type="button"
               variant="outline"
-              className="flex-1"
+              className="flex-1 h-8 md:h-10 text-xs md:text-sm"
               onClick={() => onOpenChange(false)}
             >
               Cancel
@@ -900,7 +902,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
             <Button
               type="submit"
               variant="accent"
-              className="flex-1"
+              className="flex-1 h-8 md:h-10 text-xs md:text-sm"
                 disabled={isLoading || !member || totalAmount === 0}
             >
               {isLoading ? "Recording..." : "Record Payment"}

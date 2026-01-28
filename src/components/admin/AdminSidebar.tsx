@@ -29,6 +29,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
+import { BranchSelector } from "./BranchSelector";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -306,6 +307,11 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
   if (isMobile) {
     return (
       <div className="flex flex-col h-full">
+        {/* Branch Selector for Mobile */}
+        <div className="p-3 border-b border-border">
+          <BranchSelector />
+        </div>
+        
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => renderNavItem(item))}
