@@ -606,11 +606,11 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
 
       {/* WhatsApp Message View Dialog */}
       <Dialog open={!!selectedMessage} onOpenChange={(open) => !open && setSelectedMessage(null)}>
-        <DialogContent className="sm:max-w-[500px] p-0 gap-0 bg-[#e5ddd5] dark:bg-[#0b141a] overflow-hidden [&>button]:hidden">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] p-0 gap-0 bg-[#e5ddd5] dark:bg-[#0b141a] overflow-hidden [&>button]:hidden flex flex-col">
           {selectedMessage && (
             <>
               {/* WhatsApp Header */}
-              <div className="bg-[#075e54] dark:bg-[#202c33] text-white px-4 py-3 flex items-center gap-3 shadow-md">
+              <div className="bg-[#075e54] dark:bg-[#202c33] text-white px-4 py-3 flex items-center gap-3 shadow-md flex-shrink-0">
                 <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
                   <Phone className="w-5 h-5" />
                 </div>
@@ -634,7 +634,7 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
 
               {/* WhatsApp Message Area with Pattern Background */}
               <div 
-                className="flex-1 p-4 space-y-3 min-h-[400px] max-h-[600px] overflow-y-auto relative"
+                className="flex-1 p-4 space-y-3 overflow-y-auto relative min-h-0"
                 style={{
                   backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'100\' height=\'100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cdefs%3E%3Cpattern id=\'grid\' width=\'40\' height=\'40\' patternUnits=\'userSpaceOnUse\'%3E%3Cpath d=\'M 40 0 L 0 0 0 40\' fill=\'none\' stroke=\'%23ffffff\' stroke-width=\'0.5\' opacity=\'0.1\'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=\'100%25\' height=\'100%25\' fill=\'url(%23grid)\'/%3E%3C/svg%3E")',
                 }}

@@ -10,8 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
+import {
   Calendar, 
   CreditCard, 
   IndianRupee, 
@@ -218,8 +217,8 @@ export const MemberActivityDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="p-6 md:p-3 pb-2">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="p-4 md:p-6 pb-2 flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
             <User className="w-4 h-4 md:w-5 md:h-5 text-accent" />
             {memberName}
@@ -234,8 +233,8 @@ export const MemberActivityDialog = ({
             <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
           </div>
         ) : (
-          <Tabs defaultValue="overview" className="flex-1 overflow-hidden flex flex-col px-6 md:px-3 pb-6 md:pb-3">
-            <TabsList className="grid w-full grid-cols-4 h-9 md:h-8">
+          <Tabs defaultValue="overview" className="flex-1 flex flex-col px-4 md:px-6 pb-4 md:pb-6 min-h-0">
+            <TabsList className="grid w-full grid-cols-4 h-9 md:h-8 flex-shrink-0">
               <TabsTrigger value="overview" className="text-xs md:text-sm">Overview</TabsTrigger>
               <TabsTrigger value="subscriptions" className="text-xs md:text-sm">Gym</TabsTrigger>
               <TabsTrigger value="pt" className="text-xs md:text-sm">PT History</TabsTrigger>
@@ -243,8 +242,7 @@ export const MemberActivityDialog = ({
             </TabsList>
 
             {/* Overview Tab */}
-            <TabsContent value="overview" className="mt-2 md:mt-3 flex-1 overflow-hidden">
-              <ScrollArea className="h-[400px] pr-1 md:pr-2">
+            <TabsContent value="overview" className="mt-2 md:mt-3 flex-1 min-h-0 overflow-y-auto pr-1 md:pr-2">
                 <div className="space-y-2 md:space-y-3">
                   <Card>
                     <CardHeader className="pb-2 md:pb-2 px-3 md:px-4 pt-3 md:pt-4">
@@ -360,12 +358,10 @@ export const MemberActivityDialog = ({
                     </Card>
                   </div>
                 </div>
-              </ScrollArea>
             </TabsContent>
 
             {/* Subscriptions Tab */}
-            <TabsContent value="subscriptions" className="mt-2 md:mt-3 flex-1 overflow-hidden">
-              <ScrollArea className="h-[400px] pr-1 md:pr-2">
+            <TabsContent value="subscriptions" className="mt-2 md:mt-3 flex-1 min-h-0 overflow-y-auto pr-1 md:pr-2">
                 <div className="space-y-2">
                   {subscriptions.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8 text-sm">No subscriptions found</p>
@@ -403,12 +399,10 @@ export const MemberActivityDialog = ({
                     ))
                   )}
                 </div>
-              </ScrollArea>
             </TabsContent>
 
             {/* PT History Tab */}
-            <TabsContent value="pt" className="mt-2 md:mt-3 flex-1 overflow-hidden">
-              <ScrollArea className="h-[400px] pr-1 md:pr-2">
+            <TabsContent value="pt" className="mt-2 md:mt-3 flex-1 min-h-0 overflow-y-auto pr-1 md:pr-2">
                 <div className="space-y-2">
                   {ptSubscriptions.length === 0 ? (
                     <div className="text-center py-8">
@@ -455,12 +449,10 @@ export const MemberActivityDialog = ({
                     ))
                   )}
                 </div>
-              </ScrollArea>
             </TabsContent>
 
             {/* Payments Tab */}
-            <TabsContent value="payments" className="mt-2 md:mt-3 flex-1 overflow-hidden">
-              <ScrollArea className="h-[400px] pr-1 md:pr-2">
+            <TabsContent value="payments" className="mt-2 md:mt-3 flex-1 min-h-0 overflow-y-auto pr-1 md:pr-2">
                 <div className="space-y-2">
                   {payments.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8 text-sm">No payments found</p>
@@ -503,7 +495,6 @@ export const MemberActivityDialog = ({
                     ))
                   )}
                 </div>
-              </ScrollArea>
             </TabsContent>
           </Tabs>
         )}
