@@ -1185,11 +1185,11 @@ const BranchAnalytics = () => {
         {/* Revenue Trend Comparison */}
         {timeSeriesData.length > 0 && (
           <Card className="overflow-hidden">
-            <CardHeader className="p-3 sm:p-6">
+            <CardHeader className="px-2 py-2 sm:p-6">
                 <CardTitle className="text-base sm:text-xl">Revenue Trend Comparison</CardTitle>
                 <CardDescription className="text-xs sm:text-sm">Revenue over time across all branches</CardDescription>
             </CardHeader>
-            <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
+            <CardContent className="overflow-hidden px-1 pb-2 pt-0 sm:p-6 sm:pt-0">
               <ChartContainer
                 config={{
                   revenue: { label: "Revenue", color: "hsl(var(--accent))" },
@@ -1260,11 +1260,11 @@ const BranchAnalytics = () => {
 
         {/* Branch Comparison Table */}
         <Card>
-          <CardHeader className="p-3 sm:p-6">
+          <CardHeader className="px-2 py-2 sm:p-6">
             <CardTitle className="text-base sm:text-xl">Branch Performance Comparison</CardTitle>
             <CardDescription className="text-xs sm:text-sm">Click on any branch to view detailed analytics</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 pb-2 sm:p-6 sm:pt-0">
             {isMobile ? (
               /* Mobile Card View */
               <div className="space-y-2">
@@ -1379,7 +1379,7 @@ const BranchAnalytics = () => {
 
         {/* Trainer Analytics Section */}
         <Card>
-          <CardHeader className="p-3 sm:p-6">
+          <CardHeader className="px-2 py-2 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <CardTitle className="flex items-center gap-2 text-base sm:text-xl">
@@ -1736,11 +1736,11 @@ const BranchAnalytics = () => {
               <TabsContent value="performance" className="space-y-3 sm:space-y-6">
                 {/* Revenue Distribution by Trainer */}
                 <Card className="overflow-hidden">
-                  <CardHeader className="p-3 sm:p-6">
+                  <CardHeader className="px-2 py-2 sm:p-6">
                     <CardTitle className="text-base sm:text-xl">Revenue Distribution</CardTitle>
                     <CardDescription className="text-xs sm:text-sm">Revenue share by trainer</CardDescription>
                   </CardHeader>
-                  <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
+                  <CardContent className="overflow-hidden px-1 pb-2 pt-0 sm:p-6 sm:pt-0">
                     <ChartContainer
                       config={{
                         revenue: { label: "Revenue", color: "hsl(var(--accent))" },
@@ -1798,11 +1798,11 @@ const BranchAnalytics = () => {
 
                 {/* Efficiency Score Chart */}
                 <Card className="overflow-hidden">
-                  <CardHeader className="p-3 sm:p-6">
+                  <CardHeader className="px-2 py-2 sm:p-6">
                     <CardTitle className="text-base sm:text-xl">Efficiency Score Comparison</CardTitle>
                     <CardDescription className="text-xs sm:text-sm">Composite performance metric</CardDescription>
                   </CardHeader>
-                  <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
+                  <CardContent className="overflow-hidden px-1 pb-2 pt-0 sm:p-6 sm:pt-0">
                     <ChartContainer
                       config={{
                         efficiency: { label: "Efficiency", color: "hsl(var(--success))" },
@@ -1862,11 +1862,11 @@ const BranchAnalytics = () => {
               <TabsContent value="comparison" className="space-y-3 sm:space-y-6">
                 {/* Branch-wise Trainer Comparison */}
                 <Card className="overflow-hidden">
-                  <CardHeader className="p-3 sm:p-6">
+                  <CardHeader className="px-2 py-2 sm:p-6">
                     <CardTitle className="text-base sm:text-xl">Branch-Wise Trainer Performance</CardTitle>
                     <CardDescription className="text-xs sm:text-sm">Compare trainers across branches</CardDescription>
                   </CardHeader>
-                  <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
+                  <CardContent className="overflow-hidden px-1 pb-2 pt-0 sm:p-6 sm:pt-0">
                     <ChartContainer
                       config={{
                         revenue: { label: "Revenue", color: "hsl(var(--accent))" },
@@ -1947,11 +1947,11 @@ const BranchAnalytics = () => {
                 {/* Trainer Performance Radar */}
                 {filteredTrainerMetrics.length > 0 && (
                   <Card className="overflow-hidden">
-                    <CardHeader className="p-3 sm:p-6">
+                    <CardHeader className="px-2 py-2 sm:p-6">
                       <CardTitle className="text-base sm:text-xl">Top Trainers Performance Radar</CardTitle>
                       <CardDescription className="text-xs sm:text-sm">Multi-metric comparison (normalized)</CardDescription>
                     </CardHeader>
-                    <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
+                    <CardContent className="overflow-hidden px-1 pb-2 pt-0 sm:p-6 sm:pt-0">
                       <ChartContainer
                         config={{
                           revenue: { label: "Revenue", color: "hsl(var(--accent))" },
@@ -2135,14 +2135,14 @@ const BranchAnalytics = () => {
         </Card>
 
             {/* Additional Charts */}
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 gap-3 sm:gap-6">
               {/* Revenue Distribution */}
               <Card>
-                <CardHeader>
+                <CardHeader className="px-2 py-2 sm:p-6">
                   <CardTitle className="text-base sm:text-xl">Revenue Distribution</CardTitle>
                   <CardDescription className="text-xs sm:text-sm">Revenue share by branch</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-1 pb-2 sm:p-6 sm:pt-0">
                   <ChartContainer
                     config={{
                       revenue: { label: "Revenue", color: "hsl(var(--accent))" },
@@ -2192,11 +2192,11 @@ const BranchAnalytics = () => {
 
               {/* Performance Radar Chart */}
               <Card>
-                <CardHeader>
+                <CardHeader className="px-2 py-2 sm:p-6">
                   <CardTitle className="text-base sm:text-xl">Performance Radar</CardTitle>
                   <CardDescription className="text-xs sm:text-sm">Multi-metric comparison (normalized)</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-1 pb-2 sm:p-6 sm:pt-0">
                   <ChartContainer
                     config={{
                       revenue: { label: "Revenue", color: "hsl(var(--accent))" },
