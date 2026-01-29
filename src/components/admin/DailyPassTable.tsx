@@ -1,24 +1,19 @@
 import { useState, useEffect, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "@/components/ui/sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { format, isAfter, addDays, isBefore } from "date-fns";
+import { format, isAfter, addDays } from "date-fns";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
-import { useDailyPassQuery, type DailyPassUserWithSubscription } from "@/hooks/useDashboardQueries";
-import { useInvalidateQueries, CACHE_KEYS } from "@/hooks/useQueryCache";
-import { TableSkeleton } from "@/components/ui/skeleton-loaders";
+import { useDailyPassQuery, useDeleteDailyPassUser, type DailyPassUserWithSubscription } from "@/hooks/queries";
 import { 
   MoreHorizontal, 
-  Search, 
   Trash2, 
   Calendar, 
   User, 
@@ -39,7 +34,7 @@ interface DailyPassTableProps {
 const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTableProps) => {
   const { currentBranch } = useBranch();
   const isMobile = useIsMobile();
-  const { invalidate } = useInvalidateQueries();
+  const deleteMutation = useDeleteDailyPassUser();
   
   // Use React Query for cached data fetching
   const { data: usersData, isLoading, refetch } = useDailyPassQuery();
@@ -59,45 +54,8 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
     if (!userToDelete) return;
 
     try {
-      // First, delete related records in the correct order to avoid FK constraints
-      
-      // 1. Delete user activity logs referencing this daily pass user
-      await supabase
-        .from("user_activity_logs")
-        .delete()
-        .eq("daily_pass_user_id", userToDelete.id);
-
-      // 2. Delete WhatsApp notifications
-      await supabase
-        .from("whatsapp_notifications")
-        .delete()
-        .eq("daily_pass_user_id", userToDelete.id);
-
-      // 3. Delete ledger entries
-      await supabase
-        .from("ledger_entries")
-        .delete()
-        .eq("daily_pass_user_id", userToDelete.id);
-
-      // 4. Delete payments referencing daily pass subscriptions
-      await supabase
-        .from("payments")
-        .delete()
-        .eq("daily_pass_user_id", userToDelete.id);
-
-      // 5. Delete daily pass subscriptions
-      await supabase
-        .from("daily_pass_subscriptions")
-        .delete()
-        .eq("daily_pass_user_id", userToDelete.id);
-
-      // 6. Finally delete the daily pass user
-      const { error } = await supabase
-        .from("daily_pass_users")
-        .delete()
-        .eq("id", userToDelete.id);
-
-      if (error) throw error;
+      // Use the mutation hook which handles all the cascade deletes
+      await deleteMutation.mutateAsync(userToDelete.id);
 
       // Log the admin activity
       await logAdminActivity({
@@ -127,8 +85,6 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
       toast.success("Success", {
         description: "Daily pass user deleted successfully",
       });
-
-      invalidate([CACHE_KEYS.DAILY_PASS_USERS]); // Invalidate cache to refetch
     } catch (error: any) {
       console.error("Error deleting user:", error);
       toast.error("Error", {

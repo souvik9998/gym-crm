@@ -36,8 +36,9 @@ import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { TableSkeleton } from "@/components/ui/skeleton-loaders";
-import { useMembersQuery, type MemberWithSubscription } from "@/hooks/useDashboardQueries";
-// Use MemberWithSubscription from the query hook
+import { useMembersQuery } from "@/hooks/queries";
+import type { MemberWithSubscription } from "@/api/members";
+// Use MemberWithSubscription from the API
 type Member = MemberWithSubscription;
 
 interface MembersTableProps {
