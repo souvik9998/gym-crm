@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowTrendingUpIcon,
   UsersIcon,
@@ -29,6 +30,24 @@ import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { PeriodSelector, PeriodType, getPeriodDates } from "@/components/admin/PeriodSelector";
 import { format, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, differenceInDays, parseISO } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
+
+// Inline chart skeleton component
+const ChartSkeleton = ({ height = "h-64" }: { height?: string }) => (
+  <div className={`${height} flex items-center justify-center`}>
+    <div className="w-full h-full flex flex-col gap-2 p-4">
+      <div className="flex items-end justify-between h-full gap-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="flex-1" style={{ height: `${30 + Math.random() * 60}%` }} />
+        ))}
+      </div>
+      <div className="flex justify-between">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-3 w-8" />
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 interface MonthlyRevenue {
   month: string;
@@ -83,6 +102,7 @@ const AdminAnalytics = () => {
   const [trainerStats, setTrainerStats] = useState<TrainerStats[]>([]);
   const [packageSalesData, setPackageSalesData] = useState<PackageSalesData[]>([]);
   const [packageList, setPackageList] = useState<PackageInfo[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [totals, setTotals] = useState({
     totalRevenue: 0,
     totalMembers: 0,
@@ -134,7 +154,7 @@ const AdminAnalytics = () => {
 
   const fetchAnalytics = async () => {
     if (!currentBranch?.id) return;
-    
+    setIsLoading(true);
     try {
       const intervals = getTimeIntervals();
       const daysDiff = differenceInDays(dateTo, dateFrom);
@@ -394,6 +414,8 @@ const AdminAnalytics = () => {
       }
     } catch (error) {
       console.error("Error fetching analytics:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -503,37 +525,41 @@ const AdminAnalytics = () => {
             <CardDescription className="text-xs sm:text-sm">Revenue trend over the last 6 months</CardDescription>
           </CardHeader>
           <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
-            <ChartContainer
-              config={chartConfig}
-              className="h-[clamp(220px,34vh,360px)] md:h-[clamp(260px,34vh,420px)] overflow-hidden"
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={revenueData}
-                  margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 8 } : undefined}
-                >
-                  <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    axisLine={false}
-                    tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined}
-                    minTickGap={isMobile ? 24 : undefined}
-                    interval={isMobile ? "preserveStartEnd" : undefined}
-                    tickMargin={isMobile ? 8 : undefined}
-                    padding={isMobile ? { left: 4, right: 16 } : undefined}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tick={isMobile ? { fontSize: 10 } : undefined}
-                    width={isMobile ? 36 : undefined}
-                    tickFormatter={(v) => `₹${v / 1000}k`}
-                  />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="revenue" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+            {isLoading ? (
+              <ChartSkeleton height="h-[clamp(220px,34vh,360px)] md:h-[clamp(260px,34vh,420px)]" />
+            ) : (
+              <ChartContainer
+                config={chartConfig}
+                className="h-[clamp(220px,34vh,360px)] md:h-[clamp(260px,34vh,420px)] overflow-hidden"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={revenueData}
+                    margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 8 } : undefined}
+                  >
+                    <XAxis
+                      dataKey="month"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined}
+                      minTickGap={isMobile ? 24 : undefined}
+                      interval={isMobile ? "preserveStartEnd" : undefined}
+                      tickMargin={isMobile ? 8 : undefined}
+                      padding={isMobile ? { left: 4, right: 16 } : undefined}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tick={isMobile ? { fontSize: 10 } : undefined}
+                      width={isMobile ? 36 : undefined}
+                      tickFormatter={(v) => `₹${v / 1000}k`}
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="revenue" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -545,43 +571,47 @@ const AdminAnalytics = () => {
               <CardDescription className="text-xs sm:text-sm">Total members over time</CardDescription>
             </CardHeader>
             <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
-              <ChartContainer
-                config={chartConfig}
-                className="h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)] overflow-hidden"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={memberGrowth}
-                    margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 8 } : undefined}
-                  >
-                    <XAxis
-                      dataKey="month"
-                      tickLine={false}
-                      axisLine={false}
-                      tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined}
-                      minTickGap={isMobile ? 24 : undefined}
-                      interval={isMobile ? "preserveStartEnd" : undefined}
-                      tickMargin={isMobile ? 8 : undefined}
-                      padding={isMobile ? { left: 4, right: 16 } : undefined}
-                    />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      tick={isMobile ? { fontSize: 10 } : undefined}
-                      width={isMobile ? 30 : undefined}
-                    />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line
-                      type="monotone"
-                      dataKey="members"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={2}
-                      dot={isMobile ? { r: 2, fill: "hsl(var(--primary))" } : { fill: "hsl(var(--primary))" }}
-                      activeDot={isMobile ? { r: 3 } : undefined}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+              {isLoading ? (
+                <ChartSkeleton height="h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)]" />
+              ) : (
+                <ChartContainer
+                  config={chartConfig}
+                  className="h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)] overflow-hidden"
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={memberGrowth}
+                      margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 8 } : undefined}
+                    >
+                      <XAxis
+                        dataKey="month"
+                        tickLine={false}
+                        axisLine={false}
+                        tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined}
+                        minTickGap={isMobile ? 24 : undefined}
+                        interval={isMobile ? "preserveStartEnd" : undefined}
+                        tickMargin={isMobile ? 8 : undefined}
+                        padding={isMobile ? { left: 4, right: 16 } : undefined}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tick={isMobile ? { fontSize: 10 } : undefined}
+                        width={isMobile ? 30 : undefined}
+                      />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line
+                        type="monotone"
+                        dataKey="members"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        dot={isMobile ? { r: 2, fill: "hsl(var(--primary))" } : { fill: "hsl(var(--primary))" }}
+                        activeDot={isMobile ? { r: 3 } : undefined}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              )}
             </CardContent>
           </Card>
 
@@ -591,36 +621,40 @@ const AdminAnalytics = () => {
               <CardDescription className="text-xs sm:text-sm">New registrations per month</CardDescription>
             </CardHeader>
             <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
-              <ChartContainer
-                config={chartConfig}
-                className="h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)] overflow-hidden"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={memberGrowth}
-                    margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 8 } : undefined}
-                  >
-                    <XAxis
-                      dataKey="month"
-                      tickLine={false}
-                      axisLine={false}
-                      tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined}
-                      minTickGap={isMobile ? 24 : undefined}
-                      interval={isMobile ? "preserveStartEnd" : undefined}
-                      tickMargin={isMobile ? 8 : undefined}
-                      padding={isMobile ? { left: 4, right: 16 } : undefined}
-                    />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      tick={isMobile ? { fontSize: 10 } : undefined}
-                      width={isMobile ? 30 : undefined}
-                    />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="newMembers" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+              {isLoading ? (
+                <ChartSkeleton height="h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)]" />
+              ) : (
+                <ChartContainer
+                  config={chartConfig}
+                  className="h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)] overflow-hidden"
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={memberGrowth}
+                      margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 8 } : undefined}
+                    >
+                      <XAxis
+                        dataKey="month"
+                        tickLine={false}
+                        axisLine={false}
+                        tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined}
+                        minTickGap={isMobile ? 24 : undefined}
+                        interval={isMobile ? "preserveStartEnd" : undefined}
+                        tickMargin={isMobile ? 8 : undefined}
+                        padding={isMobile ? { left: 4, right: 16 } : undefined}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tick={isMobile ? { fontSize: 10 } : undefined}
+                        width={isMobile ? 30 : undefined}
+                      />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="newMembers" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              )}
             </CardContent>
           </Card>
         </div>

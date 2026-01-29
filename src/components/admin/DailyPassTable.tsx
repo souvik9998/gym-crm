@@ -12,6 +12,8 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
 import { useDailyPassQuery, useDeleteDailyPassUser, type DailyPassUserWithSubscription } from "@/hooks/queries";
+import { usePagination } from "@/hooks/usePagination";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { 
   MoreHorizontal, 
   Trash2, 
@@ -207,6 +209,9 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
     return result;
   }, [users, searchQuery, filterValue]);
 
+  // Pagination
+  const pagination = usePagination(filteredUsers, { initialPageSize: 25 });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -242,7 +247,7 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
       {/* Mobile View */}
       {isMobile ? (
         <div className="rounded-lg border overflow-hidden">
-          {filteredUsers.map((user) => (
+          {pagination.paginatedData.map((user) => (
             <MobileExpandableRow
               key={user.id}
               collapsedContent={
@@ -337,7 +342,7 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
+              {pagination.paginatedData.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.phone}</TableCell>
@@ -398,6 +403,23 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
             </TableBody>
           </Table>
         </div>
+      )}
+
+      {/* Pagination Controls */}
+      {filteredUsers.length > 0 && (
+        <PaginationControls
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          startIndex={pagination.startIndex}
+          endIndex={pagination.endIndex}
+          pageSize={pagination.pageSize}
+          pageSizeOptions={pagination.pageSizeOptions}
+          hasNextPage={pagination.hasNextPage}
+          hasPrevPage={pagination.hasPrevPage}
+          onPageChange={pagination.goToPage}
+          onPageSizeChange={pagination.setPageSize}
+        />
       )}
 
       <ConfirmDialog
