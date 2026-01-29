@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useDashboardStore } from "@/stores/dashboardStore";
 
 export interface Branch {
   id: string;
@@ -39,6 +40,10 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
   const [currentBranch, setCurrentBranchState] = useState<Branch | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [staffRestriction, setStaffRestriction] = useState<StaffBranchRestriction | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Get persisted branch ID from Zustand store
+  const { selectedBranchId, setSelectedBranchId } = useDashboardStore();
   
   // Use ref to track current branch without causing re-renders in fetchBranches
   const currentBranchRef = useRef<Branch | null>(null);
@@ -79,52 +84,63 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
 
       if (filteredBranches.length > 0) {
         let selectedBranch: Branch | undefined;
-        const currentBranchValue = currentBranchRef.current;
         
-        // For staff users, prioritize their primary branch
-        if (staffRestriction?.primaryBranchId) {
+        // PRIORITY 1: Use persisted branch ID from Zustand store
+        if (selectedBranchId) {
+          selectedBranch = filteredBranches.find(b => b.id === selectedBranchId);
+        }
+        
+        // PRIORITY 2: Check localStorage fallback (for backward compatibility)
+        if (!selectedBranch) {
+          const savedBranchId = localStorage.getItem(CURRENT_BRANCH_KEY);
+          if (savedBranchId) {
+            selectedBranch = filteredBranches.find(b => b.id === savedBranchId);
+          }
+        }
+        
+        // PRIORITY 3: For staff users, use their primary branch
+        if (!selectedBranch && staffRestriction?.primaryBranchId) {
           selectedBranch = filteredBranches.find(b => b.id === staffRestriction.primaryBranchId);
         }
         
-        // If no primary branch, try default branch
+        // PRIORITY 4: Try default branch
         if (!selectedBranch) {
           selectedBranch = filteredBranches.find(b => b.is_default);
         }
         
-        // If no default branch, try saved branch from localStorage
-        if (!selectedBranch) {
-          const savedBranchId = localStorage.getItem(CURRENT_BRANCH_KEY);
-          selectedBranch = filteredBranches.find(b => b.id === savedBranchId);
-        }
-        
-        // If still not found, use first branch
+        // PRIORITY 5: Use first branch
         if (!selectedBranch) {
           selectedBranch = filteredBranches[0];
         }
 
-        // Only update if current branch is null or if the current branch is not in the allowed list
-        const currentIsAllowed = currentBranchValue && filteredBranches.some(b => b.id === currentBranchValue.id);
+        // Only set if different or not initialized
+        const currentIsAllowed = currentBranchRef.current && filteredBranches.some(b => b.id === currentBranchRef.current?.id);
         
-        if (!currentBranchValue || !currentIsAllowed) {
+        if (!currentBranchRef.current || !currentIsAllowed || !isInitialized) {
           setCurrentBranchState(selectedBranch);
+          // Sync both localStorage and Zustand
           localStorage.setItem(CURRENT_BRANCH_KEY, selectedBranch.id);
-        } else if (currentBranchValue) {
+          setSelectedBranchId(selectedBranch.id);
+        } else if (currentBranchRef.current) {
           // Update current branch data if it exists in the list (in case branch details changed)
-          const updatedCurrentBranch = filteredBranches.find(b => b.id === currentBranchValue.id);
-          if (updatedCurrentBranch && JSON.stringify(updatedCurrentBranch) !== JSON.stringify(currentBranchValue)) {
+          const updatedCurrentBranch = filteredBranches.find(b => b.id === currentBranchRef.current?.id);
+          if (updatedCurrentBranch && JSON.stringify(updatedCurrentBranch) !== JSON.stringify(currentBranchRef.current)) {
             setCurrentBranchState(updatedCurrentBranch);
           }
         }
+        
+        setIsInitialized(true);
       } else if (filteredBranches.length === 0 && staffRestriction) {
         // Staff has no assigned branches - clear current branch
         setCurrentBranchState(null);
+        setSelectedBranchId(null);
       }
     } finally {
       setIsLoading(false);
     }
-  }, [staffRestriction]);
+  }, [staffRestriction, selectedBranchId, setSelectedBranchId, isInitialized]);
 
-  const setCurrentBranch = (branch: Branch) => {
+  const setCurrentBranch = useCallback((branch: Branch) => {
     // For staff users, verify the branch is in their allowed list
     if (staffRestriction) {
       const isAllowed = staffRestriction.branchIds.includes(branch.id);
@@ -135,14 +151,16 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
     }
     
     setCurrentBranchState(branch);
+    // Sync both localStorage and Zustand store
     localStorage.setItem(CURRENT_BRANCH_KEY, branch.id);
-  };
+    setSelectedBranchId(branch.id);
+  }, [staffRestriction, setSelectedBranchId]);
 
   const setStaffBranchRestriction = useCallback((restriction: StaffBranchRestriction | null) => {
     setStaffRestriction(restriction);
   }, []);
 
-  // Separate effect for initial fetch
+  // Initial fetch on mount
   useEffect(() => {
     fetchBranches();
   }, [fetchBranches]);

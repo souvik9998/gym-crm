@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -26,29 +26,11 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
 import { useBranch } from "@/contexts/BranchContext";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
+import { usePaymentsQuery, type PaymentWithDetails } from "@/hooks/useDashboardQueries";
+import { TableSkeleton } from "@/components/ui/skeleton-loaders";
 
 type PaymentMode = Database["public"]["Enums"]["payment_mode"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
-
-interface Payment {
-  id: string;
-  amount: number;
-  payment_mode: PaymentMode;
-  status: PaymentStatus | null;
-  created_at: string | null;
-  notes: string | null;
-  payment_type: string | null;
-  member_id: string | null;
-  daily_pass_user_id: string | null;
-  member: {
-    name: string;
-    phone: string;
-  } | null;
-  daily_pass_user: {
-    name: string;
-    phone: string;
-  } | null;
-}
 
 interface PaymentHistoryProps {
   refreshKey: number;
@@ -57,52 +39,49 @@ interface PaymentHistoryProps {
 export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const { currentBranch } = useBranch();
   const isMobile = useIsMobile();
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  // Use React Query for cached data fetching
+  const { data: paymentsData, isLoading, refetch } = usePaymentsQuery();
+  const payments = paymentsData || [];
+  
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [paymentMode, setPaymentMode] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
+  // Refetch when refreshKey changes (manual refresh)
   useEffect(() => {
-    fetchPayments();
-  }, [refreshKey, currentBranch?.id]);
-
-  const fetchPayments = async () => {
-    setIsLoading(true);
-    try {
-      let query = supabase
-        .from("payments")
-        .select(`
-          id,
-          amount,
-          payment_mode,
-          status,
-          created_at,
-          notes,
-          payment_type,
-          member_id,
-          daily_pass_user_id,
-          member:members(name, phone),
-          daily_pass_user:daily_pass_users(name, phone)
-        `)
-        .order("created_at", { ascending: false });
-
-      if (currentBranch?.id) {
-        query = query.eq("branch_id", currentBranch.id);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setPayments(data || []);
-    } catch (error) {
-      console.error("Error fetching payments:", error);
-    } finally {
-      setIsLoading(false);
+    if (refreshKey > 0) {
+      refetch();
     }
-  };
+  }, [refreshKey, refetch]);
+
+  // Filter payments based on current filters
+  const filteredPayments = useMemo(() => {
+    return payments.filter((payment) => {
+      // Date filter
+      if (dateFrom && payment.created_at) {
+        const paymentDate = new Date(payment.created_at).toISOString().split("T")[0];
+        if (paymentDate < dateFrom) return false;
+      }
+      if (dateTo && payment.created_at) {
+        const paymentDate = new Date(payment.created_at).toISOString().split("T")[0];
+        if (paymentDate > dateTo) return false;
+      }
+      
+      // Payment mode filter
+      if (paymentMode !== "all" && payment.payment_mode !== paymentMode) return false;
+      
+      // Status filter
+      if (statusFilter !== "all" && payment.status !== statusFilter) return false;
+      
+      // Type filter
+      if (typeFilter !== "all" && payment.payment_type !== typeFilter) return false;
+      
+      return true;
+    });
+  }, [payments, dateFrom, dateTo, paymentMode, statusFilter, typeFilter]);
 
   const clearFilters = () => {
     setDateFrom("");
@@ -111,38 +90,6 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     setStatusFilter("all");
     setTypeFilter("all");
   };
-
-  const filteredPayments = payments.filter((payment) => {
-    // Date filter
-    if (dateFrom && payment.created_at) {
-      const paymentDate = new Date(payment.created_at);
-      const fromDate = new Date(dateFrom);
-      if (paymentDate < fromDate) return false;
-    }
-    if (dateTo && payment.created_at) {
-      const paymentDate = new Date(payment.created_at);
-      const toDate = new Date(dateTo);
-      toDate.setHours(23, 59, 59, 999);
-      if (paymentDate > toDate) return false;
-    }
-
-    // Payment mode filter
-    if (paymentMode !== "all" && payment.payment_mode !== paymentMode) {
-      return false;
-    }
-
-    // Status filter
-    if (statusFilter !== "all" && payment.status !== statusFilter) {
-      return false;
-    }
-
-    // Type filter
-    if (typeFilter !== "all" && payment.payment_type !== typeFilter) {
-      return false;
-    }
-
-    return true;
-  });
 
   const getStatusBadge = (status: PaymentStatus | null) => {
     switch (status) {

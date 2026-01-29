@@ -13,6 +13,9 @@ import { format, isAfter, addDays, isBefore } from "date-fns";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
+import { useDailyPassQuery, type DailyPassUserWithSubscription } from "@/hooks/useDashboardQueries";
+import { useInvalidateQueries, CACHE_KEYS } from "@/hooks/useQueryCache";
+import { TableSkeleton } from "@/components/ui/skeleton-loaders";
 import { 
   MoreHorizontal, 
   Search, 
@@ -27,29 +30,6 @@ import {
   IndianRupee
 } from "lucide-react";
 
-interface DailyPassUser {
-  id: string;
-  name: string;
-  phone: string;
-  email: string | null;
-  gender: string | null;
-  created_at: string;
-  subscription?: {
-    id: string;
-    package_name: string;
-    duration_days: number;
-    start_date: string;
-    end_date: string;
-    price: number;
-    trainer_fee: number;
-    status: string;
-    personal_trainer_id: string | null;
-    trainer?: {
-      name: string;
-    };
-  };
-}
-
 interface DailyPassTableProps {
   searchQuery: string;
   refreshKey: number;
@@ -59,65 +39,21 @@ interface DailyPassTableProps {
 const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTableProps) => {
   const { currentBranch } = useBranch();
   const isMobile = useIsMobile();
-  const [users, setUsers] = useState<DailyPassUser[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { invalidate } = useInvalidateQueries();
+  
+  // Use React Query for cached data fetching
+  const { data: usersData, isLoading, refetch } = useDailyPassQuery();
+  const users = usersData || [];
+  
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<DailyPassUser | null>(null);
+  const [userToDelete, setUserToDelete] = useState<DailyPassUserWithSubscription | null>(null);
 
+  // Refetch when refreshKey changes (manual refresh)
   useEffect(() => {
-    if (currentBranch?.id) {
-      fetchUsers();
+    if (refreshKey > 0) {
+      refetch();
     }
-  }, [refreshKey, currentBranch?.id]);
-
-  const fetchUsers = async () => {
-    if (!currentBranch?.id) return;
-    
-    setIsLoading(true);
-    try {
-      // Fetch daily pass users with their latest subscription
-      const { data: usersData, error: usersError } = await supabase
-        .from("daily_pass_users")
-        .select("*")
-        .eq("branch_id", currentBranch.id)
-        .order("created_at", { ascending: false });
-
-      if (usersError) throw usersError;
-
-      // Fetch subscriptions for each user
-      const usersWithSubs = await Promise.all(
-        (usersData || []).map(async (user) => {
-          const { data: subData } = await supabase
-            .from("daily_pass_subscriptions")
-            .select(`
-              *,
-              personal_trainers:personal_trainer_id (name)
-            `)
-            .eq("daily_pass_user_id", user.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          return {
-            ...user,
-            subscription: subData ? {
-              ...subData,
-              trainer: subData.personal_trainers || undefined,
-            } : undefined,
-          };
-        })
-      );
-
-      setUsers(usersWithSubs);
-    } catch (error) {
-      console.error("Error fetching daily pass users:", error);
-      toast.error("Error", {
-        description: "Failed to load daily pass users",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [refreshKey, refetch]);
 
   const handleDelete = async () => {
     if (!userToDelete) return;
@@ -192,7 +128,7 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
         description: "Daily pass user deleted successfully",
       });
 
-      fetchUsers();
+      invalidate([CACHE_KEYS.DAILY_PASS_USERS]); // Invalidate cache to refetch
     } catch (error: any) {
       console.error("Error deleting user:", error);
       toast.error("Error", {
@@ -204,7 +140,7 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
     }
   };
 
-  const getStatusBadge = (subscription?: DailyPassUser["subscription"]) => {
+  const getStatusBadge = (subscription?: DailyPassUserWithSubscription["subscription"]) => {
     if (!subscription) {
       return <Badge variant="outline" className="text-muted-foreground">No Pass</Badge>;
     }
@@ -224,7 +160,7 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
     }
   };
 
-  const getStatusText = (subscription?: DailyPassUser["subscription"]) => {
+  const getStatusText = (subscription?: DailyPassUserWithSubscription["subscription"]) => {
     if (!subscription) {
       return "No Pass";
     }
