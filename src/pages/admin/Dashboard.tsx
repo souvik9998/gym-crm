@@ -231,10 +231,63 @@ const fetchDashboardStats = async (branchId?: string): Promise<DashboardStats> =
 
 const AdminDashboard = () => {
   const { currentBranch } = useBranch();
-  const { isStaffLoggedIn, permissions } = useStaffAuth();
-  const { isAdmin } = useIsAdmin();
+  const { isStaffLoggedIn, permissions, isLoading: staffLoading, staffUser } = useStaffAuth();
+  const { isAdmin, isLoading: adminLoading } = useIsAdmin();
   const queryClient = useQueryClient();
   const { invalidateMembers, invalidatePayments } = useInvalidateQueries();
+  
+  // Check sessions immediately using synchronous localStorage checks
+  // This ensures the button appears instantly on page load
+  const [hasAdminSession, setHasAdminSession] = useState(() => {
+    try {
+      // Check all localStorage keys for supabase auth tokens
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes('supabase') || key.includes('sb-')) && key.includes('auth')) {
+          const data = localStorage.getItem(key);
+          if (data) {
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed?.access_token || parsed?.currentSession?.access_token || parsed?.expires_at) {
+                return true;
+              }
+            } catch {
+              // Continue checking
+            }
+          }
+        }
+      }
+    } catch (error) {
+      // Silent fail
+    }
+    return false;
+  });
+  
+  // Check staff session synchronously
+  const [hasStaffSession] = useState(() => {
+    try {
+      const staffSession = localStorage.getItem('staff_session');
+      if (staffSession) {
+        const parsed = JSON.parse(staffSession);
+        // Check if session is not expired
+        if (parsed?.expiresAt && new Date(parsed.expiresAt) > new Date()) {
+          return true;
+        }
+      }
+    } catch (error) {
+      // Silent fail
+    }
+    return false;
+  });
+  
+  // Also verify sessions asynchronously
+  useEffect(() => {
+    const checkSessions = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setHasAdminSession(!!session?.user);
+    };
+    checkSessions();
+  }, []);
   
   // Use Zustand store for persisted UI state
   const {
@@ -253,7 +306,12 @@ const AdminDashboard = () => {
   } = useDashboardStore();
   
   // Check if user can manage members (admin or staff with can_manage_members permission)
-  const canManageMembers = isAdmin || (isStaffLoggedIn && permissions?.can_manage_members === true);
+  // Show button immediately if:
+  // 1. Admin session exists (optimistic check from localStorage) OR isAdmin is true
+  // 2. Staff session exists (optimistic) - show button, permissions will be verified when they load
+  // 3. Staff user with permissions loaded and can_manage_members is true
+  // This ensures the button appears instantly on page load
+  const canManageMembers = hasAdminSession || isAdmin || hasStaffSession || (isStaffLoggedIn && (permissions?.can_manage_members === true || !staffLoading));
   
   // Search with debouncing (not persisted - cleared on refresh is fine)
   const [searchInput, setSearchInput] = useState("");
