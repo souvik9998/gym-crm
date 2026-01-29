@@ -337,9 +337,9 @@ export const StaffDetailDialog = ({ staff, open, onOpenChange }: StaffDetailDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-4 md:p-3">
+        <DialogHeader className="pb-2 md:pb-2">
+          <DialogTitle className="flex items-center gap-2 md:gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
               <User className="w-5 h-5 text-primary" />
             </div>
@@ -353,14 +353,14 @@ export const StaffDetailDialog = ({ staff, open, onOpenChange }: StaffDetailDial
           <DialogDescription>Complete staff member details and salary history</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 mt-4">
+        <div className="space-y-4 md:space-y-3 mt-2 md:mt-3">
           {/* Basic Information */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Basic Information</CardTitle>
+            <CardHeader className="px-3 md:px-4 py-2 md:py-3">
+              <CardTitle className="text-base md:text-lg">Basic Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <CardContent className="space-y-3 md:space-y-2 px-3 md:px-4 pb-3 md:pb-4">
+              <div className="grid grid-cols-2 gap-3 md:gap-2">
                 <div className="flex items-start gap-3">
                   <Phone className="w-5 h-5 text-muted-foreground mt-0.5" />
                   <div>

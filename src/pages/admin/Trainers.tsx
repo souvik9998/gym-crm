@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,6 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
-import { AdminLayout } from "@/components/admin/AdminLayout";
 
 interface Trainer {
   id: string;
@@ -292,11 +291,7 @@ const TrainersPage = () => {
   };
 
   return (
-    <AdminLayout 
-      title="Trainers" 
-      subtitle="Manage personal trainers"
-      onRefresh={() => setRefreshKey(k => k + 1)}
-    >
+    <Fragment>
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Add Trainer Card */}
         <Card className="border-0 shadow-sm">
@@ -587,7 +582,7 @@ const TrainersPage = () => {
         variant={confirmDialog.variant}
         onConfirm={confirmDialog.onConfirm}
       />
-    </AdminLayout>
+    </Fragment>
   );
 };
 

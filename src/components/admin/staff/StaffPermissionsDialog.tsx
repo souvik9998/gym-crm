@@ -200,15 +200,15 @@ export const StaffPermissionsDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Staff Permissions</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="sm:max-w-md p-4 md:p-3">
+        <DialogHeader className="pb-2 md:pb-2">
+          <DialogTitle className="text-base md:text-lg">Staff Permissions</DialogTitle>
+          <DialogDescription className="text-xs md:text-sm">
             Configure what {staff?.full_name} can access and manage
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 md:space-y-2 py-2 md:py-3">
           <div className="space-y-2">
             <div className="p-3 bg-muted/50 rounded-lg text-sm">
               <p><strong>Name:</strong> {staff?.full_name}</p>

@@ -125,19 +125,19 @@ export const StaffPasswordDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="sm:max-w-md p-4 md:p-3">
+        <DialogHeader className="pb-2 md:pb-2">
+          <DialogTitle className="text-base md:text-lg">
             {staff?.password_hash ? "Update Password" : "Set Password"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs md:text-sm">
             {staff?.password_hash
               ? `Update login password for ${staff?.full_name}`
               : `Create login credentials for ${staff?.full_name}`}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 md:space-y-2 py-2 md:py-3">
           <div className="space-y-2">
             <Label>Staff Details</Label>
             <div className="p-3 bg-muted/50 rounded-lg text-sm">

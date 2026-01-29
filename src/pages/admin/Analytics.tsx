@@ -25,7 +25,6 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { AdminLayout } from "@/components/admin/AdminLayout";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { PeriodSelector, PeriodType, getPeriodDates } from "@/components/admin/PeriodSelector";
 import { format, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, differenceInDays, parseISO } from "date-fns";
@@ -405,7 +404,6 @@ const AdminAnalytics = () => {
   };
 
   return (
-    <AdminLayout title="Analytics" subtitle="Business insights and trends">
       <div className="max-w-6xl mx-auto space-y-3 sm:space-y-6">
         {/* Summary Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
@@ -765,7 +763,6 @@ const AdminAnalytics = () => {
           </Card>
         )}
       </div>
-    </AdminLayout>
   );
 };
 

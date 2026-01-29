@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -62,7 +62,6 @@ import {
   Legend,
 } from "recharts";
 import LedgerDetailDialog from "@/components/admin/LedgerDetailDialog";
-import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useQuery } from "@tanstack/react-query";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
 
@@ -595,7 +594,7 @@ const AdminLedger = () => {
   };
 
   return (
-    <AdminLayout title="Ledger" subtitle="Track profit & loss" onRefresh={() => fetchEntries()}>
+    <Fragment>
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Date Range Selector */}
         <Card>
@@ -1143,7 +1142,7 @@ const AdminLedger = () => {
         onOpenChange={setIsDetailOpen}
         getCategoryLabel={getCategoryLabel}
       />
-    </AdminLayout>
+    </Fragment>
   );
 };
 

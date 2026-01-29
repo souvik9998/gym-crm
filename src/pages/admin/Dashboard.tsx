@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo, memo } from "react";
+import { useEffect, useState, useCallback, useMemo, memo, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,6 @@ import DailyPassTable from "@/components/admin/DailyPassTable";
 import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
 import { AddPaymentDialog } from "@/components/admin/AddPaymentDialog";
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
-import { AdminLayout } from "@/components/admin/AdminLayout";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { toast } from "@/components/ui/sonner";
 import {
@@ -369,11 +368,7 @@ const AdminDashboard = () => {
   }), [displayStats]);
 
   return (
-    <AdminLayout
-      title="Dashboard"
-      subtitle="Overview of your gym"
-      onRefresh={handleRefresh}
-    >
+    <Fragment>
       <div className="space-y-3 md:space-y-6 max-w-7xl mx-auto">
         {/* Stats Grid */}
         {statsLoading && !stats ? (
@@ -756,7 +751,7 @@ const AdminDashboard = () => {
         onOpenChange={setIsAddPaymentOpen}
         onSuccess={handlePaymentSuccess}
       />
-    </AdminLayout>
+    </Fragment>
   );
 };
 

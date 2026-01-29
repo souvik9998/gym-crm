@@ -280,22 +280,22 @@ export const EditMemberDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <User className="w-5 h-5" />
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-4 md:p-3">
+        <DialogHeader className="pb-2 md:pb-2">
+          <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
+            <User className="w-4 h-4 md:w-5 md:h-5" />
             Edit Member
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-3">
           {/* Contact Details */}
-          <div className="space-y-4">
-            <h4 className="font-medium text-sm flex items-center gap-2 text-muted-foreground">
-              <Phone className="w-4 h-4" />
+          <div className="space-y-3 md:space-y-2">
+            <h4 className="font-medium text-xs md:text-sm flex items-center gap-2 text-muted-foreground">
+              <Phone className="w-3.5 h-3.5 md:w-4 md:h-4" />
               Contact Information
             </h4>
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-2">
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
                 <Input

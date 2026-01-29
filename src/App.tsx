@@ -7,6 +7,7 @@ import { BranchProvider, useBranch } from "@/contexts/BranchContext";
 import { StaffAuthProvider, useStaffAuth } from "@/contexts/StaffAuthContext";
 import { PageLoader } from "@/components/ui/skeleton-loaders";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
+import { AdminLayoutRoute } from "@/components/admin/AdminLayoutRoute";
 import Index from "./pages/Index";
 import Register from "./pages/Register";
 import Renew from "./pages/Renew";
@@ -83,81 +84,93 @@ const App = () => (
               <Route path="/profile" element={<MemberProfile />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               
-              {/* Admin-only routes */}
-              <Route path="/admin/dashboard" element={
-                <Suspense fallback={<PageLoader />}>
-                  <ProtectedRoute requiredPermission="admin_only">
+              {/* Admin routes with persistent layout */}
+              <Route element={
+                <ProtectedRoute requiredPermission="admin_only">
+                  <AdminLayoutRoute />
+                </ProtectedRoute>
+              }>
+                <Route path="/admin/dashboard" element={
+                  <Suspense fallback={<PageLoader />}>
                     <AdminDashboard />
-                  </ProtectedRoute>
-                </Suspense>
-              } />
-              <Route path="/admin/staff" element={
-                <Suspense fallback={<PageLoader />}>
-                  <ProtectedRoute requiredPermission="admin_only">
+                  </Suspense>
+                } />
+                <Route path="/admin/staff" element={
+                  <Suspense fallback={<PageLoader />}>
                     <StaffManagement />
-                  </ProtectedRoute>
-                </Suspense>
-              } />
-              <Route path="/admin/trainers" element={
-                <Suspense fallback={<PageLoader />}>
-                  <ProtectedRoute requiredPermission="admin_only">
+                  </Suspense>
+                } />
+                <Route path="/admin/trainers" element={
+                  <Suspense fallback={<PageLoader />}>
                     <TrainersPage />
-                  </ProtectedRoute>
-                </Suspense>
-              } />
-              <Route path="/admin/logs" element={
-                <Suspense fallback={<PageLoader />}>
-                  <ProtectedRoute requiredPermission="admin_only">
+                  </Suspense>
+                } />
+                <Route path="/admin/logs" element={
+                  <Suspense fallback={<PageLoader />}>
                     <Logs />
-                  </ProtectedRoute>
-                </Suspense>
-              } />
-              
-              {/* Permission-gated routes for staff */}
-              <Route path="/admin/qr-code" element={
-                <Suspense fallback={<PageLoader />}>
-                  <ProtectedRoute requiredPermission="can_change_settings">
-                    <AdminQRCode />
-                  </ProtectedRoute>
-                </Suspense>
-              } />
-              <Route path="/admin/settings" element={
-                <Suspense fallback={<PageLoader />}>
-                  <ProtectedRoute requiredPermission="can_change_settings">
-                    <AdminSettings />
-                  </ProtectedRoute>
-                </Suspense>
-              } />
-              <Route path="/admin/analytics" element={
-                <Suspense fallback={<PageLoader />}>
-                  <ProtectedRoute requiredPermission="can_access_analytics">
-                    <AdminAnalytics />
-                  </ProtectedRoute>
-                </Suspense>
-              } />
-              <Route path="/admin/branch-analytics" element={
-                <Suspense fallback={<PageLoader />}>
-                  <ProtectedRoute requiredPermission="admin_only">
+                  </Suspense>
+                } />
+                <Route path="/admin/branch-analytics" element={
+                  <Suspense fallback={<PageLoader />}>
                     <BranchAnalytics />
-                  </ProtectedRoute>
-                </Suspense>
-              } />
-              <Route path="/admin/ledger" element={
-                <Suspense fallback={<PageLoader />}>
-                  <ProtectedRoute requiredPermission="can_access_ledger">
+                  </Suspense>
+                } />
+              </Route>
+
+              {/* Permission-gated routes with persistent layout */}
+              <Route element={
+                <ProtectedRoute requiredPermission="can_change_settings">
+                  <AdminLayoutRoute />
+                </ProtectedRoute>
+              }>
+                <Route path="/admin/qr-code" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <AdminQRCode />
+                  </Suspense>
+                } />
+                <Route path="/admin/settings" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <AdminSettings />
+                  </Suspense>
+                } />
+              </Route>
+
+              <Route element={
+                <ProtectedRoute requiredPermission="can_access_analytics">
+                  <AdminLayoutRoute />
+                </ProtectedRoute>
+              }>
+                <Route path="/admin/analytics" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <AdminAnalytics />
+                  </Suspense>
+                } />
+              </Route>
+
+              <Route element={
+                <ProtectedRoute requiredPermission="can_access_ledger">
+                  <AdminLayoutRoute />
+                </ProtectedRoute>
+              }>
+                <Route path="/admin/ledger" element={
+                  <Suspense fallback={<PageLoader />}>
                     <AdminLedger />
-                  </ProtectedRoute>
-                </Suspense>
-              } />
+                  </Suspense>
+                } />
+              </Route>
               
               {/* Staff Dashboard Route - staff only */}
-              <Route path="/staff/dashboard" element={
-                <Suspense fallback={<PageLoader />}>
-                  <ProtectedRoute staffOnly>
+              <Route element={
+                <ProtectedRoute staffOnly>
+                  <AdminLayoutRoute />
+                </ProtectedRoute>
+              }>
+                <Route path="/staff/dashboard" element={
+                  <Suspense fallback={<PageLoader />}>
                     <StaffDashboard />
-                  </ProtectedRoute>
-                </Suspense>
-              } />
+                  </Suspense>
+                } />
+              </Route>
               
               {/* Branch-specific routes */}
               <Route path="/b/:branchId" element={<Index />} />

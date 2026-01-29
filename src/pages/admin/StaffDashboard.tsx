@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo, memo } from "react";
+import { useEffect, useState, useCallback, useMemo, memo, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +23,6 @@ import DailyPassTable from "@/components/admin/DailyPassTable";
 import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
 import { AddPaymentDialog } from "@/components/admin/AddPaymentDialog";
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
-import { AdminLayout } from "@/components/admin/AdminLayout";
 import { toast } from "@/components/ui/sonner";
 import {
   Popover,
@@ -337,11 +336,7 @@ const StaffDashboard = () => {
   }
 
   return (
-    <AdminLayout
-      title={`Welcome, ${staffUser?.fullName || "Staff"}`}
-      subtitle={`${staffUser?.role ? staffUser.role.charAt(0).toUpperCase() + staffUser.role.slice(1) : "Staff"} Dashboard`}
-      onRefresh={handleRefresh}
-    >
+    <Fragment>
       <div className="space-y-6 max-w-7xl mx-auto">
         {/* Stats Grid - Only show if can see members */}
         {canSeeMembers && (
@@ -619,7 +614,7 @@ const StaffDashboard = () => {
           onSuccess={handlePaymentSuccess}
         />
       )}
-    </AdminLayout>
+    </Fragment>
   );
 };
 

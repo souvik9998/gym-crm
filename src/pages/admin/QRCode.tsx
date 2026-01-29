@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
@@ -13,10 +14,10 @@ import {
   BuildingOffice2Icon,
 } from "@heroicons/react/24/outline";
 import { toast } from "@/components/ui/sonner";
-import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useBranch, type Branch } from "@/contexts/BranchContext";
 
 const QRCodePage = () => {
+  const navigate = useNavigate();
   const [copied, setCopied] = useState<string | null>(null);
   const { branches } = useBranch();
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
@@ -79,8 +80,7 @@ const QRCodePage = () => {
 
   if (branches.length === 0) {
     return (
-      <AdminLayout title="QR Code" subtitle="Member Registration Portal">
-        <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto">
           <Card className="border-0 shadow-sm">
             <CardContent className="p-8 text-center">
               <BuildingOffice2Icon className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
@@ -88,18 +88,16 @@ const QRCodePage = () => {
               <p className="text-muted-foreground mb-4">
                 Please add a branch in Settings first to generate QR codes for member registration.
               </p>
-              <Button onClick={() => window.location.href = "/admin/settings"}>
+              <Button onClick={() => navigate("/admin/settings")}>
                 Go to Settings
               </Button>
             </CardContent>
           </Card>
         </div>
-      </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout title="QR Codes" subtitle="Branch-specific registration portals">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Branch Tabs */}
         <Tabs 
@@ -262,7 +260,6 @@ const QRCodePage = () => {
           })}
         </Tabs>
       </div>
-    </AdminLayout>
   );
 };
 

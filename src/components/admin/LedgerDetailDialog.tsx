@@ -87,9 +87,9 @@ const LedgerDetailDialog = ({ entry, open, onOpenChange, getCategoryLabel }: Led
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-4 md:p-3">
+        <DialogHeader className="pb-2 md:pb-2">
+          <DialogTitle className="flex items-center gap-2 md:gap-3 text-base md:text-lg">
             <div className={cn(
               "p-2 rounded-lg",
               isIncome ? "bg-success/10" : "bg-destructive/10"
@@ -109,12 +109,12 @@ const LedgerDetailDialog = ({ entry, open, onOpenChange, getCategoryLabel }: Led
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5 mt-4">
+        <div className="space-y-3 md:space-y-2 mt-2 md:mt-3">
           {/* Amount */}
-          <div className="text-center py-4 rounded-lg bg-muted/30">
-            <p className="text-sm text-muted-foreground mb-1">Amount</p>
+          <div className="text-center py-3 md:py-2 rounded-lg bg-muted/30">
+            <p className="text-xs md:text-sm text-muted-foreground mb-1">Amount</p>
             <p className={cn(
-              "text-3xl font-bold",
+              "text-2xl md:text-3xl font-bold",
               isIncome ? "text-success" : "text-destructive"
             )}>
               {isIncome ? "+" : "-"}₹{Number(entry.amount).toLocaleString("en-IN")}
@@ -122,12 +122,12 @@ const LedgerDetailDialog = ({ entry, open, onOpenChange, getCategoryLabel }: Led
           </div>
 
           {/* Timing Information */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Clock className="w-4 h-4" />
+          <div className="space-y-2 md:space-y-2">
+            <h4 className="text-xs md:text-sm font-semibold text-foreground flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 md:w-4 md:h-4" />
               Timing Details
             </h4>
-            <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+            <div className="bg-muted/30 rounded-lg p-3 md:p-2.5 space-y-2 md:space-y-2">
               <div className="flex items-center gap-3">
                 <Calendar className="w-4 h-4 text-muted-foreground" />
                 <div>

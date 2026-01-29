@@ -535,27 +535,27 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
 
       {/* Activity Detail Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-4 md:p-3">
           {selectedActivity && (
             <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-accent/10">
+              <DialogHeader className="pb-2 md:pb-2">
+                <DialogTitle className="flex items-center gap-2 md:gap-3">
+                  <div className="p-1.5 md:p-2 rounded-lg bg-accent/10">
                     {getTypeIcon(selectedActivity.activity_type)}
                   </div>
                   <div>
-                    <p className="text-lg font-semibold">Activity Details</p>
-                    <p className="text-sm font-normal text-muted-foreground capitalize">
+                    <p className="text-base md:text-lg font-semibold">Activity Details</p>
+                    <p className="text-xs md:text-sm font-normal text-muted-foreground capitalize">
                       {selectedActivity.activity_type.replace(/_/g, " ")}
                     </p>
                   </div>
                 </DialogTitle>
               </DialogHeader>
 
-              <div className="space-y-5 mt-4">
+              <div className="space-y-3 md:space-y-2 mt-2 md:mt-3">
                 {/* Amount if present */}
                 {selectedActivity.amount && (
-                  <div className="text-center py-4 rounded-lg bg-success/10">
+                  <div className="text-center py-3 md:py-2 rounded-lg bg-success/10">
                     <p className="text-sm text-muted-foreground mb-1">Amount</p>
                     <p className="text-3xl font-bold text-success">
                       ₹{Number(selectedActivity.amount).toLocaleString("en-IN")}

@@ -1,9 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch, type Branch } from "@/contexts/BranchContext";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -784,7 +783,7 @@ const BranchAnalytics = () => {
   }, [filteredTrainerMetrics, bestTrainer]);
 
   return (
-    <AdminLayout title="Branch Analytics" subtitle="Comprehensive multi-branch performance insights">
+    <Fragment>
       <div className="space-y-3 sm:space-y-6">
         {/* Header with Period Selector */}
         <div className="flex flex-col gap-3 sm:gap-4">
@@ -2525,7 +2524,7 @@ const BranchAnalytics = () => {
           )}
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+    </Fragment>
   );
 };
 

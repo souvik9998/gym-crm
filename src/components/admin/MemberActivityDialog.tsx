@@ -219,12 +219,12 @@ export const MemberActivityDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="p-6 pb-2">
-          <DialogTitle className="flex items-center gap-2">
-            <User className="w-5 h-5 text-accent" />
+        <DialogHeader className="p-6 md:p-3 pb-2">
+          <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
+            <User className="w-4 h-4 md:w-5 md:h-5 text-accent" />
             {memberName}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs md:text-sm">
             Member activity, subscriptions, and payment history
           </DialogDescription>
         </DialogHeader>
@@ -234,67 +234,67 @@ export const MemberActivityDialog = ({
             <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
           </div>
         ) : (
-          <Tabs defaultValue="overview" className="flex-1 overflow-hidden flex flex-col px-6 pb-6">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="subscriptions">Gym</TabsTrigger>
-              <TabsTrigger value="pt">PT History</TabsTrigger>
-              <TabsTrigger value="payments">Payments</TabsTrigger>
+          <Tabs defaultValue="overview" className="flex-1 overflow-hidden flex flex-col px-6 md:px-3 pb-6 md:pb-3">
+            <TabsList className="grid w-full grid-cols-4 h-9 md:h-8">
+              <TabsTrigger value="overview" className="text-xs md:text-sm">Overview</TabsTrigger>
+              <TabsTrigger value="subscriptions" className="text-xs md:text-sm">Gym</TabsTrigger>
+              <TabsTrigger value="pt" className="text-xs md:text-sm">PT History</TabsTrigger>
+              <TabsTrigger value="payments" className="text-xs md:text-sm">Payments</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}
-            <TabsContent value="overview" className="mt-4 flex-1 overflow-hidden">
-              <ScrollArea className="h-[400px] pr-2">
-                <div className="space-y-4">
+            <TabsContent value="overview" className="mt-2 md:mt-3 flex-1 overflow-hidden">
+              <ScrollArea className="h-[400px] pr-1 md:pr-2">
+                <div className="space-y-2 md:space-y-3">
                   <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                    <CardHeader className="pb-2 md:pb-2 px-3 md:px-4 pt-3 md:pt-4">
+                      <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
                         Contact Information
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <Phone className="w-4 h-4 text-muted-foreground" />
-                        <span>+91 {member?.phone}</span>
+                    <CardContent className="space-y-2 px-3 md:px-4 pb-3 md:pb-4">
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <span className="text-sm md:text-base">+91 {member?.phone}</span>
                       </div>
                       {member?.email && (
-                        <div className="flex items-center gap-3">
-                          <User className="w-4 h-4 text-muted-foreground" />
-                          <span>{member.email}</span>
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <span className="text-sm md:text-base break-words">{member.email}</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-3">
-                        <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <span>Joined: {member?.join_date ? formatDate(member.join_date) : "N/A"}</span>
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <span className="text-sm md:text-base">Joined: {member?.join_date ? formatDate(member.join_date) : "N/A"}</span>
                       </div>
                     </CardContent>
                   </Card>
 
                   <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                    <CardHeader className="pb-2 px-3 md:px-4 pt-3 md:pt-4">
+                      <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
                         Personal Details
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <User className="w-4 h-4 text-muted-foreground" />
-                        <span>
-                          <span className="text-muted-foreground text-sm">Gender: </span>
+                    <CardContent className="space-y-2 px-3 md:px-4 pb-3 md:pb-4">
+                      <div className="flex items-start gap-2 md:gap-3">
+                        <User className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                        <span className="text-sm md:text-base">
+                          <span className="text-muted-foreground">Gender: </span>
                           <span className="capitalize">{details?.gender || "Not provided"}</span>
                         </span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <MapPin className="w-4 h-4 text-muted-foreground" />
-                        <span>
-                          <span className="text-muted-foreground text-sm">Address: </span>
+                      <div className="flex items-start gap-2 md:gap-3">
+                        <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                        <span className="text-sm md:text-base break-words">
+                          <span className="text-muted-foreground">Address: </span>
                           {details?.address || "Not provided"}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <IdCard className="w-4 h-4 text-muted-foreground" />
-                        <span>
-                          <span className="text-muted-foreground text-sm">Photo ID: </span>
+                      <div className="flex items-start gap-2 md:gap-3">
+                        <IdCard className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                        <span className="text-sm md:text-base break-words">
+                          <span className="text-muted-foreground">Photo ID: </span>
                           {details?.photo_id_type ? (
                             <span className="capitalize">{details.photo_id_type}: {details.photo_id_number || "N/A"}</span>
                           ) : (
@@ -307,13 +307,13 @@ export const MemberActivityDialog = ({
 
                   {/* Current PT Status */}
                   <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                        <Dumbbell className="w-4 h-4" />
+                    <CardHeader className="pb-2 px-3 md:px-4 pt-3 md:pt-4">
+                      <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground flex items-center gap-2">
+                        <Dumbbell className="w-3 h-3 md:w-4 md:h-4" />
                         Personal Training Status
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pt-0 px-3 md:px-4 pb-3 md:pb-4">
                       {activePT ? (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
@@ -339,23 +339,23 @@ export const MemberActivityDialog = ({
                   </Card>
 
                   {/* Summary Stats */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-2 md:gap-3">
                     <Card>
-                      <CardContent className="p-4 text-center">
-                        <p className="text-2xl font-bold text-accent">{subscriptions.length}</p>
-                        <p className="text-sm text-muted-foreground">Gym Subscriptions</p>
+                      <CardContent className="p-2.5 md:p-3 text-center">
+                        <p className="text-lg md:text-xl font-bold text-accent">{subscriptions.length}</p>
+                        <p className="text-[10px] md:text-xs text-muted-foreground">Gym Subscriptions</p>
                       </CardContent>
                     </Card>
                     <Card>
-                      <CardContent className="p-4 text-center">
-                        <p className="text-2xl font-bold text-success flex items-center justify-center gap-1">
-                          <IndianRupee className="w-5 h-5" />
+                      <CardContent className="p-2.5 md:p-3 text-center">
+                        <p className="text-lg md:text-xl font-bold text-success flex items-center justify-center gap-1">
+                          <IndianRupee className="w-3.5 md:w-4 h-3.5 md:h-4" />
                           {payments
                             .filter((p) => p.status === "success")
                             .reduce((sum, p) => sum + Number(p.amount), 0)
                             .toLocaleString("en-IN")}
                         </p>
-                        <p className="text-sm text-muted-foreground">Total Paid</p>
+                        <p className="text-[10px] md:text-xs text-muted-foreground">Total Paid</p>
                       </CardContent>
                     </Card>
                   </div>
@@ -364,15 +364,15 @@ export const MemberActivityDialog = ({
             </TabsContent>
 
             {/* Subscriptions Tab */}
-            <TabsContent value="subscriptions" className="mt-4 flex-1 overflow-hidden">
-              <ScrollArea className="h-[400px] pr-2">
-                <div className="space-y-3">
+            <TabsContent value="subscriptions" className="mt-2 md:mt-3 flex-1 overflow-hidden">
+              <ScrollArea className="h-[400px] pr-1 md:pr-2">
+                <div className="space-y-2">
                   {subscriptions.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">No subscriptions found</p>
+                    <p className="text-center text-muted-foreground py-8 text-sm">No subscriptions found</p>
                   ) : (
                     subscriptions.map((sub) => (
                       <Card key={sub.id}>
-                        <CardContent className="p-4">
+                        <CardContent className="p-2.5 md:p-3">
                           <div className="flex items-start justify-between">
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
@@ -407,18 +407,18 @@ export const MemberActivityDialog = ({
             </TabsContent>
 
             {/* PT History Tab */}
-            <TabsContent value="pt" className="mt-4 flex-1 overflow-hidden">
-              <ScrollArea className="h-[400px] pr-2">
-                <div className="space-y-3">
+            <TabsContent value="pt" className="mt-2 md:mt-3 flex-1 overflow-hidden">
+              <ScrollArea className="h-[400px] pr-1 md:pr-2">
+                <div className="space-y-2">
                   {ptSubscriptions.length === 0 ? (
                     <div className="text-center py-8">
-                      <Dumbbell className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                      <p className="text-muted-foreground">No personal training history</p>
+                      <Dumbbell className="w-10 h-10 md:w-12 md:h-12 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground">No personal training history</p>
                     </div>
                   ) : (
                     ptSubscriptions.map((pt) => (
                       <Card key={pt.id}>
-                        <CardContent className="p-4">
+                        <CardContent className="p-2.5 md:p-3">
                           <div className="flex items-start justify-between">
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
@@ -459,15 +459,15 @@ export const MemberActivityDialog = ({
             </TabsContent>
 
             {/* Payments Tab */}
-            <TabsContent value="payments" className="mt-4 flex-1 overflow-hidden">
-              <ScrollArea className="h-[400px] pr-2">
-                <div className="space-y-3">
+            <TabsContent value="payments" className="mt-2 md:mt-3 flex-1 overflow-hidden">
+              <ScrollArea className="h-[400px] pr-1 md:pr-2">
+                <div className="space-y-2">
                   {payments.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">No payments found</p>
+                    <p className="text-center text-muted-foreground py-8 text-sm">No payments found</p>
                   ) : (
                     payments.map((payment) => (
                       <Card key={payment.id}>
-                        <CardContent className="p-4">
+                        <CardContent className="p-2.5 md:p-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <div className="p-2 rounded-lg bg-muted">

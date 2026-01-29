@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
-import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StaffTrainersTab } from "@/components/admin/staff/StaffTrainersTab";
 import { StaffOtherTab } from "@/components/admin/staff/StaffOtherTab";
@@ -118,11 +117,6 @@ const StaffManagement = () => {
   const otherStaff = staff.filter((s) => s.role !== "trainer");
 
   return (
-    <AdminLayout
-      title="Staff Management"
-      subtitle="Manage trainers and staff members"
-      onRefresh={() => setRefreshKey((k) => k + 1)}
-    >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-3 mb-6">
           <TabsTrigger value="trainers" className="flex items-center gap-2">
@@ -168,7 +162,6 @@ const StaffManagement = () => {
           />
         </TabsContent>
       </Tabs>
-    </AdminLayout>
   );
 };
 

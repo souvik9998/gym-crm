@@ -121,18 +121,18 @@ export const StaffBranchAssignmentDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <BuildingOfficeIcon className="w-5 h-5" />
+      <DialogContent className="sm:max-w-[500px] p-4 md:p-3">
+        <DialogHeader className="pb-2 md:pb-2">
+          <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
+            <BuildingOfficeIcon className="w-4 h-4 md:w-5 md:h-5" />
             Manage Branch Assignments
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs md:text-sm">
             Assign "{staff.full_name}" to one or more branches. The staff member will have access to all selected branches.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 md:space-y-2 py-2 md:py-3">
           <div className="space-y-2">
             <Label>Select Branches</Label>
             <StaffBranchSelector

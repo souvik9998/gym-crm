@@ -11,7 +11,6 @@ import WhatsAppLogsTab from "@/components/admin/WhatsAppLogsTab";
 import AdminActivityLogsTab from "@/components/admin/AdminActivityLogsTab";
 import UserActivityLogsTab from "@/components/admin/UserActivityLogsTab";
 import StaffActivityLogsTab from "@/components/admin/StaffActivityLogsTab";
-import { AdminLayout } from "@/components/admin/AdminLayout";
 
 const Logs = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -35,12 +34,7 @@ const Logs = () => {
   };
 
   return (
-    <AdminLayout
-      title="Activity Logs"
-      subtitle="Track all activities"
-      onRefresh={handleRefresh}
-    >
-      <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto">
         <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="grid w-full max-w-2xl grid-cols-4 mb-6 bg-muted/50 p-1">
             <TabsTrigger value="activity" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
@@ -78,7 +72,6 @@ const Logs = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </AdminLayout>
   );
 };
 

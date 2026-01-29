@@ -438,17 +438,17 @@ export const BranchManagement = () => {
 
       {/* Add/Edit Branch Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>{editingBranch ? "Edit Branch" : "Add New Branch"}</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-[425px] p-4 md:p-3">
+          <DialogHeader className="pb-2 md:pb-2">
+            <DialogTitle className="text-base md:text-lg">{editingBranch ? "Edit Branch" : "Add New Branch"}</DialogTitle>
+            <DialogDescription className="text-xs md:text-sm">
               {editingBranch
                 ? "Update the branch details below."
                 : "Create a new gym branch. Each branch will have its own QR code for member registration."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
+          <div className="space-y-3 md:space-y-2 py-2 md:py-3">
+            <div className="space-y-1.5 md:space-y-2">
               <Label htmlFor="branch-name">Branch Name *</Label>
               <Input
                 id="branch-name"

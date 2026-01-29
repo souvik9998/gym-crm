@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,6 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { User } from "@supabase/supabase-js";
 import { WhatsAppTemplates } from "@/components/admin/WhatsAppTemplates";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
-import { AdminLayout } from "@/components/admin/AdminLayout";
 import { BranchManagement } from "@/components/admin/BranchManagement";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
@@ -677,7 +676,7 @@ const AdminSettings = () => {
   };
 
   return (
-    <AdminLayout title="Settings" subtitle="Configure gym settings">
+    <Fragment>
       <div className="max-w-4xl mx-auto space-y-6">
         <Tabs defaultValue={initialTab}>
           <TabsList className="grid w-full grid-cols-4 bg-muted/50">
@@ -1134,7 +1133,7 @@ const AdminSettings = () => {
         variant={confirmDialog.variant}
         onConfirm={confirmDialog.onConfirm}
       />
-    </AdminLayout>
+    </Fragment>
   );
 };
 
