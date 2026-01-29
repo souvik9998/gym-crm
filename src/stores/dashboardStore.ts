@@ -7,6 +7,10 @@ type SortOrderValue = "asc" | "desc";
 type DailyPassFilterValue = "all" | "active" | "expired";
 
 interface DashboardUIState {
+  // Branch state - synced with BranchContext localStorage
+  selectedBranchId: string | null;
+  setSelectedBranchId: (id: string | null) => void;
+  
   // Tab state
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -32,6 +36,7 @@ interface DashboardUIState {
 }
 
 const initialState = {
+  selectedBranchId: null as string | null,
   activeTab: "members",
   memberFilter: "all" as MemberFilterValue,
   ptFilterActive: false,
@@ -44,6 +49,8 @@ export const useDashboardStore = create<DashboardUIState>()(
   persist(
     (set) => ({
       ...initialState,
+      
+      setSelectedBranchId: (id) => set({ selectedBranchId: id }),
       
       setActiveTab: (tab) => set({ activeTab: tab }),
       
@@ -61,12 +68,21 @@ export const useDashboardStore = create<DashboardUIState>()(
       
       setDailyPassFilter: (filter) => set({ dailyPassFilter: filter }),
       
-      resetFilters: () => set(initialState),
+      resetFilters: () => set({
+        activeTab: initialState.activeTab,
+        memberFilter: initialState.memberFilter,
+        ptFilterActive: initialState.ptFilterActive,
+        sortBy: initialState.sortBy,
+        sortOrder: initialState.sortOrder,
+        dailyPassFilter: initialState.dailyPassFilter,
+        // Don't reset branch - that should persist
+      }),
     }),
     {
       name: 'dashboard-ui-state',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
+        selectedBranchId: state.selectedBranchId,
         activeTab: state.activeTab,
         memberFilter: state.memberFilter,
         ptFilterActive: state.ptFilterActive,

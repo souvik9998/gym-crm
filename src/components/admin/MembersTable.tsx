@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo, useCallback, memo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { useState, useMemo, useCallback, memo, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Table,
@@ -34,25 +34,11 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useBranch } from "@/contexts/BranchContext";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/ui/pagination-controls";
-import { CACHE_KEYS, STALE_TIMES, useInvalidateQueries } from "@/hooks/useQueryCache";
+import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { TableSkeleton } from "@/components/ui/skeleton-loaders";
-
-interface Member {
-  id: string;
-  name: string;
-  phone: string;
-  join_date: string;
-  subscription?: {
-    id: string;
-    status: string;
-    end_date: string;
-    start_date: string;
-  };
-  activePT?: {
-    trainer_name: string;
-    end_date: string;
-  } | null;
-}
+import { useMembersQuery, type MemberWithSubscription } from "@/hooks/useDashboardQueries";
+// Use MemberWithSubscription from the query hook
+type Member = MemberWithSubscription;
 
 interface MembersTableProps {
   searchQuery: string;
@@ -77,9 +63,13 @@ export const MembersTable = ({
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn, permissions, staffUser } = useStaffAuth();
   const { isAdmin } = useIsAdmin();
-  const [members, setMembers] = useState<Member[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const { invalidateMembers } = useInvalidateQueries();
+  
+  // Use React Query for cached data fetching
+  const { data: membersData, isLoading, refetch } = useMembersQuery();
+  const members = membersData || [];
+  
+  const [editingMember, setEditingMember] = useState<MemberWithSubscription | null>(null);
   const [viewingMemberId, setViewingMemberId] = useState<string | null>(null);
   const [viewingMemberName, setViewingMemberName] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; memberId: string; memberName: string }>({
@@ -109,73 +99,17 @@ export const MembersTable = ({
       setSortOrder(externalSortOrder);
     }
   }, [externalSortBy, externalSortOrder]);
+  
   const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
-  // Removed sendingBulkWhatsApp - now using bulkActionType
 
+  // Refetch when refreshKey changes (manual refresh button)
   useEffect(() => {
-    fetchMembers();
-  }, [refreshKey, currentBranch?.id]);
-
-  const fetchMembers = async () => {
-    setIsLoading(true);
-    try {
-      let query = supabase
-        .from("members")
-        .select("*")
-        .order("created_at", { ascending: false });
-      
-      if (currentBranch?.id) {
-        query = query.eq("branch_id", currentBranch.id);
-      }
-
-      const { data: membersData, error: membersError } = await query;
-
-      if (membersError) throw membersError;
-
-      // Get latest subscription and PT for each member
-      const membersWithData = await Promise.all(
-        (membersData || []).map(async (member) => {
-          // Get subscription
-          const { data: subData } = await supabase
-            .from("subscriptions")
-            .select("id, status, end_date, start_date")
-            .eq("member_id", member.id)
-            .order("end_date", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          // Get active PT subscription
-          const today = new Date().toISOString().split("T")[0];
-          const { data: ptData } = await supabase
-            .from("pt_subscriptions")
-            .select("end_date, personal_trainer:personal_trainers(name)")
-            .eq("member_id", member.id)
-            .eq("status", "active")
-            .gte("end_date", today)
-            .order("end_date", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          return {
-            ...member,
-            subscription: subData || undefined,
-            activePT: ptData ? {
-              trainer_name: (ptData.personal_trainer as any)?.name || "Unknown",
-              end_date: ptData.end_date,
-            } : null,
-          };
-        })
-      );
-
-      setMembers(membersWithData as Member[]);
-    } catch (error: any) {
-      console.error("Error fetching members:", error);
-    } finally {
-      setIsLoading(false);
+    if (refreshKey > 0) {
+      refetch();
     }
-  };
+  }, [refreshKey, refetch]);
 
   const handleDeleteConfirm = async () => {
     try {
@@ -229,7 +163,7 @@ export const MembersTable = ({
       }
 
       toast.success("Member deleted successfully");
-      fetchMembers();
+      invalidateMembers(); // Invalidate cache to refetch
     } catch (error: any) {
       toast.error("Error", {
         description: error.message,
@@ -407,18 +341,8 @@ export const MembersTable = ({
       
       if (error) throw error;
       
-      // Update local state immediately (in-place update)
-      setMembers(prev => prev.map(m => 
-        m.id === member.id 
-          ? { 
-              ...m, 
-              subscription: { 
-                ...m.subscription!,
-                status: "active", 
-              } 
-            } 
-          : m
-      ));
+      // Invalidate cache to refetch with updated data
+      invalidateMembers();
 
       // Log activity for staff
       if (isStaffLoggedIn && staffUser) {
@@ -486,16 +410,8 @@ export const MembersTable = ({
       .in("id", subscriptionIds);
     
     if (!error) {
-      // Update local state
-      setMembers(prev => prev.map(m => {
-        if (subscriptionIds.includes(m.subscription?.id || "")) {
-          return {
-            ...m,
-            subscription: { ...m.subscription!, status: "inactive" }
-          };
-        }
-        return m;
-      }));
+      // Invalidate cache to refetch with updated data
+      invalidateMembers();
     }
   };
 
@@ -1308,7 +1224,7 @@ export const MembersTable = ({
         open={!!editingMember}
         onOpenChange={(open) => !open && setEditingMember(null)}
         member={editingMember}
-        onSuccess={fetchMembers}
+        onSuccess={invalidateMembers}
       />
 
       <MemberActivityDialog
