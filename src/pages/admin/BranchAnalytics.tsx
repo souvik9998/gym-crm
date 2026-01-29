@@ -1265,74 +1265,115 @@ const BranchAnalytics = () => {
             <CardDescription className="text-xs sm:text-sm">Click on any branch to view detailed analytics</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-              <div className="min-w-[800px]">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm">Branch</th>
-                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Revenue</th>
-                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Profit</th>
-                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Margin</th>
-                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Members</th>
-                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Growth</th>
-                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Churn</th>
-                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Conversion</th>
-                      <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">ROI</th>
-                      <th className="text-center p-2 sm:p-3 font-medium text-xs sm:text-sm">Action</th>
-                    </tr>
-                  </thead>
-                <tbody>
-                  {branchMetrics
-                    .sort((a, b) => b.revenue - a.revenue)
-                    .map((metric) => (
-                      <tr
-                        key={metric.branchId}
-                        className="border-b hover:bg-muted/50 cursor-pointer"
-                        onClick={() => openBranchDetail(metric)}
-                      >
-                        <td className="p-2 sm:p-3 font-medium text-xs sm:text-sm">{metric.branchName}</td>
-                        <td className="p-2 sm:p-3 text-right text-xs sm:text-sm">{formatCurrency(metric.revenue)}</td>
-                        <td
-                          className={cn(
-                            "p-3 text-right font-medium",
-                            metric.profit >= 0 ? "text-success" : "text-red-600"
-                          )}
-                        >
-                          {formatCurrency(metric.profit)}
-                        </td>
-                        <td className="p-3 text-right">{metric.profitMargin.toFixed(1)}%</td>
-                        <td className="p-3 text-right">{metric.totalMembers}</td>
-                        <td
-                          className={cn(
-                            "p-3 text-right",
-                            metric.revenueGrowth >= 0 ? "text-success" : "text-red-600"
-                          )}
-                        >
-                          {metric.revenueGrowth > 0 ? "+" : ""}
-                          {metric.revenueGrowth.toFixed(1)}%
-                        </td>
-                        <td
-                          className={cn(
-                            "p-3 text-right",
-                            metric.churnRate > 15 ? "text-red-600" : "text-muted-foreground"
-                          )}
-                        >
-                          {metric.churnRate.toFixed(1)}%
-                        </td>
-                        <td className="p-3 text-right">{metric.conversionRate.toFixed(1)}%</td>
-                        <td className="p-3 text-right">{metric.marketingROI.toFixed(1)}%</td>
-                        <td className="p-3 text-center">
-                          <Button variant="ghost" size="sm">
-                            View
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {isMobile ? (
+              /* Mobile Card View */
+              <div className="space-y-2">
+                {branchMetrics
+                  .sort((a, b) => b.revenue - a.revenue)
+                  .map((metric) => (
+                    <Card 
+                      key={metric.branchId} 
+                      className="cursor-pointer hover:bg-muted/30 transition-colors"
+                      onClick={() => openBranchDetail(metric)}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-medium text-sm">{metric.branchName}</p>
+                          <span className={cn(
+                            "text-sm font-semibold",
+                            metric.profit >= 0 ? "text-success" : "text-destructive"
+                          )}>
+                            {formatCurrency(metric.profit)}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div>
+                            <p className="text-muted-foreground">Revenue</p>
+                            <p className="font-medium">{formatCurrency(metric.revenue)}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Members</p>
+                            <p className="font-medium">{metric.totalMembers}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Growth</p>
+                            <p className={cn(
+                              "font-medium",
+                              metric.revenueGrowth >= 0 ? "text-success" : "text-destructive"
+                            )}>
+                              {metric.revenueGrowth > 0 ? "+" : ""}{metric.revenueGrowth.toFixed(1)}%
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
               </div>
-            </div>
+            ) : (
+              /* Desktop Table */
+              <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+                <div className="min-w-[800px]">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-2 sm:p-3 font-medium text-xs sm:text-sm">Branch</th>
+                        <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Revenue</th>
+                        <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Profit</th>
+                        <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Margin</th>
+                        <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Members</th>
+                        <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Growth</th>
+                        <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Churn</th>
+                        <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">Conversion</th>
+                        <th className="text-right p-2 sm:p-3 font-medium text-xs sm:text-sm">ROI</th>
+                        <th className="text-center p-2 sm:p-3 font-medium text-xs sm:text-sm">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {branchMetrics
+                        .sort((a, b) => b.revenue - a.revenue)
+                        .map((metric) => (
+                          <tr
+                            key={metric.branchId}
+                            className="border-b hover:bg-muted/50 cursor-pointer"
+                            onClick={() => openBranchDetail(metric)}
+                          >
+                            <td className="p-2 sm:p-3 font-medium text-xs sm:text-sm">{metric.branchName}</td>
+                            <td className="p-2 sm:p-3 text-right text-xs sm:text-sm">{formatCurrency(metric.revenue)}</td>
+                            <td className={cn(
+                              "p-3 text-right font-medium",
+                              metric.profit >= 0 ? "text-success" : "text-destructive"
+                            )}>
+                              {formatCurrency(metric.profit)}
+                            </td>
+                            <td className="p-3 text-right">{metric.profitMargin.toFixed(1)}%</td>
+                            <td className="p-3 text-right">{metric.totalMembers}</td>
+                            <td className={cn(
+                              "p-3 text-right",
+                              metric.revenueGrowth >= 0 ? "text-success" : "text-destructive"
+                            )}>
+                              {metric.revenueGrowth > 0 ? "+" : ""}
+                              {metric.revenueGrowth.toFixed(1)}%
+                            </td>
+                            <td className={cn(
+                              "p-3 text-right",
+                              metric.churnRate > 15 ? "text-destructive" : "text-muted-foreground"
+                            )}>
+                              {metric.churnRate.toFixed(1)}%
+                            </td>
+                            <td className="p-3 text-right">{metric.conversionRate.toFixed(1)}%</td>
+                            <td className="p-3 text-right">{metric.marketingROI.toFixed(1)}%</td>
+                            <td className="p-3 text-center">
+                              <Button variant="ghost" size="sm">
+                                View
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -1578,68 +1619,118 @@ const BranchAnalytics = () => {
                 )}
 
                 {/* Trainer Performance Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-3 font-medium">Trainer</th>
-                        <th className="text-left p-3 font-medium">Branch</th>
-                        <th className="text-right p-3 font-medium">Revenue</th>
-                        <th className="text-right p-3 font-medium">Clients</th>
-                        <th className="text-right p-3 font-medium">Active</th>
-                        <th className="text-right p-3 font-medium">Retention</th>
-                        <th className="text-right p-3 font-medium">Efficiency</th>
-                        <th className="text-right p-3 font-medium">Growth</th>
-                        <th className="text-center p-3 font-medium">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredTrainerMetrics.map((trainer) => (
-                        <tr
-                          key={trainer.trainerId}
-                          className="border-b hover:bg-muted/50 cursor-pointer"
-                          onClick={() => openTrainerDetail(trainer)}
-                        >
-                          <td className="p-3 font-medium">{trainer.trainerName}</td>
-                          <td className="p-3 text-muted-foreground">{trainer.branchName}</td>
-                          <td className="p-3 text-right">{formatCurrency(trainer.revenue)}</td>
-                          <td className="p-3 text-right">{trainer.totalClients}</td>
-                          <td className="p-3 text-right">{trainer.activeClients}</td>
-                          <td
-                            className={cn(
-                              "p-3 text-right",
-                              trainer.clientRetentionRate >= 80 ? "text-success" : "text-warning"
-                            )}
-                          >
-                            {trainer.clientRetentionRate.toFixed(1)}%
-                          </td>
-                          <td
-                            className={cn(
-                              "p-3 text-right font-medium",
-                              trainer.efficiencyScore >= 70 ? "text-success" : trainer.efficiencyScore >= 50 ? "text-warning" : "text-red-600"
-                            )}
-                          >
-                            {trainer.efficiencyScore.toFixed(1)}%
-                          </td>
-                          <td
-                            className={cn(
-                              "p-3 text-right",
-                              trainer.revenueGrowth >= 0 ? "text-success" : "text-red-600"
-                            )}
-                          >
-                            {trainer.revenueGrowth > 0 ? "+" : ""}
-                            {trainer.revenueGrowth.toFixed(1)}%
-                          </td>
-                          <td className="p-3 text-center">
-                            <Button variant="ghost" size="sm">
-                              View
-                            </Button>
-                          </td>
+                {isMobile ? (
+                  /* Mobile Card View */
+                  <div className="space-y-2">
+                    {filteredTrainerMetrics.map((trainer) => (
+                      <Card 
+                        key={trainer.trainerId} 
+                        className="cursor-pointer hover:bg-muted/30 transition-colors"
+                        onClick={() => openTrainerDetail(trainer)}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div>
+                              <p className="font-medium text-sm">{trainer.trainerName}</p>
+                              <p className="text-xs text-muted-foreground">{trainer.branchName}</p>
+                            </div>
+                            <Badge className={cn(
+                              "text-xs",
+                              trainer.efficiencyScore >= 70 ? "bg-success/10 text-success border-success/20" :
+                              trainer.efficiencyScore >= 50 ? "bg-warning/10 text-warning border-warning/20" :
+                              "bg-destructive/10 text-destructive border-destructive/20"
+                            )}>
+                              {trainer.efficiencyScore.toFixed(0)}%
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div>
+                              <p className="text-muted-foreground">Revenue</p>
+                              <p className="font-medium">{formatCurrency(trainer.revenue)}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Clients</p>
+                              <p className="font-medium">{trainer.totalClients}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Growth</p>
+                              <p className={cn(
+                                "font-medium",
+                                trainer.revenueGrowth >= 0 ? "text-success" : "text-destructive"
+                              )}>
+                                {trainer.revenueGrowth > 0 ? "+" : ""}{trainer.revenueGrowth.toFixed(1)}%
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  /* Desktop Table */
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-3 font-medium">Trainer</th>
+                          <th className="text-left p-3 font-medium">Branch</th>
+                          <th className="text-right p-3 font-medium">Revenue</th>
+                          <th className="text-right p-3 font-medium">Clients</th>
+                          <th className="text-right p-3 font-medium">Active</th>
+                          <th className="text-right p-3 font-medium">Retention</th>
+                          <th className="text-right p-3 font-medium">Efficiency</th>
+                          <th className="text-right p-3 font-medium">Growth</th>
+                          <th className="text-center p-3 font-medium">Action</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {filteredTrainerMetrics.map((trainer) => (
+                          <tr
+                            key={trainer.trainerId}
+                            className="border-b hover:bg-muted/50 cursor-pointer"
+                            onClick={() => openTrainerDetail(trainer)}
+                          >
+                            <td className="p-3 font-medium">{trainer.trainerName}</td>
+                            <td className="p-3 text-muted-foreground">{trainer.branchName}</td>
+                            <td className="p-3 text-right">{formatCurrency(trainer.revenue)}</td>
+                            <td className="p-3 text-right">{trainer.totalClients}</td>
+                            <td className="p-3 text-right">{trainer.activeClients}</td>
+                            <td
+                              className={cn(
+                                "p-3 text-right",
+                                trainer.clientRetentionRate >= 80 ? "text-success" : "text-warning"
+                              )}
+                            >
+                              {trainer.clientRetentionRate.toFixed(1)}%
+                            </td>
+                            <td
+                              className={cn(
+                                "p-3 text-right font-medium",
+                                trainer.efficiencyScore >= 70 ? "text-success" : trainer.efficiencyScore >= 50 ? "text-warning" : "text-destructive"
+                              )}
+                            >
+                              {trainer.efficiencyScore.toFixed(1)}%
+                            </td>
+                            <td
+                              className={cn(
+                                "p-3 text-right",
+                                trainer.revenueGrowth >= 0 ? "text-success" : "text-destructive"
+                              )}
+                            >
+                              {trainer.revenueGrowth > 0 ? "+" : ""}
+                              {trainer.revenueGrowth.toFixed(1)}%
+                            </td>
+                            <td className="p-3 text-center">
+                              <Button variant="ghost" size="sm">
+                                View
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="performance" className="space-y-3 sm:space-y-6">

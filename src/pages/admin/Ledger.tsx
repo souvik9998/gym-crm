@@ -1,10 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -62,6 +64,7 @@ import {
 import LedgerDetailDialog from "@/components/admin/LedgerDetailDialog";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useQuery } from "@tanstack/react-query";
+import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
 
 interface LedgerEntry {
   id: string;
@@ -103,6 +106,7 @@ type DateRangePreset = "today" | "7days" | "15days" | "30days" | "this_month" | 
 
 const AdminLedger = () => {
   const { currentBranch } = useBranch();
+  const isMobile = useIsMobile();
   const { isStaffLoggedIn, staffUser } = useStaffAuth();
   // Date range state
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("this_month");
@@ -933,96 +937,190 @@ const AdminLedger = () => {
                     Export Data
                   </Button>
                 </div>
-                <div className="overflow-x-auto">
-                  <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date & Time</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="w-[80px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                
+                {/* Mobile View - Expandable Rows */}
+                {isMobile ? (
+                  <div className="rounded-lg border overflow-hidden">
                     {entries.map((entry) => (
-                      <TableRow 
+                      <MobileExpandableRow
                         key={entry.id}
-                        className="cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => handleViewEntry(entry)}
-                      >
-                        <TableCell className="font-medium">
-                          <div>
-                            <p>{format(parseISO(entry.entry_date), "MMM dd, yyyy")}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {format(new Date(entry.created_at), "hh:mm a")}
-                            </p>
+                        collapsedContent={
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs text-muted-foreground">
+                                  {format(parseISO(entry.entry_date), "dd MMM")}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(entry.created_at), "hh:mm a")}
+                                </span>
+                              </div>
+                              <p className="text-sm font-medium truncate">{entry.description}</p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className={cn(
+                                "text-sm font-semibold",
+                                entry.entry_type === "income" ? "text-success" : "text-destructive"
+                              )}>
+                                {entry.entry_type === "income" ? "+" : "-"}₹{Number(entry.amount).toLocaleString("en-IN")}
+                              </span>
+                            </div>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className={cn(
-                            "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                            entry.entry_type === "income"
-                              ? "bg-success/10 text-success"
-                              : "bg-destructive/10 text-destructive"
+                        }
+                        expandedContent={
+                          <div className="space-y-3 pt-2">
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Type</p>
+                                <Badge className={cn(
+                                  "mt-1",
+                                  entry.entry_type === "income"
+                                    ? "bg-success/10 text-success border-success/20"
+                                    : "bg-destructive/10 text-destructive border-destructive/20"
+                                )}>
+                                  {entry.entry_type === "income" ? "Income" : "Expense"}
+                                </Badge>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Category</p>
+                                <p className="font-medium mt-1">{getCategoryLabel(entry.category, entry.entry_type)}</p>
+                              </div>
+                              <div className="col-span-2">
+                                <p className="text-xs text-muted-foreground">Description</p>
+                                <p className="font-medium mt-1">{entry.description}</p>
+                                {entry.is_auto_generated && (
+                                  <span className="text-xs text-muted-foreground">(Auto-generated)</span>
+                                )}
+                              </div>
+                              {entry.notes && (
+                                <div className="col-span-2">
+                                  <p className="text-xs text-muted-foreground">Notes</p>
+                                  <p className="text-sm mt-1">{entry.notes}</p>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                onClick={() => handleViewEntry(entry)}
+                              >
+                                <BookOpenIcon className="w-4 h-4 mr-2" />
+                                View Details
+                              </Button>
+                              {!entry.is_auto_generated && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteEntry(entry);
+                                  }}
+                                >
+                                  <TrashIcon className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        }
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  /* Desktop View - Table */
+                  <div className="overflow-x-auto">
+                    <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date & Time</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="w-[80px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {entries.map((entry) => (
+                        <TableRow 
+                          key={entry.id}
+                          className="cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => handleViewEntry(entry)}
+                        >
+                          <TableCell className="font-medium">
+                            <div>
+                              <p>{format(parseISO(entry.entry_date), "MMM dd, yyyy")}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {format(new Date(entry.created_at), "hh:mm a")}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className={cn(
+                              "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+                              entry.entry_type === "income"
+                                ? "bg-success/10 text-success"
+                                : "bg-destructive/10 text-destructive"
+                            )}>
+                              {entry.entry_type === "income" ? (
+                                <ArrowUpRightIcon className="w-3 h-3" />
+                              ) : (
+                                <ArrowDownRightIcon className="w-3 h-3" />
+                              )}
+                              {entry.entry_type === "income" ? "Income" : "Expense"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {getCategoryLabel(entry.category, entry.entry_type)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="max-w-xs">
+                              <p className="truncate">{entry.description}</p>
+                              {entry.is_auto_generated && (
+                                <span className="text-xs text-muted-foreground">(Auto-generated)</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className={cn(
+                            "text-right font-medium",
+                            entry.entry_type === "income" ? "text-success" : "text-destructive"
                           )}>
-                            {entry.entry_type === "income" ? (
-                              <ArrowUpRightIcon className="w-3 h-3" />
-                            ) : (
-                              <ArrowDownRightIcon className="w-3 h-3" />
-                            )}
-                            {entry.entry_type === "income" ? "Income" : "Expense"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {getCategoryLabel(entry.category, entry.entry_type)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="max-w-xs">
-                            <p className="truncate">{entry.description}</p>
-                            {entry.is_auto_generated && (
-                              <span className="text-xs text-muted-foreground">(Auto-generated)</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className={cn(
-                          "text-right font-medium",
-                          entry.entry_type === "income" ? "text-success" : "text-destructive"
-                        )}>
-                          {entry.entry_type === "income" ? "+" : "-"}₹{Number(entry.amount).toLocaleString("en-IN")}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewEntry(entry);
-                              }}
-                            >
-                              <BookOpenIcon className="w-4 h-4 text-muted-foreground" />
-                            </Button>
-                            {!entry.is_auto_generated && (
+                            {entry.entry_type === "income" ? "+" : "-"}₹{Number(entry.amount).toLocaleString("en-IN")}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleDeleteEntry(entry);
+                                  handleViewEntry(entry);
                                 }}
                               >
-                                <TrashIcon className="w-4 h-4 text-destructive" />
+                                <BookOpenIcon className="w-4 h-4 text-muted-foreground" />
                               </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                  </Table>
-                </div>
+                              {!entry.is_auto_generated && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteEntry(entry);
+                                  }}
+                                >
+                                  <TrashIcon className="w-4 h-4 text-destructive" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                    </Table>
+                  </div>
+                )}
               </>
             )}
           </CardContent>
