@@ -39,8 +39,11 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
   const deleteMutation = useDeleteDailyPassUser();
   
   // Use React Query for cached data fetching
-  const { data: usersData, isLoading, refetch } = useDailyPassQuery();
+  const { data: usersData, isLoading, isFetching, refetch } = useDailyPassQuery();
   const users = usersData || [];
+  
+  // Show loading when initially loading OR when data hasn't been fetched yet
+  const showLoading = isLoading || (isFetching && !usersData);
   
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<DailyPassUserWithSubscription | null>(null);
@@ -212,7 +215,7 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
   // Pagination
   const pagination = usePagination(filteredUsers, { initialPageSize: 25 });
 
-  if (isLoading) {
+  if (showLoading || usersData === undefined) {
     return (
       <div className="flex items-center justify-center py-12">
         <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />

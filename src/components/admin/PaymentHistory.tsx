@@ -38,8 +38,11 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const isMobile = useIsMobile();
   
   // Use React Query for cached data fetching
-  const { data: paymentsData, isLoading, refetch } = usePaymentsQuery();
+  const { data: paymentsData, isLoading, isFetching, refetch } = usePaymentsQuery();
   const payments = paymentsData || [];
+  
+  // Show loading when initially loading OR when data hasn't been fetched yet
+  const showLoading = isLoading || (isFetching && !paymentsData);
   
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -192,7 +195,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   // Pagination for filtered payments
   const pagination = usePagination(filteredPayments, { initialPageSize: 25 });
 
-  if (isLoading) {
+  if (showLoading || paymentsData === undefined) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="w-8 h-8 border-4 border-accent/30 border-t-accent rounded-full animate-spin" />
