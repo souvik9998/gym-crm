@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Table,
@@ -11,7 +10,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -24,10 +22,8 @@ import type { Database } from "@/integrations/supabase/types";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
-import { useBranch } from "@/contexts/BranchContext";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
-import { usePaymentsQuery, type PaymentWithDetails } from "@/hooks/useDashboardQueries";
-import { TableSkeleton } from "@/components/ui/skeleton-loaders";
+import { usePaymentsQuery, type PaymentWithDetails } from "@/hooks/queries";
 
 type PaymentMode = Database["public"]["Enums"]["payment_mode"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
@@ -37,7 +33,6 @@ interface PaymentHistoryProps {
 }
 
 export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
-  const { currentBranch } = useBranch();
   const isMobile = useIsMobile();
   
   // Use React Query for cached data fetching

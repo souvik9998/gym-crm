@@ -1,7 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, memo, Fragment } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -35,19 +33,8 @@ import { Separator } from "@/components/ui/separator";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth, useStaffPermission } from "@/contexts/StaffAuthContext";
 import { useDebounce } from "@/hooks/useDebounce";
-import { CACHE_KEYS, STALE_TIMES, GC_TIME, useInvalidateQueries } from "@/hooks/useQueryCache";
+import { useDashboardStats, useInvalidateDashboard } from "@/hooks/queries";
 import { DashboardStatsSkeleton } from "@/components/ui/skeleton-loaders";
-
-interface DashboardStats {
-  totalMembers: number;
-  activeMembers: number;
-  expiringSoon: number;
-  expiredMembers: number;
-  inactiveMembers: number;
-  monthlyRevenue: number;
-  withPT: number;
-  dailyPassUsers: number;
-}
 
 // Memoized stat card component
 const StatCard = memo(({ 
@@ -81,159 +68,19 @@ const StatCard = memo(({
 ));
 StatCard.displayName = "StatCard";
 
-// Fetch dashboard stats function
-const fetchDashboardStats = async (branchId?: string): Promise<DashboardStats> => {
-  // Refresh subscription statuses first
-  await supabase.rpc("refresh_subscription_statuses");
-
-  // Build base query with branch filter
-  let membersQuery = supabase.from("members").select("*", { count: "exact", head: true });
-  if (branchId) {
-    membersQuery = membersQuery.eq("branch_id", branchId);
-  }
-  const { count: totalMembers } = await membersQuery;
-
-  // Get all members with their latest subscription
-  let memberDataQuery = supabase.from("members").select("id");
-  if (branchId) {
-    memberDataQuery = memberDataQuery.eq("branch_id", branchId);
-  }
-  const { data: membersData } = await memberDataQuery;
-
-  // Get subscriptions for status calculations
-  let subscriptionsQuery = supabase
-    .from("subscriptions")
-    .select("member_id, status, end_date")
-    .order("end_date", { ascending: false });
-  if (branchId) {
-    subscriptionsQuery = subscriptionsQuery.eq("branch_id", branchId);
-  }
-  const { data: allSubscriptions } = await subscriptionsQuery;
-
-  // Group subscriptions by member (latest first)
-  const memberSubscriptions = new Map<string, { status: string; end_date: string }>();
-  if (allSubscriptions) {
-    for (const sub of allSubscriptions) {
-      if (!memberSubscriptions.has(sub.member_id)) {
-        memberSubscriptions.set(sub.member_id, { status: sub.status || 'inactive', end_date: sub.end_date });
-      }
-    }
-  }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  let activeCount = 0;
-  let expiringSoonCount = 0;
-  let expiredCount = 0;
-  let inactiveCount = 0;
-
-  // Calculate status based on actual dates
-  if (membersData) {
-    for (const member of membersData) {
-      const sub = memberSubscriptions.get(member.id);
-      
-      if (!sub) {
-        continue;
-      }
-
-      // If explicitly marked as inactive, count as inactive
-      if (sub.status === "inactive") {
-        inactiveCount++;
-        continue;
-      }
-
-      // Calculate based on actual end_date
-      const endDate = new Date(sub.end_date);
-      endDate.setHours(0, 0, 0, 0);
-      const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      const isExpired = diffDays < 0;
-      const isExpiringSoon = !isExpired && diffDays >= 0 && diffDays <= 7;
-
-      if (isExpired) {
-        expiredCount++;
-      } else if (isExpiringSoon) {
-        expiringSoonCount++;
-      } else {
-        activeCount++;
-      }
-    }
-  }
-
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0, 0, 0, 0);
-
-  let paymentsQuery = supabase
-    .from("payments")
-    .select("amount")
-    .eq("status", "success")
-    .gte("created_at", startOfMonth.toISOString());
-  if (branchId) {
-    paymentsQuery = paymentsQuery.eq("branch_id", branchId);
-  }
-  const { data: payments } = await paymentsQuery;
-
-  const monthlyRevenue = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-
-  // Get active PT subscriptions count
-  const todayStr = new Date().toISOString().split("T")[0];
-  let ptQuery = supabase
-    .from("pt_subscriptions")
-    .select("member_id")
-    .eq("status", "active")
-    .gte("end_date", todayStr);
-  if (branchId) {
-    ptQuery = ptQuery.eq("branch_id", branchId);
-  }
-  const { data: activePTData } = await ptQuery;
-
-  const uniquePTMembers = new Set(activePTData?.map((pt) => pt.member_id) || []).size;
-
-  // Get daily pass users count
-  let dailyPassQuery = supabase.from("daily_pass_users").select("*", { count: "exact", head: true });
-  if (branchId) {
-    dailyPassQuery = dailyPassQuery.eq("branch_id", branchId);
-  }
-  const { count: dailyPassCount } = await dailyPassQuery;
-
-  return {
-    totalMembers: totalMembers || 0,
-    activeMembers: activeCount,
-    expiringSoon: expiringSoonCount,
-    expiredMembers: expiredCount,
-    inactiveMembers: inactiveCount,
-    monthlyRevenue,
-    withPT: uniquePTMembers,
-    dailyPassUsers: dailyPassCount || 0,
-  };
-};
-
 const StaffDashboard = () => {
   const navigate = useNavigate();
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn, staffUser, isLoading: staffLoading } = useStaffAuth();
-  const queryClient = useQueryClient();
-  const { invalidateMembers, invalidatePayments } = useInvalidateQueries();
+  const { invalidateMembers, invalidatePayments } = useInvalidateDashboard();
   
   // STRICT Permission checks based on policy:
-  // 1. View Members - can ONLY view members and their details
-  // 2. Edit/Create Members - can view, add, edit members AND record cash payments
-  // 3. Ledger Access - can ONLY access ledger (handled by route guard)
-  // 4. Payment Logs - can ONLY view payment logs
-  // 5. Analytics Access - can ONLY view analytics (handled by route guard)
-  // 6. Settings Access - can add/modify everything in settings (handled by route guard)
   const canViewMembers = useStaffPermission("can_view_members");
   const canManageMembers = useStaffPermission("can_manage_members");
   const canAccessPayments = useStaffPermission("can_access_payments");
   
-  // Derived permissions based on strict rules:
-  // - View members tab: needs can_view_members OR can_manage_members
-  // - Add/Edit members: needs can_manage_members
-  // - Record cash payments: needs can_manage_members (part of Edit/Create Members)
-  // - View payment history: needs can_access_payments ONLY
   const canSeeMembers = canViewMembers || canManageMembers;
-  const canRecordPayments = canManageMembers; // Only manage_members can record payments
+  const canRecordPayments = canManageMembers;
   
   // Search with debouncing
   const [searchInput, setSearchInput] = useState("");
@@ -260,16 +107,8 @@ const StaffDashboard = () => {
     }
   }, [staffLoading, isStaffLoggedIn, navigate]);
 
-  // Dashboard stats with React Query caching
-  const statsQueryKey = [CACHE_KEYS.DASHBOARD_STATS, "staff", currentBranch?.id || "all"];
-  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
-    queryKey: statsQueryKey,
-    queryFn: () => fetchDashboardStats(currentBranch?.id),
-    staleTime: STALE_TIMES.REAL_TIME, // 5 minutes
-    gcTime: GC_TIME, // 30 minutes
-    refetchOnWindowFocus: false,
-    enabled: isStaffLoggedIn,
-  });
+  // Dashboard stats with React Query caching - using the new hook
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats();
 
   const displayStats = stats || {
     totalMembers: 0,
