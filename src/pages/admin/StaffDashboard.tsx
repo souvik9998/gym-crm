@@ -35,7 +35,7 @@ import { Separator } from "@/components/ui/separator";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth, useStaffPermission } from "@/contexts/StaffAuthContext";
 import { useDebounce } from "@/hooks/useDebounce";
-import { CACHE_KEYS, STALE_TIMES, useInvalidateQueries, persistCache, getCachedData } from "@/hooks/useQueryCache";
+import { CACHE_KEYS, STALE_TIMES, GC_TIME, useInvalidateQueries } from "@/hooks/useQueryCache";
 import { DashboardStatsSkeleton } from "@/components/ui/skeleton-loaders";
 
 interface DashboardStats {
@@ -264,17 +264,9 @@ const StaffDashboard = () => {
   const statsQueryKey = [CACHE_KEYS.DASHBOARD_STATS, "staff", currentBranch?.id || "all"];
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
     queryKey: statsQueryKey,
-    queryFn: async () => {
-      const data = await fetchDashboardStats(currentBranch?.id);
-      persistCache(statsQueryKey.join("-"), data);
-      return data;
-    },
-    initialData: () => {
-      const cached = getCachedData<DashboardStats>(statsQueryKey.join("-"));
-      return cached ?? undefined;
-    },
-    staleTime: STALE_TIMES.REAL_TIME,
-    gcTime: 1000 * 60 * 30,
+    queryFn: () => fetchDashboardStats(currentBranch?.id),
+    staleTime: STALE_TIMES.REAL_TIME, // 5 minutes
+    gcTime: GC_TIME, // 30 minutes
     refetchOnWindowFocus: false,
     enabled: isStaffLoggedIn,
   });

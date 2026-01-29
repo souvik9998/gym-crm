@@ -34,7 +34,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useBranch } from "@/contexts/BranchContext";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/ui/pagination-controls";
-import { CACHE_KEYS, STALE_TIMES, persistCache, getCachedData, useInvalidateQueries } from "@/hooks/useQueryCache";
+import { CACHE_KEYS, STALE_TIMES, useInvalidateQueries } from "@/hooks/useQueryCache";
 import { TableSkeleton } from "@/components/ui/skeleton-loaders";
 
 interface Member {

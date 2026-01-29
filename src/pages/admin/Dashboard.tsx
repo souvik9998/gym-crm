@@ -37,7 +37,9 @@ import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useDebounce } from "@/hooks/useDebounce";
-import { CACHE_KEYS, STALE_TIMES, useInvalidateQueries, persistCache, getCachedData } from "@/hooks/useQueryCache";
+import { CACHE_KEYS, useInvalidateQueries } from "@/hooks/useQueryCache";
+import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
+import { useDashboardStore } from "@/stores/dashboardStore";
 import { DashboardStatsSkeleton } from "@/components/ui/skeleton-loaders";
 
 interface DashboardStats {
@@ -234,44 +236,44 @@ const AdminDashboard = () => {
   const queryClient = useQueryClient();
   const { invalidateMembers, invalidatePayments } = useInvalidateQueries();
   
+  // Use Zustand store for persisted UI state
+  const {
+    activeTab,
+    setActiveTab,
+    memberFilter,
+    setMemberFilter,
+    ptFilterActive,
+    setPtFilterActive,
+    sortBy,
+    setSortBy,
+    sortOrder,
+    setSortOrder,
+    dailyPassFilter,
+    setDailyPassFilter,
+  } = useDashboardStore();
+  
   // Check if user can manage members (admin or staff with can_manage_members permission)
   const canManageMembers = isAdmin || (isStaffLoggedIn && permissions?.can_manage_members === true);
   
-  // Search with debouncing
+  // Search with debouncing (not persisted - cleared on refresh is fine)
   const [searchInput, setSearchInput] = useState("");
   const searchQuery = useDebounce(searchInput, 300);
   
   const [dailyPassSearchInput, setDailyPassSearchInput] = useState("");
   const dailyPassSearchQuery = useDebounce(dailyPassSearchInput, 300);
   
-  const [dailyPassFilter, setDailyPassFilter] = useState("all");
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [activeTab, setActiveTab] = useState("members");
-  const [memberFilter, setMemberFilter] = useState<MemberFilterValue>("all");
-  const [ptFilterActive, setPtFilterActive] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
-  const [sortBy, setSortBy] = useState<"name" | "join_date" | "end_date">("name");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
-  // Dashboard stats with React Query caching
+  // Dashboard stats with React Query caching - persisted to localStorage via PersistQueryClient
   const statsQueryKey = [CACHE_KEYS.DASHBOARD_STATS, currentBranch?.id || "all"];
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
     queryKey: statsQueryKey,
-    queryFn: async () => {
-      const data = await fetchDashboardStats(currentBranch?.id);
-      // Persist to localStorage for refresh persistence
-      persistCache(statsQueryKey.join("-"), data);
-      return data;
-    },
-    initialData: () => {
-      // Try to get from localStorage on initial load
-      const cached = getCachedData<DashboardStats>(statsQueryKey.join("-"));
-      return cached ?? undefined;
-    },
-    staleTime: STALE_TIMES.REAL_TIME,
-    gcTime: 1000 * 60 * 30,
+    queryFn: () => fetchDashboardStats(currentBranch?.id),
+    staleTime: STALE_TIMES.REAL_TIME, // 5 minutes
+    gcTime: GC_TIME, // 30 minutes
     refetchOnWindowFocus: false,
   });
 
