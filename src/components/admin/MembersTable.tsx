@@ -67,8 +67,11 @@ export const MembersTable = ({
   const { invalidateMembers } = useInvalidateQueries();
   
   // Use React Query for cached data fetching
-  const { data: membersData, isLoading, refetch } = useMembersQuery();
+  const { data: membersData, isLoading, isFetching, refetch } = useMembersQuery();
   const members = membersData || [];
+  
+  // Show loading when initially loading OR when data hasn't been fetched yet
+  const showLoading = isLoading || (isFetching && !membersData);
   
   const [editingMember, setEditingMember] = useState<MemberWithSubscription | null>(null);
   const [viewingMemberId, setViewingMemberId] = useState<string | null>(null);
@@ -835,7 +838,7 @@ export const MembersTable = ({
   // Pagination
   const pagination = usePagination(sortedMembers, { initialPageSize: 25 });
 
-  if (isLoading) {
+  if (showLoading || membersData === undefined) {
     return <TableSkeleton rows={8} columns={6} />;
   }
 
