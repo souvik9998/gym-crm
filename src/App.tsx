@@ -1,13 +1,14 @@
 import { useEffect, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { BranchProvider, useBranch } from "@/contexts/BranchContext";
 import { StaffAuthProvider, useStaffAuth } from "@/contexts/StaffAuthContext";
 import { PageLoader } from "@/components/ui/skeleton-loaders";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { AdminLayoutRoute } from "@/components/admin/AdminLayoutRoute";
+import { queryClient, queryPersister, PERSIST_MAX_AGE } from "@/lib/queryClient";
 import Index from "./pages/Index";
 import Register from "./pages/Register";
 import Renew from "./pages/Renew";
@@ -29,30 +30,6 @@ const Logs = lazy(() => import("./pages/admin/Logs"));
 const StaffManagement = lazy(() => import("./pages/admin/StaffManagement"));
 const TrainersPage = lazy(() => import("./pages/admin/Trainers"));
 
-// Optimized QueryClient configuration
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // Data stays fresh for 2 minutes
-      staleTime: 1000 * 60 * 2,
-      // Keep unused data in cache for 30 minutes  
-      gcTime: 1000 * 60 * 30,
-      // Don't refetch on window focus (prevents unnecessary API calls)
-      refetchOnWindowFocus: false,
-      // Don't refetch on reconnect automatically
-      refetchOnReconnect: false,
-      // Retry failed requests once
-      retry: 1,
-      // Retry delay
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    },
-    mutations: {
-      // Retry failed mutations once
-      retry: 1,
-    },
-  },
-});
-
 // Bridge component to connect StaffAuth with BranchContext
 const StaffBranchBridge = ({ children }: { children: React.ReactNode }) => {
   const { setStaffBranchRestriction } = useBranch();
@@ -67,7 +44,14 @@ const StaffBranchBridge = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <PersistQueryClientProvider 
+    client={queryClient} 
+    persistOptions={{ 
+      persister: queryPersister,
+      maxAge: PERSIST_MAX_AGE,
+      buster: "v1",
+    }}
+  >
     <TooltipProvider>
       <BranchProvider>
         <StaffAuthProvider>
@@ -184,7 +168,7 @@ const App = () => (
         </StaffAuthProvider>
       </BranchProvider>
     </TooltipProvider>
-  </QueryClientProvider>
+  </PersistQueryClientProvider>
 );
 
 export default App;
