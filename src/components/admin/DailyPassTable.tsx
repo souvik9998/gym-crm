@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "@/components/ui/sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { format, isAfter, addDays, isBefore } from "date-fns";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
 import { 
   MoreHorizontal, 
   Search, 
@@ -20,7 +22,9 @@ import {
   RefreshCw,
   Dumbbell,
   Clock,
-  Download
+  Download,
+  Phone,
+  IndianRupee
 } from "lucide-react";
 
 interface DailyPassUser {
@@ -54,6 +58,7 @@ interface DailyPassTableProps {
 
 const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTableProps) => {
   const { currentBranch } = useBranch();
+  const isMobile = useIsMobile();
   const [users, setUsers] = useState<DailyPassUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -213,9 +218,9 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
     if (isAfter(today, endDate)) {
       return <Badge variant="destructive">Expired</Badge>;
     } else if (isAfter(expiringThreshold, endDate) || endDate.getTime() === today.getTime()) {
-      return <Badge className="bg-yellow-500 hover:bg-yellow-600">Expiring Today</Badge>;
+      return <Badge className="bg-warning hover:bg-warning/90 text-warning-foreground">Expiring Today</Badge>;
     } else {
-      return <Badge className="bg-green-500 hover:bg-green-600">Active</Badge>;
+      return <Badge className="bg-success hover:bg-success/90 text-success-foreground">Active</Badge>;
     }
   };
 
@@ -341,81 +346,167 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
           Export Data
         </Button>
       </div>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Package</TableHead>
-              <TableHead>Trainer</TableHead>
-              <TableHead>End Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredUsers.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell className="font-medium">{user.name}</TableCell>
-                <TableCell>{user.phone}</TableCell>
-                <TableCell>
-                  {user.subscription ? (
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span>{user.subscription.package_name}</span>
+
+      {/* Mobile View */}
+      {isMobile ? (
+        <div className="rounded-lg border overflow-hidden">
+          {filteredUsers.map((user) => (
+            <MobileExpandableRow
+              key={user.id}
+              collapsedContent={
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{user.name}</p>
+                    <p className="text-xs text-muted-foreground">{user.phone}</p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    {getStatusBadge(user.subscription)}
+                  </div>
+                </div>
+              }
+              expandedContent={
+                <div className="space-y-3 pt-2">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Phone className="w-3 h-3" /> Phone
+                      </p>
+                      <p className="font-medium mt-0.5">{user.phone}</p>
                     </div>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {user.subscription?.trainer ? (
-                    <div className="flex items-center gap-1.5">
-                      <Dumbbell className="w-3.5 h-3.5 text-accent" />
-                      <span>{user.subscription.trainer.name}</span>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      <p className="font-medium mt-0.5">{user.email || "-"}</p>
                     </div>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {user.subscription ? (
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span>{format(new Date(user.subscription.end_date), "d MMM yyyy")}</span>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </TableCell>
-                <TableCell>{getStatusBadge(user.subscription)}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setUserToDelete(user);
-                          setDeleteDialogOpen(true);
-                        }}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+                    {user.subscription && (
+                      <>
+                        <div>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> Package
+                          </p>
+                          <p className="font-medium mt-0.5">{user.subscription.package_name}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <IndianRupee className="w-3 h-3" /> Price
+                          </p>
+                          <p className="font-medium mt-0.5">₹{user.subscription.price}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Calendar className="w-3 h-3" /> End Date
+                          </p>
+                          <p className="font-medium mt-0.5">
+                            {format(new Date(user.subscription.end_date), "d MMM yyyy")}
+                          </p>
+                        </div>
+                        {user.subscription.trainer && (
+                          <div>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Dumbbell className="w-3 h-3" /> Trainer
+                            </p>
+                            <p className="font-medium mt-0.5">{user.subscription.trainer.name}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  <div className="pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-destructive hover:text-destructive"
+                      onClick={() => {
+                        setUserToDelete(user);
+                        setDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete User
+                    </Button>
+                  </div>
+                </div>
+              }
+            />
+          ))}
+        </div>
+      ) : (
+        /* Desktop View */
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Package</TableHead>
+                <TableHead>Trainer</TableHead>
+                <TableHead>End Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-[50px]"></TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {filteredUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">{user.name}</TableCell>
+                  <TableCell>{user.phone}</TableCell>
+                  <TableCell>
+                    {user.subscription ? (
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span>{user.subscription.package_name}</span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {user.subscription?.trainer ? (
+                      <div className="flex items-center gap-1.5">
+                        <Dumbbell className="w-3.5 h-3.5 text-accent" />
+                        <span>{user.subscription.trainer.name}</span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {user.subscription ? (
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span>{format(new Date(user.subscription.end_date), "d MMM yyyy")}</span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{getStatusBadge(user.subscription)}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setUserToDelete(user);
+                            setDeleteDialogOpen(true);
+                          }}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       <ConfirmDialog
         open={deleteDialogOpen}

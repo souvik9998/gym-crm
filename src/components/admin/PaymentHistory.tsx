@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Table,
   TableBody,
@@ -18,12 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download } from "lucide-react";
+import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download, User, Clock } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
 import { useBranch } from "@/contexts/BranchContext";
+import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
 
 type PaymentMode = Database["public"]["Enums"]["payment_mode"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
@@ -54,6 +56,7 @@ interface PaymentHistoryProps {
 
 export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const { currentBranch } = useBranch();
+  const isMobile = useIsMobile();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState("");
@@ -341,7 +344,99 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
             <p className="text-sm mt-1">Try adjusting your filters</p>
           )}
         </div>
+      ) : isMobile ? (
+        /* Mobile View */
+        <div className="rounded-lg border overflow-hidden">
+          {filteredPayments.map((payment) => (
+            <MobileExpandableRow
+              key={payment.id}
+              collapsedContent={
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs text-muted-foreground">
+                        {payment.created_at
+                          ? new Date(payment.created_at).toLocaleDateString("en-IN", {
+                              day: "2-digit",
+                              month: "short",
+                            })
+                          : "-"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {payment.created_at
+                          ? new Date(payment.created_at).toLocaleTimeString("en-IN", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : ""}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium truncate">
+                      {payment.member?.name || payment.daily_pass_user?.name || "Unknown"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-sm font-semibold text-success">
+                      ₹{Number(payment.amount).toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                </div>
+              }
+              expandedContent={
+                <div className="space-y-3 pt-2">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <User className="w-3 h-3" /> Member
+                      </p>
+                      <p className="font-medium mt-0.5">
+                        {payment.member?.name || payment.daily_pass_user?.name || "Unknown"}
+                        {payment.daily_pass_user_id && (
+                          <Badge variant="outline" className="ml-1 text-[9px] py-0">Daily</Badge>
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Phone</p>
+                      <p className="font-medium mt-0.5">
+                        {payment.member?.phone || payment.daily_pass_user?.phone || "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Type</p>
+                      <div className="mt-0.5">{getPaymentTypeBadge(payment.payment_type)}</div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Mode</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {getPaymentModeIcon(payment.payment_mode)}
+                        <span className="capitalize text-sm font-medium">{payment.payment_mode}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Amount</p>
+                      <p className="font-semibold mt-0.5 text-success">
+                        ₹{Number(payment.amount).toLocaleString("en-IN")}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Status</p>
+                      <div className="mt-0.5">{getStatusBadge(payment.status)}</div>
+                    </div>
+                    {payment.notes && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground">Notes</p>
+                        <p className="text-sm mt-0.5">{payment.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              }
+            />
+          ))}
+        </div>
       ) : (
+        /* Desktop View */
         <div className="rounded-lg border overflow-hidden">
           <Table>
             <TableHeader>
