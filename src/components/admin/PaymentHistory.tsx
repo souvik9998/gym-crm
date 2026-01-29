@@ -24,6 +24,8 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
 import { usePaymentsQuery, type PaymentWithDetails } from "@/hooks/queries";
+import { usePagination } from "@/hooks/usePagination";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 type PaymentMode = Database["public"]["Enums"]["payment_mode"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
@@ -187,6 +189,9 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
 
   const hasActiveFilters = dateFrom || dateTo || paymentMode !== "all" || statusFilter !== "all" || typeFilter !== "all";
 
+  // Pagination for filtered payments
+  const pagination = usePagination(filteredPayments, { initialPageSize: 25 });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -289,7 +294,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
       ) : isMobile ? (
         /* Mobile View */
         <div className="rounded-lg border overflow-hidden">
-          {filteredPayments.map((payment) => (
+          {pagination.paginatedData.map((payment) => (
             <MobileExpandableRow
               key={payment.id}
               collapsedContent={
@@ -392,7 +397,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPayments.map((payment) => (
+              {pagination.paginatedData.map((payment) => (
                 <TableRow key={payment.id}>
                   <TableCell className="text-sm">
                     <div className="flex items-center gap-2">
@@ -443,6 +448,23 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
             </TableBody>
           </Table>
         </div>
+      )}
+
+      {/* Pagination Controls */}
+      {filteredPayments.length > 0 && (
+        <PaginationControls
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          startIndex={pagination.startIndex}
+          endIndex={pagination.endIndex}
+          pageSize={pagination.pageSize}
+          pageSizeOptions={pagination.pageSizeOptions}
+          hasNextPage={pagination.hasNextPage}
+          hasPrevPage={pagination.hasPrevPage}
+          onPageChange={pagination.goToPage}
+          onPageSizeChange={pagination.setPageSize}
+        />
       )}
     </div>
   );

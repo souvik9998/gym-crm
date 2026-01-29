@@ -988,7 +988,7 @@ export const MembersTable = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedMembers.map((member) => (
+            {pagination.paginatedData.map((member) => (
               <React.Fragment key={member.id}>
               <TableRow 
                 className={cn(
@@ -1220,6 +1220,21 @@ export const MembersTable = ({
         </Table>
         </div>
       </div>
+
+      {/* Pagination Controls */}
+      <PaginationControls
+        currentPage={pagination.currentPage}
+        totalPages={pagination.totalPages}
+        totalItems={pagination.totalItems}
+        startIndex={pagination.startIndex}
+        endIndex={pagination.endIndex}
+        pageSize={pagination.pageSize}
+        pageSizeOptions={pagination.pageSizeOptions}
+        hasNextPage={pagination.hasNextPage}
+        hasPrevPage={pagination.hasPrevPage}
+        onPageChange={pagination.goToPage}
+        onPageSizeChange={pagination.setPageSize}
+      />
 
       <EditMemberDialog
         open={!!editingMember}
