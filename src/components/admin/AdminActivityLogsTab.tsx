@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useMemo, useState } from "react";
+import { useInView } from "react-intersection-observer";
 import { useBranch } from "@/contexts/BranchContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,22 +41,8 @@ import ActivityDetailDialog from "./ActivityDetailDialog";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
-
-interface AdminActivityLog {
-  id: string;
-  admin_user_id: string | null;
-  activity_category: string;
-  activity_type: string;
-  description: string;
-  entity_type: string | null;
-  entity_id: string | null;
-  entity_name: string | null;
-  old_value: any;
-  new_value: any;
-  metadata: any;
-  created_at: string;
-  branch_id: string | null;
-}
+import { useInfiniteAdminLogsQuery, type AdminActivityLog } from "@/hooks/queries";
+import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 
 interface ActivityStats {
   totalActivities: number;
@@ -71,8 +58,6 @@ interface AdminActivityLogsTabProps {
 
 const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
   const { currentBranch } = useBranch();
-  const [logs, setLogs] = useState<AdminActivityLog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
@@ -88,51 +73,57 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
   const [selectedActivity, setSelectedActivity] = useState<AdminActivityLog | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  const handleViewActivity = (activity: AdminActivityLog) => {
-    setSelectedActivity(activity);
-    setIsDetailOpen(true);
-  };
+  // Create filters object for the query
+  const filters = useMemo(() => ({
+    categoryFilter: categoryFilter !== "all" ? categoryFilter : undefined,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+  }), [categoryFilter, dateFrom, dateTo]);
+
+  // Use infinite query for paginated data
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useInfiniteAdminLogsQuery(filters);
+
+  // Flatten all pages into single array
+  const allLogs = useMemo(() => {
+    if (!data?.pages) return [];
+    return data.pages.flatMap(page => page.data);
+  }, [data]);
+
+  const totalCount = data?.pages[0]?.totalCount || 0;
+  const showLoading = isLoading || (isFetching && !data) || data === undefined;
+
+  // Intersection observer for infinite scroll
+  const { ref: loadMoreRef, inView } = useInView({
+    threshold: 0,
+    rootMargin: "200px",
+  });
 
   useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Fetch stats separately (not paginated)
+  useEffect(() => {
     if (currentBranch?.id) {
-      fetchLogs();
       fetchStats();
     }
   }, [refreshKey, currentBranch?.id]);
 
-  const fetchLogs = async () => {
-    if (!currentBranch?.id) return;
-    
-    setIsLoading(true);
-    try {
-      let query = supabase
-        .from("admin_activity_logs")
-        .select("*")
-        .eq("branch_id", currentBranch.id)
-        .not("admin_user_id", "is", null) // Only show admin activities (exclude staff activities)
-        .order("created_at", { ascending: false })
-        .limit(500);
-
-      if (categoryFilter !== "all") {
-        query = query.eq("activity_category", categoryFilter);
-      }
-      if (dateFrom) {
-        query = query.gte("created_at", dateFrom + "T00:00:00Z");
-      }
-      if (dateTo) {
-        query = query.lte("created_at", dateTo + "T23:59:59Z");
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setLogs((data as AdminActivityLog[]) || []);
-    } catch (error: any) {
-      console.error("Error fetching activity logs:", error);
-    } finally {
-      setIsLoading(false);
+  useEffect(() => {
+    if (refreshKey > 0) {
+      refetch();
     }
-  };
+  }, [refreshKey, refetch]);
 
   const fetchStats = async () => {
     if (!currentBranch?.id) return;
@@ -142,7 +133,7 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
         .from("admin_activity_logs")
         .select("*")
         .eq("branch_id", currentBranch.id)
-        .not("admin_user_id", "is", null) // Only count admin activities (exclude staff activities)
+        .not("admin_user_id", "is", null)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -177,9 +168,10 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
     }
   };
 
-  useEffect(() => {
-    fetchLogs();
-  }, [categoryFilter, dateFrom, dateTo]);
+  const handleViewActivity = (activity: AdminActivityLog) => {
+    setSelectedActivity(activity);
+    setIsDetailOpen(true);
+  };
 
   const clearFilters = () => {
     setSearchQuery("");
@@ -188,38 +180,27 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
     setDateTo("");
   };
 
-  const filteredLogs = logs.filter((log) => {
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      return (
-        log.description.toLowerCase().includes(query) ||
-        log.activity_type.toLowerCase().includes(query) ||
-        (log.entity_name && log.entity_name.toLowerCase().includes(query))
-      );
-    }
-    return true;
-  });
+  const filteredLogs = useMemo(() => {
+    if (!searchQuery) return allLogs;
+    const query = searchQuery.toLowerCase();
+    return allLogs.filter((log) => (
+      log.description.toLowerCase().includes(query) ||
+      log.activity_type.toLowerCase().includes(query) ||
+      (log.entity_name && log.entity_name.toLowerCase().includes(query))
+    ));
+  }, [allLogs, searchQuery]);
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case "members":
-        return <Users className="w-4 h-4" />;
-      case "payments":
-        return <IndianRupee className="w-4 h-4" />;
-      case "packages":
-        return <Package className="w-4 h-4" />;
-      case "trainers":
-        return <Dumbbell className="w-4 h-4" />;
-      case "staff":
-        return <Users className="w-4 h-4" />;
-      case "settings":
-        return <Settings className="w-4 h-4" />;
-      case "whatsapp":
-        return <MessageCircle className="w-4 h-4" />;
-      case "subscriptions":
-        return <Calendar className="w-4 h-4" />;
-      default:
-        return <TrendingUp className="w-4 h-4" />;
+      case "members": return <Users className="w-4 h-4" />;
+      case "payments": return <IndianRupee className="w-4 h-4" />;
+      case "packages": return <Package className="w-4 h-4" />;
+      case "trainers": return <Dumbbell className="w-4 h-4" />;
+      case "staff": return <Users className="w-4 h-4" />;
+      case "settings": return <Settings className="w-4 h-4" />;
+      case "whatsapp": return <MessageCircle className="w-4 h-4" />;
+      case "subscriptions": return <Calendar className="w-4 h-4" />;
+      default: return <TrendingUp className="w-4 h-4" />;
     }
   };
 
@@ -254,12 +235,10 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
     });
   };
 
-  // Format description to clean up old "Soft deleted" text
   const formatDescription = (description: string) => {
     return description.replace(/^Soft deleted /i, "Deleted ");
   };
 
-  // Check if activity type is a delete action
   const isDeleteActivity = (activityType: string) => {
     return activityType.includes("deleted") || activityType.includes("delete");
   };
@@ -288,13 +267,10 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
   };
 
   const hasActiveFilters = searchQuery || categoryFilter !== "all" || dateFrom || dateTo;
+  const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && filteredLogs.length === 0;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="w-8 h-8 border-4 border-accent/30 border-t-accent rounded-full animate-spin" />
-      </div>
-    );
+  if (showLoading) {
+    return <TableSkeleton rows={8} columns={5} />;
   }
 
   return (
@@ -370,7 +346,7 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
           <Card>
             <CardHeader>
               <CardTitle>Activity Logs</CardTitle>
-              <CardDescription>Track all admin panel activities</CardDescription>
+              <CardDescription>Track all admin panel activities ({totalCount} total)</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Filters */}
@@ -429,7 +405,7 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
               {/* Table */}
               <div className="rounded-md border">
                 <Table>
-              <TableHeader>
+                  <TableHeader>
                     <TableRow>
                       <TableHead>Time</TableHead>
                       <TableHead>Category</TableHead>
@@ -439,72 +415,78 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredLogs.length === 0 ? (
+                    {isDataConfirmedEmpty ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                           No activity logs found
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredLogs.map((log) => (
-                        <TableRow 
-                          key={log.id} 
-                          className="cursor-pointer hover:bg-muted/50 transition-colors"
-                          onClick={() => handleViewActivity(log)}
-                        >
-                          <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                            {formatDateTime(log.created_at)}
-                          </TableCell>
-                          <TableCell>{getCategoryBadge(log.activity_category)}</TableCell>
-                          <TableCell>
-                            <div className="max-w-md">
-                              <p className={`text-sm font-medium ${isDeleteActivity(log.activity_type) ? "text-red-500" : ""}`}>
-                                {formatDescription(log.description)}
-                              </p>
-                              <p className={`text-xs ${isDeleteActivity(log.activity_type) ? "text-red-400" : "text-muted-foreground"}`}>
-                                {log.activity_type.replace(/_/g, " ")}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {log.entity_name && (
-                              <Badge variant="outline" className="text-xs">
-                                {log.entity_name}
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewActivity(log);
-                              }}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                      <>
+                        {filteredLogs.map((log) => (
+                          <TableRow 
+                            key={log.id} 
+                            className="cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => handleViewActivity(log)}
+                          >
+                            <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                              {formatDateTime(log.created_at)}
+                            </TableCell>
+                            <TableCell>{getCategoryBadge(log.activity_category)}</TableCell>
+                            <TableCell>
+                              <div className="max-w-md">
+                                <p className={`text-sm font-medium ${isDeleteActivity(log.activity_type) ? "text-red-500" : ""}`}>
+                                  {formatDescription(log.description)}
+                                </p>
+                                <p className={`text-xs ${isDeleteActivity(log.activity_type) ? "text-red-400" : "text-muted-foreground"}`}>
+                                  {log.activity_type.replace(/_/g, " ")}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {log.entity_name && (
+                                <Badge variant="outline" className="text-xs">
+                                  {log.entity_name}
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewActivity(log);
+                                }}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        
+                        {/* Infinite scroll sentinel */}
+                        {hasNextPage && (
+                          <TableRow ref={loadMoreRef}>
+                            <TableCell colSpan={5} className="p-0">
+                              {isFetchingNextPage && <InfiniteScrollSkeleton />}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
                     )}
                   </TableBody>
                 </Table>
               </div>
-
-              <p className="text-xs text-muted-foreground text-right">
-                Showing {filteredLogs.length} of {logs.length} activities
-              </p>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Activity Detail Modal */}
       <ActivityDetailDialog
-        activity={selectedActivity}
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
+        activity={selectedActivity}
       />
     </div>
   );

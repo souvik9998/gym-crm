@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useMemo, useState } from "react";
+import { useInView } from "react-intersection-observer";
 import { useBranch } from "@/contexts/BranchContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,31 +50,8 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
 import { format, parseISO } from "date-fns";
-
-interface UserActivityLog {
-  id: string;
-  activity_type: string;
-  description: string;
-  member_id: string | null;
-  daily_pass_user_id: string | null;
-  subscription_id: string | null;
-  pt_subscription_id: string | null;
-  payment_id: string | null;
-  trainer_id: string | null;
-  amount: number | null;
-  payment_mode: string | null;
-  package_name: string | null;
-  duration_months: number | null;
-  duration_days: number | null;
-  member_name: string | null;
-  member_phone: string | null;
-  trainer_name: string | null;
-  start_date: string | null;
-  end_date: string | null;
-  metadata: any;
-  created_at: string;
-  branch_id: string | null;
-}
+import { useInfiniteUserLogsQuery, type UserActivityLog } from "@/hooks/queries";
+import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 
 interface ActivityStats {
   totalActivities: number;
@@ -89,8 +67,6 @@ interface UserActivityLogsTabProps {
 
 const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
   const { currentBranch } = useBranch();
-  const [logs, setLogs] = useState<UserActivityLog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
@@ -106,50 +82,57 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
   const [selectedActivity, setSelectedActivity] = useState<UserActivityLog | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  const handleViewActivity = (activity: UserActivityLog) => {
-    setSelectedActivity(activity);
-    setIsDetailOpen(true);
-  };
+  // Create filters object for the query
+  const filters = useMemo(() => ({
+    typeFilter: typeFilter !== "all" ? typeFilter : undefined,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+  }), [typeFilter, dateFrom, dateTo]);
+
+  // Use infinite query for paginated data
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useInfiniteUserLogsQuery(filters);
+
+  // Flatten all pages into single array
+  const allLogs = useMemo(() => {
+    if (!data?.pages) return [];
+    return data.pages.flatMap(page => page.data);
+  }, [data]);
+
+  const totalCount = data?.pages[0]?.totalCount || 0;
+  const showLoading = isLoading || (isFetching && !data) || data === undefined;
+
+  // Intersection observer for infinite scroll
+  const { ref: loadMoreRef, inView } = useInView({
+    threshold: 0,
+    rootMargin: "200px",
+  });
 
   useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Fetch stats separately
+  useEffect(() => {
     if (currentBranch?.id) {
-      fetchLogs();
       fetchStats();
     }
   }, [refreshKey, currentBranch?.id]);
 
-  const fetchLogs = async () => {
-    if (!currentBranch?.id) return;
-    
-    setIsLoading(true);
-    try {
-      let query = supabase
-        .from("user_activity_logs")
-        .select("*")
-        .eq("branch_id", currentBranch.id)
-        .order("created_at", { ascending: false })
-        .limit(500);
-
-      if (typeFilter !== "all") {
-        query = query.eq("activity_type", typeFilter);
-      }
-      if (dateFrom) {
-        query = query.gte("created_at", dateFrom + "T00:00:00Z");
-      }
-      if (dateTo) {
-        query = query.lte("created_at", dateTo + "T23:59:59Z");
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setLogs((data as UserActivityLog[]) || []);
-    } catch (error: any) {
-      console.error("Error fetching user activity logs:", error);
-    } finally {
-      setIsLoading(false);
+  useEffect(() => {
+    if (refreshKey > 0) {
+      refetch();
     }
-  };
+  }, [refreshKey, refetch]);
 
   const fetchStats = async () => {
     if (!currentBranch?.id) return;
@@ -193,9 +176,10 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
     }
   };
 
-  useEffect(() => {
-    fetchLogs();
-  }, [typeFilter, dateFrom, dateTo]);
+  const handleViewActivity = (activity: UserActivityLog) => {
+    setSelectedActivity(activity);
+    setIsDetailOpen(true);
+  };
 
   const clearFilters = () => {
     setSearchQuery("");
@@ -204,32 +188,25 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
     setDateTo("");
   };
 
-  const filteredLogs = logs.filter((log) => {
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      return (
-        log.description.toLowerCase().includes(query) ||
-        log.activity_type.toLowerCase().includes(query) ||
-        (log.member_name && log.member_name.toLowerCase().includes(query)) ||
-        (log.member_phone && log.member_phone.includes(query))
-      );
-    }
-    return true;
-  });
+  const filteredLogs = useMemo(() => {
+    if (!searchQuery) return allLogs;
+    const query = searchQuery.toLowerCase();
+    return allLogs.filter((log) => (
+      log.description.toLowerCase().includes(query) ||
+      log.activity_type.toLowerCase().includes(query) ||
+      (log.member_name && log.member_name.toLowerCase().includes(query)) ||
+      (log.member_phone && log.member_phone.includes(query))
+    ));
+  }, [allLogs, searchQuery]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case "registration":
-        return <UserPlus className="w-4 h-4" />;
-      case "renewal":
-        return <RefreshCw className="w-4 h-4" />;
+      case "registration": return <UserPlus className="w-4 h-4" />;
+      case "renewal": return <RefreshCw className="w-4 h-4" />;
       case "pt_subscription":
-      case "pt_extension":
-        return <Dumbbell className="w-4 h-4" />;
-      case "daily_pass":
-        return <Calendar className="w-4 h-4" />;
-      default:
-        return <Calendar className="w-4 h-4" />;
+      case "pt_extension": return <Dumbbell className="w-4 h-4" />;
+      case "daily_pass": return <Calendar className="w-4 h-4" />;
+      default: return <Calendar className="w-4 h-4" />;
     }
   };
 
@@ -296,28 +273,10 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
   };
 
   const hasActiveFilters = searchQuery || typeFilter !== "all" || dateFrom || dateTo;
+  const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && filteredLogs.length === 0;
 
-  const getRelativeTime = (date: Date) => {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffSecs = Math.floor(diffMs / 1000);
-    const diffMins = Math.floor(diffSecs / 60);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffSecs < 60) return "Just now";
-    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-    return null;
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="w-8 h-8 border-4 border-accent/30 border-t-accent rounded-full animate-spin" />
-      </div>
-    );
+  if (showLoading) {
+    return <TableSkeleton rows={8} columns={6} />;
   }
 
   return (
@@ -393,7 +352,7 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
           <Card>
             <CardHeader>
               <CardTitle>User Activity Logs</CardTitle>
-              <CardDescription>Track all user activities - registrations, renewals, PT subscriptions, daily passes</CardDescription>
+              <CardDescription>Track all user activities ({totalCount} total)</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Filters */}
@@ -460,74 +419,93 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredLogs.length === 0 ? (
+                    {isDataConfirmedEmpty ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                           No user activity logs found
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredLogs.map((log) => (
-                        <TableRow 
-                          key={log.id} 
-                          className="cursor-pointer hover:bg-muted/50 transition-colors"
-                          onClick={() => handleViewActivity(log)}
-                        >
-                          <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                            {formatDateTime(log.created_at)}
-                          </TableCell>
-                          <TableCell>{getTypeBadge(log.activity_type)}</TableCell>
-                          <TableCell>
-                            {log.member_name ? (
-                              <div>
-                                <p className="text-sm font-medium">{log.member_name}</p>
-                                {log.member_phone && (
-                                  <p className="text-xs text-muted-foreground">{log.member_phone}</p>
+                      <>
+                        {filteredLogs.map((log) => (
+                          <TableRow 
+                            key={log.id} 
+                            className="cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => handleViewActivity(log)}
+                          >
+                            <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                              {formatDateTime(log.created_at)}
+                            </TableCell>
+                            <TableCell>{getTypeBadge(log.activity_type)}</TableCell>
+                            <TableCell>
+                              {log.member_name ? (
+                                <div>
+                                  <p className="text-sm font-medium">{log.member_name}</p>
+                                  {log.member_phone && (
+                                    <p className="text-xs text-muted-foreground">{log.member_phone}</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="max-w-xs">
+                                {log.package_name && (
+                                  <div className="flex items-center gap-1 text-sm">
+                                    <Package className="w-3 h-3 text-muted-foreground" />
+                                    <span>{log.package_name}</span>
+                                  </div>
+                                )}
+                                {log.trainer_name && (
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Dumbbell className="w-3 h-3" />
+                                    <span>{log.trainer_name}</span>
+                                  </div>
+                                )}
+                                {!log.package_name && !log.trainer_name && (
+                                  <span className="text-muted-foreground text-sm">{log.description}</span>
                                 )}
                               </div>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="max-w-xs">
-                              <p className="text-sm truncate">{log.description}</p>
-                              {log.package_name && (
-                                <p className="text-xs text-muted-foreground">{log.package_name}</p>
+                            </TableCell>
+                            <TableCell>
+                              {log.amount ? (
+                                <div className="flex items-center gap-1">
+                                  <IndianRupee className="w-3 h-3 text-success" />
+                                  <span className="font-medium text-success">{log.amount}</span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
                               )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {log.amount ? (
-                              <span className="text-sm font-medium text-success">
-                                ₹{Number(log.amount).toLocaleString("en-IN")}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewActivity(log);
-                              }}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewActivity(log);
+                                }}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        
+                        {/* Infinite scroll sentinel */}
+                        {hasNextPage && (
+                          <TableRow ref={loadMoreRef}>
+                            <TableCell colSpan={6} className="p-0">
+                              {isFetchingNextPage && <InfiniteScrollSkeleton />}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
                     )}
                   </TableBody>
                 </Table>
               </div>
-
-              <p className="text-xs text-muted-foreground text-right">
-                Showing {filteredLogs.length} of {logs.length} activities
-              </p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -535,195 +513,94 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
 
       {/* Activity Detail Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-4 md:p-3">
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Activity Details</DialogTitle>
+          </DialogHeader>
           {selectedActivity && (
-            <>
-              <DialogHeader className="pb-2 md:pb-2">
-                <DialogTitle className="flex items-center gap-2 md:gap-3">
-                  <div className="p-1.5 md:p-2 rounded-lg bg-accent/10">
-                    {getTypeIcon(selectedActivity.activity_type)}
-                  </div>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                {getTypeBadge(selectedActivity.activity_type)}
+              </div>
+              
+              <Separator />
+              
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <Clock className="w-4 h-4 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="text-base md:text-lg font-semibold">Activity Details</p>
-                    <p className="text-xs md:text-sm font-normal text-muted-foreground capitalize">
-                      {selectedActivity.activity_type.replace(/_/g, " ")}
-                    </p>
-                  </div>
-                </DialogTitle>
-              </DialogHeader>
-
-              <div className="space-y-3 md:space-y-2 mt-2 md:mt-3">
-                {/* Amount if present */}
-                {selectedActivity.amount && (
-                  <div className="text-center py-3 md:py-2 rounded-lg bg-success/10">
-                    <p className="text-sm text-muted-foreground mb-1">Amount</p>
-                    <p className="text-3xl font-bold text-success">
-                      ₹{Number(selectedActivity.amount).toLocaleString("en-IN")}
-                    </p>
-                  </div>
-                )}
-
-                {/* Timing Details */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    Timing Details
-                  </h4>
-                  <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Created</span>
-                      <span className="text-sm font-medium">
-                        {new Date(selectedActivity.created_at).toLocaleString("en-IN", {
-                          weekday: "long",
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                    {getRelativeTime(new Date(selectedActivity.created_at)) && (
-                      <Badge variant="outline" className="text-xs">
-                        {getRelativeTime(new Date(selectedActivity.created_at))}
-                      </Badge>
-                    )}
+                    <p className="text-xs text-muted-foreground">Time</p>
+                    <p className="text-sm font-medium">{formatDateTime(selectedActivity.created_at)}</p>
                   </div>
                 </div>
 
-                <Separator />
-
-                {/* Description */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    Description
-                  </h4>
-                  <p className="text-sm text-foreground bg-muted/30 rounded-lg p-4">
-                    {selectedActivity.description}
-                  </p>
-                </div>
-
-                {/* Member Details */}
-                {(selectedActivity.member_name || selectedActivity.member_phone) && (
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      <User className="w-4 h-4" />
-                      Member Details
-                    </h4>
-                    <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-                      {selectedActivity.member_name && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Name</span>
-                          <span className="text-sm font-medium">{selectedActivity.member_name}</span>
-                        </div>
-                      )}
+                {selectedActivity.member_name && (
+                  <div className="flex items-start gap-3">
+                    <User className="w-4 h-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Member</p>
+                      <p className="text-sm font-medium">{selectedActivity.member_name}</p>
                       {selectedActivity.member_phone && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground flex items-center gap-1">
-                            <Phone className="w-3 h-3" /> Phone
-                          </span>
-                          <span className="text-sm font-medium">{selectedActivity.member_phone}</span>
-                        </div>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <Phone className="w-3 h-3" />
+                          {selectedActivity.member_phone}
+                        </p>
                       )}
                     </div>
                   </div>
                 )}
 
-                {/* Package & Subscription Details */}
-                {(selectedActivity.package_name || selectedActivity.duration_months || selectedActivity.duration_days || selectedActivity.start_date || selectedActivity.end_date) && (
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      <Package className="w-4 h-4" />
-                      Package Details
-                    </h4>
-                    <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-                      {selectedActivity.package_name && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Package</span>
-                          <span className="text-sm font-medium">{selectedActivity.package_name}</span>
-                        </div>
-                      )}
-                      {selectedActivity.duration_months && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Duration</span>
-                          <span className="text-sm font-medium">{selectedActivity.duration_months} month(s)</span>
-                        </div>
-                      )}
-                      {selectedActivity.duration_days && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Duration</span>
-                          <span className="text-sm font-medium">{selectedActivity.duration_days} day(s)</span>
-                        </div>
-                      )}
-                      {selectedActivity.start_date && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Start Date</span>
-                          <span className="text-sm font-medium">
-                            {format(parseISO(selectedActivity.start_date), "MMM d, yyyy")}
-                          </span>
-                        </div>
-                      )}
-                      {selectedActivity.end_date && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">End Date</span>
-                          <span className="text-sm font-medium">
-                            {format(parseISO(selectedActivity.end_date), "MMM d, yyyy")}
-                          </span>
-                        </div>
-                      )}
+                {selectedActivity.package_name && (
+                  <div className="flex items-start gap-3">
+                    <Package className="w-4 h-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Package</p>
+                      <p className="text-sm font-medium">{selectedActivity.package_name}</p>
                     </div>
                   </div>
                 )}
 
-                {/* Payment Details */}
-                {(selectedActivity.payment_mode || selectedActivity.trainer_name) && (
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      <CreditCard className="w-4 h-4" />
-                      Additional Details
-                    </h4>
-                    <div className="bg-muted/30 rounded-lg p-4 space-y-2">
+                {selectedActivity.trainer_name && (
+                  <div className="flex items-start gap-3">
+                    <Dumbbell className="w-4 h-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Trainer</p>
+                      <p className="text-sm font-medium">{selectedActivity.trainer_name}</p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedActivity.amount && (
+                  <div className="flex items-start gap-3">
+                    <IndianRupee className="w-4 h-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Amount</p>
+                      <p className="text-sm font-medium text-success">₹{selectedActivity.amount}</p>
                       {selectedActivity.payment_mode && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Payment Mode</span>
-                          <Badge variant="outline" className="capitalize">
-                            {selectedActivity.payment_mode}
-                          </Badge>
-                        </div>
-                      )}
-                      {selectedActivity.trainer_name && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground flex items-center gap-1">
-                            <Dumbbell className="w-3 h-3" /> Trainer
-                          </span>
-                          <span className="text-sm font-medium">{selectedActivity.trainer_name}</span>
-                        </div>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <CreditCard className="w-3 h-3" />
+                          {selectedActivity.payment_mode}
+                        </p>
                       )}
                     </div>
                   </div>
                 )}
 
-                {/* Metadata */}
-                {selectedActivity.metadata && Object.keys(selectedActivity.metadata).length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-foreground">Additional Metadata</h4>
-                    <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-                      {Object.entries(selectedActivity.metadata).map(([key, value]) => (
-                        <div key={key} className="flex justify-between">
-                          <span className="text-sm text-muted-foreground capitalize">
-                            {key.replace(/_/g, " ")}
-                          </span>
-                          <span className="text-sm font-medium">
-                            {typeof value === "object" ? JSON.stringify(value) : String(value)}
-                          </span>
-                        </div>
-                      ))}
+                {(selectedActivity.start_date || selectedActivity.end_date) && (
+                  <div className="flex items-start gap-3">
+                    <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Duration</p>
+                      <p className="text-sm font-medium">
+                        {selectedActivity.start_date && format(parseISO(selectedActivity.start_date), "dd MMM yyyy")}
+                        {selectedActivity.start_date && selectedActivity.end_date && " - "}
+                        {selectedActivity.end_date && format(parseISO(selectedActivity.end_date), "dd MMM yyyy")}
+                      </p>
                     </div>
                   </div>
                 )}
               </div>
-            </>
+            </div>
           )}
         </DialogContent>
       </Dialog>

@@ -2,7 +2,7 @@
  * Daily Pass Query Hooks
  * TanStack Query hooks for daily pass users data
  */
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys, invalidationGroups } from "@/lib/queryKeys";
 import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { useBranch } from "@/contexts/BranchContext";
@@ -11,7 +11,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import * as dailyPassApi from "@/api/dailyPass";
 
 // Re-export types
-export type { DailyPassUserWithSubscription } from "@/api/dailyPass";
+export type { DailyPassUserWithSubscription, PaginatedDailyPassResponse } from "@/api/dailyPass";
 
 /**
  * Hook to fetch all daily pass users with subscriptions
@@ -28,6 +28,29 @@ export function useDailyPassQuery() {
   return useQuery({
     queryKey: queryKeys.dailyPass.users(branchId),
     queryFn: () => dailyPassApi.fetchDailyPassUsers(branchId),
+    staleTime: STALE_TIMES.DYNAMIC,
+    gcTime: GC_TIME,
+    refetchOnWindowFocus: false,
+    enabled: isAuthenticated && !!branchId,
+  });
+}
+
+/**
+ * Infinite scroll hook for daily pass users with pagination
+ */
+export function useInfiniteDailyPassQuery() {
+  const { currentBranch } = useBranch();
+  const { isStaffLoggedIn } = useStaffAuth();
+  const { isAdmin } = useIsAdmin();
+  const branchId = currentBranch?.id;
+  
+  const isAuthenticated = isAdmin || isStaffLoggedIn;
+
+  return useInfiniteQuery({
+    queryKey: [...queryKeys.dailyPass.users(branchId), "infinite"],
+    queryFn: ({ pageParam = 0 }) => dailyPassApi.fetchDailyPassUsersPaginated(branchId, pageParam, 25),
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: 0,
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
     refetchOnWindowFocus: false,
