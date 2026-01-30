@@ -217,7 +217,7 @@ export const MemberActivityDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[90vh] sm:max-h-[90vh] overflow-hidden flex flex-col p-0 left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]">
         <DialogHeader className="p-3 sm:p-2 md:p-2.5 pb-1 flex-shrink-0">
           <DialogTitle className="flex items-center gap-1.5 md:gap-2 text-sm md:text-base">
             <User className="w-3.5 h-3.5 md:w-4 md:h-4 text-accent" />
