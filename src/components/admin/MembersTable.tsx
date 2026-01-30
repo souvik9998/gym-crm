@@ -86,8 +86,9 @@ export const MembersTable = ({
   // Total count from the first page
   const totalCount = data?.pages[0]?.totalCount || 0;
   
-  // Show loading when initially loading OR when data hasn't been fetched yet
-  const showLoading = isLoading && !data;
+  // Show loading when initially loading OR when fetching and no data yet (branch switch, initial load)
+  // This prevents "No members" flash before data loads
+  const showLoading = isLoading || (isFetching && !data) || data === undefined;
 
   // Intersection observer for infinite scroll - trigger prefetch 200px before bottom
   const { ref: loadMoreRef, inView } = useInView({
@@ -865,11 +866,15 @@ export const MembersTable = ({
     }
   };
 
+  // Show skeleton while loading - this must come first to prevent "No data" flash
   if (showLoading) {
     return <TableSkeleton rows={8} columns={6} />;
   }
 
-  if (sortedMembers.length === 0 && !isFetching) {
+  // Only show empty state when we have confirmed data is empty (not loading, not fetching, data exists but is empty)
+  const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && sortedMembers.length === 0;
+  
+  if (isDataConfirmedEmpty) {
     return (
       <div className="text-center py-12">
         <User className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
