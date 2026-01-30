@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserCheck, Clock, AlertTriangle, Download } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,6 +62,7 @@ export const MembersTable = ({
   sortBy: externalSortBy,
   sortOrder: externalSortOrder
 }: MembersTableProps) => {
+  const isMobile = useIsMobile();
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn, permissions, staffUser } = useStaffAuth();
   const { isAdmin } = useIsAdmin();
@@ -943,353 +945,426 @@ export const MembersTable = ({
         </Button>
       </div>
 
-      <div className="rounded-lg border overflow-hidden">
-        <div className="overflow-hidden md:overflow-x-auto -mx-2 md:-mx-4 sm:mx-0 px-2 md:px-4 sm:px-0">
-          <Table className="w-full md:min-w-[600px] table-fixed md:table-auto">
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="w-10 hidden md:table-cell">
-                <Checkbox
-                  checked={selectedMembers.size === sortedMembers.length && sortedMembers.length > 0}
-                  onCheckedChange={toggleSelectAll}
-                  aria-label="Select all"
-                />
-              </TableHead>
-              <TableHead className="font-semibold text-[10px] md:text-sm py-1.5 md:py-3 w-auto md:w-auto">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "h-5 md:h-8 px-0.5 md:px-2 -ml-0.5 md:-ml-2 hover:bg-muted/50",
-                    sortField === "name" && "bg-muted"
-                  )}
-                  onClick={() => handleSort("name")}
-                >
-                  <span className="flex items-center gap-0.5 md:gap-1 text-[10px] md:text-sm">
-                    Member
-                    {getSortIcon("name")}
+      {/* Mobile Card Layout */}
+      {isMobile ? (
+        <div className="space-y-2">
+          {sortedMembers.map((member) => (
+            <div 
+              key={member.id}
+              className={cn(
+                "bg-card border rounded-lg p-3 cursor-pointer transition-colors hover:bg-muted/50",
+                selectedMembers.has(member.id) && "bg-primary/5 border-primary/30"
+              )}
+              onClick={() => handleMemberClick(member)}
+            >
+              <div className="flex items-center gap-3">
+                {/* Avatar */}
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-semibold text-primary">
+                    {member.name.charAt(0).toUpperCase()}
                   </span>
-                </Button>
-              </TableHead>
-              <TableHead className="hidden sm:table-cell font-semibold text-xs md:text-sm">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "h-8 px-2 -ml-2 hover:bg-muted/50",
-                    sortField === "phone" && "bg-muted"
-                  )}
-                  onClick={() => handleSort("phone")}
-                >
-                  <span className="flex items-center gap-1 text-xs md:text-sm">
-                    Phone
-                    {getSortIcon("phone")}
-                  </span>
-                </Button>
-              </TableHead>
-              <TableHead className="font-semibold text-[10px] md:text-sm py-1.5 md:py-3 md:table-cell w-6">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "h-5 md:h-8 px-0 md:px-2 -ml-0 md:-ml-2 hover:bg-muted/50",
-                    sortField === "status" && "bg-muted"
-                  )}
-                  onClick={() => handleSort("status")}
-                >
-                  <span className="hidden md:flex items-center gap-0.5 md:gap-1 text-[10px] md:text-sm">
-                    Status
-                    {getSortIcon("status")}
-                  </span>
-                </Button>
-              </TableHead>
-              <TableHead className="hidden lg:table-cell font-semibold text-xs md:text-sm">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "h-8 px-2 -ml-2 hover:bg-muted/50",
-                    sortField === "trainer" && "bg-muted"
-                  )}
-                  onClick={() => handleSort("trainer")}
-                >
-                  <span className="flex items-center gap-1 text-xs md:text-sm">
-                    <Dumbbell className="w-4 h-4" />
-                    Trainer
-                    {getSortIcon("trainer")}
-                  </span>
-                </Button>
-              </TableHead>
-              <TableHead className="hidden md:table-cell font-semibold text-xs md:text-sm">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "h-8 px-2 -ml-2 hover:bg-muted/50",
-                    sortField === "expiry" && "bg-muted"
-                  )}
-                  onClick={() => handleSort("expiry")}
-                >
-                  <span className="flex items-center gap-1 text-xs md:text-sm">
-                    Expires
-                    {getSortIcon("expiry")}
-                  </span>
-                </Button>
-              </TableHead>
-              <TableHead className="w-10 md:w-auto"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedMembers.map((member) => (
-              <React.Fragment key={member.id}>
-              <TableRow 
-                className={cn(
-                  "transition-colors duration-150 ease-in-out hover:bg-muted/50",
-                  selectedMembers.has(member.id) && "bg-primary/5",
-                  expandedMemberId === member.id && "bg-muted/30"
-                )}
-                onClick={() => handleMemberClick(member)}
-              >
-                {/* Checkbox - hidden on mobile */}
-                <TableCell className="hidden md:table-cell py-2 md:py-3">
-                  <Checkbox
-                    checked={selectedMembers.has(member.id)}
-                    onCheckedChange={() => {}}
-                    onClick={(e) => toggleMemberSelection(member.id, e)}
-                    aria-label={`Select ${member.name}`}
-                  />
-                </TableCell>
+                </div>
                 
-                {/* Member info with avatar */}
-                <TableCell className="py-2 md:py-3 pl-2 md:pl-4">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs md:text-sm font-semibold text-primary">
-                        {member.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <p className="font-medium text-xs md:text-sm truncate max-w-[100px] md:max-w-none">
-                          {member.name}
-                        </p>
-                        {/* Status circle removed from mobile */}
-                      </div>
-                      <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
-                        <Phone className="w-2.5 h-2.5 md:w-3 md:h-3 hidden sm:inline" />
-                        +91 {member.phone}
-                      </p>
-                    </div>
-                  </div>
-                </TableCell>
-                
-                {/* Phone - hidden on mobile */}
-                <TableCell className="hidden sm:table-cell text-xs md:text-sm">
-                  <div className="flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-muted-foreground" />
-                    +91 {member.phone}
-                  </div>
-                </TableCell>
-                
-                {/* Status - show circle on mobile, badge on desktop */}
-                <TableCell className="py-2 md:py-3 w-6 md:w-auto">
-                  <div className="hidden md:block">
-                    {getStatusBadge(member.subscription)}
-                  </div>
-                  <div className="md:hidden">
+                {/* Member Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-sm truncate">{member.name}</p>
                     {getStatusCircle(member.subscription)}
                   </div>
-                </TableCell>
-                
-                {/* Trainer - hidden on small screens */}
-                <TableCell className="hidden lg:table-cell text-xs md:text-sm">
-                  {member.activePT ? (
-                    <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 text-purple-700 dark:text-purple-300 border-purple-300/50 dark:border-purple-700/50">
-                      <Dumbbell className="w-3 h-3 mr-1" />
-                      {member.activePT.trainer_name}
-                    </Badge>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">No PT</span>
-                  )}
-                </TableCell>
-                
-                {/* Expiry date - hidden on mobile */}
-                <TableCell className="hidden md:table-cell text-xs md:text-sm">
-                  {member.subscription ? (
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                      {new Date(member.subscription.end_date).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </TableCell>
+                  <p className="text-xs text-muted-foreground">+91 {member.phone}</p>
+                </div>
                 
                 {/* Actions */}
-                <TableCell className="py-1 md:py-3 pr-1 md:pr-4">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 md:h-8 md:w-8 p-0">
-                        <MoreVertical className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44 md:w-48">
-                      {canManageMembers && (
-                        <>
-                          <DropdownMenuItem 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingMember(member);
-                            }}
-                            className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
-                          >
-                            <Pencil className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteConfirm({ open: true, memberId: member.id, memberName: member.name });
-                            }}
-                            className="text-destructive text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
-                          >
-                            <Trash2 className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                          {isInactive(member) && (
-                            <DropdownMenuItem 
-                              onClick={(e) => handleMoveToActive(member, e)}
-                              className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
-                            >
-                              <UserCheck className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
-                              Move to Active
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={(e) => handleSendPromotional(member, e)}
-                            disabled={sendingWhatsApp === member.id}
-                            className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
-                          >
-                            <MessageCircle className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
-                            {sendingWhatsApp === member.id ? "Sending..." : "Send Promotional"}
-                          </DropdownMenuItem>
-                          {isExpiringOrExpired(member) && (
-                            isExpired(member) ? (
-                              <DropdownMenuItem
-                                onClick={(e) => handleSendExpiredReminder(member, e)}
-                                disabled={sendingWhatsApp === member.id}
-                                className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
-                              >
-                                <AlertTriangle className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
-                                {sendingWhatsApp === member.id ? "Sending..." : "Send Expired Reminder"}
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem
-                                onClick={(e) => handleSendExpiryReminder(member, e)}
-                                disabled={sendingWhatsApp === member.id}
-                                className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
-                              >
-                                <Clock className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
-                                {sendingWhatsApp === member.id ? "Sending..." : "Send Expiry Reminder"}
-                              </DropdownMenuItem>
-                            )
-                          )}
-                          <DropdownMenuItem
-                            onClick={(e) => handleSendPaymentDetails(member, e)}
-                            disabled={sendingWhatsApp === member.id}
-                            className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
-                          >
-                            <Receipt className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
-                            Send Payment Details
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      
-                      {/* If user only has view access, show message */}
-                      {!canManageMembers && (
-                        <DropdownMenuItem disabled className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2">
-                          <span className="text-muted-foreground text-[10px] md:text-sm">View only - No edit permissions</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0">
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    {canManageMembers && (
+                      <>
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingMember(member);
+                          }}
+                        >
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Edit
                         </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirm({ open: true, memberId: member.id, memberName: member.name });
+                          }}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                        {isInactive(member) && (
+                          <DropdownMenuItem onClick={(e) => handleMoveToActive(member, e)}>
+                            <UserCheck className="w-4 h-4 mr-2" />
+                            Move to Active
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={(e) => handleSendPromotional(member, e)}
+                          disabled={sendingWhatsApp === member.id}
+                        >
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          {sendingWhatsApp === member.id ? "Sending..." : "Send Promotional"}
+                        </DropdownMenuItem>
+                        {isExpiringOrExpired(member) && (
+                          isExpired(member) ? (
+                            <DropdownMenuItem
+                              onClick={(e) => handleSendExpiredReminder(member, e)}
+                              disabled={sendingWhatsApp === member.id}
+                            >
+                              <AlertTriangle className="w-4 h-4 mr-2" />
+                              {sendingWhatsApp === member.id ? "Sending..." : "Send Expired Reminder"}
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              onClick={(e) => handleSendExpiryReminder(member, e)}
+                              disabled={sendingWhatsApp === member.id}
+                            >
+                              <Clock className="w-4 h-4 mr-2" />
+                              {sendingWhatsApp === member.id ? "Sending..." : "Send Expiry Reminder"}
+                            </DropdownMenuItem>
+                          )
+                        )}
+                        <DropdownMenuItem
+                          onClick={(e) => handleSendPaymentDetails(member, e)}
+                          disabled={sendingWhatsApp === member.id}
+                        >
+                          <Receipt className="w-4 h-4 mr-2" />
+                          Send Payment Details
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {!canManageMembers && (
+                      <DropdownMenuItem disabled>
+                        <span className="text-muted-foreground text-sm">View only - No edit permissions</span>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              
+              {/* Status Badge & Expiry */}
+              <div className="flex items-center justify-between mt-2 pt-2 border-t">
+                <div>{getStatusBadge(member.subscription)}</div>
+                {member.subscription && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Calendar className="w-3 h-3" />
+                    {new Date(member.subscription.end_date).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </div>
+                )}
+              </div>
+              
+              {/* Trainer Badge if exists */}
+              {member.activePT && (
+                <div className="mt-2">
+                  <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 text-purple-700 dark:text-purple-300 border-purple-300/50 dark:border-purple-700/50 text-xs">
+                    <Dumbbell className="w-3 h-3 mr-1" />
+                    {member.activePT.trainer_name}
+                  </Badge>
+                </div>
+              )}
+            </div>
+          ))}
+          
+          {/* Infinite scroll loading */}
+          {isFetchingNextPage && (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-card border rounded-lg p-3 animate-pulse">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-muted" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-32" />
+                      <div className="h-3 bg-muted rounded w-24" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* Sentinel for infinite scroll */}
+          {hasNextPage && !isFetchingNextPage && (
+            <div ref={loadMoreRef} className="h-1" />
+          )}
+        </div>
+      ) : (
+        /* Desktop Table Layout */
+        <div className="rounded-lg border overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table className="min-w-[600px]">
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={selectedMembers.size === sortedMembers.length && sortedMembers.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-8 px-2 -ml-2 hover:bg-muted/50",
+                        sortField === "name" && "bg-muted"
                       )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-              {/* Mobile: Expanded details row */}
-              {expandedMemberId === member.id && (
-                <TableRow className="md:hidden">
-                  <TableCell colSpan={5} className="py-2 px-3 bg-muted/20">
-                    <div className="space-y-1.5">
-                      {/* Phone */}
-                      <div className="flex items-center gap-2 text-[10px]">
-                        <Phone className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                        <span className="text-muted-foreground">Phone:</span>
-                        <span>+91 {member.phone}</span>
+                      onClick={() => handleSort("name")}
+                    >
+                      <span className="flex items-center gap-1">
+                        Member
+                        {getSortIcon("name")}
+                      </span>
+                    </Button>
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-8 px-2 -ml-2 hover:bg-muted/50",
+                        sortField === "phone" && "bg-muted"
+                      )}
+                      onClick={() => handleSort("phone")}
+                    >
+                      <span className="flex items-center gap-1">
+                        Phone
+                        {getSortIcon("phone")}
+                      </span>
+                    </Button>
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-8 px-2 -ml-2 hover:bg-muted/50",
+                        sortField === "status" && "bg-muted"
+                      )}
+                      onClick={() => handleSort("status")}
+                    >
+                      <span className="flex items-center gap-1">
+                        Status
+                        {getSortIcon("status")}
+                      </span>
+                    </Button>
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-8 px-2 -ml-2 hover:bg-muted/50",
+                        sortField === "trainer" && "bg-muted"
+                      )}
+                      onClick={() => handleSort("trainer")}
+                    >
+                      <span className="flex items-center gap-1">
+                        <Dumbbell className="w-4 h-4" />
+                        Trainer
+                        {getSortIcon("trainer")}
+                      </span>
+                    </Button>
+                  </TableHead>
+                  <TableHead className="font-semibold">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-8 px-2 -ml-2 hover:bg-muted/50",
+                        sortField === "expiry" && "bg-muted"
+                      )}
+                      onClick={() => handleSort("expiry")}
+                    >
+                      <span className="flex items-center gap-1">
+                        Expires
+                        {getSortIcon("expiry")}
+                      </span>
+                    </Button>
+                  </TableHead>
+                  <TableHead className="w-10"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedMembers.map((member) => (
+                  <TableRow 
+                    key={member.id}
+                    className={cn(
+                      "transition-colors duration-150 ease-in-out hover:bg-muted/50 cursor-pointer",
+                      selectedMembers.has(member.id) && "bg-primary/5"
+                    )}
+                    onClick={() => handleMemberClick(member)}
+                  >
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedMembers.has(member.id)}
+                        onCheckedChange={() => {}}
+                        onClick={(e) => toggleMemberSelection(member.id, e)}
+                        aria-label={`Select ${member.name}`}
+                      />
+                    </TableCell>
+                    
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                          <span className="text-sm font-semibold text-primary">
+                            {member.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{member.name}</p>
+                        </div>
                       </div>
-                      {/* Trainer */}
+                    </TableCell>
+                    
+                    <TableCell className="text-sm">
+                      <div className="flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+                        +91 {member.phone}
+                      </div>
+                    </TableCell>
+                    
+                    <TableCell>
+                      {getStatusBadge(member.subscription)}
+                    </TableCell>
+                    
+                    <TableCell className="text-sm">
                       {member.activePT ? (
-                        <div className="flex items-center gap-2 text-[10px]">
-                          <Dumbbell className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                          <span className="text-muted-foreground">Trainer:</span>
-                          <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 text-purple-700 dark:text-purple-300 border-purple-300/50 dark:border-purple-700/50 text-[9px] px-1.5 py-0.5">
-                            {member.activePT.trainer_name}
-                          </Badge>
-                        </div>
+                        <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 text-purple-700 dark:text-purple-300 border-purple-300/50 dark:border-purple-700/50">
+                          <Dumbbell className="w-3 h-3 mr-1" />
+                          {member.activePT.trainer_name}
+                        </Badge>
                       ) : (
-                        <div className="flex items-center gap-2 text-[10px]">
-                          <Dumbbell className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                          <span className="text-muted-foreground">Trainer:</span>
-                          <span className="text-muted-foreground">No PT</span>
-                        </div>
+                        <span className="text-muted-foreground text-xs">No PT</span>
                       )}
-                      {/* Expiry Date */}
+                    </TableCell>
+                    
+                    <TableCell className="text-sm">
                       {member.subscription ? (
-                        <div className="flex items-center gap-2 text-[10px]">
-                          <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                          <span className="text-muted-foreground">Expires:</span>
-                          <span>{new Date(member.subscription.end_date).toLocaleDateString("en-IN", {
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                          {new Date(member.subscription.end_date).toLocaleDateString("en-IN", {
                             day: "numeric",
                             month: "short",
                             year: "numeric",
-                          })}</span>
+                          })}
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2 text-[10px]">
-                          <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                          <span className="text-muted-foreground">Expires:</span>
-                          <span className="text-muted-foreground">-</span>
-                        </div>
+                        <span className="text-muted-foreground">-</span>
                       )}
-                      {/* Status Badge (mobile expanded view) */}
-                      <div className="flex items-center gap-2 text-[10px]">
-                        <span className="text-muted-foreground">Status:</span>
-                        {getStatusBadge(member.subscription)}
-                      </div>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-              </React.Fragment>
-            ))}
-            
-            {/* Infinite scroll skeleton loader - shown when fetching next page */}
-            {isFetchingNextPage && <InfiniteScrollSkeleton rows={3} />}
-            
-            {/* Sentinel element for intersection observer */}
-            {hasNextPage && !isFetchingNextPage && (
-              <TableRow ref={loadMoreRef}>
-                <TableCell colSpan={7} className="h-1 p-0" />
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          {canManageMembers && (
+                            <>
+                              <DropdownMenuItem 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingMember(member);
+                                }}
+                              >
+                                <Pencil className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteConfirm({ open: true, memberId: member.id, memberName: member.name });
+                                }}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                              {isInactive(member) && (
+                                <DropdownMenuItem onClick={(e) => handleMoveToActive(member, e)}>
+                                  <UserCheck className="w-4 h-4 mr-2" />
+                                  Move to Active
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={(e) => handleSendPromotional(member, e)}
+                                disabled={sendingWhatsApp === member.id}
+                              >
+                                <MessageCircle className="w-4 h-4 mr-2" />
+                                {sendingWhatsApp === member.id ? "Sending..." : "Send Promotional"}
+                              </DropdownMenuItem>
+                              {isExpiringOrExpired(member) && (
+                                isExpired(member) ? (
+                                  <DropdownMenuItem
+                                    onClick={(e) => handleSendExpiredReminder(member, e)}
+                                    disabled={sendingWhatsApp === member.id}
+                                  >
+                                    <AlertTriangle className="w-4 h-4 mr-2" />
+                                    {sendingWhatsApp === member.id ? "Sending..." : "Send Expired Reminder"}
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem
+                                    onClick={(e) => handleSendExpiryReminder(member, e)}
+                                    disabled={sendingWhatsApp === member.id}
+                                  >
+                                    <Clock className="w-4 h-4 mr-2" />
+                                    {sendingWhatsApp === member.id ? "Sending..." : "Send Expiry Reminder"}
+                                  </DropdownMenuItem>
+                                )
+                              )}
+                              <DropdownMenuItem
+                                onClick={(e) => handleSendPaymentDetails(member, e)}
+                                disabled={sendingWhatsApp === member.id}
+                              >
+                                <Receipt className="w-4 h-4 mr-2" />
+                                Send Payment Details
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          {!canManageMembers && (
+                            <DropdownMenuItem disabled>
+                              <span className="text-muted-foreground text-sm">View only - No edit permissions</span>
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                
+                {/* Infinite scroll skeleton loader */}
+                {isFetchingNextPage && <InfiniteScrollSkeleton rows={3} />}
+                
+                {/* Sentinel element for intersection observer */}
+                {hasNextPage && !isFetchingNextPage && (
+                  <TableRow ref={loadMoreRef}>
+                    <TableCell colSpan={7} className="h-1 p-0" />
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Show loading indicator at bottom when fetching more */}
       {hasNextPage && (
