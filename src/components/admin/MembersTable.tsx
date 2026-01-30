@@ -945,33 +945,67 @@ export const MembersTable = ({
         </Button>
       </div>
 
-      {/* Mobile Card Layout */}
+      {/* Mobile Table Layout - matches desktop table style */}
       {isMobile ? (
-        <div className="space-y-2">
-          {sortedMembers.map((member) => (
-            <div 
-              key={member.id}
-              className={cn(
-                "bg-card border rounded-lg p-3 cursor-pointer transition-colors hover:bg-muted/50",
-                selectedMembers.has(member.id) && "bg-primary/5 border-primary/30"
-              )}
-              onClick={() => handleMemberClick(member)}
+        <div className="rounded-lg border overflow-hidden bg-card">
+          {/* Table Header */}
+          <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
+            <button 
+              className="flex items-center gap-1 text-xs font-medium text-foreground"
+              onClick={() => handleSort("name")}
             >
-              <div className="flex items-center gap-3">
+              Member
+              {sortField === "name" && (
+                sortOrder === "asc" ? <ArrowUp className="w-3 h-3 text-primary" /> : <ArrowDown className="w-3 h-3 text-primary" />
+              )}
+            </button>
+            <div className="flex items-center gap-2">
+              <button
+                className="p-1.5"
+                onClick={() => handleSort("expiry")}
+              >
+                {sortField === "expiry" && sortOrder === "desc" ? (
+                  <ArrowDown className="w-3.5 h-3.5 text-primary" />
+                ) : (
+                  <ArrowUp className="w-3.5 h-3.5 text-muted-foreground" />
+                )}
+              </button>
+              <button
+                className="p-1.5"
+                onClick={() => setSelectedMembers(new Set())}
+              >
+                <span className="sr-only">Clear</span>
+              </button>
+            </div>
+          </div>
+          
+          {/* Table Rows */}
+          <div className="divide-y">
+            {sortedMembers.map((member) => (
+              <div 
+                key={member.id}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors hover:bg-muted/50",
+                  selectedMembers.has(member.id) && "bg-primary/5"
+                )}
+                onClick={() => handleMemberClick(member)}
+              >
                 {/* Avatar */}
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-semibold text-primary">
+                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-medium text-muted-foreground">
                     {member.name.charAt(0).toUpperCase()}
                   </span>
                 </div>
                 
                 {/* Member Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-sm truncate">{member.name}</p>
-                    {getStatusCircle(member.subscription)}
-                  </div>
+                  <p className="font-medium text-sm truncate">{member.name}</p>
                   <p className="text-xs text-muted-foreground">+91 {member.phone}</p>
+                </div>
+                
+                {/* Status Dot */}
+                <div className="flex-shrink-0">
+                  {getStatusCircle(member.subscription)}
                 </div>
                 
                 {/* Actions */}
@@ -1053,45 +1087,20 @@ export const MembersTable = ({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              
-              {/* Status Badge & Expiry */}
-              <div className="flex items-center justify-between mt-2 pt-2 border-t">
-                <div>{getStatusBadge(member.subscription)}</div>
-                {member.subscription && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Calendar className="w-3 h-3" />
-                    {new Date(member.subscription.end_date).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                    })}
-                  </div>
-                )}
-              </div>
-              
-              {/* Trainer Badge if exists */}
-              {member.activePT && (
-                <div className="mt-2">
-                  <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 text-purple-700 dark:text-purple-300 border-purple-300/50 dark:border-purple-700/50 text-xs">
-                    <Dumbbell className="w-3 h-3 mr-1" />
-                    {member.activePT.trainer_name}
-                  </Badge>
-                </div>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
           
           {/* Infinite scroll loading */}
           {isFetchingNextPage && (
-            <div className="space-y-2">
+            <div className="divide-y">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-card border rounded-lg p-3 animate-pulse">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-muted" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-muted rounded w-32" />
-                      <div className="h-3 bg-muted rounded w-24" />
-                    </div>
+                <div key={i} className="flex items-center gap-3 px-3 py-2.5 animate-pulse">
+                  <div className="w-9 h-9 rounded-full bg-muted" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-4 bg-muted rounded w-28" />
+                    <div className="h-3 bg-muted rounded w-24" />
                   </div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-muted" />
                 </div>
               ))}
             </div>
