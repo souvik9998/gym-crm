@@ -544,59 +544,126 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
         </TabsContent>
       </Tabs>
 
-      {/* Message Detail Dialog */}
+      {/* Message Detail Dialog - WhatsApp Style */}
       <Dialog open={!!selectedMessage} onOpenChange={() => setSelectedMessage(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" />
-              Message Details
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-md !p-0 !border-0 max-h-[90vh] overflow-hidden flex flex-col [&>button]:hidden rounded-none sm:rounded-lg shadow-2xl">
           {selectedMessage && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Recipient</p>
-                  <p className="text-sm font-medium">
-                    {selectedMessage.recipient_name || selectedMessage.member?.name || selectedMessage.daily_pass_user?.name || "-"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
+            <>
+              {/* Close button in corner */}
+              <button
+                onClick={() => setSelectedMessage(null)}
+                className="absolute top-2 right-2 z-50 w-8 h-8 flex items-center justify-center text-white/90 hover:text-white hover:bg-white/20 rounded-full transition-colors backdrop-blur-sm"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* WhatsApp Header - Exact Green */}
+              <div className="bg-[#075e54] px-4 py-2.5 flex items-center gap-3 text-white relative">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <Phone className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-[15px] leading-tight truncate" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                    {selectedMessage.recipient_name || selectedMessage.member?.name || selectedMessage.daily_pass_user?.name || "Unknown"}
+                  </h3>
+                  <p className="text-[13px] text-white/90 truncate leading-tight" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
                     {selectedMessage.recipient_phone || selectedMessage.member?.phone || selectedMessage.daily_pass_user?.phone || "-"}
                   </p>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Sent At</p>
-                  <p className="text-sm font-medium">{formatDateTime(selectedMessage.sent_at)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Type</p>
-                  <Badge variant="outline" className="mt-1">
-                    {getTypeLabel(selectedMessage.notification_type)}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Status</p>
-                  <div className="mt-1">{getStatusBadge(selectedMessage.status)}</div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {selectedMessage.status === "sent" && (
+                    <span className="text-[11px] bg-[#25d366]/30 text-white px-2 py-0.5 rounded-full" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>Sent</span>
+                  )}
+                  {selectedMessage.status === "failed" && (
+                    <span className="text-[11px] bg-red-500/30 text-white px-2 py-0.5 rounded-full" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>Failed</span>
+                  )}
                 </div>
               </div>
-              
-              {selectedMessage.message_content && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-2">Message Content</p>
-                  <div className="bg-muted/50 rounded-lg p-3 text-sm whitespace-pre-wrap">
-                    {selectedMessage.message_content}
+
+              {/* Chat Area - WhatsApp Background */}
+              <div 
+                className="flex-1 overflow-y-auto px-2 py-2"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+                  backgroundColor: '#efeae2'
+                }}
+              >
+                {/* Message Bubble - Sent (Right aligned, Green) */}
+                {selectedMessage.message_content && (
+                  <div className="flex justify-end mb-1.5">
+                    <div className="max-w-[65%] sm:max-w-[75%] relative">
+                      {/* Message Bubble with proper WhatsApp styling */}
+                      <div 
+                        className="px-2.5 py-1.5 shadow-[0_1px_0.5px_rgba(0,0,0,0.13)] relative"
+                        style={{
+                          backgroundColor: '#dcf8c6',
+                          borderRadius: '7.5px',
+                          borderTopRightRadius: '2px'
+                        }}
+                      >
+                        <p className="text-[14.2px] text-[#111b21] whitespace-pre-wrap break-words leading-[19px] select-text pr-8" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                          {selectedMessage.message_content}
+                        </p>
+                        {/* Timestamp and Status */}
+                        <div className="absolute bottom-1 right-1.5 flex items-center gap-0.5">
+                          <span className="text-[11px] text-[#667781] leading-none whitespace-nowrap" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                            {new Date(selectedMessage.sent_at).toLocaleTimeString("en-IN", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true
+                            }).toLowerCase()}
+                          </span>
+                          {selectedMessage.status === "sent" && (
+                            <CheckCircle className="w-3.5 h-3.5 text-[#53bdeb] flex-shrink-0" />
+                          )}
+                          {selectedMessage.status === "failed" && (
+                            <XCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                          )}
+                        </div>
+                      </div>
+                      {/* WhatsApp tail for sent message */}
+                      <div 
+                        className="absolute -right-[6px] bottom-0 w-0 h-0"
+                        style={{
+                          borderLeft: '6px solid #dcf8c6',
+                          borderBottom: '6px solid transparent',
+                          borderTop: '6px solid transparent'
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Error Message - If failed */}
+                {selectedMessage.error_message && selectedMessage.status === "failed" && (
+                  <div className="flex justify-center mt-2">
+                    <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 max-w-[85%]">
+                      <p className="text-xs text-red-700 font-medium mb-1">Delivery Failed</p>
+                      <p className="text-xs text-red-600">{selectedMessage.error_message}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer - Message Info (WhatsApp style) */}
+              <div className="bg-[#f0f2f5] px-4 py-2 border-t border-[#e4e6eb]">
+                <div className="flex items-center justify-between text-[12px]" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <span className="text-[#667781]">Type: </span>
+                      <span className="text-[#111b21] font-medium">{getTypeLabel(selectedMessage.notification_type)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[#667781]">Source: </span>
+                      <span className="text-[#111b21] font-medium">{selectedMessage.is_manual ? "Manual" : "Automated"}</span>
+                    </div>
+                  </div>
+                  <div className="text-[#667781]">
+                    {formatDateTime(selectedMessage.sent_at)}
                   </div>
                 </div>
-              )}
-              
-              {selectedMessage.error_message && (
-                <div>
-                  <p className="text-xs text-destructive mb-1">Error Message</p>
-                  <p className="text-sm text-destructive">{selectedMessage.error_message}</p>
-                </div>
-              )}
-            </div>
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
