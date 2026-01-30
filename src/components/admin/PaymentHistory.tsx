@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useInView } from "react-intersection-observer";
 import {
   Table,
   TableBody,
@@ -23,9 +24,8 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
-import { usePaymentsQuery, type PaymentWithDetails } from "@/hooks/queries";
-import { usePagination } from "@/hooks/usePagination";
-import { PaginationControls } from "@/components/ui/pagination-controls";
+import { useInfinitePaymentsQuery, type PaymentWithDetails } from "@/hooks/queries";
+import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 
 type PaymentMode = Database["public"]["Enums"]["payment_mode"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
@@ -37,12 +37,41 @@ interface PaymentHistoryProps {
 export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const isMobile = useIsMobile();
   
-  // Use React Query for cached data fetching
-  const { data: paymentsData, isLoading, isFetching, refetch } = usePaymentsQuery();
-  const payments = paymentsData || [];
+  // Use infinite query for paginated data fetching
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useInfinitePaymentsQuery();
+  
+  // Flatten all pages into single array
+  const allPayments = useMemo(() => {
+    if (!data?.pages) return [];
+    return data.pages.flatMap(page => page.data);
+  }, [data]);
+  
+  // Total count from the first page
+  const totalCount = data?.pages[0]?.totalCount || 0;
   
   // Show loading when initially loading OR when data hasn't been fetched yet
-  const showLoading = isLoading || (isFetching && !paymentsData);
+  const showLoading = isLoading || (isFetching && !data) || data === undefined;
+
+  // Intersection observer for infinite scroll
+  const { ref: loadMoreRef, inView } = useInView({
+    threshold: 0,
+    rootMargin: "200px",
+  });
+
+  // Fetch next page when scrolled to bottom
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
   
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -57,9 +86,9 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     }
   }, [refreshKey, refetch]);
 
-  // Filter payments based on current filters
+  // Filter payments based on current filters (client-side filtering on loaded data)
   const filteredPayments = useMemo(() => {
-    return payments.filter((payment) => {
+    return allPayments.filter((payment) => {
       // Date filter
       if (dateFrom && payment.created_at) {
         const paymentDate = new Date(payment.created_at).toISOString().split("T")[0];
@@ -81,7 +110,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
       
       return true;
     });
-  }, [payments, dateFrom, dateTo, paymentMode, statusFilter, typeFilter]);
+  }, [allPayments, dateFrom, dateTo, paymentMode, statusFilter, typeFilter]);
 
   const clearFilters = () => {
     setDateFrom("");
@@ -192,15 +221,11 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
 
   const hasActiveFilters = dateFrom || dateTo || paymentMode !== "all" || statusFilter !== "all" || typeFilter !== "all";
 
-  // Pagination for filtered payments
-  const pagination = usePagination(filteredPayments, { initialPageSize: 25 });
+  // Check if data is confirmed empty
+  const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && filteredPayments.length === 0;
 
-  if (showLoading || paymentsData === undefined) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="w-8 h-8 border-4 border-accent/30 border-t-accent rounded-full animate-spin" />
-      </div>
-    );
+  if (showLoading) {
+    return <TableSkeleton rows={8} columns={6} />;
   }
 
   return (
@@ -267,7 +292,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
       {/* Results summary */}
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>
-          Showing {filteredPayments.length} of {payments.length} transactions
+          Showing {filteredPayments.length} of {totalCount} transactions
         </span>
         <div className="flex items-center gap-4">
           <span className="font-semibold text-foreground">
@@ -286,7 +311,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
       </div>
 
       {/* Table */}
-      {filteredPayments.length === 0 ? (
+      {isDataConfirmedEmpty ? (
         <div className="text-center py-12 text-muted-foreground">
           <Filter className="w-10 h-10 mx-auto mb-3 opacity-50" />
           <p>No payments found</p>
@@ -297,7 +322,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
       ) : isMobile ? (
         /* Mobile View */
         <div className="rounded-lg border overflow-hidden">
-          {pagination.paginatedData.map((payment) => (
+          {filteredPayments.map((payment) => (
             <MobileExpandableRow
               key={payment.id}
               collapsedContent={
@@ -384,6 +409,13 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
               }
             />
           ))}
+          
+          {/* Infinite scroll sentinel */}
+          {hasNextPage && (
+            <div ref={loadMoreRef} className="p-4">
+              {isFetchingNextPage && <InfiniteScrollSkeleton />}
+            </div>
+          )}
         </div>
       ) : (
         /* Desktop View */
@@ -400,7 +432,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pagination.paginatedData.map((payment) => (
+              {filteredPayments.map((payment) => (
                 <TableRow key={payment.id}>
                   <TableCell className="text-sm">
                     <div className="flex items-center gap-2">
@@ -448,26 +480,18 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                   <TableCell>{getStatusBadge(payment.status)}</TableCell>
                 </TableRow>
               ))}
+              
+              {/* Infinite scroll sentinel row */}
+              {hasNextPage && (
+                <TableRow ref={loadMoreRef}>
+                  <TableCell colSpan={6} className="p-0">
+                    {isFetchingNextPage && <InfiniteScrollSkeleton />}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
-      )}
-
-      {/* Pagination Controls */}
-      {filteredPayments.length > 0 && (
-        <PaginationControls
-          currentPage={pagination.currentPage}
-          totalPages={pagination.totalPages}
-          totalItems={pagination.totalItems}
-          startIndex={pagination.startIndex}
-          endIndex={pagination.endIndex}
-          pageSize={pagination.pageSize}
-          pageSizeOptions={pagination.pageSizeOptions}
-          hasNextPage={pagination.hasNextPage}
-          hasPrevPage={pagination.hasPrevPage}
-          onPageChange={pagination.goToPage}
-          onPageSizeChange={pagination.setPageSize}
-        />
       )}
     </div>
   );

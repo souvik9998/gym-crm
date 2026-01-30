@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useBranch } from "@/contexts/BranchContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useInView } from "react-intersection-observer";
 import { toast } from "@/components/ui/sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,15 +12,13 @@ import { format, isAfter, addDays } from "date-fns";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
-import { useDailyPassQuery, useDeleteDailyPassUser, type DailyPassUserWithSubscription } from "@/hooks/queries";
-import { usePagination } from "@/hooks/usePagination";
-import { PaginationControls } from "@/components/ui/pagination-controls";
+import { useInfiniteDailyPassQuery, useDeleteDailyPassUser, type DailyPassUserWithSubscription } from "@/hooks/queries";
+import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 import { 
   MoreHorizontal, 
   Trash2, 
   Calendar, 
   User, 
-  RefreshCw,
   Dumbbell,
   Clock,
   Download,
@@ -38,12 +37,41 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
   const isMobile = useIsMobile();
   const deleteMutation = useDeleteDailyPassUser();
   
-  // Use React Query for cached data fetching
-  const { data: usersData, isLoading, isFetching, refetch } = useDailyPassQuery();
-  const users = usersData || [];
+  // Use infinite query for paginated data fetching
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useInfiniteDailyPassQuery();
+  
+  // Flatten all pages into single array
+  const allUsers = useMemo(() => {
+    if (!data?.pages) return [];
+    return data.pages.flatMap(page => page.data);
+  }, [data]);
+  
+  // Total count from the first page
+  const totalCount = data?.pages[0]?.totalCount || 0;
   
   // Show loading when initially loading OR when data hasn't been fetched yet
-  const showLoading = isLoading || (isFetching && !usersData);
+  const showLoading = isLoading || (isFetching && !data) || data === undefined;
+
+  // Intersection observer for infinite scroll
+  const { ref: loadMoreRef, inView } = useInView({
+    threshold: 0,
+    rootMargin: "200px",
+  });
+
+  // Fetch next page when scrolled to bottom
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
   
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<DailyPassUserWithSubscription | null>(null);
@@ -59,10 +87,8 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
     if (!userToDelete) return;
 
     try {
-      // Use the mutation hook which handles all the cascade deletes
       await deleteMutation.mutateAsync(userToDelete.id);
 
-      // Log the admin activity
       await logAdminActivity({
         category: "members",
         type: "member_deleted",
@@ -171,7 +197,7 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
 
   // Filter users based on search and filter value
   const filteredUsers = useMemo(() => {
-    let result = users;
+    let result = allUsers;
 
     // Apply search filter
     if (searchQuery) {
@@ -210,20 +236,16 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
     }
 
     return result;
-  }, [users, searchQuery, filterValue]);
+  }, [allUsers, searchQuery, filterValue]);
 
-  // Pagination
-  const pagination = usePagination(filteredUsers, { initialPageSize: 25 });
+  // Check if data is confirmed empty
+  const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && filteredUsers.length === 0;
 
-  if (showLoading || usersData === undefined) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+  if (showLoading) {
+    return <TableSkeleton rows={8} columns={6} />;
   }
 
-  if (filteredUsers.length === 0) {
+  if (isDataConfirmedEmpty) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
         <User className="w-12 h-12 mb-4 opacity-50" />
@@ -250,7 +272,7 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
       {/* Mobile View */}
       {isMobile ? (
         <div className="rounded-lg border overflow-hidden">
-          {pagination.paginatedData.map((user) => (
+          {filteredUsers.map((user) => (
             <MobileExpandableRow
               key={user.id}
               collapsedContent={
@@ -328,6 +350,13 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
               }
             />
           ))}
+          
+          {/* Infinite scroll sentinel */}
+          {hasNextPage && (
+            <div ref={loadMoreRef} className="p-4">
+              {isFetchingNextPage && <InfiniteScrollSkeleton />}
+            </div>
+          )}
         </div>
       ) : (
         /* Desktop View */
@@ -345,7 +374,7 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pagination.paginatedData.map((user) => (
+              {filteredUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.phone}</TableCell>
@@ -403,26 +432,18 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
                   </TableCell>
                 </TableRow>
               ))}
+              
+              {/* Infinite scroll sentinel row */}
+              {hasNextPage && (
+                <TableRow ref={loadMoreRef}>
+                  <TableCell colSpan={7} className="p-0">
+                    {isFetchingNextPage && <InfiniteScrollSkeleton />}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
-      )}
-
-      {/* Pagination Controls */}
-      {filteredUsers.length > 0 && (
-        <PaginationControls
-          currentPage={pagination.currentPage}
-          totalPages={pagination.totalPages}
-          totalItems={pagination.totalItems}
-          startIndex={pagination.startIndex}
-          endIndex={pagination.endIndex}
-          pageSize={pagination.pageSize}
-          pageSizeOptions={pagination.pageSizeOptions}
-          hasNextPage={pagination.hasNextPage}
-          hasPrevPage={pagination.hasPrevPage}
-          onPageChange={pagination.goToPage}
-          onPageSizeChange={pagination.setPageSize}
-        />
       )}
 
       <ConfirmDialog

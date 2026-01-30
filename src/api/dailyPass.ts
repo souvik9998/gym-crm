@@ -68,6 +68,77 @@ export async function fetchDailyPassUsers(branchId?: string): Promise<DailyPassU
   return usersWithSubs;
 }
 
+export interface PaginatedDailyPassResponse {
+  data: DailyPassUserWithSubscription[];
+  nextCursor: number | null;
+  totalCount: number;
+}
+
+/**
+ * Fetch daily pass users with pagination (cursor-based using offset)
+ */
+export async function fetchDailyPassUsersPaginated(
+  branchId: string | undefined,
+  cursor: number = 0,
+  limit: number = 25
+): Promise<PaginatedDailyPassResponse> {
+  if (!branchId) {
+    return { data: [], nextCursor: null, totalCount: 0 };
+  }
+
+  // Get total count for the branch
+  const { count, error: countError } = await supabase
+    .from("daily_pass_users")
+    .select("*", { count: "exact", head: true })
+    .eq("branch_id", branchId);
+
+  if (countError) throw countError;
+
+  // Fetch paginated users
+  const { data: usersData, error: usersError } = await supabase
+    .from("daily_pass_users")
+    .select("*")
+    .eq("branch_id", branchId)
+    .order("created_at", { ascending: false })
+    .range(cursor, cursor + limit - 1);
+
+  if (usersError) throw usersError;
+
+  // Fetch subscriptions for these users
+  const usersWithSubs = await Promise.all(
+    (usersData || []).map(async (user) => {
+      const { data: subData, error: subError } = await supabase
+        .from("daily_pass_subscriptions")
+        .select(`*, personal_trainers:personal_trainer_id (name)`)
+        .eq("daily_pass_user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (subError) throw subError;
+
+      return {
+        ...user,
+        subscription: subData
+          ? {
+              ...subData,
+              trainer: subData.personal_trainers || undefined,
+            }
+          : undefined,
+      };
+    })
+  );
+
+  const totalCount = count || 0;
+  const nextCursor = cursor + limit < totalCount ? cursor + limit : null;
+
+  return {
+    data: usersWithSubs,
+    nextCursor,
+    totalCount,
+  };
+}
+
 /**
  * Fetch a single daily pass user by ID
  */

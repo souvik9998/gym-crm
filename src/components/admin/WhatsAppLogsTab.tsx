@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useMemo, useState } from "react";
+import { useInView } from "react-intersection-observer";
 import { useBranch } from "@/contexts/BranchContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,8 +34,6 @@ import {
   Send,
   Phone,
   Download,
-  Check,
-  CheckCheck,
 } from "lucide-react";
 import {
   Dialog,
@@ -46,23 +45,8 @@ import { toast } from "@/components/ui/sonner";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
-
-interface WhatsAppLog {
-  id: string;
-  member_id: string | null;
-  daily_pass_user_id: string | null;
-  recipient_phone: string | null;
-  recipient_name: string | null;
-  notification_type: string;
-  message_content: string | null;
-  status: string;
-  error_message: string | null;
-  is_manual: boolean;
-  admin_user_id: string | null;
-  sent_at: string;
-  member?: { name: string; phone: string } | null;
-  daily_pass_user?: { name: string; phone: string } | null;
-}
+import { useInfiniteWhatsAppLogsQuery, type WhatsAppLog } from "@/hooks/queries";
+import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 
 interface WhatsAppStats {
   totalMessages: number;
@@ -82,8 +66,6 @@ interface WhatsAppLogsTabProps {
 
 const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
   const { currentBranch } = useBranch();
-  const [logs, setLogs] = useState<WhatsAppLog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -104,115 +86,59 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
   const [activeSubTab, setActiveSubTab] = useState("logs");
   const [selectedMessage, setSelectedMessage] = useState<WhatsAppLog | null>(null);
 
+  // Create filters object for the query
+  const filters = useMemo(() => ({
+    typeFilter: typeFilter !== "all" ? typeFilter : undefined,
+    statusFilter: statusFilter !== "all" ? statusFilter : undefined,
+    manualFilter: manualFilter !== "all" ? manualFilter : undefined,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+  }), [typeFilter, statusFilter, manualFilter, dateFrom, dateTo]);
+
+  // Use infinite query for paginated data
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useInfiniteWhatsAppLogsQuery(filters);
+
+  // Flatten all pages into single array
+  const allLogs = useMemo(() => {
+    if (!data?.pages) return [];
+    return data.pages.flatMap(page => page.data);
+  }, [data]);
+
+  const totalCount = data?.pages[0]?.totalCount || 0;
+  const showLoading = isLoading || (isFetching && !data) || data === undefined;
+
+  // Intersection observer for infinite scroll
+  const { ref: loadMoreRef, inView } = useInView({
+    threshold: 0,
+    rootMargin: "200px",
+  });
+
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Fetch stats separately
   useEffect(() => {
     if (currentBranch?.id) {
-      fetchLogs();
       fetchStats();
     }
   }, [refreshKey, currentBranch?.id]);
 
-  const fetchLogs = async () => {
-    if (!currentBranch?.id) return;
-    
-    setIsLoading(true);
-    try {
-      let query = supabase
-        .from("whatsapp_notifications")
-        .select("*")
-        .eq("branch_id", currentBranch.id)
-        .order("sent_at", { ascending: false })
-        .limit(1000);
-
-      if (typeFilter !== "all") {
-        query = query.eq("notification_type", typeFilter);
-      }
-      if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
-      }
-      if (manualFilter !== "all") {
-        query = query.eq("is_manual", manualFilter === "manual");
-      }
-      if (dateFrom) {
-        query = query.gte("sent_at", dateFrom + "T00:00:00Z");
-      }
-      if (dateTo) {
-        query = query.lte("sent_at", dateTo + "T23:59:59Z");
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      if (!data || data.length === 0) {
-        setLogs([]);
-        return;
-      }
-
-      // Get unique member IDs and daily pass user IDs
-      const memberIds = [...new Set(data.map((log) => log.member_id).filter(Boolean))] as string[];
-      const dailyPassUserIds = [...new Set(data.map((log) => log.daily_pass_user_id).filter(Boolean))] as string[];
-
-      // Fetch member data
-      let membersMap: Record<string, { name: string; phone: string }> = {};
-      if (memberIds.length > 0) {
-        try {
-          const { data: membersData } = await supabase
-            .from("members")
-            .select("id, name, phone")
-            .in("id", memberIds);
-          if (membersData) {
-            membersMap = membersData.reduce((acc, m) => {
-              acc[m.id] = { name: m.name, phone: m.phone };
-              return acc;
-            }, {} as Record<string, { name: string; phone: string }>);
-          }
-        } catch (e) {
-          console.warn("Error fetching members:", e);
-        }
-      }
-
-      // Fetch daily pass user data
-      let dailyPassUsersMap: Record<string, { name: string; phone: string }> = {};
-      if (dailyPassUserIds.length > 0) {
-        try {
-          const { data: dailyPassUsersData } = await supabase
-            .from("daily_pass_users")
-            .select("id, name, phone")
-            .in("id", dailyPassUserIds);
-          if (dailyPassUsersData) {
-            dailyPassUsersMap = dailyPassUsersData.reduce((acc, u) => {
-              acc[u.id] = { name: u.name, phone: u.phone };
-              return acc;
-            }, {} as Record<string, { name: string; phone: string }>);
-          }
-        } catch (e) {
-          console.warn("Error fetching daily pass users:", e);
-        }
-      }
-
-      // Process logs with fetched data
-      const processedLogs = data.map((log) => ({
-        ...log,
-        is_manual: log.is_manual ?? false,
-        daily_pass_user_id: log.daily_pass_user_id ?? null,
-        recipient_phone: log.recipient_phone ?? null,
-        recipient_name: log.recipient_name ?? null,
-        message_content: log.message_content ?? null,
-        admin_user_id: log.admin_user_id ?? null,
-        member: log.member_id ? membersMap[log.member_id] || null : null,
-        daily_pass_user: log.daily_pass_user_id ? dailyPassUsersMap[log.daily_pass_user_id] || null : null,
-      }));
-
-      setLogs(processedLogs as WhatsAppLog[]);
-    } catch (error: any) {
-      console.error("Error fetching WhatsApp logs:", error);
-      toast.error("Error fetching logs", {
-        description: error.message,
-      });
-    } finally {
-      setIsLoading(false);
+  useEffect(() => {
+    if (refreshKey > 0) {
+      refetch();
     }
-  };
+  }, [refreshKey, refetch]);
 
   const fetchStats = async () => {
     if (!currentBranch?.id) return;
@@ -264,10 +190,6 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
     }
   };
 
-  useEffect(() => {
-    fetchLogs();
-  }, [typeFilter, statusFilter, manualFilter, dateFrom, dateTo]);
-
   const clearFilters = () => {
     setSearchQuery("");
     setTypeFilter("all");
@@ -277,18 +199,15 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
     setDateTo("");
   };
 
-  const filteredLogs = logs.filter((log) => {
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+  const filteredLogs = useMemo(() => {
+    if (!searchQuery) return allLogs;
+    const query = searchQuery.toLowerCase();
+    return allLogs.filter((log) => {
       const name = (log.recipient_name || log.member?.name || log.daily_pass_user?.name || "").toLowerCase();
       const phone = (log.recipient_phone || log.member?.phone || log.daily_pass_user?.phone || "").toLowerCase();
-
-      if (!name.includes(query) && !phone.includes(query)) {
-        return false;
-      }
-    }
-    return true;
-  });
+      return name.includes(query) || phone.includes(query);
+    });
+  }, [allLogs, searchQuery]);
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString("en-IN", {
@@ -357,13 +276,10 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
 
   const hasActiveFilters =
     searchQuery || typeFilter !== "all" || statusFilter !== "all" || manualFilter !== "all" || dateFrom || dateTo;
+  const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && filteredLogs.length === 0;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="w-8 h-8 border-4 border-accent/30 border-t-accent rounded-full animate-spin" />
-      </div>
-    );
+  if (showLoading) {
+    return <TableSkeleton rows={8} columns={6} />;
   }
 
   return (
@@ -468,7 +384,7 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
           <Card>
             <CardHeader>
               <CardTitle>Message Logs</CardTitle>
-              <CardDescription>Track all WhatsApp communications</CardDescription>
+              <CardDescription>Track all WhatsApp communications ({totalCount} total)</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Filters */}
@@ -491,18 +407,20 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
                     <SelectItem value="promotional">Promotional</SelectItem>
                     <SelectItem value="expiry_reminder">Expiry Reminder</SelectItem>
                     <SelectItem value="expired_reminder">Expired Reminder</SelectItem>
+                    <SelectItem value="payment_details">Payment Details</SelectItem>
+                    <SelectItem value="new_registration">New Registration</SelectItem>
                     <SelectItem value="renewal">Renewal</SelectItem>
-                    <SelectItem value="pt_extension">PT Extension</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[130px]">
+                  <SelectTrigger className="w-[120px]">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="sent">Sent</SelectItem>
                     <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={manualFilter} onValueChange={setManualFilter}>
@@ -533,7 +451,7 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
                   variant="outline" 
                   size="sm" 
                   onClick={handleExport} 
-                  className="gap-2 hover:bg-accent/50 transition-colors font-medium"
+                  className="gap-2 hover:bg-accent/50 transition-colors"
                 >
                   <Download className="w-4 h-4" />
                   Export Data
@@ -548,169 +466,137 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
                       <TableHead>Time</TableHead>
                       <TableHead>Recipient</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead>Status</TableHead>
                       <TableHead>Source</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-[80px]">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredLogs.length === 0 ? (
+                    {isDataConfirmedEmpty ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                          No messages found
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          No WhatsApp logs found
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredLogs.map((log) => (
-                        <TableRow 
-                          key={log.id}
-                          className="cursor-pointer hover:bg-muted/50 transition-colors"
-                          onClick={() => setSelectedMessage(log)}
-                        >
-                          <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                            {formatDateTime(log.sent_at)}
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium text-sm">
-                                {log.recipient_name || log.member?.name || log.daily_pass_user?.name || "-"}
-                              </p>
-                              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Phone className="w-3 h-3" />
-                                {log.recipient_phone || log.member?.phone || log.daily_pass_user?.phone || "-"}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{getTypeLabel(log.notification_type)}</Badge>
-                          </TableCell>
-                          <TableCell>{getStatusBadge(log.status)}</TableCell>
-                          <TableCell>
-                            <Badge variant={log.is_manual ? "default" : "secondary"}>
-                              {log.is_manual ? "Manual" : "Auto"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                      <>
+                        {filteredLogs.map((log) => (
+                          <TableRow 
+                            key={log.id} 
+                            className="cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => setSelectedMessage(log)}
+                          >
+                            <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                              {formatDateTime(log.sent_at)}
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {log.recipient_name || log.member?.name || log.daily_pass_user?.name || "-"}
+                                </p>
+                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Phone className="w-3 h-3" />
+                                  {log.recipient_phone || log.member?.phone || log.daily_pass_user?.phone || "-"}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">
+                                {getTypeLabel(log.notification_type)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={log.is_manual ? "secondary" : "outline"} className="text-xs">
+                                {log.is_manual ? "Manual" : "Auto"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{getStatusBadge(log.status)}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedMessage(log);
+                                }}
+                              >
+                                <MessageSquare className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        
+                        {/* Infinite scroll sentinel */}
+                        {hasNextPage && (
+                          <TableRow ref={loadMoreRef}>
+                            <TableCell colSpan={6} className="p-0">
+                              {isFetchingNextPage && <InfiniteScrollSkeleton />}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
                     )}
                   </TableBody>
                 </Table>
               </div>
-
-              <p className="text-xs text-muted-foreground text-right">
-                Showing {filteredLogs.length} of {logs.length} messages
-              </p>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* WhatsApp Message View Dialog */}
-      <Dialog open={!!selectedMessage} onOpenChange={(open) => !open && setSelectedMessage(null)}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] p-0 gap-0 bg-[#e5ddd5] dark:bg-[#0b141a] overflow-hidden [&>button]:hidden flex flex-col">
+      {/* Message Detail Dialog */}
+      <Dialog open={!!selectedMessage} onOpenChange={() => setSelectedMessage(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5" />
+              Message Details
+            </DialogTitle>
+          </DialogHeader>
           {selectedMessage && (
-            <>
-              {/* WhatsApp Header */}
-              <div className="bg-[#075e54] dark:bg-[#202c33] text-white px-4 py-3 flex items-center gap-3 shadow-md flex-shrink-0">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                  <Phone className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">
-                    {selectedMessage.recipient_name || selectedMessage.member?.name || selectedMessage.daily_pass_user?.name || "Unknown"}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Recipient</p>
+                  <p className="text-sm font-medium">
+                    {selectedMessage.recipient_name || selectedMessage.member?.name || selectedMessage.daily_pass_user?.name || "-"}
                   </p>
-                  <p className="text-xs text-white/70 truncate">
+                  <p className="text-xs text-muted-foreground">
                     {selectedMessage.recipient_phone || selectedMessage.member?.phone || selectedMessage.daily_pass_user?.phone || "-"}
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white hover:bg-white/20 h-8 w-8 flex-shrink-0"
-                  onClick={() => setSelectedMessage(null)}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-
-              {/* WhatsApp Message Area with Pattern Background */}
-              <div 
-                className="flex-1 p-4 space-y-3 overflow-y-auto relative min-h-0"
-                style={{
-                  backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'100\' height=\'100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cdefs%3E%3Cpattern id=\'grid\' width=\'40\' height=\'40\' patternUnits=\'userSpaceOnUse\'%3E%3Cpath d=\'M 40 0 L 0 0 0 40\' fill=\'none\' stroke=\'%23ffffff\' stroke-width=\'0.5\' opacity=\'0.1\'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=\'100%25\' height=\'100%25\' fill=\'url(%23grid)\'/%3E%3C/svg%3E")',
-                }}
-              >
-                {/* Message Bubble */}
-                <div className="flex justify-end">
-                  <div className="max-w-[75%]">
-                    <div className="relative">
-                      <div className="bg-[#dcf8c6] dark:bg-[#005c4b] rounded-lg px-3 py-2 shadow-sm">
-                        <p className="text-sm text-[#303030] dark:text-white whitespace-pre-wrap break-words leading-relaxed">
-                          {selectedMessage.message_content || "No message content available"}
-                        </p>
-                      </div>
-                      {/* Tail for message bubble (right side) */}
-                      <svg
-                        className="absolute right-0 top-0 translate-x-[1px]"
-                        width="8"
-                        height="13"
-                        viewBox="0 0 8 13"
-                      >
-                        <path
-                          d="M5.188 1H0v11.193l5.188-5.188V1z"
-                          fill="#dcf8c6"
-                          className="dark:fill-[#005c4b]"
-                        />
-                      </svg>
-                    </div>
-                    <div className="flex items-center justify-end gap-1 mt-1 px-1">
-                      <span className="text-[10px] text-[#667781] dark:text-[#8696a0]">
-                        {new Date(selectedMessage.sent_at).toLocaleTimeString("en-IN", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                      {selectedMessage.status === "sent" ? (
-                        <CheckCheck className="w-3.5 h-3.5 text-[#4fc3f7] dark:text-[#53bdeb]" />
-                      ) : selectedMessage.status === "failed" ? (
-                        <XCircle className="w-3.5 h-3.5 text-destructive" />
-                      ) : (
-                        <Check className="w-3.5 h-3.5 text-[#8696a0]" />
-                      )}
-                    </div>
-                  </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Sent At</p>
+                  <p className="text-sm font-medium">{formatDateTime(selectedMessage.sent_at)}</p>
                 </div>
-
-                {/* Message Info Card */}
-                <div className="bg-white/90 dark:bg-[#202c33]/90 backdrop-blur-sm rounded-lg p-4 mt-4 shadow-sm border border-white/20">
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground text-xs">Type:</span>
-                      <Badge variant="outline" className="text-xs">{getTypeLabel(selectedMessage.notification_type)}</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground text-xs">Status:</span>
-                      {getStatusBadge(selectedMessage.status)}
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground text-xs">Source:</span>
-                      <Badge variant={selectedMessage.is_manual ? "default" : "secondary"} className="text-xs">
-                        {selectedMessage.is_manual ? "Manual" : "Auto"}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground text-xs">Sent At:</span>
-                      <span className="font-medium text-xs">{formatDateTime(selectedMessage.sent_at)}</span>
-                    </div>
-                    {selectedMessage.error_message && (
-                      <div className="pt-3 border-t border-destructive/20">
-                        <span className="text-muted-foreground text-xs block mb-1">Error Message:</span>
-                        <p className="text-xs text-destructive bg-destructive/10 p-2 rounded">{selectedMessage.error_message}</p>
-                      </div>
-                    )}
-                  </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Type</p>
+                  <Badge variant="outline" className="mt-1">
+                    {getTypeLabel(selectedMessage.notification_type)}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <div className="mt-1">{getStatusBadge(selectedMessage.status)}</div>
                 </div>
               </div>
-            </>
+              
+              {selectedMessage.message_content && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Message Content</p>
+                  <div className="bg-muted/50 rounded-lg p-3 text-sm whitespace-pre-wrap">
+                    {selectedMessage.message_content}
+                  </div>
+                </div>
+              )}
+              
+              {selectedMessage.error_message && (
+                <div>
+                  <p className="text-xs text-destructive mb-1">Error Message</p>
+                  <p className="text-sm text-destructive">{selectedMessage.error_message}</p>
+                </div>
+              )}
+            </div>
           )}
         </DialogContent>
       </Dialog>

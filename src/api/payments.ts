@@ -59,6 +59,65 @@ export async function fetchPayments(branchId?: string): Promise<PaymentWithDetai
   return (data || []) as PaymentWithDetails[];
 }
 
+export interface PaginatedPaymentsResponse {
+  data: PaymentWithDetails[];
+  nextCursor: number | null;
+  totalCount: number;
+}
+
+/**
+ * Fetch payments with pagination (cursor-based using offset)
+ */
+export async function fetchPaymentsPaginated(
+  branchId: string | undefined,
+  cursor: number = 0,
+  limit: number = 25
+): Promise<PaginatedPaymentsResponse> {
+  if (!branchId) {
+    return { data: [], nextCursor: null, totalCount: 0 };
+  }
+
+  // Get total count for the branch
+  const { count, error: countError } = await supabase
+    .from("payments")
+    .select("*", { count: "exact", head: true })
+    .eq("branch_id", branchId);
+
+  if (countError) throw countError;
+
+  // Fetch paginated data
+  const { data, error } = await supabase
+    .from("payments")
+    .select(`
+      id,
+      amount,
+      payment_mode,
+      status,
+      created_at,
+      notes,
+      payment_type,
+      member_id,
+      daily_pass_user_id,
+      member:members(name, phone),
+      daily_pass_user:daily_pass_users(name, phone)
+    `)
+    .eq("branch_id", branchId)
+    .order("created_at", { ascending: false })
+    .range(cursor, cursor + limit - 1);
+
+  if (error) throw error;
+
+  const totalCount = count || 0;
+  const fetchedData = (data || []) as PaymentWithDetails[];
+  const nextCursor = cursor + limit < totalCount ? cursor + limit : null;
+
+  return {
+    data: fetchedData,
+    nextCursor,
+    totalCount,
+  };
+}
+
 /**
  * Fetch a single payment by ID
  */
