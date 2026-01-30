@@ -55,7 +55,9 @@ export function useInvalidateQueries() {
 
   const invalidateMembers = useCallback(() => {
     invalidate([CACHE_KEYS.MEMBERS, CACHE_KEYS.DASHBOARD_STATS, CACHE_KEYS.SUBSCRIPTIONS]);
-  }, [invalidate]);
+    // Also invalidate infinite query
+    queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.MEMBERS] });
+  }, [invalidate, queryClient]);
 
   const invalidatePayments = useCallback(() => {
     invalidate([CACHE_KEYS.PAYMENTS, CACHE_KEYS.DASHBOARD_STATS, CACHE_KEYS.LEDGER]);

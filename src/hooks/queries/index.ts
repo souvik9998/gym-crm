@@ -6,6 +6,7 @@
 // Members
 export {
   useMembersQuery,
+  useInfiniteMembersQuery,
   useMemberQuery,
   useMemberDetailsQuery,
   useCreateMember,
@@ -13,6 +14,7 @@ export {
   useDeleteMember,
   useCheckMemberByPhone,
 } from './useMembers';
+export type { MemberWithSubscription, PaginatedMembersResponse } from '@/api/members';
 
 // Payments
 export {

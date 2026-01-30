@@ -1,8 +1,8 @@
 /**
  * Members Query Hooks
- * TanStack Query hooks for members data
+ * TanStack Query hooks for members data with infinite scroll support
  */
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { queryKeys, invalidationGroups } from "@/lib/queryKeys";
 import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { useBranch } from "@/contexts/BranchContext";
@@ -10,9 +10,36 @@ import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import * as membersApi from "@/api/members";
 
+const PAGE_SIZE = 25;
+
 /**
- * Hook to fetch all members with subscriptions
+ * Hook to fetch members with infinite scroll using useInfiniteQuery
  * Auth-aware: only fetches when user is authenticated
+ */
+export function useInfiniteMembersQuery() {
+  const { currentBranch } = useBranch();
+  const { isStaffLoggedIn } = useStaffAuth();
+  const { isAdmin } = useIsAdmin();
+  const branchId = currentBranch?.id;
+  
+  const isAuthenticated = isAdmin || isStaffLoggedIn;
+
+  return useInfiniteQuery({
+    queryKey: [...queryKeys.members.all(branchId), "infinite"],
+    queryFn: ({ pageParam = 0 }) => membersApi.fetchMembersPaginated(branchId, pageParam, PAGE_SIZE),
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: 0,
+    staleTime: STALE_TIMES.DYNAMIC,
+    gcTime: GC_TIME,
+    refetchOnWindowFocus: false,
+    enabled: isAuthenticated,
+  });
+}
+
+/**
+ * Hook to fetch all members with subscriptions (legacy - for backward compatibility)
+ * Auth-aware: only fetches when user is authenticated
+ * @deprecated Use useInfiniteMembersQuery for better performance
  */
 export function useMembersQuery() {
   const { currentBranch } = useBranch();
@@ -75,6 +102,10 @@ export function useCreateMember() {
       keysToInvalidate.forEach(key => {
         queryClient.invalidateQueries({ queryKey: key });
       });
+      // Also invalidate infinite query
+      queryClient.invalidateQueries({ 
+        queryKey: [...queryKeys.members.all(currentBranch?.id), "infinite"] 
+      });
     },
   });
 }
@@ -96,6 +127,10 @@ export function useUpdateMember() {
       keysToInvalidate.forEach(key => {
         queryClient.invalidateQueries({ queryKey: key });
       });
+      // Also invalidate infinite query
+      queryClient.invalidateQueries({ 
+        queryKey: [...queryKeys.members.all(currentBranch?.id), "infinite"] 
+      });
     },
   });
 }
@@ -114,6 +149,10 @@ export function useDeleteMember() {
       const keysToInvalidate = invalidationGroups.members(currentBranch?.id);
       keysToInvalidate.forEach(key => {
         queryClient.invalidateQueries({ queryKey: key });
+      });
+      // Also invalidate infinite query
+      queryClient.invalidateQueries({ 
+        queryKey: [...queryKeys.members.all(currentBranch?.id), "infinite"] 
       });
     },
   });
