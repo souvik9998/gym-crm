@@ -462,10 +462,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[95vh] md:max-h-[90vh] flex flex-col p-0">
-        <DialogHeader className="p-3 sm:p-4 md:p-6 pb-2 md:pb-4 flex-shrink-0 border-b">
-          <DialogTitle className="text-sm sm:text-base md:text-lg">Add New Member</DialogTitle>
-          <DialogDescription className="text-[10px] sm:text-xs md:text-sm">
+      <DialogContent className="w-[90vw] sm:max-w-2xl max-h-[90vh] md:max-h-[90vh] flex flex-col p-0 mx-auto my-4 md:mx-4 md:my-0">
+        <DialogHeader className="p-2.5 md:p-6 pb-2 md:pb-4 flex-shrink-0 border-b">
+          <DialogTitle className="text-sm md:text-lg">Add New Member</DialogTitle>
+          <DialogDescription className="text-[10px] md:text-sm">
             Add a new member with cash payment
           </DialogDescription>
         </DialogHeader>

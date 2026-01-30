@@ -280,9 +280,9 @@ export const EditMemberDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-md max-h-[95vh] overflow-y-auto p-3 sm:p-4 md:p-3">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-4 md:p-3">
         <DialogHeader className="pb-2 md:pb-2">
-          <DialogTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg">
+          <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
             <User className="w-4 h-4 md:w-5 md:h-5" />
             Edit Member
           </DialogTitle>
