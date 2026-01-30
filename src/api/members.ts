@@ -35,7 +35,106 @@ export interface MemberDetails {
 }
 
 /**
+ * Paginated members response
+ */
+export interface PaginatedMembersResponse {
+  members: MemberWithSubscription[];
+  nextCursor: number | null;
+  totalCount: number;
+}
+
+/**
+ * Fetch paginated members with their latest subscription and PT data
+ * Uses offset-based pagination for simplicity with Supabase
+ */
+export async function fetchMembersPaginated(
+  branchId?: string,
+  cursor: number = 0,
+  limit: number = 25
+): Promise<PaginatedMembersResponse> {
+  // First get the total count for the branch
+  let countQuery = supabase
+    .from("members")
+    .select("*", { count: "exact", head: true });
+  
+  if (branchId) {
+    countQuery = countQuery.eq("branch_id", branchId);
+  }
+  
+  const { count: totalCount, error: countError } = await countQuery;
+  if (countError) throw countError;
+
+  // Fetch the paginated members
+  let query = supabase
+    .from("members")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .range(cursor, cursor + limit - 1);
+
+  if (branchId) {
+    query = query.eq("branch_id", branchId);
+  }
+
+  const { data: membersData, error: membersError } = await query;
+  if (membersError) throw membersError;
+
+  const today = new Date().toISOString().split("T")[0];
+
+  // Get latest subscription and PT for each member
+  const membersWithData = await Promise.all(
+    (membersData || []).map(async (member) => {
+      // Get subscription
+      const { data: subData, error: subError } = await supabase
+        .from("subscriptions")
+        .select("id, status, end_date, start_date")
+        .eq("member_id", member.id)
+        .order("end_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (subError) throw subError;
+
+      // Get active PT subscription
+      const { data: ptData, error: ptError } = await supabase
+        .from("pt_subscriptions")
+        .select("end_date, personal_trainer:personal_trainers(name)")
+        .eq("member_id", member.id)
+        .eq("status", "active")
+        .gte("end_date", today)
+        .order("end_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (ptError) throw ptError;
+
+      return {
+        ...member,
+        subscription: subData || undefined,
+        activePT: ptData
+          ? {
+              trainer_name: (ptData.personal_trainer as any)?.name || "Unknown",
+              end_date: ptData.end_date,
+            }
+          : null,
+      };
+    })
+  );
+
+  // Calculate next cursor
+  const nextCursor = cursor + membersData.length < (totalCount || 0) 
+    ? cursor + limit 
+    : null;
+
+  return {
+    members: membersWithData,
+    nextCursor,
+    totalCount: totalCount || 0,
+  };
+}
+
+/**
  * Fetch all members with their latest subscription and PT data
+ * @deprecated Use fetchMembersPaginated for better performance
  */
 export async function fetchMembers(branchId?: string): Promise<MemberWithSubscription[]> {
   let query = supabase

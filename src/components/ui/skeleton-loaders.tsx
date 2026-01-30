@@ -79,6 +79,42 @@ export const MemberRowSkeleton = memo(() => (
 MemberRowSkeleton.displayName = "MemberRowSkeleton";
 
 /**
+ * Infinite scroll loading skeleton (rows at bottom)
+ */
+export const InfiniteScrollSkeleton = memo(({ rows = 3 }: { rows?: number }) => (
+  <>
+    {Array.from({ length: rows }).map((_, i) => (
+      <TableRow key={`infinite-skeleton-${i}`} className="animate-pulse">
+        <TableCell className="w-8 md:w-10">
+          <Skeleton className="h-4 w-4" />
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center gap-2 md:gap-3">
+            <Skeleton className="h-8 w-8 md:h-10 md:w-10 rounded-full flex-shrink-0" />
+            <div className="space-y-1 min-w-0 flex-1">
+              <Skeleton className="h-4 w-24 md:w-32" />
+              <Skeleton className="h-3 w-16 md:w-24" />
+            </div>
+          </div>
+        </TableCell>
+        <TableCell className="hidden md:table-cell">
+          <Skeleton className="h-5 w-16" />
+        </TableCell>
+        <TableCell className="hidden md:table-cell">
+          <Skeleton className="h-4 w-20" />
+        </TableCell>
+        <TableCell className="hidden md:table-cell">
+          <Skeleton className="h-4 w-24" />
+        </TableCell>
+        <TableCell className="w-10 md:w-12">
+          <Skeleton className="h-8 w-8" />
+        </TableCell>
+      </TableRow>
+    ))}
+  </>
+));
+
+/**
  * Card list skeleton
  */
 export const CardListSkeleton = memo(({ count = 3 }: { count?: number }) => (

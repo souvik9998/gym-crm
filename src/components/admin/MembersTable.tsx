@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useCallback, memo, useEffect } from "react";
+import React, { useState, useMemo, useCallback, memo, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useInView } from "react-intersection-observer";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Table,
@@ -32,12 +33,11 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useBranch } from "@/contexts/BranchContext";
-import { usePagination } from "@/hooks/usePagination";
-import { PaginationControls } from "@/components/ui/pagination-controls";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
-import { TableSkeleton } from "@/components/ui/skeleton-loaders";
-import { useMembersQuery } from "@/hooks/queries";
+import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
+import { useInfiniteMembersQuery } from "@/hooks/queries";
 import type { MemberWithSubscription } from "@/api/members";
+
 // Use MemberWithSubscription from the API
 type Member = MemberWithSubscription;
 
@@ -66,12 +66,41 @@ export const MembersTable = ({
   const { isAdmin } = useIsAdmin();
   const { invalidateMembers } = useInvalidateQueries();
   
-  // Use React Query for cached data fetching
-  const { data: membersData, isLoading, isFetching, refetch } = useMembersQuery();
-  const members = membersData || [];
+  // Use infinite query for paginated data fetching
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useInfiniteMembersQuery();
+
+  // Flatten all pages into a single array
+  const members = useMemo(() => {
+    if (!data?.pages) return [];
+    return data.pages.flatMap((page) => page.members);
+  }, [data?.pages]);
+
+  // Total count from the first page
+  const totalCount = data?.pages[0]?.totalCount || 0;
   
   // Show loading when initially loading OR when data hasn't been fetched yet
-  const showLoading = isLoading || (isFetching && !membersData);
+  const showLoading = isLoading && !data;
+
+  // Intersection observer for infinite scroll - trigger prefetch 200px before bottom
+  const { ref: loadMoreRef, inView } = useInView({
+    threshold: 0,
+    rootMargin: "200px 0px",
+  });
+
+  // Fetch next page when the sentinel comes into view
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
   
   const [editingMember, setEditingMember] = useState<MemberWithSubscription | null>(null);
   const [viewingMemberId, setViewingMemberId] = useState<string | null>(null);
@@ -84,6 +113,7 @@ export const MembersTable = ({
   
   // Check if user can manage members (admin or staff with can_manage_members permission)
   const canManageMembers = isAdmin || (isStaffLoggedIn && permissions?.can_manage_members === true);
+  
   // Map external sortBy to internal sortField
   const mapSortByToField = (sortBy?: "name" | "join_date" | "end_date"): SortField => {
     if (!sortBy) return "name";
@@ -835,14 +865,11 @@ export const MembersTable = ({
     }
   };
 
-  // Pagination
-  const pagination = usePagination(sortedMembers, { initialPageSize: 25 });
-
-  if (showLoading || membersData === undefined) {
+  if (showLoading) {
     return <TableSkeleton rows={8} columns={6} />;
   }
 
-  if (sortedMembers.length === 0) {
+  if (sortedMembers.length === 0 && !isFetching) {
     return (
       <div className="text-center py-12">
         <User className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
@@ -894,6 +921,23 @@ export const MembersTable = ({
           </div>
         </div>
       )}
+      
+      {/* Member count and export */}
+      <div className="flex items-center justify-between text-sm text-muted-foreground px-1">
+        <span>
+          Showing {sortedMembers.length} of {totalCount} members
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleExport}
+          className="gap-2"
+        >
+          <Download className="w-4 h-4" />
+          Export
+        </Button>
+      </div>
+
       <div className="rounded-lg border overflow-hidden">
         <div className="overflow-hidden md:overflow-x-auto -mx-2 md:-mx-4 sm:mx-0 px-2 md:px-4 sm:px-0">
           <Table className="w-full md:min-w-[600px] table-fixed md:table-auto">
@@ -991,7 +1035,7 @@ export const MembersTable = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {pagination.paginatedData.map((member) => (
+            {sortedMembers.map((member) => (
               <React.Fragment key={member.id}>
               <TableRow 
                 className={cn(
@@ -999,87 +1043,79 @@ export const MembersTable = ({
                   selectedMembers.has(member.id) && "bg-primary/5",
                   expandedMemberId === member.id && "bg-muted/30"
                 )}
-                onClick={(e) => {
-                  // On mobile, toggle expand/collapse
-                  if (window.innerWidth < 768) {
-                    e.stopPropagation();
-                    setExpandedMemberId(expandedMemberId === member.id ? null : member.id);
-                  } else {
-                    // On desktop, use existing click handler
-                    handleMemberClick(member);
-                  }
-                }}
+                onClick={() => handleMemberClick(member)}
               >
-                <TableCell className="hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
+                {/* Checkbox - hidden on mobile */}
+                <TableCell className="hidden md:table-cell py-2 md:py-3">
                   <Checkbox
                     checked={selectedMembers.has(member.id)}
-                    onCheckedChange={() => {
-                      setSelectedMembers(prev => {
-                        const newSet = new Set(prev);
-                        if (newSet.has(member.id)) {
-                          newSet.delete(member.id);
-                        } else {
-                          newSet.add(member.id);
-                        }
-                        return newSet;
-                      });
-                    }}
+                    onCheckedChange={() => {}}
+                    onClick={(e) => toggleMemberSelection(member.id, e)}
                     aria-label={`Select ${member.name}`}
                   />
                 </TableCell>
-                <TableCell className="py-1.5 md:py-3">
-                  <div className="flex items-center gap-1 md:gap-3">
-                    <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-[9px] md:text-sm font-semibold text-primary">
+                
+                {/* Member info with avatar */}
+                <TableCell className="py-2 md:py-3 pl-2 md:pl-4">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs md:text-sm font-semibold text-primary">
                         {member.name.charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    <div className="flex-1 min-w-0 pr-1">
-                      <p className="font-medium text-[10px] md:text-xs lg:text-sm truncate">{member.name}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium text-xs md:text-sm truncate max-w-[100px] md:max-w-none">
+                          {member.name}
+                        </p>
+                        {/* Status circle on mobile - show on desktop too for visual consistency */}
+                        <div className="md:hidden">
+                          {getStatusCircle(member.subscription)}
+                        </div>
+                      </div>
+                      <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
+                        <Phone className="w-2.5 h-2.5 md:w-3 md:h-3 hidden sm:inline" />
+                        +91 {member.phone}
+                      </p>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="hidden sm:table-cell">
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Phone className="w-3 h-3" />
+                
+                {/* Phone - hidden on mobile */}
+                <TableCell className="hidden sm:table-cell text-xs md:text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-muted-foreground" />
                     +91 {member.phone}
                   </div>
                 </TableCell>
-                <TableCell className="py-1.5 md:py-3 md:table-cell w-6">
-                  {/* Mobile: Small circle button with transparent background */}
-                  <div className="flex items-center justify-center md:hidden">
-                    <button
-                      type="button"
-                      className="focus:outline-none focus:ring-0"
-                      onClick={(e) => e.stopPropagation()}
-                      aria-label="Member status"
-                    >
-                      {getStatusCircle(member.subscription)}
-                    </button>
-                  </div>
-                  {/* Desktop: Status badge */}
-                  <div className="hidden md:flex items-center">
+                
+                {/* Status - show circle on mobile, badge on desktop */}
+                <TableCell className="py-2 md:py-3 w-6 md:w-auto">
+                  <div className="hidden md:block">
                     {getStatusBadge(member.subscription)}
                   </div>
+                  <div className="md:hidden">
+                    {getStatusCircle(member.subscription)}
+                  </div>
                 </TableCell>
-                <TableCell className="hidden lg:table-cell">
+                
+                {/* Trainer - hidden on small screens */}
+                <TableCell className="hidden lg:table-cell text-xs md:text-sm">
                   {member.activePT ? (
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 text-purple-700 dark:text-purple-300 border-purple-300/50 dark:border-purple-700/50">
-                        <Dumbbell className="w-3 h-3 mr-1" />
-                        <span className="font-medium bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-                          {member.activePT.trainer_name}
-                        </span>
-                      </Badge>
-                    </div>
+                    <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 text-purple-700 dark:text-purple-300 border-purple-300/50 dark:border-purple-700/50">
+                      <Dumbbell className="w-3 h-3 mr-1" />
+                      {member.activePT.trainer_name}
+                    </Badge>
                   ) : (
-                    <span className="text-muted-foreground text-sm">No PT</span>
+                    <span className="text-muted-foreground text-xs">No PT</span>
                   )}
                 </TableCell>
-                <TableCell className="hidden md:table-cell">
+                
+                {/* Expiry date - hidden on mobile */}
+                <TableCell className="hidden md:table-cell text-xs md:text-sm">
                   {member.subscription ? (
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Calendar className="w-3 h-3" />
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
                       {new Date(member.subscription.end_date).toLocaleDateString("en-IN", {
                         day: "numeric",
                         month: "short",
@@ -1090,59 +1126,78 @@ export const MembersTable = ({
                     <span className="text-muted-foreground">-</span>
                   )}
                 </TableCell>
-                <TableCell className="w-5 md:w-auto py-1.5 md:py-3" onClick={(e) => e.stopPropagation()}>
+                
+                {/* Actions */}
+                <TableCell className="py-1 md:py-3 pr-1 md:pr-4">
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-5 w-5 md:h-8 md:w-8 p-0">
-                        <MoreVertical className="w-3 h-3 md:w-4 md:h-4" />
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 md:h-8 md:w-8 p-0">
+                        <MoreVertical className="w-3.5 h-3.5 md:w-4 md:h-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[200px] md:w-auto md:min-w-[200px] p-1 md:p-2">
-                      {/* Only show edit/update options if user can manage members */}
+                    <DropdownMenuContent align="end" className="w-44 md:w-48">
                       {canManageMembers && (
                         <>
-                          {/* Update User */}
-                          <DropdownMenuItem onClick={() => setEditingMember(member)} className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2">
-                            <Pencil className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
-                            Update User
-                          </DropdownMenuItem>
-                          
-                          {/* Send Promotional Message */}
                           <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingMember(member);
+                            }}
+                            className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
+                          >
+                            <Pencil className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirm({ open: true, memberId: member.id, memberName: member.name });
+                            }}
+                            className="text-destructive text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
+                          >
+                            <Trash2 className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                          {isInactive(member) && (
+                            <DropdownMenuItem 
+                              onClick={(e) => handleMoveToActive(member, e)}
+                              className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
+                            >
+                              <UserCheck className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
+                              Move to Active
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
                             onClick={(e) => handleSendPromotional(member, e)}
                             disabled={sendingWhatsApp === member.id}
-                            className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2 whitespace-nowrap"
+                            className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
                           >
-                            <MessageCircle className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2 flex-shrink-0" />
-                            <span className="md:whitespace-normal">{sendingWhatsApp === member.id ? "Sending..." : "Send Promotional Message"}</span>
+                            <MessageCircle className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
+                            {sendingWhatsApp === member.id ? "Sending..." : "Send Promotional"}
                           </DropdownMenuItem>
-                          
-                          {/* Send Subscription Expiry Reminder - Only for Expiring Soon */}
-                          {isExpiringSoon(member) && (
-                            <DropdownMenuItem 
-                              onClick={(e) => handleSendExpiryReminder(member, e)}
-                              disabled={sendingWhatsApp === member.id}
-                              className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
-                            >
-                              <Clock className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
-                              Send Expiry Reminder
-                            </DropdownMenuItem>
+                          {isExpiringOrExpired(member) && (
+                            isExpired(member) ? (
+                              <DropdownMenuItem
+                                onClick={(e) => handleSendExpiredReminder(member, e)}
+                                disabled={sendingWhatsApp === member.id}
+                                className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
+                              >
+                                <AlertTriangle className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
+                                {sendingWhatsApp === member.id ? "Sending..." : "Send Expired Reminder"}
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={(e) => handleSendExpiryReminder(member, e)}
+                                disabled={sendingWhatsApp === member.id}
+                                className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
+                              >
+                                <Clock className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
+                                {sendingWhatsApp === member.id ? "Sending..." : "Send Expiry Reminder"}
+                              </DropdownMenuItem>
+                            )
                           )}
-                          
-                          {/* Send Expired Reminder - Only for Expired members */}
-                          {isExpired(member) && !isInactive(member) && (
-                            <DropdownMenuItem 
-                              onClick={(e) => handleSendExpiredReminder(member, e)}
-                              disabled={sendingWhatsApp === member.id}
-                              className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
-                            >
-                              <AlertTriangle className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
-                              Send Expired Reminder
-                            </DropdownMenuItem>
-                          )}
-                          
-                          {/* Send Payment Details/Bill */}
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={(e) => handleSendPaymentDetails(member, e)}
                             disabled={sendingWhatsApp === member.id}
                             className="text-xs md:text-sm py-1.5 md:py-2 px-2 md:px-2"
@@ -1219,25 +1274,27 @@ export const MembersTable = ({
               )}
               </React.Fragment>
             ))}
+            
+            {/* Infinite scroll skeleton loader - shown when fetching next page */}
+            {isFetchingNextPage && <InfiniteScrollSkeleton rows={3} />}
+            
+            {/* Sentinel element for intersection observer */}
+            {hasNextPage && !isFetchingNextPage && (
+              <TableRow ref={loadMoreRef}>
+                <TableCell colSpan={7} className="h-1 p-0" />
+              </TableRow>
+            )}
           </TableBody>
         </Table>
         </div>
       </div>
 
-      {/* Pagination Controls */}
-      <PaginationControls
-        currentPage={pagination.currentPage}
-        totalPages={pagination.totalPages}
-        totalItems={pagination.totalItems}
-        startIndex={pagination.startIndex}
-        endIndex={pagination.endIndex}
-        pageSize={pagination.pageSize}
-        pageSizeOptions={pagination.pageSizeOptions}
-        hasNextPage={pagination.hasNextPage}
-        hasPrevPage={pagination.hasPrevPage}
-        onPageChange={pagination.goToPage}
-        onPageSizeChange={pagination.setPageSize}
-      />
+      {/* Show loading indicator at bottom when fetching more */}
+      {hasNextPage && (
+        <div className="text-center text-xs text-muted-foreground py-2">
+          {isFetchingNextPage ? "Loading more..." : "Scroll for more"}
+        </div>
+      )}
 
       <EditMemberDialog
         open={!!editingMember}
