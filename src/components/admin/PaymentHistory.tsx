@@ -229,83 +229,100 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-end">
-        <DateRangePicker
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          onDateChange={(from, to) => {
-            setDateFrom(from);
-            setDateTo(to);
-          }}
-        />
-        <div className="flex-1 min-w-[100px]">
-          <label className="text-xs text-muted-foreground mb-1 block">Mode</label>
-          <Select value={paymentMode} onValueChange={setPaymentMode}>
-            <SelectTrigger className="h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="online">Online</SelectItem>
-              <SelectItem value="cash">Cash</SelectItem>
-            </SelectContent>
-          </Select>
+    <div className="space-y-2 md:space-y-4">
+      {/* Filters - Compact mobile layout */}
+      <div className="space-y-2 md:space-y-0 md:flex md:flex-wrap md:gap-3 md:items-end">
+        {/* Date Range - Full width on mobile, auto on desktop */}
+        <div className="w-full md:w-auto">
+          <DateRangePicker
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateChange={(from, to) => {
+              setDateFrom(from);
+              setDateTo(to);
+            }}
+          />
         </div>
-        <div className="flex-1 min-w-[100px]">
-          <label className="text-xs text-muted-foreground mb-1 block">Status</label>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="success">Success</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
-            </SelectContent>
-          </Select>
+        
+        {/* Filter Row 1 - Mode and Status on mobile */}
+        <div className="flex gap-2 md:gap-3 md:flex-1 md:min-w-[100px]">
+          <div className="flex-1 min-w-0">
+            <label className="text-[10px] md:text-xs text-muted-foreground mb-0.5 md:mb-1 block">Mode</label>
+            <Select value={paymentMode} onValueChange={setPaymentMode}>
+              <SelectTrigger className="h-8 md:h-9 text-xs md:text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="online">Online</SelectItem>
+                <SelectItem value="cash">Cash</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1 min-w-0">
+            <label className="text-[10px] md:text-xs text-muted-foreground mb-0.5 md:mb-1 block">Status</label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 md:h-9 text-xs md:text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="success">Success</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="flex-1 min-w-[100px]">
-          <label className="text-xs text-muted-foreground mb-1 block">Type</label>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="gym_membership">Gym Only</SelectItem>
-              <SelectItem value="pt_only">PT Only</SelectItem>
-              <SelectItem value="gym_and_pt">Gym + PT</SelectItem>
-            </SelectContent>
-          </Select>
+        
+        {/* Filter Row 2 - Type and Clear on mobile */}
+        <div className="flex gap-2 md:gap-3 md:flex-1 md:min-w-[100px]">
+          <div className="flex-1 min-w-0">
+            <label className="text-[10px] md:text-xs text-muted-foreground mb-0.5 md:mb-1 block">Type</label>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="h-8 md:h-9 text-xs md:text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="gym_membership">Gym Only</SelectItem>
+                <SelectItem value="pt_only">PT Only</SelectItem>
+                <SelectItem value="gym_and_pt">Gym + PT</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {hasActiveFilters && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={clearFilters} 
+              className="h-8 md:h-9 px-2 md:px-3 mt-5 md:mt-0"
+            >
+              <X className="w-3.5 h-3.5 md:w-4 md:h-4 md:mr-1" />
+              <span className="hidden md:inline">Clear</span>
+            </Button>
+          )}
         </div>
-        {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9">
-            <X className="w-4 h-4 mr-1" />
-            Clear
-          </Button>
-        )}
       </div>
 
-      {/* Results summary */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>
+      {/* Results summary - Compact mobile layout */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1.5 md:gap-0 text-[10px] md:text-sm text-muted-foreground">
+        <span className="text-[10px] md:text-sm">
           Showing {filteredPayments.length} of {totalCount} transactions
         </span>
-        <div className="flex items-center gap-4">
-          <span className="font-semibold text-foreground">
+        <div className="flex items-center justify-between md:justify-end md:gap-4">
+          <span className="font-semibold text-foreground text-xs md:text-sm">
             Total: ₹{filteredPayments.reduce((sum, p) => sum + Number(p.amount), 0).toLocaleString("en-IN")}
           </span>
           <Button
             variant="outline"
             size="sm"
             onClick={handleExport}
-            className="gap-2 hover:bg-accent/50 transition-colors font-medium"
+            className="gap-1.5 md:gap-2 hover:bg-accent/50 transition-colors font-medium h-7 md:h-9 px-2 md:px-3 text-[10px] md:text-sm"
           >
-            <Download className="w-4 h-4" />
-            Export Data
+            <Download className="w-3 h-3 md:w-4 md:h-4" />
+            <span className="hidden sm:inline">Export Data</span>
+            <span className="sm:hidden">Export</span>
           </Button>
         </div>
       </div>

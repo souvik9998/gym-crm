@@ -927,8 +927,8 @@ export const MembersTable = ({
         </div>
       )}
       
-      {/* Member count and export */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground px-1">
+      {/* Member count and export - Hidden on all screens */}
+      <div className="hidden">
         <span>
           Showing {sortedMembers.length} of {totalCount} members
         </span>
@@ -1073,10 +1073,7 @@ export const MembersTable = ({
                         <p className="font-medium text-xs md:text-sm truncate max-w-[100px] md:max-w-none">
                           {member.name}
                         </p>
-                        {/* Status circle on mobile - show on desktop too for visual consistency */}
-                        <div className="md:hidden">
-                          {getStatusCircle(member.subscription)}
-                        </div>
+                        {/* Status circle removed from mobile */}
                       </div>
                       <p className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
                         <Phone className="w-2.5 h-2.5 md:w-3 md:h-3 hidden sm:inline" />
