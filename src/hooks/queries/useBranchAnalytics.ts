@@ -292,9 +292,9 @@ const generateTimeSeriesData = async (
     }
 
     if (timeSeriesMap.has(key)) {
-      const branchId = payment.branch_id || "";
-      const current = timeSeriesMap.get(key)![branchId] || 0;
-      timeSeriesMap.get(key)![branchId] = current + Number(payment.amount || 0);
+      const paymentBranchId = (payment as any).branch_id || "";
+      const current = timeSeriesMap.get(key)![paymentBranchId] || 0;
+      timeSeriesMap.get(key)![paymentBranchId] = current + Number(payment.amount || 0);
     }
   });
 
