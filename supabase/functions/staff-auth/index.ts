@@ -1,5 +1,13 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { encodeBase64, decodeBase64 } from "https://deno.land/std@0.220.1/encoding/base64.ts";
+import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+import {
+  LoginSchema,
+  SetPasswordSchema,
+  RevokeSessionsSchema,
+  validateInput,
+  validationErrorResponse,
+} from "../_shared/validation.ts";
 
 const base64Encode = encodeBase64;
 const base64Decode = decodeBase64;
@@ -12,36 +20,40 @@ const corsHeaders = {
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 15;
 const SESSION_EXPIRY_HOURS = 24;
+const BCRYPT_COST = 12;
 
-interface LoginRequest {
-  phone: string;
-  password: string;
+// ============================================================================
+// Password Hashing with bcrypt (industry standard)
+// ============================================================================
+
+async function hashPasswordBcrypt(password: string): Promise<string> {
+  const salt = await bcrypt.genSalt(BCRYPT_COST);
+  const hash = await bcrypt.hash(password, salt);
+  return `v2:${hash}`; // Version prefix for migration support
 }
 
-interface CreatePasswordRequest {
-  staffId: string;
-  password: string;
-  sendWhatsApp?: boolean;
+async function verifyPasswordBcrypt(password: string, hash: string): Promise<boolean> {
+  return await bcrypt.compare(password, hash);
 }
 
-// Simple password hashing using Web Crypto API (bcrypt-like security with salt)
-async function hashPassword(password: string): Promise<string> {
+// ============================================================================
+// Legacy SHA-256 hashing (for migration support)
+// ============================================================================
+
+async function hashPasswordLegacy(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const encoder = new TextEncoder();
   const passwordData = encoder.encode(password);
   
-  // Combine salt and password
   const combined = new Uint8Array(salt.length + passwordData.length);
   combined.set(salt);
   combined.set(passwordData, salt.length);
   
-  // Hash using SHA-256 multiple rounds (PBKDF2-like)
   let hash = await crypto.subtle.digest("SHA-256", combined);
   for (let i = 0; i < 10000; i++) {
     hash = await crypto.subtle.digest("SHA-256", hash);
   }
   
-  // Combine salt and hash for storage
   const hashArray = new Uint8Array(hash);
   const result = new Uint8Array(salt.length + hashArray.length);
   result.set(salt);
@@ -50,16 +62,12 @@ async function hashPassword(password: string): Promise<string> {
   return base64Encode(result);
 }
 
-async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+async function verifyPasswordLegacy(password: string, storedHash: string): Promise<boolean> {
   try {
-    // Decode stored hash using the same library as encoding
     const decoded = base64Decode(storedHash);
-    
-    // Extract salt (first 16 bytes)
     const salt = decoded.slice(0, 16);
     const storedHashBytes = decoded.slice(16);
     
-    // Hash input password with same salt
     const encoder = new TextEncoder();
     const passwordData = encoder.encode(password);
     const combined = new Uint8Array(salt.length + passwordData.length);
@@ -73,16 +81,35 @@ async function verifyPassword(password: string, storedHash: string): Promise<boo
     
     const hashArray = new Uint8Array(hash);
     
-    // Compare hashes
     if (hashArray.length !== storedHashBytes.length) return false;
     for (let i = 0; i < hashArray.length; i++) {
       if (hashArray[i] !== storedHashBytes[i]) return false;
     }
     return true;
   } catch (error) {
-    console.error("Password verification error:", error);
+    console.error("Legacy password verification error:", error);
     return false;
   }
+}
+
+// ============================================================================
+// Universal Password Verification (supports both formats with auto-upgrade)
+// ============================================================================
+
+async function verifyPasswordUniversal(
+  password: string,
+  storedHash: string
+): Promise<{ valid: boolean; needsUpgrade: boolean }> {
+  // Check if it's new bcrypt format (v2:$2...)
+  if (storedHash.startsWith("v2:")) {
+    const hash = storedHash.substring(3);
+    const valid = await verifyPasswordBcrypt(password, hash);
+    return { valid, needsUpgrade: false };
+  }
+  
+  // Legacy SHA-256 format - verify and mark for upgrade
+  const valid = await verifyPasswordLegacy(password, storedHash);
+  return { valid, needsUpgrade: valid }; // Upgrade on next successful login
 }
 
 // Generate secure session token
@@ -120,21 +147,19 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case "login": {
-        const { phone, password } = (await req.json()) as LoginRequest;
-
-        if (!phone || !password) {
-          return new Response(
-            JSON.stringify({ success: false, error: "Phone and password are required" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+        const body = await req.json().catch(() => ({}));
+        
+        // Validate input with Zod schema
+        const validation = validateInput(LoginSchema, body);
+        if (!validation.success) {
+          return validationErrorResponse(validation.error!, corsHeaders, validation.details);
         }
-
-        // Clean phone number
-        const cleanPhone = phone.replace(/\D/g, "").replace(/^0/, "");
+        
+        const { phone, password } = validation.data!;
         
         // Log the login attempt
         await supabase.from("staff_login_attempts").insert({
-          phone: cleanPhone,
+          phone,
           ip_address: clientIP,
           user_agent: userAgent,
           success: false,
@@ -145,7 +170,7 @@ Deno.serve(async (req) => {
         const { data: staffList, error: staffError } = await supabase
           .from("staff")
           .select("*")
-          .eq("phone", cleanPhone)
+          .eq("phone", phone)
           .eq("is_active", true)
           .order("password_set_at", { ascending: false, nullsFirst: false });
 
@@ -153,11 +178,10 @@ Deno.serve(async (req) => {
         const staff = staffList?.find(s => s.password_hash) || staffList?.[0];
 
         if (staffError || !staff) {
-          // Update login attempt
           await supabase
             .from("staff_login_attempts")
             .update({ failure_reason: "invalid_credentials" })
-            .eq("phone", cleanPhone)
+            .eq("phone", phone)
             .order("created_at", { ascending: false })
             .limit(1);
 
@@ -176,7 +200,7 @@ Deno.serve(async (req) => {
           await supabase
             .from("staff_login_attempts")
             .update({ failure_reason: "account_locked" })
-            .eq("phone", cleanPhone)
+            .eq("phone", phone)
             .order("created_at", { ascending: false })
             .limit(1);
 
@@ -195,7 +219,7 @@ Deno.serve(async (req) => {
           await supabase
             .from("staff_login_attempts")
             .update({ failure_reason: "account_inactive" })
-            .eq("phone", cleanPhone)
+            .eq("phone", phone)
             .order("created_at", { ascending: false })
             .limit(1);
 
@@ -210,7 +234,7 @@ Deno.serve(async (req) => {
           await supabase
             .from("staff_login_attempts")
             .update({ failure_reason: "no_password" })
-            .eq("phone", cleanPhone)
+            .eq("phone", phone)
             .order("created_at", { ascending: false })
             .limit(1);
 
@@ -220,8 +244,8 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Verify password
-        const isValid = await verifyPassword(password, staff.password_hash);
+        // Verify password using universal verifier (supports legacy + bcrypt)
+        const { valid: isValid, needsUpgrade } = await verifyPasswordUniversal(password, staff.password_hash);
 
         if (!isValid) {
           const newAttempts = (staff.failed_login_attempts || 0) + 1;
@@ -239,7 +263,7 @@ Deno.serve(async (req) => {
           await supabase
             .from("staff_login_attempts")
             .update({ failure_reason: "wrong_password" })
-            .eq("phone", cleanPhone)
+            .eq("phone", phone)
             .order("created_at", { ascending: false })
             .limit(1);
 
@@ -253,6 +277,16 @@ Deno.serve(async (req) => {
             }),
             { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
+        }
+
+        // Upgrade password hash if using legacy format
+        if (needsUpgrade) {
+          console.log("Upgrading password hash to bcrypt for staff:", staff.id);
+          const newHash = await hashPasswordBcrypt(password);
+          await supabase.from("staff").update({
+            password_hash: newHash,
+            password_set_at: new Date().toISOString(),
+          }).eq("id", staff.id);
         }
 
         // Successful login - reset failed attempts and update last login
@@ -293,7 +327,7 @@ Deno.serve(async (req) => {
         await supabase
           .from("staff_login_attempts")
           .update({ success: true, failure_reason: null })
-          .eq("phone", cleanPhone)
+          .eq("phone", phone)
           .order("created_at", { ascending: false })
           .limit(1);
 
@@ -492,23 +526,15 @@ Deno.serve(async (req) => {
       }
 
       case "set-password": {
-        const body = await req.json();
-        const { staffId, password, sendWhatsApp } = body as CreatePasswordRequest;
-
-        if (!staffId || !password) {
-          return new Response(
-            JSON.stringify({ success: false, error: "Staff ID and password are required" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+        const body = await req.json().catch(() => ({}));
+        
+        // Validate input with Zod schema
+        const validation = validateInput(SetPasswordSchema, body);
+        if (!validation.success) {
+          return validationErrorResponse(validation.error!, corsHeaders, validation.details);
         }
-
-        // Validate password strength
-        if (password.length < 6) {
-          return new Response(
-            JSON.stringify({ success: false, error: "Password must be at least 6 characters" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+        
+        const { staffId, password, sendWhatsApp } = validation.data!;
 
         // Get staff details
         const { data: staff, error: staffError } = await supabase
@@ -524,8 +550,8 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Hash password
-        const passwordHash = await hashPassword(password);
+        // Hash password with bcrypt (new standard)
+        const passwordHash = await hashPasswordBcrypt(password);
 
         // Update staff with password
         const { error: updateError } = await supabase
@@ -633,7 +659,15 @@ Deno.serve(async (req) => {
           );
         }
 
-        const { staffId } = await req.json();
+        const body = await req.json().catch(() => ({}));
+        
+        // Validate input
+        const validation = validateInput(RevokeSessionsSchema, body);
+        if (!validation.success) {
+          return validationErrorResponse(validation.error!, corsHeaders, validation.details);
+        }
+        
+        const { staffId } = validation.data!;
 
         await supabase
           .from("staff_sessions")

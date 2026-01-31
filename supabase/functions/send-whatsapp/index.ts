@@ -1,35 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { SendWhatsAppSchema, validateInput } from "../_shared/validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-interface SendWhatsAppRequest {
-  memberIds?: string[];
-  dailyPassUserIds?: string[];
-  dailyPassUserId?: string; // Single daily pass user ID for direct send
-  type?: "expiring_2days" | "expiring_today" | "manual" | "renewal" | "pt_extension" | "promotional" | "expiry_reminder" | "expired_reminder" | "payment_details" | "custom" | "new_member" | "new_registration" | "daily_pass" | "staff_credentials";
-  customMessage?: string;
-  isManual?: boolean;
-  adminUserId?: string;
-  branchId?: string;
-  branchName?: string;
-
-  // Direct send
-  phone?: string;
-  name?: string;
-  endDate?: string;
-  
-  // Staff credentials specific
-  staffCredentials?: {
-    staffName: string;
-    staffPhone: string;
-    password?: string;
-    role?: string;
-    branches?: string[];
-  };
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -52,6 +27,21 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Parse and validate input
+    const rawBody = await req.json().catch(() => ({}));
+    const validation = validateInput(SendWhatsAppSchema, rawBody);
+    
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Validation failed: ${validation.error}`,
+          details: validation.details?.map(d => ({ path: d.path.join("."), message: d.message }))
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const {
       memberIds,
       dailyPassUserIds,
@@ -66,7 +56,7 @@ Deno.serve(async (req) => {
       name,
       endDate,
       staffCredentials,
-    } = (await req.json()) as SendWhatsAppRequest;
+    } = validation.data!;
 
     // Check if WhatsApp is enabled for the specific branch
     if (branchId) {
@@ -181,7 +171,7 @@ Deno.serve(async (req) => {
       }
     };
 
-    // Phone formatter
+    // Phone formatter with validation
     const formatPhone = (phoneNum: string): string => {
       let cleaned = phoneNum.replace(/\D/g, "");
 
@@ -203,7 +193,7 @@ Deno.serve(async (req) => {
       expiryDate: string,
       diffDays: number,
       paymentInfo?: { amount: number; date: string; mode: string } | null,
-      branchName?: string | null
+      actualBranchName?: string | null
     ): string => {
       const formattedDate = new Date(expiryDate).toLocaleDateString("en-IN", {
         day: "numeric",
@@ -215,7 +205,7 @@ Deno.serve(async (req) => {
         .replace(/\{name\}/gi, memberName)
         .replace(/\{expiry_date\}/gi, formattedDate)
         .replace(/\{days\}/gi, Math.abs(diffDays).toString())
-        .replace(/\{branch_name\}/gi, branchName || "Pro Plus Fitness");
+        .replace(/\{branch_name\}/gi, actualBranchName || "Pro Plus Fitness");
 
       if (paymentInfo) {
         const paymentDate = new Date(paymentInfo.date).toLocaleDateString("en-IN", {
@@ -252,18 +242,10 @@ Deno.serve(async (req) => {
       endDateObj.setHours(0, 0, 0, 0);
       const diffDays = Math.ceil((endDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-      // Use branch name from request (requestBranchName) if available, otherwise use msgBranchName parameter
-      // This ensures we always use the actual branch name from the admin's current branch
-      // requestBranchName comes from the request body and represents the branch the admin is currently in
       const actualBranchName = requestBranchName || msgBranchName;
-      
-      // Use branch name if provided, otherwise default gym name
-      // For independent branches, use just the branch name (not "Pro Plus Fitness - Branch")
       const gymDisplayName = actualBranchName || "Pro Plus Fitness";
       const teamName = actualBranchName ? `Team ${actualBranchName}` : "Team Pro Plus Fitness";
 
-      // For custom messages with placeholders, replace them
-      // Always use actualBranchName which prioritizes branchName from the request
       if (msgType === "custom" && customMessage) {
         return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, actualBranchName);
       }
@@ -326,7 +308,6 @@ Deno.serve(async (req) => {
           );
 
         case "promotional":
-          // Check for saved template and replace placeholders
           if (customMessage) {
             return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, actualBranchName);
           }
@@ -339,7 +320,6 @@ Deno.serve(async (req) => {
           );
 
         case "expiry_reminder":
-          // Check for saved template and replace placeholders
           if (customMessage) {
             return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, actualBranchName);
           }
@@ -357,7 +337,6 @@ Deno.serve(async (req) => {
           );
 
         case "expired_reminder":
-          // Check for saved template and replace placeholders
           if (customMessage) {
             return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, actualBranchName);
           }
@@ -398,7 +377,6 @@ Deno.serve(async (req) => {
           );
 
         default:
-          // For manual or custom messages with templates
           if (customMessage) {
             return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, actualBranchName);
           }
@@ -445,7 +423,6 @@ Deno.serve(async (req) => {
       const { staffName, staffPhone, password, role, branches } = staffCredentials;
       const formattedPhone = formatPhone(staffPhone);
       
-      // Build staff credentials message
       const roleLabel = role ? role.charAt(0).toUpperCase() + role.slice(1) : "Staff";
       const branchList = branches && branches.length > 0 ? branches.join(", ") : branchName || "All Branches";
       const gymDisplayName = branchName || "Pro Plus Fitness";
@@ -465,171 +442,215 @@ Deno.serve(async (req) => {
       
       const result = await sendPeriskopeMessage(formattedPhone, message);
       
-      // Log to a generic entry (using a placeholder member_id since it's required)
-      // We'll create a simple log without member_id reference
-      console.log("Staff credentials WhatsApp sent:", {
-        staffName,
-        staffPhone,
-        success: result.success,
-        error: result.error,
+      // Log the notification (without sensitive password info)
+      await logWhatsAppMessage({
+        recipient_phone: staffPhone,
+        recipient_name: staffName,
+        notification_type: "staff_credentials",
+        message_content: message.replace(/🔑 \*Password:\* .+\n/, "🔑 *Password:* [REDACTED]\n"),
+        status: result.success ? "sent" : "failed",
+        error_message: result.error || null,
+        is_manual: true,
+        admin_user_id: finalAdminUserId,
+        branch_id: branchId || null,
       });
-      
-      return new Response(JSON.stringify(result), {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      });
+
+      return new Response(
+        JSON.stringify({
+          success: result.success,
+          message: result.success ? "Staff credentials sent successfully" : "Failed to send credentials",
+          error: result.error,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // DIRECT SEND (NO MEMBER LOOKUP)
-    if (phone && name && endDate) {
+    // DIRECT SEND (for registration pages, etc.)
+    if (phone && name) {
       const formattedPhone = formatPhone(phone);
-      const message = generateMessage(name, endDate, type, null, branchName, branchName);
-
+      const memberEndDate = endDate || new Date().toISOString().split("T")[0];
+      const message = generateMessage(name, memberEndDate, type, null, null, branchName);
+      
       const result = await sendPeriskopeMessage(formattedPhone, message);
 
-      const isManualMessage = isManual || type === "manual" || type === "custom";
-      
       await logWhatsAppMessage({
-        member_id: memberIds && memberIds.length > 0 ? memberIds[0] : null,
-        daily_pass_user_id: dailyPassUserId || null,
         recipient_phone: phone,
         recipient_name: name,
         notification_type: type,
         message_content: message,
         status: result.success ? "sent" : "failed",
         error_message: result.error || null,
-        is_manual: isManualMessage,
-        admin_user_id: isManualMessage ? finalAdminUserId : null,
+        is_manual: isManual,
+        admin_user_id: finalAdminUserId,
         branch_id: branchId || null,
       });
 
-      return new Response(JSON.stringify(result), {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      });
+      return new Response(
+        JSON.stringify({
+          success: result.success,
+          results: [{
+            name,
+            phone,
+            success: result.success,
+            error: result.error,
+          }],
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // MEMBER/DAILY PASS USER BASED SEND
-    if ((!memberIds || memberIds.length === 0) && (!dailyPassUserIds || dailyPassUserIds.length === 0)) {
-      return new Response(JSON.stringify({ error: "No member IDs, daily pass user IDs, or phone provided" }), {
-        status: 400,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      });
-    }
-
-    // Fetch members if provided
-    let members: Array<{ id: string; name: string; phone: string }> = [];
-    if (memberIds && memberIds.length > 0) {
-      const { data: membersData, error: membersError } = await supabase.from("members").select("id, name, phone").in("id", memberIds);
-      if (membersError) throw membersError;
-      members = membersData || [];
-    }
-
-    // Fetch daily pass users if provided
-    let dailyPassUsers: Array<{ id: string; name: string; phone: string }> = [];
-    if (dailyPassUserIds && dailyPassUserIds.length > 0) {
-      const { data: dailyPassUsersData, error: dailyPassUsersError } = await supabase
+    // DAILY PASS USER SEND
+    if (dailyPassUserId || (dailyPassUserIds && dailyPassUserIds.length > 0)) {
+      const userIds = dailyPassUserId ? [dailyPassUserId] : dailyPassUserIds!;
+      
+      const { data: users, error: usersError } = await supabase
         .from("daily_pass_users")
-        .select("id, name, phone")
-        .in("id", dailyPassUserIds);
-      if (dailyPassUsersError) throw dailyPassUsersError;
-      dailyPassUsers = dailyPassUsersData || [];
-    }
+        .select(`
+          id,
+          name,
+          phone,
+          branch_id,
+          branches(name),
+          daily_pass_subscriptions(end_date, status)
+        `)
+        .in("id", userIds);
 
-    const recipientsWithData = [];
-
-    // Process members
-    for (const member of members) {
-      // Get subscription
-      const { data: sub } = await supabase
-        .from("subscriptions")
-        .select("end_date")
-        .eq("member_id", member.id)
-        .order("end_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      // Get last payment for payment_details type
-      let paymentInfo = null;
-      if (type === "payment_details") {
-        const { data: payment } = await supabase
-          .from("payments")
-          .select("amount, created_at, payment_mode")
-          .eq("member_id", member.id)
-          .eq("status", "success")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        
-        if (payment) {
-          paymentInfo = {
-            amount: payment.amount,
-            date: payment.created_at,
-            mode: payment.payment_mode,
-          };
-        }
+      if (usersError || !users?.length) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Daily pass users not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
-      recipientsWithData.push({
-        ...member,
-        isMember: true,
-        end_date: sub?.end_date || new Date().toISOString(),
-        paymentInfo,
-      });
+      const results = [];
+
+      for (const user of users) {
+        const formattedPhone = formatPhone(user.phone);
+        const activeSubscription = user.daily_pass_subscriptions?.find(
+          (s: any) => s.status === "active"
+        );
+        const userEndDate = activeSubscription?.end_date || new Date().toISOString().split("T")[0];
+        const userBranchName = (user.branches as any)?.name;
+        
+        const message = generateMessage(user.name, userEndDate, type, null, userBranchName, branchName);
+        const result = await sendPeriskopeMessage(formattedPhone, message);
+
+        await logWhatsAppMessage({
+          daily_pass_user_id: user.id,
+          recipient_phone: user.phone,
+          recipient_name: user.name,
+          notification_type: type,
+          message_content: message,
+          status: result.success ? "sent" : "failed",
+          error_message: result.error || null,
+          is_manual: isManual,
+          admin_user_id: finalAdminUserId,
+          branch_id: user.branch_id || branchId || null,
+        });
+
+        results.push({
+          id: user.id,
+          name: user.name,
+          phone: user.phone,
+          success: result.success,
+          error: result.error,
+        });
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: results.every(r => r.success),
+          results,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Process daily pass users
-    for (const dailyPassUser of dailyPassUsers) {
-      const { data: purchase } = await supabase
-        .from("daily_pass_subscriptions")
-        .select("end_date")
-        .eq("daily_pass_user_id", dailyPassUser.id)
-        .order("end_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    // MEMBER SEND
+    if (!memberIds || memberIds.length === 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: "No member IDs provided" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-      recipientsWithData.push({
-        ...dailyPassUser,
-        isMember: false,
-        end_date: purchase?.end_date || new Date().toISOString(),
-        paymentInfo: null,
-      });
+    // Get members with subscription info
+    const { data: members, error: membersError } = await supabase
+      .from("members")
+      .select(`
+        id,
+        name,
+        phone,
+        branch_id,
+        branches(name),
+        subscriptions(end_date, status)
+      `)
+      .in("id", memberIds);
+
+    if (membersError || !members?.length) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Members not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get last payment for payment_details type
+    let paymentsMap: Record<string, { amount: number; date: string; mode: string }> = {};
+    if (type === "payment_details") {
+      const { data: payments } = await supabase
+        .from("payments")
+        .select("member_id, amount, created_at, payment_mode")
+        .in("member_id", memberIds)
+        .eq("status", "success")
+        .order("created_at", { ascending: false });
+
+      if (payments) {
+        for (const payment of payments) {
+          if (!paymentsMap[payment.member_id]) {
+            paymentsMap[payment.member_id] = {
+              amount: payment.amount,
+              date: payment.created_at,
+              mode: payment.payment_mode,
+            };
+          }
+        }
+      }
     }
 
     const results = [];
 
-    for (const recipient of recipientsWithData) {
-      const formattedPhone = formatPhone(recipient.phone);
-      const message = generateMessage(recipient.name, recipient.end_date, type, recipient.paymentInfo, branchName, branchName);
-
+    for (const member of members) {
+      const formattedPhone = formatPhone(member.phone);
+      
+      // Get active or most recent subscription
+      const activeSubscription = member.subscriptions?.find(
+        (s: any) => s.status === "active" || s.status === "expiring_soon"
+      ) || member.subscriptions?.[0];
+      
+      const memberEndDate = activeSubscription?.end_date || new Date().toISOString().split("T")[0];
+      const paymentInfo = paymentsMap[member.id] || null;
+      const memberBranchName = (member.branches as any)?.name;
+      
+      const message = generateMessage(member.name, memberEndDate, type, paymentInfo, memberBranchName, branchName);
       const result = await sendPeriskopeMessage(formattedPhone, message);
 
-      const isManualMessage = isManual || type === "manual" || type === "custom";
-      
       await logWhatsAppMessage({
-        member_id: recipient.isMember ? recipient.id : null,
-        daily_pass_user_id: recipient.isMember ? null : recipient.id,
-        recipient_phone: recipient.phone,
-        recipient_name: recipient.name,
+        member_id: member.id,
+        recipient_phone: member.phone,
+        recipient_name: member.name,
         notification_type: type,
         message_content: message,
         status: result.success ? "sent" : "failed",
         error_message: result.error || null,
-        is_manual: isManualMessage,
-        admin_user_id: isManualMessage ? finalAdminUserId : null,
-        branch_id: branchId || null,
+        is_manual: isManual,
+        admin_user_id: finalAdminUserId,
+        branch_id: member.branch_id || branchId || null,
       });
 
       results.push({
-        memberId: recipient.isMember ? recipient.id : undefined,
-        dailyPassUserId: recipient.isMember ? undefined : recipient.id,
+        id: member.id,
+        name: member.name,
+        phone: member.phone,
         success: result.success,
         error: result.error,
       });
@@ -637,26 +658,17 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        success: true,
-        sent: results.filter((r) => r.success).length,
-        failed: results.filter((r) => !r.success).length,
+        success: results.every(r => r.success),
         results,
       }),
-      {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+
   } catch (error: any) {
-    console.error("Error in send-whatsapp:", error);
+    console.error("WhatsApp send error:", error);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
