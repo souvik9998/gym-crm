@@ -1,15 +1,26 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  UpdateGymSettingsSchema,
+  ToggleWhatsAppSchema,
+  AddMonthlyPackageSchema,
+  UpdateMonthlyPackageSchema,
+  DeleteMonthlyPackageSchema,
+  AddCustomPackageSchema,
+  UpdateCustomPackageSchema,
+  DeleteCustomPackageSchema,
+  UpdateBranchSchema,
+  AddCashPaymentSchema,
+  UpdateMemberSchema,
+  AddLedgerEntrySchema,
+  DeleteLedgerEntrySchema,
+  validateInput,
+  validationErrorResponse,
+} from "../_shared/validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-interface StaffSession {
-  staff_id: string;
-  is_revoked: boolean;
-  expires_at: string;
-}
 
 interface StaffPermissions {
   can_view_members: boolean;
@@ -18,11 +29,6 @@ interface StaffPermissions {
   can_access_payments: boolean;
   can_access_analytics: boolean;
   can_change_settings: boolean;
-}
-
-interface StaffBranchAssignment {
-  branch_id: string;
-  is_primary: boolean;
 }
 
 // Validate staff session and return staff details
@@ -141,7 +147,6 @@ async function logStaffActivity(
   });
 }
 
-// Action handlers
 // Helper to get only changed fields between old and new values
 function getChangedFields(oldVal: any, newVal: any): { oldValue: any; newValue: any } | null {
   if (!oldVal && !newVal) return null;
@@ -150,7 +155,6 @@ function getChangedFields(oldVal: any, newVal: any): { oldValue: any; newValue: 
   const changedOld: any = {};
   const changedNew: any = {};
   
-  // Keys to exclude from comparison (internal fields)
   const excludeKeys = ['updated_at', 'created_at', 'id', 'branch_id', 'is_active'];
   
   const allKeys = new Set([
@@ -164,14 +168,12 @@ function getChangedFields(oldVal: any, newVal: any): { oldValue: any; newValue: 
     const oldValue = oldVal?.[key];
     const newValue = newVal?.[key];
     
-    // Only include if values are different
     if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
       changedOld[key] = oldValue ?? null;
       changedNew[key] = newValue ?? null;
     }
   }
   
-  // Return null if no actual changes
   if (Object.keys(changedOld).length === 0 && Object.keys(changedNew).length === 0) {
     return null;
   }
@@ -179,29 +181,35 @@ function getChangedFields(oldVal: any, newVal: any): { oldValue: any; newValue: 
   return { oldValue: changedOld, newValue: changedNew };
 }
 
-async function handleUpdateGymSettings(supabase: any, body: any, staffId: string, staffDetails: any) {
-  const { settingsId, branchId, gymName, gymPhone, gymAddress, whatsappEnabled } = body;
+// ============================================================================
+// Action Handlers with Validation
+// ============================================================================
 
-  // Check permission
+async function handleUpdateGymSettings(supabase: any, body: any, staffId: string, staffDetails: any) {
+  // Validate input
+  const validation = validateInput(UpdateGymSettingsSchema, body);
+  if (!validation.success) {
+    return { error: `Validation failed: ${validation.error}`, status: 400, details: validation.details };
+  }
+  
+  const { settingsId, branchId, gymName, gymPhone, gymAddress, whatsappEnabled } = validation.data!;
+
   const hasPermission = await checkStaffPermission(supabase, staffId, "can_change_settings");
   if (!hasPermission) {
     return { error: "You don't have permission to change settings", status: 403 };
   }
 
-  // Check branch access
   const hasBranchAccess = await checkStaffBranchAccess(supabase, staffId, branchId);
   if (!hasBranchAccess) {
     return { error: "You don't have access to this branch", status: 403 };
   }
 
-  // Get old values for logging
   const { data: oldSettings } = await supabase
     .from("gym_settings")
     .select("gym_name, gym_phone, gym_address, whatsapp_enabled")
     .eq("id", settingsId)
     .single();
 
-  // Prepare update data
   const updateData: any = { updated_at: new Date().toISOString() };
   const newSettingsForCompare: any = {};
   
@@ -222,7 +230,6 @@ async function handleUpdateGymSettings(supabase: any, body: any, staffId: string
     newSettingsForCompare.whatsapp_enabled = whatsappEnabled;
   }
 
-  // Update settings
   const { data, error } = await supabase
     .from("gym_settings")
     .update(updateData)
@@ -234,11 +241,9 @@ async function handleUpdateGymSettings(supabase: any, body: any, staffId: string
     return { error: error.message, status: 500 };
   }
 
-  // Get only the changed fields for logging
   const changes = getChangedFields(oldSettings, newSettingsForCompare);
   const changedFieldNames = changes ? Object.keys(changes.newValue).map(k => k.replace(/_/g, ' ')).join(', ') : 'settings';
 
-  // Log activity with only changed values
   await logStaffActivity(supabase, {
     staffId,
     staffName: staffDetails.full_name,
@@ -257,7 +262,12 @@ async function handleUpdateGymSettings(supabase: any, body: any, staffId: string
 }
 
 async function handleToggleWhatsApp(supabase: any, body: any, staffId: string, staffDetails: any) {
-  const { settingsId, branchId, enabled } = body;
+  const validation = validateInput(ToggleWhatsAppSchema, body);
+  if (!validation.success) {
+    return { error: `Validation failed: ${validation.error}`, status: 400, details: validation.details };
+  }
+  
+  const { settingsId, branchId, enabled } = validation.data!;
 
   const hasPermission = await checkStaffPermission(supabase, staffId, "can_change_settings");
   if (!hasPermission) {
@@ -297,7 +307,12 @@ async function handleToggleWhatsApp(supabase: any, body: any, staffId: string, s
 }
 
 async function handleAddMonthlyPackage(supabase: any, body: any, staffId: string, staffDetails: any) {
-  const { branchId, months, price, joiningFee } = body;
+  const validation = validateInput(AddMonthlyPackageSchema, body);
+  if (!validation.success) {
+    return { error: `Validation failed: ${validation.error}`, status: 400, details: validation.details };
+  }
+  
+  const { branchId, months, price, joiningFee } = validation.data!;
 
   const hasPermission = await checkStaffPermission(supabase, staffId, "can_change_settings");
   if (!hasPermission) {
@@ -343,7 +358,12 @@ async function handleAddMonthlyPackage(supabase: any, body: any, staffId: string
 }
 
 async function handleUpdateMonthlyPackage(supabase: any, body: any, staffId: string, staffDetails: any) {
-  const { packageId, branchId, months, price, joiningFee, isActive } = body;
+  const validation = validateInput(UpdateMonthlyPackageSchema, body);
+  if (!validation.success) {
+    return { error: `Validation failed: ${validation.error}`, status: 400, details: validation.details };
+  }
+  
+  const { packageId, branchId, months, price, joiningFee, isActive } = validation.data!;
 
   const hasPermission = await checkStaffPermission(supabase, staffId, "can_change_settings");
   if (!hasPermission) {
@@ -355,7 +375,6 @@ async function handleUpdateMonthlyPackage(supabase: any, body: any, staffId: str
     return { error: "You don't have access to this branch", status: 403 };
   }
 
-  // Get old values
   const { data: oldPackage } = await supabase
     .from("monthly_packages")
     .select("months, price, joining_fee")
@@ -392,7 +411,6 @@ async function handleUpdateMonthlyPackage(supabase: any, body: any, staffId: str
     return { error: error.message, status: 500 };
   }
 
-  // Get only changed fields
   const changes = getChangedFields(oldPackage, newValuesForCompare);
   const changedFieldNames = changes ? Object.keys(changes.newValue).map(k => k.replace(/_/g, ' ')).join(', ') : 'package';
 
@@ -415,7 +433,12 @@ async function handleUpdateMonthlyPackage(supabase: any, body: any, staffId: str
 }
 
 async function handleDeleteMonthlyPackage(supabase: any, body: any, staffId: string, staffDetails: any) {
-  const { packageId, branchId } = body;
+  const validation = validateInput(DeleteMonthlyPackageSchema, body);
+  if (!validation.success) {
+    return { error: `Validation failed: ${validation.error}`, status: 400, details: validation.details };
+  }
+  
+  const { packageId, branchId } = validation.data!;
 
   const hasPermission = await checkStaffPermission(supabase, staffId, "can_change_settings");
   if (!hasPermission) {
@@ -427,7 +450,6 @@ async function handleDeleteMonthlyPackage(supabase: any, body: any, staffId: str
     return { error: "You don't have access to this branch", status: 403 };
   }
 
-  // Get package for logging
   const { data: oldPackage } = await supabase
     .from("monthly_packages")
     .select("*")
@@ -460,7 +482,12 @@ async function handleDeleteMonthlyPackage(supabase: any, body: any, staffId: str
 }
 
 async function handleAddCustomPackage(supabase: any, body: any, staffId: string, staffDetails: any) {
-  const { branchId, name, durationDays, price } = body;
+  const validation = validateInput(AddCustomPackageSchema, body);
+  if (!validation.success) {
+    return { error: `Validation failed: ${validation.error}`, status: 400, details: validation.details };
+  }
+  
+  const { branchId, name, durationDays, price } = validation.data!;
 
   const hasPermission = await checkStaffPermission(supabase, staffId, "can_change_settings");
   if (!hasPermission) {
@@ -506,7 +533,12 @@ async function handleAddCustomPackage(supabase: any, body: any, staffId: string,
 }
 
 async function handleUpdateCustomPackage(supabase: any, body: any, staffId: string, staffDetails: any) {
-  const { packageId, branchId, name, durationDays, price, isActive } = body;
+  const validation = validateInput(UpdateCustomPackageSchema, body);
+  if (!validation.success) {
+    return { error: `Validation failed: ${validation.error}`, status: 400, details: validation.details };
+  }
+  
+  const { packageId, branchId, name, durationDays, price, isActive } = validation.data!;
 
   const hasPermission = await checkStaffPermission(supabase, staffId, "can_change_settings");
   if (!hasPermission) {
@@ -554,9 +586,7 @@ async function handleUpdateCustomPackage(supabase: any, body: any, staffId: stri
     return { error: error.message, status: 500 };
   }
 
-  // Get only changed fields
   const changes = getChangedFields(oldPackage, newValuesForCompare);
-  const changedFieldNames = changes ? Object.keys(changes.newValue).map(k => k.replace(/_/g, ' ')).join(', ') : 'package';
 
   await logStaffActivity(supabase, {
     staffId,
@@ -564,7 +594,7 @@ async function handleUpdateCustomPackage(supabase: any, body: any, staffId: stri
     staffPhone: staffDetails.phone,
     category: "settings",
     type: "custom_package_updated",
-    description: `Staff "${staffDetails.full_name}" updated custom package "${name || oldPackage?.name}" (${changedFieldNames})`,
+    description: `Staff "${staffDetails.full_name}" updated custom package "${name || oldPackage?.name}"`,
     branchId,
     entityType: "custom_packages",
     entityId: packageId,
@@ -577,7 +607,12 @@ async function handleUpdateCustomPackage(supabase: any, body: any, staffId: stri
 }
 
 async function handleDeleteCustomPackage(supabase: any, body: any, staffId: string, staffDetails: any) {
-  const { packageId, branchId } = body;
+  const validation = validateInput(DeleteCustomPackageSchema, body);
+  if (!validation.success) {
+    return { error: `Validation failed: ${validation.error}`, status: 400, details: validation.details };
+  }
+  
+  const { packageId, branchId } = validation.data!;
 
   const hasPermission = await checkStaffPermission(supabase, staffId, "can_change_settings");
   if (!hasPermission) {
@@ -620,10 +655,13 @@ async function handleDeleteCustomPackage(supabase: any, body: any, staffId: stri
   return { data: { success: true }, status: 200 };
 }
 
-// ============= BRANCH OPERATIONS =============
-
 async function handleUpdateBranch(supabase: any, body: any, staffId: string, staffDetails: any) {
-  const { branchId, name, address, phone, email } = body;
+  const validation = validateInput(UpdateBranchSchema, body);
+  if (!validation.success) {
+    return { error: `Validation failed: ${validation.error}`, status: 400, details: validation.details };
+  }
+  
+  const { branchId, name, address, phone, email } = validation.data!;
 
   const hasPermission = await checkStaffPermission(supabase, staffId, "can_change_settings");
   if (!hasPermission) {
@@ -635,14 +673,12 @@ async function handleUpdateBranch(supabase: any, body: any, staffId: string, sta
     return { error: "You don't have access to this branch", status: 403 };
   }
 
-  // Get old values for logging (only relevant fields)
   const { data: oldBranch } = await supabase
     .from("branches")
     .select("name, address, phone, email")
     .eq("id", branchId)
     .single();
 
-  // Prepare update data
   const updateData: any = { updated_at: new Date().toISOString() };
   const newValuesForCompare: any = {};
   
@@ -674,17 +710,15 @@ async function handleUpdateBranch(supabase: any, body: any, staffId: string, sta
     return { error: error.message, status: 500 };
   }
 
-  // Get only changed fields
   const changes = getChangedFields(oldBranch, newValuesForCompare);
-  const changedFieldNames = changes ? Object.keys(changes.newValue).map(k => k.replace(/_/g, ' ')).join(', ') : 'branch details';
 
   await logStaffActivity(supabase, {
     staffId,
     staffName: staffDetails.full_name,
     staffPhone: staffDetails.phone,
-    category: "branch",
+    category: "settings",
     type: "branch_updated",
-    description: `Staff "${staffDetails.full_name}" updated branch "${name || oldBranch?.name}" (${changedFieldNames})`,
+    description: `Staff "${staffDetails.full_name}" updated branch "${name || oldBranch?.name}"`,
     branchId,
     entityType: "branches",
     entityId: branchId,
@@ -696,16 +730,17 @@ async function handleUpdateBranch(supabase: any, body: any, staffId: string, sta
   return { data, status: 200 };
 }
 
-// ============= MEMBER OPERATIONS =============
-
-// Add a cash payment (requires can_manage_members)
 async function handleAddCashPayment(supabase: any, body: any, staffId: string, staffDetails: any) {
-  const { branchId, memberId, amount, notes, paymentType } = body;
+  const validation = validateInput(AddCashPaymentSchema, body);
+  if (!validation.success) {
+    return { error: `Validation failed: ${validation.error}`, status: 400, details: validation.details };
+  }
+  
+  const { branchId, memberId, amount, notes, paymentType } = validation.data!;
 
-  // Can manage members permission allows recording cash payments
   const hasPermission = await checkStaffPermission(supabase, staffId, "can_manage_members");
   if (!hasPermission) {
-    return { error: "You don't have permission to record payments", status: 403 };
+    return { error: "You don't have permission to add payments", status: 403 };
   }
 
   const hasBranchAccess = await checkStaffBranchAccess(supabase, staffId, branchId);
@@ -713,69 +748,175 @@ async function handleAddCashPayment(supabase: any, body: any, staffId: string, s
     return { error: "You don't have access to this branch", status: 403 };
   }
 
-  // Get member info for logging
+  // Get member details
   const { data: member } = await supabase
     .from("members")
     .select("name, phone")
     .eq("id", memberId)
     .single();
 
-  // Insert payment
-  const { data, error } = await supabase
+  // Create payment record
+  const { data: payment, error: paymentError } = await supabase
     .from("payments")
     .insert({
       member_id: memberId,
-      branch_id: branchId,
       amount,
       payment_mode: "cash",
       status: "success",
+      notes,
       payment_type: paymentType || "gym_membership",
-      notes: notes || "Cash payment recorded by staff",
+      branch_id: branchId,
     })
     .select()
     .single();
 
-  if (error) {
-    return { error: error.message, status: 500 };
+  if (paymentError) {
+    return { error: paymentError.message, status: 500 };
   }
 
-  // Add ledger entry for the income
+  // Create ledger entry for the payment
   await supabase.from("ledger_entries").insert({
-    branch_id: branchId,
     entry_type: "income",
-    category: "gym_membership",
+    category: "membership_payment",
     amount,
-    description: `Cash payment from ${member?.name || "Member"}`,
-    payment_id: data.id,
+    description: `Cash payment from ${member?.name || "Member"} - ${paymentType || "gym_membership"}`,
+    notes,
     member_id: memberId,
+    payment_id: payment.id,
     is_auto_generated: true,
+    branch_id: branchId,
+    created_by: null, // Staff action
   });
+
+  // Log activity
+  await logStaffActivity(supabase, {
+    staffId,
+    staffName: staffDetails.full_name,
+    staffPhone: staffDetails.phone,
+    category: "member",
+    type: "cash_payment_added",
+    description: `Staff "${staffDetails.full_name}" added ₹${amount} cash payment for ${member?.name || "member"}`,
+    branchId,
+    entityType: "payments",
+    entityId: payment.id,
+    entityName: member?.name,
+    newValue: { amount, payment_type: paymentType, notes },
+  });
+
+  // Log user activity
+  await supabase.from("user_activity_logs").insert({
+    activity_type: "cash_payment",
+    description: `Cash payment of ₹${amount} recorded by staff`,
+    member_id: memberId,
+    member_name: member?.name,
+    member_phone: member?.phone,
+    payment_id: payment.id,
+    payment_mode: "cash",
+    amount,
+    branch_id: branchId,
+    metadata: {
+      recorded_by_staff: staffDetails.full_name,
+      payment_type: paymentType,
+    },
+  });
+
+  return { data: payment, status: 200 };
+}
+
+async function handleUpdateMember(supabase: any, body: any, staffId: string, staffDetails: any) {
+  const validation = validateInput(UpdateMemberSchema, body);
+  if (!validation.success) {
+    return { error: `Validation failed: ${validation.error}`, status: 400, details: validation.details };
+  }
+  
+  const { branchId, memberId, name, email, phone, address, gender, photoIdType, photoIdNumber, dateOfBirth } = validation.data!;
+
+  const hasPermission = await checkStaffPermission(supabase, staffId, "can_manage_members");
+  if (!hasPermission) {
+    return { error: "You don't have permission to update members", status: 403 };
+  }
+
+  const hasBranchAccess = await checkStaffBranchAccess(supabase, staffId, branchId);
+  if (!hasBranchAccess) {
+    return { error: "You don't have access to this branch", status: 403 };
+  }
+
+  // Get old values
+  const { data: oldMember } = await supabase
+    .from("members")
+    .select("name, email, phone")
+    .eq("id", memberId)
+    .single();
+
+  const { data: oldDetails } = await supabase
+    .from("member_details")
+    .select("address, gender, photo_id_type, photo_id_number, date_of_birth")
+    .eq("member_id", memberId)
+    .single();
+
+  // Update member basic info
+  const memberUpdateData: any = { updated_at: new Date().toISOString() };
+  if (name !== undefined) memberUpdateData.name = name;
+  if (email !== undefined) memberUpdateData.email = email;
+  if (phone !== undefined) memberUpdateData.phone = phone;
+
+  const { data: member, error: memberError } = await supabase
+    .from("members")
+    .update(memberUpdateData)
+    .eq("id", memberId)
+    .select()
+    .single();
+
+  if (memberError) {
+    return { error: memberError.message, status: 500 };
+  }
+
+  // Update member details
+  const detailsUpdateData: any = { updated_at: new Date().toISOString() };
+  if (address !== undefined) detailsUpdateData.address = address;
+  if (gender !== undefined) detailsUpdateData.gender = gender;
+  if (photoIdType !== undefined) detailsUpdateData.photo_id_type = photoIdType;
+  if (photoIdNumber !== undefined) detailsUpdateData.photo_id_number = photoIdNumber;
+  if (dateOfBirth !== undefined) detailsUpdateData.date_of_birth = dateOfBirth;
+
+  await supabase
+    .from("member_details")
+    .update(detailsUpdateData)
+    .eq("member_id", memberId);
+
+  // Log activity
+  const memberChanges = getChangedFields(oldMember, { name, email, phone });
+  const detailChanges = getChangedFields(oldDetails, { address, gender, photo_id_type: photoIdType, photo_id_number: photoIdNumber, date_of_birth: dateOfBirth });
 
   await logStaffActivity(supabase, {
     staffId,
     staffName: staffDetails.full_name,
     staffPhone: staffDetails.phone,
-    category: "payment",
-    type: "cash_payment_recorded",
-    description: `Staff "${staffDetails.full_name}" recorded cash payment of ₹${amount} for ${member?.name || "member"}`,
+    category: "member",
+    type: "member_updated",
+    description: `Staff "${staffDetails.full_name}" updated member "${name || oldMember?.name}"`,
     branchId,
-    entityType: "payments",
-    entityId: data.id,
-    entityName: member?.name,
-    newValue: { amount, payment_type: paymentType },
-    metadata: { member_phone: member?.phone },
+    entityType: "members",
+    entityId: memberId,
+    entityName: name || oldMember?.name,
+    oldValue: { ...memberChanges?.oldValue, ...detailChanges?.oldValue },
+    newValue: { ...memberChanges?.newValue, ...detailChanges?.newValue },
   });
 
-  return { data, status: 200 };
+  return { data: member, status: 200 };
 }
 
-// Add ledger entry (requires can_access_ledger)
 async function handleAddLedgerEntry(supabase: any, body: any, staffId: string, staffDetails: any) {
-  const { branchId, entryType, category, amount, description, notes, entryDate } = body;
+  const validation = validateInput(AddLedgerEntrySchema, body);
+  if (!validation.success) {
+    return { error: `Validation failed: ${validation.error}`, status: 400, details: validation.details };
+  }
+  
+  const { branchId, entryType, category, amount, description, notes, entryDate } = validation.data!;
 
   const hasPermission = await checkStaffPermission(supabase, staffId, "can_access_ledger");
   if (!hasPermission) {
-    return { error: "You don't have permission to access the ledger", status: 403 };
+    return { error: "You don't have permission to access ledger", status: 403 };
   }
 
   const hasBranchAccess = await checkStaffBranchAccess(supabase, staffId, branchId);
@@ -786,7 +927,6 @@ async function handleAddLedgerEntry(supabase: any, body: any, staffId: string, s
   const { data, error } = await supabase
     .from("ledger_entries")
     .insert({
-      branch_id: branchId,
       entry_type: entryType,
       category,
       amount,
@@ -794,6 +934,8 @@ async function handleAddLedgerEntry(supabase: any, body: any, staffId: string, s
       notes,
       entry_date: entryDate || new Date().toISOString().split("T")[0],
       is_auto_generated: false,
+      branch_id: branchId,
+      created_by: null, // Staff action
     })
     .select()
     .single();
@@ -808,7 +950,7 @@ async function handleAddLedgerEntry(supabase: any, body: any, staffId: string, s
     staffPhone: staffDetails.phone,
     category: "ledger",
     type: "ledger_entry_added",
-    description: `Staff "${staffDetails.full_name}" added ${entryType} entry: ${description}`,
+    description: `Staff "${staffDetails.full_name}" added ${entryType} of ₹${amount} (${category})`,
     branchId,
     entityType: "ledger_entries",
     entityId: data.id,
@@ -818,13 +960,17 @@ async function handleAddLedgerEntry(supabase: any, body: any, staffId: string, s
   return { data, status: 200 };
 }
 
-// Delete ledger entry (requires can_access_ledger)
 async function handleDeleteLedgerEntry(supabase: any, body: any, staffId: string, staffDetails: any) {
-  const { branchId, entryId } = body;
+  const validation = validateInput(DeleteLedgerEntrySchema, body);
+  if (!validation.success) {
+    return { error: `Validation failed: ${validation.error}`, status: 400, details: validation.details };
+  }
+  
+  const { branchId, entryId } = validation.data!;
 
   const hasPermission = await checkStaffPermission(supabase, staffId, "can_access_ledger");
   if (!hasPermission) {
-    return { error: "You don't have permission to access the ledger", status: 403 };
+    return { error: "You don't have permission to access ledger", status: 403 };
   }
 
   const hasBranchAccess = await checkStaffBranchAccess(supabase, staffId, branchId);
@@ -838,6 +984,11 @@ async function handleDeleteLedgerEntry(supabase: any, body: any, staffId: string
     .select("*")
     .eq("id", entryId)
     .single();
+
+  // Check if it's auto-generated (shouldn't be deleted)
+  if (oldEntry?.is_auto_generated) {
+    return { error: "Cannot delete auto-generated entries", status: 403 };
+  }
 
   const { error } = await supabase
     .from("ledger_entries")
@@ -854,7 +1005,7 @@ async function handleDeleteLedgerEntry(supabase: any, body: any, staffId: string
     staffPhone: staffDetails.phone,
     category: "ledger",
     type: "ledger_entry_deleted",
-    description: `Staff "${staffDetails.full_name}" deleted ledger entry: ${oldEntry?.description}`,
+    description: `Staff "${staffDetails.full_name}" deleted ${oldEntry?.entry_type} of ₹${oldEntry?.amount}`,
     branchId,
     entityType: "ledger_entries",
     entityId: entryId,
@@ -864,104 +1015,48 @@ async function handleDeleteLedgerEntry(supabase: any, body: any, staffId: string
   return { data: { success: true }, status: 200 };
 }
 
-// Update member details (requires can_manage_members)
-async function handleUpdateMember(supabase: any, body: any, staffId: string, staffDetails: any) {
-  const { branchId, memberId, name, email, phone, address, gender, photoIdType, photoIdNumber, dateOfBirth } = body;
-
-  const hasPermission = await checkStaffPermission(supabase, staffId, "can_manage_members");
-  if (!hasPermission) {
-    return { error: "You don't have permission to manage members", status: 403 };
-  }
-
-  const hasBranchAccess = await checkStaffBranchAccess(supabase, staffId, branchId);
-  if (!hasBranchAccess) {
-    return { error: "You don't have access to this branch", status: 403 };
-  }
-
-  // Get old values
-  const { data: oldMember } = await supabase
-    .from("members")
-    .select("*")
-    .eq("id", memberId)
-    .single();
-
-  // Update member table
-  const memberUpdate: any = { updated_at: new Date().toISOString() };
-  if (name !== undefined) memberUpdate.name = name;
-  if (email !== undefined) memberUpdate.email = email;
-  if (phone !== undefined) memberUpdate.phone = phone;
-
-  const { error: memberError } = await supabase
-    .from("members")
-    .update(memberUpdate)
-    .eq("id", memberId);
-
-  if (memberError) {
-    return { error: memberError.message, status: 500 };
-  }
-
-  // Update member_details table if applicable
-  if (address !== undefined || gender !== undefined || photoIdType !== undefined || photoIdNumber !== undefined || dateOfBirth !== undefined) {
-    const detailsUpdate: any = { updated_at: new Date().toISOString() };
-    if (address !== undefined) detailsUpdate.address = address;
-    if (gender !== undefined) detailsUpdate.gender = gender;
-    if (photoIdType !== undefined) detailsUpdate.photo_id_type = photoIdType;
-    if (photoIdNumber !== undefined) detailsUpdate.photo_id_number = photoIdNumber;
-    if (dateOfBirth !== undefined) detailsUpdate.date_of_birth = dateOfBirth;
-
-    await supabase
-      .from("member_details")
-      .update(detailsUpdate)
-      .eq("member_id", memberId);
-  }
-
-  await logStaffActivity(supabase, {
-    staffId,
-    staffName: staffDetails.full_name,
-    staffPhone: staffDetails.phone,
-    category: "members",
-    type: "member_updated",
-    description: `Staff "${staffDetails.full_name}" updated member "${name || oldMember?.name}"`,
-    branchId,
-    entityType: "members",
-    entityId: memberId,
-    entityName: name || oldMember?.name,
-    oldValue: oldMember,
-    newValue: memberUpdate,
-  });
-
-  return { data: { success: true }, status: 200 };
-}
+// ============================================================================
+// Main Handler
+// ============================================================================
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Supabase credentials not configured");
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Get action from query params
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
 
     if (!action) {
       return new Response(
-        JSON.stringify({ error: "Action parameter is required" }),
+        JSON.stringify({ error: "Action is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Get session token from Authorization header
-    const authHeader = req.headers.get("Authorization");
-    const token = authHeader?.replace("Bearer ", "");
+    // Validate staff session
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Authorization required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Create Supabase client with service role for bypass RLS
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const token = authHeader.replace("Bearer ", "");
+    const sessionResult = await validateStaffSession(supabase, token);
 
-    // Validate session
-    const sessionResult = await validateStaffSession(supabase, token || "");
     if (!sessionResult.valid) {
       return new Response(
         JSON.stringify({ error: sessionResult.error }),
@@ -975,9 +1070,9 @@ Deno.serve(async (req) => {
     // Parse request body
     const body = await req.json().catch(() => ({}));
 
-    let result: { data?: any; error?: string; status: number };
-
     // Route to appropriate handler
+    let result: { data?: any; error?: string; status: number; details?: any };
+
     switch (action) {
       case "update-gym-settings":
         result = await handleUpdateGymSettings(supabase, body, staffId, staffDetails);
@@ -1003,18 +1098,15 @@ Deno.serve(async (req) => {
       case "delete-custom-package":
         result = await handleDeleteCustomPackage(supabase, body, staffId, staffDetails);
         break;
-      // Branch operations
       case "update-branch":
         result = await handleUpdateBranch(supabase, body, staffId, staffDetails);
         break;
-      // Member operations
       case "add-cash-payment":
         result = await handleAddCashPayment(supabase, body, staffId, staffDetails);
         break;
       case "update-member":
         result = await handleUpdateMember(supabase, body, staffId, staffDetails);
         break;
-      // Ledger operations
       case "add-ledger-entry":
         result = await handleAddLedgerEntry(supabase, body, staffId, staffDetails);
         break;
@@ -1022,24 +1114,24 @@ Deno.serve(async (req) => {
         result = await handleDeleteLedgerEntry(supabase, body, staffId, staffDetails);
         break;
       default:
-        result = { error: `Unknown action: ${action}`, status: 400 };
+        result = { error: "Invalid action", status: 400 };
     }
 
     if (result.error) {
       return new Response(
-        JSON.stringify({ error: result.error }),
+        JSON.stringify({ error: result.error, details: result.details }),
         { status: result.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     return new Response(
       JSON.stringify({ data: result.data }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: result.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Staff operations error:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
