@@ -1,229 +1,63 @@
 /**
  * Members API Layer
- * All Supabase queries for members data
+ * 
+ * Authenticated member queries use protected edge functions.
+ * Write operations use direct database queries (protected by RLS + auth context).
+ * Phone check uses secure RPC function.
  */
 import { supabase } from "@/lib/supabase";
+import { 
+  fetchProtectedMembersPaginated, 
+  fetchProtectedMember,
+  type MemberWithSubscription,
+  type MemberDetails,
+  type PaginatedMembersResponse 
+} from "./protectedMembers";
 
-export interface MemberWithSubscription {
-  id: string;
-  name: string;
-  phone: string;
-  email: string | null;
-  join_date: string | null;
-  branch_id: string;
-  subscription?: {
-    id: string;
-    status: string;
-    end_date: string;
-    start_date: string;
-  };
-  activePT?: {
-    trainer_name: string;
-    end_date: string;
-  } | null;
-}
-
-export interface MemberDetails {
-  id: string;
-  member_id: string;
-  date_of_birth: string | null;
-  gender: string | null;
-  address: string | null;
-  photo_id_type: string | null;
-  photo_id_number: string | null;
-  personal_trainer_id: string | null;
-}
-
-/**
- * Paginated members response
- */
-export interface PaginatedMembersResponse {
-  members: MemberWithSubscription[];
-  nextCursor: number | null;
-  totalCount: number;
-}
+// Re-export types
+export type { MemberWithSubscription, MemberDetails, PaginatedMembersResponse };
 
 /**
  * Fetch paginated members with their latest subscription and PT data
- * Uses offset-based pagination for simplicity with Supabase
+ * Routes through protected edge function for security
  */
 export async function fetchMembersPaginated(
   branchId?: string,
   cursor: number = 0,
   limit: number = 25
 ): Promise<PaginatedMembersResponse> {
-  // First get the total count for the branch
-  let countQuery = supabase
-    .from("members")
-    .select("*", { count: "exact", head: true });
-  
-  if (branchId) {
-    countQuery = countQuery.eq("branch_id", branchId);
-  }
-  
-  const { count: totalCount, error: countError } = await countQuery;
-  if (countError) throw countError;
-
-  // Fetch the paginated members
-  let query = supabase
-    .from("members")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .range(cursor, cursor + limit - 1);
-
-  if (branchId) {
-    query = query.eq("branch_id", branchId);
-  }
-
-  const { data: membersData, error: membersError } = await query;
-  if (membersError) throw membersError;
-
-  const today = new Date().toISOString().split("T")[0];
-
-  // Get latest subscription and PT for each member
-  const membersWithData = await Promise.all(
-    (membersData || []).map(async (member) => {
-      // Get subscription
-      const { data: subData, error: subError } = await supabase
-        .from("subscriptions")
-        .select("id, status, end_date, start_date")
-        .eq("member_id", member.id)
-        .order("end_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (subError) throw subError;
-
-      // Get active PT subscription
-      const { data: ptData, error: ptError } = await supabase
-        .from("pt_subscriptions")
-        .select("end_date, personal_trainer:personal_trainers(name)")
-        .eq("member_id", member.id)
-        .eq("status", "active")
-        .gte("end_date", today)
-        .order("end_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (ptError) throw ptError;
-
-      return {
-        ...member,
-        subscription: subData || undefined,
-        activePT: ptData
-          ? {
-              trainer_name: (ptData.personal_trainer as any)?.name || "Unknown",
-              end_date: ptData.end_date,
-            }
-          : null,
-      };
-    })
-  );
-
-  // Calculate next cursor
-  const nextCursor = cursor + membersData.length < (totalCount || 0) 
-    ? cursor + limit 
-    : null;
-
-  return {
-    members: membersWithData,
-    nextCursor,
-    totalCount: totalCount || 0,
-  };
+  return fetchProtectedMembersPaginated(branchId, cursor, limit);
 }
 
 /**
  * Fetch all members with their latest subscription and PT data
+ * Routes through protected edge function - fetches all via pagination
  * @deprecated Use fetchMembersPaginated for better performance
  */
 export async function fetchMembers(branchId?: string): Promise<MemberWithSubscription[]> {
-  let query = supabase
-    .from("members")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (branchId) {
-    query = query.eq("branch_id", branchId);
-  }
-
-  const { data: membersData, error: membersError } = await query;
-  if (membersError) throw membersError;
-
-  const today = new Date().toISOString().split("T")[0];
-
-  // Get latest subscription and PT for each member
-  const membersWithData = await Promise.all(
-    (membersData || []).map(async (member) => {
-      // Get subscription
-      const { data: subData, error: subError } = await supabase
-        .from("subscriptions")
-        .select("id, status, end_date, start_date")
-        .eq("member_id", member.id)
-        .order("end_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (subError) throw subError;
-
-      // Get active PT subscription
-      const { data: ptData, error: ptError } = await supabase
-        .from("pt_subscriptions")
-        .select("end_date, personal_trainer:personal_trainers(name)")
-        .eq("member_id", member.id)
-        .eq("status", "active")
-        .gte("end_date", today)
-        .order("end_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (ptError) throw ptError;
-
-      return {
-        ...member,
-        subscription: subData || undefined,
-        activePT: ptData
-          ? {
-              trainer_name: (ptData.personal_trainer as any)?.name || "Unknown",
-              end_date: ptData.end_date,
-            }
-          : null,
-      };
-    })
-  );
-
-  return membersWithData;
+  // Fetch via protected endpoint with large limit
+  const result = await fetchProtectedMembersPaginated(branchId, 0, 1000);
+  return result.members;
 }
 
 /**
- * Fetch a single member by ID
+ * Fetch a single member by ID via protected endpoint
  */
 export async function fetchMemberById(memberId: string) {
-  const { data, error } = await supabase
-    .from("members")
-    .select("*")
-    .eq("id", memberId)
-    .single();
-
-  if (error) throw error;
-  return data;
+  const result = await fetchProtectedMember(memberId);
+  return result.member;
 }
 
 /**
- * Fetch member details
+ * Fetch member details via protected endpoint
  */
 export async function fetchMemberDetails(memberId: string): Promise<MemberDetails | null> {
-  const { data, error } = await supabase
-    .from("member_details")
-    .select("*")
-    .eq("member_id", memberId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
+  const result = await fetchProtectedMember(memberId);
+  return result.details;
 }
 
 /**
- * Create a new member
+ * Create a new member (uses RLS - requires admin auth or staff permission)
  */
 export async function createMember(member: {
   name: string;
@@ -243,7 +77,7 @@ export async function createMember(member: {
 }
 
 /**
- * Update a member
+ * Update a member (uses RLS - requires admin auth or staff permission)
  */
 export async function updateMember(
   memberId: string,
@@ -266,7 +100,7 @@ export async function updateMember(
 }
 
 /**
- * Delete a member
+ * Delete a member (uses RLS - requires admin auth)
  */
 export async function deleteMember(memberId: string) {
   const { error } = await supabase
@@ -279,15 +113,25 @@ export async function deleteMember(memberId: string) {
 
 /**
  * Check if member exists by phone
+ * Uses secure RPC function - safe for public use
  */
 export async function checkMemberByPhone(phone: string, branchId: string) {
-  const { data, error } = await supabase
-    .from("members")
-    .select("id, name")
-    .eq("phone", phone)
-    .eq("branch_id", branchId)
-    .maybeSingle();
+  // Use the secure RPC function that validates input
+  const { data, error } = await supabase.rpc("check_phone_exists", {
+    phone_number: phone,
+    p_branch_id: branchId,
+  });
 
   if (error) throw error;
-  return data;
+  
+  // The RPC returns an array, get first result
+  const result = data?.[0];
+  if (!result || !result.member_exists) {
+    return null;
+  }
+  
+  return {
+    id: result.member_id,
+    name: result.member_name,
+  };
 }
