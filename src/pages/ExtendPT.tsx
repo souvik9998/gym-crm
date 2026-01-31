@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { addDays, addMonths, differenceInDays, format, isBefore, isAfter, parseISO } from "date-fns";
+import { fetchPublicBranch, fetchPublicTrainers } from "@/api/publicData";
 
 interface Trainer {
   id: string;
@@ -58,20 +59,15 @@ const ExtendPT = () => {
       return;
     }
 
-    // Set branch info from state or fetch it
+    // Set branch info from state or fetch it using secure public API
     if (stateBranchName && branchId) {
       setBranchInfo({ id: branchId, name: stateBranchName });
     } else if (branchId) {
-      supabase
-        .from("branches")
-        .select("id, name")
-        .eq("id", branchId)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            setBranchInfo(data);
-          }
-        });
+      fetchPublicBranch(branchId).then((branch) => {
+        if (branch) {
+          setBranchInfo(branch);
+        }
+      });
     }
 
     fetchData();
@@ -81,36 +77,39 @@ const ExtendPT = () => {
   const fetchData = async () => {
     setIsLoadingData(true);
     
-    // Fetch trainers - filter by branch if provided
-    let trainersQuery = supabase
-      .from("personal_trainers")
-      .select("id, name, specialization, monthly_fee")
-      .eq("is_active", true);
-    
-    if (branchId) {
-      trainersQuery = trainersQuery.eq("branch_id", branchId);
-    }
+    try {
+      // Fetch trainers using secure public API
+      const trainersData = await fetchPublicTrainers(branchId);
 
-    const { data: trainersData } = await trainersQuery;
+      if (trainersData.length > 0) {
+        // Map to expected format with null specialization (not exposed publicly)
+        const mappedTrainers = trainersData.map(t => ({
+          id: t.id,
+          name: t.name,
+          specialization: null,
+          monthly_fee: t.monthly_fee,
+        }));
+        setTrainers(mappedTrainers);
+        setSelectedTrainer(mappedTrainers[0]);
+      }
 
-    if (trainersData) {
-      setTrainers(trainersData);
-      if (trainersData.length > 0) setSelectedTrainer(trainersData[0]);
-    }
+      // Fetch existing active PT subscription for this member to determine start date
+      // This uses RPC which is allowed
+      const today = new Date().toISOString().split("T")[0];
+      const { data: existingPT } = await supabase
+        .from("pt_subscriptions")
+        .select("end_date")
+        .eq("member_id", member.id)
+        .gte("end_date", today)
+        .order("end_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    // Fetch existing active PT subscription for this member to determine start date
-    const today = new Date().toISOString().split("T")[0];
-    const { data: existingPT } = await supabase
-      .from("pt_subscriptions")
-      .select("end_date")
-      .eq("member_id", member.id)
-      .gte("end_date", today)
-      .order("end_date", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existingPT?.end_date) {
-      setExistingPTEndDate(parseISO(existingPT.end_date));
+      if (existingPT?.end_date) {
+        setExistingPTEndDate(parseISO(existingPT.end_date));
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error);
     }
 
     setIsLoadingData(false);
