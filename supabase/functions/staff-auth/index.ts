@@ -574,7 +574,10 @@ Deno.serve(async (req) => {
                 `👤 *Role:* ${roleLabel}\n` +
                 `📍 *Branch(es):* ${branchDisplay}\n\n` +
                 `🔗 Access the admin portal and use the Staff Login tab.\n\n` +
-                `⚠️ Please keep your credentials secure and do not share them with others.`;
+                `⚠️ *SECURITY NOTICE:*\n` +
+                `• Delete this message after saving your password\n` +
+                `• Never share your credentials with anyone\n` +
+                `• Do not forward this message`;
 
               const response = await fetch("https://api.periskope.app/v1/message/send", {
                 method: "POST",
