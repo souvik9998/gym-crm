@@ -7,6 +7,7 @@ import { useRazorpay } from "@/hooks/useRazorpay";
 import { supabase } from "@/integrations/supabase/client";
 import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
 import PackageSelectionForm, { type PackageSelectionData } from "@/components/registration/PackageSelectionForm";
+import { fetchPublicBranch } from "@/api/publicData";
 
 interface Member {
   id: string;
@@ -34,20 +35,15 @@ const Renew = () => {
       return;
     }
 
-    // Set branch info from state or fetch it
+    // Set branch info from state or fetch it using secure public API
     if (stateBranchName && branchId) {
       setBranchInfo({ id: branchId, name: stateBranchName });
     } else if (branchId) {
-      supabase
-        .from("branches")
-        .select("id, name")
-        .eq("id", branchId)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            setBranchInfo(data);
-          }
-        });
+      fetchPublicBranch(branchId).then((branch) => {
+        if (branch) {
+          setBranchInfo(branch);
+        }
+      });
     }
 
     const fetchMemberData = async () => {

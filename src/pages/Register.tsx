@@ -8,6 +8,7 @@ import { useRazorpay } from "@/hooks/useRazorpay";
 import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
 import MemberDetailsForm, { type MemberDetailsData } from "@/components/registration/MemberDetailsForm";
 import PackageSelectionForm, { type PackageSelectionData } from "@/components/registration/PackageSelectionForm";
+import { fetchPublicBranch } from "@/api/publicData";
 
 type Step = "details" | "package";
 
@@ -28,19 +29,14 @@ const Register = () => {
   const [memberDetails, setMemberDetails] = useState<MemberDetailsData | null>(null);
   const [branchInfo, setBranchInfo] = useState<BranchInfo | null>(null);
 
-  // Fetch branch info if branchId is present and branchName is not already in state
+  // Fetch branch info using secure public API
   useEffect(() => {
     if (branchId && !stateBranchName) {
-      supabase
-        .from("branches")
-        .select("id, name")
-        .eq("id", branchId)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            setBranchInfo(data);
-          }
-        });
+      fetchPublicBranch(branchId).then((branch) => {
+        if (branch) {
+          setBranchInfo(branch);
+        }
+      });
     } else if (stateBranchName) {
       setBranchInfo({ id: branchId || '', name: stateBranchName });
     }

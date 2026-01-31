@@ -8,6 +8,7 @@ import { Phone, ArrowRight, Shield, Clock, CreditCard, Dumbbell, UserPlus, Arrow
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { z } from "zod";
+import { fetchPublicBranch, fetchDefaultBranch } from "@/api/publicData";
 
 const formSchema = z.object({
   phone: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian phone number"),
@@ -30,52 +31,23 @@ const Index = () => {
   useEffect(() => {
     if (!branchId && !isRedirecting) {
       setIsRedirecting(true);
-      supabase
-        .from("branches")
-        .select("id, name")
-        .eq("is_active", true)
-        .eq("is_default", true)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            // Redirect to the default branch URL
-            navigate(`/b/${data.id}`, { replace: true });
-          } else {
-            // If no default, get the first active branch
-            supabase
-              .from("branches")
-              .select("id, name")
-              .eq("is_active", true)
-              .order("name")
-              .limit(1)
-              .maybeSingle()
-              .then(({ data: firstBranch }) => {
-                if (firstBranch) {
-                  navigate(`/b/${firstBranch.id}`, { replace: true });
-                }
-              });
-          }
-        });
+      // Use secure public API to get default branch
+      fetchDefaultBranch().then((branch) => {
+        if (branch) {
+          navigate(`/b/${branch.id}`, { replace: true });
+        }
+      });
     }
   }, [branchId, navigate, isRedirecting]);
 
-  // Fetch branch info immediately if branchId is in URL (prioritize this fetch)
+  // Fetch branch info immediately if branchId is in URL (using secure public API)
   useEffect(() => {
     if (branchId) {
-      // Fetch branch info immediately and synchronously
-      const fetchBranchInfo = async () => {
-        const { data } = await supabase
-          .from("branches")
-          .select("id, name")
-          .eq("id", branchId)
-          .maybeSingle();
-        
-        if (data) {
-          setBranchInfo({ id: data.id, name: data.name });
+      fetchPublicBranch(branchId).then((branch) => {
+        if (branch) {
+          setBranchInfo({ id: branch.id, name: branch.name });
         }
-      };
-      
-      fetchBranchInfo();
+      });
     }
   }, [branchId]);
 

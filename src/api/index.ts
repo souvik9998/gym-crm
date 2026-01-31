@@ -14,3 +14,9 @@ export * from './dailyPass';
 
 // Dashboard
 export * from './dashboard';
+
+// Public Data (unauthenticated, minimal data for registration)
+export * from './publicData';
+
+// Protected Data (authenticated admin/staff data)
+export * from './protectedData';

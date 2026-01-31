@@ -5,10 +5,16 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Check, Calendar, IndianRupee, Sparkles, User, Dumbbell, Clock, AlertCircle, CalendarDays } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { addDays, addMonths, differenceInDays, format, isBefore } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { 
+  fetchPublicPackages, 
+  fetchPublicTrainers, 
+  type PublicMonthlyPackage,
+  type PublicCustomPackage,
+  type PublicTrainer 
+} from "@/api/publicData";
 
 interface Trainer {
   id: string;
@@ -156,55 +162,38 @@ const PackageSelectionForm = ({
   }, [branchId]);
 
   const fetchData = async () => {
-    // Fetch monthly packages with custom pricing - filter by branch if provided
-    let monthlyQuery = supabase
-      .from("monthly_packages")
-      .select("*")
-      .eq("is_active", true);
-    
-    if (branchId) {
-      monthlyQuery = monthlyQuery.eq("branch_id", branchId);
-    }
+    try {
+      // Fetch packages and trainers from secure public API
+      const [packagesResult, trainersResult] = await Promise.all([
+        fetchPublicPackages(branchId),
+        fetchPublicTrainers(branchId),
+      ]);
 
-    const { data: monthlyData } = await monthlyQuery.order("months");
+      // Set monthly packages
+      if (packagesResult.monthlyPackages.length > 0) {
+        setMonthlyPackages(packagesResult.monthlyPackages);
+        // Set default selection to 3 months if available, otherwise first
+        const defaultPkg = packagesResult.monthlyPackages.find((p) => p.months === 3) || packagesResult.monthlyPackages[0];
+        setSelectedMonthlyPackage(defaultPkg);
+      }
 
-    if (monthlyData && monthlyData.length > 0) {
-      setMonthlyPackages(monthlyData);
-      // Set default selection to 3 months if available, otherwise first
-      const defaultPkg = monthlyData.find((p) => p.months === 3) || monthlyData[0];
-      setSelectedMonthlyPackage(defaultPkg);
-    }
+      // Set trainers (public API only returns id, name, monthly_fee)
+      if (trainersResult.length > 0) {
+        // Map to expected format with null specialization (not exposed publicly)
+        setTrainers(trainersResult.map(t => ({
+          id: t.id,
+          name: t.name,
+          specialization: null,
+          monthly_fee: t.monthly_fee,
+        })));
+      }
 
-    // Fetch trainers - filter by branch if provided
-    let trainersQuery = supabase
-      .from("personal_trainers")
-      .select("id, name, specialization, monthly_fee")
-      .eq("is_active", true);
-    
-    if (branchId) {
-      trainersQuery = trainersQuery.eq("branch_id", branchId);
-    }
-
-    const { data: trainersData } = await trainersQuery;
-
-    if (trainersData) {
-      setTrainers(trainersData);
-    }
-
-    // Fetch custom packages - filter by branch if provided
-    let packagesQuery = supabase
-      .from("custom_packages")
-      .select("*")
-      .eq("is_active", true);
-    
-    if (branchId) {
-      packagesQuery = packagesQuery.eq("branch_id", branchId);
-    }
-
-    const { data: packagesData } = await packagesQuery.order("duration_days");
-
-    if (packagesData) {
-      setCustomPackages(packagesData);
+      // Set custom packages
+      if (packagesResult.customPackages.length > 0) {
+        setCustomPackages(packagesResult.customPackages);
+      }
+    } catch (error) {
+      console.error("Error fetching registration data:", error);
     }
   };
 
