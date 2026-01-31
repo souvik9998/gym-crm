@@ -25,6 +25,47 @@ Deno.serve(async (req) => {
       subscriptionId,
     } = await req.json();
 
+    // === SERVER-SIDE INPUT VALIDATION ===
+    // Validate member name
+    if (!memberName || typeof memberName !== 'string' || memberName.length < 2 || memberName.length > 100) {
+      throw new Error('Invalid member name: must be 2-100 characters');
+    }
+    if (!/^[a-zA-Z\s.'\-]+$/.test(memberName)) {
+      throw new Error('Invalid member name: only letters, spaces, dots, hyphens, and apostrophes allowed');
+    }
+
+    // Validate phone number (Indian format)
+    if (!memberPhone || !/^[6-9]\d{9}$/.test(memberPhone)) {
+      throw new Error('Invalid phone number: must be valid 10-digit Indian mobile number');
+    }
+
+    // Validate amount
+    if (typeof amount !== 'number' || amount <= 0 || amount > 1000000) {
+      throw new Error('Invalid amount: must be positive and ≤₹1,000,000');
+    }
+
+    // Validate months if provided
+    if (months !== undefined && months !== null) {
+      if (typeof months !== 'number' || months < 1 || months > 24) {
+        throw new Error('Invalid months: must be between 1 and 24');
+      }
+    }
+
+    // Validate customDays if provided
+    if (customDays !== undefined && customDays !== null) {
+      if (typeof customDays !== 'number' || customDays < 1 || customDays > 365) {
+        throw new Error('Invalid custom days: must be between 1 and 365');
+      }
+    }
+
+    // Validate trainer fee if provided
+    if (trainerFee !== undefined && trainerFee !== null) {
+      if (typeof trainerFee !== 'number' || trainerFee < 0 || trainerFee > 500000) {
+        throw new Error('Invalid trainer fee: must be ≥0 and ≤₹500,000');
+      }
+    }
+    // === END VALIDATION ===
+
     console.log("Creating Razorpay order:", {
       amount,
       memberId,

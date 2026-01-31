@@ -83,28 +83,32 @@ const Index = () => {
   useEffect(() => {
     const state = location.state as { returnToOptions?: boolean; phone?: string } | null;
     if (state?.returnToOptions && state?.phone) {
-      // Re-fetch member data and show options (branch-specific)
+      // Re-fetch member data and show options using secure RPC
       const fetchMember = async () => {
         setIsLoading(true);
         try {
-          // Check for member in the specific branch, or find default branch if no branchId
-          let query = supabase.from("members").select("*").eq("phone", state.phone);
-          
-          if (branchId) {
-            query = query.eq("branch_id", branchId);
-          }
-          
-          const { data: member } = await query.maybeSingle();
+          // Use secure RPC function to check member exists
+          const { data: memberData } = await supabase
+            .rpc('check_phone_exists', { 
+              phone_number: state.phone,
+              p_branch_id: branchId || null
+            });
 
-          if (member) {
-            // Fetch the most recent subscription (including future-dated ones)
-            const { data: subscription } = await supabase
-              .from("subscriptions")
-              .select("start_date, end_date, status")
-              .eq("member_id", member.id)
-              .order("end_date", { ascending: false })
-              .limit(1)
-              .maybeSingle();
+          const result = memberData?.[0];
+
+          if (result?.member_exists) {
+            const member = {
+              id: result.member_id,
+              name: result.member_name,
+              phone: result.member_phone,
+              email: result.member_email,
+            };
+
+            // Fetch the most recent subscription using secure RPC
+            const { data: subscriptionData } = await supabase
+              .rpc('get_member_subscription_info', { p_member_id: result.member_id });
+
+            const subscription = subscriptionData?.[0];
 
             // Only consider active/expiring_soon for enabling PT option
             const isValidForPT = subscription && (subscription.status === 'active' || subscription.status === 'expiring_soon');
@@ -138,28 +142,32 @@ const Index = () => {
     setIsLoading(true);
     
     try {
-      // Check if member exists in the specific branch
-      let query = supabase.from("members").select("*").eq("phone", phone);
-      
-      // If we have a branchId (from QR code), check only that branch
-      if (branchId) {
-        query = query.eq("branch_id", branchId);
-      }
-      
-      const { data: member, error } = await query.maybeSingle();
+      // Use secure RPC function to check if member exists (prevents public data exposure)
+      const { data: memberData, error } = await supabase
+        .rpc('check_phone_exists', { 
+          phone_number: phone,
+          p_branch_id: branchId || null
+        });
 
       if (error) throw error;
 
-      if (member) {
-        // Fetch the most recent subscription (including future-dated ones)
-        const { data: subscription } = await supabase
-          .from("subscriptions")
-          .select("start_date, end_date, status")
-          .eq("member_id", member.id)
-          .order("end_date", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+      const result = memberData?.[0];
+      
+      if (result?.member_exists) {
+        // Member found - construct member object from RPC result
+        const member = {
+          id: result.member_id,
+          name: result.member_name,
+          phone: result.member_phone,
+          email: result.member_email,
+        };
 
+        // Fetch the most recent subscription using secure RPC
+        const { data: subscriptionData } = await supabase
+          .rpc('get_member_subscription_info', { p_member_id: result.member_id });
+
+        const subscription = subscriptionData?.[0];
+        
         // Only consider active/expiring_soon for enabling PT option
         const isValidForPT = subscription && (subscription.status === 'active' || subscription.status === 'expiring_soon');
         setMembershipEndDate(isValidForPT ? subscription?.end_date : null);

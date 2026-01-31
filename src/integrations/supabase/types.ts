@@ -1326,6 +1326,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_phone_exists: {
+        Args: { p_branch_id?: string; phone_number: string }
+        Returns: {
+          has_active_subscription: boolean
+          member_email: string
+          member_exists: boolean
+          member_id: string
+          member_name: string
+          member_phone: string
+        }[]
+      }
+      get_member_subscription_info: {
+        Args: { p_member_id: string }
+        Returns: {
+          end_date: string
+          start_date: string
+          status: string
+          subscription_id: string
+        }[]
+      }
       get_staff_id_from_session: { Args: never; Returns: string }
       has_role: {
         Args: {

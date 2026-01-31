@@ -88,7 +88,7 @@ export const StaffPasswordDialog = ({
         throw new Error(response.error || "Failed to set password");
       }
 
-      // Log password set activity with plain password in metadata (for admin visibility)
+      // Log password set activity - DO NOT store password in logs for security
       await logAdminActivity({
         category: "staff",
         type: "staff_password_set",
@@ -97,9 +97,11 @@ export const StaffPasswordDialog = ({
         entityId: staff.id,
         entityName: staff.full_name,
         metadata: {
-          password: password, // Store plain password in metadata for admin to view
+          // Security: Never store plaintext passwords in activity logs
           phone: staff.phone,
           role: staff.role,
+          password_updated: true,
+          password_sent_via_whatsapp: sendWhatsApp && !!staff.phone,
         },
         branchId: currentBranch?.id,
       });
