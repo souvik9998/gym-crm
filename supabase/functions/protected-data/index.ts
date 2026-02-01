@@ -1,19 +1,15 @@
 /**
  * Protected Data Edge Function
  * 
- * Serves full operational data for authenticated admin/staff users only.
- * Validates authorization before returning any data.
+ * Serves operational data for authenticated admin/staff users only.
+ * Uses native Supabase Auth as the single source of truth.
+ * Validates authorization and branch access before returning data.
  * 
- * Endpoints:
- * - GET ?action=trainers&branchId=xxx - Full trainer data (requires can_view_members or can_manage_members)
- * - GET ?action=settings&branchId=xxx - Full gym settings (requires can_change_settings)
- * - GET ?action=packages&branchId=xxx - Full package data including inactive (requires can_change_settings)
- * - GET ?action=members&branchId=xxx - Full member data (requires can_view_members or can_manage_members)
- * - GET ?action=member&memberId=xxx - Single member with details (requires can_view_members)
- * - GET ?action=payments&branchId=xxx - Payment data (requires can_access_payments)
- * - GET ?action=ledger&branchId=xxx - Ledger entries (requires can_access_ledger)
- * - GET ?action=subscriptions&branchId=xxx - Subscription data (requires can_view_members)
- * - GET ?action=daily-pass-users&branchId=xxx - Daily pass users (requires can_view_members)
+ * Security:
+ * - JWT validation via Supabase Auth
+ * - Role-based access (admin vs staff)
+ * - Permission-based feature access
+ * - Branch-level data isolation for staff
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -27,128 +23,103 @@ interface AuthResult {
   valid: boolean;
   isAdmin: boolean;
   isStaff: boolean;
+  userId?: string;
   staffId?: string;
-  permissions?: any;
+  permissions?: Record<string, boolean>;
   branchIds?: string[];
 }
 
-// Verify staff session and get staff info
-async function verifyStaffSession(supabase: any, token: string): Promise<AuthResult> {
-  // Extract token from Bearer format
-  const sessionToken = token.replace("Bearer ", "");
+// Verify session via Supabase Auth and determine role
+async function authenticateRequest(
+  // deno-lint-ignore no-explicit-any
+  supabase: any, 
+  authHeader: string
+): Promise<AuthResult> {
+  const token = authHeader.replace("Bearer ", "");
   
-  // Verify session
-  const { data: session, error: sessionError } = await supabase
-    .from("staff_sessions")
-    .select("staff_id, expires_at, is_revoked")
-    .eq("session_token", sessionToken)
+  // Verify JWT
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  
+  if (error || !user) {
+    return { valid: false, isAdmin: false, isStaff: false };
+  }
+
+  // Check if user is admin
+  const { data: adminRole } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .maybeSingle();
+
+  if (adminRole) {
+    return { valid: true, isAdmin: true, isStaff: false, userId: user.id };
+  }
+
+  // Check if user is staff
+  const { data: staffData } = await supabase
+    .from("staff")
+    .select("id, is_active")
+    .eq("auth_user_id", user.id)
     .single();
 
-  if (sessionError || !session || session.is_revoked) {
+  const staff = staffData as { id: string; is_active: boolean } | null;
+  if (!staff || !staff.is_active) {
     return { valid: false, isAdmin: false, isStaff: false };
   }
 
-  // Check expiration
-  if (new Date(session.expires_at) <= new Date()) {
-    return { valid: false, isAdmin: false, isStaff: false };
-  }
-
-  // Get permissions
-  const { data: permissions, error: permError } = await supabase
+  // Get staff permissions
+  const { data: permissions } = await supabase
     .from("staff_permissions")
     .select("*")
-    .eq("staff_id", session.staff_id)
+    .eq("staff_id", staff.id)
     .single();
 
-  if (permError || !permissions) {
-    return { valid: false, isAdmin: false, isStaff: false };
-  }
-
   // Get assigned branches
-  const { data: assignments, error: assignError } = await supabase
+  const { data: assignments } = await supabase
     .from("staff_branch_assignments")
     .select("branch_id")
-    .eq("staff_id", session.staff_id);
+    .eq("staff_id", staff.id);
 
-  const branchIds = (assignments || []).map((a: any) => a.branch_id);
+  const branchIds = (assignments || []).map((a: { branch_id: string }) => a.branch_id);
 
   return {
     valid: true,
     isAdmin: false,
     isStaff: true,
-    staffId: session.staff_id,
-    permissions,
+    userId: user.id,
+    staffId: staff.id,
+    permissions: permissions || {},
     branchIds,
   };
 }
 
-// Verify admin session via Supabase Auth
-async function verifyAdminSession(supabase: any, token: string): Promise<AuthResult> {
-  try {
-    // Create a client with the user's token to verify
-    const { data: { user }, error } = await supabase.auth.getUser(token.replace("Bearer ", ""));
-    
-    if (error || !user) {
-      return { valid: false, isAdmin: false, isStaff: false };
-    }
-
-    // Check if user has admin role
-    const { data: roleData, error: roleError } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle();
-
-    if (roleError || !roleData) {
-      return { valid: false, isAdmin: false, isStaff: false };
-    }
-
-    return { valid: true, isAdmin: true, isStaff: false };
-  } catch (error) {
-    console.error("Admin verification error:", error);
-    return { valid: false, isAdmin: false, isStaff: false };
-  }
-}
-
-// Combined authentication check
-async function authenticateRequest(supabase: any, authHeader: string): Promise<AuthResult> {
-  // Try staff auth first, then admin auth
-  const staffAuth = await verifyStaffSession(supabase, authHeader);
-  if (staffAuth.valid) {
-    return staffAuth;
-  }
-  
-  const adminAuth = await verifyAdminSession(supabase, authHeader);
-  return adminAuth;
-}
-
-// Check if user has access to branch
 function hasBranchAccess(auth: AuthResult, branchId: string | null): boolean {
   if (auth.isAdmin) return true;
   if (!branchId) return true;
   return auth.branchIds?.includes(branchId) || false;
 }
 
-// Check permission
 function hasPermission(auth: AuthResult, permission: string): boolean {
   if (auth.isAdmin) return true;
   if (!auth.permissions) return false;
   return auth.permissions[permission] === true;
 }
 
+function errorResponse(message: string, status: number) {
+  return new Response(
+    JSON.stringify({ error: message }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" }, status }
+  );
+}
+
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Only allow GET requests
   if (req.method !== "GET") {
-    return new Response(
-      JSON.stringify({ error: "Method not allowed" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 405 }
-    );
+    return errorResponse("Method not allowed", 405);
   }
 
   try {
@@ -159,29 +130,18 @@ Deno.serve(async (req) => {
     const cursor = parseInt(url.searchParams.get("cursor") || "0");
     const limit = Math.min(parseInt(url.searchParams.get("limit") || "25"), 100);
 
-    // Get authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Authorization required" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
-      );
+      return errorResponse("Authorization required", 401);
     }
 
-    // Validate branchId format if provided
-    if (branchId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(branchId)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid branch ID format" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
+    // Validate UUIDs
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (branchId && !uuidRegex.test(branchId)) {
+      return errorResponse("Invalid branch ID format", 400);
     }
-
-    // Validate memberId format if provided
-    if (memberId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(memberId)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid member ID format" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
+    if (memberId && !uuidRegex.test(memberId)) {
+      return errorResponse("Invalid member ID format", 400);
     }
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -191,54 +151,36 @@ Deno.serve(async (req) => {
       throw new Error("Server configuration error");
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
 
-    // Authenticate the request
     const auth = await authenticateRequest(supabase, authHeader);
     
     if (!auth.valid) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-      );
+      return errorResponse("Unauthorized", 403);
     }
 
-    // Check branch access
     if (!hasBranchAccess(auth, branchId)) {
-      return new Response(
-        JSON.stringify({ error: "Access denied to this branch" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-      );
+      return errorResponse("Access denied to this branch", 403);
     }
 
     switch (action) {
       case "trainers": {
-        // Check permission: needs can_view_members or can_manage_members
         if (!hasPermission(auth, "can_view_members") && !hasPermission(auth, "can_manage_members")) {
-          return new Response(
-            JSON.stringify({ error: "Permission denied: cannot view trainers" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-          );
+          return errorResponse("Permission denied: cannot view trainers", 403);
         }
 
-        // Get full trainer data
-        let trainersQuery = supabase
-          .from("personal_trainers")
-          .select("*")
-          .eq("is_active", true);
+        let query = supabase.from("personal_trainers").select("*").eq("is_active", true);
 
         if (branchId) {
-          trainersQuery = trainersQuery.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds && auth.branchIds.length > 0) {
-          trainersQuery = trainersQuery.in("branch_id", auth.branchIds);
+          query = query.eq("branch_id", branchId);
+        } else if (auth.isStaff && auth.branchIds?.length) {
+          query = query.in("branch_id", auth.branchIds);
         }
 
-        const { data: trainers, error: trainersError } = await trainersQuery;
-
-        if (trainersError) {
-          console.error("Error fetching trainers:", trainersError);
-          throw new Error("Failed to fetch trainers");
-        }
+        const { data: trainers, error } = await query;
+        if (error) throw new Error("Failed to fetch trainers");
 
         return new Response(
           JSON.stringify({ trainers: trainers || [] }),
@@ -247,28 +189,20 @@ Deno.serve(async (req) => {
       }
 
       case "all-trainers": {
-        // Get all trainers including inactive - for settings/management
         if (!hasPermission(auth, "can_change_settings")) {
-          return new Response(
-            JSON.stringify({ error: "Permission denied: cannot manage trainers" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-          );
+          return errorResponse("Permission denied: cannot manage trainers", 403);
         }
 
-        let trainersQuery = supabase.from("personal_trainers").select("*");
+        let query = supabase.from("personal_trainers").select("*");
 
         if (branchId) {
-          trainersQuery = trainersQuery.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds && auth.branchIds.length > 0) {
-          trainersQuery = trainersQuery.in("branch_id", auth.branchIds);
+          query = query.eq("branch_id", branchId);
+        } else if (auth.isStaff && auth.branchIds?.length) {
+          query = query.in("branch_id", auth.branchIds);
         }
 
-        const { data: trainers, error: trainersError } = await trainersQuery;
-
-        if (trainersError) {
-          console.error("Error fetching all trainers:", trainersError);
-          throw new Error("Failed to fetch trainers");
-        }
+        const { data: trainers, error } = await query;
+        if (error) throw new Error("Failed to fetch trainers");
 
         return new Response(
           JSON.stringify({ trainers: trainers || [] }),
@@ -277,32 +211,21 @@ Deno.serve(async (req) => {
       }
 
       case "settings": {
-        // Check permission: needs can_change_settings
         if (!hasPermission(auth, "can_change_settings")) {
-          return new Response(
-            JSON.stringify({ error: "Permission denied: cannot access settings" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-          );
+          return errorResponse("Permission denied: cannot access settings", 403);
         }
 
         if (!branchId) {
-          return new Response(
-            JSON.stringify({ error: "Branch ID required" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-          );
+          return errorResponse("Branch ID required", 400);
         }
 
-        // Get full gym settings
-        const { data: settings, error: settingsError } = await supabase
+        const { data: settings, error } = await supabase
           .from("gym_settings")
           .select("*")
           .eq("branch_id", branchId)
           .maybeSingle();
 
-        if (settingsError) {
-          console.error("Error fetching settings:", settingsError);
-          throw new Error("Failed to fetch settings");
-        }
+        if (error) throw new Error("Failed to fetch settings");
 
         return new Response(
           JSON.stringify({ settings: settings || null }),
@@ -311,22 +234,17 @@ Deno.serve(async (req) => {
       }
 
       case "packages": {
-        // Check permission for full package data including inactive
         if (!hasPermission(auth, "can_change_settings")) {
-          return new Response(
-            JSON.stringify({ error: "Permission denied: cannot manage packages" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-          );
+          return errorResponse("Permission denied: cannot manage packages", 403);
         }
 
-        // Get all packages including inactive
         let monthlyQuery = supabase.from("monthly_packages").select("*");
         let customQuery = supabase.from("custom_packages").select("*");
 
         if (branchId) {
           monthlyQuery = monthlyQuery.eq("branch_id", branchId);
           customQuery = customQuery.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds && auth.branchIds.length > 0) {
+        } else if (auth.isStaff && auth.branchIds?.length) {
           monthlyQuery = monthlyQuery.in("branch_id", auth.branchIds);
           customQuery = customQuery.in("branch_id", auth.branchIds);
         }
@@ -337,7 +255,6 @@ Deno.serve(async (req) => {
         ]);
 
         if (monthlyResult.error || customResult.error) {
-          console.error("Error fetching packages:", monthlyResult.error || customResult.error);
           throw new Error("Failed to fetch packages");
         }
 
@@ -351,47 +268,32 @@ Deno.serve(async (req) => {
       }
 
       case "members": {
-        // Check permission: needs can_view_members or can_manage_members
         if (!hasPermission(auth, "can_view_members") && !hasPermission(auth, "can_manage_members")) {
-          return new Response(
-            JSON.stringify({ error: "Permission denied: cannot view members" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-          );
+          return errorResponse("Permission denied: cannot view members", 403);
         }
 
-        // Build query with branch filtering
         let countQuery = supabase.from("members").select("*", { count: "exact", head: true });
         let membersQuery = supabase.from("members").select("*").order("created_at", { ascending: false });
 
         if (branchId) {
           countQuery = countQuery.eq("branch_id", branchId);
           membersQuery = membersQuery.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds && auth.branchIds.length > 0) {
+        } else if (auth.isStaff && auth.branchIds?.length) {
           countQuery = countQuery.in("branch_id", auth.branchIds);
           membersQuery = membersQuery.in("branch_id", auth.branchIds);
         }
 
-        // Get count
         const { count, error: countError } = await countQuery;
-        if (countError) {
-          console.error("Error counting members:", countError);
-          throw new Error("Failed to count members");
-        }
+        if (countError) throw new Error("Failed to count members");
 
-        // Paginate
         membersQuery = membersQuery.range(cursor, cursor + limit - 1);
         const { data: members, error: membersError } = await membersQuery;
-
-        if (membersError) {
-          console.error("Error fetching members:", membersError);
-          throw new Error("Failed to fetch members");
-        }
+        if (membersError) throw new Error("Failed to fetch members");
 
         const today = new Date().toISOString().split("T")[0];
 
-        // Get subscriptions and PT data for each member
         const membersWithData = await Promise.all(
-          (members || []).map(async (member: any) => {
+          (members || []).map(async (member: Record<string, unknown>) => {
             const { data: subData } = await supabase
               .from("subscriptions")
               .select("id, status, end_date, start_date")
@@ -410,12 +312,14 @@ Deno.serve(async (req) => {
               .limit(1)
               .maybeSingle();
 
+            // deno-lint-ignore no-explicit-any
+            const trainerData = ptData?.personal_trainer as any;
             return {
               ...member,
               subscription: subData || undefined,
               activePT: ptData
                 ? {
-                    trainer_name: (ptData.personal_trainer as any)?.name || "Unknown",
+                    trainer_name: trainerData?.name || "Unknown",
                     end_date: ptData.end_date,
                   }
                 : null,
@@ -436,22 +340,14 @@ Deno.serve(async (req) => {
       }
 
       case "member": {
-        // Check permission
         if (!hasPermission(auth, "can_view_members") && !hasPermission(auth, "can_manage_members")) {
-          return new Response(
-            JSON.stringify({ error: "Permission denied: cannot view member" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-          );
+          return errorResponse("Permission denied: cannot view member", 403);
         }
 
         if (!memberId) {
-          return new Response(
-            JSON.stringify({ error: "Member ID required" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-          );
+          return errorResponse("Member ID required", 400);
         }
 
-        // Fetch member
         const { data: member, error: memberError } = await supabase
           .from("members")
           .select("*")
@@ -459,21 +355,13 @@ Deno.serve(async (req) => {
           .single();
 
         if (memberError || !member) {
-          return new Response(
-            JSON.stringify({ error: "Member not found" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
-          );
+          return errorResponse("Member not found", 404);
         }
 
-        // Check branch access for staff
         if (auth.isStaff && auth.branchIds && !auth.branchIds.includes(member.branch_id)) {
-          return new Response(
-            JSON.stringify({ error: "Access denied to this member" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-          );
+          return errorResponse("Access denied to this member", 403);
         }
 
-        // Fetch member details (sensitive info)
         const { data: details } = await supabase
           .from("member_details")
           .select("*")
@@ -487,128 +375,114 @@ Deno.serve(async (req) => {
       }
 
       case "payments": {
-        // Check permission
         if (!hasPermission(auth, "can_access_payments")) {
-          return new Response(
-            JSON.stringify({ error: "Permission denied: cannot view payments" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-          );
+          return errorResponse("Permission denied: cannot view payments", 403);
         }
 
-        let query = supabase
+        let countQuery = supabase.from("payments").select("*", { count: "exact", head: true });
+        let paymentsQuery = supabase
           .from("payments")
           .select(`
-            id, amount, payment_mode, status, created_at, notes, payment_type,
-            razorpay_payment_id, razorpay_order_id, branch_id,
-            member_id, subscription_id, daily_pass_user_id, daily_pass_subscription_id
+            *,
+            member:members(id, name, phone),
+            subscription:subscriptions(id, plan_months, start_date, end_date),
+            daily_pass_user:daily_pass_users(id, name, phone)
           `)
           .order("created_at", { ascending: false });
 
         if (branchId) {
-          query = query.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds && auth.branchIds.length > 0) {
-          query = query.in("branch_id", auth.branchIds);
+          countQuery = countQuery.eq("branch_id", branchId);
+          paymentsQuery = paymentsQuery.eq("branch_id", branchId);
+        } else if (auth.isStaff && auth.branchIds?.length) {
+          countQuery = countQuery.in("branch_id", auth.branchIds);
+          paymentsQuery = paymentsQuery.in("branch_id", auth.branchIds);
         }
 
-        query = query.range(cursor, cursor + limit - 1);
-        const { data: payments, error: paymentsError } = await query;
+        const { count, error: countError } = await countQuery;
+        if (countError) throw new Error("Failed to count payments");
 
-        if (paymentsError) {
-          console.error("Error fetching payments:", paymentsError);
-          throw new Error("Failed to fetch payments");
-        }
+        paymentsQuery = paymentsQuery.range(cursor, cursor + limit - 1);
+        const { data: payments, error: paymentsError } = await paymentsQuery;
+        if (paymentsError) throw new Error("Failed to fetch payments");
 
-        // Get member/daily pass user names for display
-        const memberIds = [...new Set((payments || []).filter(p => p.member_id).map(p => p.member_id))];
-        const dpUserIds = [...new Set((payments || []).filter(p => p.daily_pass_user_id).map(p => p.daily_pass_user_id))];
-
-        let members: any[] = [];
-        let dpUsers: any[] = [];
-
-        if (memberIds.length > 0) {
-          const { data } = await supabase.from("members").select("id, name, phone").in("id", memberIds);
-          members = data || [];
-        }
-
-        if (dpUserIds.length > 0) {
-          const { data } = await supabase.from("daily_pass_users").select("id, name, phone").in("id", dpUserIds);
-          dpUsers = data || [];
-        }
-
-        const paymentsWithNames = (payments || []).map((p: any) => ({
-          ...p,
-          member: members.find(m => m.id === p.member_id) || null,
-          dailyPassUser: dpUsers.find(u => u.id === p.daily_pass_user_id) || null,
-        }));
+        const nextCursor = cursor + (payments?.length || 0) < (count || 0) ? cursor + limit : null;
 
         return new Response(
-          JSON.stringify({ payments: paymentsWithNames }),
+          JSON.stringify({
+            payments: payments || [],
+            nextCursor,
+            totalCount: count || 0,
+          }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       case "ledger": {
-        // Check permission
         if (!hasPermission(auth, "can_access_ledger")) {
-          return new Response(
-            JSON.stringify({ error: "Permission denied: cannot view ledger" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-          );
+          return errorResponse("Permission denied: cannot view ledger", 403);
         }
 
-        let query = supabase
+        let countQuery = supabase.from("ledger_entries").select("*", { count: "exact", head: true });
+        let ledgerQuery = supabase
           .from("ledger_entries")
-          .select("*")
-          .order("entry_date", { ascending: false })
-          .order("created_at", { ascending: false });
+          .select(`
+            *,
+            member:members(id, name, phone),
+            trainer:personal_trainers(id, name),
+            daily_pass_user:daily_pass_users(id, name, phone)
+          `)
+          .order("entry_date", { ascending: false });
 
         if (branchId) {
-          query = query.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds && auth.branchIds.length > 0) {
-          query = query.in("branch_id", auth.branchIds);
+          countQuery = countQuery.eq("branch_id", branchId);
+          ledgerQuery = ledgerQuery.eq("branch_id", branchId);
+        } else if (auth.isStaff && auth.branchIds?.length) {
+          countQuery = countQuery.in("branch_id", auth.branchIds);
+          ledgerQuery = ledgerQuery.in("branch_id", auth.branchIds);
         }
 
-        query = query.range(cursor, cursor + limit - 1);
-        const { data: entries, error: entriesError } = await query;
+        const { count, error: countError } = await countQuery;
+        if (countError) throw new Error("Failed to count ledger entries");
 
-        if (entriesError) {
-          console.error("Error fetching ledger:", entriesError);
-          throw new Error("Failed to fetch ledger");
-        }
+        ledgerQuery = ledgerQuery.range(cursor, cursor + limit - 1);
+        const { data: entries, error: ledgerError } = await ledgerQuery;
+        if (ledgerError) throw new Error("Failed to fetch ledger entries");
+
+        const nextCursor = cursor + (entries?.length || 0) < (count || 0) ? cursor + limit : null;
 
         return new Response(
-          JSON.stringify({ entries: entries || [] }),
+          JSON.stringify({
+            entries: entries || [],
+            nextCursor,
+            totalCount: count || 0,
+          }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       case "subscriptions": {
-        // Check permission
-        if (!hasPermission(auth, "can_view_members") && !hasPermission(auth, "can_manage_members")) {
-          return new Response(
-            JSON.stringify({ error: "Permission denied: cannot view subscriptions" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-          );
+        if (!hasPermission(auth, "can_view_members")) {
+          return errorResponse("Permission denied: cannot view subscriptions", 403);
         }
 
         let query = supabase
           .from("subscriptions")
-          .select("*, member:members(id, name, phone), trainer:personal_trainers(id, name)")
+          .select(`
+            *,
+            member:members(id, name, phone),
+            personal_trainer:personal_trainers(id, name)
+          `)
           .order("created_at", { ascending: false });
 
         if (branchId) {
           query = query.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds && auth.branchIds.length > 0) {
+        } else if (auth.isStaff && auth.branchIds?.length) {
           query = query.in("branch_id", auth.branchIds);
         }
 
         query = query.range(cursor, cursor + limit - 1);
-        const { data: subscriptions, error: subError } = await query;
-
-        if (subError) {
-          console.error("Error fetching subscriptions:", subError);
-          throw new Error("Failed to fetch subscriptions");
-        }
+        const { data: subscriptions, error } = await query;
+        if (error) throw new Error("Failed to fetch subscriptions");
 
         return new Response(
           JSON.stringify({ subscriptions: subscriptions || [] }),
@@ -617,101 +491,68 @@ Deno.serve(async (req) => {
       }
 
       case "daily-pass-users": {
-        // Check permission
-        if (!hasPermission(auth, "can_view_members") && !hasPermission(auth, "can_manage_members")) {
-          return new Response(
-            JSON.stringify({ error: "Permission denied: cannot view daily pass users" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-          );
+        if (!hasPermission(auth, "can_view_members")) {
+          return errorResponse("Permission denied: cannot view daily pass users", 403);
         }
 
-        let query = supabase
-          .from("daily_pass_users")
-          .select("*")
-          .order("created_at", { ascending: false });
+        let countQuery = supabase.from("daily_pass_users").select("*", { count: "exact", head: true });
+        let usersQuery = supabase.from("daily_pass_users").select("*").order("created_at", { ascending: false });
 
         if (branchId) {
-          query = query.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds && auth.branchIds.length > 0) {
-          query = query.in("branch_id", auth.branchIds);
+          countQuery = countQuery.eq("branch_id", branchId);
+          usersQuery = usersQuery.eq("branch_id", branchId);
+        } else if (auth.isStaff && auth.branchIds?.length) {
+          countQuery = countQuery.in("branch_id", auth.branchIds);
+          usersQuery = usersQuery.in("branch_id", auth.branchIds);
         }
 
-        query = query.range(cursor, cursor + limit - 1);
-        const { data: users, error: usersError } = await query;
+        const { count, error: countError } = await countQuery;
+        if (countError) throw new Error("Failed to count daily pass users");
 
-        if (usersError) {
-          console.error("Error fetching daily pass users:", usersError);
-          throw new Error("Failed to fetch daily pass users");
-        }
+        usersQuery = usersQuery.range(cursor, cursor + limit - 1);
+        const { data: users, error: usersError } = await usersQuery;
+        if (usersError) throw new Error("Failed to fetch daily pass users");
 
-        // Get active subscriptions for each user
+        const today = new Date().toISOString().split("T")[0];
+
         const usersWithSubs = await Promise.all(
-          (users || []).map(async (user: any) => {
-            const { data: subs } = await supabase
+          (users || []).map(async (user: Record<string, unknown>) => {
+            const { data: subData } = await supabase
               .from("daily_pass_subscriptions")
               .select("*")
               .eq("daily_pass_user_id", user.id)
-              .eq("status", "active")
               .order("end_date", { ascending: false })
               .limit(1)
               .maybeSingle();
 
-            return { ...user, activeSubscription: subs || null };
+            const isActive = subData && subData.end_date >= today;
+
+            return {
+              ...user,
+              latestSubscription: subData || null,
+              isActive,
+            };
           })
         );
 
-        return new Response(
-          JSON.stringify({ users: usersWithSubs }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      case "pt-subscriptions": {
-        // Check permission
-        if (!hasPermission(auth, "can_view_members") && !hasPermission(auth, "can_manage_members")) {
-          return new Response(
-            JSON.stringify({ error: "Permission denied: cannot view PT subscriptions" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-          );
-        }
-
-        let query = supabase
-          .from("pt_subscriptions")
-          .select("*, member:members(id, name, phone), trainer:personal_trainers(id, name)")
-          .order("created_at", { ascending: false });
-
-        if (branchId) {
-          query = query.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds && auth.branchIds.length > 0) {
-          query = query.in("branch_id", auth.branchIds);
-        }
-
-        query = query.range(cursor, cursor + limit - 1);
-        const { data: ptSubs, error: ptError } = await query;
-
-        if (ptError) {
-          console.error("Error fetching PT subscriptions:", ptError);
-          throw new Error("Failed to fetch PT subscriptions");
-        }
+        const nextCursor = cursor + (users?.length || 0) < (count || 0) ? cursor + limit : null;
 
         return new Response(
-          JSON.stringify({ subscriptions: ptSubs || [] }),
+          JSON.stringify({
+            users: usersWithSubs,
+            nextCursor,
+            totalCount: count || 0,
+          }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       default:
-        return new Response(
-          JSON.stringify({ error: "Invalid action" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-        );
+        return errorResponse("Invalid action", 400);
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Protected data error:", error);
     const message = error instanceof Error ? error.message : "Internal server error";
-    return new Response(
-      JSON.stringify({ error: message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-    );
+    return errorResponse(message, 500);
   }
 });
