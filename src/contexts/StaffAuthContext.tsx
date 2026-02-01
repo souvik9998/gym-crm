@@ -95,10 +95,12 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
         return false;
       }
 
-      const { data } = await supabase.functions.invoke("staff-auth?action=verify-session", {
-        body: {},
+      const { data } = await supabase.functions.invoke("staff-auth", {
+        body: { action: "verify-session" },
+        method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
         },
       });
 
@@ -173,10 +175,17 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     try {
       // CRITICAL: Clear any existing Supabase admin session before staff login
       // This prevents the bug where staff gets admin access due to lingering session
-      await supabase.auth.signOut();
+      // Use scope: 'local' to avoid potential server-side issues
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch (signOutError) {
+        console.warn("SignOut before login failed (non-critical):", signOutError);
+      }
       
-      const { data, error } = await supabase.functions.invoke("staff-auth?action=login", {
+      const { data, error } = await supabase.functions.invoke("staff-auth", {
         body: { phone, password },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (error) {
@@ -221,10 +230,12 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.access_token) {
-        await supabase.functions.invoke("staff-auth?action=logout", {
-          body: {},
+        await supabase.functions.invoke("staff-auth", {
+          body: { action: "logout" },
+          method: 'POST',
           headers: {
             Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
           },
         });
       }
