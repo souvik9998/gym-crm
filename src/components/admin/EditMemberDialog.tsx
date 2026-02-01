@@ -181,9 +181,9 @@ export const EditMemberDialog = ({
 
       // STAFF PATH: Use staff-operations edge function for staff users
       if (isStaffLoggedIn && currentBranch?.id) {
-        const { data, error } = await supabase.functions.invoke("staff-operations", {
+        // Action must be passed as query param, not in body
+        const { data, error } = await supabase.functions.invoke("staff-operations?action=update-member", {
           body: {
-            action: "update-member",
             branchId: currentBranch.id,
             memberId: member.id,
             name: memberUpdates.name,
@@ -198,7 +198,7 @@ export const EditMemberDialog = ({
         if (error) throw error;
         
         const response = typeof data === "string" ? JSON.parse(data) : data;
-        if (!response.success) {
+        if (response.error) {
           throw new Error(response.error || "Failed to update member");
         }
       } else {
