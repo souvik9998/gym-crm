@@ -2,7 +2,7 @@
  * Authenticated Fetch Utility
  * 
  * Provides authenticated API calls to protected edge functions.
- * Automatically includes auth token from admin session or staff session.
+ * Uses Supabase Auth token for both admin and staff sessions.
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -17,30 +17,12 @@ interface FetchOptions {
 }
 
 /**
- * Get the current authentication token
- * Returns admin JWT or staff session token
+ * Get the current authentication token from Supabase Auth
+ * Works for both admin and staff users
  */
 export async function getAuthToken(): Promise<string | null> {
-  // Check for admin session first
   const { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) {
-    return session.access_token;
-  }
-
-  // Check for staff session
-  const staffSession = localStorage.getItem("staff_session");
-  if (staffSession) {
-    try {
-      const { token, expiresAt } = JSON.parse(staffSession);
-      if (new Date(expiresAt) > new Date()) {
-        return token;
-      }
-    } catch (e) {
-      console.error("Error parsing staff session:", e);
-    }
-  }
-
-  return null;
+  return session?.access_token || null;
 }
 
 /**
