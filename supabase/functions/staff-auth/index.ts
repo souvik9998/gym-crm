@@ -1,19 +1,20 @@
 /**
  * Staff Authentication Edge Function
  * 
- * Uses native Supabase Auth as the single source of truth for staff identity.
+ * Uses ONLY Supabase Auth as the single source of truth for staff identity.
  * Staff accounts use email format: staff_{phone}@gym.local
  * 
+ * NO CUSTOM PASSWORD HASHING - All password management via Supabase Auth Admin API.
+ * 
  * Security features:
- * - Bcrypt password hashing (cost factor 12)
+ * - Native Supabase Auth password management
  * - Account lockout after 5 failed attempts (15 min)
  * - Inactive/suspended staff prevention
  * - Login attempt tracking for audit
- * - Native Supabase Auth sessions
+ * - JWT-based sessions via Supabase Auth
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 import {
   LoginSchema,
   SetPasswordSchema,
@@ -30,70 +31,10 @@ const corsHeaders = {
 // Security constants
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 15;
-const BCRYPT_COST = 12;
 
 // Staff email format for Supabase Auth
 function getStaffEmail(phone: string): string {
   return `staff_${phone}@gym.local`;
-}
-
-// ============================================================================
-// Password Hashing with bcrypt
-// ============================================================================
-
-async function hashPasswordBcrypt(password: string): Promise<string> {
-  const salt = await bcrypt.genSalt(BCRYPT_COST);
-  const hash = await bcrypt.hash(password, salt);
-  return `v2:${hash}`;
-}
-
-async function verifyPasswordBcrypt(password: string, hash: string): Promise<boolean> {
-  return await bcrypt.compare(password, hash);
-}
-
-// Legacy SHA-256 support for migration
-async function verifyPasswordLegacy(password: string, storedHash: string): Promise<boolean> {
-  try {
-    const { decodeBase64 } = await import("https://deno.land/std@0.220.1/encoding/base64.ts");
-    const decoded = decodeBase64(storedHash);
-    const salt = decoded.slice(0, 16);
-    const storedHashBytes = decoded.slice(16);
-    
-    const encoder = new TextEncoder();
-    const passwordData = encoder.encode(password);
-    const combined = new Uint8Array(salt.length + passwordData.length);
-    combined.set(salt);
-    combined.set(passwordData, salt.length);
-    
-    let hash = await crypto.subtle.digest("SHA-256", combined);
-    for (let i = 0; i < 10000; i++) {
-      hash = await crypto.subtle.digest("SHA-256", hash);
-    }
-    
-    const hashArray = new Uint8Array(hash);
-    if (hashArray.length !== storedHashBytes.length) return false;
-    for (let i = 0; i < hashArray.length; i++) {
-      if (hashArray[i] !== storedHashBytes[i]) return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// Universal password verification with auto-upgrade
-async function verifyPasswordUniversal(
-  password: string,
-  storedHash: string
-): Promise<{ valid: boolean; needsUpgrade: boolean }> {
-  if (storedHash.startsWith("v2:")) {
-    const hash = storedHash.substring(3);
-    const valid = await verifyPasswordBcrypt(password, hash);
-    return { valid, needsUpgrade: false };
-  }
-  
-  const valid = await verifyPasswordLegacy(password, storedHash);
-  return { valid, needsUpgrade: valid };
 }
 
 Deno.serve(async (req) => {
@@ -139,14 +80,15 @@ Deno.serve(async (req) => {
           failure_reason: "pending",
         });
 
-        // Find active staff with password
+        // Find active staff by phone
         const { data: staffList, error: staffError } = await supabaseAdmin
           .from("staff")
           .select("*")
           .eq("phone", phone)
-          .order("password_set_at", { ascending: false, nullsFirst: false });
+          .eq("is_active", true);
 
-        const staff = staffList?.find(s => s.password_hash && s.is_active) || staffList?.find(s => s.is_active);
+        // Get staff with auth_user_id first (has Supabase Auth account)
+        const staff = staffList?.find(s => s.auth_user_id) || staffList?.[0];
 
         if (staffError || !staff) {
           await updateLoginAttempt(supabaseAdmin, phone, "invalid_credentials");
@@ -175,16 +117,21 @@ Deno.serve(async (req) => {
           return errorResponse("Account is deactivated. Contact admin.", 403);
         }
 
-        // Check password exists
-        if (!staff.password_hash) {
+        // Check if staff has Supabase Auth account
+        if (!staff.auth_user_id) {
           await updateLoginAttempt(supabaseAdmin, phone, "no_password");
-          return errorResponse("No password set. Contact admin.", 401);
+          return errorResponse("No password set. Contact admin to set your password.", 401);
         }
 
-        // Verify password
-        const { valid: isValid, needsUpgrade } = await verifyPasswordUniversal(password, staff.password_hash);
+        // Use Supabase Auth to authenticate
+        const staffEmail = getStaffEmail(phone);
+        const { data: signInData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+          email: staffEmail,
+          password: password,
+        });
 
-        if (!isValid) {
+        if (signInError || !signInData.session) {
+          // Login failed - increment failed attempts
           const newAttempts = (staff.failed_login_attempts || 0) + 1;
           const updateData: Record<string, unknown> = { failed_login_attempts: newAttempts };
 
@@ -206,83 +153,7 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Upgrade legacy hash
-        if (needsUpgrade) {
-          console.log("Upgrading password hash to bcrypt for staff:", staff.id);
-          const newHash = await hashPasswordBcrypt(password);
-          await supabaseAdmin.from("staff").update({
-            password_hash: newHash,
-            password_set_at: new Date().toISOString(),
-          }).eq("id", staff.id);
-        }
-
-        // Create or get Supabase Auth user
-        const staffEmail = getStaffEmail(phone);
-        let authUserId = staff.auth_user_id;
-
-        if (!authUserId) {
-          // Create auth user for staff
-          const { data: authUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-            email: staffEmail,
-            password: password,
-            email_confirm: true,
-            user_metadata: {
-              staff_id: staff.id,
-              role: staff.role,
-              full_name: staff.full_name,
-            }
-          });
-
-          if (createError) {
-            // User might already exist, try to get them
-            const { data: users } = await supabaseAdmin.auth.admin.listUsers();
-            const existingUser = users?.users?.find(u => u.email === staffEmail);
-            
-            if (existingUser) {
-              authUserId = existingUser.id;
-              // Update password for existing user
-              await supabaseAdmin.auth.admin.updateUserById(authUserId, { password });
-            } else {
-              console.error("Failed to create auth user:", createError);
-              return errorResponse("Authentication setup failed", 500);
-            }
-          } else {
-            authUserId = authUser.user.id;
-          }
-
-          // Link auth user to staff record
-          await supabaseAdmin.from("staff").update({
-            auth_user_id: authUserId
-          }).eq("id", staff.id);
-
-          // Add staff role
-          await supabaseAdmin.from("user_roles").upsert({
-            user_id: authUserId,
-            role: "staff"
-          }, { onConflict: "user_id,role" });
-        } else {
-          // Update password for existing auth user to ensure sync
-          await supabaseAdmin.auth.admin.updateUserById(authUserId, { password });
-        }
-
-        // Generate session via Supabase Auth
-        const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
-          type: "magiclink",
-          email: staffEmail,
-        });
-
-        // Sign in with password to get actual session tokens
-        const { data: signInData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
-          email: staffEmail,
-          password: password,
-        });
-
-        if (signInError || !signInData.session) {
-          console.error("Sign in failed:", signInError);
-          return errorResponse("Failed to create session", 500);
-        }
-
-        // Reset failed attempts and update last login
+        // Login successful - reset failed attempts and update last login
         await supabaseAdmin.from("staff").update({
           failed_login_attempts: 0,
           locked_until: null,
@@ -311,7 +182,7 @@ Deno.serve(async (req) => {
         const branchId = primaryBranch?.branch_id || branchAssignments?.[0]?.branch_id;
         
         await supabaseAdmin.from("admin_activity_logs").insert({
-          admin_user_id: authUserId,
+          admin_user_id: staff.auth_user_id,
           activity_category: "staff",
           activity_type: "staff_logged_in",
           description: `Staff "${staff.full_name}" logged in successfully`,
@@ -339,7 +210,7 @@ Deno.serve(async (req) => {
             },
             staff: {
               id: staff.id,
-              authUserId: authUserId,
+              authUserId: staff.auth_user_id,
               fullName: staff.full_name,
               phone: staff.phone,
               role: staff.role,
@@ -491,7 +362,7 @@ Deno.serve(async (req) => {
             }
 
             // Sign out the user (invalidate the session)
-            await supabaseAdmin.auth.admin.signOut(token);
+            await supabaseAdmin.auth.admin.signOut(user.id, "global");
           }
         }
 
@@ -522,15 +393,12 @@ Deno.serve(async (req) => {
           return errorResponse("Staff not found", 404);
         }
 
-        // Hash password with bcrypt
-        const passwordHash = await hashPasswordBcrypt(password);
-
         // Create or update Supabase Auth user
         const staffEmail = getStaffEmail(staff.phone);
         let authUserId = staff.auth_user_id;
 
         if (!authUserId) {
-          // Create auth user
+          // Create new Supabase Auth user
           const { data: authUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
             email: staffEmail,
             password: password,
@@ -543,45 +411,57 @@ Deno.serve(async (req) => {
           });
 
           if (createError) {
-            // Try to find existing user
+            // Try to find existing user by email
             const { data: users } = await supabaseAdmin.auth.admin.listUsers();
             const existingUser = users?.users?.find(u => u.email === staffEmail);
             
             if (existingUser) {
               authUserId = existingUser.id;
-              await supabaseAdmin.auth.admin.updateUserById(authUserId, { password });
+              // Update password for existing user
+              const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(authUserId, { 
+                password: password 
+              });
+              if (updateError) {
+                console.error("Failed to update password:", updateError);
+                return errorResponse("Failed to update password", 500);
+              }
             } else {
               console.error("Failed to create auth user:", createError);
-              return errorResponse("Failed to create auth account", 500);
+              return errorResponse("Failed to create auth account: " + createError.message, 500);
             }
           } else {
             authUserId = authUser.user.id;
           }
 
-          // Add staff role
+          // Add staff role to user_roles
           await supabaseAdmin.from("user_roles").upsert({
             user_id: authUserId,
             role: "staff"
           }, { onConflict: "user_id,role" });
         } else {
-          // Update password for existing auth user
-          await supabaseAdmin.auth.admin.updateUserById(authUserId, { password });
+          // Update password for existing Supabase Auth user
+          const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(authUserId, { 
+            password: password 
+          });
+          if (updateError) {
+            console.error("Failed to update password:", updateError);
+            return errorResponse("Failed to update password: " + updateError.message, 500);
+          }
         }
 
-        // Update staff record
+        // Update staff record with auth_user_id (no more password_hash!)
         const { error: updateError } = await supabaseAdmin
           .from("staff")
           .update({
-            password_hash: passwordHash,
+            auth_user_id: authUserId,
             password_set_at: new Date().toISOString(),
             failed_login_attempts: 0,
             locked_until: null,
-            auth_user_id: authUserId,
           })
           .eq("id", staffId);
 
         if (updateError) {
-          return errorResponse("Failed to set password", 500);
+          return errorResponse("Failed to update staff record", 500);
         }
 
         // Send WhatsApp notification
@@ -643,7 +523,7 @@ Deno.serve(async (req) => {
           .single();
 
         if (staff?.auth_user_id) {
-          // Sign out user from all sessions
+          // Sign out user from all sessions via Supabase Auth
           await supabaseAdmin.auth.admin.signOut(staff.auth_user_id, "global");
         }
 
@@ -670,8 +550,6 @@ function errorResponse(message: string, status: number) {
     { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 }
-
-// deno-lint-ignore no-explicit-any
 
 async function updateLoginAttempt(
   // deno-lint-ignore no-explicit-any
@@ -719,7 +597,7 @@ async function sendPasswordWhatsApp(
 
     const message = `🔐 *Staff Login Credentials*\n\n` +
       `Hi ${staff.full_name}, 👋\n\n` +
-      `Your login credentials have been ${staff.password_hash ? "updated" : "created"}:\n\n` +
+      `Your login credentials have been ${staff.password_set_at ? "updated" : "created"}:\n\n` +
       `📱 *Phone:* ${phone}\n` +
       `🔑 *Password:* ${password}\n` +
       `👤 *Role:* ${roleLabel}\n` +

@@ -138,7 +138,7 @@ export const StaffOverviewTab = ({
   }, {} as Record<string, number>);
 
   // Staff with login access
-  const staffWithLogin = allStaff.filter((s) => s.password_hash);
+  const staffWithLogin = allStaff.filter((s) => s.auth_user_id);
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
@@ -362,7 +362,7 @@ export const StaffOverviewTab = ({
                           ) : (
                             <Badge variant="secondary">Inactive</Badge>
                           )}
-                          {member.password_hash && (
+                          {member.auth_user_id && (
                             <Badge variant="outline" className="text-xs text-blue-600 flex items-center gap-1">
                               <KeyIcon className="w-3 h-3" />
                             </Badge>

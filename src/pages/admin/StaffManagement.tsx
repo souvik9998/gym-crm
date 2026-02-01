@@ -19,7 +19,7 @@ export interface Staff {
   session_fee: number;
   percentage_fee: number;
   specialization: string | null;
-  password_hash: string | null;
+  auth_user_id: string | null; // Supabase Auth user ID - indicates password is set
   password_set_at: string | null;
   is_active: boolean;
   created_at: string;

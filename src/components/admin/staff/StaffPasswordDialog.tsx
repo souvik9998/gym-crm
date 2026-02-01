@@ -89,10 +89,11 @@ export const StaffPasswordDialog = ({
       }
 
       // Log password set activity - DO NOT store password in logs for security
+      const hasExistingAuth = !!(staff as any).auth_user_id;
       await logAdminActivity({
         category: "staff",
         type: "staff_password_set",
-        description: `${staff.password_hash ? "Updated" : "Set"} password for "${staff.full_name}"`,
+        description: `${hasExistingAuth ? "Updated" : "Set"} password for "${staff.full_name}"`,
         entityType: "staff",
         entityId: staff.id,
         entityName: staff.full_name,
@@ -125,15 +126,18 @@ export const StaffPasswordDialog = ({
     }
   };
 
+  // Check if staff has Supabase Auth account (auth_user_id instead of password_hash)
+  const hasExistingPassword = !!(staff as any)?.auth_user_id;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md p-4 md:p-3">
         <DialogHeader className="pb-2 md:pb-2">
           <DialogTitle className="text-base md:text-lg">
-            {staff?.password_hash ? "Update Password" : "Set Password"}
+            {hasExistingPassword ? "Update Password" : "Set Password"}
           </DialogTitle>
           <DialogDescription className="text-xs md:text-sm">
-            {staff?.password_hash
+            {hasExistingPassword
               ? `Update login password for ${staff?.full_name}`
               : `Create login credentials for ${staff?.full_name}`}
           </DialogDescription>
@@ -197,7 +201,7 @@ export const StaffPasswordDialog = ({
             </Label>
           </div>
 
-          {staff?.password_hash && (
+          {hasExistingPassword && (
             <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning-foreground">
               ⚠️ This staff member already has a password. Setting a new password will replace the existing one.
             </div>
@@ -211,7 +215,7 @@ export const StaffPasswordDialog = ({
           <Button onClick={handleSubmit} disabled={isLoading}>
             {isLoading
               ? "Setting Password..."
-              : staff?.password_hash
+              : hasExistingPassword
               ? "Update Password"
               : "Set Password"}
           </Button>
