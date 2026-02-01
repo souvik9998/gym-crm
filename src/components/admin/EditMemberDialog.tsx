@@ -179,43 +179,68 @@ export const EditMemberDialog = ({
         return;
       }
 
-      // Update member table if needed
-      if (Object.keys(memberUpdates).length > 0) {
-        const { error: memberError } = await supabase
-          .from("members")
-          .update(memberUpdates)
-          .eq("id", member.id);
+      // STAFF PATH: Use staff-operations edge function for staff users
+      if (isStaffLoggedIn && currentBranch?.id) {
+        const { data, error } = await supabase.functions.invoke("staff-operations", {
+          body: {
+            action: "update-member",
+            branchId: currentBranch.id,
+            memberId: member.id,
+            name: memberUpdates.name,
+            phone: memberUpdates.phone,
+            gender: detailUpdates.gender,
+            photoIdType: detailUpdates.photo_id_type,
+            photoIdNumber: detailUpdates.photo_id_number,
+            address: detailUpdates.address,
+          },
+        });
 
-        if (memberError) throw memberError;
-      }
+        if (error) throw error;
+        
+        const response = typeof data === "string" ? JSON.parse(data) : data;
+        if (!response.success) {
+          throw new Error(response.error || "Failed to update member");
+        }
+      } else {
+        // ADMIN PATH: Direct Supabase calls
+        // Update member table if needed
+        if (Object.keys(memberUpdates).length > 0) {
+          const { error: memberError } = await supabase
+            .from("members")
+            .update(memberUpdates)
+            .eq("id", member.id);
 
-      // Update member_details if needed
-      if (Object.keys(detailUpdates).length > 0) {
-        const { data: existingDetails } = await supabase
-          .from("member_details")
-          .select("id")
-          .eq("member_id", member.id)
-          .maybeSingle();
+          if (memberError) throw memberError;
+        }
 
-        if (existingDetails) {
-          const { error: detailsError } = await supabase
+        // Update member_details if needed
+        if (Object.keys(detailUpdates).length > 0) {
+          const { data: existingDetails } = await supabase
             .from("member_details")
-            .update(detailUpdates)
-            .eq("member_id", member.id);
+            .select("id")
+            .eq("member_id", member.id)
+            .maybeSingle();
 
-          if (detailsError) throw detailsError;
-        } else {
-          const { error: detailsError } = await supabase
-            .from("member_details")
-            .insert({
-              member_id: member.id,
-              gender: gender || null,
-              photo_id_type: photoIdType || null,
-              photo_id_number: photoIdNumber || null,
-              address: address || null,
-            });
+          if (existingDetails) {
+            const { error: detailsError } = await supabase
+              .from("member_details")
+              .update(detailUpdates)
+              .eq("member_id", member.id);
 
-          if (detailsError) throw detailsError;
+            if (detailsError) throw detailsError;
+          } else {
+            const { error: detailsError } = await supabase
+              .from("member_details")
+              .insert({
+                member_id: member.id,
+                gender: gender || null,
+                photo_id_type: photoIdType || null,
+                photo_id_number: photoIdNumber || null,
+                address: address || null,
+              });
+
+            if (detailsError) throw detailsError;
+          }
         }
       }
 
