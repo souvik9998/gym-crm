@@ -24,6 +24,12 @@ interface ProtectedRouteProps {
   staffOnly?: boolean;
 }
 
+// Helper to check if email is a staff email pattern
+function isStaffEmail(email: string | undefined): boolean {
+  if (!email) return false;
+  return email.startsWith("staff_") && email.endsWith("@gym.local");
+}
+
 /**
  * ProtectedRoute guards admin pages based on user type and permissions.
  * 
@@ -45,20 +51,20 @@ export const ProtectedRoute = ({
     staffUser 
   } = useStaffAuth();
   
-  const [adminUser, setAdminUser] = useState<any>(null);
+  const [sessionUser, setSessionUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      setAdminUser(session?.user ?? null);
+      setSessionUser(session?.user ?? null);
       setIsLoading(false);
     };
     
     checkAuth();
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setAdminUser(session?.user ?? null);
+      setSessionUser(session?.user ?? null);
     });
 
     return () => subscription.unsubscribe();
@@ -73,8 +79,14 @@ export const ProtectedRoute = ({
     );
   }
 
-  const isAdminLoggedIn = !!adminUser;
-  const isAuthenticated = isAdminLoggedIn || isStaffLoggedIn;
+  // Determine user type based on session email pattern
+  // Staff users use email pattern: staff_{phone}@gym.local
+  const hasSession = !!sessionUser;
+  const isStaffSession = isStaffEmail(sessionUser?.email);
+  const isAdminSession = hasSession && !isStaffSession;
+
+  // Authentication states
+  const isAuthenticated = hasSession || isStaffLoggedIn;
 
   // Not authenticated at all - redirect to login
   if (!isAuthenticated) {
@@ -82,20 +94,21 @@ export const ProtectedRoute = ({
     return null;
   }
 
-  // Staff-only route but admin is trying to access
-  if (staffOnly && isAdminLoggedIn && !isStaffLoggedIn) {
+  // Staff-only route but admin (non-staff) is trying to access
+  if (staffOnly && isAdminSession) {
     // Redirect admin to their dashboard
     navigate("/admin/dashboard");
     return null;
   }
 
   // Admin-only route but staff is trying to access
-  if (requiredPermission === "admin_only" && isStaffLoggedIn && !isAdminLoggedIn) {
+  if (requiredPermission === "admin_only" && (isStaffLoggedIn || isStaffSession)) {
     return <AccessDenied message="This section is only accessible to administrators." />;
   }
 
   // Staff user trying to access - check permissions
-  if (isStaffLoggedIn && !isAdminLoggedIn && requiredPermission && requiredPermission !== "admin_only") {
+  const isEffectivelyStaff = isStaffLoggedIn || isStaffSession;
+  if (isEffectivelyStaff && !isAdminSession && requiredPermission && requiredPermission !== "admin_only") {
     const permissionsToCheck = Array.isArray(requiredPermission) 
       ? requiredPermission 
       : [requiredPermission];
