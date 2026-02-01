@@ -25,6 +25,11 @@ export interface StaffBranch {
   isPrimary: boolean;
 }
 
+function getStaffEmailFromPhone(phone: string): string {
+  const cleaned = phone.replace(/\D/g, "").replace(/^0/, "");
+  return `staff_${cleaned}@gym.local`;
+}
+
 interface StaffAuthContextType {
   staffUser: StaffUser | null;
   permissions: StaffPermissions | null;
@@ -181,42 +186,30 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       } catch (signOutError) {
         console.warn("SignOut before login failed (non-critical):", signOutError);
       }
-      
-      const { data, error } = await supabase.functions.invoke("staff-auth", {
-        body: { action: "login", phone, password },
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+
+      // RELIABLE PATH: Use native auth directly (email pattern staff_{phone}@gym.local)
+      // Then call verify-session to load staff record/permissions/branches.
+      const staffEmail = getStaffEmailFromPhone(phone);
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: staffEmail,
+        password,
       });
 
-      if (error) {
-        return { success: false, error: error.message };
+      if (signInError) {
+        return { success: false, error: signInError.message || "Login failed" };
       }
 
-      // Handle the response - check if it's a string
-      const response = typeof data === "string" ? JSON.parse(data) : data;
-
-      if (!response?.success) {
-        return { success: false, error: response?.error || "Login failed" };
+      const ok = await verifySession();
+      if (!ok) {
+        // If the session exists but isn't a valid staff account, clear it so the UI doesn't get stuck.
+        try {
+          await supabase.auth.signOut({ scope: "local" });
+        } catch {
+          // ignore
+        }
+        clearStaffState();
+        return { success: false, error: "Session established, but staff verification failed" };
       }
-
-      // Set the Supabase session with the tokens from edge function
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: response.session.access_token,
-        refresh_token: response.session.refresh_token,
-      });
-
-      if (sessionError) {
-        console.error("Error setting session:", sessionError);
-        return { success: false, error: "Failed to establish session" };
-      }
-
-      setStaffUser(response.staff);
-      setPermissions(response.permissions);
-      const staffBranches = response.branches || [];
-      setBranches(staffBranches);
-      
-      // Apply branch restrictions for staff
-      applyBranchRestrictions(staffBranches);
 
       return { success: true };
     } catch (error: any) {
