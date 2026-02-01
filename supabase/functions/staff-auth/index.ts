@@ -60,20 +60,35 @@ Deno.serve(async (req) => {
     const clientIP = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
     const userAgent = req.headers.get("user-agent") || "unknown";
 
-    // Parse body once and use throughout
+    // Parse body once and use throughout.
+    // IMPORTANT: a Request body can only be consumed once. Use req.clone() so
+    // other code paths never accidentally see an empty body.
     let body: Record<string, unknown> = {};
     try {
-      const text = await req.text();
-      if (text) {
-        body = JSON.parse(text);
+      const cloned = req.clone();
+      const contentType = cloned.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const json = await cloned.json().catch(() => null);
+        if (json && typeof json === "object") body = json as Record<string, unknown>;
+      } else {
+        const text = await cloned.text();
+        if (text) {
+          const json = JSON.parse(text);
+          if (json && typeof json === "object") body = json as Record<string, unknown>;
+        }
       }
     } catch {
       // Body parsing failed, continue with empty body
     }
 
     // Allow action from body if not in URL
-    if (!action && body.action && typeof body.action === "string") {
+    if (!action && typeof body.action === "string") {
       action = body.action;
+    }
+
+    // Normalize action (avoid mismatches like "Login" or trailing spaces)
+    if (typeof action === "string") {
+      action = action.trim().toLowerCase();
     }
 
     // Backward-compatible fallback: older clients may omit `action` for login
@@ -398,8 +413,6 @@ Deno.serve(async (req) => {
       }
 
       case "set-password": {
-        const body = await req.json().catch(() => ({}));
-        
         const validation = validateInput(SetPasswordSchema, body);
         if (!validation.success) {
           return validationErrorResponse(validation.error!, corsHeaders, validation.details);
@@ -531,8 +544,6 @@ Deno.serve(async (req) => {
           return errorResponse("Admin access required", 403);
         }
 
-        const body = await req.json().catch(() => ({}));
-        
         const validation = validateInput(RevokeSessionsSchema, body);
         if (!validation.success) {
           return validationErrorResponse(validation.error!, corsHeaders, validation.details);
@@ -559,6 +570,12 @@ Deno.serve(async (req) => {
       }
 
       default:
+        console.warn("Invalid staff-auth action", {
+          action,
+          method: req.method,
+          contentType: req.headers.get("content-type"),
+          bodyKeys: Object.keys(body || {}),
+        });
         return errorResponse("Invalid action", 400);
     }
   } catch (error: unknown) {
