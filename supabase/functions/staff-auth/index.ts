@@ -63,19 +63,17 @@ Deno.serve(async (req) => {
     const userAgent = req.headers.get("user-agent") || "unknown";
 
     // Parse body once and use throughout.
-    // NOTE: Some edge runtimes behave unexpectedly with Request.clone() for small JSON
-    // bodies, so parse from the original request exactly once.
+    // WORKAROUND: req.json() silently returns null in some edge runtime versions.
+    // Always read as text first, then JSON.parse for reliability.
     let body: Record<string, unknown> = {};
     const contentType = req.headers.get("content-type") || "";
     try {
-      if (contentType.includes("application/json")) {
-        const json = await req.json().catch(() => null);
-        if (json && typeof json === "object") body = json as Record<string, unknown>;
-      } else {
-        const text = await req.text();
-        if (text) {
-          const json = JSON.parse(text);
-          if (json && typeof json === "object") body = json as Record<string, unknown>;
+      const rawText = await req.text();
+      console.log("staff-auth: raw body text length:", rawText?.length || 0);
+      if (rawText && rawText.trim()) {
+        const parsed = JSON.parse(rawText);
+        if (parsed && typeof parsed === "object") {
+          body = parsed as Record<string, unknown>;
         }
       }
     } catch (e) {
@@ -86,6 +84,7 @@ Deno.serve(async (req) => {
       });
       // continue with empty body
     }
+    console.log("staff-auth: parsed body keys:", Object.keys(body));
 
     // Allow action from body if not in URL
     if (!action && typeof body.action === "string") {
