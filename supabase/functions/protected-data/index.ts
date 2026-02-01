@@ -10,6 +10,8 @@
  * - Role-based access (admin vs staff)
  * - Permission-based feature access
  * - Branch-level data isolation for staff
+ * 
+ * Version: 2.0
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -166,6 +168,170 @@ Deno.serve(async (req) => {
     }
 
     switch (action) {
+      case "health": {
+        // Health check endpoint - no permissions required, just valid auth
+        return new Response(
+          JSON.stringify({ 
+            status: "ok", 
+            isAdmin: auth.isAdmin, 
+            isStaff: auth.isStaff,
+            timestamp: new Date().toISOString(),
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "dashboard-stats": {
+        // Dashboard stats - admin or staff with view members permission
+        if (!hasPermission(auth, "can_view_members") && !auth.isAdmin) {
+          return errorResponse("Permission denied: cannot view dashboard", 403);
+        }
+
+        // Refresh subscription statuses
+        await supabase.rpc("refresh_subscription_statuses");
+
+        // Build query with branch filter
+        let membersCountQuery = supabase.from("members").select("*", { count: "exact", head: true });
+        if (branchId) {
+          membersCountQuery = membersCountQuery.eq("branch_id", branchId);
+        } else if (auth.isStaff && auth.branchIds?.length) {
+          membersCountQuery = membersCountQuery.in("branch_id", auth.branchIds);
+        }
+        const { count: totalMembers, error: membersCountError } = await membersCountQuery;
+        if (membersCountError) throw membersCountError;
+
+        // Get all members
+        let memberDataQuery = supabase.from("members").select("id");
+        if (branchId) {
+          memberDataQuery = memberDataQuery.eq("branch_id", branchId);
+        } else if (auth.isStaff && auth.branchIds?.length) {
+          memberDataQuery = memberDataQuery.in("branch_id", auth.branchIds);
+        }
+        const { data: membersData, error: membersDataError } = await memberDataQuery;
+        if (membersDataError) throw membersDataError;
+
+        // Get subscriptions for status calculations
+        let subscriptionsQuery = supabase
+          .from("subscriptions")
+          .select("member_id, status, end_date")
+          .order("end_date", { ascending: false });
+        if (branchId) {
+          subscriptionsQuery = subscriptionsQuery.eq("branch_id", branchId);
+        } else if (auth.isStaff && auth.branchIds?.length) {
+          subscriptionsQuery = subscriptionsQuery.in("branch_id", auth.branchIds);
+        }
+        const { data: allSubscriptions, error: subsError } = await subscriptionsQuery;
+        if (subsError) throw subsError;
+
+        // Group subscriptions by member (latest first)
+        const memberSubscriptions = new Map<string, { status: string; end_date: string }>();
+        if (allSubscriptions) {
+          for (const sub of allSubscriptions) {
+            if (!memberSubscriptions.has(sub.member_id)) {
+              memberSubscriptions.set(sub.member_id, { status: sub.status || "inactive", end_date: sub.end_date });
+            }
+          }
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        let activeCount = 0;
+        let expiringSoonCount = 0;
+        let expiredCount = 0;
+        let inactiveCount = 0;
+
+        // Calculate status based on actual dates
+        if (membersData) {
+          for (const member of membersData) {
+            const sub = memberSubscriptions.get(member.id);
+
+            if (!sub) {
+              continue;
+            }
+
+            if (sub.status === "inactive") {
+              inactiveCount++;
+              continue;
+            }
+
+            const endDate = new Date(sub.end_date);
+            endDate.setHours(0, 0, 0, 0);
+            const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            const isExpired = diffDays < 0;
+            const isExpiringSoon = !isExpired && diffDays >= 0 && diffDays <= 7;
+
+            if (isExpired) {
+              expiredCount++;
+            } else if (isExpiringSoon) {
+              expiringSoonCount++;
+            } else {
+              activeCount++;
+            }
+          }
+        }
+
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        let paymentsQuery = supabase
+          .from("payments")
+          .select("amount")
+          .eq("status", "success")
+          .gte("created_at", startOfMonth.toISOString());
+        if (branchId) {
+          paymentsQuery = paymentsQuery.eq("branch_id", branchId);
+        } else if (auth.isStaff && auth.branchIds?.length) {
+          paymentsQuery = paymentsQuery.in("branch_id", auth.branchIds);
+        }
+        const { data: payments, error: paymentsError } = await paymentsQuery;
+        if (paymentsError) throw paymentsError;
+
+        const monthlyRevenue = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+
+        // Get active PT subscriptions count
+        const todayStr = new Date().toISOString().split("T")[0];
+        let ptQuery = supabase
+          .from("pt_subscriptions")
+          .select("member_id")
+          .eq("status", "active")
+          .gte("end_date", todayStr);
+        if (branchId) {
+          ptQuery = ptQuery.eq("branch_id", branchId);
+        } else if (auth.isStaff && auth.branchIds?.length) {
+          ptQuery = ptQuery.in("branch_id", auth.branchIds);
+        }
+        const { data: activePTData, error: ptError } = await ptQuery;
+        if (ptError) throw ptError;
+
+        const uniquePTMembers = new Set(activePTData?.map((pt) => pt.member_id) || []).size;
+
+        // Get daily pass users count
+        let dailyPassQuery = supabase.from("daily_pass_users").select("*", { count: "exact", head: true });
+        if (branchId) {
+          dailyPassQuery = dailyPassQuery.eq("branch_id", branchId);
+        } else if (auth.isStaff && auth.branchIds?.length) {
+          dailyPassQuery = dailyPassQuery.in("branch_id", auth.branchIds);
+        }
+        const { count: dailyPassCount, error: dailyPassError } = await dailyPassQuery;
+        if (dailyPassError) throw dailyPassError;
+
+        return new Response(
+          JSON.stringify({
+            totalMembers: totalMembers || 0,
+            activeMembers: activeCount,
+            expiringSoon: expiringSoonCount,
+            expiredMembers: expiredCount,
+            inactiveMembers: inactiveCount,
+            monthlyRevenue,
+            withPT: uniquePTMembers,
+            dailyPassUsers: dailyPassCount || 0,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       case "trainers": {
         if (!hasPermission(auth, "can_view_members") && !hasPermission(auth, "can_manage_members")) {
           return errorResponse("Permission denied: cannot view trainers", 403);

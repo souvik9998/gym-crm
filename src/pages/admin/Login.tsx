@@ -23,7 +23,7 @@ const staffLoginSchema = z.object({
 
 const AdminLogin = () => {
   const navigate = useNavigate();
-  const { login: staffLogin } = useStaffAuth();
+  const { login: staffLogin, clearStaffState } = useStaffAuth();
   
   // Admin state
   const [email, setEmail] = useState("");
@@ -76,6 +76,9 @@ const AdminLogin = () => {
           setIsSignUp(false);
         }
       } else {
+        // CRITICAL: Clear any lingering staff state before admin login
+        clearStaffState();
+        
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password: adminPassword,

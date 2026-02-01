@@ -1,8 +1,10 @@
 /**
  * Dashboard API Layer
- * All Supabase queries for dashboard statistics
+ * All dashboard statistics via protected-data edge function
+ * Falls back to direct RLS-based queries if edge function fails
  */
 import { supabase } from "@/lib/supabase";
+import { protectedFetch } from "./authenticatedFetch";
 
 export interface DashboardStats {
   totalMembers: number;
@@ -16,9 +18,27 @@ export interface DashboardStats {
 }
 
 /**
- * Fetch dashboard statistics
+ * Fetch dashboard statistics via protected edge function
+ * Falls back to direct RLS queries if edge function fails
  */
 export async function fetchDashboardStats(branchId?: string): Promise<DashboardStats> {
+  try {
+    // Try protected edge function first
+    return await protectedFetch<DashboardStats>({
+      action: "dashboard-stats",
+      params: { branchId },
+    });
+  } catch (error) {
+    console.warn("Protected fetch failed, falling back to direct query:", error);
+    // Fallback to direct RLS-based query
+    return fetchDashboardStatsDirect(branchId);
+  }
+}
+
+/**
+ * Direct RLS-based dashboard stats (fallback)
+ */
+async function fetchDashboardStatsDirect(branchId?: string): Promise<DashboardStats> {
   // Refresh subscription statuses first
   await supabase.rpc("refresh_subscription_statuses");
 
