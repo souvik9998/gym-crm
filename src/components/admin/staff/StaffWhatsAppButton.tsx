@@ -30,8 +30,8 @@ export const StaffWhatsAppButton = ({
       return;
     }
 
-    // Only require password_hash if we're not providing a password directly
-    if (!password && !staff.password_hash) {
+    // Only require auth_user_id if we're not providing a password directly
+    if (!password && !staff.auth_user_id) {
       toast.error("Staff does not have login credentials set", {
         description: "Please set a password first before sending credentials via WhatsApp.",
       });
@@ -78,7 +78,7 @@ export const StaffWhatsAppButton = ({
   };
 
   // Can send if we have a password OR if staff already has credentials set
-  const canSend = !!(password || staff.password_hash);
+  const canSend = !!(password || staff.auth_user_id);
 
   return (
     <Button

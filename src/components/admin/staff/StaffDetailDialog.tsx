@@ -500,8 +500,8 @@ export const StaffDetailDialog = ({ staff, open, onOpenChange }: StaffDetailDial
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Password Set</span>
-                  <Badge variant={staff.password_hash ? "default" : "secondary"}>
-                    {staff.password_hash ? "Yes" : "No"}
+                  <Badge variant={staff.auth_user_id ? "default" : "secondary"}>
+                    {staff.auth_user_id ? "Yes" : "No"}
                   </Badge>
                 </div>
                 {staff.password_set_at && (

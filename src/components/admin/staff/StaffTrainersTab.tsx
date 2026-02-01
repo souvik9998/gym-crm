@@ -33,7 +33,7 @@ import { StaffPasswordDialog } from "./StaffPasswordDialog";
 import { StaffPermissionsDialog } from "./StaffPermissionsDialog";
 import { StaffBranchSelector } from "./StaffBranchSelector";
 import { StaffBranchAssignmentDialog } from "./StaffBranchAssignmentDialog";
-import { StaffCredentialsSection, hashPasswordForStorage } from "./StaffCredentialsSection";
+import { StaffCredentialsSection } from "./StaffCredentialsSection";
 import { StaffInlinePermissions, InlinePermissions, getDefaultPermissions } from "./StaffInlinePermissions";
 import { StaffWhatsAppButton, sendStaffCredentialsWhatsApp } from "./StaffWhatsAppButton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -157,12 +157,6 @@ export const StaffTrainersTab = ({
         }
       }
 
-      // Hash password if login is enabled (using same algorithm as edge function)
-      let passwordHash = null;
-      if (newTrainer.enableLogin && newTrainer.password) {
-        passwordHash = await hashPasswordForStorage(newTrainer.password);
-      }
-
       // Validate monthly fee for trainers
       if (!newTrainer.monthly_fee) {
         toast.error("Monthly fee (member charge) is required");
@@ -174,7 +168,7 @@ export const StaffTrainersTab = ({
         return;
       }
 
-      // Insert staff record
+      // Insert staff record (without password - will be set via edge function)
       const { data: staffData, error: staffError } = await supabase
         .from("staff")
         .insert({
@@ -188,8 +182,6 @@ export const StaffTrainersTab = ({
           monthly_salary: Number(newTrainer.monthly_salary) || 0,
           session_fee: Number(newTrainer.session_fee) || 0,
           percentage_fee: Number(newTrainer.percentage_fee) || 0,
-          password_hash: passwordHash,
-          password_set_at: passwordHash ? new Date().toISOString() : null,
         })
         .select()
         .single();
@@ -197,6 +189,23 @@ export const StaffTrainersTab = ({
       if (staffError) {
         toast.error("Error adding trainer", { description: staffError.message });
         return;
+      }
+
+      // Set password via edge function if login is enabled
+      if (newTrainer.enableLogin && newTrainer.password) {
+        const { error: passwordError } = await supabase.functions.invoke("staff-auth?action=set-password", {
+          body: {
+            staffId: staffData.id,
+            password: newTrainer.password,
+            sendWhatsApp: newTrainer.sendWhatsApp,
+          },
+        });
+        if (passwordError) {
+          console.error("Error setting password:", passwordError);
+          toast.warning("Trainer created but password setup failed", {
+            description: "Please set the password manually from the staff list.",
+          });
+        }
       }
 
       // Add branch assignments (reuse branchesToAssign from validation)
@@ -745,7 +754,7 @@ export const StaffTrainersTab = ({
                           {!trainer.is_active && (
                             <Badge variant="secondary" className="text-xs bg-destructive/10 text-destructive">Inactive</Badge>
                           )}
-                          {trainer.password_hash && (
+                          {trainer.auth_user_id && (
                             <Badge variant="outline" className="text-xs text-primary">Has Login</Badge>
                           )}
                         </div>
@@ -801,7 +810,7 @@ export const StaffTrainersTab = ({
                               setPasswordDialog({ open: true, staff: trainer });
                             }
                           }}
-                          title={trainer.password_hash ? "View/Update Password" : "Set Password"}
+                          title={trainer.auth_user_id ? "View/Update Password" : "Set Password"}
                         >
                           <KeyIcon className="w-4 h-4" />
                         </Button>

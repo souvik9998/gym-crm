@@ -33,7 +33,7 @@ import { StaffPasswordDialog } from "./StaffPasswordDialog";
 import { StaffPermissionsDialog } from "./StaffPermissionsDialog";
 import { StaffBranchSelector } from "./StaffBranchSelector";
 import { StaffBranchAssignmentDialog } from "./StaffBranchAssignmentDialog";
-import { StaffCredentialsSection, hashPasswordForStorage } from "./StaffCredentialsSection";
+import { StaffCredentialsSection } from "./StaffCredentialsSection";
 import { StaffInlinePermissions, InlinePermissions, getDefaultPermissions } from "./StaffInlinePermissions";
 import { StaffWhatsAppButton, sendStaffCredentialsWhatsApp } from "./StaffWhatsAppButton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -167,13 +167,7 @@ export const StaffOtherTab = ({
         }
       }
 
-      // Hash password if login is enabled (using same algorithm as edge function)
-      let passwordHash = null;
-      if (newStaff.enableLogin && newStaff.password) {
-        passwordHash = await hashPasswordForStorage(newStaff.password);
-      }
-
-      // Insert staff record
+      // Insert staff record (without password - will be set via edge function)
       const { data: staffData, error: staffError } = await supabase
         .from("staff")
         .insert({
@@ -184,8 +178,6 @@ export const StaffOtherTab = ({
           id_number: newStaff.id_number || null,
           salary_type: "monthly",
           monthly_salary: Number(newStaff.monthly_salary) || 0,
-          password_hash: passwordHash,
-          password_set_at: passwordHash ? new Date().toISOString() : null,
         })
         .select()
         .single();
@@ -193,6 +185,23 @@ export const StaffOtherTab = ({
       if (staffError) {
         toast.error("Error adding staff", { description: staffError.message });
         return;
+      }
+
+      // Set password via edge function if login is enabled
+      if (newStaff.enableLogin && newStaff.password) {
+        const { error: passwordError } = await supabase.functions.invoke("staff-auth?action=set-password", {
+          body: {
+            staffId: staffData.id,
+            password: newStaff.password,
+            sendWhatsApp: newStaff.sendWhatsApp,
+          },
+        });
+        if (passwordError) {
+          console.error("Error setting password:", passwordError);
+          toast.warning("Staff created but password setup failed", {
+            description: "Please set the password manually from the staff list.",
+          });
+        }
       }
 
       // Add branch assignments (reuse branchesToAssign from validation)
@@ -630,7 +639,7 @@ export const StaffOtherTab = ({
                           {!member.is_active && (
                             <Badge variant="secondary" className="text-xs">Inactive</Badge>
                           )}
-                          {member.password_hash && (
+                          {member.auth_user_id && (
                             <Badge variant="outline" className="text-xs text-green-600">Has Login</Badge>
                           )}
                         </div>
@@ -679,7 +688,7 @@ export const StaffOtherTab = ({
                               setPasswordDialog({ open: true, staff: member });
                             }
                           }}
-                          title={member.password_hash ? "View/Update Password" : "Set Password"}
+                          title={member.auth_user_id ? "View/Update Password" : "Set Password"}
                         >
                           <KeyIcon className="w-4 h-4" />
                         </Button>
