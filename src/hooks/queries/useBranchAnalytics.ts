@@ -420,9 +420,113 @@ export const useBranchTrainerMetricsQuery = (
   return useQuery({
     queryKey: ["branch-trainer-metrics", branchId, period, customDateFrom, customDateTo],
     queryFn: async () => {
-      // Implementation for trainer metrics - simplified for now
-      // This would need the full trainer metrics logic from BranchAnalytics
-      return [] as TrainerMetrics[];
+      const activeBranches = (allBranches || []).filter((b) => b.is_active && !b.deleted_at);
+      if (activeBranches.length === 0) return [];
+
+      const branchIds = branchId === "all" 
+        ? activeBranches.map((b) => b.id) 
+        : [branchId];
+
+      // Fetch trainers from specified branches
+      const { data: trainers } = await supabase
+        .from("personal_trainers")
+        .select("id, name, branch_id, payment_category, percentage_fee, session_fee, monthly_salary")
+        .eq("is_active", true)
+        .in("branch_id", branchIds);
+
+      if (!trainers || trainers.length === 0) return [];
+
+      // Calculate previous period
+      const currentStart = parseISO(dateFromStr);
+      const currentEnd = parseISO(dateToStr);
+      const periodDays = differenceInDays(currentEnd, currentStart);
+      const previousFrom = format(subDays(currentStart, periodDays + 1), "yyyy-MM-dd");
+      const previousTo = format(subDays(currentStart, 1), "yyyy-MM-dd");
+
+      // Fetch trainer metrics in parallel
+      const trainerMetricsPromises = trainers.map(async (trainer) => {
+        const branch = activeBranches.find((b) => b.id === trainer.branch_id);
+        if (!branch) return null;
+
+        const [
+          { data: currentPtSubs },
+          { data: allPtSubs },
+          { data: previousPtSubs },
+        ] = await Promise.all([
+          supabase
+            .from("pt_subscriptions")
+            .select("id, member_id, total_fee, created_at, status, end_date")
+            .eq("personal_trainer_id", trainer.id)
+            .gte("created_at", `${dateFromStr}T00:00:00`)
+            .lte("created_at", `${dateToStr}T23:59:59`),
+          supabase
+            .from("pt_subscriptions")
+            .select("id, member_id, total_fee, status, end_date")
+            .eq("personal_trainer_id", trainer.id),
+          supabase
+            .from("pt_subscriptions")
+            .select("id, member_id, total_fee")
+            .eq("personal_trainer_id", trainer.id)
+            .gte("created_at", `${previousFrom}T00:00:00`)
+            .lte("created_at", `${previousTo}T23:59:59`),
+        ]);
+
+        const currentRevenue = currentPtSubs?.reduce((sum, sub) => sum + Number(sub.total_fee || 0), 0) || 0;
+        const previousRevenue = previousPtSubs?.reduce((sum, sub) => sum + Number(sub.total_fee || 0), 0) || 0;
+        const revenueGrowth = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
+
+        const uniqueCurrentClients = new Set(currentPtSubs?.map((sub) => sub.member_id) || []).size;
+        const uniqueAllClients = new Set(allPtSubs?.map((sub) => sub.member_id) || []).size;
+        const uniquePreviousClients = new Set(previousPtSubs?.map((sub) => sub.member_id) || []).size;
+        const clientGrowth = uniquePreviousClients > 0 ? ((uniqueCurrentClients - uniquePreviousClients) / uniquePreviousClients) * 100 : 0;
+
+        const activeSubs = allPtSubs?.filter((sub) => sub.status === "active") || [];
+        const activeClients = new Set(activeSubs.map((sub) => sub.member_id)).size;
+
+        const churnedSubs = allPtSubs?.filter(
+          (sub) => sub.status === "expired" && 
+            new Date(sub.end_date) >= parseISO(dateFromStr) && 
+            new Date(sub.end_date) <= parseISO(dateToStr)
+        ) || [];
+        const churnedClients = churnedSubs.length;
+
+        const retentionRate = uniqueAllClients > 0 ? ((uniqueAllClients - churnedClients) / uniqueAllClients) * 100 : 100;
+        const renewalRate = uniqueAllClients > 0 ? (activeClients / uniqueAllClients) * 100 : 0;
+        const avgRevenuePerClient = uniqueCurrentClients > 0 ? currentRevenue / uniqueCurrentClients : 0;
+        const totalSessions = currentPtSubs?.length || 0;
+        const avgRevenuePerSession = totalSessions > 0 ? currentRevenue / totalSessions : 0;
+        const efficiencyScore = (revenueGrowth * 0.4 + retentionRate * 0.3 + (clientGrowth > 0 ? clientGrowth : 0) * 0.3) / 100;
+
+        return {
+          trainerId: trainer.id,
+          trainerName: trainer.name,
+          branchId: trainer.branch_id || "",
+          branchName: branch.name,
+          revenue: currentRevenue,
+          activeClients,
+          totalClients: uniqueAllClients,
+          newClients: uniqueCurrentClients,
+          churnedClients,
+          clientRetentionRate: retentionRate,
+          avgRevenuePerClient,
+          avgRevenuePerSession,
+          totalSessions,
+          renewalRate,
+          clientGrowthRate: clientGrowth,
+          efficiencyScore: efficiencyScore * 100,
+          paymentCategory: trainer.payment_category || "monthly_percentage",
+          percentageFee: trainer.percentage_fee || 0,
+          sessionFee: trainer.session_fee || 0,
+          monthlySalary: trainer.monthly_salary || 0,
+          previousPeriodRevenue: previousRevenue,
+          revenueGrowth,
+          previousPeriodClients: uniquePreviousClients,
+          clientGrowth,
+        } as TrainerMetrics;
+      });
+
+      const results = await Promise.all(trainerMetricsPromises);
+      return results.filter((m): m is TrainerMetrics => m !== null).sort((a, b) => b.efficiencyScore - a.efficiencyScore);
     },
     enabled: enabled && branchId !== null,
     staleTime: ANALYTICS_STALE_TIME,
