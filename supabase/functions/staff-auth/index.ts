@@ -55,14 +55,29 @@ Deno.serve(async (req) => {
     });
     
     const url = new URL(req.url);
-    const action = url.searchParams.get("action");
+    let action = url.searchParams.get("action");
 
     const clientIP = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
     const userAgent = req.headers.get("user-agent") || "unknown";
 
+    // Parse body once and use throughout
+    let body: Record<string, unknown> = {};
+    try {
+      const text = await req.text();
+      if (text) {
+        body = JSON.parse(text);
+      }
+    } catch {
+      // Body parsing failed, continue with empty body
+    }
+
+    // Allow action from body if not in URL
+    if (!action && body.action && typeof body.action === "string") {
+      action = body.action;
+    }
+
     switch (action) {
       case "login": {
-        const body = await req.json().catch(() => ({}));
         
         const validation = validateInput(LoginSchema, body);
         if (!validation.success) {
