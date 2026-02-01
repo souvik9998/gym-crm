@@ -161,6 +161,7 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
 
   // Filter nav items based on permissions
   const filterNavItems = (items: NavItem[]): NavItem[] => {
+    console.log("[Sidebar] Filtering nav items, isStaffUser:", isStaffUser, "permissions:", permissions);
     return items.filter((item) => {
       // Staff-only items should only show for staff users
       if (item.staffOnly && !isStaffUser) return false;
@@ -176,9 +177,13 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
         // For staff, check if they have the required permission(s)
         if (Array.isArray(item.requiresPermission)) {
           // OR logic - need at least one of the permissions
-          return item.requiresPermission.some(perm => permissions?.[perm] === true);
+          const hasPermission = item.requiresPermission.some(perm => permissions?.[perm] === true);
+          console.log("[Sidebar] Item:", item.title, "requires one of:", item.requiresPermission, "hasPermission:", hasPermission);
+          return hasPermission;
         } else {
-          return permissions?.[item.requiresPermission] === true;
+          const hasPermission = permissions?.[item.requiresPermission] === true;
+          console.log("[Sidebar] Item:", item.title, "requires:", item.requiresPermission, "hasPermission:", hasPermission);
+          return hasPermission;
         }
       }
 

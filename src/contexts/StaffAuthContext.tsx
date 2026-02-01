@@ -114,6 +114,9 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       const response = typeof data === "string" ? JSON.parse(data) : data;
 
       if (response?.valid) {
+        console.log("[Staff Auth] Permissions loaded:", response.permissions);
+        console.log("[Staff Auth] Staff user:", response.staff);
+        console.log("[Staff Auth] Branches:", response.branches);
         setStaffUser(response.staff);
         setPermissions(response.permissions);
         const staffBranches = response.branches || [];
