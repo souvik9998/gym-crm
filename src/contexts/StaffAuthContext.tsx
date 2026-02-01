@@ -25,16 +25,10 @@ export interface StaffBranch {
   isPrimary: boolean;
 }
 
-interface StaffSession {
-  token: string;
-  expiresAt: string;
-}
-
 interface StaffAuthContextType {
   staffUser: StaffUser | null;
   permissions: StaffPermissions | null;
   branches: StaffBranch[];
-  session: StaffSession | null;
   isLoading: boolean;
   isStaffLoggedIn: boolean;
   login: (phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -45,13 +39,10 @@ interface StaffAuthContextType {
 
 const StaffAuthContext = createContext<StaffAuthContextType | undefined>(undefined);
 
-const STORAGE_KEY = "staff_session";
-
 export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [staffUser, setStaffUser] = useState<StaffUser | null>(null);
   const [permissions, setPermissions] = useState<StaffPermissions | null>(null);
   const [branches, setBranches] = useState<StaffBranch[]>([]);
-  const [session, setSession] = useState<StaffSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   // Use a ref for the branch restriction callback to avoid circular dependency
@@ -65,8 +56,6 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     setStaffUser(null);
     setPermissions(null);
     setBranches([]);
-    setSession(null);
-    localStorage.removeItem(STORAGE_KEY);
     // Clear branch restrictions when logging out
     branchRestrictionCallbackRef.current?.(null);
   }, []);
@@ -84,12 +73,20 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   }, []);
 
-  const verifySession = useCallback(async (token: string): Promise<boolean> => {
+  // Verify session using the edge function
+  const verifySession = useCallback(async (): Promise<boolean> => {
     try {
+      // Get current Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        return false;
+      }
+
       const { data } = await supabase.functions.invoke("staff-auth?action=verify-session", {
         body: {},
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
       });
 
@@ -116,21 +113,24 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     const initAuth = async () => {
       setIsLoading(true);
       try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const { token, expiresAt } = JSON.parse(stored);
+        // Check if there's a Supabase session and if the user is staff
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          // Check if this user is a staff member
+          const { data: roleData } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", session.user.id)
+            .eq("role", "staff")
+            .single();
           
-          // Check if session is expired
-          if (new Date(expiresAt) <= new Date()) {
-            clearAuth();
-            return;
-          }
-
-          const isValid = await verifySession(token);
-          if (isValid) {
-            setSession({ token, expiresAt });
-          } else {
-            clearAuth();
+          if (roleData) {
+            // This is a staff user, verify their session
+            const isValid = await verifySession();
+            if (!isValid) {
+              clearAuth();
+            }
           }
         }
       } catch (error) {
@@ -142,6 +142,29 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     };
 
     initAuth();
+
+    // Listen to Supabase auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_OUT") {
+        clearAuth();
+      } else if (event === "SIGNED_IN" && session?.user) {
+        // Check if this is a staff user
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id)
+          .eq("role", "staff")
+          .single();
+        
+        if (roleData) {
+          await verifySession();
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [clearAuth, verifySession]);
 
   const login = async (phone: string, password: string): Promise<{ success: boolean; error?: string }> => {
@@ -165,14 +188,17 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
         return { success: false, error: response?.error || "Login failed" };
       }
 
-      // Store session
-      const sessionData = {
-        token: response.session.token,
-        expiresAt: response.session.expiresAt,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionData));
-      
-      setSession(sessionData);
+      // Set the Supabase session with the tokens from edge function
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: response.session.access_token,
+        refresh_token: response.session.refresh_token,
+      });
+
+      if (sessionError) {
+        console.error("Error setting session:", sessionError);
+        return { success: false, error: "Failed to establish session" };
+      }
+
       setStaffUser(response.staff);
       setPermissions(response.permissions);
       const staffBranches = response.branches || [];
@@ -190,34 +216,35 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const logout = async () => {
     try {
-      if (session?.token) {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.access_token) {
         await supabase.functions.invoke("staff-auth?action=logout", {
           body: {},
           headers: {
-            Authorization: `Bearer ${session.token}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
         });
       }
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
+      // Sign out from Supabase
+      await supabase.auth.signOut();
       clearAuth();
     }
   };
 
   const refreshSession = async () => {
-    if (session?.token) {
-      await verifySession(session.token);
-    }
+    await verifySession();
   };
 
   const value: StaffAuthContextType = {
     staffUser,
     permissions,
     branches,
-    session,
     isLoading,
-    isStaffLoggedIn: !!staffUser && !!session,
+    isStaffLoggedIn: !!staffUser,
     login,
     logout,
     refreshSession,

@@ -31,7 +31,7 @@ interface StaffPermissions {
   can_change_settings: boolean;
 }
 
-// Validate staff session and return staff details
+// Validate staff session using Supabase Auth and return staff details
 async function validateStaffSession(
   supabase: any,
   token: string
@@ -40,25 +40,29 @@ async function validateStaffSession(
     return { valid: false, error: "No session token provided" };
   }
 
-  const { data: session, error } = await supabase
-    .from("staff_sessions")
-    .select("staff_id, is_revoked, expires_at")
-    .eq("session_token", token)
+  // Verify using Supabase Auth
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+  
+  if (userError || !userData.user) {
+    return { valid: false, error: "Invalid or expired session" };
+  }
+
+  // Get staff by auth_user_id
+  const { data: staff, error: staffError } = await supabase
+    .from("staff")
+    .select("id, is_active")
+    .eq("auth_user_id", userData.user.id)
     .single();
 
-  if (error || !session) {
-    return { valid: false, error: "Invalid session token" };
+  if (staffError || !staff) {
+    return { valid: false, error: "Staff not found" };
   }
 
-  if (session.is_revoked) {
-    return { valid: false, error: "Session has been revoked" };
+  if (!staff.is_active) {
+    return { valid: false, error: "Account is deactivated" };
   }
 
-  if (new Date(session.expires_at) < new Date()) {
-    return { valid: false, error: "Session has expired" };
-  }
-
-  return { valid: true, staffId: session.staff_id };
+  return { valid: true, staffId: staff.id };
 }
 
 // Check if staff has specific permission

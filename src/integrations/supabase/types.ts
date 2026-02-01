@@ -799,6 +799,7 @@ export type Database = {
       }
       staff: {
         Row: {
+          auth_user_id: string | null
           created_at: string
           created_by: string | null
           failed_login_attempts: number
@@ -822,6 +823,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auth_user_id?: string | null
           created_at?: string
           created_by?: string | null
           failed_login_attempts?: number
@@ -845,6 +847,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auth_user_id?: string | null
           created_at?: string
           created_by?: string | null
           failed_login_attempts?: number
@@ -1346,6 +1349,7 @@ export type Database = {
           subscription_id: string
         }[]
       }
+      get_staff_id: { Args: { _user_id: string }; Returns: string }
       get_staff_id_from_session: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -1354,6 +1358,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
       refresh_subscription_statuses: { Args: never; Returns: undefined }
       staff_has_permission: {
         Args: { _permission: string; _staff_id: string }
@@ -1361,7 +1366,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "member"
+      app_role: "admin" | "member" | "staff"
       payment_mode: "online" | "cash"
       payment_status: "pending" | "success" | "failed"
       salary_type: "monthly" | "session_based" | "percentage" | "both"
@@ -1499,7 +1504,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "member"],
+      app_role: ["admin", "member", "staff"],
       payment_mode: ["online", "cash"],
       payment_status: ["pending", "success", "failed"],
       salary_type: ["monthly", "session_based", "percentage", "both"],

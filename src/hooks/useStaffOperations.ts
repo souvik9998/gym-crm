@@ -1,4 +1,5 @@
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StaffOperationResult<T = any> {
   data?: T;
@@ -6,14 +7,21 @@ interface StaffOperationResult<T = any> {
 }
 
 export const useStaffOperations = () => {
-  const { session, isStaffLoggedIn } = useStaffAuth();
+  const { isStaffLoggedIn } = useStaffAuth();
 
   const invokeStaffOperation = async <T = any>(
     action: string,
     body: Record<string, any>
   ): Promise<StaffOperationResult<T>> => {
-    if (!isStaffLoggedIn || !session?.token) {
+    if (!isStaffLoggedIn) {
       return { error: "Not authenticated as staff" };
+    }
+
+    // Get current Supabase session token
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      return { error: "No valid session" };
     }
 
     try {
@@ -23,7 +31,7 @@ export const useStaffOperations = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.token}`,
+            Authorization: `Bearer ${session.access_token}`,
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
           body: JSON.stringify(body),
