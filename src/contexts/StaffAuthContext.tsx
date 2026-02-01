@@ -182,30 +182,42 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const login = async (phone: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      // CRITICAL: Clear any existing Supabase admin session before staff login
-      // This prevents the bug where staff gets admin access due to lingering session
-      // Use scope: 'local' to avoid potential server-side issues
+      console.log("[Staff Login] Starting login for phone:", phone);
+      
+      // Clear any existing Supabase session (non-blocking with timeout)
+      // Don't let this block login for too long
       try {
-        await supabase.auth.signOut({ scope: 'local' });
+        const signOutPromise = supabase.auth.signOut({ scope: 'local' });
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('SignOut timeout')), 2000)
+        );
+        await Promise.race([signOutPromise, timeoutPromise]);
+        console.log("[Staff Login] Previous session cleared");
       } catch (signOutError) {
-        console.warn("SignOut before login failed (non-critical):", signOutError);
+        console.warn("[Staff Login] SignOut skipped (non-critical):", signOutError);
+        // Continue anyway - this is not critical
       }
 
-      // RELIABLE PATH: Use native auth directly (email pattern staff_{phone}@gym.local)
-      // Then call verify-session to load staff record/permissions/branches.
+      // Use native auth directly (email pattern staff_{phone}@gym.local)
       const staffEmail = getStaffEmailFromPhone(phone);
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      console.log("[Staff Login] Attempting signIn with email:", staffEmail);
+      
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: staffEmail,
         password,
       });
+
+      console.log("[Staff Login] SignIn result:", { error: signInError?.message, hasSession: !!signInData?.session });
 
       if (signInError) {
         return { success: false, error: signInError.message || "Login failed" };
       }
 
+      console.log("[Staff Login] SignIn successful, verifying session...");
       const ok = await verifySession();
+      console.log("[Staff Login] Session verification result:", ok);
+      
       if (!ok) {
-        // If the session exists but isn't a valid staff account, clear it so the UI doesn't get stuck.
         try {
           await supabase.auth.signOut({ scope: "local" });
         } catch {
@@ -217,7 +229,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
 
       return { success: true };
     } catch (error: any) {
-      console.error("Login error:", error);
+      console.error("[Staff Login] Error:", error);
       return { success: false, error: error.message || "Login failed" };
     }
   };
