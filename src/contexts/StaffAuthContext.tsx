@@ -183,7 +183,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
       
       const { data, error } = await supabase.functions.invoke("staff-auth", {
-        body: { phone, password },
+        body: { action: "login", phone, password },
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

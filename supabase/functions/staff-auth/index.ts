@@ -76,6 +76,16 @@ Deno.serve(async (req) => {
       action = body.action;
     }
 
+    // Backward-compatible fallback: older clients may omit `action` for login
+    // but still send { phone, password }.
+    if (
+      !action &&
+      typeof body.phone === "string" &&
+      typeof body.password === "string"
+    ) {
+      action = "login";
+    }
+
     switch (action) {
       case "login": {
         
