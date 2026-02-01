@@ -1,5 +1,18 @@
+/**
+ * Staff Authentication Edge Function
+ * 
+ * Uses native Supabase Auth as the single source of truth for staff identity.
+ * Staff accounts use email format: staff_{phone}@gym.local
+ * 
+ * Security features:
+ * - Bcrypt password hashing (cost factor 12)
+ * - Account lockout after 5 failed attempts (15 min)
+ * - Inactive/suspended staff prevention
+ * - Login attempt tracking for audit
+ * - Native Supabase Auth sessions
+ */
+
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { encodeBase64, decodeBase64 } from "https://deno.land/std@0.220.1/encoding/base64.ts";
 import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 import {
   LoginSchema,
@@ -9,62 +22,40 @@ import {
   validationErrorResponse,
 } from "../_shared/validation.ts";
 
-const base64Encode = encodeBase64;
-const base64Decode = decodeBase64;
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Constants for security
+// Security constants
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 15;
-const SESSION_EXPIRY_HOURS = 24;
 const BCRYPT_COST = 12;
 
+// Staff email format for Supabase Auth
+function getStaffEmail(phone: string): string {
+  return `staff_${phone}@gym.local`;
+}
+
 // ============================================================================
-// Password Hashing with bcrypt (industry standard)
+// Password Hashing with bcrypt
 // ============================================================================
 
 async function hashPasswordBcrypt(password: string): Promise<string> {
   const salt = await bcrypt.genSalt(BCRYPT_COST);
   const hash = await bcrypt.hash(password, salt);
-  return `v2:${hash}`; // Version prefix for migration support
+  return `v2:${hash}`;
 }
 
 async function verifyPasswordBcrypt(password: string, hash: string): Promise<boolean> {
   return await bcrypt.compare(password, hash);
 }
 
-// ============================================================================
-// Legacy SHA-256 hashing (for migration support)
-// ============================================================================
-
-async function hashPasswordLegacy(password: string): Promise<string> {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const encoder = new TextEncoder();
-  const passwordData = encoder.encode(password);
-  
-  const combined = new Uint8Array(salt.length + passwordData.length);
-  combined.set(salt);
-  combined.set(passwordData, salt.length);
-  
-  let hash = await crypto.subtle.digest("SHA-256", combined);
-  for (let i = 0; i < 10000; i++) {
-    hash = await crypto.subtle.digest("SHA-256", hash);
-  }
-  
-  const hashArray = new Uint8Array(hash);
-  const result = new Uint8Array(salt.length + hashArray.length);
-  result.set(salt);
-  result.set(hashArray, salt.length);
-  
-  return base64Encode(result);
-}
-
+// Legacy SHA-256 support for migration
 async function verifyPasswordLegacy(password: string, storedHash: string): Promise<boolean> {
   try {
-    const decoded = base64Decode(storedHash);
+    const { decodeBase64 } = await import("https://deno.land/std@0.220.1/encoding/base64.ts");
+    const decoded = decodeBase64(storedHash);
     const salt = decoded.slice(0, 16);
     const storedHashBytes = decoded.slice(16);
     
@@ -80,47 +71,29 @@ async function verifyPasswordLegacy(password: string, storedHash: string): Promi
     }
     
     const hashArray = new Uint8Array(hash);
-    
     if (hashArray.length !== storedHashBytes.length) return false;
     for (let i = 0; i < hashArray.length; i++) {
       if (hashArray[i] !== storedHashBytes[i]) return false;
     }
     return true;
-  } catch (error) {
-    console.error("Legacy password verification error:", error);
+  } catch {
     return false;
   }
 }
 
-// ============================================================================
-// Universal Password Verification (supports both formats with auto-upgrade)
-// ============================================================================
-
+// Universal password verification with auto-upgrade
 async function verifyPasswordUniversal(
   password: string,
   storedHash: string
 ): Promise<{ valid: boolean; needsUpgrade: boolean }> {
-  // Check if it's new bcrypt format (v2:$2...)
   if (storedHash.startsWith("v2:")) {
     const hash = storedHash.substring(3);
     const valid = await verifyPasswordBcrypt(password, hash);
     return { valid, needsUpgrade: false };
   }
   
-  // Legacy SHA-256 format - verify and mark for upgrade
   const valid = await verifyPasswordLegacy(password, storedHash);
-  return { valid, needsUpgrade: valid }; // Upgrade on next successful login
-}
-
-// Generate secure session token
-function generateSessionToken(): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return base64Encode(array).replace(/[+/=]/g, (c) => {
-    if (c === '+') return '-';
-    if (c === '/') return '_';
-    return '';
-  });
+  return { valid, needsUpgrade: valid };
 }
 
 Deno.serve(async (req) => {
@@ -133,15 +106,16 @@ Deno.serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error("Supabase credentials not configured");
+      throw new Error("Server configuration error");
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
     
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
 
-    // Get client info for logging
     const clientIP = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
     const userAgent = req.headers.get("user-agent") || "unknown";
 
@@ -149,7 +123,6 @@ Deno.serve(async (req) => {
       case "login": {
         const body = await req.json().catch(() => ({}));
         
-        // Validate input with Zod schema
         const validation = validateInput(LoginSchema, body);
         if (!validation.success) {
           return validationErrorResponse(validation.error!, corsHeaders, validation.details);
@@ -157,8 +130,8 @@ Deno.serve(async (req) => {
         
         const { phone, password } = validation.data!;
         
-        // Log the login attempt
-        await supabase.from("staff_login_attempts").insert({
+        // Log attempt
+        await supabaseAdmin.from("staff_login_attempts").insert({
           phone,
           ip_address: clientIP,
           user_agent: userAgent,
@@ -166,177 +139,179 @@ Deno.serve(async (req) => {
           failure_reason: "pending",
         });
 
-        // Find staff by phone - prioritize staff with password set and active
-        const { data: staffList, error: staffError } = await supabase
+        // Find active staff with password
+        const { data: staffList, error: staffError } = await supabaseAdmin
           .from("staff")
           .select("*")
           .eq("phone", phone)
-          .eq("is_active", true)
           .order("password_set_at", { ascending: false, nullsFirst: false });
 
-        // Get the staff with password set, or the first one if none have passwords
-        const staff = staffList?.find(s => s.password_hash) || staffList?.[0];
+        const staff = staffList?.find(s => s.password_hash && s.is_active) || staffList?.find(s => s.is_active);
 
         if (staffError || !staff) {
-          await supabase
-            .from("staff_login_attempts")
-            .update({ failure_reason: "invalid_credentials" })
-            .eq("phone", phone)
-            .order("created_at", { ascending: false })
-            .limit(1);
-
-          return new Response(
-            JSON.stringify({ success: false, error: "Invalid phone number or password" }),
-            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          await updateLoginAttempt(supabaseAdmin, phone, "invalid_credentials");
+          return errorResponse("Invalid phone number or password", 401);
         }
 
-        // Check if account is locked
+        // Check account lock
         if (staff.locked_until && new Date(staff.locked_until) > new Date()) {
           const remainingMinutes = Math.ceil(
             (new Date(staff.locked_until).getTime() - Date.now()) / 60000
           );
-          
-          await supabase
-            .from("staff_login_attempts")
-            .update({ failure_reason: "account_locked" })
-            .eq("phone", phone)
-            .order("created_at", { ascending: false })
-            .limit(1);
-
+          await updateLoginAttempt(supabaseAdmin, phone, "account_locked");
           return new Response(
             JSON.stringify({ 
               success: false, 
-              error: `Account is locked. Try again in ${remainingMinutes} minutes.`,
+              error: `Account locked. Try again in ${remainingMinutes} minutes.`,
               locked: true 
             }),
             { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
 
-        // Check if staff is active
+        // Check inactive
         if (!staff.is_active) {
-          await supabase
-            .from("staff_login_attempts")
-            .update({ failure_reason: "account_inactive" })
-            .eq("phone", phone)
-            .order("created_at", { ascending: false })
-            .limit(1);
-
-          return new Response(
-            JSON.stringify({ success: false, error: "Account is deactivated. Contact admin." }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          await updateLoginAttempt(supabaseAdmin, phone, "account_inactive");
+          return errorResponse("Account is deactivated. Contact admin.", 403);
         }
 
-        // Check if password is set
+        // Check password exists
         if (!staff.password_hash) {
-          await supabase
-            .from("staff_login_attempts")
-            .update({ failure_reason: "no_password" })
-            .eq("phone", phone)
-            .order("created_at", { ascending: false })
-            .limit(1);
-
-          return new Response(
-            JSON.stringify({ success: false, error: "No password set. Contact admin." }),
-            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          await updateLoginAttempt(supabaseAdmin, phone, "no_password");
+          return errorResponse("No password set. Contact admin.", 401);
         }
 
-        // Verify password using universal verifier (supports legacy + bcrypt)
+        // Verify password
         const { valid: isValid, needsUpgrade } = await verifyPasswordUniversal(password, staff.password_hash);
 
         if (!isValid) {
           const newAttempts = (staff.failed_login_attempts || 0) + 1;
-          const updateData: any = { failed_login_attempts: newAttempts };
+          const updateData: Record<string, unknown> = { failed_login_attempts: newAttempts };
 
-          // Lock account if too many attempts
           if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
             const lockUntil = new Date();
             lockUntil.setMinutes(lockUntil.getMinutes() + LOCKOUT_DURATION_MINUTES);
             updateData.locked_until = lockUntil.toISOString();
           }
 
-          await supabase.from("staff").update(updateData).eq("id", staff.id);
-
-          await supabase
-            .from("staff_login_attempts")
-            .update({ failure_reason: "wrong_password" })
-            .eq("phone", phone)
-            .order("created_at", { ascending: false })
-            .limit(1);
+          await supabaseAdmin.from("staff").update(updateData).eq("id", staff.id);
+          await updateLoginAttempt(supabaseAdmin, phone, "wrong_password");
 
           const remainingAttempts = MAX_LOGIN_ATTEMPTS - newAttempts;
-          return new Response(
-            JSON.stringify({ 
-              success: false, 
-              error: remainingAttempts > 0 
-                ? `Invalid password. ${remainingAttempts} attempts remaining.`
-                : `Account locked for ${LOCKOUT_DURATION_MINUTES} minutes.`
-            }),
-            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          return errorResponse(
+            remainingAttempts > 0 
+              ? `Invalid password. ${remainingAttempts} attempts remaining.`
+              : `Account locked for ${LOCKOUT_DURATION_MINUTES} minutes.`,
+            401
           );
         }
 
-        // Upgrade password hash if using legacy format
+        // Upgrade legacy hash
         if (needsUpgrade) {
           console.log("Upgrading password hash to bcrypt for staff:", staff.id);
           const newHash = await hashPasswordBcrypt(password);
-          await supabase.from("staff").update({
+          await supabaseAdmin.from("staff").update({
             password_hash: newHash,
             password_set_at: new Date().toISOString(),
           }).eq("id", staff.id);
         }
 
-        // Successful login - reset failed attempts and update last login
-        await supabase.from("staff").update({
+        // Create or get Supabase Auth user
+        const staffEmail = getStaffEmail(phone);
+        let authUserId = staff.auth_user_id;
+
+        if (!authUserId) {
+          // Create auth user for staff
+          const { data: authUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+            email: staffEmail,
+            password: password,
+            email_confirm: true,
+            user_metadata: {
+              staff_id: staff.id,
+              role: staff.role,
+              full_name: staff.full_name,
+            }
+          });
+
+          if (createError) {
+            // User might already exist, try to get them
+            const { data: users } = await supabaseAdmin.auth.admin.listUsers();
+            const existingUser = users?.users?.find(u => u.email === staffEmail);
+            
+            if (existingUser) {
+              authUserId = existingUser.id;
+              // Update password for existing user
+              await supabaseAdmin.auth.admin.updateUserById(authUserId, { password });
+            } else {
+              console.error("Failed to create auth user:", createError);
+              return errorResponse("Authentication setup failed", 500);
+            }
+          } else {
+            authUserId = authUser.user.id;
+          }
+
+          // Link auth user to staff record
+          await supabaseAdmin.from("staff").update({
+            auth_user_id: authUserId
+          }).eq("id", staff.id);
+
+          // Add staff role
+          await supabaseAdmin.from("user_roles").upsert({
+            user_id: authUserId,
+            role: "staff"
+          }, { onConflict: "user_id,role" });
+        } else {
+          // Update password for existing auth user to ensure sync
+          await supabaseAdmin.auth.admin.updateUserById(authUserId, { password });
+        }
+
+        // Generate session via Supabase Auth
+        const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
+          type: "magiclink",
+          email: staffEmail,
+        });
+
+        // Sign in with password to get actual session tokens
+        const { data: signInData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+          email: staffEmail,
+          password: password,
+        });
+
+        if (signInError || !signInData.session) {
+          console.error("Sign in failed:", signInError);
+          return errorResponse("Failed to create session", 500);
+        }
+
+        // Reset failed attempts and update last login
+        await supabaseAdmin.from("staff").update({
           failed_login_attempts: 0,
           locked_until: null,
           last_login_at: new Date().toISOString(),
           last_login_ip: clientIP,
         }).eq("id", staff.id);
 
-        // Create session
-        const sessionToken = generateSessionToken();
-        const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + SESSION_EXPIRY_HOURS);
-
-        await supabase.from("staff_sessions").insert({
-          staff_id: staff.id,
-          session_token: sessionToken,
-          ip_address: clientIP,
-          user_agent: userAgent,
-          expires_at: expiresAt.toISOString(),
-        });
-
         // Get permissions
-        const { data: permissions } = await supabase
+        const { data: permissions } = await supabaseAdmin
           .from("staff_permissions")
           .select("*")
           .eq("staff_id", staff.id)
           .single();
 
-        // Get assigned branches
-        const { data: branchAssignments } = await supabase
+        // Get branch assignments
+        const { data: branchAssignments } = await supabaseAdmin
           .from("staff_branch_assignments")
           .select("branch_id, is_primary, branches(id, name)")
           .eq("staff_id", staff.id);
 
         // Update login attempt to success
-        await supabase
-          .from("staff_login_attempts")
-          .update({ success: true, failure_reason: null })
-          .eq("phone", phone)
-          .order("created_at", { ascending: false })
-          .limit(1);
+        await updateLoginAttempt(supabaseAdmin, phone, null, true);
 
-        // Log staff login activity - uses NULL admin_user_id to indicate staff action
+        // Log activity
         const primaryBranch = branchAssignments?.find(b => b.is_primary);
         const branchId = primaryBranch?.branch_id || branchAssignments?.[0]?.branch_id;
         
-        await supabase.from("admin_activity_logs").insert({
-          admin_user_id: null, // NULL indicates staff action, not admin
+        await supabaseAdmin.from("admin_activity_logs").insert({
+          admin_user_id: authUserId,
           activity_category: "staff",
           activity_type: "staff_logged_in",
           description: `Staff "${staff.full_name}" logged in successfully`,
@@ -348,10 +323,8 @@ Deno.serve(async (req) => {
             performed_by: "staff",
             staff_id: staff.id,
             staff_name: staff.full_name,
-            staff_phone: staff.phone,
             staff_role: staff.role,
             ip_address: clientIP,
-            user_agent: userAgent,
           },
         });
 
@@ -359,11 +332,14 @@ Deno.serve(async (req) => {
           JSON.stringify({
             success: true,
             session: {
-              token: sessionToken,
-              expiresAt: expiresAt.toISOString(),
+              access_token: signInData.session.access_token,
+              refresh_token: signInData.session.refresh_token,
+              expires_at: signInData.session.expires_at,
+              expires_in: signInData.session.expires_in,
             },
             staff: {
               id: staff.id,
+              authUserId: authUserId,
               fullName: staff.full_name,
               phone: staff.phone,
               role: staff.role,
@@ -379,7 +355,7 @@ Deno.serve(async (req) => {
             },
             branches: branchAssignments?.map(b => ({
               id: b.branch_id,
-              name: (b.branches as any)?.name,
+              name: (b.branches as unknown as { name: string })?.name,
               isPrimary: b.is_primary,
             })) || [],
           }),
@@ -389,36 +365,40 @@ Deno.serve(async (req) => {
 
       case "verify-session": {
         const authHeader = req.headers.get("authorization");
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        if (!authHeader?.startsWith("Bearer ")) {
           return new Response(
-            JSON.stringify({ valid: false, error: "No session token" }),
+            JSON.stringify({ valid: false, error: "No token provided" }),
             { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
 
         const token = authHeader.replace("Bearer ", "");
 
-        const { data: session, error: sessionError } = await supabase
-          .from("staff_sessions")
-          .select(`
-            *,
-            staff:staff_id (
-              id, full_name, phone, role, is_active
-            )
-          `)
-          .eq("session_token", token)
-          .eq("is_revoked", false)
-          .gt("expires_at", new Date().toISOString())
-          .single();
+        // Verify JWT via Supabase Auth
+        const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
 
-        if (sessionError || !session) {
+        if (userError || !user) {
           return new Response(
             JSON.stringify({ valid: false, error: "Invalid or expired session" }),
             { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
 
-        if (!(session.staff as any)?.is_active) {
+        // Get staff record linked to this auth user
+        const { data: staff, error: staffError } = await supabaseAdmin
+          .from("staff")
+          .select("id, full_name, phone, role, is_active")
+          .eq("auth_user_id", user.id)
+          .single();
+
+        if (staffError || !staff) {
+          return new Response(
+            JSON.stringify({ valid: false, error: "Staff record not found" }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (!staff.is_active) {
           return new Response(
             JSON.stringify({ valid: false, error: "Account deactivated" }),
             { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -426,27 +406,28 @@ Deno.serve(async (req) => {
         }
 
         // Get permissions
-        const { data: permissions } = await supabase
+        const { data: permissions } = await supabaseAdmin
           .from("staff_permissions")
           .select("*")
-          .eq("staff_id", (session.staff as any).id)
+          .eq("staff_id", staff.id)
           .single();
 
-        // Get assigned branches
-        const { data: branchAssignments } = await supabase
+        // Get branch assignments
+        const { data: branchAssignments } = await supabaseAdmin
           .from("staff_branch_assignments")
           .select("branch_id, is_primary, branches(id, name)")
-          .eq("staff_id", (session.staff as any).id);
+          .eq("staff_id", staff.id);
 
         return new Response(
           JSON.stringify({
             valid: true,
             staff: {
-              id: (session.staff as any).id,
-              fullName: (session.staff as any).full_name,
-              phone: (session.staff as any).phone,
-              role: (session.staff as any).role,
-              isActive: (session.staff as any).is_active,
+              id: staff.id,
+              authUserId: user.id,
+              fullName: staff.full_name,
+              phone: staff.phone,
+              role: staff.role,
+              isActive: staff.is_active,
             },
             permissions: permissions || {
               can_view_members: false,
@@ -458,7 +439,7 @@ Deno.serve(async (req) => {
             },
             branches: branchAssignments?.map(b => ({
               id: b.branch_id,
-              name: (b.branches as any)?.name,
+              name: (b.branches as unknown as { name: string })?.name,
               isPrimary: b.is_primary,
             })) || [],
           }),
@@ -468,54 +449,49 @@ Deno.serve(async (req) => {
 
       case "logout": {
         const authHeader = req.headers.get("authorization");
-        if (authHeader && authHeader.startsWith("Bearer ")) {
+        if (authHeader?.startsWith("Bearer ")) {
           const token = authHeader.replace("Bearer ", "");
           
-          // Get session info before revoking
-          const { data: sessionData } = await supabase
-            .from("staff_sessions")
-            .select(`
-              *,
-              staff:staff_id (id, full_name, phone, role)
-            `)
-            .eq("session_token", token)
-            .single();
+          // Get user info before signing out
+          const { data: { user } } = await supabaseAdmin.auth.getUser(token);
           
-          await supabase
-            .from("staff_sessions")
-            .update({ is_revoked: true })
-            .eq("session_token", token);
-          
-          // Log staff logout activity
-          if (sessionData?.staff) {
-            const staffInfo = sessionData.staff as any;
-            
-            // Get primary branch for this staff
-            const { data: branchAssignments } = await supabase
-              .from("staff_branch_assignments")
-              .select("branch_id, is_primary")
-              .eq("staff_id", staffInfo.id);
-            
-            const primaryBranch = branchAssignments?.find(b => b.is_primary);
-            const branchId = primaryBranch?.branch_id || branchAssignments?.[0]?.branch_id;
-            
-            await supabase.from("admin_activity_logs").insert({
-              admin_user_id: null, // NULL indicates staff action
-              activity_category: "staff",
-              activity_type: "staff_logged_out",
-              description: `Staff "${staffInfo.full_name}" logged out`,
-              entity_type: "staff",
-              entity_id: staffInfo.id,
-              entity_name: staffInfo.full_name,
-              branch_id: branchId,
-              metadata: {
-                performed_by: "staff",
-                staff_id: staffInfo.id,
-                staff_name: staffInfo.full_name,
-                staff_phone: staffInfo.phone,
-                staff_role: staffInfo.role,
-              },
-            });
+          if (user) {
+            // Get staff info for logging
+            const { data: staff } = await supabaseAdmin
+              .from("staff")
+              .select("id, full_name, phone, role")
+              .eq("auth_user_id", user.id)
+              .single();
+
+            if (staff) {
+              const { data: branchAssignments } = await supabaseAdmin
+                .from("staff_branch_assignments")
+                .select("branch_id, is_primary")
+                .eq("staff_id", staff.id);
+              
+              const primaryBranch = branchAssignments?.find(b => b.is_primary);
+              const branchId = primaryBranch?.branch_id || branchAssignments?.[0]?.branch_id;
+              
+              await supabaseAdmin.from("admin_activity_logs").insert({
+                admin_user_id: user.id,
+                activity_category: "staff",
+                activity_type: "staff_logged_out",
+                description: `Staff "${staff.full_name}" logged out`,
+                entity_type: "staff",
+                entity_id: staff.id,
+                entity_name: staff.full_name,
+                branch_id: branchId,
+                metadata: {
+                  performed_by: "staff",
+                  staff_id: staff.id,
+                  staff_name: staff.full_name,
+                  staff_role: staff.role,
+                },
+              });
+            }
+
+            // Sign out the user (invalidate the session)
+            await supabaseAdmin.auth.admin.signOut(token);
           }
         }
 
@@ -528,7 +504,6 @@ Deno.serve(async (req) => {
       case "set-password": {
         const body = await req.json().catch(() => ({}));
         
-        // Validate input with Zod schema
         const validation = validateInput(SetPasswordSchema, body);
         if (!validation.success) {
           return validationErrorResponse(validation.error!, corsHeaders, validation.details);
@@ -537,93 +512,82 @@ Deno.serve(async (req) => {
         const { staffId, password, sendWhatsApp } = validation.data!;
 
         // Get staff details
-        const { data: staff, error: staffError } = await supabase
+        const { data: staff, error: staffError } = await supabaseAdmin
           .from("staff")
           .select("*")
           .eq("id", staffId)
           .single();
 
         if (staffError || !staff) {
-          return new Response(
-            JSON.stringify({ success: false, error: "Staff not found" }),
-            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return errorResponse("Staff not found", 404);
         }
 
-        // Hash password with bcrypt (new standard)
+        // Hash password with bcrypt
         const passwordHash = await hashPasswordBcrypt(password);
 
-        // Update staff with password
-        const { error: updateError } = await supabase
+        // Create or update Supabase Auth user
+        const staffEmail = getStaffEmail(staff.phone);
+        let authUserId = staff.auth_user_id;
+
+        if (!authUserId) {
+          // Create auth user
+          const { data: authUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+            email: staffEmail,
+            password: password,
+            email_confirm: true,
+            user_metadata: {
+              staff_id: staff.id,
+              role: staff.role,
+              full_name: staff.full_name,
+            }
+          });
+
+          if (createError) {
+            // Try to find existing user
+            const { data: users } = await supabaseAdmin.auth.admin.listUsers();
+            const existingUser = users?.users?.find(u => u.email === staffEmail);
+            
+            if (existingUser) {
+              authUserId = existingUser.id;
+              await supabaseAdmin.auth.admin.updateUserById(authUserId, { password });
+            } else {
+              console.error("Failed to create auth user:", createError);
+              return errorResponse("Failed to create auth account", 500);
+            }
+          } else {
+            authUserId = authUser.user.id;
+          }
+
+          // Add staff role
+          await supabaseAdmin.from("user_roles").upsert({
+            user_id: authUserId,
+            role: "staff"
+          }, { onConflict: "user_id,role" });
+        } else {
+          // Update password for existing auth user
+          await supabaseAdmin.auth.admin.updateUserById(authUserId, { password });
+        }
+
+        // Update staff record
+        const { error: updateError } = await supabaseAdmin
           .from("staff")
           .update({
             password_hash: passwordHash,
             password_set_at: new Date().toISOString(),
             failed_login_attempts: 0,
             locked_until: null,
+            auth_user_id: authUserId,
           })
           .eq("id", staffId);
 
         if (updateError) {
-          return new Response(
-            JSON.stringify({ success: false, error: "Failed to set password" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return errorResponse("Failed to set password", 500);
         }
 
-        // Send WhatsApp notification if requested - using the PLAIN password before hashing
+        // Send WhatsApp notification
         let whatsAppSent = false;
         if (sendWhatsApp && staff.phone) {
-          try {
-            const PERISKOPE_API_KEY = Deno.env.get("PERISKOPE_API_KEY");
-            const PERISKOPE_PHONE = Deno.env.get("PERISKOPE_PHONE");
-
-            if (PERISKOPE_API_KEY && PERISKOPE_PHONE) {
-              const cleanPhone = staff.phone.replace(/\D/g, "").replace(/^0/, "");
-              const phoneWithCountry = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-
-              // Get branch assignments for staff
-              const { data: branchAssignments } = await supabase
-                .from("staff_branch_assignments")
-                .select("branches(name)")
-                .eq("staff_id", staffId);
-
-              const branchNames = branchAssignments?.map((a: any) => a.branches?.name).filter(Boolean) || [];
-              const branchDisplay = branchNames.length > 0 ? branchNames.join(", ") : "All Branches";
-              const roleLabel = staff.role ? staff.role.charAt(0).toUpperCase() + staff.role.slice(1) : "Staff";
-
-              const message = `🔐 *Staff Login Credentials*\n\n` +
-                `Hi ${staff.full_name}, 👋\n\n` +
-                `Your login credentials have been ${staff.password_hash ? "updated" : "created"}:\n\n` +
-                `📱 *Phone:* ${staff.phone}\n` +
-                `🔑 *Password:* ${password}\n` +
-                `👤 *Role:* ${roleLabel}\n` +
-                `📍 *Branch(es):* ${branchDisplay}\n\n` +
-                `🔗 Access the admin portal and use the Staff Login tab.\n\n` +
-                `⚠️ *SECURITY NOTICE:*\n` +
-                `• Delete this message after saving your password\n` +
-                `• Never share your credentials with anyone\n` +
-                `• Do not forward this message`;
-
-              const response = await fetch("https://api.periskope.app/v1/message/send", {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${PERISKOPE_API_KEY}`,
-                  "x-phone": PERISKOPE_PHONE,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  chat_id: `${phoneWithCountry}@c.us`,
-                  message,
-                }),
-              });
-
-              whatsAppSent = response.ok;
-            }
-          } catch (whatsappError) {
-            console.error("Error sending WhatsApp:", whatsappError);
-            // Don't fail the request if WhatsApp fails
-          }
+          whatsAppSent = await sendPasswordWhatsApp(supabaseAdmin, staff, password, staffId);
         }
 
         return new Response(
@@ -637,31 +601,33 @@ Deno.serve(async (req) => {
       }
 
       case "revoke-all-sessions": {
-        // Admin-only action to revoke all sessions for a staff member
         const authHeader = req.headers.get("authorization");
         if (!authHeader) {
-          return new Response(
-            JSON.stringify({ success: false, error: "Admin authentication required" }),
-            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return errorResponse("Admin authentication required", 401);
         }
 
         const token = authHeader.replace("Bearer ", "").trim();
-        const userSupabase = createClient(SUPABASE_URL, token, {
-          auth: { persistSession: false },
-        });
         
-        const { data: { user }, error: userError } = await userSupabase.auth.getUser();
+        // Verify admin
+        const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
         if (userError || !user) {
-          return new Response(
-            JSON.stringify({ success: false, error: "Invalid admin token" }),
-            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return errorResponse("Invalid admin token", 401);
+        }
+
+        // Check admin role
+        const { data: roleData } = await supabaseAdmin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("role", "admin")
+          .maybeSingle();
+
+        if (!roleData) {
+          return errorResponse("Admin access required", 403);
         }
 
         const body = await req.json().catch(() => ({}));
         
-        // Validate input
         const validation = validateInput(RevokeSessionsSchema, body);
         if (!validation.success) {
           return validationErrorResponse(validation.error!, corsHeaders, validation.details);
@@ -669,10 +635,17 @@ Deno.serve(async (req) => {
         
         const { staffId } = validation.data!;
 
-        await supabase
-          .from("staff_sessions")
-          .update({ is_revoked: true })
-          .eq("staff_id", staffId);
+        // Get staff auth user
+        const { data: staff } = await supabaseAdmin
+          .from("staff")
+          .select("auth_user_id")
+          .eq("id", staffId)
+          .single();
+
+        if (staff?.auth_user_id) {
+          // Sign out user from all sessions
+          await supabaseAdmin.auth.admin.signOut(staff.auth_user_id, "global");
+        }
 
         return new Response(
           JSON.stringify({ success: true }),
@@ -681,16 +654,97 @@ Deno.serve(async (req) => {
       }
 
       default:
-        return new Response(
-          JSON.stringify({ error: "Invalid action" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return errorResponse("Invalid action", 400);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Staff auth error:", error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return errorResponse(message, 500);
   }
 });
+
+// Helper functions
+function errorResponse(message: string, status: number) {
+  return new Response(
+    JSON.stringify({ success: false, error: message }),
+    { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
+// deno-lint-ignore no-explicit-any
+
+async function updateLoginAttempt(
+  // deno-lint-ignore no-explicit-any
+  supabase: any, 
+  phone: string, 
+  failureReason: string | null,
+  success = false
+) {
+  await supabase
+    .from("staff_login_attempts")
+    .update({ success, failure_reason: failureReason })
+    .eq("phone", phone)
+    .order("created_at", { ascending: false })
+    .limit(1);
+}
+
+async function sendPasswordWhatsApp(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  staff: Record<string, unknown>,
+  password: string,
+  staffId: string
+): Promise<boolean> {
+  try {
+    const PERISKOPE_API_KEY = Deno.env.get("PERISKOPE_API_KEY");
+    const PERISKOPE_PHONE = Deno.env.get("PERISKOPE_PHONE");
+
+    if (!PERISKOPE_API_KEY || !PERISKOPE_PHONE) return false;
+
+    const phone = staff.phone as string;
+    const cleanPhone = phone.replace(/\D/g, "").replace(/^0/, "");
+    const phoneWithCountry = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+
+    const { data: branchAssignments } = await supabase
+      .from("staff_branch_assignments")
+      .select("branches(name)")
+      .eq("staff_id", staffId);
+
+    const branchNames = branchAssignments?.map((a: Record<string, unknown>) => 
+      (a.branches as Record<string, unknown>)?.name
+    ).filter(Boolean) || [];
+    const branchDisplay = branchNames.length > 0 ? branchNames.join(", ") : "All Branches";
+    const role = staff.role as string;
+    const roleLabel = role ? role.charAt(0).toUpperCase() + role.slice(1) : "Staff";
+
+    const message = `🔐 *Staff Login Credentials*\n\n` +
+      `Hi ${staff.full_name}, 👋\n\n` +
+      `Your login credentials have been ${staff.password_hash ? "updated" : "created"}:\n\n` +
+      `📱 *Phone:* ${phone}\n` +
+      `🔑 *Password:* ${password}\n` +
+      `👤 *Role:* ${roleLabel}\n` +
+      `📍 *Branch(es):* ${branchDisplay}\n\n` +
+      `🔗 Access the admin portal and use the Staff Login tab.\n\n` +
+      `⚠️ *SECURITY NOTICE:*\n` +
+      `• Delete this message after saving your password\n` +
+      `• Never share your credentials with anyone`;
+
+    const response = await fetch("https://api.periskope.app/v1/message/send", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${PERISKOPE_API_KEY}`,
+        "x-phone": PERISKOPE_PHONE,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chat_id: `${phoneWithCountry}@c.us`,
+        message,
+      }),
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error("WhatsApp send error:", error);
+    return false;
+  }
+}

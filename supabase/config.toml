@@ -15,6 +15,15 @@ verify_jwt = false
 [functions.staff-operations]
 verify_jwt = false
 
+[functions.staff-auth]
+verify_jwt = false
+
+[functions.protected-data]
+verify_jwt = false
+
+[functions.public-data]
+verify_jwt = false
+
 # Run daily WhatsApp job every day at 9:00 AM IST (3:30 AM UTC)
 [[cron_jobs]]
 name = "daily-whatsapp-notifications"
