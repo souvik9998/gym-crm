@@ -61,24 +61,28 @@ Deno.serve(async (req) => {
     const userAgent = req.headers.get("user-agent") || "unknown";
 
     // Parse body once and use throughout.
-    // IMPORTANT: a Request body can only be consumed once. Use req.clone() so
-    // other code paths never accidentally see an empty body.
+    // NOTE: Some edge runtimes behave unexpectedly with Request.clone() for small JSON
+    // bodies, so parse from the original request exactly once.
     let body: Record<string, unknown> = {};
+    const contentType = req.headers.get("content-type") || "";
     try {
-      const cloned = req.clone();
-      const contentType = cloned.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
-        const json = await cloned.json().catch(() => null);
+        const json = await req.json().catch(() => null);
         if (json && typeof json === "object") body = json as Record<string, unknown>;
       } else {
-        const text = await cloned.text();
+        const text = await req.text();
         if (text) {
           const json = JSON.parse(text);
           if (json && typeof json === "object") body = json as Record<string, unknown>;
         }
       }
-    } catch {
-      // Body parsing failed, continue with empty body
+    } catch (e) {
+      console.warn("staff-auth: failed to parse request body", {
+        method: req.method,
+        contentType,
+        error: e instanceof Error ? e.message : String(e),
+      });
+      // continue with empty body
     }
 
     // Allow action from body if not in URL
