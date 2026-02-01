@@ -76,9 +76,13 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
   const isAuthenticated = !!adminUser || isStaffLoggedIn;
   if (!isAuthenticated) return null;
 
+  // Check if this is a staff session by examining the email pattern
+  // Staff users use email format: staff_{phone}@gym.local
+  const isStaffEmail = adminUser?.email?.startsWith("staff_") && adminUser?.email?.endsWith("@gym.local");
+  const isStaffSession = isStaffLoggedIn || isStaffEmail;
+  
   // Determine display name for header
-  const displayName = adminUser?.email || staffUser?.fullName || "User";
-  const isStaffSession = !adminUser && isStaffLoggedIn;
+  const displayName = isStaffSession ? (staffUser?.fullName || "Staff") : (adminUser?.email || "User");
 
   return (
     <div className="min-h-screen bg-background">
