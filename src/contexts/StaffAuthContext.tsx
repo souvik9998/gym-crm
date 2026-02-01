@@ -34,10 +34,17 @@ interface StaffAuthContextType {
   login: (phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  clearStaffState: () => void;
   setBranchRestrictionCallback: (callback: ((restriction: StaffBranchRestriction | null) => void) | null) => void;
 }
 
 const StaffAuthContext = createContext<StaffAuthContextType | undefined>(undefined);
+
+// Helper to check if email is a staff email
+function isStaffEmail(email: string | undefined): boolean {
+  if (!email) return false;
+  return email.startsWith("staff_") && email.endsWith("@gym.local");
+}
 
 export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [staffUser, setStaffUser] = useState<StaffUser | null>(null);
@@ -52,11 +59,11 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     branchRestrictionCallbackRef.current = callback;
   }, []);
 
-  const clearAuth = useCallback(() => {
+  // Public method to clear staff state (called when admin logs in)
+  const clearStaffState = useCallback(() => {
     setStaffUser(null);
     setPermissions(null);
     setBranches([]);
-    // Clear branch restrictions when logging out
     branchRestrictionCallbackRef.current?.(null);
   }, []);
 
@@ -80,6 +87,11 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
+        return false;
+      }
+
+      // CRITICAL: Skip verification for non-staff emails (admin users)
+      if (!isStaffEmail(session.user?.email)) {
         return false;
       }
 
@@ -113,29 +125,23 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     const initAuth = async () => {
       setIsLoading(true);
       try {
-        // Check if there's a Supabase session and if the user is staff
+        // Check if there's a Supabase session
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
-          // Check if this user is a staff member
-          const { data: roleData } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", session.user.id)
-            .eq("role", "staff")
-            .single();
-          
-          if (roleData) {
-            // This is a staff user, verify their session
+          // CRITICAL: Only verify staff session if the email matches staff pattern
+          // This prevents querying user_roles for admin users (which causes 406 errors)
+          if (isStaffEmail(session.user.email)) {
             const isValid = await verifySession();
             if (!isValid) {
-              clearAuth();
+              clearStaffState();
             }
           }
+          // If not a staff email, just skip - this is an admin user
         }
       } catch (error) {
         console.error("Auth init error:", error);
-        clearAuth();
+        clearStaffState();
       } finally {
         setIsLoading(false);
       }
@@ -146,18 +152,14 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     // Listen to Supabase auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_OUT") {
-        clearAuth();
+        clearStaffState();
       } else if (event === "SIGNED_IN" && session?.user) {
-        // Check if this is a staff user
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id)
-          .eq("role", "staff")
-          .single();
-        
-        if (roleData) {
+        // CRITICAL: Only process staff users
+        if (isStaffEmail(session.user.email)) {
           await verifySession();
+        } else {
+          // Admin user logged in - clear any lingering staff state
+          clearStaffState();
         }
       }
     });
@@ -165,7 +167,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     return () => {
       subscription.unsubscribe();
     };
-  }, [clearAuth, verifySession]);
+  }, [clearStaffState, verifySession]);
 
   const login = async (phone: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -231,7 +233,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     } finally {
       // Sign out from Supabase
       await supabase.auth.signOut();
-      clearAuth();
+      clearStaffState();
     }
   };
 
@@ -248,6 +250,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     login,
     logout,
     refreshSession,
+    clearStaffState,
     setBranchRestrictionCallback,
   };
 
