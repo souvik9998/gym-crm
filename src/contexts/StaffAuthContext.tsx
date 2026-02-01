@@ -100,14 +100,15 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
         return false;
       }
 
-      const { data } = await supabase.functions.invoke("staff-auth", {
-        body: { action: "verify-session" },
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+       // IMPORTANT: When using supabase-js `functions.invoke`, don't manually set
+       // `Content-Type` while passing an object body, otherwise the body can be
+       // coerced to the string "[object Object]" in some runtimes.
+       // Pass action via querystring to avoid body parsing issues entirely.
+       const { data } = await supabase.functions.invoke("staff-auth?action=verify-session", {
+         headers: {
+           Authorization: `Bearer ${session.access_token}`,
+         },
+       });
 
       // Parse response - check if it's a string
       const response = typeof data === "string" ? JSON.parse(data) : data;
@@ -223,14 +224,11 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.access_token) {
-        await supabase.functions.invoke("staff-auth", {
-          body: { action: "logout" },
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+         await supabase.functions.invoke("staff-auth?action=logout", {
+           headers: {
+             Authorization: `Bearer ${session.access_token}`,
+           },
+         });
       }
     } catch (error) {
       console.error("Logout error:", error);
