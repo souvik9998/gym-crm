@@ -3,10 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Hook to check if the current user is an admin (not staff)
- * Returns true if user has 'admin' role in user_roles table
+ * Returns true if user has 'admin', 'super_admin', or 'tenant_admin' role in user_roles table
  */
 export const useIsAdmin = () => {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
+  const [isTenantAdmin, setIsTenantAdmin] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -16,23 +18,27 @@ export const useIsAdmin = () => {
         
         if (!user) {
           setIsAdmin(false);
+          setIsSuperAdmin(false);
+          setIsTenantAdmin(false);
           setIsLoading(false);
           return;
         }
 
-        // Check if user has admin role
+        // Check if user has any admin role
         const { data, error } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", user.id)
-          .eq("role", "admin")
-          .maybeSingle();
+          .in("role", ["admin", "super_admin", "tenant_admin"]);
 
         if (error) {
           console.error("Error checking admin status:", error);
           setIsAdmin(false);
         } else {
-          setIsAdmin(!!data);
+          const roles = (data || []).map(r => r.role);
+          setIsAdmin(roles.length > 0);
+          setIsSuperAdmin(roles.includes("super_admin"));
+          setIsTenantAdmin(roles.includes("tenant_admin"));
         }
       } catch (error) {
         console.error("Error checking admin status:", error);
@@ -54,5 +60,10 @@ export const useIsAdmin = () => {
     };
   }, []);
 
-  return { isAdmin: isAdmin ?? false, isLoading };
+  return { 
+    isAdmin: isAdmin ?? false, 
+    isSuperAdmin,
+    isTenantAdmin,
+    isLoading 
+  };
 };
