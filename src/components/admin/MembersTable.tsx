@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, memo, useEffect, useRef } from "
 import { useQueryClient } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 import { supabase } from "@/integrations/supabase/client";
+import { SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
 import {
   Table,
   TableBody,
@@ -243,13 +244,13 @@ export const MembersTable = ({
       const accessToken = session?.access_token || null;
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
+        getEdgeFunctionUrl("send-whatsapp"),
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": accessToken ? `Bearer ${accessToken}` : `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
+            "Authorization": accessToken ? `Bearer ${accessToken}` : `Bearer ${SUPABASE_ANON_KEY}`,
+            "apikey": SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({
             memberIds: [memberId],
@@ -502,13 +503,13 @@ export const MembersTable = ({
       const accessToken = session?.access_token || null;
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-whatsapp`,
+        getEdgeFunctionUrl("send-whatsapp"),
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": accessToken ? `Bearer ${accessToken}` : `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
+            "Authorization": accessToken ? `Bearer ${accessToken}` : `Bearer ${SUPABASE_ANON_KEY}`,
+            "apikey": SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({
             memberIds: Array.from(selectedMembers),

@@ -5,9 +5,7 @@
  * Uses the public-data edge function which doesn't require authentication.
  */
 
-import { supabase } from "@/integrations/supabase/client";
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+import { SUPABASE_URL, SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
 
 export interface PublicMonthlyPackage {
   id: string;
@@ -46,12 +44,12 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
     if (branchId) params.append("branchId", branchId);
 
     const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/public-data?${params.toString()}`,
+      `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: SUPABASE_ANON_KEY,
         },
       }
     );
@@ -81,12 +79,12 @@ export async function fetchPublicTrainers(branchId?: string): Promise<PublicTrai
     if (branchId) params.append("branchId", branchId);
 
     const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/public-data?${params.toString()}`,
+      `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: SUPABASE_ANON_KEY,
         },
       }
     );
@@ -112,12 +110,12 @@ export async function fetchPublicBranch(branchId: string): Promise<PublicBranch 
     const params = new URLSearchParams({ action: "branch", branchId });
 
     const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/public-data?${params.toString()}`,
+      `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: SUPABASE_ANON_KEY,
         },
       }
     );
@@ -144,12 +142,12 @@ export async function fetchDefaultBranch(): Promise<PublicBranch | null> {
     const params = new URLSearchParams({ action: "default-branch" });
 
     const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/public-data?${params.toString()}`,
+      `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: SUPABASE_ANON_KEY,
         },
       }
     );
