@@ -8,15 +8,25 @@ This document provides step-by-step instructions to migrate your Gym QR Pro back
 
 ---
 
+## ⚠️ IMPORTANT: All Changes Target External Supabase
+
+From now on, **ALL database and backend changes** are applied to your independent Supabase project (`ydswesigiavvgllqrbze`), NOT the Lovable-managed backend. 
+
+The codebase is configured as follows:
+1. **Client Connection**: `src/integrations/supabase/client.ts` connects directly to `ydswesigiavvgllqrbze`
+2. **API Calls**: `src/lib/supabaseConfig.ts` contains hardcoded URLs for edge function calls
+3. **Edge Functions**: Must be deployed manually to `ydswesigiavvgllqrbze` via Supabase CLI
+
+---
+
 ## Table of Contents
 1. [Prerequisites](#prerequisites)
 2. [Step 1: Configure Secrets](#step-1-configure-secrets)
-3. [Step 2: Run Database Migration](#step-2-run-database-migration)
+3. [Step 2: Run Database Migrations](#step-2-run-database-migrations)
 4. [Step 3: Deploy Edge Functions](#step-3-deploy-edge-functions)
 5. [Step 4: Configure Cron Jobs](#step-4-configure-cron-jobs)
-6. [Step 5: Update Frontend Configuration](#step-5-update-frontend-configuration)
-7. [Step 6: Verify Migration](#step-6-verify-migration)
-8. [Security Checklist](#security-checklist)
+6. [Step 5: Verify Migration](#step-5-verify-migration)
+7. [Security Checklist](#security-checklist)
 
 ---
 
@@ -33,38 +43,53 @@ This document provides step-by-step instructions to migrate your Gym QR Pro back
 
 ## Step 1: Configure Secrets
 
-Navigate to your Supabase Dashboard → Settings → Vault → Secrets and add:
+Navigate to: **Supabase Dashboard → Settings → Edge Functions → Secrets**
 
 | Secret Name | Description | Required |
 |-------------|-------------|----------|
 | `RAZORPAY_KEY_ID` | Razorpay Key ID | ✅ |
 | `RAZORPAY_KEY_SECRET` | Razorpay Secret Key | ✅ |
 | `PERISKOPE_API_KEY` | Periskope WhatsApp API Key | ✅ |
-| `PERISKOPE_PHONE` | Periskope Phone (format: 91XXXXXXXXXX@c.us) | ✅ |
+| `PERISKOPE_PHONE` | Periskope Phone (format: 91XXXXXXXXXX) | ✅ |
 | `ADMIN_WHATSAPP_NUMBER` | Admin's WhatsApp for daily summaries | Optional |
 
 **Note:** `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are automatically available in Edge Functions.
 
 ---
 
-## Step 2: Run Database Migration
+## Step 2: Run Database Migrations
 
-Execute the complete schema migration SQL in your Supabase SQL Editor (Dashboard → SQL Editor → New Query).
+Execute the following SQL files in your Supabase SQL Editor:
+**Dashboard → SQL Editor → New Query**
 
-The SQL file is located at: `database/complete-schema-migration.sql`
+### Migration 1: Complete Base Schema
+File: `database/complete-schema-migration.sql`
 
 This includes:
 - All 24 tables with proper relationships
 - Enums: `app_role`, `payment_mode`, `payment_status`, `salary_type`, `staff_role`, `subscription_status`
-- Database functions (10 functions)
+- Database functions (10+ functions)
 - RLS policies (60+ policies)
 - Triggers for automatic updates
+
+### Migration 2: Multi-Tenant SaaS Extension
+File: `database/multi-tenant-migration.sql`
+
+This adds:
+- `tenants` table - Gym organizations
+- `tenant_limits` table - Resource quotas
+- `tenant_usage` table - Usage metering
+- `tenant_members` table - User-tenant mapping
+- `tenant_billing_info` table - Billing metadata
+- `platform_audit_logs` table - Super admin audit trail
+- Multi-tenant security functions
+- `super_admin` and `tenant_admin` roles
 
 ---
 
 ## Step 3: Deploy Edge Functions
 
-### Option A: Using Supabase CLI (Recommended)
+### Using Supabase CLI (Recommended)
 
 ```bash
 # Login to Supabase
@@ -74,32 +99,30 @@ supabase login
 supabase link --project-ref ydswesigiavvgllqrbze
 
 # Deploy all functions
-supabase functions deploy create-razorpay-order --no-verify-jwt
-supabase functions deploy verify-razorpay-payment --no-verify-jwt
-supabase functions deploy send-whatsapp --no-verify-jwt
-supabase functions deploy daily-whatsapp-job --no-verify-jwt
+supabase functions deploy public-data --no-verify-jwt
+supabase functions deploy protected-data --no-verify-jwt
 supabase functions deploy staff-auth --no-verify-jwt
 supabase functions deploy staff-operations --no-verify-jwt
-supabase functions deploy protected-data --no-verify-jwt
-supabase functions deploy public-data --no-verify-jwt
+supabase functions deploy send-whatsapp --no-verify-jwt
+supabase functions deploy create-razorpay-order --no-verify-jwt
+supabase functions deploy verify-razorpay-payment --no-verify-jwt
+supabase functions deploy daily-whatsapp-job --no-verify-jwt
+supabase functions deploy tenant-operations --no-verify-jwt
 ```
-
-### Option B: Manual Deployment
-
-Copy each function from `supabase/functions/` to your project and deploy via Dashboard.
 
 ### Edge Functions Summary
 
-| Function | JWT Verify | Purpose |
-|----------|------------|---------|
-| `create-razorpay-order` | false | Create payment orders |
-| `verify-razorpay-payment` | false | Verify payments & create subscriptions |
-| `send-whatsapp` | false | Send WhatsApp notifications |
-| `daily-whatsapp-job` | false | Cron job for daily notifications |
-| `staff-auth` | false | Staff login/logout/password management |
-| `staff-operations` | false | Staff CRUD operations with permissions |
-| `protected-data` | false | Authenticated data API |
-| `public-data` | false | Public registration data API |
+| Function | Purpose |
+|----------|---------|
+| `public-data` | Public registration data (packages, trainers, branches) |
+| `protected-data` | Authenticated data API (dashboard, members, ledger) |
+| `staff-auth` | Staff login/logout/password management |
+| `staff-operations` | Staff CRUD with permissions |
+| `send-whatsapp` | Send WhatsApp notifications |
+| `create-razorpay-order` | Create Razorpay payment orders |
+| `verify-razorpay-payment` | Verify payments & create subscriptions |
+| `daily-whatsapp-job` | Cron job for daily notifications |
+| `tenant-operations` | Multi-tenant management (super admin) |
 
 ---
 
@@ -107,7 +130,7 @@ Copy each function from `supabase/functions/` to your project and deploy via Das
 
 Enable `pg_cron` and `pg_net` extensions in Supabase Dashboard → Database → Extensions.
 
-Then run this SQL in SQL Editor:
+Then run this SQL:
 
 ```sql
 -- Schedule daily WhatsApp notifications at 9:00 AM IST (3:30 AM UTC)
@@ -117,56 +140,16 @@ SELECT cron.schedule(
   $$
   SELECT net.http_post(
     url := 'https://ydswesigiavvgllqrbze.supabase.co/functions/v1/daily-whatsapp-job',
-    headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb,
+    headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlkc3dlc2lnaWF2dmdsbHFyYnplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2MjA1NzUsImV4cCI6MjA4MzE5NjU3NX0.onumG_DlX_Ud4eBWsnqhhX-ZPhrfmYXBA5tNftSJD84"}'::jsonb,
     body := '{}'::jsonb
   ) AS request_id;
   $$
 );
 ```
 
-Replace `YOUR_ANON_KEY` with your project's anon key.
-
 ---
 
-## Step 5: Frontend Configuration (COMPLETED)
-
-The frontend has been updated to use hardcoded credentials for your new project:
-
-**Files Updated:**
-- `src/integrations/supabase/client.ts` - Supabase client with new project URL and anon key
-- `src/lib/supabaseConfig.ts` - Centralized config for edge function URLs
-- All API files (`src/api/*.ts`) - Now use centralized config
-- `src/hooks/useStaffOperations.ts` - Updated edge function calls
-- `src/components/admin/MembersTable.tsx` - Updated WhatsApp edge function calls
-
-**Note:** The `.env` file is managed by Lovable Cloud and points to the old project. The code overrides this by using hardcoded values.
-
----
-
-## Step 6: Multi-Tenant Schema (COMPLETED)
-
-The database has been extended with multi-tenant SaaS capabilities:
-
-**New Tables:**
-| Table | Purpose |
-|-------|---------|
-| `tenants` | Gym organizations (isolated accounts) |
-| `tenant_limits` | Custom resource limits per tenant |
-| `tenant_usage` | Monthly usage metering |
-| `tenant_members` | User ↔ Tenant role mapping |
-| `tenant_billing_info` | Billing metadata for future integration |
-| `platform_audit_logs` | Super-admin action audit trail |
-
-**New Roles:**
-- `super_admin` - Platform-wide management access
-- `tenant_admin` - Full tenant access (existing "admin" behavior)
-
-**New Edge Function:**
-- `tenant-operations` - Tenant management and limit enforcement
-
----
-
-## Step 7: Verify Migration
+## Step 5: Verify Migration
 
 ### Test Checklist
 
@@ -176,7 +159,7 @@ The database has been extended with multi-tenant SaaS capabilities:
    - Check WhatsApp notification sent
 
 2. **Admin Login**
-   - Login with admin credentials
+   - Login with admin credentials at `/admin`
    - Verify dashboard stats load
    - Check member list displays
 
@@ -186,22 +169,35 @@ The database has been extended with multi-tenant SaaS capabilities:
    - Test allowed operations
 
 4. **Edge Function Health**
-   - Call `GET /functions/v1/protected-data?action=health` with auth token
-   - Verify `200 OK` response
+   - Call `GET /functions/v1/public-data?action=default-branch`
+   - Verify response returns branch data
 
 ---
 
 ## Security Checklist
 
-- [ ] All tables have RLS enabled
-- [ ] All sensitive tables have proper policies
-- [ ] `user_roles` table is separate from profiles
-- [ ] Admin role verification uses `has_role()` function
-- [ ] Staff permissions checked via `staff_has_permission()`
-- [ ] Edge functions validate JWT tokens
-- [ ] Secrets are stored in Supabase Vault, not in code
-- [ ] CORS headers configured on all edge functions
-- [ ] Branch isolation enforced via `branch_id` filtering
+- [x] All tables have RLS enabled
+- [x] All sensitive tables have proper policies
+- [x] `user_roles` table is separate from profiles
+- [x] Admin role verification uses `has_role()` function
+- [x] Staff permissions checked via `staff_has_permission()`
+- [x] Edge functions validate JWT tokens where needed
+- [ ] Secrets are stored in Supabase Dashboard (Edge Functions → Secrets)
+- [x] CORS headers configured on all edge functions
+- [x] Branch isolation enforced via `branch_id` filtering
+- [x] Tenant isolation via `tenant_id` column
+
+---
+
+## Frontend Configuration (COMPLETED)
+
+The frontend is configured to use your independent Supabase project:
+
+| File | Purpose |
+|------|---------|
+| `src/integrations/supabase/client.ts` | Supabase client with hardcoded project URL |
+| `src/lib/supabaseConfig.ts` | Centralized config for edge function URLs |
+| `src/api/*.ts` | All API files use centralized config |
 
 ---
 
@@ -209,8 +205,9 @@ The database has been extended with multi-tenant SaaS capabilities:
 
 If migration fails:
 1. Keep old project running in parallel
-2. Revert `.env` to original Lovable Cloud values
-3. Investigate errors in new project
+2. Check Supabase Dashboard → Logs → Edge Functions for errors
+3. Check Supabase Dashboard → Logs → Database Logs for SQL errors
+4. Review Browser DevTools → Network tab for API errors
 
 ---
 
