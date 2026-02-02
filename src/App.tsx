@@ -30,6 +30,12 @@ const Logs = lazy(() => import("./pages/admin/Logs"));
 const StaffManagement = lazy(() => import("./pages/admin/StaffManagement"));
 const TrainersPage = lazy(() => import("./pages/admin/Trainers"));
 
+// Lazy load Super Admin pages
+const SuperAdminDashboard = lazy(() => import("./pages/superadmin/Dashboard"));
+const TenantList = lazy(() => import("./pages/superadmin/TenantList"));
+const CreateTenant = lazy(() => import("./pages/superadmin/CreateTenant"));
+const AuditLogs = lazy(() => import("./pages/superadmin/AuditLogs"));
+
 // Bridge component to connect StaffAuth with BranchContext
 const StaffBranchBridge = ({ children }: { children: React.ReactNode }) => {
   const { setStaffBranchRestriction } = useBranch();
@@ -155,6 +161,28 @@ const App = () => (
                   </Suspense>
                 } />
               </Route>
+              
+              {/* Super Admin Routes */}
+              <Route path="/superadmin/dashboard" element={
+                <Suspense fallback={<PageLoader />}>
+                  <SuperAdminDashboard />
+                </Suspense>
+              } />
+              <Route path="/superadmin/tenants" element={
+                <Suspense fallback={<PageLoader />}>
+                  <TenantList />
+                </Suspense>
+              } />
+              <Route path="/superadmin/tenants/new" element={
+                <Suspense fallback={<PageLoader />}>
+                  <CreateTenant />
+                </Suspense>
+              } />
+              <Route path="/superadmin/audit-logs" element={
+                <Suspense fallback={<PageLoader />}>
+                  <AuditLogs />
+                </Suspense>
+              } />
               
               {/* Branch-specific routes */}
               <Route path="/b/:branchId" element={<Index />} />
