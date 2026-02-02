@@ -125,9 +125,10 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
 
       // Filter by tenant_id if user has a tenant
       // Note: Super admins have tenantId = null, so they see all branches
-      // Regular admins/tenant admins only see branches with their tenant_id OR null tenant_id (legacy)
+      // Regular admins/tenant admins only see branches with their tenant_id
+      // RLS policies will enforce isolation, but we filter here for better UX
       if (tenantId) {
-        query = query.or(`tenant_id.eq.${tenantId},tenant_id.is.null`);
+        query = query.eq("tenant_id", tenantId);
       }
 
       const { data, error } = await query;
