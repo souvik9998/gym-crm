@@ -13,6 +13,7 @@ export interface Branch {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  tenant_id: string | null;
 }
 
 export interface StaffBranchRestriction {
@@ -29,6 +30,7 @@ interface BranchContextType {
   isLoading: boolean;
   isStaffRestricted: boolean;
   setStaffBranchRestriction: (restriction: StaffBranchRestriction | null) => void;
+  tenantId: string | null;
 }
 
 const BranchContext = createContext<BranchContextType | undefined>(undefined);
@@ -41,6 +43,8 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [staffRestriction, setStaffRestriction] = useState<StaffBranchRestriction | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  const [userChecked, setUserChecked] = useState(false);
   
   // Get persisted branch ID from Zustand store
   const { selectedBranchId, setSelectedBranchId } = useDashboardStore();
@@ -60,13 +64,73 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
     ? allBranches.filter(b => staffRestriction!.branchIds.includes(b.id))
     : allBranches;
 
+  // Get user's tenant ID on mount
+  useEffect(() => {
+    const fetchUserTenant = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setUserChecked(true);
+          return;
+        }
+
+        // Check if super_admin (can see all branches)
+        const { data: superAdminRole } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("role", "super_admin")
+          .maybeSingle();
+
+        if (superAdminRole) {
+          // Super admin - no tenant restriction
+          setTenantId(null);
+          setUserChecked(true);
+          return;
+        }
+
+        // Get user's tenant
+        const { data: tenantMember } = await supabase
+          .from("tenant_members")
+          .select("tenant_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        setTenantId(tenantMember?.tenant_id || null);
+        setUserChecked(true);
+      } catch (error) {
+        console.error("Error fetching user tenant:", error);
+        setUserChecked(true);
+      }
+    };
+
+    fetchUserTenant();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      fetchUserTenant();
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const fetchBranches = useCallback(async () => {
+    if (!userChecked) return;
+    
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("branches")
         .select("*")
         .order("name");
+
+      // Filter by tenant_id if user has a tenant
+      // Note: Super admins have tenantId = null, so they see all branches
+      // Regular admins/tenant admins only see branches with their tenant_id OR null tenant_id (legacy)
+      if (tenantId) {
+        query = query.or(`tenant_id.eq.${tenantId},tenant_id.is.null`);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error("Error fetching branches:", error);
@@ -138,7 +202,7 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [staffRestriction, selectedBranchId, setSelectedBranchId, isInitialized]);
+  }, [staffRestriction, selectedBranchId, setSelectedBranchId, isInitialized, userChecked, tenantId]);
 
   const setCurrentBranch = useCallback((branch: Branch) => {
     // For staff users, verify the branch is in their allowed list
@@ -176,6 +240,7 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
         isLoading,
         isStaffRestricted,
         setStaffBranchRestriction,
+        tenantId,
       }}
     >
       {children}

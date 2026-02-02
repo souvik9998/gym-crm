@@ -1,27 +1,26 @@
 import { QueryClient } from "@tanstack/react-query";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 
 // Stale times for different data types (in milliseconds)
+// DISABLED CACHING: Set to 0 for immediate refetch
 export const STALE_TIMES = {
-  STATIC: 1000 * 60 * 30, // 30 minutes for rarely changing data
-  SEMI_STATIC: 1000 * 60 * 10, // 10 minutes for packages, trainers
-  DYNAMIC: 1000 * 60 * 5, // 5 minutes for members, payments (updated per user request)
-  REAL_TIME: 1000 * 60 * 5, // 5 minutes for dashboard stats (updated per user request)
+  STATIC: 0, // No caching for now
+  SEMI_STATIC: 0, // No caching for now
+  DYNAMIC: 0, // No caching - always fresh
+  REAL_TIME: 0, // No caching - always fresh
 } as const;
 
-// Cache time (gcTime) - 30 minutes
-export const GC_TIME = 1000 * 60 * 30;
+// Cache time (gcTime) - 1 minute (minimal)
+export const GC_TIME = 1000 * 60;
 
-// Create optimized QueryClient
+// Create QueryClient without persistence
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Data stays fresh for 5 minutes (per user request)
-      staleTime: STALE_TIMES.DYNAMIC,
-      // Keep unused data in cache for 30 minutes  
+      // No stale time - always refetch
+      staleTime: 0,
+      // Minimal cache time
       gcTime: GC_TIME,
-      // Don't refetch on window focus (per user request)
+      // Don't refetch on window focus
       refetchOnWindowFocus: false,
       // Don't refetch on reconnect automatically
       refetchOnReconnect: false,
@@ -36,16 +35,3 @@ export const queryClient = new QueryClient({
     },
   },
 });
-
-// Create storage persister for React Query cache
-export const queryPersister = createSyncStoragePersister({
-  storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-  key: "gym-crm-query-cache",
-  // Throttle writes to localStorage
-  throttleTime: 1000,
-});
-
-// Max age for persisted cache - 24 hours
-export const PERSIST_MAX_AGE = 1000 * 60 * 60 * 24;
-
-export { PersistQueryClientProvider };
