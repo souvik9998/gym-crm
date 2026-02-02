@@ -50,6 +50,7 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
         headers: {
           "Content-Type": "application/json",
           apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
       }
     );
@@ -85,6 +86,7 @@ export async function fetchPublicTrainers(branchId?: string): Promise<PublicTrai
         headers: {
           "Content-Type": "application/json",
           apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
       }
     );
@@ -116,6 +118,7 @@ export async function fetchPublicBranch(branchId: string): Promise<PublicBranch 
         headers: {
           "Content-Type": "application/json",
           apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
       }
     );
@@ -148,6 +151,7 @@ export async function fetchDefaultBranch(): Promise<PublicBranch | null> {
         headers: {
           "Content-Type": "application/json",
           apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
       }
     );
