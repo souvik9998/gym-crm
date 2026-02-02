@@ -128,19 +128,45 @@ Replace `YOUR_ANON_KEY` with your project's anon key.
 
 ---
 
-## Step 5: Update Frontend Configuration
+## Step 5: Frontend Configuration (COMPLETED)
 
-Update `.env` file with your new project credentials:
+The frontend has been updated to use hardcoded credentials for your new project:
 
-```env
-VITE_SUPABASE_PROJECT_ID="ydswesigiavvgllqrbze"
-VITE_SUPABASE_PUBLISHABLE_KEY="YOUR_NEW_ANON_KEY"
-VITE_SUPABASE_URL="https://ydswesigiavvgllqrbze.supabase.co"
-```
+**Files Updated:**
+- `src/integrations/supabase/client.ts` - Supabase client with new project URL and anon key
+- `src/lib/supabaseConfig.ts` - Centralized config for edge function URLs
+- All API files (`src/api/*.ts`) - Now use centralized config
+- `src/hooks/useStaffOperations.ts` - Updated edge function calls
+- `src/components/admin/MembersTable.tsx` - Updated WhatsApp edge function calls
+
+**Note:** The `.env` file is managed by Lovable Cloud and points to the old project. The code overrides this by using hardcoded values.
 
 ---
 
-## Step 6: Verify Migration
+## Step 6: Multi-Tenant Schema (COMPLETED)
+
+The database has been extended with multi-tenant SaaS capabilities:
+
+**New Tables:**
+| Table | Purpose |
+|-------|---------|
+| `tenants` | Gym organizations (isolated accounts) |
+| `tenant_limits` | Custom resource limits per tenant |
+| `tenant_usage` | Monthly usage metering |
+| `tenant_members` | User ↔ Tenant role mapping |
+| `tenant_billing_info` | Billing metadata for future integration |
+| `platform_audit_logs` | Super-admin action audit trail |
+
+**New Roles:**
+- `super_admin` - Platform-wide management access
+- `tenant_admin` - Full tenant access (existing "admin" behavior)
+
+**New Edge Function:**
+- `tenant-operations` - Tenant management and limit enforcement
+
+---
+
+## Step 7: Verify Migration
 
 ### Test Checklist
 

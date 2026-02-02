@@ -5,7 +5,7 @@
  * Uses the protected-data edge function which requires authorization.
  */
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+import { SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
 
 export interface FullTrainer {
   id: string;
@@ -72,12 +72,12 @@ export async function fetchProtectedTrainers(options: FetchOptions): Promise<Ful
     if (options.branchId) params.append("branchId", options.branchId);
 
     const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/protected-data?${params.toString()}`,
+      `${getEdgeFunctionUrl("protected-data")}?${params.toString()}`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${options.authToken}`,
         },
       }
@@ -105,12 +105,12 @@ export async function fetchAllProtectedTrainers(options: FetchOptions): Promise<
     if (options.branchId) params.append("branchId", options.branchId);
 
     const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/protected-data?${params.toString()}`,
+      `${getEdgeFunctionUrl("protected-data")}?${params.toString()}`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${options.authToken}`,
         },
       }
@@ -144,12 +144,12 @@ export async function fetchProtectedSettings(options: FetchOptions): Promise<Ful
     });
 
     const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/protected-data?${params.toString()}`,
+      `${getEdgeFunctionUrl("protected-data")}?${params.toString()}`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${options.authToken}`,
         },
       }
@@ -180,12 +180,12 @@ export async function fetchProtectedPackages(options: FetchOptions): Promise<{
     if (options.branchId) params.append("branchId", options.branchId);
 
     const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/protected-data?${params.toString()}`,
+      `${getEdgeFunctionUrl("protected-data")}?${params.toString()}`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${options.authToken}`,
         },
       }

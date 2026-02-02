@@ -6,8 +6,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+import { SUPABASE_URL, SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
 
 interface FetchOptions {
   action: string;
@@ -45,12 +44,12 @@ export async function protectedFetch<T>(options: FetchOptions): Promise<T> {
   }
 
   const response = await fetch(
-    `${SUPABASE_URL}/functions/v1/protected-data?${params.toString()}`,
+    `${getEdgeFunctionUrl("protected-data")}?${params.toString()}`,
     {
       method: options.method || "GET",
       headers: {
         "Content-Type": "application/json",
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        apikey: SUPABASE_ANON_KEY,
         Authorization: `Bearer ${token}`,
       },
       body: options.body ? JSON.stringify(options.body) : undefined,

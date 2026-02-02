@@ -1,5 +1,6 @@
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
 
 interface StaffOperationResult<T = any> {
   data?: T;
@@ -26,13 +27,13 @@ export const useStaffOperations = () => {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-operations?action=${action}`,
+        `${getEdgeFunctionUrl("staff-operations")}?action=${action}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            apikey: SUPABASE_ANON_KEY,
           },
           body: JSON.stringify(body),
         }
