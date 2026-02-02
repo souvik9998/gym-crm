@@ -1645,6 +1645,18 @@ export type Database = {
       }
       get_staff_id: { Args: { _user_id: string }; Returns: string }
       get_staff_id_from_session: { Args: never; Returns: string }
+      get_tenant_current_usage: {
+        Args: { _tenant_id: string }
+        Returns: {
+          branches_count: number
+          members_count: number
+          staff_count: number
+          trainers_count: number
+          whatsapp_this_month: number
+        }[]
+      }
+      get_tenant_from_branch: { Args: { _branch_id: string }; Returns: string }
+      get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1652,10 +1664,27 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_whatsapp_usage: {
+        Args: { _count?: number; _tenant_id: string }
+        Returns: boolean
+      }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_tenant_admin: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       refresh_subscription_statuses: { Args: never; Returns: undefined }
       staff_has_permission: {
         Args: { _permission: string; _staff_id: string }
+        Returns: boolean
+      }
+      tenant_can_add_resource: {
+        Args: { _resource_type: string; _tenant_id: string }
+        Returns: boolean
+      }
+      user_belongs_to_tenant: {
+        Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
     }

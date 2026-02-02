@@ -484,6 +484,18 @@ Deno.serve(async (req) => {
 
 ---
 
+## 10. `tenant-operations/index.ts`
+
+**Note:** This file handles multi-tenant SaaS operations including:
+- Creating/suspending tenants (super-admin only)
+- Managing tenant limits and usage metering
+- Platform audit logging
+- Server-side limit enforcement for resource creation
+
+Please copy from `supabase/functions/tenant-operations/index.ts` in your project.
+
+---
+
 ## Deployment Commands
 
 After creating each function in your Supabase project, deploy them using:
@@ -497,6 +509,7 @@ supabase functions deploy staff-auth --no-verify-jwt
 supabase functions deploy staff-operations --no-verify-jwt
 supabase functions deploy protected-data --no-verify-jwt
 supabase functions deploy public-data --no-verify-jwt
+supabase functions deploy tenant-operations --no-verify-jwt
 ```
 
 ---
