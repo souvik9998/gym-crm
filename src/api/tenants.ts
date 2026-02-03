@@ -345,17 +345,144 @@ export async function fetchPlatformStats(): Promise<{
     .from("members")
     .select("*", { count: "exact", head: true });
 
-  // Count staff
-  const { count: totalStaff } = await supabase
+  // Count staff - using staff_branch_assignments to get unique staff
+  const { data: staffData } = await supabase
     .from("staff")
-    .select("*", { count: "exact", head: true })
+    .select("id")
     .eq("is_active", true);
+
+  const totalStaff = staffData?.length || 0;
 
   return {
     totalTenants: totalTenants || 0,
     activeTenants: activeTenants || 0,
     totalBranches: totalBranches || 0,
     totalMembers: totalMembers || 0,
-    totalStaff: totalStaff || 0,
+    totalStaff,
   };
+}
+
+/**
+ * Fetch platform stats filtered by tenant and/or branch
+ */
+export async function fetchFilteredPlatformStats(tenantId?: string, branchId?: string): Promise<{
+  totalMembers: number;
+  activeMembers: number;
+  totalStaff: number;
+  totalBranches: number;
+  monthlyRevenue: number;
+}> {
+  let branchIds: string[] = [];
+
+  if (branchId) {
+    branchIds = [branchId];
+  } else if (tenantId) {
+    // Get all branches for this tenant
+    const { data: branches } = await supabase
+      .from("branches")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null);
+    branchIds = branches?.map(b => b.id) || [];
+  }
+
+  // Count members
+  let membersQuery = supabase.from("members").select("*", { count: "exact", head: true });
+  if (branchIds.length > 0) {
+    membersQuery = membersQuery.in("branch_id", branchIds);
+  }
+  const { count: totalMembers } = await membersQuery;
+
+  // Count active members (with active subscriptions)
+  let activeSubsQuery = supabase
+    .from("subscriptions")
+    .select("member_id")
+    .in("status", ["active", "expiring_soon"]);
+  if (branchIds.length > 0) {
+    activeSubsQuery = activeSubsQuery.in("branch_id", branchIds);
+  }
+  const { data: activeSubsData } = await activeSubsQuery;
+  const uniqueActiveMembers = new Set(activeSubsData?.map(s => s.member_id) || []);
+
+  // Count staff
+  let staffQuery = supabase
+    .from("staff_branch_assignments")
+    .select("staff_id, staff!inner(is_active)");
+  if (branchIds.length > 0) {
+    staffQuery = staffQuery.in("branch_id", branchIds);
+  }
+  const { data: staffData } = await staffQuery;
+  const uniqueStaff = new Set(
+    staffData?.filter((s: any) => s.staff?.is_active).map((s: any) => s.staff_id) || []
+  );
+
+  // Count branches
+  let branchCount = branchIds.length;
+  if (!tenantId && !branchId) {
+    const { count } = await supabase
+      .from("branches")
+      .select("*", { count: "exact", head: true })
+      .is("deleted_at", null);
+    branchCount = count || 0;
+  }
+
+  // Monthly revenue
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  let paymentsQuery = supabase
+    .from("payments")
+    .select("amount")
+    .eq("status", "success")
+    .gte("created_at", startOfMonth.toISOString());
+  if (branchIds.length > 0) {
+    paymentsQuery = paymentsQuery.in("branch_id", branchIds);
+  }
+  const { data: payments } = await paymentsQuery;
+  const monthlyRevenue = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+
+  return {
+    totalMembers: totalMembers || 0,
+    activeMembers: uniqueActiveMembers.size,
+    totalStaff: uniqueStaff.size,
+    totalBranches: branchCount,
+    monthlyRevenue,
+  };
+}
+
+/**
+ * Fetch all branches for super admin (across all tenants or for a specific tenant)
+ */
+export async function fetchAllBranches(tenantId?: string): Promise<Array<{
+  id: string;
+  name: string;
+  tenant_id: string;
+  tenant_name?: string;
+  is_active: boolean;
+}>> {
+  let query = supabase
+    .from("branches")
+    .select("id, name, tenant_id, is_active, tenants(name)")
+    .is("deleted_at", null)
+    .order("name");
+
+  if (tenantId) {
+    query = query.eq("tenant_id", tenantId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Error fetching branches:", error);
+    throw error;
+  }
+
+  return (data || []).map((b: any) => ({
+    id: b.id,
+    name: b.name,
+    tenant_id: b.tenant_id,
+    tenant_name: b.tenants?.name,
+    is_active: b.is_active,
+  }));
 }
