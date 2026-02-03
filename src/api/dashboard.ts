@@ -1,7 +1,7 @@
 /**
  * Dashboard API Layer
- * All dashboard statistics via protected-data edge function
- * Falls back to direct RLS-based queries if edge function fails
+ * Uses optimized database function for fast stats
+ * Falls back to direct queries if needed
  */
 import { supabase } from "@/lib/supabase";
 import { protectedFetch } from "./authenticatedFetch";
@@ -18,25 +18,52 @@ export interface DashboardStats {
 }
 
 /**
- * Fetch dashboard statistics via protected edge function
- * Falls back to direct RLS queries if edge function fails
+ * Fetch dashboard statistics via optimized database function
+ * Uses single RPC call for all stats instead of multiple queries
  */
 export async function fetchDashboardStats(branchId?: string): Promise<DashboardStats> {
   try {
-    // Try protected edge function first
-    return await protectedFetch<DashboardStats>({
-      action: "dashboard-stats",
-      params: { branchId },
+    // Try optimized RPC function first (single query for all stats)
+    const { data, error } = await supabase.rpc("get_dashboard_stats", {
+      _branch_id: branchId || null,
     });
-  } catch (error) {
-    console.warn("Protected fetch failed, falling back to direct query:", error);
-    // Fallback to direct RLS-based query
-    return fetchDashboardStatsDirect(branchId);
+
+    if (error) {
+      console.warn("RPC failed, falling back to protected fetch:", error.message);
+      throw error;
+    }
+
+    if (data && data.length > 0) {
+      const stats = data[0];
+      return {
+        totalMembers: Number(stats.total_members) || 0,
+        activeMembers: Number(stats.active_members) || 0,
+        expiringSoon: Number(stats.expiring_soon) || 0,
+        expiredMembers: Number(stats.expired_members) || 0,
+        inactiveMembers: Number(stats.inactive_members) || 0,
+        monthlyRevenue: Number(stats.monthly_revenue) || 0,
+        withPT: Number(stats.with_pt) || 0,
+        dailyPassUsers: Number(stats.daily_pass_users) || 0,
+      };
+    }
+
+    throw new Error("No data returned from RPC");
+  } catch (rpcError) {
+    // Fallback to protected edge function
+    try {
+      return await protectedFetch<DashboardStats>({
+        action: "dashboard-stats",
+        params: { branchId },
+      });
+    } catch (error) {
+      console.warn("Protected fetch failed, falling back to direct query:", error);
+      return fetchDashboardStatsDirect(branchId);
+    }
   }
 }
 
 /**
- * Direct RLS-based dashboard stats (fallback)
+ * Direct RLS-based dashboard stats (final fallback)
  */
 async function fetchDashboardStatsDirect(branchId?: string): Promise<DashboardStats> {
   // Refresh subscription statuses first

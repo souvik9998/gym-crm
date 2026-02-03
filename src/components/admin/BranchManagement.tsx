@@ -29,7 +29,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 export const BranchManagement = () => {
-  const { branches, allBranches, currentBranch, setCurrentBranch, refreshBranches, isStaffRestricted } = useBranch();
+  const { branches, allBranches, currentBranch, setCurrentBranch, refreshBranches, isStaffRestricted, tenantId } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
   const { isAdmin } = useIsAdmin();
   const staffOps = useStaffOperations();
@@ -171,6 +171,16 @@ export const BranchManagement = () => {
           setIsLoading(false);
           return;
         }
+        
+        // Gym owners must have a tenant_id
+        if (!tenantId) {
+          toast.error("Unable to create branch", {
+            description: "No organization found. Please contact support.",
+          });
+          setIsLoading(false);
+          return;
+        }
+        
         const { data, error } = await supabase
           .from("branches")
           .insert({
@@ -179,6 +189,7 @@ export const BranchManagement = () => {
             phone: formData.phone.trim() || null,
             email: formData.email.trim() || null,
             is_default: displayBranches.length === 0,
+            tenant_id: tenantId, // Include tenant_id for RLS policy
           })
           .select()
           .single();

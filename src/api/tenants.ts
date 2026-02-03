@@ -249,6 +249,52 @@ export async function deleteTenant(tenantId: string): Promise<void> {
 }
 
 /**
+ * Create a branch for a specific tenant (super_admin only)
+ */
+export async function createBranchForTenant(params: {
+  tenantId: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  isDefault?: boolean;
+}): Promise<any> {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session?.access_token) {
+    throw new Error("Authentication required");
+  }
+
+  const response = await fetch(
+    `${getEdgeFunctionUrl("tenant-operations")}?action=create-branch`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        tenantId: params.tenantId,
+        name: params.name,
+        address: params.address,
+        phone: params.phone,
+        email: params.email,
+        isDefault: params.isDefault,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to create branch");
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+
+/**
  * Fetch platform audit logs
  */
 export async function fetchPlatformAuditLogs(limit = 100): Promise<any[]> {
