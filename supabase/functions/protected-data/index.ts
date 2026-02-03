@@ -56,15 +56,22 @@ async function authenticateRequest(
 
   const userId = String(claimsData.claims.sub);
 
-  // Check if user is admin
-  const { data: adminRole } = await serviceClient
+  // Check if user is an admin-like user.
+  // In this SaaS: 
+  // - super_admin (platform)
+  // - tenant_admin (gym owner)
+  // - admin (tenant internal admin)
+  const { data: adminRoles, error: adminRolesError } = await serviceClient
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
+    .in("role", ["admin", "tenant_admin", "super_admin"]);
 
-  if (adminRole) {
+  if (adminRolesError) {
+    console.error("Error checking admin roles:", adminRolesError);
+  }
+
+  if ((adminRoles || []).length > 0) {
     return { valid: true, isAdmin: true, isStaff: false, userId };
   }
 
