@@ -1,10 +1,11 @@
-import { useEffect, lazy, Suspense } from "react";
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { BranchProvider, useBranch } from "@/contexts/BranchContext";
-import { StaffAuthProvider, useStaffAuth } from "@/contexts/StaffAuthContext";
+import { BranchProvider } from "@/contexts/BranchContext";
+import { StaffAuthProvider } from "@/contexts/StaffAuthContext";
+import { StaffBranchBridge } from "@/components/StaffBranchBridge";
 import { PageLoader } from "@/components/ui/skeleton-loaders";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { AdminLayoutRoute } from "@/components/admin/AdminLayoutRoute";
@@ -42,19 +43,6 @@ const SuperAdminSettings = lazy(() => import("./pages/superadmin/Settings"));
 
 // Import SuperAdmin layout
 import { SuperAdminLayout } from "@/components/superadmin/SuperAdminLayout";
-
-// Bridge component to connect StaffAuth with BranchContext
-const StaffBranchBridge = ({ children }: { children: React.ReactNode }) => {
-  const { setStaffBranchRestriction } = useBranch();
-  const { setBranchRestrictionCallback } = useStaffAuth();
-  
-  useEffect(() => {
-    setBranchRestrictionCallback(setStaffBranchRestriction);
-    return () => setBranchRestrictionCallback(null);
-  }, [setBranchRestrictionCallback, setStaffBranchRestriction]);
-  
-  return <>{children}</>;
-};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
