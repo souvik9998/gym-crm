@@ -1634,6 +1634,19 @@ export type Database = {
           member_phone: string
         }[]
       }
+      get_dashboard_stats: {
+        Args: { _branch_id?: string }
+        Returns: {
+          active_members: number
+          daily_pass_users: number
+          expired_members: number
+          expiring_soon: number
+          inactive_members: number
+          monthly_revenue: number
+          total_members: number
+          with_pt: number
+        }[]
+      }
       get_member_subscription_info: {
         Args: { p_member_id: string }
         Returns: {
