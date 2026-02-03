@@ -14,8 +14,9 @@ interface ProtectedRouteProps {
    * Required permission(s) for staff users to access this route.
    * If array, staff must have at least ONE of the permissions (OR logic).
    * Use "admin_only" to block staff entirely.
+   * Use "super_admin_only" to restrict to super admins only.
    */
-  requiredPermission?: PermissionKey | PermissionKey[] | "admin_only";
+  requiredPermission?: PermissionKey | PermissionKey[] | "admin_only" | "super_admin_only";
   /** 
    * If true, only staff can access (blocks admin users).
    * Use for /staff/* routes.
@@ -59,6 +60,7 @@ export const ProtectedRoute = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -111,6 +113,8 @@ export const ProtectedRoute = ({
         const userRoles = roles.map(r => r.role);
         const isSuperAdmin = userRoles.includes("super_admin");
         const isGymOwner = userRoles.includes("admin");
+        
+        setIsSuperAdminUser(isSuperAdmin);
         
         // Super admins don't need tenant membership
         if (isSuperAdmin) {
@@ -201,6 +205,11 @@ export const ProtectedRoute = ({
     return null;
   }
 
+  // Super admin only route - check if user is super admin
+  if (requiredPermission === "super_admin_only" && !isSuperAdminUser) {
+    return <AccessDenied message="This section is only accessible to Super Administrators." showLogout />;
+  }
+
   // Admin-only route but staff is trying to access
   if (requiredPermission === "admin_only" && (isStaffLoggedIn || isStaffSession)) {
     return <AccessDenied message="This section is only accessible to administrators." />;
@@ -208,7 +217,7 @@ export const ProtectedRoute = ({
 
   // Staff user trying to access - check permissions
   const isEffectivelyStaff = isStaffLoggedIn || isStaffSession;
-  if (isEffectivelyStaff && !isAdminSession && requiredPermission && requiredPermission !== "admin_only") {
+  if (isEffectivelyStaff && !isAdminSession && requiredPermission && requiredPermission !== "admin_only" && requiredPermission !== "super_admin_only") {
     const permissionsToCheck = Array.isArray(requiredPermission) 
       ? requiredPermission 
       : [requiredPermission];

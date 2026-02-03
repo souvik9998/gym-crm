@@ -33,8 +33,15 @@ const TrainersPage = lazy(() => import("./pages/admin/Trainers"));
 // Lazy load Super Admin pages
 const SuperAdminDashboard = lazy(() => import("./pages/superadmin/Dashboard"));
 const TenantList = lazy(() => import("./pages/superadmin/TenantList"));
+const TenantDetail = lazy(() => import("./pages/superadmin/TenantDetail"));
 const CreateTenant = lazy(() => import("./pages/superadmin/CreateTenant"));
 const AuditLogs = lazy(() => import("./pages/superadmin/AuditLogs"));
+const SuperAdminUsers = lazy(() => import("./pages/superadmin/Users"));
+const SuperAdminAnalytics = lazy(() => import("./pages/superadmin/Analytics"));
+const SuperAdminSettings = lazy(() => import("./pages/superadmin/Settings"));
+
+// Import SuperAdmin layout
+import { SuperAdminLayout } from "@/components/superadmin/SuperAdminLayout";
 
 // Bridge component to connect StaffAuth with BranchContext
 const StaffBranchBridge = ({ children }: { children: React.ReactNode }) => {
@@ -157,35 +164,53 @@ const App = () => (
                 } />
               </Route>
               
-              {/* Super Admin Routes - Protected */}
-              <Route path="/superadmin/dashboard" element={
-                <ProtectedRoute requiredPermission="admin_only">
+              {/* Super Admin Routes - Protected with Layout */}
+              <Route element={
+                <ProtectedRoute requiredPermission="super_admin_only">
+                  <SuperAdminLayout />
+                </ProtectedRoute>
+              }>
+                <Route path="/superadmin/dashboard" element={
                   <Suspense fallback={<PageLoader />}>
                     <SuperAdminDashboard />
                   </Suspense>
-                </ProtectedRoute>
-              } />
-              <Route path="/superadmin/tenants" element={
-                <ProtectedRoute requiredPermission="admin_only">
+                } />
+                <Route path="/superadmin/tenants" element={
                   <Suspense fallback={<PageLoader />}>
                     <TenantList />
                   </Suspense>
-                </ProtectedRoute>
-              } />
-              <Route path="/superadmin/tenants/new" element={
-                <ProtectedRoute requiredPermission="admin_only">
+                } />
+                <Route path="/superadmin/tenants/new" element={
                   <Suspense fallback={<PageLoader />}>
                     <CreateTenant />
                   </Suspense>
-                </ProtectedRoute>
-              } />
-              <Route path="/superadmin/audit-logs" element={
-                <ProtectedRoute requiredPermission="admin_only">
+                } />
+                <Route path="/superadmin/tenants/:tenantId" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <TenantDetail />
+                  </Suspense>
+                } />
+                <Route path="/superadmin/users" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <SuperAdminUsers />
+                  </Suspense>
+                } />
+                <Route path="/superadmin/analytics" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <SuperAdminAnalytics />
+                  </Suspense>
+                } />
+                <Route path="/superadmin/audit-logs" element={
                   <Suspense fallback={<PageLoader />}>
                     <AuditLogs />
                   </Suspense>
-                </ProtectedRoute>
-              } />
+                } />
+                <Route path="/superadmin/settings" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <SuperAdminSettings />
+                  </Suspense>
+                } />
+              </Route>
               
               {/* Branch-specific routes for member registration */}
               <Route path="/b/:branchId" element={<Index />} />

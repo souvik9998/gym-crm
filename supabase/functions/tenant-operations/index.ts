@@ -661,9 +661,10 @@ Deno.serve(async (req) => {
       }
 
       // ========================================
-      // SUPER ADMIN: CREATE BRANCH FOR TENANT
+      // SUPER ADMIN: CREATE BRANCH FOR TENANT (bypasses limits)
       // ========================================
-      case "create-branch": {
+      case "create-branch": 
+      case "superadmin-create-branch": {
         if (!isSuperAdmin) {
           return new Response(
             JSON.stringify({ error: "Unauthorized: Super admin access required" }),
@@ -671,7 +672,7 @@ Deno.serve(async (req) => {
           );
         }
 
-        const { tenantId, name, address, phone, email, isDefault } = body;
+        const { tenantId, name, address, phone, email, isDefault, bypassLimits } = body;
 
         if (!tenantId || !name) {
           return new Response(
@@ -680,18 +681,23 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Check tenant limit
-        const { data: canAdd } = await supabase
-          .rpc("tenant_can_add_resource", { 
-            _tenant_id: tenantId, 
-            _resource_type: "branch" 
-          });
+        // Super admin bypasses limit checks when bypassLimits is true or action is superadmin-create-branch
+        const shouldBypass = bypassLimits === true || action === "superadmin-create-branch";
+        
+        if (!shouldBypass) {
+          // Check tenant limit only if not bypassing
+          const { data: canAdd } = await supabase
+            .rpc("tenant_can_add_resource", { 
+              _tenant_id: tenantId, 
+              _resource_type: "branch" 
+            });
 
-        if (!canAdd) {
-          return new Response(
-            JSON.stringify({ error: "Branch limit reached for this tenant" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          if (!canAdd) {
+            return new Response(
+              JSON.stringify({ error: "Branch limit reached for this tenant" }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
         }
 
         // Create the branch
@@ -730,13 +736,291 @@ Deno.serve(async (req) => {
           actor_user_id: userId,
           action_type: "branch_created",
           target_tenant_id: tenantId,
-          description: `Super admin created branch "${name}" for tenant`,
-          new_value: { branch },
+          description: `Super admin created branch "${name}" for tenant${shouldBypass ? " (bypassed limits)" : ""}`,
+          new_value: { branch, bypassedLimits: shouldBypass },
         });
 
         return new Response(
           JSON.stringify({ data: branch }),
           { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // ========================================
+      // SUPER ADMIN: UPDATE BRANCH (bypasses all restrictions)
+      // ========================================
+      case "superadmin-update-branch": {
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: Super admin access required" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { branchId, updates } = body;
+
+        if (!branchId) {
+          return new Response(
+            JSON.stringify({ error: "Missing branchId" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: branch, error } = await supabase
+          .from("branches")
+          .update({ ...updates, updated_at: new Date().toISOString() })
+          .eq("id", branchId)
+          .select()
+          .single();
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        await supabase.from("platform_audit_logs").insert({
+          actor_user_id: userId,
+          action_type: "branch_updated",
+          target_tenant_id: branch.tenant_id,
+          description: `Super admin updated branch "${branch.name}"`,
+          new_value: updates,
+        });
+
+        return new Response(
+          JSON.stringify({ data: branch }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // ========================================
+      // SUPER ADMIN: DELETE BRANCH (bypasses all restrictions)
+      // ========================================
+      case "superadmin-delete-branch": {
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: Super admin access required" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { branchId, hardDelete } = body;
+
+        if (!branchId) {
+          return new Response(
+            JSON.stringify({ error: "Missing branchId" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Get branch info for audit log
+        const { data: branchInfo } = await supabase
+          .from("branches")
+          .select("name, tenant_id")
+          .eq("id", branchId)
+          .single();
+
+        if (hardDelete) {
+          // Hard delete - remove completely
+          const { error } = await supabase
+            .from("branches")
+            .delete()
+            .eq("id", branchId);
+
+          if (error) {
+            return new Response(
+              JSON.stringify({ error: error.message }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        } else {
+          // Soft delete
+          const { error } = await supabase
+            .from("branches")
+            .update({ 
+              deleted_at: new Date().toISOString(), 
+              is_active: false,
+              updated_at: new Date().toISOString() 
+            })
+            .eq("id", branchId);
+
+          if (error) {
+            return new Response(
+              JSON.stringify({ error: error.message }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+
+        await supabase.from("platform_audit_logs").insert({
+          actor_user_id: userId,
+          action_type: hardDelete ? "branch_hard_deleted" : "branch_deleted",
+          target_tenant_id: branchInfo?.tenant_id,
+          description: `Super admin ${hardDelete ? "permanently deleted" : "deleted"} branch "${branchInfo?.name}"`,
+        });
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // ========================================
+      // SUPER ADMIN: TOGGLE FEATURE FOR TENANT
+      // ========================================
+      case "superadmin-toggle-feature": {
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: Super admin access required" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { tenantId, feature, enabled } = body;
+
+        if (!tenantId || !feature) {
+          return new Response(
+            JSON.stringify({ error: "Missing tenantId or feature" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Get current features
+        const { data: limits } = await supabase
+          .from("tenant_limits")
+          .select("features")
+          .eq("tenant_id", tenantId)
+          .single();
+
+        const currentFeatures = (limits?.features as Record<string, boolean>) || {};
+        const updatedFeatures = { ...currentFeatures, [feature]: enabled };
+
+        const { data: updatedLimits, error } = await supabase
+          .from("tenant_limits")
+          .update({ features: updatedFeatures, updated_at: new Date().toISOString() })
+          .eq("tenant_id", tenantId)
+          .select()
+          .single();
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        await supabase.from("platform_audit_logs").insert({
+          actor_user_id: userId,
+          action_type: "feature_toggled",
+          target_tenant_id: tenantId,
+          description: `Super admin ${enabled ? "enabled" : "disabled"} feature "${feature}" for tenant`,
+          old_value: { [feature]: currentFeatures[feature] },
+          new_value: { [feature]: enabled },
+        });
+
+        return new Response(
+          JSON.stringify({ data: updatedLimits }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // ========================================
+      // SUPER ADMIN: GET ALL USERS ACROSS TENANTS
+      // ========================================
+      case "superadmin-list-all-users": {
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: Super admin access required" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const limit = body.limit || 100;
+        const offset = body.offset || 0;
+        const searchQuery = body.search || "";
+
+        // Get all tenant members with tenant info
+        let query = supabase
+          .from("tenant_members")
+          .select(`
+            *,
+            tenants!inner(name, slug)
+          `)
+          .order("created_at", { ascending: false })
+          .range(offset, offset + limit - 1);
+
+        const { data: members, error } = await query;
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ data: members }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // ========================================
+      // SUPER ADMIN: MOVE BRANCH TO DIFFERENT TENANT
+      // ========================================
+      case "superadmin-move-branch": {
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: Super admin access required" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { branchId, newTenantId } = body;
+
+        if (!branchId || !newTenantId) {
+          return new Response(
+            JSON.stringify({ error: "Missing branchId or newTenantId" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Get current branch info
+        const { data: branch } = await supabase
+          .from("branches")
+          .select("name, tenant_id")
+          .eq("id", branchId)
+          .single();
+
+        const oldTenantId = branch?.tenant_id;
+
+        // Move the branch
+        const { data: updatedBranch, error } = await supabase
+          .from("branches")
+          .update({ tenant_id: newTenantId, updated_at: new Date().toISOString() })
+          .eq("id", branchId)
+          .select()
+          .single();
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        await supabase.from("platform_audit_logs").insert({
+          actor_user_id: userId,
+          action_type: "branch_moved",
+          target_tenant_id: newTenantId,
+          description: `Super admin moved branch "${branch?.name}" from tenant ${oldTenantId} to ${newTenantId}`,
+          old_value: { tenant_id: oldTenantId },
+          new_value: { tenant_id: newTenantId },
+        });
+
+        return new Response(
+          JSON.stringify({ data: updatedBranch }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 

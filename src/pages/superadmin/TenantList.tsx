@@ -129,36 +129,22 @@ export default function TenantList() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate("/superadmin/dashboard")}
-              >
-                <ArrowLeftIcon className="w-5 h-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">Organizations</h1>
-                <p className="text-sm text-muted-foreground">
-                  Manage all gym organizations on the platform
-                </p>
-              </div>
-            </div>
-            <Button onClick={() => navigate("/superadmin/tenants/new")}>
-              <PlusIcon className="w-4 h-4 mr-2" />
-              New Organization
-            </Button>
-          </div>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Organizations</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage all gym organizations on the platform
+          </p>
         </div>
-      </header>
+        <Button onClick={() => navigate("/superadmin/tenants/new")}>
+          <PlusIcon className="w-4 h-4 mr-2" />
+          New Organization
+        </Button>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <Card className="border-0 shadow-sm">
+      <Card className="border-0 shadow-sm">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -272,7 +258,6 @@ export default function TenantList() {
             </Table>
           </CardContent>
         </Card>
-      </main>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

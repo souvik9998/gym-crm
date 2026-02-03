@@ -102,32 +102,27 @@ export default function CreateTenant() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card border-b border-border">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/superadmin/tenants")}
-            >
-              <ArrowLeftIcon className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Create Organization</h1>
-              <p className="text-sm text-muted-foreground">
-                Set up a new gym organization on the platform
-              </p>
-            </div>
-          </div>
+    <div className="space-y-6 max-w-3xl">
+      {/* Page Header */}
+      <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate("/superadmin/tenants")}
+        >
+          <ArrowLeftIcon className="w-5 h-5" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Create Organization</h1>
+          <p className="text-sm text-muted-foreground">
+            Set up a new gym organization on the platform
+          </p>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Organization Details */}
-          <Card className="border-0 shadow-sm">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Organization Details */}
+        <Card className="border-0 shadow-sm">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -309,7 +304,6 @@ export default function CreateTenant() {
             </Button>
           </div>
         </form>
-      </main>
-    </div>
+      </div>
   );
 }
