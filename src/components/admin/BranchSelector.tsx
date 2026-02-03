@@ -22,6 +22,7 @@ import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { createBranchAsOwner } from "@/api/branches/ownerBranches";
 import {
   BuildingOffice2Icon,
   ChevronDownIcon,
@@ -32,8 +33,8 @@ import {
 import { cn } from "@/lib/utils";
 
 export const BranchSelector = () => {
-  const { branches, allBranches, currentBranch, setCurrentBranch, refreshBranches, isStaffRestricted } = useBranch();
-  const { isAdmin } = useIsAdmin();
+  const { branches, allBranches, currentBranch, setCurrentBranch, refreshBranches, isStaffRestricted, tenantId } = useBranch();
+  const { isAdmin, isGymOwner } = useIsAdmin();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -68,36 +69,57 @@ export const BranchSelector = () => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("branches")
-        .insert({
+      // Gym owners create branches via backend function (enforces tenant limits and avoids RLS failures)
+      let data: any;
+      if (isGymOwner) {
+        data = await createBranchAsOwner({
           name: newBranch.name.trim(),
           address: newBranch.address.trim() || null,
           phone: newBranch.phone.trim() || null,
           email: newBranch.email.trim() || null,
-          is_default: displayBranches.length === 0,
-        })
-        .select()
-        .single();
+          isDefault: displayBranches.length === 0,
+        });
+      } else {
+        // Admin/super admin direct insert must include tenant_id to satisfy RLS
+        if (!tenantId) {
+          throw new Error("No organization selected. Please select an organization first.");
+        }
 
-      if (error) throw error;
-
-      // Auto-create gym_settings for the new branch
-      if (data) {
-        const { error: settingsError } = await supabase
-          .from("gym_settings")
+        const { data: created, error } = await supabase
+          .from("branches")
           .insert({
-            branch_id: data.id,
-            gym_name: newBranch.name.trim(),
-            gym_phone: newBranch.phone.trim() || null,
-            gym_address: newBranch.address.trim() || null,
-            whatsapp_enabled: false,
-          });
+            name: newBranch.name.trim(),
+            address: newBranch.address.trim() || null,
+            phone: newBranch.phone.trim() || null,
+            email: newBranch.email.trim() || null,
+            is_default: displayBranches.length === 0,
+            tenant_id: tenantId,
+          })
+          .select()
+          .single();
 
-        if (settingsError) {
-          console.error("Failed to create gym_settings for branch:", settingsError);
+        if (error) throw error;
+        data = created;
+
+        // Auto-create gym_settings only for direct-insert path (owner-create-branch already does this)
+        if (data) {
+          const { error: settingsError } = await supabase
+            .from("gym_settings")
+            .insert({
+              branch_id: data.id,
+              gym_name: newBranch.name.trim(),
+              gym_phone: newBranch.phone.trim() || null,
+              gym_address: newBranch.address.trim() || null,
+              whatsapp_enabled: false,
+            });
+
+          if (settingsError) {
+            console.error("Failed to create gym_settings for branch:", settingsError);
+          }
         }
       }
+
+      if (!data) throw new Error("Failed to create branch");
 
       await logAdminActivity({
         category: "branch",
