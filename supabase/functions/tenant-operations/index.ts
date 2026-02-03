@@ -540,6 +540,86 @@ Deno.serve(async (req) => {
       }
 
       // ========================================
+      // SUPER ADMIN: CREATE BRANCH FOR TENANT
+      // ========================================
+      case "create-branch": {
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: Super admin access required" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { tenantId, name, address, phone, email, isDefault } = body;
+
+        if (!tenantId || !name) {
+          return new Response(
+            JSON.stringify({ error: "Missing required fields: tenantId and name" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Check tenant limit
+        const { data: canAdd } = await supabase
+          .rpc("tenant_can_add_resource", { 
+            _tenant_id: tenantId, 
+            _resource_type: "branch" 
+          });
+
+        if (!canAdd) {
+          return new Response(
+            JSON.stringify({ error: "Branch limit reached for this tenant" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Create the branch
+        const { data: branch, error: branchError } = await supabase
+          .from("branches")
+          .insert({
+            tenant_id: tenantId,
+            name: name.trim(),
+            address: address?.trim() || null,
+            phone: phone?.trim() || null,
+            email: email?.trim() || null,
+            is_default: isDefault || false,
+            is_active: true,
+          })
+          .select()
+          .single();
+
+        if (branchError) {
+          return new Response(
+            JSON.stringify({ error: branchError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Create gym_settings for the new branch
+        await supabase.from("gym_settings").insert({
+          branch_id: branch.id,
+          gym_name: name.trim(),
+          gym_phone: phone?.trim() || null,
+          gym_address: address?.trim() || null,
+          whatsapp_enabled: false,
+        });
+
+        // Log the action
+        await supabase.from("platform_audit_logs").insert({
+          actor_user_id: userId,
+          action_type: "branch_created",
+          target_tenant_id: tenantId,
+          description: `Super admin created branch "${name}" for tenant`,
+          new_value: { branch },
+        });
+
+        return new Response(
+          JSON.stringify({ data: branch }),
+          { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // ========================================
       // PLATFORM AUDIT LOGS
       // ========================================
       case "get-platform-logs": {
