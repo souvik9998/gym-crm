@@ -242,7 +242,8 @@ const AccessDenied = ({
   const navigate = useNavigate();
   
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    const { performFullLogout } = await import("@/lib/logout");
+    await performFullLogout();
     navigate("/admin/login");
   };
   
