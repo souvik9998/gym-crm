@@ -156,26 +156,34 @@ const App = () => (
                 } />
               </Route>
               
-              {/* Super Admin Routes */}
+              {/* Super Admin Routes - Protected */}
               <Route path="/superadmin/dashboard" element={
-                <Suspense fallback={<PageLoader />}>
-                  <SuperAdminDashboard />
-                </Suspense>
+                <ProtectedRoute requiredPermission="admin_only">
+                  <Suspense fallback={<PageLoader />}>
+                    <SuperAdminDashboard />
+                  </Suspense>
+                </ProtectedRoute>
               } />
               <Route path="/superadmin/tenants" element={
-                <Suspense fallback={<PageLoader />}>
-                  <TenantList />
-                </Suspense>
+                <ProtectedRoute requiredPermission="admin_only">
+                  <Suspense fallback={<PageLoader />}>
+                    <TenantList />
+                  </Suspense>
+                </ProtectedRoute>
               } />
               <Route path="/superadmin/tenants/new" element={
-                <Suspense fallback={<PageLoader />}>
-                  <CreateTenant />
-                </Suspense>
+                <ProtectedRoute requiredPermission="admin_only">
+                  <Suspense fallback={<PageLoader />}>
+                    <CreateTenant />
+                  </Suspense>
+                </ProtectedRoute>
               } />
               <Route path="/superadmin/audit-logs" element={
-                <Suspense fallback={<PageLoader />}>
-                  <AuditLogs />
-                </Suspense>
+                <ProtectedRoute requiredPermission="admin_only">
+                  <Suspense fallback={<PageLoader />}>
+                    <AuditLogs />
+                  </Suspense>
+                </ProtectedRoute>
               } />
               
               {/* Branch-specific routes for member registration */}
