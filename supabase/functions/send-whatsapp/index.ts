@@ -388,7 +388,8 @@ Deno.serve(async (req) => {
     const sendPeriskopeMessage = async (
       chatId: string,
       message: string,
-    ): Promise<{ success: boolean; error?: string }> => {
+      messageType?: string,
+    ): Promise<{ success: boolean; error?: string; errorCode?: string }> => {
       try {
         const response = await fetch("https://api.periskope.app/v1/message/send", {
           method: "POST",
@@ -406,9 +407,29 @@ Deno.serve(async (req) => {
         const responseText = await response.text();
 
         if (!response.ok) {
+          // Parse the error response to check for specific error codes
+          let errorCode = "";
+          let userFriendlyError = `${response.status} - ${responseText}`;
+          
+          try {
+            const errorJson = JSON.parse(responseText);
+            errorCode = errorJson.code || "";
+            
+            // Handle Periskope API plan restrictions
+            if (response.status === 401 && errorCode === "UNAUTHORIZED_ERROR") {
+              if (responseText.includes("pro and enterprise plans")) {
+                userFriendlyError = "PLAN_RESTRICTION: This message type requires a Periskope Pro or Enterprise plan. Please contact your administrator to upgrade the WhatsApp API subscription.";
+                console.error(`Periskope API plan restriction for message type: ${messageType}`);
+              }
+            }
+          } catch {
+            // If parsing fails, use the original error
+          }
+          
           return {
             success: false,
-            error: `${response.status} - ${responseText}`,
+            error: userFriendlyError,
+            errorCode,
           };
         }
 
@@ -440,7 +461,7 @@ Deno.serve(async (req) => {
       message += `⚠️ Please keep your credentials secure and do not share them with others.\n\n`;
       message += `— Team ${gymDisplayName}`;
       
-      const result = await sendPeriskopeMessage(formattedPhone, message);
+      const result = await sendPeriskopeMessage(formattedPhone, message, "staff_credentials");
       
       // Log the notification (without sensitive password info)
       await logWhatsAppMessage({
@@ -471,7 +492,7 @@ Deno.serve(async (req) => {
       const memberEndDate = endDate || new Date().toISOString().split("T")[0];
       const message = generateMessage(name, memberEndDate, type, null, null, branchName);
       
-      const result = await sendPeriskopeMessage(formattedPhone, message);
+      const result = await sendPeriskopeMessage(formattedPhone, message, type);
 
       await logWhatsAppMessage({
         recipient_phone: phone,
@@ -533,7 +554,7 @@ Deno.serve(async (req) => {
         const userBranchName = (user.branches as any)?.name;
         
         const message = generateMessage(user.name, userEndDate, type, null, userBranchName, branchName);
-        const result = await sendPeriskopeMessage(formattedPhone, message);
+        const result = await sendPeriskopeMessage(formattedPhone, message, type);
 
         await logWhatsAppMessage({
           daily_pass_user_id: user.id,
@@ -632,7 +653,7 @@ Deno.serve(async (req) => {
       const memberBranchName = (member.branches as any)?.name;
       
       const message = generateMessage(member.name, memberEndDate, type, paymentInfo, memberBranchName, branchName);
-      const result = await sendPeriskopeMessage(formattedPhone, message);
+      const result = await sendPeriskopeMessage(formattedPhone, message, type);
 
       await logWhatsAppMessage({
         member_id: member.id,
