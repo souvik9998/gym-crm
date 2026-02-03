@@ -30,7 +30,6 @@ const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [isAdminLoading, setIsAdminLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   
   // Staff state
   const [phone, setPhone] = useState("");
@@ -79,46 +78,54 @@ const AdminLogin = () => {
     setIsAdminLoading(true);
     
     try {
-      if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password: adminPassword,
-          options: {
-            emailRedirectTo: `${window.location.origin}/admin/dashboard`,
-          },
-        });
+      // CRITICAL: Clear any lingering staff state before admin login
+      clearStaffState();
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: adminPassword,
+      });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        if (data.user) {
-          const { error: roleError } = await supabase
-            .from("user_roles")
-            .insert({ user_id: data.user.id, role: "admin" });
+      // SECURITY: Verify user has valid admin role before allowing navigation
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id)
+        .in("role", ["admin", "super_admin"]);
 
-          if (roleError) {
-            console.log("Role assignment note:", roleError.message);
-          }
+      if (rolesError || !roles || roles.length === 0) {
+        // User exists in auth.users but has no admin role - sign them out
+        await supabase.auth.signOut();
+        throw new Error("You don't have admin privileges. Contact the administrator.");
+      }
 
-          toast.success("Account Created", {
-            description: "You can now sign in with your credentials.",
-          });
-          setIsSignUp(false);
+      const userRoles = roles.map(r => r.role);
+      const isSuperAdmin = userRoles.includes("super_admin");
+
+      // For non-super-admins, verify tenant membership
+      if (!isSuperAdmin) {
+        const { data: membership, error: membershipError } = await supabase
+          .from("tenant_members")
+          .select("tenant_id")
+          .eq("user_id", data.user.id)
+          .limit(1);
+
+        if (membershipError || !membership || membership.length === 0) {
+          await supabase.auth.signOut();
+          throw new Error("You're not assigned to any organization. Contact the administrator.");
         }
+      }
+
+      // Redirect based on role
+      if (isSuperAdmin) {
+        navigate("/superadmin/dashboard");
       } else {
-        // CRITICAL: Clear any lingering staff state before admin login
-        clearStaffState();
-        
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password: adminPassword,
-        });
-
-        if (error) throw error;
-
         navigate("/admin/dashboard");
       }
     } catch (error: any) {
-      toast.error(isSignUp ? "Sign Up Failed" : "Login Failed", {
+      toast.error("Login Failed", {
         description: error.message || "Something went wrong",
       });
     } finally {
@@ -230,7 +237,7 @@ const AdminLogin = () => {
                       value={adminPassword}
                       onChange={(e) => setAdminPassword(e.target.value)}
                       required
-                      autoComplete={isSignUp ? "new-password" : "current-password"}
+                      autoComplete="current-password"
                     />
                   </div>
 
@@ -244,24 +251,14 @@ const AdminLogin = () => {
                     {isAdminLoading ? (
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
-                        {isSignUp ? "Creating Account..." : "Signing In..."}
+                        Signing In...
                       </div>
                     ) : (
-                      isSignUp ? "Create Account" : "Sign In"
+                      "Sign In"
                     )}
                   </Button>
 
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                      onClick={() => setIsSignUp(!isSignUp)}
-                    >
-                      {isSignUp
-                        ? "Already have an account? Sign in"
-                        : "Need an account? Sign up"}
-                    </button>
-                  </div>
+                  {/* SECURITY: Sign-up hidden - new admins created by super admin only */}
                 </form>
               </TabsContent>
 
