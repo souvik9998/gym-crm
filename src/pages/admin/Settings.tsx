@@ -62,6 +62,11 @@ const AdminSettings = () => {
   const staffOps = useStaffOperations();
   const [user, setUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Loading states for toggle buttons
+  const [isTogglingWhatsApp, setIsTogglingWhatsApp] = useState(false);
+  const [togglingMonthlyId, setTogglingMonthlyId] = useState<string | null>(null);
+  const [togglingCustomId, setTogglingCustomId] = useState<string | null>(null);
 
   // Gym Settings
   const [settings, setSettings] = useState<GymSettings | null>(null);
@@ -398,34 +403,43 @@ const AdminSettings = () => {
   const handleToggleMonthlyPackage = async (id: string, isActive: boolean) => {
     const pkg = monthlyPackages.find(p => p.id === id);
     
-    // Use staff operations if staff is logged in
-    if (isStaffLoggedIn && currentBranch) {
-      const { error } = await staffOps.updateMonthlyPackage({
-        packageId: id,
-        branchId: currentBranch.id,
-        isActive,
-      });
-      if (error) {
-        toast.error("Error", { description: error });
-      } else {
-        fetchData();
+    setTogglingMonthlyId(id);
+    toast.loading(`${isActive ? "Activating" : "Deactivating"} package...`, { id: `toggle-monthly-${id}` });
+    
+    try {
+      // Use staff operations if staff is logged in
+      if (isStaffLoggedIn && currentBranch) {
+        const { error } = await staffOps.updateMonthlyPackage({
+          packageId: id,
+          branchId: currentBranch.id,
+          isActive,
+        });
+        if (error) {
+          toast.error("Error", { id: `toggle-monthly-${id}`, description: error });
+        } else {
+          toast.success(`Package ${isActive ? "activated" : "deactivated"}`, { id: `toggle-monthly-${id}` });
+          fetchData();
+        }
+        return;
       }
-      return;
-    }
 
-    // Admin flow
-    await supabase.from("monthly_packages").update({ is_active: isActive }).eq("id", id);
-    await logAdminActivity({
-      category: "packages",
-      type: "monthly_package_toggled",
-      description: `${isActive ? "Activated" : "Deactivated"} ${pkg?.months} month package`,
-      entityType: "monthly_packages",
-      entityId: id,
-      entityName: `${pkg?.months} Month Package`,
-      newValue: { is_active: isActive },
-      branchId: currentBranch?.id,
-    });
-    fetchData();
+      // Admin flow
+      await supabase.from("monthly_packages").update({ is_active: isActive }).eq("id", id);
+      await logAdminActivity({
+        category: "packages",
+        type: "monthly_package_toggled",
+        description: `${isActive ? "Activated" : "Deactivated"} ${pkg?.months} month package`,
+        entityType: "monthly_packages",
+        entityId: id,
+        entityName: `${pkg?.months} Month Package`,
+        newValue: { is_active: isActive },
+        branchId: currentBranch?.id,
+      });
+      toast.success(`Package ${isActive ? "activated" : "deactivated"}`, { id: `toggle-monthly-${id}` });
+      fetchData();
+    } finally {
+      setTogglingMonthlyId(null);
+    }
   };
 
   const handleDeleteMonthlyPackage = (id: string, months: number) => {
@@ -602,35 +616,44 @@ const AdminSettings = () => {
   const handleTogglePackage = async (id: string, isActive: boolean) => {
     const pkg = customPackages.find(p => p.id === id);
     
-    // Use staff operations if staff is logged in
-    if (isStaffLoggedIn && currentBranch) {
-      const { error } = await staffOps.updateCustomPackage({
-        packageId: id,
-        branchId: currentBranch.id,
-        isActive,
-      });
-      if (error) {
-        toast.error("Error", { description: error });
-      } else {
-        fetchData();
+    setTogglingCustomId(id);
+    toast.loading(`${isActive ? "Activating" : "Deactivating"} package...`, { id: `toggle-custom-${id}` });
+    
+    try {
+      // Use staff operations if staff is logged in
+      if (isStaffLoggedIn && currentBranch) {
+        const { error } = await staffOps.updateCustomPackage({
+          packageId: id,
+          branchId: currentBranch.id,
+          isActive,
+        });
+        if (error) {
+          toast.error("Error", { id: `toggle-custom-${id}`, description: error });
+        } else {
+          toast.success(`Package ${isActive ? "activated" : "deactivated"}`, { id: `toggle-custom-${id}` });
+          fetchData();
+        }
+        return;
       }
-      return;
-    }
 
-    // Admin flow
-    await supabase.from("custom_packages").update({ is_active: isActive }).eq("id", id);
-    await logAdminActivity({
-      category: "packages",
-      type: "custom_package_toggled",
-      description: `${isActive ? "Activated" : "Deactivated"} daily pass "${pkg?.name}"`,
-      entityType: "custom_packages",
-      entityId: id,
-      entityName: pkg?.name,
-      oldValue: { is_active: !isActive },
-      newValue: { is_active: isActive },
-      branchId: currentBranch?.id,
-    });
-    fetchData();
+      // Admin flow
+      await supabase.from("custom_packages").update({ is_active: isActive }).eq("id", id);
+      await logAdminActivity({
+        category: "packages",
+        type: "custom_package_toggled",
+        description: `${isActive ? "Activated" : "Deactivated"} daily pass "${pkg?.name}"`,
+        entityType: "custom_packages",
+        entityId: id,
+        entityName: pkg?.name,
+        oldValue: { is_active: !isActive },
+        newValue: { is_active: isActive },
+        branchId: currentBranch?.id,
+      });
+      toast.success(`Package ${isActive ? "activated" : "deactivated"}`, { id: `toggle-custom-${id}` });
+      fetchData();
+    } finally {
+      setTogglingCustomId(null);
+    }
   };
 
   const handleDeletePackage = (id: string, name: string) => {
@@ -801,6 +824,7 @@ const AdminSettings = () => {
                                 <Switch
                                   id={`monthly-${pkg.id}`}
                                   checked={pkg.is_active}
+                                  disabled={togglingMonthlyId === pkg.id}
                                   onCheckedChange={(checked) => handleToggleMonthlyPackage(pkg.id, checked)}
                                 />
                               </div>
@@ -923,6 +947,7 @@ const AdminSettings = () => {
                                 <Switch
                                   id={`custom-${pkg.id}`}
                                   checked={pkg.is_active}
+                                  disabled={togglingCustomId === pkg.id}
                                   onCheckedChange={(checked) => handleTogglePackage(pkg.id, checked)}
                                 />
                               </div>
@@ -974,109 +999,115 @@ const AdminSettings = () => {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`text-sm font-medium ${whatsappEnabled ? 'text-success' : 'text-muted-foreground'}`}>
-                      {whatsappEnabled ? "Enabled" : "Disabled"}
+                    <span className={`text-sm font-medium ${isTogglingWhatsApp ? 'text-muted-foreground' : whatsappEnabled ? 'text-success' : 'text-muted-foreground'}`}>
+                      {isTogglingWhatsApp ? "Updating..." : whatsappEnabled ? "Enabled" : "Disabled"}
                     </span>
                     <Switch
                       checked={whatsappEnabled}
+                      disabled={isTogglingWhatsApp}
                       onCheckedChange={async (checked) => {
                         if (!currentBranch?.id) return;
                         
-                        let settingsId = settings?.id;
+                        setIsTogglingWhatsApp(true);
+                        toast.loading(`${checked ? "Enabling" : "Disabling"} WhatsApp...`, { id: "toggle-whatsapp" });
                         
-                        // If settings don't exist, create them first (admin only)
-                        if (!settingsId && !isStaffLoggedIn) {
-                          const { data: newSettings, error: createError } = await supabase
-                            .from("gym_settings")
-                            .insert({
-                              branch_id: currentBranch.id,
-                              gym_name: currentBranch.name || "",
-                              gym_phone: currentBranch.phone || null,
-                              gym_address: currentBranch.address || null,
-                              whatsapp_enabled: checked,
-                            })
-                            .select("id")
-                            .single();
+                        try {
+                          let settingsId = settings?.id;
                           
-                          if (createError) {
-                            toast.error("Error", {
-                              description: createError.message,
+                          // If settings don't exist, create them first (admin only)
+                          if (!settingsId && !isStaffLoggedIn) {
+                            const { data: newSettings, error: createError } = await supabase
+                              .from("gym_settings")
+                              .insert({
+                                branch_id: currentBranch.id,
+                                gym_name: currentBranch.name || "",
+                                gym_phone: currentBranch.phone || null,
+                                gym_address: currentBranch.address || null,
+                                whatsapp_enabled: checked,
+                              })
+                              .select("id")
+                              .single();
+                            
+                            if (createError) {
+                              toast.error("Error", { id: "toggle-whatsapp", description: createError.message });
+                              return;
+                            }
+                            
+                            settingsId = newSettings.id;
+                            setSettings({ ...settings, id: settingsId } as GymSettings);
+                            setWhatsappEnabled(checked);
+                            await logAdminActivity({
+                              category: "settings",
+                              type: "whatsapp_toggled",
+                              description: `${checked ? "Enabled" : "Disabled"} WhatsApp messaging for ${currentBranch?.name || "branch"}`,
+                              entityType: "gym_settings",
+                              entityId: settingsId,
+                              entityName: currentBranch?.name || "Gym Settings",
+                              oldValue: { whatsapp_enabled: !checked },
+                              newValue: { whatsapp_enabled: checked },
+                              branchId: currentBranch?.id,
                             });
+                            toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled", { id: "toggle-whatsapp" });
+                            return;
+                          }
+
+                          if (!settingsId) {
+                            toast.error("Settings not found", { id: "toggle-whatsapp" });
                             return;
                           }
                           
-                          settingsId = newSettings.id;
-                          setSettings({ ...settings, id: settingsId } as GymSettings);
-                          setWhatsappEnabled(checked);
-                          await logAdminActivity({
-                            category: "settings",
-                            type: "whatsapp_toggled",
-                            description: `${checked ? "Enabled" : "Disabled"} WhatsApp messaging for ${currentBranch?.name || "branch"}`,
-                            entityType: "gym_settings",
-                            entityId: settingsId,
-                            entityName: currentBranch?.name || "Gym Settings",
-                            oldValue: { whatsapp_enabled: !checked },
-                            newValue: { whatsapp_enabled: checked },
-                            branchId: currentBranch?.id,
-                          });
-                          toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled");
-                          return;
-                        }
-
-                        if (!settingsId) {
-                          toast.error("Settings not found");
-                          return;
-                        }
-                        
-                        // Use staff operations if staff is logged in
-                        if (isStaffLoggedIn) {
-                          const { error } = await staffOps.toggleWhatsApp({
-                            settingsId,
-                            branchId: currentBranch.id,
-                            enabled: checked,
-                          });
+                          // Use staff operations if staff is logged in
+                          if (isStaffLoggedIn) {
+                            const { error } = await staffOps.toggleWhatsApp({
+                              settingsId,
+                              branchId: currentBranch.id,
+                              enabled: checked,
+                            });
+                            if (error) {
+                              toast.error("Error", { id: "toggle-whatsapp", description: error });
+                            } else {
+                              setWhatsappEnabled(checked);
+                              toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled", {
+                                id: "toggle-whatsapp",
+                                description: checked 
+                                  ? `WhatsApp messaging is now active for ${currentBranch?.name || "this branch"}` 
+                                  : `All WhatsApp messages are now disabled for ${currentBranch?.name || "this branch"}`
+                              });
+                            }
+                            return;
+                          }
+                          
+                          // Admin flow - Update the WhatsApp enabled status
+                          const { error } = await supabase
+                            .from("gym_settings")
+                            .update({ whatsapp_enabled: checked })
+                            .eq("id", settingsId)
+                            .eq("branch_id", currentBranch.id);
+                          
                           if (error) {
-                            toast.error("Error", { description: error });
+                            toast.error("Error", { id: "toggle-whatsapp", description: error.message });
                           } else {
                             setWhatsappEnabled(checked);
+                            await logAdminActivity({
+                              category: "settings",
+                              type: "whatsapp_toggled",
+                              description: `${checked ? "Enabled" : "Disabled"} WhatsApp messaging for ${currentBranch?.name || "branch"}`,
+                              entityType: "gym_settings",
+                              entityId: settingsId,
+                              entityName: currentBranch?.name || "Gym Settings",
+                              oldValue: { whatsapp_enabled: !checked },
+                              newValue: { whatsapp_enabled: checked },
+                              branchId: currentBranch?.id,
+                            });
                             toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled", {
+                              id: "toggle-whatsapp",
                               description: checked 
                                 ? `WhatsApp messaging is now active for ${currentBranch?.name || "this branch"}` 
                                 : `All WhatsApp messages are now disabled for ${currentBranch?.name || "this branch"}`
                             });
                           }
-                          return;
-                        }
-                        
-                        // Admin flow - Update the WhatsApp enabled status
-                        const { error } = await supabase
-                          .from("gym_settings")
-                          .update({ whatsapp_enabled: checked })
-                          .eq("id", settingsId)
-                          .eq("branch_id", currentBranch.id);
-                        
-                        if (error) {
-                          toast.error("Error", {
-                            description: error.message,
-                          });
-                        } else {
-                          setWhatsappEnabled(checked);
-                          await logAdminActivity({
-                            category: "settings",
-                            type: "whatsapp_toggled",
-                            description: `${checked ? "Enabled" : "Disabled"} WhatsApp messaging for ${currentBranch?.name || "branch"}`,
-                            entityType: "gym_settings",
-                            entityId: settingsId,
-                            entityName: currentBranch?.name || "Gym Settings",
-                            oldValue: { whatsapp_enabled: !checked },
-                            newValue: { whatsapp_enabled: checked },
-                            branchId: currentBranch?.id,
-                          });
-                          toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled", {
-                            description: checked 
-                              ? `WhatsApp messaging is now active for ${currentBranch?.name || "this branch"}` 
-                              : `All WhatsApp messages are now disabled for ${currentBranch?.name || "this branch"}`
-                          });
+                        } finally {
+                          setIsTogglingWhatsApp(false);
                         }
                       }}
                     />

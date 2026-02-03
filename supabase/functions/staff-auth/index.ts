@@ -222,12 +222,12 @@ Deno.serve(async (req) => {
         // Update login attempt to success
         await updateLoginAttempt(supabaseAdmin, phone, null, true);
 
-        // Log activity
+        // Log activity - staff logs use admin_user_id = NULL to be identified as staff actions
         const primaryBranch = branchAssignments?.find(b => b.is_primary);
         const branchId = primaryBranch?.branch_id || branchAssignments?.[0]?.branch_id;
         
         await supabaseAdmin.from("admin_activity_logs").insert({
-          admin_user_id: staff.auth_user_id,
+          admin_user_id: null, // NULL indicates this is a staff action, not admin
           activity_category: "staff",
           activity_type: "staff_logged_in",
           description: `Staff "${staff.full_name}" logged in successfully`,
@@ -239,8 +239,10 @@ Deno.serve(async (req) => {
             performed_by: "staff",
             staff_id: staff.id,
             staff_name: staff.full_name,
+            staff_phone: staff.phone,
             staff_role: staff.role,
             ip_address: clientIP,
+            auth_user_id: staff.auth_user_id, // Store auth_user_id in metadata for reference
           },
         });
 
@@ -389,7 +391,7 @@ Deno.serve(async (req) => {
               const branchId = primaryBranch?.branch_id || branchAssignments?.[0]?.branch_id;
               
               await supabaseAdmin.from("admin_activity_logs").insert({
-                admin_user_id: user.id,
+                admin_user_id: null, // NULL indicates this is a staff action, not admin
                 activity_category: "staff",
                 activity_type: "staff_logged_out",
                 description: `Staff "${staff.full_name}" logged out`,
@@ -401,7 +403,9 @@ Deno.serve(async (req) => {
                   performed_by: "staff",
                   staff_id: staff.id,
                   staff_name: staff.full_name,
+                  staff_phone: staff.phone,
                   staff_role: staff.role,
+                  auth_user_id: user.id, // Store auth_user_id in metadata for reference
                 },
               });
             }
