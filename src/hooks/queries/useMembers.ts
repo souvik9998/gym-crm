@@ -10,7 +10,7 @@ import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import * as membersApi from "@/api/members";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 50; // Increased for better performance
 
 /**
  * Hook to fetch members with infinite scroll using useInfiniteQuery
