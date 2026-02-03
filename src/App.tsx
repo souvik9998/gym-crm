@@ -9,6 +9,7 @@ import { PageLoader } from "@/components/ui/skeleton-loaders";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { AdminLayoutRoute } from "@/components/admin/AdminLayoutRoute";
 import { queryClient } from "@/lib/queryClient";
+import Index from "./pages/Index";
 import Register from "./pages/Register";
 import Renew from "./pages/Renew";
 import ExtendPT from "./pages/ExtendPT";
@@ -187,7 +188,7 @@ const App = () => (
               } />
               
               {/* Branch-specific routes for member registration */}
-              <Route path="/b/:branchId" element={<Register />} />
+              <Route path="/b/:branchId" element={<Index />} />
               <Route path="/b/:branchId/register" element={<Register />} />
               <Route path="/b/:branchId/renew" element={<Renew />} />
               <Route path="/b/:branchId/extend-pt" element={<ExtendPT />} />
