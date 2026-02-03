@@ -1,15 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dumbbell, Mail, Lock, ArrowLeft, Phone, User } from "lucide-react";
+import { Dumbbell, Mail, Lock, Phone, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { z } from "zod";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { queryClient } from "@/lib/queryClient";
 
 const adminLoginSchema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -35,6 +36,34 @@ const AdminLogin = () => {
   const [phone, setPhone] = useState("");
   const [staffPassword, setStaffPassword] = useState("");
   const [isStaffLoading, setIsStaffLoading] = useState(false);
+
+  // Clear all caches on login page load for fresh start
+  useEffect(() => {
+    // Clear React Query cache
+    queryClient.clear();
+    
+    // Clear localStorage cache items
+    const keysToRemove = [
+      'analytics-store',
+      'dashboard-store', 
+      'branch-store',
+      'staff-session',
+      'staff-branches',
+      'staff-permissions',
+    ];
+    keysToRemove.forEach(key => {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        // Ignore errors
+      }
+    });
+    
+    // Sign out any existing session to start fresh
+    supabase.auth.signOut().catch(() => {
+      // Ignore errors - user might not be signed in
+    });
+  }, []);
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,17 +163,6 @@ const AdminLogin = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-foreground mb-6"
-          onClick={() => navigate("/")}
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Portal
-        </Button>
-
         <Card className="border">
           <CardHeader className="text-center pb-4">
             <div className="flex items-center justify-center gap-2 mb-4">

@@ -2,14 +2,13 @@ import { useEffect, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { BranchProvider, useBranch } from "@/contexts/BranchContext";
 import { StaffAuthProvider, useStaffAuth } from "@/contexts/StaffAuthContext";
 import { PageLoader } from "@/components/ui/skeleton-loaders";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { AdminLayoutRoute } from "@/components/admin/AdminLayoutRoute";
 import { queryClient } from "@/lib/queryClient";
-import Index from "./pages/Index";
 import Register from "./pages/Register";
 import Renew from "./pages/Renew";
 import ExtendPT from "./pages/ExtendPT";
@@ -58,11 +57,13 @@ const App = () => (
             <Toaster />
             <BrowserRouter>
             <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Index />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/renew" element={<Renew />} />
-              <Route path="/extend-pt" element={<ExtendPT />} />
+              {/* Default route - redirect to admin login */}
+              <Route path="/" element={<Navigate to="/admin/login" replace />} />
+              
+              {/* Public routes for member registration (branch-specific only) */}
+              <Route path="/register" element={<Navigate to="/admin/login" replace />} />
+              <Route path="/renew" element={<Navigate to="/admin/login" replace />} />
+              <Route path="/extend-pt" element={<Navigate to="/admin/login" replace />} />
               <Route path="/success" element={<Success />} />
               <Route path="/profile" element={<MemberProfile />} />
               <Route path="/admin/login" element={<AdminLogin />} />
@@ -177,12 +178,14 @@ const App = () => (
                 </Suspense>
               } />
               
-              {/* Branch-specific routes */}
-              <Route path="/b/:branchId" element={<Index />} />
+              {/* Branch-specific routes for member registration */}
+              <Route path="/b/:branchId" element={<Register />} />
               <Route path="/b/:branchId/register" element={<Register />} />
               <Route path="/b/:branchId/renew" element={<Renew />} />
               <Route path="/b/:branchId/extend-pt" element={<ExtendPT />} />
-              <Route path="*" element={<NotFound />} />
+              
+              {/* Catch all - redirect to admin login */}
+              <Route path="*" element={<Navigate to="/admin/login" replace />} />
             </Routes>
             </BrowserRouter>
           </StaffBranchBridge>
