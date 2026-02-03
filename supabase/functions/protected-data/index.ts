@@ -24,6 +24,7 @@ const corsHeaders = {
 interface AuthResult {
   valid: boolean;
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
   isStaff: boolean;
   userId?: string;
   staffId?: string;
@@ -71,8 +72,11 @@ async function authenticateRequest(
     console.error("Error checking admin roles:", adminRolesError);
   }
 
-  if ((adminRoles || []).length > 0) {
-    return { valid: true, isAdmin: true, isStaff: false, userId };
+  const roles = (adminRoles || []).map((r: { role: string }) => r.role);
+  const isSuperAdmin = roles.includes("super_admin");
+
+  if (roles.length > 0) {
+    return { valid: true, isAdmin: true, isSuperAdmin, isStaff: false, userId };
   }
 
   // Check if user is staff
@@ -117,6 +121,58 @@ function hasBranchAccess(auth: AuthResult, branchId: string | null): boolean {
   if (auth.isAdmin) return true;
   if (!branchId) return true;
   return auth.branchIds?.includes(branchId) || false;
+}
+
+async function resolveAllowedBranchIds(
+  // deno-lint-ignore no-explicit-any
+  serviceClient: any,
+  auth: AuthResult,
+  requestedBranchId: string | null
+): Promise<string[] | null> {
+  // If a specific branch is requested, scope to that branch (permission checks happen separately)
+  if (requestedBranchId) return [requestedBranchId];
+
+  // Staff are restricted to assigned branches
+  if (auth.isStaff) return auth.branchIds || [];
+
+  // Super admins can see everything (no tenant scoping)
+  if (auth.isAdmin && auth.isSuperAdmin) return null;
+
+  // Tenant-scoped admins: only branches belonging to their tenant
+  if (auth.isAdmin && auth.userId) {
+    const { data: membership, error: membershipError } = await serviceClient
+      .from("tenant_members")
+      .select("tenant_id")
+      .eq("user_id", auth.userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (membershipError) {
+      console.error("Error resolving tenant membership:", membershipError);
+      return [];
+    }
+
+    const tenantId = membership?.tenant_id as string | undefined;
+    if (!tenantId) {
+      // Not a tenant member means: deny data (prevents accidental global leakage)
+      return [];
+    }
+
+    const { data: branches, error: branchesError } = await serviceClient
+      .from("branches")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .eq("is_active", true);
+
+    if (branchesError) {
+      console.error("Error resolving tenant branches:", branchesError);
+      return [];
+    }
+
+    return (branches || []).map((b: { id: string }) => b.id);
+  }
+
+  return [];
 }
 
 function hasPermission(auth: AuthResult, permission: string): boolean {
@@ -192,6 +248,8 @@ Deno.serve(async (req) => {
       return errorResponse("Access denied to this branch", 403);
     }
 
+    const allowedBranchIds = await resolveAllowedBranchIds(supabase, auth, branchId);
+
     switch (action) {
       case "health": {
         // Health check endpoint - no permissions required, just valid auth
@@ -215,22 +273,35 @@ Deno.serve(async (req) => {
         // Refresh subscription statuses
         await supabase.rpc("refresh_subscription_statuses");
 
-        // Build query with branch filter
+        // If tenant admin has no branches, return zeroed stats
+        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
+          return new Response(
+            JSON.stringify({
+              totalMembers: 0,
+              activeMembers: 0,
+              expiringSoon: 0,
+              expiredMembers: 0,
+              inactiveMembers: 0,
+              monthlyRevenue: 0,
+              withPT: 0,
+              dailyPassUsers: 0,
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Build query with branch/tenant filter
         let membersCountQuery = supabase.from("members").select("*", { count: "exact", head: true });
-        if (branchId) {
-          membersCountQuery = membersCountQuery.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds?.length) {
-          membersCountQuery = membersCountQuery.in("branch_id", auth.branchIds);
+        if (Array.isArray(allowedBranchIds)) {
+          membersCountQuery = membersCountQuery.in("branch_id", allowedBranchIds);
         }
         const { count: totalMembers, error: membersCountError } = await membersCountQuery;
         if (membersCountError) throw membersCountError;
 
         // Get all members
         let memberDataQuery = supabase.from("members").select("id");
-        if (branchId) {
-          memberDataQuery = memberDataQuery.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds?.length) {
-          memberDataQuery = memberDataQuery.in("branch_id", auth.branchIds);
+        if (Array.isArray(allowedBranchIds)) {
+          memberDataQuery = memberDataQuery.in("branch_id", allowedBranchIds);
         }
         const { data: membersData, error: membersDataError } = await memberDataQuery;
         if (membersDataError) throw membersDataError;
@@ -240,10 +311,8 @@ Deno.serve(async (req) => {
           .from("subscriptions")
           .select("member_id, status, end_date")
           .order("end_date", { ascending: false });
-        if (branchId) {
-          subscriptionsQuery = subscriptionsQuery.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds?.length) {
-          subscriptionsQuery = subscriptionsQuery.in("branch_id", auth.branchIds);
+        if (Array.isArray(allowedBranchIds)) {
+          subscriptionsQuery = subscriptionsQuery.in("branch_id", allowedBranchIds);
         }
         const { data: allSubscriptions, error: subsError } = await subscriptionsQuery;
         if (subsError) throw subsError;
@@ -305,10 +374,8 @@ Deno.serve(async (req) => {
           .select("amount")
           .eq("status", "success")
           .gte("created_at", startOfMonth.toISOString());
-        if (branchId) {
-          paymentsQuery = paymentsQuery.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds?.length) {
-          paymentsQuery = paymentsQuery.in("branch_id", auth.branchIds);
+        if (Array.isArray(allowedBranchIds)) {
+          paymentsQuery = paymentsQuery.in("branch_id", allowedBranchIds);
         }
         const { data: payments, error: paymentsError } = await paymentsQuery;
         if (paymentsError) throw paymentsError;
@@ -322,10 +389,8 @@ Deno.serve(async (req) => {
           .select("member_id")
           .eq("status", "active")
           .gte("end_date", todayStr);
-        if (branchId) {
-          ptQuery = ptQuery.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds?.length) {
-          ptQuery = ptQuery.in("branch_id", auth.branchIds);
+        if (Array.isArray(allowedBranchIds)) {
+          ptQuery = ptQuery.in("branch_id", allowedBranchIds);
         }
         const { data: activePTData, error: ptError } = await ptQuery;
         if (ptError) throw ptError;
@@ -334,10 +399,8 @@ Deno.serve(async (req) => {
 
         // Get daily pass users count
         let dailyPassQuery = supabase.from("daily_pass_users").select("*", { count: "exact", head: true });
-        if (branchId) {
-          dailyPassQuery = dailyPassQuery.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds?.length) {
-          dailyPassQuery = dailyPassQuery.in("branch_id", auth.branchIds);
+        if (Array.isArray(allowedBranchIds)) {
+          dailyPassQuery = dailyPassQuery.in("branch_id", allowedBranchIds);
         }
         const { count: dailyPassCount, error: dailyPassError } = await dailyPassQuery;
         if (dailyPassError) throw dailyPassError;
@@ -364,10 +427,8 @@ Deno.serve(async (req) => {
 
         let query = supabase.from("personal_trainers").select("*").eq("is_active", true);
 
-        if (branchId) {
-          query = query.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds?.length) {
-          query = query.in("branch_id", auth.branchIds);
+        if (Array.isArray(allowedBranchIds)) {
+          query = query.in("branch_id", allowedBranchIds);
         }
 
         const { data: trainers, error } = await query;
@@ -386,10 +447,8 @@ Deno.serve(async (req) => {
 
         let query = supabase.from("personal_trainers").select("*");
 
-        if (branchId) {
-          query = query.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds?.length) {
-          query = query.in("branch_id", auth.branchIds);
+        if (Array.isArray(allowedBranchIds)) {
+          query = query.in("branch_id", allowedBranchIds);
         }
 
         const { data: trainers, error } = await query;
@@ -432,12 +491,9 @@ Deno.serve(async (req) => {
         let monthlyQuery = supabase.from("monthly_packages").select("*");
         let customQuery = supabase.from("custom_packages").select("*");
 
-        if (branchId) {
-          monthlyQuery = monthlyQuery.eq("branch_id", branchId);
-          customQuery = customQuery.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds?.length) {
-          monthlyQuery = monthlyQuery.in("branch_id", auth.branchIds);
-          customQuery = customQuery.in("branch_id", auth.branchIds);
+        if (Array.isArray(allowedBranchIds)) {
+          monthlyQuery = monthlyQuery.in("branch_id", allowedBranchIds);
+          customQuery = customQuery.in("branch_id", allowedBranchIds);
         }
 
         const [monthlyResult, customResult] = await Promise.all([
@@ -463,15 +519,20 @@ Deno.serve(async (req) => {
           return errorResponse("Permission denied: cannot view members", 403);
         }
 
+        // If tenant admin has no branches, return empty list (prevents cross-tenant leakage)
+        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
+          return new Response(
+            JSON.stringify({ members: [], nextCursor: null, totalCount: 0 }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
         let countQuery = supabase.from("members").select("*", { count: "exact", head: true });
         let membersQuery = supabase.from("members").select("*").order("created_at", { ascending: false });
 
-        if (branchId) {
-          countQuery = countQuery.eq("branch_id", branchId);
-          membersQuery = membersQuery.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds?.length) {
-          countQuery = countQuery.in("branch_id", auth.branchIds);
-          membersQuery = membersQuery.in("branch_id", auth.branchIds);
+        if (Array.isArray(allowedBranchIds)) {
+          countQuery = countQuery.in("branch_id", allowedBranchIds);
+          membersQuery = membersQuery.in("branch_id", allowedBranchIds);
         }
 
         const { count, error: countError } = await countQuery;
@@ -549,7 +610,8 @@ Deno.serve(async (req) => {
           return errorResponse("Member not found", 404);
         }
 
-        if (auth.isStaff && auth.branchIds && !auth.branchIds.includes(member.branch_id)) {
+        // Enforce branch/tenant isolation for staff + tenant-scoped admins
+        if (Array.isArray(allowedBranchIds) && !allowedBranchIds.includes(member.branch_id)) {
           return errorResponse("Access denied to this member", 403);
         }
 
@@ -581,12 +643,16 @@ Deno.serve(async (req) => {
           `)
           .order("created_at", { ascending: false });
 
-        if (branchId) {
-          countQuery = countQuery.eq("branch_id", branchId);
-          paymentsQuery = paymentsQuery.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds?.length) {
-          countQuery = countQuery.in("branch_id", auth.branchIds);
-          paymentsQuery = paymentsQuery.in("branch_id", auth.branchIds);
+        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
+          return new Response(
+            JSON.stringify({ payments: [], nextCursor: null, totalCount: 0 }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (Array.isArray(allowedBranchIds)) {
+          countQuery = countQuery.in("branch_id", allowedBranchIds);
+          paymentsQuery = paymentsQuery.in("branch_id", allowedBranchIds);
         }
 
         const { count, error: countError } = await countQuery;
@@ -624,12 +690,16 @@ Deno.serve(async (req) => {
           `)
           .order("entry_date", { ascending: false });
 
-        if (branchId) {
-          countQuery = countQuery.eq("branch_id", branchId);
-          ledgerQuery = ledgerQuery.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds?.length) {
-          countQuery = countQuery.in("branch_id", auth.branchIds);
-          ledgerQuery = ledgerQuery.in("branch_id", auth.branchIds);
+        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
+          return new Response(
+            JSON.stringify({ entries: [], nextCursor: null, totalCount: 0 }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (Array.isArray(allowedBranchIds)) {
+          countQuery = countQuery.in("branch_id", allowedBranchIds);
+          ledgerQuery = ledgerQuery.in("branch_id", allowedBranchIds);
         }
 
         const { count, error: countError } = await countQuery;
@@ -665,10 +735,15 @@ Deno.serve(async (req) => {
           `)
           .order("created_at", { ascending: false });
 
-        if (branchId) {
-          query = query.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds?.length) {
-          query = query.in("branch_id", auth.branchIds);
+        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
+          return new Response(
+            JSON.stringify({ subscriptions: [] }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (Array.isArray(allowedBranchIds)) {
+          query = query.in("branch_id", allowedBranchIds);
         }
 
         query = query.range(cursor, cursor + limit - 1);
@@ -689,12 +764,16 @@ Deno.serve(async (req) => {
         let countQuery = supabase.from("daily_pass_users").select("*", { count: "exact", head: true });
         let usersQuery = supabase.from("daily_pass_users").select("*").order("created_at", { ascending: false });
 
-        if (branchId) {
-          countQuery = countQuery.eq("branch_id", branchId);
-          usersQuery = usersQuery.eq("branch_id", branchId);
-        } else if (auth.isStaff && auth.branchIds?.length) {
-          countQuery = countQuery.in("branch_id", auth.branchIds);
-          usersQuery = usersQuery.in("branch_id", auth.branchIds);
+        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
+          return new Response(
+            JSON.stringify({ users: [], nextCursor: null, totalCount: 0 }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (Array.isArray(allowedBranchIds)) {
+          countQuery = countQuery.in("branch_id", allowedBranchIds);
+          usersQuery = usersQuery.in("branch_id", allowedBranchIds);
         }
 
         const { count, error: countError } = await countQuery;
