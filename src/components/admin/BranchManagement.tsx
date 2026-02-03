@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useStaffOperations } from "@/hooks/useStaffOperations";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { createBranchAsOwner } from "@/api/branches/ownerBranches";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +32,7 @@ import {
 export const BranchManagement = () => {
   const { branches, allBranches, currentBranch, setCurrentBranch, refreshBranches, isStaffRestricted, tenantId } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
-  const { isAdmin } = useIsAdmin();
+  const { isAdmin, isGymOwner } = useIsAdmin();
   const staffOps = useStaffOperations();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
@@ -181,20 +182,35 @@ export const BranchManagement = () => {
           return;
         }
         
-        const { data, error } = await supabase
-          .from("branches")
-          .insert({
+        // For gym owners, create via backend function to enforce limits and avoid RLS write failures
+        let data: any;
+        if (isGymOwner) {
+          data = await createBranchAsOwner({
             name: formData.name.trim(),
             address: formData.address.trim() || null,
             phone: formData.phone.trim() || null,
             email: formData.email.trim() || null,
-            is_default: displayBranches.length === 0,
-            tenant_id: tenantId, // Include tenant_id for RLS policy
-          })
-          .select()
-          .single();
+            isDefault: displayBranches.length === 0,
+          });
+        } else {
+          const { data: created, error } = await supabase
+            .from("branches")
+            .insert({
+              name: formData.name.trim(),
+              address: formData.address.trim() || null,
+              phone: formData.phone.trim() || null,
+              email: formData.email.trim() || null,
+              is_default: displayBranches.length === 0,
+              tenant_id: tenantId,
+            })
+            .select()
+            .single();
 
-        if (error) throw error;
+          if (error) throw error;
+          data = created;
+        }
+
+        if (!data) throw new Error("Failed to create branch");
 
         // Auto-create gym_settings for the new branch
         if (data) {

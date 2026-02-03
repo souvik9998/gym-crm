@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     let userId: string | null = null;
     let isSuperAdmin = false;
+    let isGymOwner = false;
 
     if (authHeader) {
       const token = authHeader.replace("Bearer ", "");
@@ -70,10 +71,130 @@ Deno.serve(async (req) => {
           .maybeSingle();
         
         isSuperAdmin = !!roleData;
+
+        // Check if user is gym owner (admin role)
+        const { data: gymOwnerRole } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .eq("role", "admin")
+          .maybeSingle();
+        isGymOwner = !!gymOwnerRole;
       }
     }
 
     switch (action) {
+      // ========================================
+      // GYM OWNER ACTIONS
+      // ========================================
+      case "owner-create-branch": {
+        if (!userId || !isGymOwner) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: Gym owner access required" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { name, address, phone, email, isDefault } = body;
+
+        if (!name) {
+          return new Response(
+            JSON.stringify({ error: "Missing required field: name" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Resolve tenant from membership (owner/admin)
+        const { data: membership, error: membershipError } = await supabase
+          .from("tenant_members")
+          .select("tenant_id, role, is_owner")
+          .eq("user_id", userId)
+          .in("role", ["admin", "tenant_admin"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (membershipError) {
+          return new Response(
+            JSON.stringify({ error: membershipError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (!membership?.tenant_id) {
+          return new Response(
+            JSON.stringify({ error: "No organization found for this user" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const tenantId = membership.tenant_id;
+
+        // Check tenant is active
+        const { data: tenant } = await supabase
+          .from("tenants")
+          .select("is_active")
+          .eq("id", tenantId)
+          .single();
+
+        if (!tenant?.is_active) {
+          return new Response(
+            JSON.stringify({ error: "Organization is suspended" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Enforce branch limit
+        const { data: canAdd } = await supabase
+          .rpc("tenant_can_add_resource", {
+            _tenant_id: tenantId,
+            _resource_type: "branch",
+          });
+
+        if (!canAdd) {
+          return new Response(
+            JSON.stringify({ error: "Branch limit reached for this organization" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Create branch
+        const { data: branch, error: branchError } = await supabase
+          .from("branches")
+          .insert({
+            tenant_id: tenantId,
+            name: name.trim(),
+            address: address?.trim() || null,
+            phone: phone?.trim() || null,
+            email: email?.trim() || null,
+            is_default: isDefault || false,
+            is_active: true,
+          })
+          .select()
+          .single();
+
+        if (branchError) {
+          return new Response(
+            JSON.stringify({ error: branchError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Create gym_settings for the new branch
+        await supabase.from("gym_settings").insert({
+          branch_id: branch.id,
+          gym_name: name.trim(),
+          gym_phone: phone?.trim() || null,
+          gym_address: address?.trim() || null,
+          whatsapp_enabled: false,
+        });
+
+        return new Response(
+          JSON.stringify({ data: branch }),
+          { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       // ========================================
       // SUPER ADMIN ACTIONS
       // ========================================
