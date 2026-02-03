@@ -1116,6 +1116,27 @@ const AdminSettings = () => {
               </CardContent>
             </Card>
 
+            {/* WhatsApp API Plan Info */}
+            <Card className="border-0 shadow-sm border-l-4 border-l-warning">
+              <CardContent className="pt-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-warning/10">
+                    <ChatBubbleLeftEllipsisIcon className="w-5 h-5 text-warning" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-medium text-sm">WhatsApp API Plan Information</p>
+                    <p className="text-xs text-muted-foreground">
+                      Some message types (like promotional messages) may require a <strong>Periskope Pro or Enterprise plan</strong>. 
+                      If you see "Plan Restriction" errors when sending messages, please contact your administrator to upgrade the WhatsApp API subscription.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      <strong>Supported message types:</strong> Welcome messages, Renewal confirmations, Expiry reminders, Payment details, Staff credentials
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <WhatsAppTemplates />
           </TabsContent>
 

@@ -292,12 +292,32 @@ export const MembersTable = ({
         }
         return true;
       } else {
-        throw new Error(data.error || "Failed to send WhatsApp");
+        // Check for specific error types
+        const errorMessage = data.error || data.results?.[0]?.error || "Failed to send WhatsApp";
+        
+        // Handle Periskope API plan restriction
+        if (errorMessage.includes("PLAN_RESTRICTION")) {
+          toast.error("WhatsApp API Plan Restriction", {
+            description: "Promotional messages require a Periskope Pro or Enterprise plan. Please upgrade your WhatsApp API subscription.",
+            duration: 8000,
+          });
+          return false;
+        }
+        
+        throw new Error(errorMessage);
       }
     } catch (error: any) {
-      toast.error("Failed to send WhatsApp", {
-        description: error.message,
-      });
+      // Handle plan restriction in catch block too
+      if (error.message?.includes("PLAN_RESTRICTION") || error.message?.includes("pro and enterprise plans")) {
+        toast.error("WhatsApp API Plan Restriction", {
+          description: "This message type requires a Periskope Pro or Enterprise plan. Contact your administrator to upgrade.",
+          duration: 8000,
+        });
+      } else {
+        toast.error("Failed to send WhatsApp", {
+          description: error.message,
+        });
+      }
       return false;
     } finally {
       setSendingWhatsApp(null);
@@ -555,12 +575,31 @@ export const MembersTable = ({
 
         setSelectedMembers(new Set());
       } else {
-        throw new Error(data.error || "Failed to send WhatsApp");
+        // Check for specific error types
+        const errorMessage = data.error || data.results?.find((r: any) => r.error)?.error || "Failed to send WhatsApp";
+        
+        // Handle Periskope API plan restriction
+        if (errorMessage.includes("PLAN_RESTRICTION") || errorMessage.includes("pro and enterprise plans")) {
+          toast.error("WhatsApp API Plan Restriction", {
+            description: "This message type requires a Periskope Pro or Enterprise plan. Please contact your administrator to upgrade the WhatsApp API subscription.",
+            duration: 8000,
+          });
+        } else {
+          throw new Error(errorMessage);
+        }
       }
     } catch (error: any) {
-      toast.error("Failed to send bulk WhatsApp", {
-        description: error.message,
-      });
+      // Handle plan restriction in catch block too
+      if (error.message?.includes("PLAN_RESTRICTION") || error.message?.includes("pro and enterprise plans")) {
+        toast.error("WhatsApp API Plan Restriction", {
+          description: "This message type requires a Periskope Pro or Enterprise plan. Contact your administrator to upgrade.",
+          duration: 8000,
+        });
+      } else {
+        toast.error("Failed to send bulk WhatsApp", {
+          description: error.message,
+        });
+      }
     } finally {
       setBulkActionType(null);
     }
