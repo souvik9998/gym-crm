@@ -146,10 +146,6 @@ export async function createTenant(params: CreateTenantParams): Promise<{ tenant
     throw new Error("Authentication required");
   }
 
-  // First create the owner user account, then create the tenant
-  // The edge function expects ownerUserId, but we need to create the user first
-  // So we'll use a two-step process or adapt the API call
-
   const response = await fetch(
     `${getEdgeFunctionUrl("tenant-operations")}?action=create-tenant`,
     {
@@ -164,7 +160,8 @@ export async function createTenant(params: CreateTenantParams): Promise<{ tenant
         slug: params.slug,
         email: params.email,
         phone: params.phone,
-        ownerUserId: session.user.id, // Use current user as placeholder, actual creation handled differently
+        ownerEmail: params.ownerEmail,
+        ownerPassword: params.ownerPassword,
         limits: params.limits ? {
           maxBranches: params.limits.max_branches,
           maxStaffPerBranch: params.limits.max_staff_per_branch,
@@ -184,7 +181,7 @@ export async function createTenant(params: CreateTenantParams): Promise<{ tenant
   const result = await response.json();
   return { 
     tenant: result.data, 
-    owner: { id: session.user.id, email: params.ownerEmail } 
+    owner: result.owner || { id: "", email: params.ownerEmail } 
   };
 }
 

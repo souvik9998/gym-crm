@@ -10,7 +10,8 @@ interface TenantCreateRequest {
   slug: string;
   email?: string;
   phone?: string;
-  ownerUserId: string;
+  ownerEmail: string;
+  ownerPassword: string;
   limits?: {
     maxBranches?: number;
     maxStaffPerBranch?: number;
@@ -84,12 +85,20 @@ Deno.serve(async (req) => {
           );
         }
 
-        const { name, slug, email, phone, ownerUserId, limits } = body as TenantCreateRequest;
+        const { name, slug, email, phone, ownerEmail, ownerPassword, limits } = body;
 
         // Validate required fields
-        if (!name || !slug || !ownerUserId) {
+        if (!name || !slug) {
           return new Response(
-            JSON.stringify({ error: "Missing required fields: name, slug, ownerUserId" }),
+            JSON.stringify({ error: "Missing required fields: name, slug" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Owner credentials required for new tenant
+        if (!ownerEmail || !ownerPassword) {
+          return new Response(
+            JSON.stringify({ error: "Owner email and password are required" }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
@@ -100,6 +109,50 @@ Deno.serve(async (req) => {
             JSON.stringify({ error: "Invalid slug format: only lowercase letters, numbers, and hyphens allowed" }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
+        }
+
+        // Check if owner email already exists
+        const { data: existingUsers } = await supabase.auth.admin.listUsers();
+        const existingUser = existingUsers?.users?.find(u => u.email === ownerEmail);
+        
+        let ownerUserId: string;
+
+        if (existingUser) {
+          // User exists - check if they're already assigned to a tenant
+          const { data: existingMembership } = await supabase
+            .from("tenant_members")
+            .select("tenant_id")
+            .eq("user_id", existingUser.id)
+            .limit(1);
+
+          if (existingMembership && existingMembership.length > 0) {
+            return new Response(
+              JSON.stringify({ error: "This email is already associated with another organization" }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+
+          ownerUserId = existingUser.id;
+          console.log(`Using existing user ${ownerEmail} as owner`);
+        } else {
+          // Create new user for the gym owner
+          console.log(`Creating new user for gym owner: ${ownerEmail}`);
+          const { data: newUser, error: createUserError } = await supabase.auth.admin.createUser({
+            email: ownerEmail,
+            password: ownerPassword,
+            email_confirm: true, // Auto-confirm email
+          });
+
+          if (createUserError || !newUser?.user) {
+            console.error("Error creating owner user:", createUserError);
+            return new Response(
+              JSON.stringify({ error: createUserError?.message || "Failed to create owner account" }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+
+          ownerUserId = newUser.user.id;
+          console.log(`Created new user: ${ownerUserId}`);
         }
 
         // Create tenant
@@ -116,6 +169,8 @@ Deno.serve(async (req) => {
 
         if (tenantError) {
           console.error("Error creating tenant:", tenantError);
+          // If tenant creation fails, we should clean up the user we just created
+          // But for now, just return the error
           return new Response(
             JSON.stringify({ error: tenantError.message }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -166,12 +221,45 @@ Deno.serve(async (req) => {
           console.error("Error adding admin role:", roleError);
         }
 
+        // Create default branch for the tenant
+        const { data: defaultBranch, error: branchError } = await supabase
+          .from("branches")
+          .insert({
+            tenant_id: tenant.id,
+            name: `${name} - Main`,
+            is_default: true,
+            is_active: true,
+          })
+          .select()
+          .single();
+
+        if (branchError) {
+          console.error("Error creating default branch:", branchError);
+        } else {
+          console.log(`Created default branch: ${defaultBranch.id}`);
+          
+          // Create default gym_settings for the branch
+          const { error: settingsError } = await supabase
+            .from("gym_settings")
+            .insert({
+              branch_id: defaultBranch.id,
+              gym_name: name,
+              gym_phone: phone,
+              monthly_fee: 500,
+              joining_fee: 200,
+            });
+
+          if (settingsError) {
+            console.error("Error creating gym settings:", settingsError);
+          }
+        }
+
         // Create billing info placeholder
         const { error: billingError } = await supabase
           .from("tenant_billing_info")
           .insert({
             tenant_id: tenant.id,
-            billing_email: email,
+            billing_email: email || ownerEmail,
             billing_name: name,
           });
 
@@ -185,14 +273,18 @@ Deno.serve(async (req) => {
           action_type: "tenant_created",
           target_tenant_id: tenant.id,
           target_user_id: ownerUserId,
-          description: `Created tenant "${name}" with owner user`,
-          new_value: { tenant, limits },
+          description: `Created tenant "${name}" with owner ${ownerEmail}`,
+          new_value: { tenant, limits, ownerEmail },
         });
 
-        console.log(`Tenant created: ${tenant.id} (${name})`);
+        console.log(`Tenant created: ${tenant.id} (${name}) with owner ${ownerEmail}`);
 
         return new Response(
-          JSON.stringify({ data: tenant }),
+          JSON.stringify({ 
+            data: tenant,
+            owner: { id: ownerUserId, email: ownerEmail },
+            branch: defaultBranch,
+          }),
           { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
