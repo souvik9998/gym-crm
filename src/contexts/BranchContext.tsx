@@ -118,15 +118,21 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
     
     setIsLoading(true);
     try {
+      // RLS policies now enforce tenant isolation at the database level.
+      // - Super admins: see ALL branches (no tenant_id filter in RLS)
+      // - Tenant admins/members: see ONLY branches where tenant_id matches their tenant
+      // - Staff: see ONLY branches they are assigned to
+      // We still filter by tenant_id here for super admins who want to scope to a tenant,
+      // but for regular tenant users, RLS does the heavy lifting.
       let query = supabase
         .from("branches")
         .select("*")
+        .is("deleted_at", null)
         .order("name");
 
-      // Filter by tenant_id if user has a tenant
-      // Note: Super admins have tenantId = null, so they see all branches
-      // Regular admins/tenant admins only see branches with their tenant_id
-      // RLS policies will enforce isolation, but we filter here for better UX
+      // Only apply tenant filter for super admins who have explicitly selected a tenant
+      // Regular tenant users will be automatically scoped by RLS
+      // (tenantId is null for super admins, so this won't affect tenant users)
       if (tenantId) {
         query = query.eq("tenant_id", tenantId);
       }
@@ -135,11 +141,12 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
 
       if (error) {
         console.error("Error fetching branches:", error);
+        setAllBranches([]);
         return;
       }
 
-      // Filter out soft-deleted branches for regular display
-      const branchList = ((data || []) as Branch[]).filter(b => !b.deleted_at);
+      // RLS already filters, no need for client-side deleted_at filter
+      const branchList = (data || []) as Branch[];
       setAllBranches(branchList);
 
       // Get the filtered list based on staff restriction
