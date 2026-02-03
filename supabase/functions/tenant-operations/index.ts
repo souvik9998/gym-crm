@@ -139,13 +139,13 @@ Deno.serve(async (req) => {
           console.error("Error creating tenant limits:", limitsError);
         }
 
-        // Add owner as tenant_admin in tenant_members
+        // Add owner as admin in tenant_members (admin = gym owner)
         const { error: memberError } = await supabase
           .from("tenant_members")
           .insert({
             tenant_id: tenant.id,
             user_id: ownerUserId,
-            role: "tenant_admin",
+            role: "admin",
             is_owner: true,
           });
 
@@ -153,16 +153,17 @@ Deno.serve(async (req) => {
           console.error("Error adding tenant owner:", memberError);
         }
 
-        // Also add tenant_admin role to user_roles for RLS policy checks
+        // Add admin role to user_roles for RLS policy checks
+        // Role hierarchy: super_admin (SaaS owner) > admin (gym owner)
         const { error: roleError } = await supabase
           .from("user_roles")
           .insert({
             user_id: ownerUserId,
-            role: "tenant_admin",
+            role: "admin",
           });
 
         if (roleError) {
-          console.error("Error adding tenant_admin role:", roleError);
+          console.error("Error adding admin role:", roleError);
         }
 
         // Create billing info placeholder

@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type AppRole = "admin" | "member" | "staff" | "super_admin" | "tenant_admin";
+// Role hierarchy: super_admin (SaaS owner) > admin (gym owner) > staff > member
+export type AppRole = "admin" | "member" | "staff" | "super_admin";
 
 interface UserRolesState {
   roles: AppRole[];
-  isAdmin: boolean;
-  isSuperAdmin: boolean;
-  isTenantAdmin: boolean;
+  isAdmin: boolean;        // admin = gym owner
+  isSuperAdmin: boolean;   // super_admin = SaaS owner
+  isGymOwner: boolean;     // Alias for isAdmin (gym owner)
   isLoading: boolean;
   userId: string | null;
   tenantId: string | null;
@@ -22,7 +23,7 @@ export const useUserRoles = () => {
     roles: [],
     isAdmin: false,
     isSuperAdmin: false,
-    isTenantAdmin: false,
+    isGymOwner: false,
     isLoading: true,
     userId: null,
     tenantId: null,
@@ -37,7 +38,7 @@ export const useUserRoles = () => {
           roles: [],
           isAdmin: false,
           isSuperAdmin: false,
-          isTenantAdmin: false,
+          isGymOwner: false,
           isLoading: false,
           userId: null,
           tenantId: null,
@@ -66,11 +67,15 @@ export const useUserRoles = () => {
         .eq("user_id", user.id)
         .maybeSingle();
 
+      // Role hierarchy: super_admin (SaaS owner) > admin (gym owner)
+      const isAdminRole = roles.includes("admin");
+      const isSuperAdminRole = roles.includes("super_admin");
+      
       setState({
         roles,
-        isAdmin: roles.includes("admin"),
-        isSuperAdmin: roles.includes("super_admin"),
-        isTenantAdmin: roles.includes("tenant_admin") || tenantData?.role === "tenant_admin",
+        isAdmin: isAdminRole,           // admin = gym owner
+        isSuperAdmin: isSuperAdminRole, // super_admin = SaaS owner
+        isGymOwner: isAdminRole || tenantData?.is_owner === true, // gym owner check
         isLoading: false,
         userId: user.id,
         tenantId: tenantData?.tenant_id || null,
