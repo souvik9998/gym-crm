@@ -18,7 +18,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface AuthResult {
@@ -34,35 +34,45 @@ interface AuthResult {
 // Verify session via Supabase Auth and determine role
 async function authenticateRequest(
   // deno-lint-ignore no-explicit-any
-  supabase: any, 
+  anonClient: any,
+  serviceClient: any,
   authHeader: string
 ): Promise<AuthResult> {
-  const token = authHeader.replace("Bearer ", "");
-  
-  // Verify JWT
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  
-  if (error || !user) {
+  if (!authHeader?.startsWith("Bearer ")) {
     return { valid: false, isAdmin: false, isStaff: false };
   }
 
+  const token = authHeader.replace("Bearer ", "").trim();
+  if (!token) {
+    return { valid: false, isAdmin: false, isStaff: false };
+  }
+
+  // Verify JWT (Lovable Cloud compatible)
+  const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+  if (claimsError || !claimsData?.claims?.sub) {
+    console.warn("JWT validation failed:", claimsError?.message);
+    return { valid: false, isAdmin: false, isStaff: false };
+  }
+
+  const userId = String(claimsData.claims.sub);
+
   // Check if user is admin
-  const { data: adminRole } = await supabase
+  const { data: adminRole } = await serviceClient
     .from("user_roles")
     .select("role")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("role", "admin")
     .maybeSingle();
 
   if (adminRole) {
-    return { valid: true, isAdmin: true, isStaff: false, userId: user.id };
+    return { valid: true, isAdmin: true, isStaff: false, userId };
   }
 
   // Check if user is staff
-  const { data: staffData } = await supabase
+  const { data: staffData } = await serviceClient
     .from("staff")
     .select("id, is_active")
-    .eq("auth_user_id", user.id)
+    .eq("auth_user_id", userId)
     .single();
 
   const staff = staffData as { id: string; is_active: boolean } | null;
@@ -71,14 +81,14 @@ async function authenticateRequest(
   }
 
   // Get staff permissions
-  const { data: permissions } = await supabase
+  const { data: permissions } = await serviceClient
     .from("staff_permissions")
     .select("*")
     .eq("staff_id", staff.id)
     .single();
 
   // Get assigned branches
-  const { data: assignments } = await supabase
+  const { data: assignments } = await serviceClient
     .from("staff_branch_assignments")
     .select("branch_id")
     .eq("staff_id", staff.id);
@@ -89,7 +99,7 @@ async function authenticateRequest(
     valid: true,
     isAdmin: false,
     isStaff: true,
-    userId: user.id,
+    userId,
     staffId: staff.id,
     permissions: permissions || {},
     branchIds,
@@ -147,20 +157,28 @@ Deno.serve(async (req) => {
     }
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Server configuration error");
     }
 
+    // Client used ONLY for JWT validation (does not need service role)
+    const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // Client used for data access (service role). Authorization is still validated above.
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { autoRefreshToken: false, persistSession: false }
     });
 
-    const auth = await authenticateRequest(supabase, authHeader);
+    const auth = await authenticateRequest(anonClient, supabase, authHeader);
     
     if (!auth.valid) {
-      return errorResponse("Unauthorized", 403);
+      return errorResponse("Invalid authentication", 401);
     }
 
     if (!hasBranchAccess(auth, branchId)) {
