@@ -133,17 +133,43 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, [applyBranchRestrictions]);
 
   useEffect(() => {
+    let isMounted = true;
+
+    // Listener for ONGOING auth changes (does NOT control isLoading)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (!isMounted) return;
+        
+        if (event === "SIGNED_OUT") {
+          clearStaffState();
+        } else if (event === "SIGNED_IN" && session?.user) {
+          // CRITICAL: Only process staff users
+          if (isStaffEmail(session.user.email)) {
+            // Use setTimeout(0) to avoid Supabase deadlock
+            setTimeout(() => {
+              if (isMounted) verifySession();
+            }, 0);
+          } else {
+            // Admin user logged in - clear any lingering staff state
+            clearStaffState();
+          }
+        }
+      }
+    );
+
+    // INITIAL load (controls isLoading)
     const initAuth = async () => {
-      setIsLoading(true);
       try {
         // Check if there's a Supabase session
         const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
         
         if (session?.user) {
           // CRITICAL: Only verify staff session if the email matches staff pattern
           // This prevents querying user_roles for admin users (which causes 406 errors)
           if (isStaffEmail(session.user.email)) {
             const isValid = await verifySession();
+            if (!isMounted) return;
             if (!isValid) {
               clearStaffState();
             }
@@ -151,31 +177,18 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
           // If not a staff email, just skip - this is an admin user
         }
       } catch (error) {
+        if (!isMounted) return;
         console.error("Auth init error:", error);
         clearStaffState();
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
     initAuth();
 
-    // Listen to Supabase auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_OUT") {
-        clearStaffState();
-      } else if (event === "SIGNED_IN" && session?.user) {
-        // CRITICAL: Only process staff users
-        if (isStaffEmail(session.user.email)) {
-          await verifySession();
-        } else {
-          // Admin user logged in - clear any lingering staff state
-          clearStaffState();
-        }
-      }
-    });
-
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, [clearStaffState, verifySession]);

@@ -36,14 +36,10 @@ const AdminLogin = () => {
   const [staffPassword, setStaffPassword] = useState("");
   const [isStaffLoading, setIsStaffLoading] = useState(false);
 
-  // Clear all caches on login page load for fresh start
+  // Clear React Query cache on login page load for fresh start
+  // NOTE: Do NOT call signOut here - that would log out users who just refreshed
   useEffect(() => {
-    // Use centralized logout utility to clear all state
-    import("@/lib/logout").then(({ performFullLogout }) => {
-      performFullLogout().catch(() => {
-        // Ignore errors - user might not be signed in
-      });
-    });
+    queryClient.clear();
   }, []);
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
