@@ -19,7 +19,6 @@ export default function CreateTenant() {
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
-    email: "",
     phone: "",
     ownerEmail: "",
     ownerPassword: "",
@@ -66,7 +65,7 @@ export default function CreateTenant() {
       const result = await createTenant({
         name: formData.name,
         slug: formData.slug,
-        email: formData.email || undefined,
+        email: formData.ownerEmail, // Use owner email as contact email
         phone: formData.phone || undefined,
         ownerEmail: formData.ownerEmail,
         ownerPassword: formData.ownerPassword,
@@ -169,44 +168,31 @@ export default function CreateTenant() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Contact Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="contact@gym.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Contact Phone</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="+91 9876543210"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Contact Phone (Optional)</Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  placeholder="+91 9876543210"
+                />
               </div>
             </CardContent>
           </Card>
 
-          {/* Owner Account */}
+          {/* Owner Login Credentials */}
           <Card className="border-0 shadow-sm">
             <CardHeader>
-              <CardTitle>Owner Account</CardTitle>
+              <CardTitle>Owner Login Credentials</CardTitle>
               <CardDescription>
-                Create the admin account for this organization
+                These credentials will be used by the gym owner to access their admin dashboard
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="ownerEmail">Owner Email *</Label>
+                  <Label htmlFor="ownerEmail">Login Email *</Label>
                   <Input
                     id="ownerEmail"
                     name="ownerEmail"
@@ -216,6 +202,9 @@ export default function CreateTenant() {
                     placeholder="owner@gym.com"
                     required
                   />
+                  <p className="text-xs text-muted-foreground">
+                    The gym owner will use this email to log in
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ownerPassword">Password *</Label>
@@ -228,6 +217,9 @@ export default function CreateTenant() {
                     placeholder="Min 6 characters"
                     required
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Share this password with the gym owner
+                  </p>
                 </div>
               </div>
             </CardContent>
