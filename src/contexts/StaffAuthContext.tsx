@@ -248,6 +248,10 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
+      // Clear all app state (localStorage, React Query cache, etc.)
+      const { clearAllAppState } = await import("@/lib/logout");
+      clearAllAppState();
+      
       // Sign out from Supabase
       await supabase.auth.signOut();
       clearStaffState();

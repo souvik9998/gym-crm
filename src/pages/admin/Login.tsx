@@ -38,29 +38,11 @@ const AdminLogin = () => {
 
   // Clear all caches on login page load for fresh start
   useEffect(() => {
-    // Clear React Query cache
-    queryClient.clear();
-    
-    // Clear localStorage cache items
-    const keysToRemove = [
-      'analytics-store',
-      'dashboard-store', 
-      'branch-store',
-      'staff-session',
-      'staff-branches',
-      'staff-permissions',
-    ];
-    keysToRemove.forEach(key => {
-      try {
-        localStorage.removeItem(key);
-      } catch (e) {
-        // Ignore errors
-      }
-    });
-    
-    // Sign out any existing session to start fresh
-    supabase.auth.signOut().catch(() => {
-      // Ignore errors - user might not be signed in
+    // Use centralized logout utility to clear all state
+    import("@/lib/logout").then(({ performFullLogout }) => {
+      performFullLogout().catch(() => {
+        // Ignore errors - user might not be signed in
+      });
     });
   }, []);
 

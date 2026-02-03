@@ -1,8 +1,8 @@
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth, useStaffPermission } from "@/contexts/StaffAuthContext";
+import { performFullLogout, clearAllAppState } from "@/lib/logout";
 import {
   ArrowRightOnRectangleIcon,
   ArrowPathIcon,
@@ -55,10 +55,13 @@ export const AdminHeader = ({
   const gymName = currentBranch?.name || "Pro Plus Fitness";
 
   const handleSignOut = async () => {
+    // Clear all app state first (localStorage, React Query cache, etc.)
+    clearAllAppState();
+    
     if (isStaffUser) {
       await staffLogout();
     } else {
-      await supabase.auth.signOut();
+      await performFullLogout();
     }
     navigate("/admin/login");
   };
