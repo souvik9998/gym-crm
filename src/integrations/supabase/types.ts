@@ -1668,6 +1668,7 @@ export type Database = {
         Args: { _count?: number; _tenant_id: string }
         Returns: boolean
       }
+      is_gym_owner: { Args: { _user_id: string }; Returns: boolean }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_tenant_admin: {

@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Hook to check if the current user is an admin (not staff)
- * Returns true if user has 'admin', 'super_admin', or 'tenant_admin' role in user_roles table
+ * Hook to check if the current user is a gym owner (admin role)
+ * Role hierarchy: super_admin (SaaS owner) > admin (gym owner)
+ * Returns true if user has 'admin' or 'super_admin' role in user_roles table
  */
 export const useIsAdmin = () => {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
-  const [isTenantAdmin, setIsTenantAdmin] = useState<boolean>(false);
+  const [isGymOwner, setIsGymOwner] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -19,17 +20,18 @@ export const useIsAdmin = () => {
         if (!user) {
           setIsAdmin(false);
           setIsSuperAdmin(false);
-          setIsTenantAdmin(false);
+          setIsGymOwner(false);
           setIsLoading(false);
           return;
         }
 
-        // Check if user has any admin role
+        // Check if user has admin or super_admin role
+        // admin = gym owner, super_admin = SaaS owner
         const { data, error } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", user.id)
-          .in("role", ["admin", "super_admin", "tenant_admin"]);
+          .in("role", ["admin", "super_admin"]);
 
         if (error) {
           console.error("Error checking admin status:", error);
@@ -38,7 +40,7 @@ export const useIsAdmin = () => {
           const roles = (data || []).map(r => r.role);
           setIsAdmin(roles.length > 0);
           setIsSuperAdmin(roles.includes("super_admin"));
-          setIsTenantAdmin(roles.includes("tenant_admin"));
+          setIsGymOwner(roles.includes("admin")); // admin = gym owner
         }
       } catch (error) {
         console.error("Error checking admin status:", error);
@@ -63,7 +65,7 @@ export const useIsAdmin = () => {
   return { 
     isAdmin: isAdmin ?? false, 
     isSuperAdmin,
-    isTenantAdmin,
+    isGymOwner,  // admin = gym owner
     isLoading 
   };
 };
