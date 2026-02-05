@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Phone, Calendar, MoreVertical, User, Trash2, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserCheck, Clock, AlertTriangle, Download } from "lucide-react";
+import { Phone, Calendar, MoreVertical, User, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserCheck, Clock, AlertTriangle, Download } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   DropdownMenu,
@@ -26,7 +26,6 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { EditMemberDialog } from "./EditMemberDialog";
 import { MemberActivityDialog } from "./MemberActivityDialog";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import type { MemberFilterValue } from "./MemberFilter";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
@@ -109,11 +108,6 @@ export const MembersTable = ({
   const [editingMember, setEditingMember] = useState<MemberWithSubscription | null>(null);
   const [viewingMemberId, setViewingMemberId] = useState<string | null>(null);
   const [viewingMemberName, setViewingMemberName] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; memberId: string; memberName: string }>({
-    open: false,
-    memberId: "",
-    memberName: "",
-  });
   
   // Check if user can manage members (admin or staff with can_manage_members permission)
   const canManageMembers = isAdmin || (isStaffLoggedIn && permissions?.can_manage_members === true);
@@ -148,66 +142,6 @@ export const MembersTable = ({
       refetch();
     }
   }, [refreshKey, refetch]);
-
-  const handleDeleteConfirm = async () => {
-    try {
-      // Get member data before deletion for logging
-      const memberToDelete = members.find(m => m.id === deleteConfirm.memberId);
-      
-      const { error } = await supabase
-        .from("members")
-        .delete()
-        .eq("id", deleteConfirm.memberId);
-
-      if (error) throw error;
-
-      // Log activity - use staff logging if staff is logged in
-      if (isStaffLoggedIn && staffUser) {
-        await logStaffActivity({
-          category: "members",
-          type: "member_deleted",
-          description: `Staff "${staffUser.fullName}" deleted member "${deleteConfirm.memberName}"`,
-          entityType: "members",
-          entityId: deleteConfirm.memberId,
-          entityName: deleteConfirm.memberName,
-          oldValue: memberToDelete ? {
-            name: memberToDelete.name,
-            phone: memberToDelete.phone,
-            join_date: memberToDelete.join_date,
-            subscription_status: memberToDelete.subscription?.status || "none",
-          } : null,
-          branchId: currentBranch?.id,
-          staffId: staffUser.id,
-          staffName: staffUser.fullName,
-          staffPhone: staffUser.phone,
-          metadata: { staff_role: staffUser.role },
-        });
-      } else {
-        await logAdminActivity({
-          category: "members",
-          type: "member_deleted",
-          description: `Deleted member "${deleteConfirm.memberName}"`,
-          entityType: "members",
-          entityId: deleteConfirm.memberId,
-          entityName: deleteConfirm.memberName,
-          oldValue: memberToDelete ? {
-            name: memberToDelete.name,
-            phone: memberToDelete.phone,
-            join_date: memberToDelete.join_date,
-            subscription_status: memberToDelete.subscription?.status || "none",
-          } : null,
-          branchId: currentBranch?.id,
-        });
-      }
-
-      toast.success("Member deleted successfully");
-      invalidateMembers(); // Invalidate cache to refetch
-    } catch (error: any) {
-      toast.error("Error", {
-        description: error.message,
-      });
-    }
-  };
 
   const handleMemberClick = (member: Member) => {
     setViewingMemberId(member.id);
@@ -1028,16 +962,6 @@ export const MembersTable = ({
                           <Pencil className="w-4 h-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteConfirm({ open: true, memberId: member.id, memberName: member.name });
-                          }}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
                         {isInactive(member) && (
                           <DropdownMenuItem onClick={(e) => handleMoveToActive(member, e)}>
                             <UserCheck className="w-4 h-4 mr-2" />
@@ -1298,16 +1222,6 @@ export const MembersTable = ({
                                 <Pencil className="w-4 h-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeleteConfirm({ open: true, memberId: member.id, memberName: member.name });
-                                }}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
                               {isInactive(member) && (
                                 <DropdownMenuItem onClick={(e) => handleMoveToActive(member, e)}>
                                   <UserCheck className="w-4 h-4 mr-2" />
@@ -1395,16 +1309,6 @@ export const MembersTable = ({
         onOpenChange={(open) => !open && setViewingMemberId(null)}
         memberId={viewingMemberId}
         memberName={viewingMemberName}
-      />
-
-      <ConfirmDialog
-        open={deleteConfirm.open}
-        onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
-        title="Delete Member"
-        description={`Are you sure you want to delete "${deleteConfirm.memberName}"? This action cannot be undone.`}
-        confirmText="Delete"
-        variant="destructive"
-        onConfirm={handleDeleteConfirm}
       />
     </div>
   );
