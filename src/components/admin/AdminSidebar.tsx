@@ -98,6 +98,14 @@ const allNavItems: NavItem[] = [
     iconSolid: BuildingOffice2Icon,
     adminOnly: true,
   },
+  // Attendance - admin only
+  {
+    title: "Attendance",
+    href: "/admin/attendance",
+    icon: ClipboardDocumentListIcon,
+    iconSolid: ClipboardDocumentListIcon,
+    adminOnly: true,
+  },
   // Ledger - requires ONLY ledger permission
   {
     title: "Ledger",
