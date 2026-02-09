@@ -17,6 +17,7 @@ import ExtendPT from "./pages/ExtendPT";
 import Success from "./pages/Success";
 import MemberProfile from "./pages/MemberProfile";
 import AdminLogin from "./pages/admin/Login";
+import CheckIn from "./pages/CheckIn";
 import NotFound from "./pages/NotFound";
 
 // Lazy load admin pages for better initial load time
@@ -30,6 +31,7 @@ const AdminLedger = lazy(() => import("./pages/admin/Ledger"));
 const Logs = lazy(() => import("./pages/admin/Logs"));
 const StaffManagement = lazy(() => import("./pages/admin/StaffManagement"));
 const TrainersPage = lazy(() => import("./pages/admin/Trainers"));
+const Attendance = lazy(() => import("./pages/admin/Attendance"));
 
 // Lazy load Super Admin pages
 const SuperAdminDashboard = lazy(() => import("./pages/superadmin/Dashboard"));
@@ -63,6 +65,7 @@ const App = () => (
               <Route path="/success" element={<Success />} />
               <Route path="/profile" element={<MemberProfile />} />
               <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/check-in" element={<CheckIn />} />
               
               {/* Admin routes with persistent layout */}
               <Route element={
@@ -93,6 +96,11 @@ const App = () => (
                 <Route path="/admin/branch-analytics" element={
                   <Suspense fallback={<PageLoader />}>
                     <BranchAnalytics />
+                  </Suspense>
+                } />
+                <Route path="/admin/attendance" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <Attendance />
                   </Suspense>
                 } />
               </Route>

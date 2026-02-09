@@ -94,6 +94,143 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_devices: {
+        Row: {
+          branch_id: string
+          created_at: string
+          device_fingerprint: string
+          id: string
+          is_active: boolean
+          member_id: string | null
+          registered_at: string
+          reset_at: string | null
+          reset_by: string | null
+          staff_id: string | null
+          updated_at: string
+          user_type: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          device_fingerprint: string
+          id?: string
+          is_active?: boolean
+          member_id?: string | null
+          registered_at?: string
+          reset_at?: string | null
+          reset_by?: string | null
+          staff_id?: string | null
+          updated_at?: string
+          user_type: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          device_fingerprint?: string
+          id?: string
+          is_active?: boolean
+          member_id?: string | null
+          registered_at?: string
+          reset_at?: string | null
+          reset_by?: string | null
+          staff_id?: string | null
+          updated_at?: string
+          user_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_devices_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_devices_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_devices_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_logs: {
+        Row: {
+          branch_id: string
+          check_in_at: string
+          check_out_at: string | null
+          created_at: string
+          date: string
+          device_fingerprint: string | null
+          id: string
+          member_id: string | null
+          staff_id: string | null
+          status: string
+          total_hours: number | null
+          updated_at: string
+          user_type: string
+        }
+        Insert: {
+          branch_id: string
+          check_in_at?: string
+          check_out_at?: string | null
+          created_at?: string
+          date?: string
+          device_fingerprint?: string | null
+          id?: string
+          member_id?: string | null
+          staff_id?: string | null
+          status?: string
+          total_hours?: number | null
+          updated_at?: string
+          user_type: string
+        }
+        Update: {
+          branch_id?: string
+          check_in_at?: string
+          check_out_at?: string | null
+          created_at?: string
+          date?: string
+          device_fingerprint?: string | null
+          id?: string
+          member_id?: string | null
+          staff_id?: string | null
+          status?: string
+          total_hours?: number | null
+          updated_at?: string
+          user_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_logs_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_logs_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_logs_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           address: string | null
