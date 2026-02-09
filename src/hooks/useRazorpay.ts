@@ -115,6 +115,7 @@ export const useRazorpay = () => {
               trainerFee,
               memberDetails,
               isDailyPass,
+              branchId,
             },
           }
         );

@@ -49,6 +49,7 @@ import {
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
+import RazorpayCredentialsTab from "@/components/superadmin/RazorpayCredentialsTab";
 
 interface Branch {
   id: string;
@@ -377,6 +378,7 @@ export default function TenantDetail() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="branches">Branches ({branches.length})</TabsTrigger>
             <TabsTrigger value="limits">Limits & Usage</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
           </TabsList>
 
@@ -612,6 +614,10 @@ export default function TenantDetail() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="payments" className="space-y-4">
+            <RazorpayCredentialsTab tenantId={tenant.id} />
           </TabsContent>
 
           <TabsContent value="users" className="space-y-4">
