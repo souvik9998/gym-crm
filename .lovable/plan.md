@@ -1,324 +1,208 @@
 
+# Per-Gym Razorpay Credentials Management
 
-# Secure Authentication & Authorization Architecture Plan
+## Overview
 
-## Current State Analysis
+This plan adds per-gym (per-branch) Razorpay credential management so each gym organization can have its own Razorpay account. Super Admins configure credentials via the Tenant Detail page. Credentials are encrypted at rest and never exposed to the frontend.
 
-### What's Already Implemented ✅
+## Architecture
 
-1. **Supabase Auth for All Users**
-   - Admin/Super Admin: Uses standard Supabase email/password auth
-   - Staff: Uses Supabase Auth with email pattern `staff_{phone}@gym.local`
-   - Passwords are managed by Supabase Auth (bcrypt hashed) - no manual password handling
-
-2. **Role Management in Database**
-   - `user_roles` table stores roles (`super_admin`, `admin`, `member`, `staff`)
-   - `tenant_members` table links users to tenants with ownership flags
-   - `staff` table links to `auth_user_id` for staff users
-
-3. **Edge Functions for Privileged Operations**
-   - `staff-auth`: Handles staff login, session verification, password management
-   - `protected-data`: Serves operational data with JWT validation + permission checks
-   - `staff-operations`: Handles write operations with permission validation
-   - `tenant-operations`: Super admin operations (tenant creation, limits)
-   - `public-data`: Serves minimal safe data for public registration
-
-4. **RLS Policies**
-   - Enabled on all tables with role-based access using `has_role()` function
-   - Multi-tenant isolation via `tenant_id` and `user_belongs_to_tenant()`
-   - Staff branch isolation via `staff_branch_assignments`
-
-5. **UI Protection**
-   - `ProtectedRoute` component validates roles before rendering
-   - Permission-based route gating for staff
-
----
-
-## Identified Gaps & Required Improvements
-
-### 1. Security Issues Found
-
-| Issue | Current State | Risk |
-|-------|--------------|------|
-| Permissive RLS Policy | `USING (true)` detected on some tables | Medium - May allow unintended access |
-| Leaked Password Protection | Disabled | Low - Should be enabled |
-| Session Token Exposure | Tokens in localStorage | Low - Standard practice but could add fingerprinting |
-
-### 2. Architecture Gaps
-
-| Gap | Impact |
-|-----|--------|
-| No refresh token rotation | Sessions could be hijacked if token stolen |
-| Missing rate limiting | Brute force protection only at app level |
-| No IP-based session validation | Sessions can be used from any IP |
-
----
-
-## Implementation Plan
-
-### Phase 1: Fix Existing Security Issues
-
-**Task 1.1: Fix Permissive RLS Policies**
-- Audit all tables with `USING (true)` policies
-- Replace with proper role-based conditions
-- Affected tables need investigation: `staff_sessions`, `staff_login_attempts`, `staff_permissions`, `staff_branch_assignments`
-
-**Task 1.2: Enable Leaked Password Protection**
-- Enable via Supabase dashboard/API
-- This prevents users from using passwords found in data breaches
-
----
-
-### Phase 2: Strengthen Edge Function Authorization
-
-**Task 2.1: Add Consistent JWT Validation**
-All edge functions should use a shared validation pattern:
+### Data Flow
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│                    Edge Function Auth Flow                       │
-├─────────────────────────────────────────────────────────────────┤
-│  1. Extract Bearer token from Authorization header               │
-│  2. Validate JWT using anonClient.auth.getClaims(token)         │
-│  3. Check user_roles table for role (super_admin, admin)        │
-│  4. For staff: Check staff table + staff_permissions            │
-│  5. For tenant operations: Verify tenant_members association    │
-│  6. Execute action with service_role ONLY after validation      │
-└─────────────────────────────────────────────────────────────────┘
+Super Admin UI                    Edge Function                    Database
+(TenantDetail.tsx)                (tenant-operations)              (razorpay_credentials)
+     |                                  |                                |
+     |-- Save key_id + key_secret ----->|                                |
+     |                                  |-- Encrypt key_secret -------->|
+     |                                  |-- Test order to Razorpay ---->|
+     |                                  |-- Mark is_verified=true ----->|
+     |                                  |                                |
+     |<--- Success / Error -------------|                                |
+     |                                  |                                |
+                                        |                                |
+Payment Flow                            |                                |
+(create-razorpay-order)                 |                                |
+     |-- branchId ------------------>   |                                |
+     |                                  |-- Lookup branch tenant ------>|
+     |                                  |-- Decrypt key_secret -------->|
+     |                                  |-- Create Razorpay order ----->|
+     |<--- orderId + keyId -------------|                                |
 ```
 
-**Task 2.2: Add IP/User-Agent Validation (Optional Enhancement)**
-- Store client fingerprint in session
-- Validate on subsequent requests
+### Security Model
+
+- Credentials stored in `razorpay_credentials` table with `key_secret` encrypted using AES-GCM with a server-side encryption key
+- RLS denies ALL access to non-service-role users (no SELECT, INSERT, UPDATE, DELETE for anon/authenticated)
+- Only Edge Functions using `service_role` can read/write credentials
+- `key_id` is stored in plain text (it's a publishable key returned to the frontend for checkout)
+- `key_secret` is encrypted and NEVER sent to the frontend
+- Super Admin access enforced at Edge Function level before any credential operation
 
 ---
 
-### Phase 3: Consolidate Auth Utilities
+## Phase 1: Database Table
 
-**Task 3.1: Create Shared Auth Validation Module**
-
-Create `supabase/functions/_shared/auth.ts`:
-
-```text
-Exports:
-├── validateJWT(token) → { valid, userId, error }
-├── checkAdminRole(userId) → { isAdmin, isSuperAdmin, tenantId }
-├── checkStaffAccess(userId) → { staffId, permissions, branchIds }
-├── requireRole(token, role) → throws if unauthorized
-└── requireStaffPermission(token, permission) → throws if unauthorized
-```
-
-**Task 3.2: Refactor Edge Functions to Use Shared Module**
-- `protected-data/index.ts` - Already has good patterns, extract to shared
-- `staff-operations/index.ts` - Use shared validation
-- `tenant-operations/index.ts` - Use shared validation
-
----
-
-### Phase 4: Enhance RLS Policies
-
-**Task 4.1: Audit and Strengthen Policies**
-
-Tables requiring policy review:
-- `staff_sessions` - Currently has `USING (true)` for SELECT/UPDATE
-- `staff_login_attempts` - Has `USING (true)` for SELECT
-- `staff_permissions` - Has `USING (true)` for SELECT
-- `staff_branch_assignments` - Has `USING (true)` for SELECT
-
-**Task 4.2: Add Service Role Policies for Edge Functions**
-Ensure write operations from edge functions use `auth.role() = 'service_role'`:
+Create `razorpay_credentials` table:
 
 ```sql
-CREATE POLICY "Service role can insert"
-ON public.some_table FOR INSERT
+CREATE TABLE public.razorpay_credentials (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+  key_id TEXT NOT NULL,
+  encrypted_key_secret TEXT NOT NULL,
+  encryption_iv TEXT NOT NULL,
+  is_verified BOOLEAN NOT NULL DEFAULT false,
+  verified_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_by UUID,
+  UNIQUE(tenant_id)
+);
+
+ALTER TABLE public.razorpay_credentials ENABLE ROW LEVEL SECURITY;
+
+-- ONLY service_role can access this table
+CREATE POLICY "Service role full access"
+ON public.razorpay_credentials FOR ALL
+USING (auth.role() = 'service_role')
 WITH CHECK (auth.role() = 'service_role');
 ```
 
----
-
-### Phase 5: Client-Side Hardening
-
-**Task 5.1: Remove Any Trusted Client-Side Role Checks**
-
-Current implementation is correct:
-- `ProtectedRoute` makes server calls to verify roles
-- No localStorage/sessionStorage for role caching
-- All enforcement at database/edge function level
-
-**Task 5.2: Add Input Validation with Zod**
-
-Already implemented:
-- `Login.tsx` uses Zod schemas for validation
-- Edge functions use `_shared/validation.ts` with Zod schemas
+No other RLS policies - gym owners, staff, and members cannot access this table at all.
 
 ---
 
-## Technical Details
+## Phase 2: Encryption Secret
 
-### Database Changes (Migration)
+A new secret `RAZORPAY_ENCRYPTION_KEY` must be added to the project. This is a 32-byte hex key used for AES-256-GCM encryption/decryption of Razorpay secrets in Edge Functions.
 
-```sql
--- 1. Fix overly permissive RLS policies on staff_sessions
-DROP POLICY IF EXISTS "Public can view staff sessions" ON public.staff_sessions;
-DROP POLICY IF EXISTS "Public can update staff sessions" ON public.staff_sessions;
+---
 
-CREATE POLICY "Staff can view own sessions" ON public.staff_sessions
-FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM public.staff s
-    WHERE s.id = staff_sessions.staff_id
-    AND s.auth_user_id = auth.uid()
-  )
-  OR has_role(auth.uid(), 'admin'::app_role)
-  OR has_role(auth.uid(), 'super_admin'::app_role)
-);
+## Phase 3: Edge Function - Credential Management
 
-CREATE POLICY "Service role can manage sessions" ON public.staff_sessions
-FOR ALL USING (auth.role() = 'service_role');
+Add new actions to `tenant-operations` Edge Function:
 
--- 2. Fix staff_login_attempts
-DROP POLICY IF EXISTS "Public can view login attempts" ON public.staff_login_attempts;
+**Action: `save-razorpay-credentials`** (Super Admin only)
+1. Validate Super Admin role
+2. Validate `tenantId`, `keyId`, `keySecret` inputs
+3. **Verify credentials** by creating a test Razorpay order (amount: 100 paise = Rs 1)
+4. If verification fails, return error - do NOT save
+5. Encrypt `keySecret` using AES-256-GCM with `RAZORPAY_ENCRYPTION_KEY`
+6. Upsert into `razorpay_credentials` with `is_verified = true`
+7. Log to `platform_audit_logs` (without logging the secret)
+8. Return success with connection status
 
-CREATE POLICY "Admins can view login attempts" ON public.staff_login_attempts
-FOR SELECT USING (
-  has_role(auth.uid(), 'admin'::app_role)
-  OR has_role(auth.uid(), 'super_admin'::app_role)
-);
+**Action: `get-razorpay-status`** (Super Admin only)
+1. Validate Super Admin role
+2. Query `razorpay_credentials` for the tenant
+3. Return ONLY: `isConnected`, `keyId` (masked: `rzp_****xxxx`), `isVerified`, `verifiedAt`
+4. NEVER return the secret
 
-CREATE POLICY "Service role can insert login attempts" ON public.staff_login_attempts
-FOR INSERT WITH CHECK (auth.role() = 'service_role');
+**Action: `remove-razorpay-credentials`** (Super Admin only)
+1. Validate Super Admin role
+2. Delete from `razorpay_credentials`
+3. Log to audit
 
--- 3. Fix staff_permissions public SELECT
-DROP POLICY IF EXISTS "Public can view staff permissions" ON public.staff_permissions;
--- Keep the "Staff can view own permissions via auth" policy which is properly scoped
-```
+---
 
-### Edge Function Changes
+## Phase 4: Update Payment Edge Functions
 
-**Create `supabase/functions/_shared/auth.ts`:**
+### `create-razorpay-order`
+Currently reads from `Deno.env.get("RAZORPAY_KEY_ID")`. Change to:
+
+1. Accept `branchId` in the request body
+2. Look up `tenant_id` from `branches` table using `branchId`
+3. Query `razorpay_credentials` for that `tenant_id`
+4. If no credentials or `is_verified = false`, return error: "Payment gateway not configured for this gym"
+5. Decrypt `key_secret` using AES-256-GCM
+6. Use per-gym `key_id` and decrypted `key_secret` for the Razorpay API call
+7. Return per-gym `key_id` to the frontend (needed for checkout)
+8. Fall back to env vars (`RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET`) ONLY if no per-gym credentials exist (for backward compatibility during migration, can be removed later)
+
+### `verify-razorpay-payment`
+Currently reads `RAZORPAY_KEY_SECRET` from env. Change to:
+
+1. Accept `branchId` in the request body (already does)
+2. Look up tenant credentials the same way
+3. Decrypt and use per-gym `key_secret` for HMAC signature verification
+4. Same fallback logic as above
+
+### Shared Encryption Utility
+Create helper functions in `_shared/encryption.ts`:
 
 ```typescript
-// Shared authentication utilities for edge functions
-import { createClient } from "npm:@supabase/supabase-js@2";
-
-interface AuthResult {
-  valid: boolean;
-  userId?: string;
-  isAdmin: boolean;
-  isSuperAdmin: boolean;
-  isStaff: boolean;
-  staffId?: string;
-  permissions?: Record<string, boolean>;
-  branchIds?: string[];
-  tenantId?: string;
-  error?: string;
-}
-
-export async function validateAuth(
-  supabaseUrl: string,
-  anonKey: string,
-  serviceRoleKey: string,
-  authHeader: string | null
-): Promise<AuthResult> {
-  // ... implementation
-}
-
-export function requireAdmin(auth: AuthResult): void {
-  if (!auth.valid || !auth.isAdmin) {
-    throw new Error("Admin access required");
-  }
-}
-
-export function requireSuperAdmin(auth: AuthResult): void {
-  if (!auth.valid || !auth.isSuperAdmin) {
-    throw new Error("Super admin access required");
-  }
-}
-
-export function requireStaffPermission(
-  auth: AuthResult, 
-  permission: string
-): void {
-  if (!auth.valid) throw new Error("Authentication required");
-  if (auth.isAdmin) return; // Admins have all permissions
-  if (!auth.isStaff) throw new Error("Staff access required");
-  if (!auth.permissions?.[permission]) {
-    throw new Error(`Permission denied: ${permission}`);
-  }
-}
-```
-
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `supabase/functions/_shared/auth.ts` | Create new shared auth module |
-| `supabase/functions/protected-data/index.ts` | Import shared auth, refactor |
-| `supabase/functions/staff-operations/index.ts` | Import shared auth, refactor |
-| `supabase/functions/tenant-operations/index.ts` | Import shared auth, refactor |
-| `supabase/functions/staff-auth/index.ts` | Already well-implemented, minor cleanup |
-| Database migration | Fix permissive RLS policies |
-
----
-
-## Security Architecture Diagram
-
-```text
-┌──────────────────────────────────────────────────────────────────────────┐
-│                         CLIENT LAYER                                      │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                       │
-│  │ Admin UI    │  │ Staff UI    │  │ Public UI   │                       │
-│  │ (Dashboard) │  │ (Dashboard) │  │ (Register)  │                       │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘                       │
-│         │                │                │                               │
-│    [Supabase Auth]  [Supabase Auth]  [No Auth]                           │
-│         │                │                │                               │
-└─────────┼────────────────┼────────────────┼──────────────────────────────┘
-          │                │                │
-          ▼                ▼                ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│                      EDGE FUNCTION LAYER                                  │
-│  ┌───────────────┐  ┌──────────────────┐  ┌──────────────┐               │
-│  │protected-data │  │ staff-operations │  │ public-data  │               │
-│  │tenant-ops     │  │ staff-auth       │  │ (no auth)    │               │
-│  └───────┬───────┘  └────────┬─────────┘  └──────┬───────┘               │
-│          │                   │                   │                        │
-│     [JWT Validation]    [JWT Validation]    [Read-only]                  │
-│     [Role Check]        [Permission Check]  [Minimal Data]               │
-│          │                   │                   │                        │
-└──────────┼───────────────────┼───────────────────┼───────────────────────┘
-           │                   │                   │
-           ▼                   ▼                   ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│                        DATABASE LAYER                                     │
-│  ┌─────────────────────────────────────────────────────────────────┐     │
-│  │                     Row Level Security                           │     │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │     │
-│  │  │ super_admin  │  │    admin     │  │    staff     │           │     │
-│  │  │ Full Access  │  │ Tenant Scope │  │ Branch Scope │           │     │
-│  │  └──────────────┘  └──────────────┘  └──────────────┘           │     │
-│  └─────────────────────────────────────────────────────────────────┘     │
-│                                                                           │
-│  Tables: user_roles, tenant_members, staff, staff_permissions            │
-│          members, payments, subscriptions, ledger_entries, etc.          │
-└──────────────────────────────────────────────────────────────────────────┘
+export async function encrypt(plaintext: string, keyHex: string): Promise<{ ciphertext: string; iv: string }>
+export async function decrypt(ciphertext: string, iv: string, keyHex: string): Promise<string>
+export async function getGymRazorpayCredentials(serviceClient, branchId): Promise<{ keyId: string; keySecret: string } | null>
 ```
 
 ---
 
-## Summary
+## Phase 5: Frontend - Super Admin UI
 
-The current implementation already follows most security best practices. The main improvements needed are:
+### Location: `src/pages/superadmin/TenantDetail.tsx`
 
-1. **Fix permissive RLS policies** - Replace `USING (true)` with proper conditions
-2. **Enable leaked password protection** - Simple configuration change
-3. **Consolidate auth utilities** - Create shared module for edge functions
-4. **Add service role policies** - Ensure edge functions can write to tables
+Add a new "Payments" tab to the tenant detail page with:
 
-The architecture properly:
-- Uses Supabase Auth exclusively for password management
-- Stores roles in dedicated tables (not in user metadata)
-- Routes privileged operations through edge functions
-- Enforces access at database level with RLS
-- Never trusts client-side role checks for enforcement
+1. **Connection Status Card**
+   - Shows "Connected" (green badge) or "Not Connected" (gray badge)
+   - If connected: shows masked key_id (`rzp_****xxxx`), verified date
+   - If not connected: shows setup instructions
 
+2. **Configure Section**
+   - Input: Razorpay Key ID (text input)
+   - Input: Razorpay Key Secret (password input, never pre-filled)
+   - "Verify & Save" button
+   - On save: calls `tenant-operations?action=save-razorpay-credentials`
+   - Shows loading state during verification
+   - Success/error toast feedback
+
+3. **Disconnect Button**
+   - Confirm dialog: "This will disable online payments for all branches of this gym"
+   - Calls `remove-razorpay-credentials`
+
+### Location: `src/hooks/useRazorpay.ts`
+
+Update `initiatePayment` to pass `branchId` to `create-razorpay-order`. This is already partially done - `branchId` is passed to `verify-razorpay-payment` but NOT to `create-razorpay-order`. Fix this.
+
+---
+
+## Phase 6: Payment Gating
+
+### Frontend Gating (UX only - not security)
+- Before showing "Pay Online" buttons, check if the gym has Razorpay connected
+- Add a query/flag from `public-data` edge function that returns `hasOnlinePayments: boolean` for a branch
+- If not connected, show "Online payments not available" or hide the pay button
+
+### Backend Enforcement (Actual Security)
+- `create-razorpay-order` already rejects if no credentials found (Phase 4)
+- This is the real enforcement - frontend gating is just UX
+
+---
+
+## Files to Create/Modify
+
+| File | Action | Description |
+|------|--------|-------------|
+| Migration SQL | Create | `razorpay_credentials` table + RLS |
+| `supabase/functions/_shared/encryption.ts` | Create | AES-256-GCM encrypt/decrypt + credential lookup |
+| `supabase/functions/tenant-operations/index.ts` | Modify | Add 3 new actions for credential CRUD |
+| `supabase/functions/create-razorpay-order/index.ts` | Modify | Use per-gym credentials instead of env vars |
+| `supabase/functions/verify-razorpay-payment/index.ts` | Modify | Use per-gym credentials for signature verification |
+| `src/pages/superadmin/TenantDetail.tsx` | Modify | Add "Payments" tab with credential management UI |
+| `src/hooks/useRazorpay.ts` | Modify | Pass `branchId` to `create-razorpay-order` |
+
+---
+
+## Security Checklist
+
+- [x] Secrets encrypted at rest (AES-256-GCM)
+- [x] RLS blocks all non-service-role access
+- [x] Only Super Admin can manage credentials (Edge Function enforced)
+- [x] Key secret never returned to frontend
+- [x] Key secret never logged
+- [x] Credentials verified before saving (test Razorpay API call)
+- [x] Per-gym isolation - no shared keys, no fallback between gyms
+- [x] Audit logging for all credential operations
+- [x] Payment disabled if credentials missing or unverified
