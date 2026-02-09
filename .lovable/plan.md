@@ -1,208 +1,153 @@
 
-# Per-Gym Razorpay Credentials Management
+
+# QR-Based Attendance System
 
 ## Overview
+Build a complete attendance tracking system where members and staff scan a printed QR code at the gym entrance using their phones. The system uses Supabase session cookies for device-bound authentication, an edge function for all server-side logic, and an admin dashboard for viewing attendance data.
 
-This plan adds per-gym (per-branch) Razorpay credential management so each gym organization can have its own Razorpay account. Super Admins configure credentials via the Tenant Detail page. Credentials are encrypted at rest and never exposed to the frontend.
+## How It Works
 
-## Architecture
+**First Visit (New Device):**
+1. User scans QR code which opens `/check-in?branch_id=UUID`
+2. No session exists, so they're shown a login form (phone + password for staff, or phone-based lookup for members)
+3. After authentication, attendance is marked automatically and the device is registered
 
-### Data Flow
+**Subsequent Visits:**
+1. User scans QR code
+2. Supabase session cookie is already present in the browser
+3. Attendance is marked instantly on page load -- zero interaction needed
 
-```text
-Super Admin UI                    Edge Function                    Database
-(TenantDetail.tsx)                (tenant-operations)              (razorpay_credentials)
-     |                                  |                                |
-     |-- Save key_id + key_secret ----->|                                |
-     |                                  |-- Encrypt key_secret -------->|
-     |                                  |-- Test order to Razorpay ---->|
-     |                                  |-- Mark is_verified=true ----->|
-     |                                  |                                |
-     |<--- Success / Error -------------|                                |
-     |                                  |                                |
-                                        |                                |
-Payment Flow                            |                                |
-(create-razorpay-order)                 |                                |
-     |-- branchId ------------------>   |                                |
-     |                                  |-- Lookup branch tenant ------>|
-     |                                  |-- Decrypt key_secret -------->|
-     |                                  |-- Create Razorpay order ----->|
-     |<--- orderId + keyId -------------|                                |
-```
+**Expired Members:**
+- Attendance is still logged but flagged as "expired"
+- User sees an expiry notice and is redirected to the renewal page
+- WhatsApp notification is sent to the admin
 
-### Security Model
+## Database Changes
 
-- Credentials stored in `razorpay_credentials` table with `key_secret` encrypted using AES-GCM with a server-side encryption key
-- RLS denies ALL access to non-service-role users (no SELECT, INSERT, UPDATE, DELETE for anon/authenticated)
-- Only Edge Functions using `service_role` can read/write credentials
-- `key_id` is stored in plain text (it's a publishable key returned to the frontend for checkout)
-- `key_secret` is encrypted and NEVER sent to the frontend
-- Super Admin access enforced at Edge Function level before any credential operation
+### New Tables
 
----
+**`attendance_logs`** -- Core attendance records
+- `id`, `branch_id`, `user_type` (member/staff), `member_id`, `staff_id`
+- `check_in_at`, `check_out_at`, `total_hours`, `date` (for daily grouping)
+- `device_fingerprint`, `status` (checked_in/checked_out/expired)
+- RLS policies scoped by branch_id and tenant_id
 
-## Phase 1: Database Table
+**`attendance_devices`** -- Registered device tracking
+- `id`, `user_type`, `member_id`, `staff_id`, `branch_id`
+- `device_fingerprint` (hash of user-agent + auth user ID)
+- `registered_at`, `is_active`, `reset_by`, `reset_at`
+- Unique constraint on (user_type + member_id/staff_id + branch_id)
 
-Create `razorpay_credentials` table:
+### RLS Policies
+- Admins and authorized staff can read all attendance data for their branches
+- Members/staff can only read their own attendance records
+- Insert/update only via the edge function (service role)
 
-```sql
-CREATE TABLE public.razorpay_credentials (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-  key_id TEXT NOT NULL,
-  encrypted_key_secret TEXT NOT NULL,
-  encryption_iv TEXT NOT NULL,
-  is_verified BOOLEAN NOT NULL DEFAULT false,
-  verified_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  created_by UUID,
-  UNIQUE(tenant_id)
-);
+## Edge Function: `check-in`
 
-ALTER TABLE public.razorpay_credentials ENABLE ROW LEVEL SECURITY;
+Single function handling all logic via `action` query parameter:
 
--- ONLY service_role can access this table
-CREATE POLICY "Service role full access"
-ON public.razorpay_credentials FOR ALL
-USING (auth.role() = 'service_role')
-WITH CHECK (auth.role() = 'service_role');
-```
+**`action=check-in`** (default):
+1. Validate Supabase session from Authorization header
+2. Detect role: check if user email matches `staff_{phone}@gym.local` pattern (staff) or look up member by auth user ID
+3. Validate device fingerprint against `attendance_devices`
+4. For members: check subscription status (active/expired)
+5. Anti-passback: prevent duplicate check-ins within 10 minutes
+6. If user is already checked in today, mark check-out instead and calculate total hours
+7. Log the attendance record
+8. If member is expired: still log, return `{ status: "expired", redirect: "/renew" }`
+9. Send WhatsApp notification to admin for expired member check-ins
 
-No other RLS policies - gym owners, staff, and members cannot access this table at all.
+**`action=register-device`**:
+- Called after first-time login, saves device fingerprint
 
----
+**`action=reset-device`** (admin only):
+- Clears the registered device for a user, allowing re-registration
 
-## Phase 2: Encryption Secret
+**`action=attendance-logs`** (admin/staff):
+- Paginated attendance data with filters (date, branch, role, member/staff)
 
-A new secret `RAZORPAY_ENCRYPTION_KEY` must be added to the project. This is a 32-byte hex key used for AES-256-GCM encryption/decryption of Razorpay secrets in Edge Functions.
+**`action=attendance-insights`**:
+- Aggregated stats: daily footfall, peak hours, avg visit duration, staff working hours
 
----
+## Frontend Components
 
-## Phase 3: Edge Function - Credential Management
+### `/check-in` Page
+- Reads `branch_id` from URL query params
+- On mount: calls the `check-in` edge function with the current session
+- If no session: shows a simple phone-number login form
+- On success: shows a confirmation screen (green checkmark, name, time)
+- On expired: shows expiry banner + auto-redirect to renewal page after 3 seconds
+- On device mismatch: shows "Device not recognized" message with admin contact info
 
-Add new actions to `tenant-operations` Edge Function:
+### Admin Dashboard -- Attendance Section
 
-**Action: `save-razorpay-credentials`** (Super Admin only)
-1. Validate Super Admin role
-2. Validate `tenantId`, `keyId`, `keySecret` inputs
-3. **Verify credentials** by creating a test Razorpay order (amount: 100 paise = Rs 1)
-4. If verification fails, return error - do NOT save
-5. Encrypt `keySecret` using AES-256-GCM with `RAZORPAY_ENCRYPTION_KEY`
-6. Upsert into `razorpay_credentials` with `is_verified = true`
-7. Log to `platform_audit_logs` (without logging the secret)
-8. Return success with connection status
+**Sidebar Addition:**
+- New "Attendance" nav item in `AdminSidebar` (with `ClockIcon`)
+- Route: `/admin/attendance`
 
-**Action: `get-razorpay-status`** (Super Admin only)
-1. Validate Super Admin role
-2. Query `razorpay_credentials` for the tenant
-3. Return ONLY: `isConnected`, `keyId` (masked: `rzp_****xxxx`), `isVerified`, `verifiedAt`
-4. NEVER return the secret
+**Attendance Page (`/admin/attendance`)** with 3 tabs:
 
-**Action: `remove-razorpay-credentials`** (Super Admin only)
-1. Validate Super Admin role
-2. Delete from `razorpay_credentials`
-3. Log to audit
+1. **Members Attendance Tab**
+   - Table: Member Name, Phone, Check-in Time, Check-out Time, Total Hours, Status
+   - Date picker filter, branch filter
+   - Export to Excel capability
 
----
+2. **Staff Attendance Tab**
+   - Table: Staff Name, Role, Check-in, Check-out, Total Hours, Late Flag
+   - Late check-in detection (configurable threshold)
+   - Monthly working hours summary
 
-## Phase 4: Update Payment Edge Functions
+3. **Insights Tab**
+   - Daily footfall chart (line/bar)
+   - Peak hours heatmap
+   - Average visit duration
+   - Staff working hours summary cards
 
-### `create-razorpay-order`
-Currently reads from `Deno.env.get("RAZORPAY_KEY_ID")`. Change to:
+### QR Code Page Update
+- Add an "Attendance QR" tab to the existing QR Code page
+- Generates QR pointing to `/check-in?branch_id=UUID`
+- Separate from the existing registration QR
 
-1. Accept `branchId` in the request body
-2. Look up `tenant_id` from `branches` table using `branchId`
-3. Query `razorpay_credentials` for that `tenant_id`
-4. If no credentials or `is_verified = false`, return error: "Payment gateway not configured for this gym"
-5. Decrypt `key_secret` using AES-256-GCM
-6. Use per-gym `key_id` and decrypted `key_secret` for the Razorpay API call
-7. Return per-gym `key_id` to the frontend (needed for checkout)
-8. Fall back to env vars (`RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET`) ONLY if no per-gym credentials exist (for backward compatibility during migration, can be removed later)
+## Technical Details
 
-### `verify-razorpay-payment`
-Currently reads `RAZORPAY_KEY_SECRET` from env. Change to:
+### New Files
+- `supabase/functions/check-in/index.ts` -- Edge function
+- `src/pages/CheckIn.tsx` -- Check-in page
+- `src/pages/admin/Attendance.tsx` -- Admin attendance dashboard
+- `src/components/admin/attendance/MembersAttendanceTab.tsx`
+- `src/components/admin/attendance/StaffAttendanceTab.tsx`
+- `src/components/admin/attendance/AttendanceInsightsTab.tsx`
+- `src/api/attendance.ts` -- API layer for attendance data
+- `src/hooks/queries/useAttendance.ts` -- TanStack Query hooks
 
-1. Accept `branchId` in the request body (already does)
-2. Look up tenant credentials the same way
-3. Decrypt and use per-gym `key_secret` for HMAC signature verification
-4. Same fallback logic as above
+### Modified Files
+- `src/App.tsx` -- Add `/check-in` route and `/admin/attendance` route
+- `src/components/admin/AdminSidebar.tsx` -- Add Attendance nav item
+- `src/pages/admin/QRCode.tsx` -- Add Attendance QR tab
+- `supabase/config.toml` -- Add `check-in` function config
 
-### Shared Encryption Utility
-Create helper functions in `_shared/encryption.ts`:
+### Device Binding Strategy
+Since Supabase uses JWT tokens (not HTTP-only cookies), device binding will use a combination of:
+- The Supabase auth session (persisted in localStorage)
+- A device fingerprint (hash of user-agent + screen resolution + auth user ID) stored in `attendance_devices`
+- This provides practical device-binding without requiring custom cookie infrastructure
 
-```typescript
-export async function encrypt(plaintext: string, keyHex: string): Promise<{ ciphertext: string; iv: string }>
-export async function decrypt(ciphertext: string, iv: string, keyHex: string): Promise<string>
-export async function getGymRazorpayCredentials(serviceClient, branchId): Promise<{ keyId: string; keySecret: string } | null>
-```
+### Member Authentication for Check-in
+Members don't currently have Supabase Auth accounts. The check-in flow will:
+1. Ask for phone number on first visit
+2. Look up the member by phone + branch_id
+3. Create a lightweight session token stored in localStorage (device-bound)
+4. The edge function validates this token on subsequent visits
 
----
+This avoids forcing members to create full auth accounts while maintaining device binding.
 
-## Phase 5: Frontend - Super Admin UI
+### Anti-Passback Logic
+- On check-in, query for existing open attendance record (checked_in, no check_out) for the same day
+- If found and within 10 minutes of last check-in: reject as duplicate
+- If found and beyond 10 minutes: treat as check-out, calculate total hours
+- If not found: create new check-in record
 
-### Location: `src/pages/superadmin/TenantDetail.tsx`
+### WhatsApp Notification for Expired Members
+Reuses the existing `send-whatsapp` edge function with a new template type for expired member check-ins, including member name, phone, branch, and timestamp.
 
-Add a new "Payments" tab to the tenant detail page with:
-
-1. **Connection Status Card**
-   - Shows "Connected" (green badge) or "Not Connected" (gray badge)
-   - If connected: shows masked key_id (`rzp_****xxxx`), verified date
-   - If not connected: shows setup instructions
-
-2. **Configure Section**
-   - Input: Razorpay Key ID (text input)
-   - Input: Razorpay Key Secret (password input, never pre-filled)
-   - "Verify & Save" button
-   - On save: calls `tenant-operations?action=save-razorpay-credentials`
-   - Shows loading state during verification
-   - Success/error toast feedback
-
-3. **Disconnect Button**
-   - Confirm dialog: "This will disable online payments for all branches of this gym"
-   - Calls `remove-razorpay-credentials`
-
-### Location: `src/hooks/useRazorpay.ts`
-
-Update `initiatePayment` to pass `branchId` to `create-razorpay-order`. This is already partially done - `branchId` is passed to `verify-razorpay-payment` but NOT to `create-razorpay-order`. Fix this.
-
----
-
-## Phase 6: Payment Gating
-
-### Frontend Gating (UX only - not security)
-- Before showing "Pay Online" buttons, check if the gym has Razorpay connected
-- Add a query/flag from `public-data` edge function that returns `hasOnlinePayments: boolean` for a branch
-- If not connected, show "Online payments not available" or hide the pay button
-
-### Backend Enforcement (Actual Security)
-- `create-razorpay-order` already rejects if no credentials found (Phase 4)
-- This is the real enforcement - frontend gating is just UX
-
----
-
-## Files to Create/Modify
-
-| File | Action | Description |
-|------|--------|-------------|
-| Migration SQL | Create | `razorpay_credentials` table + RLS |
-| `supabase/functions/_shared/encryption.ts` | Create | AES-256-GCM encrypt/decrypt + credential lookup |
-| `supabase/functions/tenant-operations/index.ts` | Modify | Add 3 new actions for credential CRUD |
-| `supabase/functions/create-razorpay-order/index.ts` | Modify | Use per-gym credentials instead of env vars |
-| `supabase/functions/verify-razorpay-payment/index.ts` | Modify | Use per-gym credentials for signature verification |
-| `src/pages/superadmin/TenantDetail.tsx` | Modify | Add "Payments" tab with credential management UI |
-| `src/hooks/useRazorpay.ts` | Modify | Pass `branchId` to `create-razorpay-order` |
-
----
-
-## Security Checklist
-
-- [x] Secrets encrypted at rest (AES-256-GCM)
-- [x] RLS blocks all non-service-role access
-- [x] Only Super Admin can manage credentials (Edge Function enforced)
-- [x] Key secret never returned to frontend
-- [x] Key secret never logged
-- [x] Credentials verified before saving (test Razorpay API call)
-- [x] Per-gym isolation - no shared keys, no fallback between gyms
-- [x] Audit logging for all credential operations
-- [x] Payment disabled if credentials missing or unverified
