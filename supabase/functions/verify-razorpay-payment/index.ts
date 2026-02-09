@@ -1,8 +1,9 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getGymRazorpayCredentials } from "../_shared/encryption.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 // Helper to create ledger entries
@@ -217,12 +218,31 @@ Deno.serve(async (req) => {
 
     console.log("Verifying payment:", { razorpay_order_id, razorpay_payment_id, memberId, isNewMember, isDailyPass, trainerId, months, customDays, ptStartDate, gymStartDate, branchId });
 
-    const RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
+    // Resolve Razorpay key secret: per-gym first, then env fallback
+    let RAZORPAY_KEY_SECRET: string | undefined;
+
+    if (branchId) {
+      const serviceClient = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+      const gymCreds = await getGymRazorpayCredentials(serviceClient, branchId);
+      if (gymCreds) {
+        RAZORPAY_KEY_SECRET = gymCreds.keySecret;
+        console.log("Using per-gym Razorpay secret for verification");
+      }
+    }
+
+    // Fallback to global env var
     if (!RAZORPAY_KEY_SECRET) {
-      throw new Error("Payment gateway not configured");
+      RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
+      if (RAZORPAY_KEY_SECRET) {
+        console.log("Using global Razorpay secret for verification (fallback)");
+      }
+    }
+
+    if (!RAZORPAY_KEY_SECRET) {
+      throw new Error("Payment gateway not configured for this gym");
     }
 
     // Verify signature

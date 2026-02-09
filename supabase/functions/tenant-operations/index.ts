@@ -1057,6 +1057,204 @@ Deno.serve(async (req) => {
         );
       }
 
+      // ========================================
+      // RAZORPAY CREDENTIAL MANAGEMENT (Super Admin only)
+      // ========================================
+      case "save-razorpay-credentials": {
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: Super admin access required" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { tenantId, keyId: rzpKeyId, keySecret: rzpKeySecret } = body;
+
+        if (!tenantId || !rzpKeyId || !rzpKeySecret) {
+          return new Response(
+            JSON.stringify({ error: "Missing required fields: tenantId, keyId, keySecret" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Validate key format
+        if (!rzpKeyId.startsWith("rzp_")) {
+          return new Response(
+            JSON.stringify({ error: "Invalid Razorpay Key ID format" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Verify credentials by creating a test order
+        try {
+          const testResponse = await fetch("https://api.razorpay.com/v1/orders", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Basic ${btoa(`${rzpKeyId}:${rzpKeySecret}`)}`,
+            },
+            body: JSON.stringify({
+              amount: 100, // 1 rupee in paise
+              currency: "INR",
+              receipt: `test_${Date.now()}`,
+              notes: { purpose: "credential_verification" },
+            }),
+          });
+
+          if (!testResponse.ok) {
+            const errorText = await testResponse.text();
+            console.error("Razorpay verification failed:", errorText);
+            return new Response(
+              JSON.stringify({ error: "Invalid Razorpay credentials - verification failed" }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+
+          console.log("Razorpay credentials verified successfully");
+        } catch (err) {
+          console.error("Razorpay verification error:", err);
+          return new Response(
+            JSON.stringify({ error: "Failed to verify Razorpay credentials" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Encrypt the key secret
+        const encryptionKey = Deno.env.get("RAZORPAY_ENCRYPTION_KEY");
+        if (!encryptionKey) {
+          return new Response(
+            JSON.stringify({ error: "Encryption not configured" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Import encryption module dynamically
+        const { encrypt } = await import("../_shared/encryption.ts");
+        const { ciphertext, iv } = await encrypt(rzpKeySecret, encryptionKey);
+
+        // Upsert credentials
+        const { error: upsertError } = await supabase
+          .from("razorpay_credentials")
+          .upsert({
+            tenant_id: tenantId,
+            key_id: rzpKeyId,
+            encrypted_key_secret: ciphertext,
+            encryption_iv: iv,
+            is_verified: true,
+            verified_at: new Date().toISOString(),
+            created_by: userId,
+          }, { onConflict: "tenant_id" });
+
+        if (upsertError) {
+          console.error("Error saving credentials:", upsertError);
+          return new Response(
+            JSON.stringify({ error: "Failed to save credentials" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Audit log (never log the secret)
+        await supabase.from("platform_audit_logs").insert({
+          actor_user_id: userId,
+          action_type: "razorpay_credentials_saved",
+          target_tenant_id: tenantId,
+          description: `Super admin configured Razorpay credentials (Key ID: ${rzpKeyId.substring(0, 8)}****)`,
+        });
+
+        return new Response(
+          JSON.stringify({ data: { success: true, isConnected: true } }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "get-razorpay-status": {
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: Super admin access required" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { tenantId } = body;
+        if (!tenantId) {
+          return new Response(
+            JSON.stringify({ error: "Missing tenantId" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: creds } = await supabase
+          .from("razorpay_credentials")
+          .select("key_id, is_verified, verified_at")
+          .eq("tenant_id", tenantId)
+          .maybeSingle();
+
+        if (!creds) {
+          return new Response(
+            JSON.stringify({ data: { isConnected: false, maskedKeyId: null, isVerified: false, verifiedAt: null } }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Mask key_id: show first 8 and last 4 chars
+        const maskedKeyId = creds.key_id.length > 12
+          ? `${creds.key_id.substring(0, 8)}****${creds.key_id.slice(-4)}`
+          : `${creds.key_id.substring(0, 4)}****`;
+
+        return new Response(
+          JSON.stringify({
+            data: {
+              isConnected: true,
+              maskedKeyId,
+              isVerified: creds.is_verified,
+              verifiedAt: creds.verified_at,
+            },
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "remove-razorpay-credentials": {
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: Super admin access required" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { tenantId } = body;
+        if (!tenantId) {
+          return new Response(
+            JSON.stringify({ error: "Missing tenantId" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { error: deleteError } = await supabase
+          .from("razorpay_credentials")
+          .delete()
+          .eq("tenant_id", tenantId);
+
+        if (deleteError) {
+          return new Response(
+            JSON.stringify({ error: "Failed to remove credentials" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        await supabase.from("platform_audit_logs").insert({
+          actor_user_id: userId,
+          action_type: "razorpay_credentials_removed",
+          target_tenant_id: tenantId,
+          description: "Super admin removed Razorpay credentials",
+        });
+
+        return new Response(
+          JSON.stringify({ data: { success: true } }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: `Unknown action: ${action}` }),

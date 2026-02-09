@@ -1,8 +1,9 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getGymRazorpayCredentials } from "../_shared/encryption.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -23,42 +24,32 @@ Deno.serve(async (req) => {
       trainerId,
       trainerFee,
       subscriptionId,
+      branchId,
     } = await req.json();
 
     // === SERVER-SIDE INPUT VALIDATION ===
-    // Validate member name
     if (!memberName || typeof memberName !== 'string' || memberName.length < 2 || memberName.length > 100) {
       throw new Error('Invalid member name: must be 2-100 characters');
     }
     if (!/^[a-zA-Z\s.'\-]+$/.test(memberName)) {
       throw new Error('Invalid member name: only letters, spaces, dots, hyphens, and apostrophes allowed');
     }
-
-    // Validate phone number (Indian format)
     if (!memberPhone || !/^[6-9]\d{9}$/.test(memberPhone)) {
       throw new Error('Invalid phone number: must be valid 10-digit Indian mobile number');
     }
-
-    // Validate amount
     if (typeof amount !== 'number' || amount <= 0 || amount > 1000000) {
       throw new Error('Invalid amount: must be positive and ≤₹1,000,000');
     }
-
-    // Validate months if provided
     if (months !== undefined && months !== null) {
       if (typeof months !== 'number' || months < 1 || months > 24) {
         throw new Error('Invalid months: must be between 1 and 24');
       }
     }
-
-    // Validate customDays if provided
     if (customDays !== undefined && customDays !== null) {
       if (typeof customDays !== 'number' || customDays < 1 || customDays > 365) {
         throw new Error('Invalid custom days: must be between 1 and 365');
       }
     }
-
-    // Validate trainer fee if provided
     if (trainerFee !== undefined && trainerFee !== null) {
       if (typeof trainerFee !== 'number' || trainerFee < 0 || trainerFee > 500000) {
         throw new Error('Invalid trainer fee: must be ≥0 and ≤₹500,000');
@@ -74,14 +65,38 @@ Deno.serve(async (req) => {
       months,
       customDays,
       trainerId,
+      branchId,
     });
 
-    const RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
-    const RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
+    // Resolve Razorpay credentials: per-gym first, then env fallback
+    let RAZORPAY_KEY_ID: string | undefined;
+    let RAZORPAY_KEY_SECRET: string | undefined;
+
+    if (branchId) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const serviceClient = createClient(supabaseUrl, serviceRoleKey);
+
+      const gymCreds = await getGymRazorpayCredentials(serviceClient, branchId);
+      if (gymCreds) {
+        RAZORPAY_KEY_ID = gymCreds.keyId;
+        RAZORPAY_KEY_SECRET = gymCreds.keySecret;
+        console.log("Using per-gym Razorpay credentials");
+      }
+    }
+
+    // Fallback to global env vars (backward compatibility)
+    if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+      RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
+      RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
+      if (RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) {
+        console.log("Using global Razorpay credentials (fallback)");
+      }
+    }
 
     if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
       console.error("Razorpay credentials not configured");
-      throw new Error("Payment gateway not configured");
+      throw new Error("Payment gateway not configured for this gym");
     }
 
     // Create Razorpay order
@@ -99,10 +114,9 @@ Deno.serve(async (req) => {
         trainer_id: trainerId || "",
         trainer_fee: trainerFee ? String(trainerFee) : "",
         subscription_id: subscriptionId || "",
+        branch_id: branchId || "",
       },
     };
-
-    console.log("Razorpay order data:", orderData);
 
     const razorpayResponse = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",
