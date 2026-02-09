@@ -858,6 +858,53 @@ export type Database = {
           },
         ]
       }
+      razorpay_credentials: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          encrypted_key_secret: string
+          encryption_iv: string
+          id: string
+          is_verified: boolean
+          key_id: string
+          tenant_id: string
+          updated_at: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          encrypted_key_secret: string
+          encryption_iv: string
+          id?: string
+          is_verified?: boolean
+          key_id: string
+          tenant_id: string
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          encrypted_key_secret?: string
+          encryption_iv?: string
+          id?: string
+          is_verified?: boolean
+          key_id?: string
+          tenant_id?: string
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "razorpay_credentials_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff: {
         Row: {
           auth_user_id: string | null
