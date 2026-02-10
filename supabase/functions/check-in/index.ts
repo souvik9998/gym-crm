@@ -220,7 +220,62 @@ async function handleMemberCheckIn(req: Request, serviceClient: any, branchId: s
     .maybeSingle();
 
   if (!member) {
-    return successResponse({ status: "not_found", message: "No member found with this phone number at this branch." });
+    // ── No member found — check if this phone belongs to a staff member assigned to this branch ──
+    const { data: staffMatches } = await serviceClient
+      .from("staff")
+      .select("id, full_name, phone, is_active, staff_branch_assignments!inner(branch_id)")
+      .eq("phone", cleanPhone)
+      .eq("is_active", true)
+      .eq("staff_branch_assignments.branch_id", effectiveBranchId);
+
+    const staffMatch = staffMatches?.[0];
+    if (staffMatch) {
+      // Register staff device if fingerprint provided
+      if (device_fingerprint) {
+        const { data: existingStaffDevice } = await serviceClient
+          .from("attendance_devices")
+          .select("id, device_fingerprint, is_active")
+          .eq("user_type", "staff")
+          .eq("staff_id", staffMatch.id)
+          .eq("branch_id", effectiveBranchId)
+          .maybeSingle();
+
+        if (existingStaffDevice && existingStaffDevice.is_active && existingStaffDevice.device_fingerprint !== device_fingerprint) {
+          return successResponse({
+            status: "device_mismatch",
+            message: "This staff account is registered on another device. Contact admin to reset.",
+          });
+        }
+
+        if (!existingStaffDevice) {
+          await serviceClient.from("attendance_devices").insert({
+            user_type: "staff",
+            staff_id: staffMatch.id,
+            branch_id: effectiveBranchId,
+            device_fingerprint,
+          });
+        } else if (!existingStaffDevice.is_active) {
+          await serviceClient.from("attendance_devices").update({
+            device_fingerprint,
+            is_active: true,
+            reset_at: null,
+            reset_by: null,
+          }).eq("id", existingStaffDevice.id);
+        }
+      }
+
+      return await processCheckIn(serviceClient, {
+        userType: "staff",
+        staffId: staffMatch.id,
+        memberId: null,
+        branchId: effectiveBranchId,
+        deviceFingerprint: device_fingerprint,
+        userName: staffMatch.full_name,
+        userPhone: staffMatch.phone,
+      });
+    }
+
+    return successResponse({ status: "not_found", message: "No member or staff found with this phone number at this branch." });
   }
 
   // Check device binding
