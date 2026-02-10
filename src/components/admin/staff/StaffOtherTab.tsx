@@ -105,6 +105,11 @@ export const StaffOtherTab = ({
     open: false,
     staff: null,
   });
+  const [existingStaffDialog, setExistingStaffDialog] = useState<{
+    open: boolean;
+    existingStaff: Staff | null;
+  }>({ open: false, existingStaff: null });
+  const addingRef = { current: false };
 
   // Update selected branches when currentBranch changes
   useEffect(() => {
@@ -140,17 +145,39 @@ export const StaffOtherTab = ({
       return;
     }
 
+    if (addingRef.current) return;
+    addingRef.current = true;
     setIsAddingStaff(true);
     const cleanPhone = newStaff.phone.replace(/\D/g, "").replace(/^0/, "");
     
     try {
-      // Check for duplicate phone within selected branches
       const branchesToAssign = newStaff.selected_branches.length > 0 
         ? newStaff.selected_branches 
         : currentBranch?.id ? [currentBranch.id] : [];
-      
+
+      // Check if staff with this phone exists GLOBALLY
+      const { data: existingStaffList } = await supabase
+        .from("staff")
+        .select("*, staff_permissions(*), staff_branch_assignments(*, branches(name))")
+        .eq("phone", cleanPhone);
+
+      if (existingStaffList && existingStaffList.length > 0) {
+        const existing = existingStaffList[0];
+        const existingMapped: Staff = {
+          ...existing,
+          permissions: existing.staff_permissions?.[0] || undefined,
+          branch_assignments: (existing.staff_branch_assignments || []).map((a: any) => ({
+            ...a,
+            branch_name: a.branches?.name,
+          })),
+        } as Staff;
+
+        setExistingStaffDialog({ open: true, existingStaff: existingMapped });
+        return;
+      }
+
+      // Check for duplicate phone within selected branches (legacy safety)
       if (branchesToAssign.length > 0) {
-        // Check if phone already exists in any of the selected branches
         const { data: existingAssignments } = await supabase
           .from("staff_branch_assignments")
           .select("staff_id, branch_id, staff!inner(phone)")
@@ -271,6 +298,7 @@ export const StaffOtherTab = ({
       onRefresh();
     } finally {
       setIsAddingStaff(false);
+      addingRef.current = false;
     }
   };
 
@@ -812,6 +840,65 @@ export const StaffOtherTab = ({
         branches={branches}
         onSuccess={onRefresh}
       />
+
+      {/* Existing Staff Found Dialog */}
+      <Dialog
+        open={existingStaffDialog.open}
+        onOpenChange={(open) => {
+          setExistingStaffDialog({ ...existingStaffDialog, open });
+          if (!open) {
+            setIsAddingStaff(false);
+            addingRef.current = false;
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BuildingOfficeIcon className="w-5 h-5" />
+              Staff Already Registered
+            </DialogTitle>
+            <DialogDescription>
+              A staff member with this phone number already exists. You cannot register them again — use the branch assignment feature to add them to another branch.
+            </DialogDescription>
+          </DialogHeader>
+          {existingStaffDialog.existingStaff && (
+            <div className="space-y-3 py-2">
+              <div className="bg-muted/50 rounded-lg p-3 space-y-1.5">
+                <p className="font-medium">{existingStaffDialog.existingStaff.full_name}</p>
+                <p className="text-sm text-muted-foreground">Phone: {existingStaffDialog.existingStaff.phone}</p>
+                <p className="text-sm text-muted-foreground">Role: <Badge variant="secondary" className="ml-1">{existingStaffDialog.existingStaff.role}</Badge></p>
+                {existingStaffDialog.existingStaff.branch_assignments && existingStaffDialog.existingStaff.branch_assignments.length > 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    Current branches: {existingStaffDialog.existingStaff.branch_assignments.map(a => a.branch_name).filter(Boolean).join(", ")}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => {
+              setExistingStaffDialog({ open: false, existingStaff: null });
+              setIsAddingStaff(false);
+              addingRef.current = false;
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={() => {
+              const staff = existingStaffDialog.existingStaff;
+              setExistingStaffDialog({ open: false, existingStaff: null });
+              setIsAddingStaff(false);
+              addingRef.current = false;
+              if (staff) {
+                setBranchAssignmentDialog({ open: true, staff });
+              }
+            }}>
+              <BuildingOfficeIcon className="w-4 h-4 mr-2" />
+              Manage Branches
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
