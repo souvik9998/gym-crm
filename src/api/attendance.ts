@@ -23,30 +23,24 @@ async function authenticatedFetch(url: string, options?: RequestInit) {
   return res.json();
 }
 
-// Generate a device fingerprint
-export function getDeviceFingerprint(): string {
-  const stored = localStorage.getItem("attendance_device_fp");
-  if (stored) return stored;
-
-  const raw = [
-    navigator.userAgent,
-    screen.width + "x" + screen.height,
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
-    navigator.language,
-    Date.now().toString(36),
-    Math.random().toString(36).substring(2, 10),
-  ].join("|");
-
-  let hash = 0;
-  for (let i = 0; i < raw.length; i++) {
-    const char = raw.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
+// Generate or retrieve a stable device UUID
+export function getDeviceUUID(): string {
+  // Migrate from old fingerprint key if present
+  const oldFp = localStorage.getItem("attendance_device_fp");
+  const existing = localStorage.getItem("attendance_device_uuid");
+  if (existing) return existing;
+  if (oldFp) {
+    localStorage.setItem("attendance_device_uuid", oldFp);
+    localStorage.removeItem("attendance_device_fp");
+    return oldFp;
   }
-  const fp = "fp_" + Math.abs(hash).toString(36) + "_" + Date.now().toString(36);
-  localStorage.setItem("attendance_device_fp", fp);
-  return fp;
+  const uuid = crypto.randomUUID();
+  localStorage.setItem("attendance_device_uuid", uuid);
+  return uuid;
 }
+
+// Keep old export name for backward compatibility
+export const getDeviceFingerprint = getDeviceUUID;
 
 export function getMemberSessionToken(): string | null {
   return localStorage.getItem("attendance_session_token");
@@ -58,6 +52,7 @@ export function setMemberSessionToken(token: string) {
 
 export function clearMemberSessionToken() {
   localStorage.removeItem("attendance_session_token");
+  localStorage.removeItem("attendance_device_uuid");
   localStorage.removeItem("attendance_device_fp");
 }
 
@@ -112,7 +107,9 @@ export interface AttendanceLog {
   total_hours: number | null;
   date: string;
   status: string;
-  members?: { name: string; phone: string } | null;
+  subscription_status: string | null;
+  device_fingerprint: string | null;
+  members?: { name: string; phone: string; email: string | null } | null;
   staff?: { full_name: string; phone: string; role: string } | null;
 }
 
