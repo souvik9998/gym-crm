@@ -1,93 +1,98 @@
 
-# Attendance System Modifications
+# Fix Safari iPhone Attendance Check-in
 
-## Overview
-Four targeted changes to the existing QR attendance system: switch to stable device UUIDs, fix anti-passback timing, add admin device-reset UI for members, and enrich attendance logs with more detail.
+## Problem
+Safari on iPhone has aggressive privacy features (Intelligent Tracking Prevention) that can clear localStorage between sessions, especially when pages are opened via QR code scans. This causes the stored `attendance_device_uuid` and/or `attendance_session_token` to be lost, making the system think the device is unregistered.
+
+Additionally, the current design uses the `device_fingerprint` value AS the session token (line 188 of the edge function), which tightly couples device identity with session identity -- if either value is lost from localStorage, the whole flow breaks.
+
+## Solution
+
+### 1. Use the device UUID as the single source of truth (not session token)
+
+**`src/api/attendance.ts`**:
+- Remove the separate `attendance_session_token` concept entirely
+- Use ONLY `attendance_device_uuid` for both device identification AND session continuity
+- On `getDeviceUUID()`, if the UUID is missing from localStorage, also check `sessionStorage` as a fallback (sessionStorage survives within the same tab even when localStorage is cleared by ITP)
+- Store the UUID in BOTH localStorage and sessionStorage for redundancy
+
+**`src/pages/CheckIn.tsx`**:
+- Remove all references to `getMemberSessionToken()` and `setMemberSessionToken()`
+- On mount, check if a device UUID exists. If yes, call `member-check-in` with just the `device_fingerprint` (the UUID)
+- If no UUID exists, show the phone login form
+- After successful first registration, the UUID is already stored -- no separate session token needed
+
+### 2. Change the edge function to look up devices by device_fingerprint directly
+
+**`supabase/functions/check-in/index.ts`** -- `handleMemberCheckIn`:
+- Instead of checking for `session_token` first, check for `device_fingerprint` first
+- If `device_fingerprint` is provided (returning user with stored UUID):
+  - Look up `attendance_devices` where `device_fingerprint = device_fingerprint` AND `branch_id` AND `is_active = true`
+  - If found, proceed with check-in (zero interaction)
+  - If not found, show login form (UUID was regenerated after localStorage clear)
+- If `phone` is provided (first-time or re-login):
+  - Look up member by phone + branch
+  - Check if member already has a registered device
+  - If different device_fingerprint, return device_mismatch
+  - If no device or inactive device, register this device and check in
+- Remove the `session_token` field from responses entirely
+
+### 3. Add sessionStorage fallback for Safari resilience
+
+**`src/api/attendance.ts`** -- `getDeviceUUID()`:
+```
+function getDeviceUUID(): string | null {
+  // Try localStorage first
+  let uuid = localStorage.getItem("attendance_device_uuid");
+  // Fallback to sessionStorage (survives Safari ITP within same tab)
+  if (!uuid) uuid = sessionStorage.getItem("attendance_device_uuid");
+  // Migrate old key
+  if (!uuid) {
+    const oldFp = localStorage.getItem("attendance_device_fp");
+    if (oldFp) uuid = oldFp;
+  }
+  if (uuid) {
+    // Persist in both stores for redundancy
+    try { localStorage.setItem("attendance_device_uuid", uuid); } catch {}
+    try { sessionStorage.setItem("attendance_device_uuid", uuid); } catch {}
+    return uuid;
+  }
+  return null; // No existing UUID -- user needs to register
+}
+
+function createDeviceUUID(): string {
+  const uuid = crypto.randomUUID();
+  try { localStorage.setItem("attendance_device_uuid", uuid); } catch {}
+  try { sessionStorage.setItem("attendance_device_uuid", uuid); } catch {}
+  return uuid;
+}
+```
+
+### 4. Updated CheckIn page flow
+
+**`src/pages/CheckIn.tsx`**:
+- On mount: call `getDeviceUUID()`
+  - If UUID exists: call `memberCheckIn({ branchId, deviceFingerprint: uuid })` -- no phone needed
+  - If no UUID: show phone form
+- On phone submit: call `createDeviceUUID()` to generate a new UUID, then call `memberCheckIn({ phone, branchId, deviceFingerprint: newUuid })`
+- Remove all `sessionToken` / `getMemberSessionToken` / `setMemberSessionToken` usage
 
 ---
 
-## 1. Stable Device UUID (Replace Fingerprint Hashing)
+## Files Modified
 
-**Current**: `getDeviceFingerprint()` generates a hash from user-agent, screen size, timezone, and random values -- stored in localStorage as `attendance_device_fp`.
-
-**Change**: Replace the hash-based fingerprint with a simple `crypto.randomUUID()` stored in localStorage as `attendance_device_uuid`. This is stable across sessions and won't change if the browser updates its user-agent string.
-
-### Files Modified
-- **`src/api/attendance.ts`**: Rename `getDeviceFingerprint()` to `getDeviceUUID()`. On first call, generate `crypto.randomUUID()`, store in localStorage under `attendance_device_uuid`. On subsequent calls, return the stored value. Migrate any existing `attendance_device_fp` value to the new key for backward compatibility.
-- **`supabase/functions/check-in/index.ts`**: All references to `device_fingerprint` in logic remain the same column name in the DB, but the value will now be a UUID instead of a hash. No DB schema change needed -- the column is already `text`.
-- **`src/pages/CheckIn.tsx`**: Update to use `getDeviceUUID()` instead of `getDeviceFingerprint()`.
-
----
-
-## 2. Fix Anti-Passback: 10-Min Gap Only Between Check-in and Check-out
-
-**Current**: The 10-minute anti-passback applies to ANY scan after the last action (check-in or check-out), which means after checking out, the member must wait 10 minutes to check in again.
-
-**Change**: Apply the 10-minute cooldown ONLY when the member is currently checked in (to prevent accidental immediate check-out). After a check-out (status = `checked_out`), allow immediate re-check-in.
-
-### Files Modified
-- **`supabase/functions/check-in/index.ts`** -- `processCheckIn()` function:
-  - If the latest log has `status = "checked_in"` or `"expired"` AND less than 10 minutes have passed since `check_in_at`, return `duplicate`.
-  - If the latest log has `status = "checked_out"`, skip the time check entirely and allow a new check-in immediately.
-
----
-
-## 3. Admin Device Reset UI for Members
-
-**Current**: The `reset-device` endpoint exists in the edge function but there's no UI for admins to trigger it.
-
-**Change**: Add a "Reset Device" button in the Members Attendance tab for each member row, and also in the member detail/edit dialog.
-
-### Files Modified
-- **`src/components/admin/attendance/MembersAttendanceTab.tsx`**:
-  - Add a new "Actions" column to the table.
-  - Add a "Reset Device" button per row that calls `resetAttendanceDevice({ memberId, branchId })`.
-  - Show a confirmation dialog before resetting.
-  - Show success/error toast after the action.
-
-- **`src/api/attendance.ts`**: The `resetAttendanceDevice` function already exists -- no changes needed.
-
----
-
-## 4. Enrich Attendance Logs with More Detail
-
-**Current**: The attendance logs table shows Name, Phone, Check In, Check Out, Hours, Status. The edge function returns joined `members(name, phone)` and `staff(full_name, phone, role)`.
-
-**Change**: Add more columns and data to give admins a complete picture.
-
-### Edge Function Changes (`supabase/functions/check-in/index.ts`)
-- In `handleAttendanceLogs`, expand the select to include:
-  - `members(name, phone, email)` (add email)
-  - `staff(full_name, phone, role, email)` (add email)
-  - `device_fingerprint` column (so admin can see which device was used)
-- In `processCheckIn`, store the member's subscription status in the log (add to the insert).
-
-### Database Migration
-- Add `subscription_status` column to `attendance_logs` table (text, nullable, default null) to record the member's subscription state at check-in time.
-
-### Frontend Changes
-- **`src/components/admin/attendance/MembersAttendanceTab.tsx`**:
-  - Add columns: Date, Email, Subscription Status, Device ID (truncated), Actions (Reset Device)
-  - Make the table horizontally scrollable on mobile
-- **`src/components/admin/attendance/StaffAttendanceTab.tsx`**:
-  - Add columns: Date, Email, Device ID (truncated)
-- **`src/api/attendance.ts`**: Update `AttendanceLog` interface to include `subscription_status`, `device_fingerprint`, and expanded member/staff fields with `email`.
-
----
-
-## Technical Summary
-
-### Files to Create
-None.
-
-### Files to Modify
 | File | Changes |
 |------|---------|
-| `src/api/attendance.ts` | Replace fingerprint with UUID generator; update `AttendanceLog` interface |
-| `src/pages/CheckIn.tsx` | Use `getDeviceUUID()` |
-| `supabase/functions/check-in/index.ts` | Fix anti-passback logic; store `subscription_status` in log; expand select in attendance-logs |
-| `src/components/admin/attendance/MembersAttendanceTab.tsx` | Add Date, Email, Subscription Status, Device, Actions columns; add Reset Device button |
-| `src/components/admin/attendance/StaffAttendanceTab.tsx` | Add Date, Email columns |
+| `src/api/attendance.ts` | Split `getDeviceUUID` into getter (returns null if missing) and `createDeviceUUID` (generates new). Add sessionStorage fallback. Remove `getMemberSessionToken`/`setMemberSessionToken`. |
+| `src/pages/CheckIn.tsx` | Remove session token logic. Use device UUID as sole identifier. Call `createDeviceUUID` only on first phone registration. |
+| `supabase/functions/check-in/index.ts` | Rewrite `handleMemberCheckIn` to look up by `device_fingerprint` directly instead of `session_token`. Remove session_token from responses. |
 
-### Database Migration
-- `ALTER TABLE attendance_logs ADD COLUMN subscription_status text DEFAULT null;`
+## Why This Fixes Safari
+
+Safari's ITP can clear localStorage between visits when the site is opened from an external source (QR code). By:
+1. Using sessionStorage as a fallback (persists within the tab)
+2. Re-persisting the UUID to localStorage whenever it's read from sessionStorage
+3. Eliminating the dual-storage problem (separate session_token AND device_uuid)
+4. Making the system work with a single identifier
+
+The most common Safari scenario -- scanning QR, closing tab, scanning again -- will attempt localStorage first. If cleared, the user simply re-enters their phone (which is acceptable for a new browser session). The device is already registered, so as long as the UUID matches, it works. If the UUID is truly lost (both stores cleared), the phone re-entry will detect the existing device registration and either match or show the admin-reset message.
