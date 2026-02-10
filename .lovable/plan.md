@@ -1,81 +1,91 @@
 
-# Fix Safari iPhone Attendance Check-in
+
+# Staff QR Attendance with Device Binding
 
 ## Problem
-Safari on iPhone has aggressive privacy features (Intelligent Tracking Prevention) that can clear localStorage between sessions, especially when pages are opened via QR code scans. This causes the stored `attendance_device_uuid` and/or `attendance_session_token` to be lost, making the system think the device is unregistered.
-
-Additionally, the current design uses the `device_fingerprint` value AS the session token (line 188 of the edge function), which tightly couples device identity with session identity -- if either value is lost from localStorage, the whole flow breaks.
+Currently, staff check-in via QR works only if there's an active Supabase Auth session, but there's no device binding for staff. The system doesn't enforce one-device-per-staff, and if the session is lost (common on Safari), staff can't check in at all.
 
 ## Solution
 
-### 1. Use the device UUID as the single source of truth (not session token)
+### 1. Separate Staff Device UUID Storage
 
-**`src/api/attendance.ts`**:
-- Remove the separate `attendance_session_token` concept entirely
-- Use ONLY `attendance_device_uuid` for both device identification AND session continuity
-- On `getDeviceUUID()`, if the UUID is missing from localStorage, also check `sessionStorage` as a fallback (sessionStorage survives within the same tab even when localStorage is cleared by ITP)
-- Store the UUID in BOTH localStorage and sessionStorage for redundancy
+Use a **separate** localStorage key (`staff_attendance_device_uuid`) so staff and member UUIDs don't conflict on shared devices. Store in both localStorage and sessionStorage for Safari resilience.
 
-**`src/pages/CheckIn.tsx`**:
-- Remove all references to `getMemberSessionToken()` and `setMemberSessionToken()`
-- On mount, check if a device UUID exists. If yes, call `member-check-in` with just the `device_fingerprint` (the UUID)
-- If no UUID exists, show the phone login form
-- After successful first registration, the UUID is already stored -- no separate session token needed
+**File: `src/api/attendance.ts`**
+- Add `getStaffDeviceUUID()` and `createStaffDeviceUUID()` -- same pattern as member functions but with a `staff_attendance_device_uuid` key
+- Update `staffCheckIn()` to always send the staff device UUID alongside the auth token
 
-### 2. Change the edge function to look up devices by device_fingerprint directly
+### 2. Update CheckIn Page to Handle Staff Without Session
 
-**`supabase/functions/check-in/index.ts`** -- `handleMemberCheckIn`:
-- Instead of checking for `session_token` first, check for `device_fingerprint` first
-- If `device_fingerprint` is provided (returning user with stored UUID):
-  - Look up `attendance_devices` where `device_fingerprint = device_fingerprint` AND `branch_id` AND `is_active = true`
-  - If found, proceed with check-in (zero interaction)
-  - If not found, show login form (UUID was regenerated after localStorage clear)
-- If `phone` is provided (first-time or re-login):
-  - Look up member by phone + branch
-  - Check if member already has a registered device
-  - If different device_fingerprint, return device_mismatch
-  - If no device or inactive device, register this device and check in
-- Remove the `session_token` field from responses entirely
+**File: `src/pages/CheckIn.tsx`**
 
-### 3. Add sessionStorage fallback for Safari resilience
+Current flow:
+1. Check Supabase Auth session -> if staff email pattern, call staffCheckIn
+2. Else, do member flow
 
-**`src/api/attendance.ts`** -- `getDeviceUUID()`:
+New flow:
+1. Check Supabase Auth session -> if staff email pattern found:
+   - Generate staff device UUID if none exists
+   - Call `staffCheckIn(branchId)` with device UUID -- proceeds to check-in + device registration
+2. If NO session but a `staff_attendance_device_uuid` EXISTS in localStorage:
+   - Try `staffDeviceCheckIn(branchId, deviceUUID)` (new unauthenticated endpoint)
+   - If the device is recognized, check in without login
+   - If not recognized, fall through to member flow
+3. Else, do member flow (phone-based)
+
+### 3. Edge Function: Add Device Binding to Staff Check-in
+
+**File: `supabase/functions/check-in/index.ts`**
+
+#### Modify `handleCheckIn` (authenticated staff path):
+- Accept `device_fingerprint` from body
+- After identifying the staff member, check `attendance_devices` for existing registration:
+  - If no device registered: register this `device_fingerprint` and proceed with check-in
+  - If device registered with same fingerprint: proceed with check-in
+  - If device registered with different fingerprint: return `device_mismatch`
+- This enforces one-device-per-staff
+
+#### Add new action `staff-device-check-in` (unauthenticated device-only path):
+- Accepts `device_fingerprint` and `branch_id`
+- Looks up `attendance_devices` where `user_type = 'staff'`, `device_fingerprint` matches, `is_active = true`
+- If found, gets the `staff_id`, fetches staff details, and calls `processCheckIn`
+- If not found, returns `login_required`
+- This handles the Safari case where the session cookie is gone but the device UUID is still in localStorage
+
+#### Update the router switch:
+- Add case `"staff-device-check-in"` routing to the new handler
+
+### 4. New API Function for Device-Only Staff Check-in
+
+**File: `src/api/attendance.ts`**
+- Add `staffDeviceCheckIn(branchId: string, deviceUUID: string)` -- calls the new `staff-device-check-in` action WITHOUT auth headers (just anon key)
+
+---
+
+## Flow Diagram
+
+The complete staff attendance flow after these changes:
+
+```text
+Staff Scans QR (/check-in?branch_id=UUID)
+         |
+    Has Supabase Auth Session?
+      /          \
+    YES           NO
+     |             |
+  Staff email?   Has staff_device_uuid in localStorage?
+    /     \        /          \
+  YES      NO    YES           NO
+   |        |     |             |
+Generate   Member  Try device   Show member
+staff UUID  flow   check-in     phone form
+   |               /      \
+Call auth'd    Found?    Not found
+staffCheckIn    |           |
+(registers     Check in   Fall to
+device on      (zero       member
+first use)     interaction) flow
 ```
-function getDeviceUUID(): string | null {
-  // Try localStorage first
-  let uuid = localStorage.getItem("attendance_device_uuid");
-  // Fallback to sessionStorage (survives Safari ITP within same tab)
-  if (!uuid) uuid = sessionStorage.getItem("attendance_device_uuid");
-  // Migrate old key
-  if (!uuid) {
-    const oldFp = localStorage.getItem("attendance_device_fp");
-    if (oldFp) uuid = oldFp;
-  }
-  if (uuid) {
-    // Persist in both stores for redundancy
-    try { localStorage.setItem("attendance_device_uuid", uuid); } catch {}
-    try { sessionStorage.setItem("attendance_device_uuid", uuid); } catch {}
-    return uuid;
-  }
-  return null; // No existing UUID -- user needs to register
-}
-
-function createDeviceUUID(): string {
-  const uuid = crypto.randomUUID();
-  try { localStorage.setItem("attendance_device_uuid", uuid); } catch {}
-  try { sessionStorage.setItem("attendance_device_uuid", uuid); } catch {}
-  return uuid;
-}
-```
-
-### 4. Updated CheckIn page flow
-
-**`src/pages/CheckIn.tsx`**:
-- On mount: call `getDeviceUUID()`
-  - If UUID exists: call `memberCheckIn({ branchId, deviceFingerprint: uuid })` -- no phone needed
-  - If no UUID: show phone form
-- On phone submit: call `createDeviceUUID()` to generate a new UUID, then call `memberCheckIn({ phone, branchId, deviceFingerprint: newUuid })`
-- Remove all `sessionToken` / `getMemberSessionToken` / `setMemberSessionToken` usage
 
 ---
 
@@ -83,16 +93,9 @@ function createDeviceUUID(): string {
 
 | File | Changes |
 |------|---------|
-| `src/api/attendance.ts` | Split `getDeviceUUID` into getter (returns null if missing) and `createDeviceUUID` (generates new). Add sessionStorage fallback. Remove `getMemberSessionToken`/`setMemberSessionToken`. |
-| `src/pages/CheckIn.tsx` | Remove session token logic. Use device UUID as sole identifier. Call `createDeviceUUID` only on first phone registration. |
-| `supabase/functions/check-in/index.ts` | Rewrite `handleMemberCheckIn` to look up by `device_fingerprint` directly instead of `session_token`. Remove session_token from responses. |
+| `src/api/attendance.ts` | Add `getStaffDeviceUUID()`, `createStaffDeviceUUID()`, `staffDeviceCheckIn()`. Update `staffCheckIn()` to include device UUID. |
+| `src/pages/CheckIn.tsx` | Add staff device UUID generation on auth'd check-in. Add fallback to device-only staff check-in when no session but UUID exists. |
+| `supabase/functions/check-in/index.ts` | Add device binding logic in `handleCheckIn`. Add new `staff-device-check-in` handler for unauthenticated device-based check-in. |
 
-## Why This Fixes Safari
-
-Safari's ITP can clear localStorage between visits when the site is opened from an external source (QR code). By:
-1. Using sessionStorage as a fallback (persists within the tab)
-2. Re-persisting the UUID to localStorage whenever it's read from sessionStorage
-3. Eliminating the dual-storage problem (separate session_token AND device_uuid)
-4. Making the system work with a single identifier
-
-The most common Safari scenario -- scanning QR, closing tab, scanning again -- will attempt localStorage first. If cleared, the user simply re-enters their phone (which is acceptable for a new browser session). The device is already registered, so as long as the UUID matches, it works. If the UUID is truly lost (both stores cleared), the phone re-entry will detect the existing device registration and either match or show the admin-reset message.
+## No Database Changes Needed
+The `attendance_devices` table already has `staff_id`, `device_fingerprint`, `is_active`, and all required columns.
