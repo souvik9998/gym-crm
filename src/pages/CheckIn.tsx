@@ -7,8 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   memberCheckIn,
   staffCheckIn,
+  staffDeviceCheckIn,
   getDeviceUUID,
   createDeviceUUID,
+  getStaffDeviceUUID,
 } from "@/api/attendance";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -73,20 +75,35 @@ const CheckIn = () => {
     }
 
     const attemptCheckIn = async () => {
-      // Check if a staff member is logged in (Supabase Auth session with staff_*@gym.local)
+      // 1. Check if a staff member is logged in (Supabase Auth session with staff_*@gym.local)
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user?.email?.startsWith("staff_") && session.user.email.endsWith("@gym.local")) {
-          // Staff user detected - use authenticated staff check-in
+          // Staff user detected - authenticated check-in (also registers device on first use)
           const result = await staffCheckIn(branchId);
           processResult(result);
           return;
         }
       } catch {
-        // Not staff or session check failed - continue with member flow
+        // Not staff or session check failed - continue
       }
 
-      // Member flow: check for existing device UUID
+      // 2. No session, but check if staff device UUID exists (Safari session loss fallback)
+      const staffUuid = getStaffDeviceUUID();
+      if (staffUuid) {
+        try {
+          const result = await staffDeviceCheckIn(branchId, staffUuid);
+          if (result.status !== "login_required") {
+            processResult(result);
+            return;
+          }
+          // Device not recognized - fall through to member flow
+        } catch {
+          // Device check-in failed - fall through to member flow
+        }
+      }
+
+      // 3. Member flow: check for existing device UUID
       const existingUUID = getDeviceUUID();
       if (existingUUID) {
         try {
