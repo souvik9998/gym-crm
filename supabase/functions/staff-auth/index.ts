@@ -302,14 +302,17 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Get staff record linked to this auth user
-        const { data: staff, error: staffError } = await supabaseAdmin
+        // Get staff records linked to this auth user (may have multiple for multi-branch)
+        const { data: staffList, error: staffError } = await supabaseAdmin
           .from("staff")
           .select("id, full_name, phone, role, is_active")
           .eq("auth_user_id", user.id)
-          .single();
+          .eq("is_active", true);
+
+        const staff = staffList?.[0];
 
         if (staffError || !staff) {
+          console.error("Staff lookup failed:", { userId: user.id, error: staffError });
           return new Response(
             JSON.stringify({ valid: false, error: "Staff record not found" }),
             { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -330,11 +333,12 @@ Deno.serve(async (req) => {
           .eq("staff_id", staff.id)
           .single();
 
-        // Get branch assignments
+        // Get branch assignments across ALL staff records for this auth user
+        const allStaffIds = staffList!.map(s => s.id);
         const { data: branchAssignments } = await supabaseAdmin
           .from("staff_branch_assignments")
           .select("branch_id, is_primary, branches(id, name)")
-          .eq("staff_id", staff.id);
+          .in("staff_id", allStaffIds);
 
         return new Response(
           JSON.stringify({
@@ -375,11 +379,12 @@ Deno.serve(async (req) => {
           
           if (user) {
             // Get staff info for logging
-            const { data: staff } = await supabaseAdmin
+            const { data: staffList } = await supabaseAdmin
               .from("staff")
               .select("id, full_name, phone, role")
               .eq("auth_user_id", user.id)
-              .single();
+              .eq("is_active", true);
+            const staff = staffList?.[0];
 
             if (staff) {
               const { data: branchAssignments } = await supabaseAdmin
