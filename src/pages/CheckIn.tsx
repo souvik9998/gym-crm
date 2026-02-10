@@ -6,9 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   memberCheckIn,
+  staffCheckIn,
   getDeviceUUID,
   createDeviceUUID,
 } from "@/api/attendance";
+import { supabase } from "@/integrations/supabase/client";
 
 type CheckInStatus = "loading" | "login" | "success" | "checked_out" | "expired" | "duplicate" | "device_mismatch" | "not_found" | "error";
 
@@ -62,7 +64,7 @@ const CheckIn = () => {
     }
   }, []);
 
-  // Auto check-in on mount if session exists
+  // Auto check-in on mount - detect staff vs member
   useEffect(() => {
     if (!branchId) {
       setStatus("error");
@@ -70,17 +72,35 @@ const CheckIn = () => {
       return;
     }
 
-    const existingUUID = getDeviceUUID();
-    if (existingUUID) {
-      // Returning user with stored device UUID - attempt zero-interaction check-in
-      memberCheckIn({ branchId, deviceFingerprint: existingUUID })
-        .then(processResult)
-        .catch(() => {
+    const attemptCheckIn = async () => {
+      // Check if a staff member is logged in (Supabase Auth session with staff_*@gym.local)
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.email?.startsWith("staff_") && session.user.email.endsWith("@gym.local")) {
+          // Staff user detected - use authenticated staff check-in
+          const result = await staffCheckIn(branchId);
+          processResult(result);
+          return;
+        }
+      } catch {
+        // Not staff or session check failed - continue with member flow
+      }
+
+      // Member flow: check for existing device UUID
+      const existingUUID = getDeviceUUID();
+      if (existingUUID) {
+        try {
+          const result = await memberCheckIn({ branchId, deviceFingerprint: existingUUID });
+          processResult(result);
+        } catch {
           setStatus("login");
-        });
-    } else {
-      setStatus("login");
-    }
+        }
+      } else {
+        setStatus("login");
+      }
+    };
+
+    attemptCheckIn();
   }, [branchId, processResult]);
 
   // Auto-redirect for expired members
