@@ -496,7 +496,7 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Update staff record with auth_user_id (no more password_hash!)
+        // Update THIS staff record with auth_user_id
         const { error: updateError } = await supabaseAdmin
           .from("staff")
           .update({
@@ -508,7 +508,25 @@ Deno.serve(async (req) => {
           .eq("id", staffId);
 
         if (updateError) {
-          return errorResponse("Failed to update staff record", 500);
+          console.error("Failed to update staff record:", JSON.stringify(updateError));
+          return errorResponse("Failed to update staff record: " + updateError.message, 500);
+        }
+
+        // Also link auth_user_id to any other staff records with the same phone
+        // (same person registered in multiple branches)
+        const { data: otherStaffRecords } = await supabaseAdmin
+          .from("staff")
+          .select("id")
+          .eq("phone", staff.phone)
+          .neq("id", staffId)
+          .is("auth_user_id", null);
+
+        if (otherStaffRecords && otherStaffRecords.length > 0) {
+          const otherIds = otherStaffRecords.map(s => s.id);
+          await supabaseAdmin
+            .from("staff")
+            .update({ auth_user_id: authUserId })
+            .in("id", otherIds);
         }
 
         // Send WhatsApp notification
