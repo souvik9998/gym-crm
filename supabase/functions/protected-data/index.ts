@@ -79,30 +79,31 @@ async function authenticateRequest(
     return { valid: true, isAdmin: true, isSuperAdmin, isStaff: false, userId };
   }
 
-  // Check if user is staff
-  const { data: staffData } = await serviceClient
+  // Check if user is staff (may have multiple records across branches)
+  const { data: staffList } = await serviceClient
     .from("staff")
     .select("id, is_active")
     .eq("auth_user_id", userId)
-    .single();
+    .eq("is_active", true);
 
-  const staff = staffData as { id: string; is_active: boolean } | null;
-  if (!staff || !staff.is_active) {
+  const staff = (staffList as { id: string; is_active: boolean }[] | null)?.[0];
+  if (!staff) {
     return { valid: false, isAdmin: false, isStaff: false };
   }
 
-  // Get staff permissions
+  // Get staff permissions (from primary staff record)
   const { data: permissions } = await serviceClient
     .from("staff_permissions")
     .select("*")
     .eq("staff_id", staff.id)
     .single();
 
-  // Get assigned branches
+  // Get assigned branches across ALL staff records for this user
+  const allStaffIds = (staffList || []).map((s: { id: string }) => s.id);
   const { data: assignments } = await serviceClient
     .from("staff_branch_assignments")
     .select("branch_id")
-    .eq("staff_id", staff.id);
+    .in("staff_id", allStaffIds);
 
   const branchIds = (assignments || []).map((a: { branch_id: string }) => a.branch_id);
 
