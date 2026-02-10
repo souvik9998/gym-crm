@@ -48,14 +48,23 @@ async function authenticateRequest(
     return { valid: false, isAdmin: false, isStaff: false };
   }
 
-  // Verify JWT (Lovable Cloud compatible)
-  const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
-  if (claimsError || !claimsData?.claims?.sub) {
-    console.warn("JWT validation failed:", claimsError?.message);
-    return { valid: false, isAdmin: false, isStaff: false };
-  }
+  // Verify JWT - try getClaims first, fall back to getUser
+  let userId: string | null = null;
 
-  const userId = String(claimsData.claims.sub);
+  const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+  if (!claimsError && claimsData?.claims?.sub) {
+    userId = String(claimsData.claims.sub);
+  } else {
+    console.warn("getClaims failed, trying getUser:", claimsError?.message);
+    // Fallback: use getUser with explicit token
+    const { data: userData, error: userError } = await anonClient.auth.getUser(token);
+    if (!userError && userData?.user?.id) {
+      userId = userData.user.id;
+    } else {
+      console.error("Both getClaims and getUser failed:", userError?.message);
+      return { valid: false, isAdmin: false, isStaff: false };
+    }
+  }
 
   // Check if user is an admin-like user.
   // In this SaaS: 
