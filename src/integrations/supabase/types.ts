@@ -173,6 +173,7 @@ export type Database = {
           member_id: string | null
           staff_id: string | null
           status: string
+          subscription_status: string | null
           total_hours: number | null
           updated_at: string
           user_type: string
@@ -188,6 +189,7 @@ export type Database = {
           member_id?: string | null
           staff_id?: string | null
           status?: string
+          subscription_status?: string | null
           total_hours?: number | null
           updated_at?: string
           user_type: string
@@ -203,6 +205,7 @@ export type Database = {
           member_id?: string | null
           staff_id?: string | null
           status?: string
+          subscription_status?: string | null
           total_hours?: number | null
           updated_at?: string
           user_type?: string

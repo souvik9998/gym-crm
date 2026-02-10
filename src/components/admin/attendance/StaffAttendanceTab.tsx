@@ -32,9 +32,13 @@ export const StaffAttendanceTab = () => {
     return new Date(isoStr).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
   };
 
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  };
+
   const isLate = (checkInAt: string) => {
     const hour = new Date(checkInAt).getHours();
-    return hour >= 10; // After 10 AM is considered late
+    return hour >= 10;
   };
 
   return (
@@ -67,18 +71,21 @@ export const StaffAttendanceTab = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Date</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Check In</TableHead>
                     <TableHead>Check Out</TableHead>
                     <TableHead>Hours</TableHead>
                     <TableHead>Late</TableHead>
+                    <TableHead>Device</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {logs.map((log: any) => (
                     <TableRow key={log.id}>
+                      <TableCell className="whitespace-nowrap">{formatDate(log.date)}</TableCell>
                       <TableCell className="font-medium">{log.staff?.full_name || "—"}</TableCell>
                       <TableCell className="capitalize">{log.staff?.role || "—"}</TableCell>
                       <TableCell>{formatTime(log.check_in_at)}</TableCell>
@@ -90,6 +97,9 @@ export const StaffAttendanceTab = () => {
                         ) : (
                           <Badge className="bg-green-500/10 text-green-600 border-green-200">On Time</Badge>
                         )}
+                      </TableCell>
+                      <TableCell className="text-xs font-mono" title={log.device_fingerprint || ""}>
+                        {log.device_fingerprint ? log.device_fingerprint.substring(0, 8) + "…" : "—"}
                       </TableCell>
                       <TableCell>
                         {log.status === "checked_in" ? (

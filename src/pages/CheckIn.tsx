@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   memberCheckIn,
-  getDeviceFingerprint,
+  getDeviceUUID,
   getMemberSessionToken,
   setMemberSessionToken,
 } from "@/api/attendance";
@@ -74,8 +74,8 @@ const CheckIn = () => {
 
     const sessionToken = getMemberSessionToken();
     if (sessionToken) {
-      const fp = getDeviceFingerprint();
-      memberCheckIn({ branchId, deviceFingerprint: fp, sessionToken })
+      const deviceId = getDeviceUUID();
+      memberCheckIn({ branchId, deviceFingerprint: deviceId, sessionToken })
         .then(processResult)
         .catch(() => {
           setStatus("login");
@@ -99,8 +99,8 @@ const CheckIn = () => {
 
     setIsSubmitting(true);
     try {
-      const fp = getDeviceFingerprint();
-      const result = await memberCheckIn({ phone, branchId, deviceFingerprint: fp });
+      const deviceId = getDeviceUUID();
+      const result = await memberCheckIn({ phone, branchId, deviceFingerprint: deviceId });
       processResult(result);
     } catch {
       setStatus("error");

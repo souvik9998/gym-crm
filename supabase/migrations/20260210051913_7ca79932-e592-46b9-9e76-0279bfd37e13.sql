@@ -1,0 +1,1 @@
+ALTER TABLE public.attendance_logs ADD COLUMN subscription_status text DEFAULT null;

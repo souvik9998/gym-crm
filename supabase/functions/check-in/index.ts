@@ -238,22 +238,23 @@ async function processCheckIn(serviceClient: any, params: {
   const { data: existingLogs } = await query;
   const existingLog = existingLogs?.[0];
 
-  // Anti-passback: prevent duplicate within 10 minutes
+  // Anti-passback logic
   if (existingLog) {
-    const lastTime = new Date(existingLog.check_out_at || existingLog.check_in_at);
-    const diffMinutes = (Date.now() - lastTime.getTime()) / (1000 * 60);
-
-    if (diffMinutes < 10) {
-      return successResponse({
-        status: "duplicate",
-        message: `Please wait ${Math.ceil(10 - diffMinutes)} minutes before scanning again.`,
-        check_in_at: existingLog.check_in_at,
-        name: userName,
-      });
-    }
-
-    // If checked in and no check-out, mark check-out
+    // If currently checked in, enforce 10-min cooldown before allowing check-out
     if (existingLog.status === "checked_in" || existingLog.status === "expired") {
+      const lastTime = new Date(existingLog.check_in_at);
+      const diffMinutes = (Date.now() - lastTime.getTime()) / (1000 * 60);
+
+      if (diffMinutes < 10) {
+        return successResponse({
+          status: "duplicate",
+          message: `Please wait ${Math.ceil(10 - diffMinutes)} minutes before checking out.`,
+          check_in_at: existingLog.check_in_at,
+          name: userName,
+        });
+      }
+
+      // Mark check-out
       const checkInTime = new Date(existingLog.check_in_at);
       const totalHours = Math.round(((Date.now() - checkInTime.getTime()) / (1000 * 60 * 60)) * 100) / 100;
 
@@ -273,6 +274,8 @@ async function processCheckIn(serviceClient: any, params: {
         subscription_status: subscriptionStatus,
       });
     }
+
+    // If already checked out, allow immediate re-check-in (no cooldown)
   }
 
   // New check-in
@@ -287,6 +290,7 @@ async function processCheckIn(serviceClient: any, params: {
     date: today,
     device_fingerprint: deviceFingerprint,
     status: logStatus,
+    subscription_status: subscriptionStatus,
   }).select().single();
 
   if (insertError) {
@@ -420,7 +424,7 @@ async function handleAttendanceLogs(req: Request, serviceClient: any) {
 
   let query = serviceClient
     .from("attendance_logs")
-    .select("*, members(name, phone), staff(full_name, phone, role)", { count: "exact" })
+    .select("*, members(name, phone, email), staff(full_name, phone, role)", { count: "exact" })
     .gte("date", dateFrom)
     .lte("date", dateTo)
     .order("check_in_at", { ascending: false })
