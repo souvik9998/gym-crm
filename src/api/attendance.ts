@@ -23,37 +23,45 @@ async function authenticatedFetch(url: string, options?: RequestInit) {
   return res.json();
 }
 
-// Generate or retrieve a stable device UUID
-export function getDeviceUUID(): string {
-  // Migrate from old fingerprint key if present
-  const oldFp = localStorage.getItem("attendance_device_fp");
-  const existing = localStorage.getItem("attendance_device_uuid");
-  if (existing) return existing;
-  if (oldFp) {
-    localStorage.setItem("attendance_device_uuid", oldFp);
-    localStorage.removeItem("attendance_device_fp");
-    return oldFp;
+// Retrieve existing device UUID (returns null if not found)
+export function getDeviceUUID(): string | null {
+  // Try localStorage first
+  let uuid = localStorage.getItem("attendance_device_uuid");
+  // Fallback to sessionStorage (survives Safari ITP within same tab)
+  if (!uuid) {
+    try { uuid = sessionStorage.getItem("attendance_device_uuid"); } catch {}
   }
+  // Migrate old key
+  if (!uuid) {
+    const oldFp = localStorage.getItem("attendance_device_fp");
+    if (oldFp) uuid = oldFp;
+  }
+  if (uuid) {
+    // Persist in both stores for redundancy
+    try { localStorage.setItem("attendance_device_uuid", uuid); } catch {}
+    try { sessionStorage.setItem("attendance_device_uuid", uuid); } catch {}
+    // Clean up old key
+    try { localStorage.removeItem("attendance_device_fp"); } catch {}
+    return uuid;
+  }
+  return null;
+}
+
+// Create a new device UUID and persist in both stores
+export function createDeviceUUID(): string {
   const uuid = crypto.randomUUID();
-  localStorage.setItem("attendance_device_uuid", uuid);
+  try { localStorage.setItem("attendance_device_uuid", uuid); } catch {}
+  try { sessionStorage.setItem("attendance_device_uuid", uuid); } catch {}
   return uuid;
 }
 
 // Keep old export name for backward compatibility
 export const getDeviceFingerprint = getDeviceUUID;
 
-export function getMemberSessionToken(): string | null {
-  return localStorage.getItem("attendance_session_token");
-}
-
-export function setMemberSessionToken(token: string) {
-  localStorage.setItem("attendance_session_token", token);
-}
-
-export function clearMemberSessionToken() {
-  localStorage.removeItem("attendance_session_token");
-  localStorage.removeItem("attendance_device_uuid");
-  localStorage.removeItem("attendance_device_fp");
+export function clearMemberSession() {
+  try { localStorage.removeItem("attendance_device_uuid"); } catch {}
+  try { localStorage.removeItem("attendance_device_fp"); } catch {}
+  try { sessionStorage.removeItem("attendance_device_uuid"); } catch {}
 }
 
 // Member check-in (phone-based, no auth required)
@@ -61,14 +69,12 @@ export async function memberCheckIn(params: {
   phone?: string;
   branchId: string;
   deviceFingerprint: string;
-  sessionToken?: string | null;
 }) {
   const body: Record<string, string> = {
     branch_id: params.branchId,
     device_fingerprint: params.deviceFingerprint,
   };
   if (params.phone) body.phone = params.phone;
-  if (params.sessionToken) body.session_token = params.sessionToken;
 
   const res = await fetch(`${CHECK_IN_URL}?action=member-check-in&branch_id=${params.branchId}`, {
     method: "POST",
