@@ -82,24 +82,25 @@ async function handleCheckIn(req: Request, serviceClient: any, branchId: string 
 // ─── Check-in for members (phone-based, no Supabase Auth) ───
 async function handleMemberCheckIn(req: Request, serviceClient: any, branchId: string | null) {
   const body = await req.text().then(t => t ? JSON.parse(t) : {}).catch(() => ({}));
-  const { phone, device_fingerprint, session_token } = body;
+  const { phone, device_fingerprint } = body;
   const effectiveBranchId = branchId || body.branch_id;
 
   if (!effectiveBranchId) return errorResponse("branch_id is required", 400);
 
-  // If session_token provided, validate it
-  if (session_token) {
+  // Strategy 1: If device_fingerprint provided (returning user with stored UUID)
+  if (device_fingerprint && !phone) {
     const { data: device } = await serviceClient
       .from("attendance_devices")
       .select("*, member_id")
-      .eq("device_fingerprint", session_token)
+      .eq("device_fingerprint", device_fingerprint)
       .eq("branch_id", effectiveBranchId)
       .eq("user_type", "member")
       .eq("is_active", true)
       .maybeSingle();
 
     if (!device || !device.member_id) {
-      return successResponse({ status: "device_mismatch", message: "Device not recognized. Please login again." });
+      // UUID not found in DB - user needs to re-enter phone
+      return successResponse({ status: "login_required", message: "Please enter your phone number to register." });
     }
 
     // Get member info
@@ -116,13 +117,13 @@ async function handleMemberCheckIn(req: Request, serviceClient: any, branchId: s
       staffId: null,
       memberId: member.id,
       branchId: effectiveBranchId,
-      deviceFingerprint: session_token,
+      deviceFingerprint: device_fingerprint,
       userName: member.name,
       userPhone: member.phone,
     });
   }
 
-  // First-time: phone lookup
+  // Strategy 2: Phone provided (first-time registration or re-login)
   if (!phone) return errorResponse("Phone number is required for first check-in", 400);
 
   const cleanPhone = phone.replace(/\D/g, "").replace(/^0/, "");
@@ -169,11 +170,18 @@ async function handleMemberCheckIn(req: Request, serviceClient: any, branchId: s
         reset_at: null,
         reset_by: null,
       }).eq("id", existingDevice.id);
+    } else if (existingDevice.device_fingerprint === device_fingerprint) {
+      // Same device, already active - no update needed
+    } else {
+      // Update fingerprint for existing active device (re-registration with same phone)
+      await serviceClient.from("attendance_devices").update({
+        device_fingerprint,
+      }).eq("id", existingDevice.id);
     }
   }
 
   // Process the check-in
-  const result = await processCheckIn(serviceClient, {
+  return await processCheckIn(serviceClient, {
     userType: "member",
     staffId: null,
     memberId: member.id,
@@ -182,13 +190,6 @@ async function handleMemberCheckIn(req: Request, serviceClient: any, branchId: s
     userName: member.name,
     userPhone: member.phone,
   });
-
-  // Include session token for future visits
-  const responseBody = await result.clone().json();
-  responseBody.session_token = device_fingerprint;
-  responseBody.member_name = member.name;
-
-  return successResponse(responseBody);
 }
 
 // ─── Core check-in/out logic ───

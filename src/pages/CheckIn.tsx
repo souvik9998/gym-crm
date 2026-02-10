@@ -7,8 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   memberCheckIn,
   getDeviceUUID,
-  getMemberSessionToken,
-  setMemberSessionToken,
+  createDeviceUUID,
 } from "@/api/attendance";
 
 type CheckInStatus = "loading" | "login" | "success" | "checked_out" | "expired" | "duplicate" | "device_mismatch" | "not_found" | "error";
@@ -35,10 +34,6 @@ const CheckIn = () => {
     setTotalHours(result.total_hours || null);
     setMessage(result.message || "");
 
-    if (result.session_token) {
-      setMemberSessionToken(result.session_token);
-    }
-
     switch (result.status) {
       case "checked_in":
         setStatus("success");
@@ -59,6 +54,9 @@ const CheckIn = () => {
       case "not_found":
         setStatus("not_found");
         break;
+      case "login_required":
+        setStatus("login");
+        break;
       default:
         setStatus("error");
     }
@@ -72,10 +70,10 @@ const CheckIn = () => {
       return;
     }
 
-    const sessionToken = getMemberSessionToken();
-    if (sessionToken) {
-      const deviceId = getDeviceUUID();
-      memberCheckIn({ branchId, deviceFingerprint: deviceId, sessionToken })
+    const existingUUID = getDeviceUUID();
+    if (existingUUID) {
+      // Returning user with stored device UUID - attempt zero-interaction check-in
+      memberCheckIn({ branchId, deviceFingerprint: existingUUID })
         .then(processResult)
         .catch(() => {
           setStatus("login");
@@ -99,7 +97,8 @@ const CheckIn = () => {
 
     setIsSubmitting(true);
     try {
-      const deviceId = getDeviceUUID();
+      // Generate a new UUID for first-time registration
+      const deviceId = createDeviceUUID();
       const result = await memberCheckIn({ phone, branchId, deviceFingerprint: deviceId });
       processResult(result);
     } catch {
