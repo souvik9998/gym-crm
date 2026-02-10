@@ -134,9 +134,20 @@ const CheckIn = () => {
 
     setIsSubmitting(true);
     try {
-      // Generate a new UUID for first-time registration
-      const deviceId = createDeviceUUID();
+      // Generate a device UUID - use existing or create new
+      // This UUID will be used for both member and staff device binding
+      const existingMemberUUID = getDeviceUUID();
+      const deviceId = existingMemberUUID || createDeviceUUID();
       const result = await memberCheckIn({ phone, branchId, deviceFingerprint: deviceId });
+      
+      // If the backend identified this as a staff check-in, store the UUID as staff device too
+      if (result.status === "checked_in" || result.status === "checked_out") {
+        // Store in staff key as well in case this was a staff member
+        // The backend handles the distinction; we just ensure the UUID is persisted
+        try { localStorage.setItem("staff_attendance_device_uuid", deviceId); } catch {}
+        try { sessionStorage.setItem("staff_attendance_device_uuid", deviceId); } catch {}
+      }
+      
       processResult(result);
     } catch {
       setStatus("error");
