@@ -20,6 +20,8 @@ Deno.serve(async (req) => {
         return await handleCheckIn(req, serviceClient, branchId);
       case "member-check-in":
         return await handleMemberCheckIn(req, serviceClient, branchId);
+      case "staff-device-check-in":
+        return await handleStaffDeviceCheckIn(req, serviceClient, branchId);
       case "register-device":
         return await handleRegisterDevice(req, serviceClient);
       case "reset-device":
@@ -64,6 +66,43 @@ async function handleCheckIn(req: Request, serviceClient: any, branchId: string 
     .maybeSingle();
 
   if (staffData) {
+    // ── Staff device binding ──
+    if (deviceFingerprint) {
+      const { data: existingDevice } = await serviceClient
+        .from("attendance_devices")
+        .select("id, device_fingerprint, is_active")
+        .eq("user_type", "staff")
+        .eq("staff_id", staffData.id)
+        .eq("branch_id", effectiveBranchId)
+        .maybeSingle();
+
+      if (existingDevice && existingDevice.is_active && existingDevice.device_fingerprint !== deviceFingerprint) {
+        return successResponse({
+          status: "device_mismatch",
+          message: "This account is registered on another device. Contact admin to reset.",
+        });
+      }
+
+      if (!existingDevice) {
+        // First time: register device
+        await serviceClient.from("attendance_devices").insert({
+          user_type: "staff",
+          staff_id: staffData.id,
+          branch_id: effectiveBranchId,
+          device_fingerprint: deviceFingerprint,
+        });
+      } else if (!existingDevice.is_active) {
+        // Re-activate after admin reset
+        await serviceClient.from("attendance_devices").update({
+          device_fingerprint: deviceFingerprint,
+          is_active: true,
+          reset_at: null,
+          reset_by: null,
+        }).eq("id", existingDevice.id);
+      }
+      // If same fingerprint + active, no update needed
+    }
+
     return await processCheckIn(serviceClient, {
       userType: "staff",
       staffId: staffData.id,
@@ -77,6 +116,52 @@ async function handleCheckIn(req: Request, serviceClient: any, branchId: string 
 
   // Check if user is an admin (gym owner) — they don't check in
   return errorResponse("No member or staff profile found for this user", 404);
+}
+
+// ─── Staff device-only check-in (unauthenticated, for Safari session loss) ───
+async function handleStaffDeviceCheckIn(req: Request, serviceClient: any, branchId: string | null) {
+  const body = await req.text().then(t => t ? JSON.parse(t) : {}).catch(() => ({}));
+  const { device_fingerprint } = body;
+  const effectiveBranchId = branchId || body.branch_id;
+
+  if (!effectiveBranchId) return errorResponse("branch_id is required", 400);
+  if (!device_fingerprint) return errorResponse("device_fingerprint is required", 400);
+
+  // Look up the device
+  const { data: device } = await serviceClient
+    .from("attendance_devices")
+    .select("*, staff_id")
+    .eq("device_fingerprint", device_fingerprint)
+    .eq("branch_id", effectiveBranchId)
+    .eq("user_type", "staff")
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!device || !device.staff_id) {
+    return successResponse({ status: "login_required", message: "Please log in to register your device." });
+  }
+
+  // Get staff info
+  const { data: staff } = await serviceClient
+    .from("staff")
+    .select("id, full_name, phone, is_active")
+    .eq("id", device.staff_id)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!staff) {
+    return successResponse({ status: "login_required", message: "Staff account not found or inactive." });
+  }
+
+  return await processCheckIn(serviceClient, {
+    userType: "staff",
+    staffId: staff.id,
+    memberId: null,
+    branchId: effectiveBranchId,
+    deviceFingerprint: device_fingerprint,
+    userName: staff.full_name,
+    userPhone: staff.phone,
+  });
 }
 
 // ─── Check-in for members (phone-based, no Supabase Auth) ───

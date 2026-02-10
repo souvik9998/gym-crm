@@ -23,24 +23,21 @@ async function authenticatedFetch(url: string, options?: RequestInit) {
   return res.json();
 }
 
+// ─── Member Device UUID ───
+
 // Retrieve existing device UUID (returns null if not found)
 export function getDeviceUUID(): string | null {
-  // Try localStorage first
   let uuid = localStorage.getItem("attendance_device_uuid");
-  // Fallback to sessionStorage (survives Safari ITP within same tab)
   if (!uuid) {
     try { uuid = sessionStorage.getItem("attendance_device_uuid"); } catch {}
   }
-  // Migrate old key
   if (!uuid) {
     const oldFp = localStorage.getItem("attendance_device_fp");
     if (oldFp) uuid = oldFp;
   }
   if (uuid) {
-    // Persist in both stores for redundancy
     try { localStorage.setItem("attendance_device_uuid", uuid); } catch {}
     try { sessionStorage.setItem("attendance_device_uuid", uuid); } catch {}
-    // Clean up old key
     try { localStorage.removeItem("attendance_device_fp"); } catch {}
     return uuid;
   }
@@ -64,7 +61,36 @@ export function clearMemberSession() {
   try { sessionStorage.removeItem("attendance_device_uuid"); } catch {}
 }
 
-// Member check-in (phone-based, no auth required)
+// ─── Staff Device UUID (separate key to avoid conflicts on shared devices) ───
+
+const STAFF_DEVICE_KEY = "staff_attendance_device_uuid";
+
+export function getStaffDeviceUUID(): string | null {
+  let uuid: string | null = null;
+  try { uuid = localStorage.getItem(STAFF_DEVICE_KEY); } catch {}
+  if (!uuid) {
+    try { uuid = sessionStorage.getItem(STAFF_DEVICE_KEY); } catch {}
+  }
+  if (uuid) {
+    try { localStorage.setItem(STAFF_DEVICE_KEY, uuid); } catch {}
+    try { sessionStorage.setItem(STAFF_DEVICE_KEY, uuid); } catch {}
+  }
+  return uuid;
+}
+
+export function createStaffDeviceUUID(): string {
+  const uuid = crypto.randomUUID();
+  try { localStorage.setItem(STAFF_DEVICE_KEY, uuid); } catch {}
+  try { sessionStorage.setItem(STAFF_DEVICE_KEY, uuid); } catch {}
+  return uuid;
+}
+
+export function clearStaffDeviceSession() {
+  try { localStorage.removeItem(STAFF_DEVICE_KEY); } catch {}
+  try { sessionStorage.removeItem(STAFF_DEVICE_KEY); } catch {}
+}
+
+// ─── Member check-in (phone-based, no auth required) ───
 export async function memberCheckIn(params: {
   phone?: string;
   branchId: string;
@@ -86,13 +112,29 @@ export async function memberCheckIn(params: {
   return res.json();
 }
 
-// Staff check-in (authenticated)
+// ─── Staff check-in (authenticated, with device binding) ───
 export async function staffCheckIn(branchId: string) {
-  const fp = getDeviceFingerprint();
+  // Ensure we have a staff device UUID
+  let staffUuid = getStaffDeviceUUID();
+  if (!staffUuid) {
+    staffUuid = createStaffDeviceUUID();
+  }
   return authenticatedFetch(`${CHECK_IN_URL}?action=check-in&branch_id=${branchId}`, {
     method: "POST",
-    body: JSON.stringify({ branch_id: branchId, device_fingerprint: fp }),
+    body: JSON.stringify({ branch_id: branchId, device_fingerprint: staffUuid }),
   });
+}
+
+// ─── Staff device-only check-in (unauthenticated, for Safari session loss) ───
+export async function staffDeviceCheckIn(branchId: string, deviceUUID: string) {
+  const res = await fetch(`${CHECK_IN_URL}?action=staff-device-check-in&branch_id=${branchId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY },
+    body: JSON.stringify({ branch_id: branchId, device_fingerprint: deviceUUID }),
+  });
+
+  if (!res.ok) throw new Error("Staff device check-in failed");
+  return res.json();
 }
 
 export interface AttendanceLogsResponse {
