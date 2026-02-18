@@ -217,8 +217,8 @@ export const MemberActivityDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-       <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:max-w-xl max-h-[85vh] sm:max-h-[80vh] overflow-hidden flex flex-col p-0 left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]">
-        <DialogHeader className="px-3 pt-3 pb-1 sm:px-4 sm:pt-4 flex-shrink-0">
+       <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:max-w-lg h-[75vh] sm:h-[70vh] overflow-hidden flex flex-col p-0 left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]">
+        <DialogHeader className="px-3 pt-2.5 pb-1 sm:px-3 sm:pt-3 flex-shrink-0">
           <DialogTitle className="flex items-center gap-1.5 text-sm md:text-base">
             <User className="w-3.5 h-3.5 md:w-4 md:h-4 text-accent" />
             {memberName}
@@ -233,7 +233,7 @@ export const MemberActivityDialog = ({
             <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
           </div>
         ) : (
-          <Tabs defaultValue="overview" className="flex-1 flex flex-col px-3 sm:px-4 pb-3 sm:pb-4 min-h-0">
+          <Tabs defaultValue="overview" className="flex-1 flex flex-col px-2.5 sm:px-3 pb-2.5 sm:pb-3 min-h-0 overflow-hidden">
             <TabsList className="grid w-full grid-cols-4 h-8 flex-shrink-0 p-0.5 overflow-hidden">
               <TabsTrigger value="overview" className="text-[10px] md:text-xs py-1 md:py-1.5 px-1.5 md:px-2">Overview</TabsTrigger>
               <TabsTrigger value="subscriptions" className="text-[10px] md:text-xs py-1 md:py-1.5 px-1.5 md:px-2">Gym</TabsTrigger>
@@ -242,7 +242,7 @@ export const MemberActivityDialog = ({
             </TabsList>
 
             {/* Overview Tab */}
-            <TabsContent value="overview" className="mt-2 flex-1 min-h-[280px] overflow-y-auto">
+            <TabsContent value="overview" className="mt-1.5 flex-1 min-h-0 overflow-y-auto">
                 <div className="space-y-1.5 md:space-y-2">
                   <Card>
                     <CardHeader className="pb-1 md:pb-1.5 px-1.5 md:px-2 pt-1.5 md:pt-2">
@@ -361,7 +361,7 @@ export const MemberActivityDialog = ({
             </TabsContent>
 
             {/* Subscriptions Tab */}
-            <TabsContent value="subscriptions" className="mt-2 flex-1 min-h-[280px] overflow-y-auto">
+            <TabsContent value="subscriptions" className="mt-1.5 flex-1 min-h-0 overflow-y-auto">
                 <div className="space-y-1.5 md:space-y-2">
                   {subscriptions.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8 text-xs md:text-sm">No subscriptions found</p>
@@ -402,7 +402,7 @@ export const MemberActivityDialog = ({
             </TabsContent>
 
             {/* PT History Tab */}
-            <TabsContent value="pt" className="mt-2 flex-1 min-h-[280px] overflow-y-auto">
+            <TabsContent value="pt" className="mt-1.5 flex-1 min-h-0 overflow-y-auto">
                 <div className="space-y-1.5 md:space-y-2">
                   {ptSubscriptions.length === 0 ? (
                     <div className="text-center py-8">
@@ -452,7 +452,7 @@ export const MemberActivityDialog = ({
             </TabsContent>
 
             {/* Payments Tab */}
-            <TabsContent value="payments" className="mt-2 flex-1 min-h-[280px] overflow-y-auto">
+            <TabsContent value="payments" className="mt-1.5 flex-1 min-h-0 overflow-y-auto">
                 <div className="space-y-1.5 md:space-y-2">
                   {payments.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8 text-xs md:text-sm">No payments found</p>
