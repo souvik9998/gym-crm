@@ -404,15 +404,15 @@ async function processCheckIn(serviceClient: any, params: {
 
   // Anti-passback logic
   if (existingLog) {
-    // If currently checked in, enforce 10-min cooldown before allowing check-out
+    // If currently checked in, enforce 2-min cooldown before allowing check-out
     if (existingLog.status === "checked_in" || existingLog.status === "expired") {
       const lastTime = new Date(existingLog.check_in_at);
       const diffMinutes = (Date.now() - lastTime.getTime()) / (1000 * 60);
 
-      if (diffMinutes < 10) {
+      if (diffMinutes < 2) {
         return successResponse({
           status: "duplicate",
-          message: `Please wait ${Math.ceil(10 - diffMinutes)} minutes before checking out.`,
+          message: `Please wait ${Math.ceil(2 - diffMinutes)} minutes before checking out.`,
           check_in_at: existingLog.check_in_at,
           name: userName,
         });
