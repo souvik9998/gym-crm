@@ -29,6 +29,9 @@ export interface TenantLimits {
   max_members: number;
   max_monthly_whatsapp_messages: number;
   max_trainers: number;
+  max_monthly_checkins: number;
+  max_storage_mb: number;
+  plan_expiry_date: string | null;
   created_at?: string;
   updated_at?: string;
   features: Record<string, any>;
@@ -40,6 +43,7 @@ export interface TenantUsage {
   members_count: number;
   trainers_count: number;
   whatsapp_this_month: number;
+  monthly_checkins: number;
 }
 
 export interface TenantMember {

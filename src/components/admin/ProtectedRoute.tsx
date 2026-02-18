@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useStaffAuth, StaffPermissions } from "@/contexts/StaffAuthContext";
+import { useTenantPermissions, TenantFeaturePermissions } from "@/hooks/useTenantPermissions";
 import { ShieldExclamationIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,6 +24,10 @@ interface ProtectedRouteProps {
    * Staff with at least one permission can access.
    */
   staffOnly?: boolean;
+  /**
+   * Tenant module key — if the module is disabled for this tenant, access is blocked.
+   */
+  requiredModule?: keyof TenantFeaturePermissions;
 }
 
 // Helper to check if email is a staff email pattern
@@ -47,6 +52,7 @@ export const ProtectedRoute = ({
   children,
   requiredPermission,
   staffOnly = false,
+  requiredModule,
 }: ProtectedRouteProps) => {
   const navigate = useNavigate();
   const { 
@@ -55,6 +61,7 @@ export const ProtectedRoute = ({
     isLoading: staffLoading,
     staffUser 
   } = useStaffAuth();
+  const { isModuleEnabled, planExpired, isLoading: tenantPermLoading } = useTenantPermissions();
   
   const [sessionUser, setSessionUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -178,7 +185,7 @@ export const ProtectedRoute = ({
   }, []);
 
   // Still loading
-  if (isLoading || staffLoading) {
+  if (isLoading || staffLoading || tenantPermLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -213,6 +220,16 @@ export const ProtectedRoute = ({
   // Admin-only route but staff is trying to access
   if (requiredPermission === "admin_only" && (isStaffLoggedIn || isStaffSession)) {
     return <AccessDenied message="This section is only accessible to administrators." />;
+  }
+
+  // Tenant module permission check (skip for super admins)
+  if (requiredModule && !isSuperAdminUser) {
+    if (planExpired) {
+      return <AccessDenied message="Your plan has expired. Contact the platform admin to renew." showLogout />;
+    }
+    if (!isModuleEnabled(requiredModule)) {
+      return <AccessDenied message="This module is not available on your current plan. Contact the platform admin to enable it." />;
+    }
   }
 
   // Staff user trying to access - check permissions

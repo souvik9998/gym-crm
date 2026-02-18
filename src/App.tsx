@@ -79,9 +79,11 @@ const App = () => (
                   </Suspense>
                 } />
                 <Route path="/admin/staff" element={
-                  <Suspense fallback={<PageLoader />}>
-                    <StaffManagement />
-                  </Suspense>
+                  <ProtectedRoute requiredPermission="admin_only" requiredModule="staff_management">
+                    <Suspense fallback={<PageLoader />}>
+                      <StaffManagement />
+                    </Suspense>
+                  </ProtectedRoute>
                 } />
                 <Route path="/admin/trainers" element={
                   <Suspense fallback={<PageLoader />}>
@@ -94,14 +96,18 @@ const App = () => (
                   </Suspense>
                 } />
                 <Route path="/admin/branch-analytics" element={
-                  <Suspense fallback={<PageLoader />}>
-                    <BranchAnalytics />
-                  </Suspense>
+                  <ProtectedRoute requiredPermission="admin_only" requiredModule="reports_analytics">
+                    <Suspense fallback={<PageLoader />}>
+                      <BranchAnalytics />
+                    </Suspense>
+                  </ProtectedRoute>
                 } />
                 <Route path="/admin/attendance" element={
-                  <Suspense fallback={<PageLoader />}>
-                    <Attendance />
-                  </Suspense>
+                  <ProtectedRoute requiredPermission="admin_only" requiredModule="attendance">
+                    <Suspense fallback={<PageLoader />}>
+                      <Attendance />
+                    </Suspense>
+                  </ProtectedRoute>
                 } />
               </Route>
 
@@ -124,7 +130,7 @@ const App = () => (
               </Route>
 
               <Route element={
-                <ProtectedRoute requiredPermission="can_access_analytics">
+                <ProtectedRoute requiredPermission="can_access_analytics" requiredModule="reports_analytics">
                   <AdminLayoutRoute />
                 </ProtectedRoute>
               }>
@@ -136,7 +142,7 @@ const App = () => (
               </Route>
 
               <Route element={
-                <ProtectedRoute requiredPermission="can_access_ledger">
+                <ProtectedRoute requiredPermission="can_access_ledger" requiredModule="payments_billing">
                   <AdminLayoutRoute />
                 </ProtectedRoute>
               }>
