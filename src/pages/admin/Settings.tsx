@@ -18,6 +18,7 @@ import {
   ChatBubbleLeftEllipsisIcon,
   BuildingStorefrontIcon,
   Cog6ToothIcon,
+  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
@@ -26,6 +27,7 @@ import type { User } from "@supabase/supabase-js";
 import { WhatsAppTemplates } from "@/components/admin/WhatsAppTemplates";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { BranchManagement } from "@/components/admin/BranchManagement";
+import { SubscriptionPlanTab } from "@/components/admin/SubscriptionPlanTab";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useStaffOperations } from "@/hooks/useStaffOperations";
@@ -702,7 +704,7 @@ const AdminSettings = () => {
     <Fragment>
       <div className="max-w-4xl mx-auto space-y-6">
         <Tabs defaultValue={initialTab}>
-          <TabsList className="grid w-full grid-cols-4 bg-muted/50">
+          <TabsList className="grid w-full grid-cols-5 bg-muted/50">
             <TabsTrigger value="packages" className="gap-2 data-[state=active]:bg-background">
               <CubeIcon className="w-4 h-4" />
               <span className="hidden sm:inline">Packages</span>
@@ -718,6 +720,10 @@ const AdminSettings = () => {
             <TabsTrigger value="general" className="gap-2 data-[state=active]:bg-background">
               <Cog6ToothIcon className="w-4 h-4" />
               <span className="hidden sm:inline">General</span>
+            </TabsTrigger>
+            <TabsTrigger value="subscription" className="gap-2 data-[state=active]:bg-background">
+              <ShieldCheckIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Plan</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1151,6 +1157,10 @@ const AdminSettings = () => {
               <CheckIcon className="w-4 h-4" />
               {isSaving ? "Saving..." : "Save Settings"}
             </Button>
+          </TabsContent>
+          {/* Subscription & Plan Tab */}
+          <TabsContent value="subscription" className="space-y-6 mt-6">
+            <SubscriptionPlanTab />
           </TabsContent>
         </Tabs>
       </div>
