@@ -1,101 +1,138 @@
 
 
-# Staff QR Attendance with Device Binding
+# Super Admin RBAC + Usage Limit System
 
-## Problem
-Currently, staff check-in via QR works only if there's an active Supabase Auth session, but there's no device binding for staff. The system doesn't enforce one-device-per-staff, and if the session is lost (common on Safari), staff can't check in at all.
+## Overview
+Build a comprehensive permissions and usage limits control panel that allows the Super Admin to toggle feature modules and set usage quotas per gym tenant. Disabled modules are hidden from the gym admin dashboard, and exceeded limits block actions with an "Upgrade Plan" message.
 
-## Solution
+## What Already Exists
+- `tenant_limits` table with `features` JSONB column (currently stores `{whatsapp, analytics, daily_pass}`)
+- `tenant_limits` has numeric fields: `max_branches`, `max_staff_per_branch`, `max_members`, `max_trainers`, `max_monthly_whatsapp_messages`
+- `tenant_can_add_resource()` SQL function for limit checking
+- `get_tenant_current_usage()` SQL function for usage metering
+- TenantDetail page with existing "Limits & Usage" tab
 
-### 1. Separate Staff Device UUID Storage
+## Database Changes
 
-Use a **separate** localStorage key (`staff_attendance_device_uuid`) so staff and member UUIDs don't conflict on shared devices. Store in both localStorage and sessionStorage for Safari resilience.
+### 1. Add new columns to `tenant_limits`
+- `max_monthly_checkins` (integer, default 10000) -- monthly check-in limit
+- `max_storage_mb` (integer, default 500) -- storage limit
+- `plan_expiry_date` (date, nullable) -- plan expiry date
 
-**File: `src/api/attendance.ts`**
-- Add `getStaffDeviceUUID()` and `createStaffDeviceUUID()` -- same pattern as member functions but with a `staff_attendance_device_uuid` key
-- Update `staffCheckIn()` to always send the staff device UUID alongside the auth token
-
-### 2. Update CheckIn Page to Handle Staff Without Session
-
-**File: `src/pages/CheckIn.tsx`**
-
-Current flow:
-1. Check Supabase Auth session -> if staff email pattern, call staffCheckIn
-2. Else, do member flow
-
-New flow:
-1. Check Supabase Auth session -> if staff email pattern found:
-   - Generate staff device UUID if none exists
-   - Call `staffCheckIn(branchId)` with device UUID -- proceeds to check-in + device registration
-2. If NO session but a `staff_attendance_device_uuid` EXISTS in localStorage:
-   - Try `staffDeviceCheckIn(branchId, deviceUUID)` (new unauthenticated endpoint)
-   - If the device is recognized, check in without login
-   - If not recognized, fall through to member flow
-3. Else, do member flow (phone-based)
-
-### 3. Edge Function: Add Device Binding to Staff Check-in
-
-**File: `supabase/functions/check-in/index.ts`**
-
-#### Modify `handleCheckIn` (authenticated staff path):
-- Accept `device_fingerprint` from body
-- After identifying the staff member, check `attendance_devices` for existing registration:
-  - If no device registered: register this `device_fingerprint` and proceed with check-in
-  - If device registered with same fingerprint: proceed with check-in
-  - If device registered with different fingerprint: return `device_mismatch`
-- This enforces one-device-per-staff
-
-#### Add new action `staff-device-check-in` (unauthenticated device-only path):
-- Accepts `device_fingerprint` and `branch_id`
-- Looks up `attendance_devices` where `user_type = 'staff'`, `device_fingerprint` matches, `is_active = true`
-- If found, gets the `staff_id`, fetches staff details, and calls `processCheckIn`
-- If not found, returns `login_required`
-- This handles the Safari case where the session cookie is gone but the device UUID is still in localStorage
-
-#### Update the router switch:
-- Add case `"staff-device-check-in"` routing to the new handler
-
-### 4. New API Function for Device-Only Staff Check-in
-
-**File: `src/api/attendance.ts`**
-- Add `staffDeviceCheckIn(branchId: string, deviceUUID: string)` -- calls the new `staff-device-check-in` action WITHOUT auth headers (just anon key)
-
----
-
-## Flow Diagram
-
-The complete staff attendance flow after these changes:
+### 2. Expand the `features` JSONB column
+The existing `features` JSONB will be expanded to include all 9 module toggles:
 
 ```text
-Staff Scans QR (/check-in?branch_id=UUID)
-         |
-    Has Supabase Auth Session?
-      /          \
-    YES           NO
-     |             |
-  Staff email?   Has staff_device_uuid in localStorage?
-    /     \        /          \
-  YES      NO    YES           NO
-   |        |     |             |
-Generate   Member  Try device   Show member
-staff UUID  flow   check-in     phone form
-   |               /      \
-Call auth'd    Found?    Not found
-staffCheckIn    |           |
-(registers     Check in   Fall to
-device on      (zero       member
-first use)     interaction) flow
+{
+  "members_management": true,
+  "attendance": true,
+  "payments_billing": true,
+  "staff_management": true,
+  "reports_analytics": true,
+  "workout_diet_plans": false,
+  "notifications": true,
+  "integrations": true,
+  "leads_crm": false
+}
 ```
 
----
+A migration will update existing rows to include all keys with sensible defaults.
 
-## Files Modified
+### 3. Update `get_tenant_current_usage()` function
+Add `monthly_checkins` count to the return type by querying `attendance_logs` for the current month.
 
-| File | Changes |
-|------|---------|
-| `src/api/attendance.ts` | Add `getStaffDeviceUUID()`, `createStaffDeviceUUID()`, `staffDeviceCheckIn()`. Update `staffCheckIn()` to include device UUID. |
-| `src/pages/CheckIn.tsx` | Add staff device UUID generation on auth'd check-in. Add fallback to device-only staff check-in when no session but UUID exists. |
-| `supabase/functions/check-in/index.ts` | Add device binding logic in `handleCheckIn`. Add new `staff-device-check-in` handler for unauthenticated device-based check-in. |
+### 4. Update `tenant_can_add_resource()` function
+Add a `checkin` resource type that checks against `max_monthly_checkins`.
 
-## No Database Changes Needed
-The `attendance_devices` table already has `staff_id`, `device_fingerprint`, `is_active`, and all required columns.
+## Backend Changes
+
+### 1. New helper: `get_tenant_permissions()` SQL function
+A `SECURITY DEFINER` function that returns the `features` JSONB for a given tenant, usable in edge functions for permission checks.
+
+### 2. Update `protected-data` edge function
+Add permission checks before returning data:
+- Before returning members data, verify `members_management` is enabled
+- Before returning payment data, verify `payments_billing` is enabled
+- Before returning analytics, verify `reports_analytics` is enabled
+- Check `plan_expiry_date` -- if expired, return a 403 with "Plan Expired"
+
+### 3. Update `check-in` edge function
+Before recording a check-in, call `tenant_can_add_resource(tenant_id, 'checkin')` to enforce monthly check-in limits.
+
+## Frontend Changes
+
+### 1. New "Permissions & Limits" Tab on TenantDetail page
+Replace the existing "Limits & Usage" tab with a richer UI containing two sections:
+
+**Permissions Section** -- Toggle switches for each module:
+- Members Management
+- Attendance
+- Payments and Billing
+- Staff Management
+- Reports and Analytics
+- Workout/Diet Plans
+- Notifications (SMS/WhatsApp)
+- Integrations (Razorpay)
+- Leads/Enquiries CRM
+
+Each toggle saves immediately via `updateTenantLimits()`.
+
+**Usage Limits Section** -- Numeric inputs and date picker:
+- Max Members (number input + current usage indicator)
+- Max Staff Accounts (number input)
+- Max Branches (number input)
+- Max Trainers (number input)
+- Monthly Check-ins Limit (new)
+- Monthly WhatsApp Messages (existing)
+- Storage Limit MB (new)
+- Plan Expiry Date (date picker, new)
+
+### 2. New `useTenantPermissions` hook
+A frontend hook that fetches the tenant's feature permissions for the current gym owner. Returns which modules are enabled.
+
+### 3. Update AdminSidebar
+Filter `allNavItems` based on tenant permissions:
+- If `members_management` is disabled, hide Dashboard member-related items
+- If `reports_analytics` is disabled, hide Analytics and Branch Analytics
+- If `attendance` is disabled, hide Attendance
+- If `payments_billing` is disabled, hide Ledger
+- If `staff_management` is disabled, hide Staff Control
+- If `notifications` is disabled, hide WhatsApp logs
+
+### 4. Update ProtectedRoute
+Add a permission-aware check: if a gym admin navigates to a disabled module's URL directly, redirect them to dashboard with a toast message "This module is not available on your plan."
+
+### 5. "Limit Reached" UI component
+A reusable alert/banner component (`LimitReachedBanner`) that shows "Limit Reached -- Contact your platform admin to upgrade" when a limit is hit. Integrate it into:
+- AddMemberDialog (when max members reached)
+- Staff creation flow (when max staff reached)
+- Branch creation (already exists)
+- Check-in flow (when monthly check-ins exhausted)
+
+### 6. Update `api/tenants.ts`
+- Extend `TenantLimits` interface with new fields
+- Add `updateTenantFeatures()` API function
+- Extend `updateTenantLimits()` to handle new fields
+
+## Technical Details
+
+### Files to Create
+1. `src/hooks/useTenantPermissions.ts` -- Hook to fetch and cache tenant module permissions for the current gym owner
+2. `src/components/ui/limit-reached-banner.tsx` -- Reusable "Limit Reached / Upgrade Plan" component
+
+### Files to Modify
+1. `supabase/functions/protected-data/index.ts` -- Add module permission checks
+2. `supabase/functions/check-in/index.ts` -- Add check-in limit enforcement
+3. `src/pages/superadmin/TenantDetail.tsx` -- Redesign "Limits" tab with permissions toggles + expanded limits UI
+4. `src/api/tenants.ts` -- Extend interfaces and API functions
+5. `src/components/admin/AdminSidebar.tsx` -- Filter nav items by tenant permissions
+6. `src/components/admin/ProtectedRoute.tsx` -- Block disabled modules
+7. `src/components/admin/AddMemberDialog.tsx` -- Show limit reached banner
+8. Database migration -- Add columns, update functions, migrate existing features data
+
+### Security Considerations
+- All permission checks are enforced server-side in edge functions (not just UI hiding)
+- `tenant_limits` table is only writable by `super_admin` (existing RLS policy)
+- Gym admins can only SELECT their own tenant's limits (existing RLS policy)
+- Plan expiry is checked server-side before serving any protected data
+
