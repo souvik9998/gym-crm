@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth, useStaffPermission } from "@/contexts/StaffAuthContext";
+import { useTenantPermissions } from "@/hooks/useTenantPermissions";
 import {
   HomeIcon,
   ChartBarIcon,
@@ -55,6 +56,8 @@ interface NavItem {
     | ("can_view_members" | "can_manage_members" | "can_access_ledger" | "can_access_payments" | "can_access_analytics" | "can_change_settings")[];
   adminOnly?: boolean;
   staffOnly?: boolean; // Only visible to staff users
+  /** Tenant module key — item hidden if this module is disabled for the tenant */
+  tenantModule?: string;
 }
 
 // Navigation items with STRICT permission requirements based on policy:
@@ -89,6 +92,7 @@ const allNavItems: NavItem[] = [
     icon: ChartBarIcon,
     iconSolid: ChartBarIconSolid,
     requiresPermission: "can_access_analytics",
+    tenantModule: "reports_analytics",
   },
   // Branch Analytics - admin only
   {
@@ -97,6 +101,7 @@ const allNavItems: NavItem[] = [
     icon: BuildingOffice2Icon,
     iconSolid: BuildingOffice2Icon,
     adminOnly: true,
+    tenantModule: "reports_analytics",
   },
   // Attendance - admin only
   {
@@ -105,6 +110,7 @@ const allNavItems: NavItem[] = [
     icon: ClipboardDocumentListIcon,
     iconSolid: ClipboardDocumentListIcon,
     adminOnly: true,
+    tenantModule: "attendance",
   },
   // Ledger - requires ONLY ledger permission
   {
@@ -113,6 +119,7 @@ const allNavItems: NavItem[] = [
     icon: BookOpenIcon,
     iconSolid: BookOpenIconSolid,
     requiresPermission: "can_access_ledger",
+    tenantModule: "payments_billing",
   },
   // Staff Control - admin only
   {
@@ -121,6 +128,7 @@ const allNavItems: NavItem[] = [
     icon: UserGroupIcon,
     iconSolid: UserGroupIcon,
     adminOnly: true, // Only for admin users
+    tenantModule: "staff_management",
   },
   // Activity Logs - admin only
   {
@@ -162,6 +170,7 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
   const navigate = useNavigate();
   const { currentBranch } = useBranch();
   const { permissions, staffUser } = useStaffAuth();
+  const { isModuleEnabled } = useTenantPermissions();
   const [expandedItems, setExpandedItems] = useState<string[]>(["Activity Logs"]);
 
   // Get branch name dynamically from currentBranch
@@ -171,6 +180,9 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
   const filterNavItems = (items: NavItem[]): NavItem[] => {
     console.log("[Sidebar] Filtering nav items, isStaffUser:", isStaffUser, "permissions:", permissions);
     return items.filter((item) => {
+      // Check tenant module permission first
+      if (item.tenantModule && !isModuleEnabled(item.tenantModule as any)) return false;
+
       // Staff-only items should only show for staff users
       if (item.staffOnly && !isStaffUser) return false;
       

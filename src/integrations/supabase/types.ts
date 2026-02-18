@@ -1416,9 +1416,12 @@ export type Database = {
           id: string
           max_branches: number
           max_members: number
+          max_monthly_checkins: number
           max_monthly_whatsapp_messages: number
           max_staff_per_branch: number
+          max_storage_mb: number
           max_trainers: number
+          plan_expiry_date: string | null
           tenant_id: string
           updated_at: string
         }
@@ -1428,9 +1431,12 @@ export type Database = {
           id?: string
           max_branches?: number
           max_members?: number
+          max_monthly_checkins?: number
           max_monthly_whatsapp_messages?: number
           max_staff_per_branch?: number
+          max_storage_mb?: number
           max_trainers?: number
+          plan_expiry_date?: string | null
           tenant_id: string
           updated_at?: string
         }
@@ -1440,9 +1446,12 @@ export type Database = {
           id?: string
           max_branches?: number
           max_members?: number
+          max_monthly_checkins?: number
           max_monthly_whatsapp_messages?: number
           max_staff_per_branch?: number
+          max_storage_mb?: number
           max_trainers?: number
+          plan_expiry_date?: string | null
           tenant_id?: string
           updated_at?: string
         }
@@ -1850,12 +1859,14 @@ export type Database = {
         Returns: {
           branches_count: number
           members_count: number
+          monthly_checkins: number
           staff_count: number
           trainers_count: number
           whatsapp_this_month: number
         }[]
       }
       get_tenant_from_branch: { Args: { _branch_id: string }; Returns: string }
+      get_tenant_permissions: { Args: { _tenant_id: string }; Returns: Json }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {

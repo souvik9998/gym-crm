@@ -346,6 +346,29 @@ async function processCheckIn(serviceClient: any, params: {
   const today = new Date().toISOString().split("T")[0];
   const now = new Date().toISOString();
 
+  // Check monthly check-in limit for the tenant
+  if (userType === "member") {
+    const { data: branch } = await serviceClient
+      .from("branches")
+      .select("tenant_id")
+      .eq("id", branchId)
+      .maybeSingle();
+
+    if (branch?.tenant_id) {
+      const { data: canCheckin } = await serviceClient.rpc("tenant_can_add_resource", {
+        _tenant_id: branch.tenant_id,
+        _resource_type: "checkin",
+      });
+
+      if (canCheckin === false) {
+        return successResponse({
+          status: "limit_reached",
+          message: "Monthly check-in limit reached. Please contact your gym admin to upgrade the plan.",
+        });
+      }
+    }
+  }
+
   // Check subscription status for members
   let subscriptionStatus = "active";
   if (userType === "member" && memberId) {

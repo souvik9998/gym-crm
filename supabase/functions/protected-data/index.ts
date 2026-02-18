@@ -260,6 +260,45 @@ Deno.serve(async (req) => {
 
     const allowedBranchIds = await resolveAllowedBranchIds(supabase, auth, branchId);
 
+    // ── Tenant module & plan expiry enforcement (skip for super admins) ──
+    let tenantFeatures: Record<string, boolean> | null = null;
+    if (auth.isAdmin && !auth.isSuperAdmin && auth.userId) {
+      const { data: membership } = await supabase
+        .from("tenant_members")
+        .select("tenant_id")
+        .eq("user_id", auth.userId)
+        .limit(1)
+        .maybeSingle();
+
+      if (membership?.tenant_id) {
+        const { data: limits } = await supabase
+          .from("tenant_limits")
+          .select("features, plan_expiry_date")
+          .eq("tenant_id", membership.tenant_id)
+          .single();
+
+        if (limits) {
+          // Check plan expiry
+          if (limits.plan_expiry_date) {
+            const expiry = new Date(limits.plan_expiry_date as string);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (expiry < today) {
+              return errorResponse("Plan expired. Contact platform admin to renew.", 403);
+            }
+          }
+          tenantFeatures = (limits.features || {}) as Record<string, boolean>;
+        }
+      }
+    }
+
+    // Helper to check if a module is enabled
+    const isModuleEnabled = (module: string): boolean => {
+      if (auth.isSuperAdmin) return true;
+      if (!tenantFeatures) return true; // No restrictions found
+      return tenantFeatures[module] !== false;
+    };
+
     switch (action) {
       case "health": {
         // Health check endpoint - no permissions required, just valid auth
@@ -525,6 +564,9 @@ Deno.serve(async (req) => {
       }
 
       case "members": {
+        if (!isModuleEnabled("members_management")) {
+          return errorResponse("Members management is not available on your plan", 403);
+        }
         if (!hasPermission(auth, "can_view_members") && !hasPermission(auth, "can_manage_members")) {
           return errorResponse("Permission denied: cannot view members", 403);
         }

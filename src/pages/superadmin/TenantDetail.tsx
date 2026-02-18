@@ -85,7 +85,24 @@ export default function TenantDetail() {
     max_members: 1000,
     max_trainers: 20,
     max_monthly_whatsapp_messages: 500,
+    max_monthly_checkins: 10000,
+    max_storage_mb: 500,
+    plan_expiry_date: "" as string,
   });
+
+  // Feature permissions
+  const [editFeatures, setEditFeatures] = useState<Record<string, boolean>>({
+    members_management: true,
+    attendance: true,
+    payments_billing: true,
+    staff_management: true,
+    reports_analytics: true,
+    workout_diet_plans: false,
+    notifications: true,
+    integrations: true,
+    leads_crm: false,
+  });
+  const [isSavingFeatures, setIsSavingFeatures] = useState(false);
 
   // Dialogs
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
@@ -118,7 +135,13 @@ export default function TenantDetail() {
             max_members: data.limits.max_members,
             max_trainers: data.limits.max_trainers,
             max_monthly_whatsapp_messages: data.limits.max_monthly_whatsapp_messages,
+            max_monthly_checkins: data.limits.max_monthly_checkins ?? 10000,
+            max_storage_mb: data.limits.max_storage_mb ?? 500,
+            plan_expiry_date: data.limits.plan_expiry_date || "",
           });
+          if (data.limits.features) {
+            setEditFeatures(data.limits.features as Record<string, boolean>);
+          }
         }
       }
 
@@ -172,7 +195,11 @@ export default function TenantDetail() {
     
     setIsSaving(true);
     try {
-      await updateTenantLimits(tenant.id, editLimits);
+      const limitsToSave: Record<string, any> = { ...editLimits };
+      if (!limitsToSave.plan_expiry_date) {
+        limitsToSave.plan_expiry_date = null;
+      }
+      await updateTenantLimits(tenant.id, limitsToSave);
       toast.success("Organization limits updated");
       await loadTenantData();
     } catch (error) {
@@ -180,6 +207,24 @@ export default function TenantDetail() {
       toast.error("Failed to update limits");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleToggleFeature = async (featureKey: string, enabled: boolean) => {
+    if (!tenant) return;
+    
+    const newFeatures = { ...editFeatures, [featureKey]: enabled };
+    setEditFeatures(newFeatures);
+    setIsSavingFeatures(true);
+    try {
+      await updateTenantLimits(tenant.id, { features: newFeatures });
+      toast.success(`${featureKey.replace(/_/g, " ")} ${enabled ? "enabled" : "disabled"}`);
+    } catch (error) {
+      console.error("Error updating feature:", error);
+      setEditFeatures(prev => ({ ...prev, [featureKey]: !enabled }));
+      toast.error("Failed to update feature");
+    } finally {
+      setIsSavingFeatures(false);
     }
   };
 
@@ -377,7 +422,7 @@ export default function TenantDetail() {
           <TabsList className="mb-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="branches">Branches ({branches.length})</TabsTrigger>
-            <TabsTrigger value="limits">Limits & Usage</TabsTrigger>
+            <TabsTrigger value="limits">Permissions & Limits</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
           </TabsList>
@@ -539,11 +584,49 @@ export default function TenantDetail() {
           </TabsContent>
 
           <TabsContent value="limits" className="space-y-6">
+            {/* Module Permissions */}
             <Card>
               <CardHeader>
-                <CardTitle>Resource Limits</CardTitle>
+                <CardTitle>Module Permissions</CardTitle>
                 <CardDescription>
-                  Configure usage limits for this organization. As Super Admin, you can set any values.
+                  Toggle feature modules for this gym. Disabled modules are hidden from the gym admin dashboard.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { key: "members_management", label: "Members Management", desc: "Add, edit, view gym members" },
+                    { key: "attendance", label: "Attendance", desc: "Check-in/out tracking & insights" },
+                    { key: "payments_billing", label: "Payments & Billing", desc: "Payments, ledger, invoices" },
+                    { key: "staff_management", label: "Staff Management", desc: "Manage staff accounts & roles" },
+                    { key: "reports_analytics", label: "Reports & Analytics", desc: "Revenue, growth & performance charts" },
+                    { key: "workout_diet_plans", label: "Workout/Diet Plans", desc: "Create workout & diet plans" },
+                    { key: "notifications", label: "Notifications (SMS/WhatsApp)", desc: "Automated & manual notifications" },
+                    { key: "integrations", label: "Integrations (Razorpay)", desc: "Payment gateway integrations" },
+                    { key: "leads_crm", label: "Leads/Enquiries CRM", desc: "Manage leads & follow-ups" },
+                  ].map(({ key, label, desc }) => (
+                    <div key={key} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                      <div>
+                        <p className="text-sm font-medium">{label}</p>
+                        <p className="text-xs text-muted-foreground">{desc}</p>
+                      </div>
+                      <Switch
+                        checked={editFeatures[key] ?? false}
+                        onCheckedChange={(checked) => handleToggleFeature(key, checked)}
+                        disabled={isSavingFeatures}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Usage Limits */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Usage Limits</CardTitle>
+                <CardDescription>
+                  Configure resource quotas. Actions are blocked when limits are reached.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -603,6 +686,42 @@ export default function TenantDetail() {
                     />
                     <p className="text-xs text-muted-foreground">
                       Used this month: {tenant.usage?.whatsapp_this_month || 0}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Monthly Check-ins</Label>
+                    <Input
+                      type="number"
+                      value={editLimits.max_monthly_checkins}
+                      onChange={(e) => setEditLimits(prev => ({ ...prev, max_monthly_checkins: parseInt(e.target.value) || 0 }))}
+                      min={0}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Used this month: {tenant.usage?.monthly_checkins || 0}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Storage Limit (MB)</Label>
+                    <Input
+                      type="number"
+                      value={editLimits.max_storage_mb}
+                      onChange={(e) => setEditLimits(prev => ({ ...prev, max_storage_mb: parseInt(e.target.value) || 0 }))}
+                      min={0}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Plan Expiry Date</Label>
+                    <Input
+                      type="date"
+                      value={editLimits.plan_expiry_date}
+                      onChange={(e) => setEditLimits(prev => ({ ...prev, plan_expiry_date: e.target.value }))}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {editLimits.plan_expiry_date ? (
+                        new Date(editLimits.plan_expiry_date) < new Date() ? 
+                          <span className="text-destructive font-medium">Expired</span> : 
+                          `Expires ${format(new Date(editLimits.plan_expiry_date), "MMM d, yyyy")}`
+                      ) : "No expiry set"}
                     </p>
                   </div>
                 </div>
