@@ -1,138 +1,93 @@
 
 
-# Super Admin RBAC + Usage Limit System
+# WhatsApp Auto-Send Preferences per Message Type
 
 ## Overview
-Build a comprehensive permissions and usage limits control panel that allows the Super Admin to toggle feature modules and set usage quotas per gym tenant. Disabled modules are hidden from the gym admin dashboard, and exceeded limits block actions with an "Upgrade Plan" message.
+Add a new "Auto-Send Preferences" section to the WhatsApp tab in Settings. This gives the gym admin toggle controls for each WhatsApp message type -- choosing whether messages are sent automatically after the corresponding action, or only manually. Promotional messages are always manual-only (no toggle).
 
-## What Already Exists
-- `tenant_limits` table with `features` JSONB column (currently stores `{whatsapp, analytics, daily_pass}`)
-- `tenant_limits` has numeric fields: `max_branches`, `max_staff_per_branch`, `max_members`, `max_trainers`, `max_monthly_whatsapp_messages`
-- `tenant_can_add_resource()` SQL function for limit checking
-- `get_tenant_current_usage()` SQL function for usage metering
-- TenantDetail page with existing "Limits & Usage" tab
+## Current State
+- WhatsApp messages are triggered automatically in several flows: Registration (`Register.tsx`), Renewal (`Renew.tsx`), PT Extension (`ExtendPT.tsx`), Admin Add Member (`AddMemberDialog.tsx`), Admin Add Payment (`AddPaymentDialog.tsx`)
+- The daily cron job (`daily-whatsapp-job`) auto-sends expiring-in-2-days and expiring-today notifications
+- There is no per-message-type auto/manual preference -- all are auto-sent when WhatsApp is enabled
+- Templates exist for: Promotional, Expiry Reminder, Expired Reminder (in WhatsAppTemplates component)
+
+## Message Types and Auto-Send Toggles
+
+| Message Type | Default | Notes |
+|---|---|---|
+| New Member Registration | ON | Sent after a new member registers |
+| Member Renewal | ON | Sent after membership renewal |
+| Daily Pass | ON | Sent after daily pass purchase |
+| PT Extension | ON | Sent after personal training extension |
+| Expiring Soon (2 days) | ON | Daily cron job |
+| Expiring Today | ON | Daily cron job |
+| Expired Reminder | OFF | Not currently auto-sent, but available for manual |
+| Payment Receipt | OFF | Not currently auto-sent |
+| Admin Add Member | ON | When admin adds a member manually |
+| Promotional | N/A | Always manual only, no toggle shown |
 
 ## Database Changes
 
-### 1. Add new columns to `tenant_limits`
-- `max_monthly_checkins` (integer, default 10000) -- monthly check-in limit
-- `max_storage_mb` (integer, default 500) -- storage limit
-- `plan_expiry_date` (date, nullable) -- plan expiry date
-
-### 2. Expand the `features` JSONB column
-The existing `features` JSONB will be expanded to include all 9 module toggles:
+### Add `whatsapp_auto_send` JSONB column to `gym_settings`
+A new column storing per-type preferences:
 
 ```text
 {
-  "members_management": true,
-  "attendance": true,
-  "payments_billing": true,
-  "staff_management": true,
-  "reports_analytics": true,
-  "workout_diet_plans": false,
-  "notifications": true,
-  "integrations": true,
-  "leads_crm": false
+  "new_registration": true,
+  "renewal": true,
+  "daily_pass": true,
+  "pt_extension": true,
+  "expiring_2days": true,
+  "expiring_today": true,
+  "expired_reminder": false,
+  "payment_details": false,
+  "admin_add_member": true
 }
 ```
 
-A migration will update existing rows to include all keys with sensible defaults.
-
-### 3. Update `get_tenant_current_usage()` function
-Add `monthly_checkins` count to the return type by querying `attendance_logs` for the current month.
-
-### 4. Update `tenant_can_add_resource()` function
-Add a `checkin` resource type that checks against `max_monthly_checkins`.
-
-## Backend Changes
-
-### 1. New helper: `get_tenant_permissions()` SQL function
-A `SECURITY DEFINER` function that returns the `features` JSONB for a given tenant, usable in edge functions for permission checks.
-
-### 2. Update `protected-data` edge function
-Add permission checks before returning data:
-- Before returning members data, verify `members_management` is enabled
-- Before returning payment data, verify `payments_billing` is enabled
-- Before returning analytics, verify `reports_analytics` is enabled
-- Check `plan_expiry_date` -- if expired, return a 403 with "Plan Expired"
-
-### 3. Update `check-in` edge function
-Before recording a check-in, call `tenant_can_add_resource(tenant_id, 'checkin')` to enforce monthly check-in limits.
+Default: all true except `expired_reminder` and `payment_details`.
 
 ## Frontend Changes
 
-### 1. New "Permissions & Limits" Tab on TenantDetail page
-Replace the existing "Limits & Usage" tab with a richer UI containing two sections:
+### 1. New component: `WhatsAppAutoSendSettings.tsx`
+A card with toggle switches for each message type listed above. Each toggle:
+- Shows the message type name and a short description
+- Saves immediately to `gym_settings.whatsapp_auto_send` via database update
+- Promotional is shown as a disabled row with "Manual Only" badge (no toggle)
 
-**Permissions Section** -- Toggle switches for each module:
-- Members Management
-- Attendance
-- Payments and Billing
-- Staff Management
-- Reports and Analytics
-- Workout/Diet Plans
-- Notifications (SMS/WhatsApp)
-- Integrations (Razorpay)
-- Leads/Enquiries CRM
+### 2. Integrate into Settings WhatsApp tab
+Place the new `WhatsAppAutoSendSettings` component between the WhatsApp enable/disable card and the `WhatsAppTemplates` component in `Settings.tsx`.
 
-Each toggle saves immediately via `updateTenantLimits()`.
+### 3. Update auto-send call sites
+In each file that calls `send-whatsapp`, check the preference before sending:
 
-**Usage Limits Section** -- Numeric inputs and date picker:
-- Max Members (number input + current usage indicator)
-- Max Staff Accounts (number input)
-- Max Branches (number input)
-- Max Trainers (number input)
-- Monthly Check-ins Limit (new)
-- Monthly WhatsApp Messages (existing)
-- Storage Limit MB (new)
-- Plan Expiry Date (date picker, new)
+- `Register.tsx` -- check `new_registration` (or `daily_pass`) preference before calling send-whatsapp
+- `Renew.tsx` -- check `renewal` preference
+- `ExtendPT.tsx` -- check `pt_extension` preference
+- `AddMemberDialog.tsx` -- check `admin_add_member` preference
+- `AddPaymentDialog.tsx` -- check `payment_details` preference (if applicable)
 
-### 2. New `useTenantPermissions` hook
-A frontend hook that fetches the tenant's feature permissions for the current gym owner. Returns which modules are enabled.
+Each call site will fetch the `whatsapp_auto_send` from `gym_settings` for the branch, and skip the WhatsApp call if the relevant type is set to false.
 
-### 3. Update AdminSidebar
-Filter `allNavItems` based on tenant permissions:
-- If `members_management` is disabled, hide Dashboard member-related items
-- If `reports_analytics` is disabled, hide Analytics and Branch Analytics
-- If `attendance` is disabled, hide Attendance
-- If `payments_billing` is disabled, hide Ledger
-- If `staff_management` is disabled, hide Staff Control
-- If `notifications` is disabled, hide WhatsApp logs
-
-### 4. Update ProtectedRoute
-Add a permission-aware check: if a gym admin navigates to a disabled module's URL directly, redirect them to dashboard with a toast message "This module is not available on your plan."
-
-### 5. "Limit Reached" UI component
-A reusable alert/banner component (`LimitReachedBanner`) that shows "Limit Reached -- Contact your platform admin to upgrade" when a limit is hit. Integrate it into:
-- AddMemberDialog (when max members reached)
-- Staff creation flow (when max staff reached)
-- Branch creation (already exists)
-- Check-in flow (when monthly check-ins exhausted)
-
-### 6. Update `api/tenants.ts`
-- Extend `TenantLimits` interface with new fields
-- Add `updateTenantFeatures()` API function
-- Extend `updateTenantLimits()` to handle new fields
+### 4. Update `daily-whatsapp-job` edge function
+Before sending expiring-in-2-days and expiring-today messages, read the `whatsapp_auto_send` JSONB from `gym_settings` for each branch. Skip sending if the corresponding type is disabled.
 
 ## Technical Details
 
 ### Files to Create
-1. `src/hooks/useTenantPermissions.ts` -- Hook to fetch and cache tenant module permissions for the current gym owner
-2. `src/components/ui/limit-reached-banner.tsx` -- Reusable "Limit Reached / Upgrade Plan" component
+- `src/components/admin/WhatsAppAutoSendSettings.tsx` -- Toggle switches UI component
 
 ### Files to Modify
-1. `supabase/functions/protected-data/index.ts` -- Add module permission checks
-2. `supabase/functions/check-in/index.ts` -- Add check-in limit enforcement
-3. `src/pages/superadmin/TenantDetail.tsx` -- Redesign "Limits" tab with permissions toggles + expanded limits UI
-4. `src/api/tenants.ts` -- Extend interfaces and API functions
-5. `src/components/admin/AdminSidebar.tsx` -- Filter nav items by tenant permissions
-6. `src/components/admin/ProtectedRoute.tsx` -- Block disabled modules
-7. `src/components/admin/AddMemberDialog.tsx` -- Show limit reached banner
-8. Database migration -- Add columns, update functions, migrate existing features data
+- Database migration -- Add `whatsapp_auto_send` JSONB column to `gym_settings`
+- `src/pages/admin/Settings.tsx` -- Insert the new component in WhatsApp tab
+- `src/pages/Register.tsx` -- Check auto-send preference before WhatsApp call
+- `src/pages/Renew.tsx` -- Check auto-send preference before WhatsApp call
+- `src/pages/ExtendPT.tsx` -- Check auto-send preference before WhatsApp call
+- `src/components/admin/AddMemberDialog.tsx` -- Check auto-send preference before WhatsApp call
+- `src/components/admin/AddPaymentDialog.tsx` -- Check auto-send preference before WhatsApp call
+- `supabase/functions/daily-whatsapp-job/index.ts` -- Check per-branch auto-send preferences
+- `src/integrations/supabase/types.ts` -- Will auto-update after migration
 
-### Security Considerations
-- All permission checks are enforced server-side in edge functions (not just UI hiding)
-- `tenant_limits` table is only writable by `super_admin` (existing RLS policy)
-- Gym admins can only SELECT their own tenant's limits (existing RLS policy)
-- Plan expiry is checked server-side before serving any protected data
+### Helper function
+A shared utility `getWhatsAppAutoSendPreference(branchId, type)` that fetches `gym_settings.whatsapp_auto_send` for the branch and returns whether that type is enabled. This avoids duplicating the fetch logic in every call site.
 
