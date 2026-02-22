@@ -306,7 +306,26 @@ export const BranchManagement = () => {
       setEditingBranch(null);
       await refreshBranches();
     } catch (error: any) {
-      toast.error("Failed to save branch", { description: error.message });
+      const msg = error?.message || "";
+      if (msg.toLowerCase().includes("limit reached") || msg.toLowerCase().includes("limit")) {
+        // Show limit dialog instead of generic error
+        if (tenantId) {
+          const { data: limits } = await supabase
+            .from("tenant_limits")
+            .select("max_branches")
+            .eq("tenant_id", tenantId)
+            .single();
+          setLimitDialog({
+            open: true,
+            max: limits?.max_branches ?? 0,
+            current: displayBranches.length,
+          });
+        } else {
+          toast.error("Branch limit reached", { description: "Please upgrade your plan or contact support." });
+        }
+      } else {
+        toast.error("Failed to save branch", { description: msg });
+      }
     } finally {
       setIsLoading(false);
     }
