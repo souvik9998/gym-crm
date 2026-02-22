@@ -24,6 +24,7 @@ import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { BranchSelector } from "./BranchSelector";
 import { Badge } from "@/components/ui/badge";
+import { NotificationCenter } from "./NotificationCenter";
 
 interface AdminHeaderProps {
   title?: string;
@@ -113,6 +114,8 @@ export const AdminHeader = ({
 
         {/* Right Section */}
         <div className="flex items-center gap-1 md:gap-1.5">
+          {/* Notification Center */}
+          {!isStaffUser && <NotificationCenter />}
 
           {/* Refresh button - desktop only, hidden on mobile */}
           {onRefresh && (
