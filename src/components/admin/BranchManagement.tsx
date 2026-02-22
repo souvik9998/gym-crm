@@ -307,20 +307,24 @@ export const BranchManagement = () => {
       await refreshBranches();
     } catch (error: any) {
       const msg = error?.message || "";
-      if (msg.toLowerCase().includes("limit reached") || msg.toLowerCase().includes("limit")) {
-        // Show limit dialog instead of generic error
-        if (tenantId) {
-          const { data: limits } = await supabase
-            .from("tenant_limits")
-            .select("max_branches")
-            .eq("tenant_id", tenantId)
-            .single();
-          setLimitDialog({
-            open: true,
-            max: limits?.max_branches ?? 0,
-            current: displayBranches.length,
-          });
-        } else {
+      if (msg.toLowerCase().includes("limit")) {
+        try {
+          if (tenantId) {
+            const { data: limits } = await supabase
+              .from("tenant_limits")
+              .select("max_branches")
+              .eq("tenant_id", tenantId)
+              .single();
+            setLimitDialog({
+              open: true,
+              max: limits?.max_branches ?? 0,
+              current: displayBranches.length,
+            });
+            setIsAddDialogOpen(false);
+          } else {
+            toast.error("Branch limit reached", { description: "Please upgrade your plan or contact support." });
+          }
+        } catch {
           toast.error("Branch limit reached", { description: "Please upgrade your plan or contact support." });
         }
       } else {
