@@ -132,6 +132,7 @@ const Index = () => {
           name: result.member_name,
           phone: result.member_phone,
           email: result.member_email,
+          branch_id: branchId || null,
         };
 
         // Fetch the most recent subscription using secure RPC
