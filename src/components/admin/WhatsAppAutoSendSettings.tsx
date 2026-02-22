@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 import { useBranch } from "@/contexts/BranchContext";
 import { WHATSAPP_AUTO_SEND_DEFAULTS, type WhatsAppAutoSendType } from "@/utils/whatsappAutoSend";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
@@ -33,7 +34,11 @@ const MESSAGE_TYPES: MessageTypeConfig[] = [
 const DEFAULT_EXPIRING_DAYS = 2;
 const DEFAULT_EXPIRED_DAYS = 7;
 
-export const WhatsAppAutoSendSettings = () => {
+interface WhatsAppAutoSendSettingsProps {
+  whatsappEnabled?: boolean;
+}
+
+export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAutoSendSettingsProps) => {
   const { currentBranch } = useBranch();
   const [preferences, setPreferences] = useState<Record<string, any>>(
     { ...WHATSAPP_AUTO_SEND_DEFAULTS }
@@ -100,14 +105,16 @@ export const WhatsAppAutoSendSettings = () => {
   };
 
   return (
-    <Card className="border-0 shadow-sm">
+    <Card className={cn("border-0 shadow-sm", !whatsappEnabled && "opacity-60")}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Cog6ToothIcon className="w-5 h-5 text-primary" />
           Auto-Send Preferences
         </CardTitle>
         <CardDescription>
-          Choose which WhatsApp messages are sent automatically. Disabled messages can still be sent manually.
+          {whatsappEnabled
+            ? "Choose which WhatsApp messages are sent automatically. Disabled messages can still be sent manually."
+            : "WhatsApp messaging is disabled. Enable the main WhatsApp toggle above to configure auto-send preferences."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-1">
@@ -155,8 +162,8 @@ export const WhatsAppAutoSendSettings = () => {
               )}
             </div>
             <Switch
-              checked={preferences[type.key] ?? WHATSAPP_AUTO_SEND_DEFAULTS[type.key]}
-              disabled={togglingKey === type.key}
+              checked={!whatsappEnabled ? false : (preferences[type.key] ?? WHATSAPP_AUTO_SEND_DEFAULTS[type.key])}
+              disabled={!whatsappEnabled || togglingKey === type.key}
               onCheckedChange={(checked) => handleToggle(type.key, checked)}
             />
           </div>
