@@ -30,6 +30,9 @@ verify_jwt = false
 [functions.check-in]
 verify_jwt = false
 
+[functions.generate-invoice]
+verify_jwt = false
+
 # Run daily WhatsApp job every day at 9:00 AM IST (3:30 AM UTC)
 [[cron_jobs]]
 name = "daily-whatsapp-notifications"
