@@ -140,10 +140,15 @@ const StaffDashboard = () => {
   // Memoized filter change handler
   const handleMemberFilterChange = useCallback((value: MemberFilterValue) => {
     setMemberFilter(value);
-    if (value === "all" && ptFilterActive) {
-      setPtFilterActive(false);
+  }, []);
+
+  // Separate handler for PT filter toggle
+  const handlePtFilterChange = useCallback((active: boolean) => {
+    setPtFilterActive(active);
+    if (active) {
+      setMemberFilter("all");
     }
-  }, [ptFilterActive]);
+  }, []);
 
   // Memoized counts object
   const filterCounts = useMemo(() => ({

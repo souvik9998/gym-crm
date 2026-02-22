@@ -264,10 +264,15 @@ const AdminDashboard = () => {
   // Memoized filter change handler
   const handleMemberFilterChange = useCallback((value: MemberFilterValue) => {
     setMemberFilter(value);
-    if (value === "all" && ptFilterActive) {
-      setPtFilterActive(false);
+  }, [setMemberFilter]);
+  
+  // Separate handler for PT filter toggle
+  const handlePtFilterChange = useCallback((active: boolean) => {
+    setPtFilterActive(active);
+    if (active) {
+      setMemberFilter("all");
     }
-  }, [ptFilterActive]);
+  }, [setPtFilterActive, setMemberFilter]);
 
   // Memoized counts object
   const filterCounts = useMemo(() => ({
@@ -512,7 +517,7 @@ const AdminDashboard = () => {
                         onChange={handleMemberFilterChange}
                         counts={filterCounts}
                         ptFilterActive={ptFilterActive}
-                        onPtFilterChange={setPtFilterActive}
+                        onPtFilterChange={handlePtFilterChange}
                         mobileMode={true}
                       />
                     </div>
@@ -623,7 +628,7 @@ const AdminDashboard = () => {
                     onChange={handleMemberFilterChange}
                     counts={filterCounts}
                     ptFilterActive={ptFilterActive}
-                    onPtFilterChange={setPtFilterActive}
+                    onPtFilterChange={handlePtFilterChange}
                     mobileMode={false}
                   />
                 </div>
