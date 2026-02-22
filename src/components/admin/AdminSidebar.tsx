@@ -31,6 +31,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { BranchSelector } from "./BranchSelector";
+import { BranchLogo } from "./BranchLogo";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -362,9 +363,7 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
       {/* Header - h-16 to match top nav */}
       <div className="h-16 px-4 border-b border-border flex items-center">
         <div className={cn("flex items-center w-full", collapsed ? "justify-center" : "gap-3")}>
-          <div className="w-10 h-10 rounded-xl bg-primary overflow-hidden flex-shrink-0 shadow-sm">
-            <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
-          </div>
+          <BranchLogo logoUrl={currentBranch?.logo_url} name={gymName} size="md" />
           {!collapsed && (
             <div className="flex-1 overflow-hidden min-w-0">
               <h1 className="text-sm font-semibold text-foreground truncate">{gymName}</h1>
