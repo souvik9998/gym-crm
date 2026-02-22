@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useBranch, type Branch } from "@/contexts/BranchContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { useStaffOperations } from "@/hooks/useStaffOperations";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { createBranchAsOwner } from "@/api/branches/ownerBranches";
 import { LimitReachedDialog } from "@/components/admin/LimitReachedDialog";
+import { BranchLogo } from "./BranchLogo";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,7 @@ import {
   TrashIcon,
   CheckIcon,
   PlusIcon,
+  CameraIcon,
 } from "@heroicons/react/24/outline";
 
 export const BranchManagement = () => {
@@ -59,9 +61,15 @@ export const BranchManagement = () => {
     phone: "",
     email: "",
   });
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
     setFormData({ name: "", address: "", phone: "", email: "" });
+    setLogoFile(null);
+    setLogoPreview(null);
   };
 
   const handleOpenAdd = async () => {
@@ -102,8 +110,43 @@ export const BranchManagement = () => {
       phone: branch.phone || "",
       email: branch.email || "",
     });
+    setLogoPreview(branch.logo_url || null);
+    setLogoFile(null);
     setEditingBranch(branch);
     setIsAddDialogOpen(true);
+  };
+
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Logo must be under 2MB");
+      return;
+    }
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  };
+
+  const uploadLogo = async (branchId: string): Promise<string | null> => {
+    if (!logoFile) return null;
+    setIsUploadingLogo(true);
+    try {
+      const ext = logoFile.name.split(".").pop() || "png";
+      const path = `${branchId}/logo.${ext}`;
+      const { error } = await supabase.storage
+        .from("branch-logos")
+        .upload(path, logoFile, { upsert: true });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("branch-logos").getPublicUrl(path);
+      // Append timestamp to bust cache
+      return urlData.publicUrl + `?t=${Date.now()}`;
+    } catch (err: any) {
+      console.error("Logo upload error:", err);
+      toast.error("Failed to upload logo");
+      return null;
+    } finally {
+      setIsUploadingLogo(false);
+    }
   };
 
   const handleSave = async () => {
@@ -111,10 +154,25 @@ export const BranchManagement = () => {
       toast.error("Branch name is required");
       return;
     }
+    if (!editingBranch && !formData.address.trim()) {
+      toast.error("Address is required");
+      return;
+    }
+    if (!editingBranch && !formData.phone.trim()) {
+      toast.error("Phone number is required");
+      return;
+    }
 
     setIsLoading(true);
     try {
       if (editingBranch) {
+        // Upload logo if a new file was selected
+        let newLogoUrl = editingBranch.logo_url;
+        if (logoFile) {
+          const uploaded = await uploadLogo(editingBranch.id);
+          if (uploaded) newLogoUrl = uploaded;
+        }
+
         // Use staff operations if staff is logged in
         if (isStaffLoggedIn) {
           const { error } = await staffOps.updateBranch({
@@ -131,18 +189,22 @@ export const BranchManagement = () => {
             return;
           }
 
+          // Update logo_url separately (staff ops may not support it)
+          if (logoFile && newLogoUrl) {
+            await supabase.from("branches").update({ logo_url: newLogoUrl }).eq("id", editingBranch.id);
+          }
+
           toast.success("Branch updated successfully");
           
-          // If the updated branch is the current branch, update currentBranch state
           if (editingBranch.id === currentBranch?.id) {
-            const updatedBranch = {
+            setCurrentBranch({
               ...currentBranch,
               name: formData.name.trim(),
               address: formData.address.trim() || null,
               phone: formData.phone.trim() || null,
               email: formData.email.trim() || null,
-            };
-            setCurrentBranch(updatedBranch);
+              logo_url: newLogoUrl || null,
+            });
           }
         } else {
           // Admin flow - Update existing branch
@@ -153,6 +215,7 @@ export const BranchManagement = () => {
               address: formData.address.trim() || null,
               phone: formData.phone.trim() || null,
               email: formData.email.trim() || null,
+              logo_url: newLogoUrl || null,
             })
             .eq("id", editingBranch.id);
 
@@ -182,16 +245,15 @@ export const BranchManagement = () => {
 
           toast.success("Branch updated successfully");
           
-          // If the updated branch is the current branch, update currentBranch state
           if (editingBranch.id === currentBranch?.id) {
-            const updatedBranch = {
+            setCurrentBranch({
               ...currentBranch,
               name: formData.name.trim(),
               address: formData.address.trim() || null,
               phone: formData.phone.trim() || null,
               email: formData.email.trim() || null,
-            };
-            setCurrentBranch(updatedBranch);
+              logo_url: newLogoUrl || null,
+            });
           }
         }
       } else {
@@ -279,6 +341,14 @@ export const BranchManagement = () => {
 
           if (settingsError) {
             console.error("Failed to create gym_settings for branch:", settingsError);
+          }
+        }
+
+        // Upload logo if provided
+        if (logoFile && data?.id) {
+          const logoUrl = await uploadLogo(data.id);
+          if (logoUrl) {
+            await supabase.from("branches").update({ logo_url: logoUrl }).eq("id", data.id);
           }
         }
 
@@ -492,6 +562,7 @@ export const BranchManagement = () => {
                 className="flex items-center justify-between p-4 bg-muted/50 rounded-lg"
               >
                 <div className="flex items-center gap-3">
+                  <BranchLogo logoUrl={branch.logo_url} name={branch.name} size="md" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className="font-medium">{branch.name}</p>
@@ -551,6 +622,30 @@ export const BranchManagement = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 md:space-y-2 py-2 md:py-3">
+            {/* Logo Upload */}
+            <div className="flex items-center gap-4">
+              <div className="relative cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
+                <BranchLogo
+                  logoUrl={logoPreview}
+                  name={formData.name || "New"}
+                  size="lg"
+                />
+                <div className="absolute inset-0 bg-black/40 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <CameraIcon className="w-5 h-5 text-white" />
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoSelect}
+                />
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">Branch Logo</p>
+                <p>Click to upload (max 2MB)</p>
+              </div>
+            </div>
             <div className="space-y-1.5 md:space-y-2">
               <Label htmlFor="branch-name">Branch Name *</Label>
               <Input
@@ -561,7 +656,7 @@ export const BranchManagement = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="branch-address">Address</Label>
+              <Label htmlFor="branch-address">Address {!editingBranch && "*"}</Label>
               <Textarea
                 id="branch-address"
                 value={formData.address}
@@ -572,7 +667,7 @@ export const BranchManagement = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="branch-phone">Phone</Label>
+                <Label htmlFor="branch-phone">Phone {!editingBranch && "*"}</Label>
                 <Input
                   id="branch-phone"
                   type="tel"
@@ -588,7 +683,7 @@ export const BranchManagement = () => {
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="Email address"
+                  placeholder="Email address (optional)"
                 />
               </div>
             </div>
@@ -605,8 +700,8 @@ export const BranchManagement = () => {
             >
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={isLoading}>
-              {isLoading ? "Saving..." : editingBranch ? "Save Changes" : "Add Branch"}
+            <Button onClick={handleSave} disabled={isLoading || isUploadingLogo}>
+              {isLoading || isUploadingLogo ? "Saving..." : editingBranch ? "Save Changes" : "Add Branch"}
             </Button>
           </div>
         </DialogContent>

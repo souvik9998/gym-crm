@@ -8,7 +8,6 @@ import {
   ArrowPathIcon,
   QrCodeIcon,
   Cog6ToothIcon,
-  UserCircleIcon,
   Bars3Icon,
   BuildingStorefrontIcon,
 } from "@heroicons/react/24/outline";
@@ -25,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { BranchSelector } from "./BranchSelector";
 import { Badge } from "@/components/ui/badge";
 import { NotificationCenter } from "./NotificationCenter";
+import { BranchLogo } from "./BranchLogo";
 
 interface AdminHeaderProps {
   title?: string;
@@ -158,13 +158,9 @@ export const AdminHeader = ({
           {/* Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground hover:bg-muted h-7 w-7 md:h-9 md:w-9"
-              >
-                <UserCircleIcon className="w-5 h-5 md:w-6 md:h-6" />
-              </Button>
+              <button className="rounded-xl overflow-hidden h-7 w-7 md:h-9 md:w-9 hover:ring-2 hover:ring-primary/50 transition-all">
+                <BranchLogo logoUrl={currentBranch?.logo_url} name={gymName} size="sm" className="w-full h-full" />
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 p-2 bg-card border shadow-lg">
               {/* Header Section */}

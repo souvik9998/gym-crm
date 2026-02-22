@@ -14,6 +14,7 @@ export interface Branch {
   updated_at: string;
   deleted_at: string | null;
   tenant_id: string | null;
+  logo_url: string | null;
 }
 
 export interface StaffBranchRestriction {
