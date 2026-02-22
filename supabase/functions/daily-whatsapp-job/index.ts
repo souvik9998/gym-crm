@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
 
     // Create maps for branch settings
     const branchWhatsAppMap = new Map<string, boolean>();
-    const branchAutoSendMap = new Map<string, Record<string, boolean>>();
+    const branchAutoSendMap = new Map<string, Record<string, any>>();
     if (branchSettings) {
       branchSettings.forEach((setting: any) => {
         if (setting.branch_id) {
@@ -54,20 +54,29 @@ Deno.serve(async (req) => {
 
     // Helper to check auto-send preference for a specific type
     const isAutoSendEnabled = (branchId: string | null, type: string): boolean => {
-      if (!branchId) return true; // default to true
+      if (!branchId) return true;
       const prefs = branchAutoSendMap.get(branchId);
-      if (!prefs) return true; // default to true if no prefs set
+      if (!prefs) return true;
       return prefs[type] ?? true;
     };
 
-    // Get today's date and 2 days from now
+    // Helper to get configurable days for expiring/expired reminders
+    const getExpiringDaysBefore = (branchId: string | null): number => {
+      if (!branchId) return 2;
+      const prefs = branchAutoSendMap.get(branchId);
+      return prefs?.expiring_days_before ?? 2;
+    };
+
+    const getExpiredDaysAfter = (branchId: string | null): number => {
+      if (!branchId) return 7;
+      const prefs = branchAutoSendMap.get(branchId);
+      return prefs?.expired_days_after ?? 7;
+    };
+
+    // Get today's date
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const twoDaysFromNow = new Date(today);
-    twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
-
     const todayStr = today.toISOString().split("T")[0];
-    const twoDaysStr = twoDaysFromNow.toISOString().split("T")[0];
 
     const startOfDay = new Date(today);
     const endOfDay = new Date(today);
@@ -129,45 +138,82 @@ Deno.serve(async (req) => {
       }
     };
 
-    // Fetch members expiring in 2 days (with branch_id)
-    const { data: expiringIn2Days } = await supabase
-      .from("subscriptions")
-      .select("member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
-      .eq("end_date", twoDaysStr)
-      .neq("status", "expired");
+    // Collect all unique expiring day values across branches to fetch relevant subscriptions
+    const allExpiringDays = new Set<number>();
+    const allExpiredDays = new Set<number>();
+    
+    if (branchSettings) {
+      branchSettings.forEach((setting: any) => {
+        if (setting.branch_id && setting.whatsapp_enabled) {
+          const prefs = setting.whatsapp_auto_send || {};
+          if (prefs.expiring_2days !== false) {
+            allExpiringDays.add(prefs.expiring_days_before ?? 2);
+          }
+          if (prefs.expired_reminder === true) {
+            allExpiredDays.add(prefs.expired_days_after ?? 7);
+          }
+        }
+      });
+    }
+    // Default if no branches configured
+    if (allExpiringDays.size === 0) allExpiringDays.add(2);
 
-    // Fetch members expiring today (with branch_id)
+    // Fetch subscriptions for all relevant expiring dates
+    const expiringSubscriptions: any[] = [];
+    for (const days of allExpiringDays) {
+      const targetDate = new Date(today);
+      targetDate.setDate(targetDate.getDate() + days);
+      const targetStr = targetDate.toISOString().split("T")[0];
+
+      const { data } = await supabase
+        .from("subscriptions")
+        .select("member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
+        .eq("end_date", targetStr)
+        .neq("status", "expired");
+      
+      if (data) expiringSubscriptions.push(...data);
+    }
+
+    // Fetch members expiring today
     const { data: expiringToday } = await supabase
       .from("subscriptions")
       .select("member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
       .eq("end_date", todayStr)
       .neq("status", "expired");
 
-    // Fetch expired members (for admin summary - last 7 days) (with branch_id)
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
+    // Fetch expired members based on max expired_days_after across branches
+    const maxExpiredDays = allExpiredDays.size > 0 ? Math.max(...allExpiredDays) : 7;
+    const expiredDateLimit = new Date(today);
+    expiredDateLimit.setDate(expiredDateLimit.getDate() - maxExpiredDays);
+    const expiredDateStr = expiredDateLimit.toISOString().split("T")[0];
 
     const { data: expiredMembers } = await supabase
       .from("subscriptions")
       .select("member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
       .eq("status", "expired")
-      .gte("end_date", sevenDaysAgoStr)
+      .gte("end_date", expiredDateStr)
       .lt("end_date", todayStr);
 
     const sentMemberIds: string[] = [];
     let successCount = 0;
     let failCount = 0;
 
-    // Send notifications to members expiring in 2 days
-    for (const sub of expiringIn2Days || []) {
+    // Send notifications to members expiring soon (configurable days before)
+    for (const sub of expiringSubscriptions || []) {
       const member = sub.members as any;
       const branchId = sub.branch_id || member.branch_id;
       
-      // Skip if WhatsApp is disabled for this branch or auto-send for expiring_2days is off
       if (!isWhatsAppEnabledForBranch(branchId) || !isAutoSendEnabled(branchId, "expiring_2days")) {
         continue;
       }
+
+      const branchDaysBefore = getExpiringDaysBefore(branchId);
+      const endDate = new Date(sub.end_date);
+      endDate.setHours(0, 0, 0, 0);
+      const daysUntilExpiry = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // Only send if this subscription matches the branch's configured days
+      if (daysUntilExpiry !== branchDaysBefore) continue;
       
       const formattedPhone = formatPhone(member.phone);
       const expiryDate = new Date(sub.end_date).toLocaleDateString("en-IN", {
@@ -176,7 +222,7 @@ Deno.serve(async (req) => {
         year: "numeric",
       });
 
-      const message = `⚠️ Hi ${member.name}!\n\nYour gym membership expires in *2 days* (${expiryDate}).\n\nRenew now to avoid any interruption! 🏃`;
+      const message = `⚠️ Hi ${member.name}!\n\nYour gym membership expires in *${branchDaysBefore} day${branchDaysBefore > 1 ? "s" : ""}* (${expiryDate}).\n\nRenew now to avoid any interruption! 🏃`;
 
       const success = await sendMessage(formattedPhone, message);
 
@@ -200,7 +246,6 @@ Deno.serve(async (req) => {
       const member = sub.members as any;
       const branchId = sub.branch_id || member.branch_id;
       
-      // Skip if WhatsApp is disabled for this branch or auto-send for expiring_today is off
       if (!isWhatsAppEnabledForBranch(branchId) || !isAutoSendEnabled(branchId, "expiring_today")) {
         continue;
       }
@@ -226,19 +271,65 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Send expired reminders (configurable days after expiry)
+    for (const sub of expiredMembers || []) {
+      const member = sub.members as any;
+      const branchId = sub.branch_id || member.branch_id;
+      
+      if (!isWhatsAppEnabledForBranch(branchId) || !isAutoSendEnabled(branchId, "expired_reminder")) {
+        continue;
+      }
+
+      const branchDaysAfter = getExpiredDaysAfter(branchId);
+      const endDate = new Date(sub.end_date);
+      endDate.setHours(0, 0, 0, 0);
+      const daysSinceExpiry = Math.ceil((today.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // Only send on the exact configured day
+      if (daysSinceExpiry !== branchDaysAfter) continue;
+
+      const formattedPhone = formatPhone(member.phone);
+      const expiryDate = new Date(sub.end_date).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+
+      const message = `⛔ Hi ${member.name}!\n\nYour gym membership expired *${branchDaysAfter} day${branchDaysAfter > 1 ? "s" : ""} ago* (${expiryDate}).\n\nWe miss you! Renew now to get back on track with your fitness goals 💪\n\n🎁 Renew within 7 days for exclusive benefits!`;
+
+      const success = await sendMessage(formattedPhone, message);
+
+      await supabase.from("whatsapp_notifications").insert({
+        member_id: member.id,
+        notification_type: "expired_reminder",
+        status: success ? "sent" : "failed",
+        branch_id: branchId,
+      });
+
+      if (success) {
+        successCount++;
+        sentMemberIds.push(member.id);
+      } else {
+        failCount++;
+      }
+    }
+
     // Send admin daily summary
     if (ADMIN_WHATSAPP_NUMBER) {
       const adminPhone = formatPhone(ADMIN_WHATSAPP_NUMBER);
 
       let summaryMessage = `📊 *Daily Gym Summary*\n\n`;
 
-      // Expiring in 2 days
-      summaryMessage += `⚠️ *Expiring in 2 Days (${expiringIn2Days?.length || 0}):*\n`;
-      if (expiringIn2Days && expiringIn2Days.length > 0) {
-        expiringIn2Days.forEach((s) => {
+      // Expiring soon
+      summaryMessage += `⚠️ *Expiring Soon (${expiringSubscriptions?.length || 0}):*\n`;
+      if (expiringSubscriptions && expiringSubscriptions.length > 0) {
+        expiringSubscriptions.slice(0, 10).forEach((s) => {
           const m = s.members as any;
           summaryMessage += `• ${m.name} (${m.phone})\n`;
         });
+        if (expiringSubscriptions.length > 10) {
+          summaryMessage += `_...and ${expiringSubscriptions.length - 10} more_\n`;
+        }
       } else {
         summaryMessage += `_None_\n`;
       }
@@ -293,8 +384,9 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        expiringIn2Days: expiringIn2Days?.length || 0,
+        expiringSoon: expiringSubscriptions?.length || 0,
         expiringToday: expiringToday?.length || 0,
+        expiredReminders: expiredMembers?.length || 0,
         notificationsSent: successCount,
         failed: failCount,
       }),

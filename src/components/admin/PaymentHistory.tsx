@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download, User, Clock } from "lucide-react";
+import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download, User, Clock, FileText } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
@@ -26,6 +26,8 @@ import { toast } from "@/components/ui/sonner";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
 import { useInfinitePaymentsQuery, type PaymentWithDetails } from "@/hooks/queries";
 import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
+import { supabase } from "@/integrations/supabase/client";
+import { useBranch } from "@/contexts/BranchContext";
 
 type PaymentMode = Database["public"]["Enums"]["payment_mode"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
@@ -36,6 +38,8 @@ interface PaymentHistoryProps {
 
 export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const isMobile = useIsMobile();
+  const { currentBranch } = useBranch();
+  const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null);
   
   // Use infinite query for paginated data fetching
   const {
@@ -220,6 +224,39 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   };
 
   const hasActiveFilters = dateFrom || dateTo || paymentMode !== "all" || statusFilter !== "all" || typeFilter !== "all";
+
+  const handleSendInvoice = async (paymentId: string) => {
+    setSendingInvoiceId(paymentId);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-invoice", {
+        body: {
+          paymentId,
+          branchId: currentBranch?.id,
+          sendViaWhatsApp: true,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        if (data.whatsappSent) {
+          toast.success("Invoice sent via WhatsApp", {
+            description: `Invoice ${data.invoiceNumber} sent successfully`,
+          });
+        } else {
+          toast.success("Invoice generated", {
+            description: `Invoice ${data.invoiceNumber} created. WhatsApp delivery may be disabled.`,
+          });
+        }
+      } else {
+        toast.error("Failed to generate invoice", { description: data?.error });
+      }
+    } catch (err: any) {
+      toast.error("Error sending invoice", { description: err.message });
+    } finally {
+      setSendingInvoiceId(null);
+    }
+  };
 
   // Check if data is confirmed empty
   const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && filteredPayments.length === 0;
@@ -422,6 +459,18 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                       </div>
                     )}
                   </div>
+                  {payment.status === "success" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-3 gap-2"
+                      disabled={sendingInvoiceId === payment.id}
+                      onClick={() => handleSendInvoice(payment.id)}
+                    >
+                      <FileText className={`w-4 h-4 ${sendingInvoiceId === payment.id ? "animate-pulse" : ""}`} />
+                      {sendingInvoiceId === payment.id ? "Sending..." : "Send Invoice via WhatsApp"}
+                    </Button>
+                  )}
                 </div>
               }
             />
@@ -446,6 +495,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                 <TableHead>Mode</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -495,13 +545,27 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                     ₹{Number(payment.amount).toLocaleString("en-IN")}
                   </TableCell>
                   <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                  <TableCell>
+                    {payment.status === "success" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={sendingInvoiceId === payment.id}
+                        onClick={() => handleSendInvoice(payment.id)}
+                        title="Send Invoice via WhatsApp"
+                      >
+                        <FileText className={`w-4 h-4 ${sendingInvoiceId === payment.id ? "animate-pulse" : "text-primary"}`} />
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
               
               {/* Infinite scroll sentinel row */}
               {hasNextPage && (
                 <TableRow ref={loadMoreRef}>
-                  <TableCell colSpan={6} className="p-0">
+                  <TableCell colSpan={7} className="p-0">
                     {isFetchingNextPage && <InfiniteScrollSkeleton />}
                   </TableCell>
                 </TableRow>
