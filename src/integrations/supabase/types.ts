@@ -466,6 +466,7 @@ export type Database = {
           monthly_fee: number
           monthly_packages: number[] | null
           updated_at: string | null
+          whatsapp_auto_send: Json
           whatsapp_enabled: boolean | null
         }
         Insert: {
@@ -478,6 +479,7 @@ export type Database = {
           monthly_fee?: number
           monthly_packages?: number[] | null
           updated_at?: string | null
+          whatsapp_auto_send?: Json
           whatsapp_enabled?: boolean | null
         }
         Update: {
@@ -490,6 +492,7 @@ export type Database = {
           monthly_fee?: number
           monthly_packages?: number[] | null
           updated_at?: string | null
+          whatsapp_auto_send?: Json
           whatsapp_enabled?: boolean | null
         }
         Relationships: [

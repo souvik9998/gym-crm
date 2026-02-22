@@ -27,17 +27,21 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Fetch all branch WhatsApp settings
+    // Fetch all branch WhatsApp settings (including auto-send preferences)
     const { data: branchSettings } = await supabase
       .from("gym_settings")
-      .select("branch_id, whatsapp_enabled");
+      .select("branch_id, whatsapp_enabled, whatsapp_auto_send");
 
-    // Create a map of branch_id to whatsapp_enabled status
+    // Create maps for branch settings
     const branchWhatsAppMap = new Map<string, boolean>();
+    const branchAutoSendMap = new Map<string, Record<string, boolean>>();
     if (branchSettings) {
-      branchSettings.forEach((setting) => {
+      branchSettings.forEach((setting: any) => {
         if (setting.branch_id) {
           branchWhatsAppMap.set(setting.branch_id, setting.whatsapp_enabled === true);
+          if (setting.whatsapp_auto_send) {
+            branchAutoSendMap.set(setting.branch_id, setting.whatsapp_auto_send);
+          }
         }
       });
     }
@@ -46,6 +50,14 @@ Deno.serve(async (req) => {
     const isWhatsAppEnabledForBranch = (branchId: string | null): boolean => {
       if (!branchId) return false;
       return branchWhatsAppMap.get(branchId) ?? false;
+    };
+
+    // Helper to check auto-send preference for a specific type
+    const isAutoSendEnabled = (branchId: string | null, type: string): boolean => {
+      if (!branchId) return true; // default to true
+      const prefs = branchAutoSendMap.get(branchId);
+      if (!prefs) return true; // default to true if no prefs set
+      return prefs[type] ?? true;
     };
 
     // Get today's date and 2 days from now
@@ -152,8 +164,8 @@ Deno.serve(async (req) => {
       const member = sub.members as any;
       const branchId = sub.branch_id || member.branch_id;
       
-      // Skip if WhatsApp is disabled for this branch
-      if (!isWhatsAppEnabledForBranch(branchId)) {
+      // Skip if WhatsApp is disabled for this branch or auto-send for expiring_2days is off
+      if (!isWhatsAppEnabledForBranch(branchId) || !isAutoSendEnabled(branchId, "expiring_2days")) {
         continue;
       }
       
@@ -188,8 +200,8 @@ Deno.serve(async (req) => {
       const member = sub.members as any;
       const branchId = sub.branch_id || member.branch_id;
       
-      // Skip if WhatsApp is disabled for this branch
-      if (!isWhatsAppEnabledForBranch(branchId)) {
+      // Skip if WhatsApp is disabled for this branch or auto-send for expiring_today is off
+      if (!isWhatsAppEnabledForBranch(branchId) || !isAutoSendEnabled(branchId, "expiring_today")) {
         continue;
       }
       

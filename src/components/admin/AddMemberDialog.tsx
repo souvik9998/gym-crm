@@ -39,6 +39,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format, addMonths } from "date-fns";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100),
@@ -396,27 +397,29 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         });
       }
 
-      // Send WhatsApp notification for new member registration
+      // Send WhatsApp notification for new member registration (if auto-send enabled)
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const adminUserId = session?.user?.id || null;
+        const shouldAutoSend = await getWhatsAppAutoSendPreference(currentBranch?.id, "admin_add_member");
+        if (shouldAutoSend) {
+          const { data: { session } } = await supabase.auth.getSession();
+          const adminUserId = session?.user?.id || null;
 
-        await supabase.functions.invoke("send-whatsapp", {
-          body: {
-            phone: phone,
-            name: name,
-            endDate: endDate.toISOString().split("T")[0],
-            type: "renewal", // Use renewal type for welcome message
-            memberIds: [member.id],
-            isManual: true,
-            adminUserId: adminUserId,
-            branchId: currentBranch?.id,
-            branchName: currentBranch?.name,
-          },
-        });
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              phone: phone,
+              name: name,
+              endDate: endDate.toISOString().split("T")[0],
+              type: "renewal",
+              memberIds: [member.id],
+              isManual: true,
+              adminUserId: adminUserId,
+              branchId: currentBranch?.id,
+              branchName: currentBranch?.name,
+            },
+          });
+        }
       } catch (err) {
         console.error("Failed to send WhatsApp notification:", err);
-        // Don't fail the whole operation if WhatsApp fails
       }
 
       toast.success("Member added successfully");
