@@ -14,6 +14,7 @@ import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useStaffOperations } from "@/hooks/useStaffOperations";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { createBranchAsOwner } from "@/api/branches/ownerBranches";
+import { LimitReachedDialog } from "@/components/admin/LimitReachedDialog";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,9 @@ export const BranchManagement = () => {
     open: false,
     branch: null,
   });
+  const [limitDialog, setLimitDialog] = useState<{ open: boolean; max: number; current: number }>({
+    open: false, max: 0, current: 0,
+  });
   
   // For admins, show all branches. For staff, show only their assigned branches.
   const displayBranches = isAdmin ? allBranches : branches;
@@ -60,7 +64,32 @@ export const BranchManagement = () => {
     setFormData({ name: "", address: "", phone: "", email: "" });
   };
 
-  const handleOpenAdd = () => {
+  const handleOpenAdd = async () => {
+    // Check branch limit before opening dialog
+    if (tenantId) {
+      try {
+        const { data } = await supabase.rpc("tenant_can_add_resource", {
+          _tenant_id: tenantId,
+          _resource_type: "branches",
+        });
+        if (data === false) {
+          // Fetch limits for dialog
+          const { data: limits } = await supabase
+            .from("tenant_limits")
+            .select("max_branches")
+            .eq("tenant_id", tenantId)
+            .single();
+          setLimitDialog({
+            open: true,
+            max: limits?.max_branches ?? 0,
+            current: displayBranches.length,
+          });
+          return;
+        }
+      } catch (err) {
+        console.error("Limit check failed:", err);
+      }
+    }
     resetForm();
     setEditingBranch(null);
     setIsAddDialogOpen(true);
@@ -557,6 +586,15 @@ export const BranchManagement = () => {
         cancelText="Cancel"
         variant="destructive"
         onConfirm={handleFinalDelete}
+      />
+
+      {/* Limit Reached Dialog */}
+      <LimitReachedDialog
+        open={limitDialog.open}
+        onOpenChange={(open) => setLimitDialog({ ...limitDialog, open })}
+        resourceType="Branches"
+        currentCount={limitDialog.current}
+        maxCount={limitDialog.max}
       />
     </Card>
   );
