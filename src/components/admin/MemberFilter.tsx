@@ -157,8 +157,8 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
   const handleCategoryClick = (category: MemberFilterCategory | "all") => {
     if (category === "pt") return; // PT is handled separately
     
-    // Detoggle PT filter when "All Members" is clicked
-    if (category === "all" && ptFilterActive && onPtFilterChange) {
+    // Deactivate PT filter when any regular filter is clicked
+    if (ptFilterActive && onPtFilterChange) {
       onPtFilterChange(false);
     }
     
@@ -176,9 +176,6 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
   const handlePtClick = () => {
     if (onPtFilterChange) {
       onPtFilterChange(!ptFilterActive);
-      if (!ptFilterActive) {
-        onChange("all");
-      }
     }
   };
 
@@ -333,9 +330,6 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
             onClick={() => {
               if (onPtFilterChange) {
                 onPtFilterChange(!ptFilterActive);
-                if (!ptFilterActive) {
-                  onChange("all");
-                }
               }
               setMobileDropdownOpen(false);
             }}
