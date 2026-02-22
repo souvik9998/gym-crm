@@ -200,7 +200,9 @@ export const MembersTable = ({
 
       const data = await response.json();
       
-      if (data.success && data.sent > 0) {
+      // Check success: edge function returns { success, results } not { success, sent }
+      const sentCount = data.results?.filter((r: any) => r.success).length ?? 0;
+      if (data.success || sentCount > 0) {
         // Log WhatsApp activity for staff
         if (isStaffLoggedIn && staffUser) {
           const activityType = type === "promotional" ? "whatsapp_promotional_sent" 
@@ -459,25 +461,29 @@ export const MembersTable = ({
 
       const data = await response.json();
       
-      if (data.success) {
+      // Derive sent/failed counts from results array
+      const sentCount = data.results?.filter((r: any) => r.success).length ?? 0;
+      const failedCount = data.results?.filter((r: any) => !r.success).length ?? 0;
+      
+      if (data.success || sentCount > 0) {
         const typeLabel = type === "promotional" ? "Promotional messages" : 
                           type === "expiry_reminder" ? "Expiry reminders" : 
                           type === "expired_reminder" ? "Expired reminders" : "Messages";
-        toast.success(`${typeLabel} sent to ${data.sent} members`, {
-          description: data.failed > 0 ? `${data.failed} failed` : undefined,
+        toast.success(`${typeLabel} sent to ${sentCount} members`, {
+          description: failedCount > 0 ? `${failedCount} failed` : undefined,
         });
 
         // Log bulk WhatsApp activity for staff
-        if (isStaffLoggedIn && staffUser && data.sent > 0) {
+        if (isStaffLoggedIn && staffUser && sentCount > 0) {
           await logStaffActivity({
             category: "whatsapp",
             type: "whatsapp_bulk_message_sent",
-            description: `Staff "${staffUser.fullName}" sent bulk ${type.replace(/_/g, " ")} to ${data.sent} members`,
+            description: `Staff "${staffUser.fullName}" sent bulk ${type.replace(/_/g, " ")} to ${sentCount} members`,
             entityType: "members",
             newValue: { 
               message_type: type, 
-              recipients_count: data.sent,
-              failed_count: data.failed || 0,
+              recipients_count: sentCount,
+              failed_count: failedCount,
             },
             branchId: currentBranch?.id,
             staffId: staffUser.id,
