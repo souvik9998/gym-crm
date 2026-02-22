@@ -1123,7 +1123,7 @@ const AdminSettings = () => {
               </CardContent>
             </Card>
 
-            <WhatsAppAutoSendSettings />
+            <WhatsAppAutoSendSettings whatsappEnabled={whatsappEnabled} />
 
             <WhatsAppTemplates />
           </TabsContent>
