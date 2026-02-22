@@ -70,7 +70,7 @@ export const BranchManagement = () => {
       try {
         const { data } = await supabase.rpc("tenant_can_add_resource", {
           _tenant_id: tenantId,
-          _resource_type: "branches",
+          _resource_type: "branch",
         });
         if (data === false) {
           // Fetch limits for dialog
