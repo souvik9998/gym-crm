@@ -9,6 +9,7 @@ import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { addDays, addMonths, differenceInDays, format, isBefore, isAfter, parseISO } from "date-fns";
 import { fetchPublicBranch, fetchPublicTrainers } from "@/api/publicData";
+import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 
 interface Trainer {
   id: string;
@@ -228,20 +229,23 @@ const ExtendPT = () => {
       trainerFee: selectedOption.fee,
       ptStartDate: format(ptStartDate, "yyyy-MM-dd"),
       onSuccess: async (data) => {
-        // Send WhatsApp notification for PT extension
+        // Send WhatsApp notification for PT extension (if auto-send enabled)
         try {
-          await supabase.functions.invoke("send-whatsapp", {
-            body: {
-              phone: member.phone,
-              name: member.name,
-              endDate: format(selectedOption.endDate, "yyyy-MM-dd"),
-              type: "pt_extension",
-              memberIds: [member.id],
-              isManual: false,
-              branchId: branchId,
-              branchName: branchInfo?.name,
-            },
-          });
+          const shouldAutoSend = await getWhatsAppAutoSendPreference(branchId, "pt_extension");
+          if (shouldAutoSend) {
+            await supabase.functions.invoke("send-whatsapp", {
+              body: {
+                phone: member.phone,
+                name: member.name,
+                endDate: format(selectedOption.endDate, "yyyy-MM-dd"),
+                type: "pt_extension",
+                memberIds: [member.id],
+                isManual: false,
+                branchId: branchId,
+                branchName: branchInfo?.name,
+              },
+            });
+          }
         } catch (err) {
           console.error("Failed to send WhatsApp notification:", err);
         }

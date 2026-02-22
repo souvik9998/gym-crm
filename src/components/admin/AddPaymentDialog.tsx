@@ -36,6 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { addMonths, differenceInDays, format, isBefore } from "date-fns";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 
 interface Member {
   id: string;
@@ -529,30 +530,34 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
         // Don't throw - payment was successful, ledger is just for tracking
       }
 
-      // Send WhatsApp notification
+      // Send WhatsApp notification (if auto-send enabled)
       try {
         const notificationType = paymentType === "pt_only" ? "pt_extension" : "renewal";
-        const endDateForNotification = paymentType === "pt_only" 
-          ? selectedPTOption!.endDate.toISOString().split("T")[0]
-          : gymEndDate?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0];
+        const autoSendType = paymentType === "pt_only" ? "pt_extension" : "renewal";
+        const shouldAutoSend = await getWhatsAppAutoSendPreference(currentBranch?.id, autoSendType);
         
-        // Get current admin user
-        const { data: { session } } = await supabase.auth.getSession();
-        const adminUserId = session?.user?.id || null;
+        if (shouldAutoSend) {
+          const endDateForNotification = paymentType === "pt_only" 
+            ? selectedPTOption!.endDate.toISOString().split("T")[0]
+            : gymEndDate?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0];
+          
+          const { data: { session } } = await supabase.auth.getSession();
+          const adminUserId = session?.user?.id || null;
 
-        await supabase.functions.invoke("send-whatsapp", {
-          body: {
-            phone: member.phone,
-            name: member.name,
-            endDate: endDateForNotification,
-            type: notificationType,
-            memberIds: [member.id],
-            isManual: true, // Admin manually adding payment
-            adminUserId: adminUserId,
-            branchId: currentBranch?.id,
-            branchName: currentBranch?.name,
-          },
-        });
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              phone: member.phone,
+              name: member.name,
+              endDate: endDateForNotification,
+              type: notificationType,
+              memberIds: [member.id],
+              isManual: true,
+              adminUserId: adminUserId,
+              branchId: currentBranch?.id,
+              branchName: currentBranch?.name,
+            },
+          });
+        }
       } catch (err) {
         console.error("Failed to send WhatsApp notification:", err);
       }

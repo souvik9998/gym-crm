@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
 import PackageSelectionForm, { type PackageSelectionData } from "@/components/registration/PackageSelectionForm";
 import { fetchPublicBranch } from "@/api/publicData";
+import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 
 interface Member {
   id: string;
@@ -111,20 +112,23 @@ const Renew = () => {
       onSuccess: async (data) => {
         const endDate = new Date(data.endDate);
         
-        // Send WhatsApp notification for renewal
+        // Send WhatsApp notification for renewal (if auto-send enabled)
         try {
-          await supabase.functions.invoke("send-whatsapp", {
-            body: {
-              phone: member.phone,
-              name: member.name,
-              endDate: data.endDate,
-              type: "renewal",
-              memberIds: [member.id],
-              isManual: false,
-              branchId: branchId,
-              branchName: branchInfo?.name,
-            },
-          });
+          const shouldAutoSend = await getWhatsAppAutoSendPreference(branchId, "renewal");
+          if (shouldAutoSend) {
+            await supabase.functions.invoke("send-whatsapp", {
+              body: {
+                phone: member.phone,
+                name: member.name,
+                endDate: data.endDate,
+                type: "renewal",
+                memberIds: [member.id],
+                isManual: false,
+                branchId: branchId,
+                branchName: branchInfo?.name,
+              },
+            });
+          }
         } catch (err) {
           console.error("Failed to send WhatsApp notification:", err);
         }

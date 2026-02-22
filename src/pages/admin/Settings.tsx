@@ -25,6 +25,7 @@ import { toast } from "@/components/ui/sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { User } from "@supabase/supabase-js";
 import { WhatsAppTemplates } from "@/components/admin/WhatsAppTemplates";
+import { WhatsAppAutoSendSettings } from "@/components/admin/WhatsAppAutoSendSettings";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { BranchManagement } from "@/components/admin/BranchManagement";
 import { SubscriptionPlanTab } from "@/components/admin/SubscriptionPlanTab";
@@ -1121,6 +1122,8 @@ const AdminSettings = () => {
                 </div>
               </CardContent>
             </Card>
+
+            <WhatsAppAutoSendSettings />
 
             <WhatsAppTemplates />
           </TabsContent>

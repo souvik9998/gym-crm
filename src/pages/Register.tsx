@@ -9,6 +9,7 @@ import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-ove
 import MemberDetailsForm, { type MemberDetailsData } from "@/components/registration/MemberDetailsForm";
 import PackageSelectionForm, { type PackageSelectionData } from "@/components/registration/PackageSelectionForm";
 import { fetchPublicBranch } from "@/api/publicData";
+import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 
 type Step = "details" | "package";
 
@@ -89,22 +90,25 @@ const Register = () => {
       onSuccess: async (data) => {
         const endDate = new Date(data.endDate);
         
-        // Send WhatsApp notification for new registration
+        // Send WhatsApp notification for new registration (if auto-send enabled)
         try {
           const notificationType = data.isDailyPass ? "daily_pass" : "new_registration";
-          await supabase.functions.invoke("send-whatsapp", {
-            body: {
-              phone: phone,
-              name: memberDetails.fullName,
-              endDate: data.endDate,
-              type: notificationType,
-              memberIds: data.memberId ? [data.memberId] : [],
-              dailyPassUserId: data.dailyPassUserId,
-              isManual: false,
-              branchId: branchId,
-              branchName: branchInfo?.name,
-            },
-          });
+          const shouldAutoSend = await getWhatsAppAutoSendPreference(branchId, notificationType as any);
+          if (shouldAutoSend) {
+            await supabase.functions.invoke("send-whatsapp", {
+              body: {
+                phone: phone,
+                name: memberDetails.fullName,
+                endDate: data.endDate,
+                type: notificationType,
+                memberIds: data.memberId ? [data.memberId] : [],
+                dailyPassUserId: data.dailyPassUserId,
+                isManual: false,
+                branchId: branchId,
+                branchName: branchInfo?.name,
+              },
+            });
+          }
         } catch (err) {
           console.error("Failed to send WhatsApp notification:", err);
         }
