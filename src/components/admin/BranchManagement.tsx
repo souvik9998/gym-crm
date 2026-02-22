@@ -212,6 +212,29 @@ export const BranchManagement = () => {
         }
         
         // For gym owners, create via backend function to enforce limits and avoid RLS write failures
+        // Double-check limit before calling the edge function
+        if (tenantId) {
+          const { data: canAdd } = await supabase.rpc("tenant_can_add_resource", {
+            _tenant_id: tenantId,
+            _resource_type: "branch",
+          });
+          if (canAdd === false) {
+            const { data: limits } = await supabase
+              .from("tenant_limits")
+              .select("max_branches")
+              .eq("tenant_id", tenantId)
+              .single();
+            setLimitDialog({
+              open: true,
+              max: limits?.max_branches ?? 0,
+              current: displayBranches.length,
+            });
+            setIsLoading(false);
+            setIsAddDialogOpen(false);
+            return;
+          }
+        }
+
         let data: any;
         if (isGymOwner) {
           data = await createBranchAsOwner({
