@@ -72,7 +72,7 @@ export const BranchManagement = () => {
           _tenant_id: tenantId,
           _resource_type: "branch",
         });
-        if (data === false) {
+        if (data !== true) {
           // Fetch limits for dialog
           const { data: limits } = await supabase
             .from("tenant_limits")
@@ -214,11 +214,12 @@ export const BranchManagement = () => {
         // For gym owners, create via backend function to enforce limits and avoid RLS write failures
         // Double-check limit before calling the edge function
         if (tenantId) {
-          const { data: canAdd } = await supabase.rpc("tenant_can_add_resource", {
+          const { data: canAdd, error: limitErr } = await supabase.rpc("tenant_can_add_resource", {
             _tenant_id: tenantId,
             _resource_type: "branch",
           });
-          if (canAdd === false) {
+          console.log("Branch limit check:", { canAdd, limitErr });
+          if (canAdd !== true) {
             const { data: limits } = await supabase
               .from("tenant_limits")
               .select("max_branches")
