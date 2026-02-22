@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LimitReachedDialog } from "@/components/admin/LimitReachedDialog";
 import { useBranch, type Branch } from "@/contexts/BranchContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +38,9 @@ export const BranchSelector = () => {
   const { isAdmin, isGymOwner } = useIsAdmin();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [limitDialog, setLimitDialog] = useState<{ open: boolean; max: number; current: number }>({
+    open: false, max: 0, current: 0,
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [newBranch, setNewBranch] = useState({
     name: "",
@@ -54,8 +58,34 @@ export const BranchSelector = () => {
     toast.success(`Switched to ${branch.name}`);
   };
 
-  const handleOpenAddDialog = () => {
+  const handleOpenAddDialog = async () => {
     setIsDropdownOpen(false);
+    // Check branch limit first
+    if (tenantId) {
+      try {
+        const { data: canAdd } = await supabase.rpc("tenant_can_add_resource", {
+          _tenant_id: tenantId,
+          _resource_type: "branch",
+        });
+        if (canAdd !== true) {
+          const { data: limits } = await supabase
+            .from("tenant_limits")
+            .select("max_branches")
+            .eq("tenant_id", tenantId)
+            .single();
+          setTimeout(() => {
+            setLimitDialog({
+              open: true,
+              max: limits?.max_branches ?? 0,
+              current: displayBranches.length,
+            });
+          }, 100);
+          return;
+        }
+      } catch (err) {
+        console.error("Limit check failed:", err);
+      }
+    }
     setTimeout(() => {
       setIsAddDialogOpen(true);
     }, 100);
@@ -141,7 +171,30 @@ export const BranchSelector = () => {
         setCurrentBranch(data as Branch);
       }
     } catch (error: any) {
-      toast.error("Failed to add branch", { description: error.message });
+      const msg = error?.message || "";
+      if (msg.toLowerCase().includes("limit")) {
+        try {
+          if (tenantId) {
+            const { data: limits } = await supabase
+              .from("tenant_limits")
+              .select("max_branches")
+              .eq("tenant_id", tenantId)
+              .single();
+            setLimitDialog({
+              open: true,
+              max: limits?.max_branches ?? 0,
+              current: displayBranches.length,
+            });
+            setIsAddDialogOpen(false);
+          } else {
+            toast.error("Branch limit reached", { description: "Please upgrade your plan or contact support." });
+          }
+        } catch {
+          toast.error("Branch limit reached", { description: "Please upgrade your plan or contact support." });
+        }
+      } else {
+        toast.error("Failed to add branch", { description: msg });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -407,6 +460,13 @@ export const BranchSelector = () => {
           </DialogContent>
         </Dialog>
       )}
+      <LimitReachedDialog
+        open={limitDialog.open}
+        onOpenChange={(open) => setLimitDialog({ ...limitDialog, open })}
+        resourceType="Branches"
+        currentCount={limitDialog.current}
+        maxCount={limitDialog.max}
+      />
     </>
   );
 };
