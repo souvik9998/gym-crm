@@ -440,8 +440,9 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
           member_id: member.id,
           start_date: startDate.toISOString().split("T")[0],
           end_date: endDate.toISOString().split("T")[0],
-            plan_months: selectedPackage!.months,
+          plan_months: selectedPackage!.months,
           status: "active",
+          branch_id: currentBranch?.id,
         })
         .select()
         .single();
