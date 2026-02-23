@@ -247,6 +247,22 @@ export const StaffTrainersTab = ({
 
         await supabase.from("staff_branch_assignments").insert(assignments);
         
+        // Sync to personal_trainers table for each assigned branch
+        for (const branchId of branchesToAssign) {
+          await supabase.from("personal_trainers").insert({
+            name: newTrainer.full_name,
+            phone: cleanPhone || null,
+            specialization: newTrainer.specialization || null,
+            monthly_fee: Number(newTrainer.monthly_fee) || 0,
+            monthly_salary: Number(newTrainer.monthly_salary) || 0,
+            percentage_fee: Number(newTrainer.percentage_fee) || 0,
+            session_fee: Number(newTrainer.session_fee) || 0,
+            payment_category: newTrainer.payment_category === "monthly_percentage" ? "monthly_percentage" : "session_basis",
+            branch_id: branchId,
+            is_active: true,
+          });
+        }
+        
         // Get branch names for WhatsApp
         branchNames.push(...branchesToAssign.map(bid => branches.find(b => b.id === bid)?.name).filter(Boolean));
       }
@@ -415,6 +431,23 @@ export const StaffTrainersTab = ({
       branchId: currentBranch?.id,
     });
 
+    // Sync updates to personal_trainers table
+    if (trainer) {
+      await supabase
+        .from("personal_trainers")
+        .update({
+          name: editData.full_name,
+          phone: cleanPhone || null,
+          specialization: editData.specialization || null,
+          monthly_fee: Number(editData.monthly_fee) || 0,
+          monthly_salary: Number(editData.monthly_salary) || 0,
+          percentage_fee: Number(editData.percentage_fee) || 0,
+          session_fee: Number(editData.session_fee) || 0,
+          payment_category: editData.payment_category === "monthly_percentage" ? "monthly_percentage" : "session_basis",
+        })
+        .eq("phone", trainer.phone);
+    }
+
     toast.success("Trainer updated");
     setEditingId(null);
     onRefresh();
@@ -423,6 +456,11 @@ export const StaffTrainersTab = ({
   const handleToggle = async (id: string, isActive: boolean) => {
     const trainer = trainers.find((t) => t.id === id);
     await supabase.from("staff").update({ is_active: isActive }).eq("id", id);
+    
+    // Sync toggle to personal_trainers
+    if (trainer?.phone) {
+      await supabase.from("personal_trainers").update({ is_active: isActive }).eq("phone", trainer.phone);
+    }
     
     await logAdminActivity({
       category: "staff",
@@ -446,6 +484,11 @@ export const StaffTrainersTab = ({
       description: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
       variant: "destructive",
       onConfirm: async () => {
+        // Delete from personal_trainers first (by phone match)
+        const trainerToDelete = trainers.find(t => t.id === id);
+        if (trainerToDelete?.phone) {
+          await supabase.from("personal_trainers").delete().eq("phone", trainerToDelete.phone);
+        }
         await supabase.from("staff").delete().eq("id", id);
         
         await logAdminActivity({
