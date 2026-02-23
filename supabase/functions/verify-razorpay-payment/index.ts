@@ -512,6 +512,7 @@ Deno.serve(async (req) => {
           monthly_fee: trainer.monthly_fee,
           total_fee: totalFee,
           status: "active",
+          branch_id: branchId || null,
         })
         .select()
         .single();
@@ -530,6 +531,7 @@ Deno.serve(async (req) => {
         payment_type: "pt",
         razorpay_order_id: razorpay_order_id,
         razorpay_payment_id: razorpay_payment_id,
+        branch_id: branchId || null,
       }).select().single();
 
       if (paymentError) {

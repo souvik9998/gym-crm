@@ -228,6 +228,7 @@ const ExtendPT = () => {
       trainerId: selectedTrainer.id,
       trainerFee: selectedOption.fee,
       ptStartDate: format(ptStartDate, "yyyy-MM-dd"),
+      branchId: branchId || undefined,
       onSuccess: async (data) => {
         // Send WhatsApp notification for PT extension (if auto-send enabled)
         try {
