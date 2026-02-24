@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -9,6 +8,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { ArrowRight, IdCard, MapPin, User, CalendarDays } from "lucide-react";
 import { format } from "date-fns";
+import { ValidatedInput, InlineError } from "@/components/ui/validated-input";
+import {
+  memberDetailsSchema,
+  getPhotoIdSchema,
+  validateField,
+  validateForm,
+  nameSchema,
+  addressSchema,
+  sanitize,
+  type FieldErrors,
+} from "@/lib/validation";
 
 interface MemberDetailsFormProps {
   onSubmit: (data: MemberDetailsData) => void;
@@ -32,43 +42,99 @@ const MemberDetailsForm = ({ onSubmit, onBack }: MemberDetailsFormProps) => {
   const [gender, setGender] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(undefined);
   const [showDobPicker, setShowDobPicker] = useState(false);
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const validateSingleField = useCallback(
+    (field: string, value: string) => {
+      let error: string | undefined;
+      switch (field) {
+        case "fullName":
+          error = validateField(nameSchema, value);
+          break;
+        case "photoIdNumber":
+          if (photoIdType) {
+            error = validateField(getPhotoIdSchema(photoIdType), value);
+          }
+          break;
+        case "address":
+          error = validateField(addressSchema, value);
+          break;
+      }
+      setErrors((prev) => ({ ...prev, [field]: error }));
+    },
+    [photoIdType]
+  );
+
+  const markTouched = (field: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
-      fullName,
+
+    // Sanitize inputs
+    const sanitizedName = sanitize(fullName);
+    const sanitizedAddress = sanitize(address);
+
+    const result = validateForm(memberDetailsSchema, {
+      fullName: sanitizedName,
+      gender,
       photoIdType,
       photoIdNumber,
-      address,
+      address: sanitizedAddress,
+    });
+
+    if (!result.success) {
+      setErrors(result.errors);
+      // Mark all as touched to show errors
+      setTouched({ fullName: true, gender: true, photoIdType: true, photoIdNumber: true, address: true });
+      return;
+    }
+
+    // Additional photo ID validation
+    if (photoIdType) {
+      const idError = validateField(getPhotoIdSchema(photoIdType), photoIdNumber);
+      if (idError) {
+        setErrors((prev) => ({ ...prev, photoIdNumber: idError }));
+        setTouched((prev) => ({ ...prev, photoIdNumber: true }));
+        return;
+      }
+    }
+
+    onSubmit({
+      fullName: sanitizedName,
+      photoIdType,
+      photoIdNumber: photoIdNumber.replace(/\s/g, ""),
+      address: sanitizedAddress,
       gender,
       dateOfBirth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : undefined,
     });
   };
 
   const formatIdNumber = (value: string, type: string) => {
-    // Remove all non-alphanumeric characters
     const cleaned = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-    
     if (type === "aadhaar") {
-      // Format: XXXX XXXX XXXX
       return cleaned.slice(0, 12).replace(/(\d{4})(?=\d)/g, "$1 ").trim();
     } else if (type === "pan") {
-      // Format: AAAAA9999A (10 chars)
       return cleaned.slice(0, 10);
     } else if (type === "voter") {
-      // Format: ABC1234567 (10 chars)
       return cleaned.slice(0, 10);
     }
     return cleaned;
   };
 
-  // Calculate max date (user must be at least 10 years old)
   const maxDobDate = new Date();
   maxDobDate.setFullYear(maxDobDate.getFullYear() - 10);
-  
-  // Calculate min date (user must be less than 100 years old)
   const minDobDate = new Date();
   minDobDate.setFullYear(minDobDate.getFullYear() - 100);
+
+  const isFormValid =
+    fullName.trim().length >= 2 &&
+    gender !== "" &&
+    photoIdType !== "" &&
+    photoIdNumber.trim().length > 0 &&
+    address.trim().length >= 3;
 
   return (
     <Card className="max-w-md mx-auto border">
@@ -84,23 +150,37 @@ const MemberDetailsForm = ({ onSubmit, onBack }: MemberDetailsFormProps) => {
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <User className="w-4 h-4 text-accent" />
-              Full Name
+              Full Name *
             </Label>
-            <Input
+            <ValidatedInput
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) => {
+                // Only allow letters, spaces, dots, apostrophes
+                const val = e.target.value.replace(/[^a-zA-Z\s.']/g, "");
+                setFullName(val);
+                if (touched.fullName) validateSingleField("fullName", val);
+              }}
+              onValidate={(v) => {
+                markTouched("fullName");
+                validateSingleField("fullName", v);
+              }}
               placeholder="Enter your full name"
-              required
+              error={touched.fullName ? errors.fullName : undefined}
               autoComplete="name"
             />
           </div>
 
           {/* Gender */}
           <div className="space-y-3">
-            <Label className="flex items-center gap-2">
-              Gender
-            </Label>
-            <RadioGroup value={gender} onValueChange={setGender} className="flex gap-4">
+            <Label className="flex items-center gap-2">Gender *</Label>
+            <RadioGroup
+              value={gender}
+              onValueChange={(v) => {
+                setGender(v);
+                setErrors((prev) => ({ ...prev, gender: undefined }));
+              }}
+              className="flex gap-4"
+            >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="male" id="male" />
                 <Label htmlFor="male" className="cursor-pointer">Male</Label>
@@ -113,7 +193,8 @@ const MemberDetailsForm = ({ onSubmit, onBack }: MemberDetailsFormProps) => {
                 <RadioGroupItem value="other" id="other" />
                 <Label htmlFor="other" className="cursor-pointer">Other</Label>
               </div>
-          </RadioGroup>
+            </RadioGroup>
+            <InlineError message={touched.gender && !gender ? errors.gender : undefined} />
           </div>
 
           {/* Date of Birth */}
@@ -124,10 +205,7 @@ const MemberDetailsForm = ({ onSubmit, onBack }: MemberDetailsFormProps) => {
             </Label>
             <Popover open={showDobPicker} onOpenChange={setShowDobPicker}>
               <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-left font-normal"
-                >
+                <Button variant="outline" className="w-full justify-start text-left font-normal">
                   <CalendarDays className="mr-2 h-4 w-4" />
                   {dateOfBirth ? format(dateOfBirth, "dd MMM yyyy") : "Select date of birth"}
                 </Button>
@@ -155,9 +233,16 @@ const MemberDetailsForm = ({ onSubmit, onBack }: MemberDetailsFormProps) => {
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <IdCard className="w-4 h-4 text-accent" />
-              Photo ID Type
+              Photo ID Type *
             </Label>
-            <Select value={photoIdType} onValueChange={setPhotoIdType}>
+            <Select
+              value={photoIdType}
+              onValueChange={(v) => {
+                setPhotoIdType(v);
+                setPhotoIdNumber("");
+                setErrors((prev) => ({ ...prev, photoIdType: undefined, photoIdNumber: undefined }));
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select ID type" />
               </SelectTrigger>
@@ -167,25 +252,34 @@ const MemberDetailsForm = ({ onSubmit, onBack }: MemberDetailsFormProps) => {
                 <SelectItem value="voter">Voter ID</SelectItem>
               </SelectContent>
             </Select>
+            <InlineError message={touched.photoIdType && !photoIdType ? errors.photoIdType : undefined} />
           </div>
 
           {/* Photo ID Number */}
           {photoIdType && (
             <div className="space-y-2">
               <Label>
-                {photoIdType === "aadhaar" && "Aadhaar Number"}
-                {photoIdType === "pan" && "PAN Number"}
-                {photoIdType === "voter" && "Voter ID Number"}
+                {photoIdType === "aadhaar" && "Aadhaar Number *"}
+                {photoIdType === "pan" && "PAN Number *"}
+                {photoIdType === "voter" && "Voter ID Number *"}
               </Label>
-              <Input
+              <ValidatedInput
                 value={photoIdNumber}
-                onChange={(e) => setPhotoIdNumber(formatIdNumber(e.target.value, photoIdType))}
+                onChange={(e) => {
+                  const formatted = formatIdNumber(e.target.value, photoIdType);
+                  setPhotoIdNumber(formatted);
+                  if (touched.photoIdNumber) validateSingleField("photoIdNumber", formatted);
+                }}
+                onValidate={(v) => {
+                  markTouched("photoIdNumber");
+                  validateSingleField("photoIdNumber", v);
+                }}
                 placeholder={
                   photoIdType === "aadhaar" ? "1234 5678 9012" :
                   photoIdType === "pan" ? "ABCDE1234F" :
                   "ABC1234567"
                 }
-                required
+                error={touched.photoIdNumber ? errors.photoIdNumber : undefined}
               />
             </div>
           )}
@@ -194,13 +288,20 @@ const MemberDetailsForm = ({ onSubmit, onBack }: MemberDetailsFormProps) => {
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-accent" />
-              Address
+              Address *
             </Label>
-            <Input
+            <ValidatedInput
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={(e) => {
+                setAddress(e.target.value);
+                if (touched.address) validateSingleField("address", e.target.value);
+              }}
+              onValidate={(v) => {
+                markTouched("address");
+                validateSingleField("address", v);
+              }}
               placeholder="Enter your full address"
-              required
+              error={touched.address ? errors.address : undefined}
             />
           </div>
 
@@ -208,11 +309,11 @@ const MemberDetailsForm = ({ onSubmit, onBack }: MemberDetailsFormProps) => {
             <Button type="button" variant="outline" onClick={onBack} className="flex-1">
               Back
             </Button>
-            <Button 
-              type="submit" 
-              variant="accent" 
+            <Button
+              type="submit"
+              variant="accent"
               className="flex-1"
-              disabled={!fullName || !gender || !photoIdType || !photoIdNumber || !address}
+              disabled={!isFormValid}
             >
               Continue
               <ArrowRight className="w-4 h-4 ml-2" />

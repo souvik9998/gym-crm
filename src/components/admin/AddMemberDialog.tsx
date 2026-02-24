@@ -24,7 +24,17 @@ import { toast } from "@/components/ui/sonner";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { createMembershipIncomeEntry, calculateTrainerPercentageExpense } from "@/hooks/useLedger";
-import { z } from "zod";
+import {
+  addMemberSchema,
+  validateField,
+  validateForm,
+  nameSchema,
+  phoneSchema,
+  getPhotoIdSchema,
+  sanitize,
+  type FieldErrors,
+} from "@/lib/validation";
+import { ValidatedInput, InlineError } from "@/components/ui/validated-input";
 import {
   Select,
   SelectContent,
@@ -41,10 +51,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 
-const formSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters").max(100),
-  phone: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian phone number"),
-});
+// Using centralized addMemberSchema from validation.ts
 
 interface MonthlyPackage {
   id: string;
@@ -107,6 +114,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const [showDatePicker, setShowDatePicker] = useState(false);
   
   const [isLoading, setIsLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (open && currentBranch) {
@@ -211,12 +220,26 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const result = formSchema.safeParse({ name, phone });
+    const sanitizedName = sanitize(name);
+    const result = validateForm(addMemberSchema, { name: sanitizedName, phone });
     if (!result.success) {
+      setFieldErrors(result.errors);
+      setTouched({ name: true, phone: true });
       toast.error("Invalid Input", {
-        description: result.error.errors[0].message,
+        description: Object.values(result.errors).filter(Boolean)[0] || "Please check all fields",
       });
       return;
+    }
+
+    // Validate photo ID if provided
+    if (photoIdType && photoIdNumber) {
+      const idError = validateField(getPhotoIdSchema(photoIdType), photoIdNumber);
+      if (idError) {
+        setFieldErrors((prev) => ({ ...prev, photoIdNumber: idError }));
+        setTouched((prev) => ({ ...prev, photoIdNumber: true }));
+        toast.error("Invalid ID Number", { description: idError });
+        return;
+      }
     }
 
     if (!selectedPackageId) {
@@ -438,6 +461,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const resetForm = () => {
     setName("");
     setPhone("");
+    setFieldErrors({});
+    setTouched({});
     setGender("");
     setAddress("");
     setPhotoIdType("");
@@ -484,13 +509,21 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   <User className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
                   Full Name *
                 </Label>
-                <Input
+                <ValidatedInput
                   id="add-name"
                   placeholder="Enter member name"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^a-zA-Z\s.']/g, "");
+                    setName(val);
+                    if (touched.name) setFieldErrors((prev) => ({ ...prev, name: validateField(nameSchema, val) }));
+                  }}
+                  onValidate={(v) => {
+                    setTouched((prev) => ({ ...prev, name: true }));
+                    setFieldErrors((prev) => ({ ...prev, name: validateField(nameSchema, v) }));
+                  }}
+                  error={touched.name ? fieldErrors.name : undefined}
                   className="h-8 md:h-10 text-xs md:text-sm"
-                  required
                 />
               </div>
 

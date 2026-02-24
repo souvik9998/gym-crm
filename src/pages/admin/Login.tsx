@@ -1,72 +1,69 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dumbbell, Mail, Lock, Phone, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
-import { z } from "zod";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { queryClient } from "@/lib/queryClient";
-
-const adminLoginSchema = z.object({
-  email: z.string().email("Enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-const staffLoginSchema = z.object({
-  phone: z.string().min(10, "Enter a valid phone number"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
+import { ValidatedInput } from "@/components/ui/validated-input";
+import {
+  adminLoginSchema,
+  staffLoginSchema,
+  validateField,
+  validateForm,
+  emailSchema,
+  phoneSchema,
+  type FieldErrors,
+} from "@/lib/validation";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
   const { login: staffLogin, clearStaffState } = useStaffAuth();
-  
+
   // Admin state
   const [email, setEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [isAdminLoading, setIsAdminLoading] = useState(false);
-  
+  const [adminErrors, setAdminErrors] = useState<FieldErrors>({});
+  const [adminTouched, setAdminTouched] = useState<Record<string, boolean>>({});
+
   // Staff state
   const [phone, setPhone] = useState("");
   const [staffPassword, setStaffPassword] = useState("");
   const [isStaffLoading, setIsStaffLoading] = useState(false);
+  const [staffErrors, setStaffErrors] = useState<FieldErrors>({});
+  const [staffTouched, setStaffTouched] = useState<Record<string, boolean>>({});
 
-  // Clear React Query cache on login page load for fresh start
-  // NOTE: Do NOT call signOut here - that would log out users who just refreshed
   useEffect(() => {
     queryClient.clear();
   }, []);
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const result = adminLoginSchema.safeParse({ email, password: adminPassword });
+
+    const result = validateForm(adminLoginSchema, { email: email.trim(), password: adminPassword });
     if (!result.success) {
-      toast.error("Invalid Input", {
-        description: result.error.errors[0].message,
-      });
+      setAdminErrors(result.errors);
+      setAdminTouched({ email: true, password: true });
       return;
     }
 
     setIsAdminLoading(true);
-    
+
     try {
-      // CRITICAL: Clear any lingering staff state before admin login
       clearStaffState();
-      
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password: adminPassword,
       });
 
       if (error) throw error;
 
-      // SECURITY: Verify user has valid admin role before allowing navigation
       const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
         .select("role")
@@ -74,15 +71,13 @@ const AdminLogin = () => {
         .in("role", ["admin", "super_admin"]);
 
       if (rolesError || !roles || roles.length === 0) {
-        // User exists in auth.users but has no admin role - sign them out
         await supabase.auth.signOut();
         throw new Error("You don't have admin privileges. Contact the administrator.");
       }
 
-      const userRoles = roles.map(r => r.role);
+      const userRoles = roles.map((r) => r.role);
       const isSuperAdmin = userRoles.includes("super_admin");
 
-      // For non-super-admins, verify tenant membership
       if (!isSuperAdmin) {
         const { data: membership, error: membershipError } = await supabase
           .from("tenant_members")
@@ -96,7 +91,6 @@ const AdminLogin = () => {
         }
       }
 
-      // Redirect based on role
       if (isSuperAdmin) {
         navigate("/superadmin/dashboard");
       } else {
@@ -113,20 +107,19 @@ const AdminLogin = () => {
 
   const handleStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const result = staffLoginSchema.safeParse({ phone, password: staffPassword });
+
+    const result = validateForm(staffLoginSchema, { phone, password: staffPassword });
     if (!result.success) {
-      toast.error("Invalid Input", {
-        description: result.error.errors[0].message,
-      });
+      setStaffErrors(result.errors);
+      setStaffTouched({ phone: true, password: true });
       return;
     }
 
     setIsStaffLoading(true);
-    
+
     try {
       const { success, error } = await staffLogin(phone, staffPassword);
-      
+
       if (!success) {
         throw new Error(error || "Login failed");
       }
@@ -134,7 +127,6 @@ const AdminLogin = () => {
       toast.success("Login Successful", {
         description: "Welcome back!",
       });
-      // Staff users go to their dedicated dashboard
       navigate("/staff/dashboard");
     } catch (error: any) {
       toast.error("Login Failed", {
@@ -152,15 +144,8 @@ const AdminLogin = () => {
           <CardHeader className="text-center pb-4">
             <div className="flex items-center justify-center gap-2 mb-4">
               <div style={{ height: "4rem" }} className="flex items-center justify-center gap-3 mb-4 w-full h-20">
-                <div
-                  style={{ width: "4rem" }}
-                  className="h-full rounded-xl overflow-hidden"
-                >
-                  <img
-                    src="/logo.jpg"
-                    alt="Icon"
-                    className="w-full h-full object-contain"
-                  />
+                <div style={{ width: "4rem" }} className="h-full rounded-xl overflow-hidden">
+                  <img src="/logo.jpg" alt="Icon" className="w-full h-full object-contain" />
                 </div>
               </div>
             </div>
@@ -168,9 +153,7 @@ const AdminLogin = () => {
               <Dumbbell className="w-5 h-5 text-accent" />
               Login Portal
             </CardTitle>
-            <CardDescription>
-              Sign in to access the admin dashboard
-            </CardDescription>
+            <CardDescription>Sign in to access the admin dashboard</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="admin" className="w-full">
@@ -192,29 +175,54 @@ const AdminLogin = () => {
                       <Mail className="w-4 h-4 text-accent" />
                       Email Address
                     </Label>
-                    <Input
+                    <ValidatedInput
                       id="email"
                       type="email"
                       placeholder="Enter your email address"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (adminTouched.email) {
+                          setAdminErrors((prev) => ({
+                            ...prev,
+                            email: validateField(emailSchema, e.target.value.trim()),
+                          }));
+                        }
+                      }}
+                      onValidate={(v) => {
+                        setAdminTouched((prev) => ({ ...prev, email: true }));
+                        setAdminErrors((prev) => ({ ...prev, email: validateField(emailSchema, v) }));
+                      }}
+                      error={adminTouched.email ? adminErrors.email : undefined}
                       autoComplete="email"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="admin-password" className="text-sm font-medium flex items-center gap-2">
                       <Lock className="w-4 h-4 text-accent" />
                       Password
                     </Label>
-                    <Input
+                    <ValidatedInput
                       id="admin-password"
                       type="password"
                       placeholder="••••••••"
                       value={adminPassword}
-                      onChange={(e) => setAdminPassword(e.target.value)}
-                      required
+                      onChange={(e) => {
+                        setAdminPassword(e.target.value);
+                        if (adminTouched.password && e.target.value.length > 0 && e.target.value.length < 6) {
+                          setAdminErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                        } else {
+                          setAdminErrors((prev) => ({ ...prev, password: undefined }));
+                        }
+                      }}
+                      onValidate={() => {
+                        setAdminTouched((prev) => ({ ...prev, password: true }));
+                        if (adminPassword.length > 0 && adminPassword.length < 6) {
+                          setAdminErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                        }
+                      }}
+                      error={adminTouched.password ? adminErrors.password : undefined}
                       autoComplete="current-password"
                     />
                   </div>
@@ -224,7 +232,7 @@ const AdminLogin = () => {
                     variant="accent"
                     size="lg"
                     className="w-full"
-                    disabled={isAdminLoading}
+                    disabled={isAdminLoading || !email.trim() || !adminPassword}
                   >
                     {isAdminLoading ? (
                       <div className="flex items-center gap-2">
@@ -235,8 +243,6 @@ const AdminLogin = () => {
                       "Sign In"
                     )}
                   </Button>
-
-                  {/* SECURITY: Sign-up hidden - new admins created by super admin only */}
                 </form>
               </TabsContent>
 
@@ -247,29 +253,55 @@ const AdminLogin = () => {
                       <Phone className="w-4 h-4 text-accent" />
                       Phone Number
                     </Label>
-                    <Input
+                    <ValidatedInput
                       id="phone"
                       type="tel"
                       placeholder="Enter your phone number"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      required
+                      onChange={(e) => {
+                        const cleaned = e.target.value.replace(/\D/g, "").slice(0, 10);
+                        setPhone(cleaned);
+                        if (staffTouched.phone && cleaned.length === 10) {
+                          setStaffErrors((prev) => ({
+                            ...prev,
+                            phone: validateField(phoneSchema, cleaned),
+                          }));
+                        }
+                      }}
+                      onValidate={(v) => {
+                        setStaffTouched((prev) => ({ ...prev, phone: true }));
+                        setStaffErrors((prev) => ({ ...prev, phone: validateField(phoneSchema, v) }));
+                      }}
+                      error={staffTouched.phone ? staffErrors.phone : undefined}
                       autoComplete="tel"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="staff-password" className="text-sm font-medium flex items-center gap-2">
                       <Lock className="w-4 h-4 text-accent" />
                       Password
                     </Label>
-                    <Input
+                    <ValidatedInput
                       id="staff-password"
                       type="password"
                       placeholder="••••••••"
                       value={staffPassword}
-                      onChange={(e) => setStaffPassword(e.target.value)}
-                      required
+                      onChange={(e) => {
+                        setStaffPassword(e.target.value);
+                        if (staffTouched.password && e.target.value.length > 0 && e.target.value.length < 6) {
+                          setStaffErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                        } else {
+                          setStaffErrors((prev) => ({ ...prev, password: undefined }));
+                        }
+                      }}
+                      onValidate={() => {
+                        setStaffTouched((prev) => ({ ...prev, password: true }));
+                        if (staffPassword.length > 0 && staffPassword.length < 6) {
+                          setStaffErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                        }
+                      }}
+                      error={staffTouched.password ? staffErrors.password : undefined}
                       autoComplete="current-password"
                     />
                   </div>
@@ -279,7 +311,7 @@ const AdminLogin = () => {
                     variant="accent"
                     size="lg"
                     className="w-full"
-                    disabled={isStaffLoading}
+                    disabled={isStaffLoading || phone.length !== 10 || !staffPassword}
                   >
                     {isStaffLoading ? (
                       <div className="flex items-center gap-2">
