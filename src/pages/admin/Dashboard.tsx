@@ -264,7 +264,9 @@ const AdminDashboard = () => {
   // Memoized filter change handler
   const handleMemberFilterChange = useCallback((value: MemberFilterValue) => {
     setMemberFilter(value);
-  }, [setMemberFilter]);
+    // Deactivate PT filter when a regular filter is selected
+    setPtFilterActive(false);
+  }, [setMemberFilter, setPtFilterActive]);
   
   // Separate handler for PT filter toggle
   const handlePtFilterChange = useCallback((active: boolean) => {

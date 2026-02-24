@@ -54,11 +54,7 @@ export const useDashboardStore = create<DashboardUIState>()(
       
       setActiveTab: (tab) => set({ activeTab: tab }),
       
-      setMemberFilter: (filter) => set((state) => ({
-        memberFilter: filter,
-        // Reset PT filter when switching to "all"
-        ptFilterActive: filter === "all" ? false : state.ptFilterActive,
-      })),
+      setMemberFilter: (filter) => set({ memberFilter: filter }),
       
       setPtFilterActive: (active) => set({ ptFilterActive: active }),
       
