@@ -397,13 +397,18 @@ export const MembersTable = ({
 
   const isExpiringSoon = (member: Member): boolean => {
     if (!member.subscription) return false;
-    const status = member.subscription.status;
-    return status === "expiring_soon";
+    if (member.subscription.status === "inactive") return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(member.subscription.end_date);
+    endDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 && diffDays <= 7;
   };
 
   const isExpired = (member: Member): boolean => {
     if (!member.subscription) return false;
-    // Check actual date, not just status
+    if (member.subscription.status === "inactive") return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const endDate = new Date(member.subscription.end_date);
