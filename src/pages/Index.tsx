@@ -19,7 +19,11 @@ const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { branchId } = useParams<{ branchId?: string }>();
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(() => {
+    // Restore phone from sessionStorage if user navigated back
+    const saved = sessionStorage.getItem(`registration-phone-${branchId || "default"}`);
+    return saved || "";
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [existingMember, setExistingMember] = useState<any>(null);
   const [membershipEndDate, setMembershipEndDate] = useState<string | null>(null);
@@ -303,6 +307,8 @@ const Index = () => {
                         onChange={(e) => {
                           const cleaned = e.target.value.replace(/\D/g, "").slice(0, 10);
                           setPhone(cleaned);
+                          // Persist to sessionStorage
+                          sessionStorage.setItem(`registration-phone-${branchId || "default"}`, cleaned);
                           if (phoneTouched && cleaned.length === 10) {
                             setPhoneError(validateField(phoneSchema, cleaned));
                           } else if (phoneTouched && cleaned.length > 0 && cleaned.length < 10) {

@@ -45,18 +45,19 @@ const ExtendPT = () => {
   const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
+    const fallback = branchId ? `/b/${branchId}` : "/admin/login";
     if (!member) {
       toast.error("Access Denied", {
         description: "Please access this page from the home page.",
       });
-      navigate("/");
+      navigate(fallback, { replace: true });
       return;
     }
     if (!membershipEndDate) {
       toast.error("No Active Membership", {
         description: "You need an active gym membership to add personal training.",
       });
-      navigate("/");
+      navigate(fallback, { replace: true });
       return;
     }
 
@@ -286,7 +287,7 @@ const ExtendPT = () => {
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-foreground -ml-2"
-            onClick={() => navigate("/", { state: { returnToOptions: true, phone: member.phone } })}
+            onClick={() => navigate(branchId ? `/b/${branchId}` : "/admin/login", { state: { returnToOptions: true, phone: member.phone } })}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
