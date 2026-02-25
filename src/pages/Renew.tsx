@@ -32,7 +32,7 @@ const Renew = () => {
 
   useEffect(() => {
     if (!member) {
-      navigate("/");
+      navigate(branchId ? `/b/${branchId}` : "/admin/login", { replace: true });
       return;
     }
 
@@ -175,7 +175,7 @@ const Renew = () => {
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-foreground -ml-2"
-            onClick={() => navigate("/")}
+            onClick={() => navigate(branchId ? `/b/${branchId}` : "/admin/login", { state: { returnToOptions: true, phone: member?.phone } })}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
@@ -195,7 +195,7 @@ const Renew = () => {
           isNewMember={false}
           memberName={member.name}
           onSubmit={handlePackageSubmit}
-          onBack={() => navigate("/", { state: { returnToOptions: true, phone: member.phone } })}
+          onBack={() => navigate(branchId ? `/b/${branchId}` : "/admin/login", { state: { returnToOptions: true, phone: member.phone } })}
           isLoading={isPaymentLoading}
           ptStartDate={existingPTEndDate && ptStartDate ? ptStartDate : undefined}
           existingMembershipEndDate={existingMembershipEndDate || undefined}

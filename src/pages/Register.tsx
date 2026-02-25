@@ -46,8 +46,8 @@ const Register = () => {
   useEffect(() => {
     if (!phone) {
       // If no phone, redirect to the appropriate landing page
-      const redirectPath = branchId ? `/b/${branchId}` : "/";
-      navigate(redirectPath);
+      const redirectPath = branchId ? `/b/${branchId}` : "/admin/login";
+      navigate(redirectPath, { replace: true });
     }
   }, [phone, navigate, branchId]);
 
@@ -160,7 +160,8 @@ const Register = () => {
               if (step === "package") {
                 setStep("details");
               } else {
-                navigate("/");
+                const backPath = branchId ? `/b/${branchId}` : "/admin/login";
+                navigate(backPath);
               }
             }}
           >
@@ -186,7 +187,7 @@ const Register = () => {
         {step === "details" && (
           <MemberDetailsForm
             onSubmit={handleDetailsSubmit}
-            onBack={() => navigate("/")}
+            onBack={() => navigate(branchId ? `/b/${branchId}` : "/admin/login")}
           />
         )}
 
