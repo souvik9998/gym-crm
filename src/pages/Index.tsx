@@ -290,8 +290,8 @@ const Index = () => {
                     <Phone className="w-4 h-4 text-accent" />
                     Phone Number
                   </Label>
-                  <div className="flex">
-                    <span className="inline-flex items-center px-4 rounded-l-lg border-2 border-r-0 border-input bg-muted text-muted-foreground text-sm font-medium">
+                  <div className="flex items-stretch">
+                    <span className="inline-flex items-center px-4 rounded-l-lg border border-r-0 border-input bg-muted text-muted-foreground text-sm font-medium h-11">
                       +91
                     </span>
                     <ValidatedInput
@@ -315,7 +315,7 @@ const Index = () => {
                         setPhoneError(validateField(phoneSchema, v));
                       }}
                       error={phoneTouched ? phoneError : undefined}
-                      className="rounded-l-none"
+                      className="rounded-l-none h-11 text-sm"
                       autoComplete="tel"
                     />
                   </div>
