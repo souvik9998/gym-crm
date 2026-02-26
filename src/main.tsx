@@ -1,14 +1,11 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { guardStaleSession, installRefreshFailureGuard } from "./lib/sessionGuard";
+import { guardStaleSession } from "./lib/sessionGuard";
 
-// Install runtime refresh failure guard immediately (intercepts fetch)
-installRefreshFailureGuard();
+// Synchronous check — clears obviously stale sessions from localStorage
+// so the Supabase client doesn't enter an infinite refresh loop.
+// No network calls, no fetch interception.
+guardStaleSession();
 
-// Guard stale sessions before rendering, then mount the app
-guardStaleSession()
-  .catch((err) => console.error("[Session Guard] Startup error:", err))
-  .finally(() => {
-    createRoot(document.getElementById("root")!).render(<App />);
-  });
+createRoot(document.getElementById("root")!).render(<App />);
