@@ -202,13 +202,24 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      const { data: memberData, error } = await supabase.rpc("check_phone_exists", {
-        phone_number: phone,
-        p_branch_id: branchId || null,
-      });
+      const rpcCall = async (attempt = 0): Promise<any> => {
+        try {
+          const { data, error } = await supabase.rpc("check_phone_exists", {
+            phone_number: phone,
+            p_branch_id: branchId || null,
+          });
+          if (error) throw error;
+          return data;
+        } catch (err) {
+          if (attempt < 1) {
+            await new Promise(r => setTimeout(r, 1000));
+            return rpcCall(attempt + 1);
+          }
+          throw err;
+        }
+      };
 
-      if (error) throw error;
-
+      const memberData = await rpcCall();
       const result = memberData?.[0];
 
       if (result?.member_exists) {

@@ -34,11 +34,25 @@ export interface PublicBranch {
 }
 
 const FETCH_TIMEOUT_MS = 8000;
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1000;
 
 function fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timeoutId));
+}
+
+async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
+  try {
+    return await fetchWithTimeout(url, options);
+  } catch (error) {
+    if (retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+      return fetchWithRetry(url, options, retries - 1);
+    }
+    throw error;
+  }
 }
 
 /**
@@ -52,7 +66,7 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
     const params = new URLSearchParams({ action: "packages" });
     if (branchId) params.append("branchId", branchId);
 
-    const response = await fetchWithTimeout(
+    const response = await fetchWithRetry(
       `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
       {
         method: "GET",
@@ -88,7 +102,7 @@ export async function fetchPublicTrainers(branchId?: string): Promise<PublicTrai
     const params = new URLSearchParams({ action: "trainers" });
     if (branchId) params.append("branchId", branchId);
 
-    const response = await fetchWithTimeout(
+    const response = await fetchWithRetry(
       `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
       {
         method: "GET",
@@ -120,7 +134,7 @@ export async function fetchPublicBranch(branchId: string): Promise<PublicBranch 
   try {
     const params = new URLSearchParams({ action: "branch", branchId });
 
-    const response = await fetchWithTimeout(
+    const response = await fetchWithRetry(
       `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
       {
         method: "GET",
@@ -153,7 +167,7 @@ export async function fetchDefaultBranch(): Promise<PublicBranch | null> {
   try {
     const params = new URLSearchParams({ action: "default-branch" });
 
-    const response = await fetchWithTimeout(
+    const response = await fetchWithRetry(
       `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
       {
         method: "GET",
