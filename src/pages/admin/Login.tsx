@@ -10,6 +10,7 @@ import { toast } from "@/components/ui/sonner";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { queryClient } from "@/lib/queryClient";
 import { ValidatedInput } from "@/components/ui/validated-input";
+import { withTimeout, AUTH_TIMEOUT_MS } from "@/lib/networkUtils";
 import {
   adminLoginSchema,
   staffLoginSchema,
@@ -59,18 +60,27 @@ const AdminLogin = () => {
     try {
       clearStaffState();
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: adminPassword,
-      });
+      const { data, error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password: adminPassword,
+        }),
+        AUTH_TIMEOUT_MS,
+        "Sign in"
+      );
 
       if (error) throw error;
 
-      const { data: roles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", data.user.id)
-        .in("role", ["admin", "super_admin"]);
+      const { data: roles, error: rolesError } = await withTimeout(
+        supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", data.user.id)
+          .in("role", ["admin", "super_admin"])
+          ,
+        AUTH_TIMEOUT_MS,
+        "Role check"
+      );
 
       if (rolesError || !roles || roles.length === 0) {
         await supabase.auth.signOut();
@@ -81,11 +91,16 @@ const AdminLogin = () => {
       const isSuperAdmin = userRoles.includes("super_admin");
 
       if (!isSuperAdmin) {
-        const { data: membership, error: membershipError } = await supabase
-          .from("tenant_members")
-          .select("tenant_id")
-          .eq("user_id", data.user.id)
-          .limit(1);
+        const { data: membership, error: membershipError } = await withTimeout(
+          supabase
+            .from("tenant_members")
+            .select("tenant_id")
+            .eq("user_id", data.user.id)
+            .limit(1)
+            ,
+          AUTH_TIMEOUT_MS,
+          "Tenant check"
+        );
 
         if (membershipError || !membership || membership.length === 0) {
           await supabase.auth.signOut();
@@ -99,8 +114,11 @@ const AdminLogin = () => {
         navigate("/admin/dashboard");
       }
     } catch (error: any) {
-      toast.error("Login Failed", {
-        description: error.message || "Something went wrong",
+      const isTimeout = error.message?.includes("timed out");
+      toast.error(isTimeout ? "Network Error" : "Login Failed", {
+        description: isTimeout
+          ? "Slow network detected. Please check your connection and try again."
+          : error.message || "Something went wrong",
       });
     } finally {
       setIsAdminLoading(false);
@@ -120,7 +138,11 @@ const AdminLogin = () => {
     setIsStaffLoading(true);
 
     try {
-      const { success, error } = await staffLogin(phone, staffPassword);
+      const { success, error } = await withTimeout(
+        staffLogin(phone, staffPassword),
+        AUTH_TIMEOUT_MS,
+        "Staff login"
+      );
 
       if (!success) {
         throw new Error(error || "Login failed");
@@ -131,8 +153,11 @@ const AdminLogin = () => {
       });
       navigate("/staff/dashboard");
     } catch (error: any) {
-      toast.error("Login Failed", {
-        description: error.message || "Invalid phone number or password",
+      const isTimeout = error.message?.includes("timed out");
+      toast.error(isTimeout ? "Network Error" : "Login Failed", {
+        description: isTimeout
+          ? "Slow network detected. Please check your connection and try again."
+          : error.message || "Invalid phone number or password",
       });
     } finally {
       setIsStaffLoading(false);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { withTimeout, AUTH_TIMEOUT_MS } from "@/lib/networkUtils";
 
 /**
  * Hook to check if the current user is a gym owner (admin role)
@@ -22,11 +23,15 @@ export const useIsAdmin = () => {
     const checkAdminRole = async (userId: string) => {
       try {
         // Check if user has admin or super_admin role
-        const { data, error } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", userId)
-          .in("role", ["admin", "super_admin"]);
+        const { data, error } = await withTimeout(
+          supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", userId)
+            .in("role", ["admin", "super_admin"]),
+          AUTH_TIMEOUT_MS,
+          "Admin role check"
+        );
 
         if (!isMounted.current) return;
 
@@ -72,7 +77,11 @@ export const useIsAdmin = () => {
     // INITIAL load (controls isLoading)
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await withTimeout(
+          supabase.auth.getSession(),
+          AUTH_TIMEOUT_MS,
+          "Auth init"
+        );
         if (!isMounted.current) return;
 
         if (session?.user) {

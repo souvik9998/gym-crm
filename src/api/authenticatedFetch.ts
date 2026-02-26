@@ -3,16 +3,19 @@
  * 
  * Provides authenticated API calls to protected edge functions.
  * Uses Supabase Auth token for both admin and staff sessions.
+ * Includes timeout handling for mobile network resilience.
  */
 
 import { supabase } from "@/integrations/supabase/client";
 import { SUPABASE_URL, SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
+import { withTimeout, AUTH_TIMEOUT_MS, DEFAULT_TIMEOUT_MS } from "@/lib/networkUtils";
 
 interface FetchOptions {
   action: string;
   params?: Record<string, string | number | undefined>;
   method?: "GET" | "POST";
   body?: any;
+  timeoutMs?: number;
 }
 
 /**
@@ -20,20 +23,34 @@ interface FetchOptions {
  * Works for both admin and staff users
  */
 export async function getAuthToken(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) return session.access_token;
+  try {
+    const { data: { session } } = await withTimeout(
+      supabase.auth.getSession(),
+      AUTH_TIMEOUT_MS,
+      "Get session"
+    );
+    if (session?.access_token) return session.access_token;
 
-  // If the access token is missing/expired, attempt a refresh once.
-  // This helps avoid intermittent 401 "Invalid JWT" responses from backend functions.
-  const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-  if (refreshError) return null;
-  return refreshData.session?.access_token || null;
+    // If the access token is missing/expired, attempt a refresh once.
+    const { data: refreshData, error: refreshError } = await withTimeout(
+      supabase.auth.refreshSession(),
+      AUTH_TIMEOUT_MS,
+      "Refresh session"
+    );
+    if (refreshError) return null;
+    return refreshData.session?.access_token || null;
+  } catch (error) {
+    console.error("getAuthToken failed:", error);
+    return null;
+  }
 }
 
 /**
  * Make an authenticated request to the protected-data edge function
  */
 export async function protectedFetch<T>(options: FetchOptions): Promise<T> {
+  const requestTimeout = options.timeoutMs || DEFAULT_TIMEOUT_MS;
+
   const makeRequest = async (token: string) => {
     const params = new URLSearchParams({ action: options.action });
     if (options.params) {
@@ -44,18 +61,32 @@ export async function protectedFetch<T>(options: FetchOptions): Promise<T> {
       });
     }
 
-    return fetch(
-      `${getEdgeFunctionUrl("protected-data")}?${params.toString()}`,
-      {
-        method: options.method || "GET",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${token}`,
-        },
-        body: options.body ? JSON.stringify(options.body) : undefined,
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), requestTimeout);
+
+    try {
+      const response = await fetch(
+        `${getEdgeFunctionUrl("protected-data")}?${params.toString()}`,
+        {
+          method: options.method || "GET",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+          },
+          body: options.body ? JSON.stringify(options.body) : undefined,
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === "AbortError") {
+        throw new Error(`Request timed out after ${Math.round(requestTimeout / 1000)}s. Please check your network connection.`);
       }
-    );
+      throw error;
+    }
   };
 
   let token = await getAuthToken();
@@ -66,18 +97,24 @@ export async function protectedFetch<T>(options: FetchOptions): Promise<T> {
   if (!response.ok) {
     const parsed = await response.json().catch(() => ({ error: "Request failed" }));
 
-    // If the gateway reports an invalid/expired token, refresh and retry once.
-    // NOTE: Some backends return { code: 401, message: "Invalid JWT" }.
     const maybeInvalidJwt =
       response.status === 401 &&
       (parsed?.message === "Invalid JWT" || parsed?.error === "Invalid JWT" || parsed?.code === 401);
 
     if (maybeInvalidJwt) {
-      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
-      if (!refreshError && refreshed.session?.access_token) {
-        token = refreshed.session.access_token;
-        response = await makeRequest(token);
-        if (response.ok) return response.json();
+      try {
+        const { data: refreshed, error: refreshError } = await withTimeout(
+          supabase.auth.refreshSession(),
+          AUTH_TIMEOUT_MS,
+          "Token refresh"
+        );
+        if (!refreshError && refreshed.session?.access_token) {
+          token = refreshed.session.access_token;
+          response = await makeRequest(token);
+          if (response.ok) return response.json();
+        }
+      } catch {
+        // Refresh failed, throw original error
       }
     }
 

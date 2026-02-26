@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { withTimeout, AUTH_TIMEOUT_MS } from "@/lib/networkUtils";
 import type { StaffBranchRestriction } from "@/contexts/BranchContext";
 
 export interface StaffUser {
@@ -88,8 +89,11 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
   // Verify session using the edge function
   const verifySession = useCallback(async (): Promise<boolean> => {
     try {
-      // Get current Supabase session
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await withTimeout(
+        supabase.auth.getSession(),
+        AUTH_TIMEOUT_MS,
+        "Staff session check"
+      );
       
       if (!session?.access_token) {
         return false;
@@ -100,15 +104,15 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
         return false;
       }
 
-       // IMPORTANT: When using supabase-js `functions.invoke`, don't manually set
-       // `Content-Type` while passing an object body, otherwise the body can be
-       // coerced to the string "[object Object]" in some runtimes.
-       // Pass action via querystring to avoid body parsing issues entirely.
-       const { data } = await supabase.functions.invoke("staff-auth?action=verify-session", {
-         headers: {
-           Authorization: `Bearer ${session.access_token}`,
-         },
-       });
+       const { data } = await withTimeout(
+         supabase.functions.invoke("staff-auth?action=verify-session", {
+           headers: {
+             Authorization: `Bearer ${session.access_token}`,
+           },
+         }),
+         AUTH_TIMEOUT_MS,
+         "Staff verify"
+       );
 
       // Parse response - check if it's a string
       const response = typeof data === "string" ? JSON.parse(data) : data;
@@ -160,8 +164,11 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
     // INITIAL load (controls isLoading)
     const initAuth = async () => {
       try {
-        // Check if there's a Supabase session
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await withTimeout(
+          supabase.auth.getSession(),
+          AUTH_TIMEOUT_MS,
+          "Staff init"
+        );
         if (!isMounted) return;
         
         if (session?.user) {
