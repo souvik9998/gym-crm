@@ -1,46 +1,50 @@
 
-## Fix Registration Portal Reliability and Speed
 
-### Problem
-The registration portal gets stuck on a loading screen for some devices because:
-1. Edge function calls (`public-data`) have cold starts taking 4-5 seconds and no timeout - if the call fails or hangs, the page is stuck forever with no way to recover
-2. No error handling or retry mechanism - users see infinite loading with no recourse
-3. The package selection page also relies on slow edge function calls with no caching
-4. When visiting root `/`, the `fetchDefaultBranch` edge function call can hang before redirecting
+## Fix: Mobile Network API Failures in Registration Portal
 
-### Solution
+### Root Cause Analysis
 
-#### 1. Add Timeout and Error Recovery to API Calls (`src/api/publicData.ts`)
-- Add `AbortController` with a 8-second timeout to every `fetch` call
-- If a fetch times out, it returns gracefully (empty data or null) instead of hanging forever
-- This ensures the page never gets permanently stuck
+There are **3 key issues** causing failures on mobile networks:
 
-#### 2. Fix Index.tsx (Phone Entry Page)
-- Add a timeout fallback: if branch info doesn't load within 5 seconds, show the page anyway with a generic "Gym Portal" name and let users proceed
-- Add an error state with a "Retry" button so users can tap to reload if something fails
-- Add `fetchDefaultBranch` timeout so users aren't stuck on `/` forever - after 8 seconds, redirect to admin login as fallback
-- Ensure the Continue button is always interactive once the phone number is valid (never block on branch name loading)
+1. **CORS Headers Missing Required Fields**: The `public-data` edge function's CORS headers are missing `x-supabase-client-platform`, `x-supabase-client-platform-version`, `x-supabase-client-runtime`, and `x-supabase-client-runtime-version`. Mobile browsers send these headers, and the preflight (OPTIONS) request gets rejected, causing all subsequent API calls to fail silently.
 
-#### 3. Fix PackageSelectionForm.tsx (Package Selection Page)
-- Cache fetched packages and trainers in `sessionStorage` so returning to this page is instant
-- Show cached data immediately, refresh in background
-- Add a retry button if the initial fetch fails completely
-- Add timeout to prevent infinite loading state
+2. **No Retry Logic for Flaky Connections**: Mobile networks drop packets and have variable latency. Currently, if any fetch fails (edge function or direct DB), it just gives up. There's no retry mechanism.
 
-#### 4. Warm Edge Function on Page Load
-- Fire a lightweight "warm-up" fetch to the `public-data` edge function as soon as the Index page mounts (before the user even finishes typing their phone number)
-- This pre-warms the edge function so that by the time user reaches the package page, the function is already warm and responds fast
+3. **Edge Function Not Deployed**: The `public-data` edge function appears to not be deployed (returned 404 on test call). It needs to be redeployed.
 
-### Technical Details
+### Fix Plan
 
-**Files to modify:**
-- `src/api/publicData.ts` - Add AbortController timeouts (8s) to all 4 fetch functions
-- `src/pages/Index.tsx` - Add timeout fallback for branch loading, error/retry state, edge function warm-up call
-- `src/components/registration/PackageSelectionForm.tsx` - Add sessionStorage caching for packages/trainers, retry button on failure
-- `src/pages/Register.tsx` - Add edge function warm-up when details step loads (so packages are ready when user moves to step 2)
+#### 1. Fix CORS Headers in `public-data` Edge Function
+Update the `corsHeaders` in `supabase/functions/public-data/index.ts` to include all required Supabase client headers:
 
-**Key reliability guarantees:**
-- Page renders within 1-2 seconds on any device (cached data or skeleton + timeout fallback)
-- No API call can block the page for more than 8 seconds
-- Users always have a way to proceed or retry if something fails
-- Returning to previously visited pages is instant (sessionStorage cache)
+```text
+Before:
+"Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
+
+After:
+"Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version"
+```
+
+Then redeploy the function.
+
+#### 2. Add Retry Logic to `src/api/publicData.ts`
+Add a `fetchWithRetry` wrapper that retries failed requests up to 2 times with a short delay (1 second). This handles the common case of a transient mobile network drop.
+
+#### 3. Add Retry Logic to `src/pages/Index.tsx`
+The `check_phone_exists` RPC call and direct branch DB query should also retry once on failure, so the "Continue" button doesn't get stuck in "Checking..." state.
+
+#### 4. Add Retry Logic to `src/components/registration/PackageSelectionForm.tsx`
+The package/trainer fetch should also retry automatically rather than requiring the user to manually tap "Retry".
+
+### Files to Modify
+- `supabase/functions/public-data/index.ts` -- Fix CORS headers + redeploy
+- `src/api/publicData.ts` -- Add `fetchWithRetry` (retry up to 2x with 1s delay)
+- `src/pages/Index.tsx` -- Add retry to `check_phone_exists` RPC and branch query
+- `src/components/registration/PackageSelectionForm.tsx` -- Add auto-retry on fetch failure
+
+### Expected Result
+After these fixes, users on mobile networks will:
+- No longer get CORS preflight failures blocking all API calls
+- Have automatic retry on transient network drops
+- See the gym name and packages load reliably even on slow 3G/4G connections
+
