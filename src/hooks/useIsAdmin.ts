@@ -4,11 +4,9 @@ import { withTimeout, AUTH_TIMEOUT_MS } from "@/lib/networkUtils";
 
 /**
  * Hook to check if the current user is a gym owner (admin role)
- * Role hierarchy: super_admin (SaaS owner) > admin (gym owner)
- * Returns true if user has 'admin' or 'super_admin' role in user_roles table
  * 
- * IMPORTANT: Uses separate initial load vs ongoing changes pattern to prevent
- * race conditions on page refresh.
+ * Uses in-flight guard to prevent duplicate role-check requests
+ * from overlapping onAuthStateChange + initial getSession calls.
  */
 export const useIsAdmin = () => {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -16,13 +14,18 @@ export const useIsAdmin = () => {
   const [isGymOwner, setIsGymOwner] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const isMounted = useRef(true);
+  const checkInFlight = useRef(false);
 
   useEffect(() => {
     isMounted.current = true;
+    let initDone = false;
 
     const checkAdminRole = async (userId: string) => {
+      // Prevent overlapping role checks
+      if (checkInFlight.current) return;
+      checkInFlight.current = true;
+
       try {
-        // Check if user has admin or super_admin role
         const { data, error } = await withTimeout(
           supabase
             .from("user_roles")
@@ -52,17 +55,17 @@ export const useIsAdmin = () => {
         setIsAdmin(false);
         setIsSuperAdmin(false);
         setIsGymOwner(false);
+      } finally {
+        checkInFlight.current = false;
       }
     };
 
-    // Listener for ONGOING auth changes (does NOT control isLoading)
+    // Listener for ONGOING auth changes — only fires after init completes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (!isMounted.current) return;
+        if (!isMounted.current || !initDone) return;
         
-        // Fire and forget - don't await, don't set loading
         if (session?.user) {
-          // Use setTimeout(0) to avoid Supabase deadlock
           setTimeout(() => {
             checkAdminRole(session.user.id);
           }, 0);
@@ -74,7 +77,7 @@ export const useIsAdmin = () => {
       }
     );
 
-    // INITIAL load (controls isLoading)
+    // INITIAL load
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await withTimeout(
@@ -85,7 +88,6 @@ export const useIsAdmin = () => {
         if (!isMounted.current) return;
 
         if (session?.user) {
-          // Fetch role BEFORE setting loading false
           await checkAdminRole(session.user.id);
         } else {
           setIsAdmin(false);
@@ -99,7 +101,10 @@ export const useIsAdmin = () => {
         setIsSuperAdmin(false);
         setIsGymOwner(false);
       } finally {
-        if (isMounted.current) setIsLoading(false);
+        if (isMounted.current) {
+          setIsLoading(false);
+          initDone = true;
+        }
       }
     };
 

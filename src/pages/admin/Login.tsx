@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,16 +39,22 @@ const AdminLogin = () => {
   const [staffErrors, setStaffErrors] = useState<FieldErrors>({});
   const [staffTouched, setStaffTouched] = useState<Record<string, boolean>>({});
 
+  // Ref-based locks to prevent double-tap / overlapping submissions
+  const adminLoginLock = useRef(false);
+  const staffLoginLock = useRef(false);
+
   useEffect(() => {
     queryClient.clear();
     localStorage.removeItem("auth-refresh-fail-count");
     // Kill any background token refresh that competes with login on mobile.
-    // signOut() is local-only when there's no valid session, so it's safe.
     supabase.auth.signOut({ scope: "local" }).catch(() => {});
   }, []);
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Double-tap guard: ref check is synchronous and faster than state
+    if (adminLoginLock.current) return;
 
     const result = validateForm(adminLoginSchema, { email: email.trim(), password: adminPassword });
     if (!result.success) {
@@ -57,12 +63,12 @@ const AdminLogin = () => {
       return;
     }
 
+    adminLoginLock.current = true;
     setIsAdminLoading(true);
 
     try {
       clearStaffState();
 
-      // Retry login once on transient mobile network failures
       const { data, error } = await resilientCall(
         () => supabase.auth.signInWithPassword({
           email: email.trim(),
@@ -124,11 +130,15 @@ const AdminLogin = () => {
       });
     } finally {
       setIsAdminLoading(false);
+      adminLoginLock.current = false;
     }
   };
 
   const handleStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Double-tap guard
+    if (staffLoginLock.current) return;
 
     const result = validateForm(staffLoginSchema, { phone, password: staffPassword });
     if (!result.success) {
@@ -137,6 +147,7 @@ const AdminLogin = () => {
       return;
     }
 
+    staffLoginLock.current = true;
     setIsStaffLoading(true);
 
     try {
@@ -162,6 +173,7 @@ const AdminLogin = () => {
       });
     } finally {
       setIsStaffLoading(false);
+      staffLoginLock.current = false;
     }
   };
 
