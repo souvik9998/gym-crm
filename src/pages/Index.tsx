@@ -15,6 +15,14 @@ const formSchema = z.object({
   phone: phoneSchema,
 });
 
+/** Race a promise against a timeout. Rejects with 'Timeout' if ms exceeded. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms)),
+  ]);
+}
+
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -99,32 +107,32 @@ const Index = () => {
     setBranchError(false);
     if (!branchInfo) setIsBranchLoading(true);
 
-    // 5s timeout — show page with generic name if it takes too long
-    const timeout = setTimeout(() => {
-      setIsBranchLoading(false);
-    }, 5000);
-
     try {
-      // Direct DB query (fast, no cold start)
-      const { data, error } = await supabase
-        .from("branches")
-        .select("id, name")
-        .eq("id", branchId)
-        .eq("is_active", true)
-        .is("deleted_at", null)
-        .maybeSingle();
+      // Direct DB query with 6s timeout
+      const dbPromise = new Promise<{ data: any; error: any }>((resolve) => {
+        supabase
+          .from("branches")
+          .select("id, name")
+          .eq("id", branchId)
+          .eq("is_active", true)
+          .is("deleted_at", null)
+          .maybeSingle()
+          .then(resolve, () => resolve({ data: null, error: true }));
+      });
+      const { data, error } = await withTimeout(dbPromise, 6000);
 
       if (!error && data) {
         const info = { id: data.id, name: data.name };
         setBranchInfo(info);
         sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
         setIsBranchLoading(false);
-        clearTimeout(timeout);
         return;
       }
-    } catch { /* fall through */ }
+    } catch {
+      console.warn("Branch DB query failed/timed out, trying edge function...");
+    }
 
-    // Fallback to edge function
+    // Fallback to edge function (already has its own timeout + retry)
     try {
       const branch = await fetchPublicBranch(branchId);
       if (branch) {
@@ -138,7 +146,6 @@ const Index = () => {
       if (!branchInfo) setBranchError(true);
     }
     setIsBranchLoading(false);
-    clearTimeout(timeout);
   }, [branchId]);
 
   useEffect(() => {
@@ -204,12 +211,16 @@ const Index = () => {
     try {
       const rpcCall = async (attempt = 0): Promise<any> => {
         try {
-          const { data, error } = await supabase.rpc("check_phone_exists", {
-            phone_number: phone,
-            p_branch_id: branchId || null,
+          const rpcPromise = new Promise<any>((resolve, reject) => {
+            supabase.rpc("check_phone_exists", {
+              phone_number: phone,
+              p_branch_id: branchId || null,
+            }).then(
+              ({ data, error }) => { if (error) reject(error); else resolve(data); },
+              reject
+            );
           });
-          if (error) throw error;
-          return data;
+          return await withTimeout(rpcPromise, 10000);
         } catch (err) {
           if (attempt < 1) {
             await new Promise(r => setTimeout(r, 1000));
@@ -248,9 +259,10 @@ const Index = () => {
         navigate(basePath, { state: { phone, branchId, branchName: branchInfo?.name } });
       }
     } catch (error: any) {
-      toast.error("Error", {
-        description: error.message || "Something went wrong",
-      });
+      const msg = error?.message === "Timeout" 
+        ? "Network is slow. Please check your connection and try again." 
+        : (error?.message || "Something went wrong");
+      toast.error("Error", { description: msg });
     } finally {
       setIsLoading(false);
     }
