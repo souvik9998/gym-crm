@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +20,6 @@ const Index = () => {
   const location = useLocation();
   const { branchId } = useParams<{ branchId?: string }>();
   const [phone, setPhone] = useState(() => {
-    // Restore phone from sessionStorage if user navigated back
     const saved = sessionStorage.getItem(`registration-phone-${branchId || "default"}`);
     return saved || "";
   });
@@ -29,7 +28,17 @@ const Index = () => {
   const [membershipEndDate, setMembershipEndDate] = useState<string | null>(null);
   const [membershipStartDate, setMembershipStartDate] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
-  const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(null);
+  const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(() => {
+    // Instantly restore cached branch info to avoid "Loading..."
+    if (branchId) {
+      const cached = sessionStorage.getItem(`branch-info-${branchId}`);
+      if (cached) {
+        try { return JSON.parse(cached); } catch { /* ignore */ }
+      }
+    }
+    return null;
+  });
+  const [isBranchLoading, setIsBranchLoading] = useState(!branchInfo);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [phoneError, setPhoneError] = useState<string | undefined>();
   const [phoneTouched, setPhoneTouched] = useState(false);
@@ -46,14 +55,17 @@ const Index = () => {
     }
   }, [branchId, navigate, isRedirecting]);
 
-  // Fetch branch info
+  // Fetch branch info (with cache)
   useEffect(() => {
     if (branchId) {
       fetchPublicBranch(branchId).then((branch) => {
         if (branch) {
-          setBranchInfo({ id: branch.id, name: branch.name });
+          const info = { id: branch.id, name: branch.name };
+          setBranchInfo(info);
+          sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
         }
-      });
+        setIsBranchLoading(false);
+      }).catch(() => setIsBranchLoading(false));
     }
   }, [branchId]);
 
@@ -184,6 +196,9 @@ const Index = () => {
     setPhoneTouched(false);
   };
 
+  // Page is ready when branch info is loaded (or cached)
+  const isPageReady = !!branchInfo;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Header */}
@@ -193,10 +208,19 @@ const Index = () => {
             <img src="/logo.jpg" alt="Icon" className="w-full h-full object-contain" />
           </div>
         </div>
-        <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
-          {branchInfo?.name || "Loading..."}
-        </h1>
-        {branchInfo?.name && <p className="text-muted-foreground text-lg">Member Registration Portal</p>}
+        {isBranchLoading && !branchInfo ? (
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-9 w-48 bg-muted animate-pulse rounded-lg" />
+            <div className="h-5 w-56 bg-muted/60 animate-pulse rounded-md" />
+          </div>
+        ) : (
+          <>
+            <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
+              {branchInfo?.name || "Gym Portal"}
+            </h1>
+            <p className="text-muted-foreground text-lg">Member Registration Portal</p>
+          </>
+        )}
       </header>
 
       {/* Main Content */}
@@ -307,7 +331,6 @@ const Index = () => {
                         onChange={(e) => {
                           const cleaned = e.target.value.replace(/\D/g, "").slice(0, 10);
                           setPhone(cleaned);
-                          // Persist to sessionStorage
                           sessionStorage.setItem(`registration-phone-${branchId || "default"}`, cleaned);
                           if (phoneTouched && cleaned.length === 10) {
                             setPhoneError(validateField(phoneSchema, cleaned));
@@ -334,12 +357,17 @@ const Index = () => {
                   variant="accent"
                   size="lg"
                   className="w-full mt-6"
-                  disabled={isLoading || phone.length !== 10}
+                  disabled={isLoading || phone.length !== 10 || !isPageReady}
                 >
                   {isLoading ? (
                     <div className="flex items-center gap-2">
                       <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
                       Checking...
+                    </div>
+                  ) : !isPageReady ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
+                      Loading...
                     </div>
                   ) : (
                     <>
