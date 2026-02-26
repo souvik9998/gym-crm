@@ -10,7 +10,7 @@ import { toast } from "@/components/ui/sonner";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { queryClient } from "@/lib/queryClient";
 import { ValidatedInput } from "@/components/ui/validated-input";
-import { withTimeout, AUTH_TIMEOUT_MS } from "@/lib/networkUtils";
+import { withTimeout, resilientCall, AUTH_TIMEOUT_MS } from "@/lib/networkUtils";
 import {
   adminLoginSchema,
   staffLoginSchema,
@@ -41,8 +41,10 @@ const AdminLogin = () => {
 
   useEffect(() => {
     queryClient.clear();
-    // Reset refresh failure counter on login page visit
     localStorage.removeItem("auth-refresh-fail-count");
+    // Kill any background token refresh that competes with login on mobile.
+    // signOut() is local-only when there's no valid session, so it's safe.
+    supabase.auth.signOut({ scope: "local" }).catch(() => {});
   }, []);
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
@@ -60,13 +62,13 @@ const AdminLogin = () => {
     try {
       clearStaffState();
 
-      const { data, error } = await withTimeout(
-        supabase.auth.signInWithPassword({
+      // Retry login once on transient mobile network failures
+      const { data, error } = await resilientCall(
+        () => supabase.auth.signInWithPassword({
           email: email.trim(),
           password: adminPassword,
         }),
-        AUTH_TIMEOUT_MS,
-        "Sign in"
+        { timeoutMs: AUTH_TIMEOUT_MS, retries: 1, retryDelayMs: 2000, label: "Sign in" }
       );
 
       if (error) throw error;
@@ -138,10 +140,9 @@ const AdminLogin = () => {
     setIsStaffLoading(true);
 
     try {
-      const { success, error } = await withTimeout(
-        staffLogin(phone, staffPassword),
-        AUTH_TIMEOUT_MS,
-        "Staff login"
+      const { success, error } = await resilientCall(
+        () => staffLogin(phone, staffPassword),
+        { timeoutMs: AUTH_TIMEOUT_MS, retries: 1, retryDelayMs: 2000, label: "Staff login" }
       );
 
       if (!success) {
