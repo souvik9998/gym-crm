@@ -3,10 +3,10 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Phone, ArrowRight, Shield, Clock, CreditCard, Dumbbell, UserPlus, ArrowLeft } from "lucide-react";
+import { Phone, ArrowRight, Shield, Clock, CreditCard, Dumbbell, UserPlus, ArrowLeft, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
-import { fetchPublicBranch, fetchDefaultBranch } from "@/api/publicData";
+import { fetchPublicBranch, fetchDefaultBranch, warmUpEdgeFunction } from "@/api/publicData";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import { phoneSchema, validateField, validateForm } from "@/lib/validation";
 import { z } from "zod";
@@ -29,7 +29,6 @@ const Index = () => {
   const [membershipStartDate, setMembershipStartDate] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
   const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(() => {
-    // Instantly restore cached branch info to avoid "Loading..."
     if (branchId) {
       const cached = sessionStorage.getItem(`branch-info-${branchId}`);
       if (cached) {
@@ -39,64 +38,112 @@ const Index = () => {
     return null;
   });
   const [isBranchLoading, setIsBranchLoading] = useState(!branchInfo);
+  const [branchError, setBranchError] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [phoneError, setPhoneError] = useState<string | undefined>();
   const [phoneTouched, setPhoneTouched] = useState(false);
 
-  // Redirect to default branch if no branchId is provided
+  // Warm up edge function immediately on mount
+  useEffect(() => {
+    warmUpEdgeFunction();
+  }, []);
+
+  // Redirect to default branch if no branchId — with 8s timeout fallback
   useEffect(() => {
     if (!branchId && !isRedirecting) {
       setIsRedirecting(true);
-      fetchDefaultBranch().then((branch) => {
-        if (branch) {
-          navigate(`/b/${branch.id}`, { replace: true });
+      const timeout = setTimeout(() => {
+        // If default branch fetch hangs, go to admin login
+        navigate("/admin/login", { replace: true });
+      }, 8000);
+
+      // Try direct DB first
+      const doRedirect = async () => {
+        try {
+          const { data } = await supabase
+            .from("branches")
+            .select("id")
+            .eq("is_default", true)
+            .eq("is_active", true)
+            .is("deleted_at", null)
+            .maybeSingle();
+
+          clearTimeout(timeout);
+          if (data) {
+            navigate(`/b/${data.id}`, { replace: true });
+            return;
+          }
+        } catch { /* fall through */ }
+
+        try {
+          clearTimeout(timeout);
+          const branch = await fetchDefaultBranch();
+          if (branch) {
+            navigate(`/b/${branch.id}`, { replace: true });
+          } else {
+            navigate("/admin/login", { replace: true });
+          }
+        } catch {
+          navigate("/admin/login", { replace: true });
         }
-      });
+      };
+      doRedirect();
+
+      return () => clearTimeout(timeout);
     }
   }, [branchId, navigate, isRedirecting]);
 
-  // Fetch branch info - try direct DB first (fast), edge function as fallback
-  useEffect(() => {
+  // Fetch branch info with timeout fallback
+  const fetchBranchInfo = useCallback(async () => {
     if (!branchId) return;
-    if (branchInfo) {
-      // Already have cached data, still refresh in background
+    setBranchError(false);
+    if (!branchInfo) setIsBranchLoading(true);
+
+    // 5s timeout — show page with generic name if it takes too long
+    const timeout = setTimeout(() => {
       setIsBranchLoading(false);
+    }, 5000);
+
+    try {
+      // Direct DB query (fast, no cold start)
+      const { data, error } = await supabase
+        .from("branches")
+        .select("id, name")
+        .eq("id", branchId)
+        .eq("is_active", true)
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      if (!error && data) {
+        const info = { id: data.id, name: data.name };
+        setBranchInfo(info);
+        sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
+        setIsBranchLoading(false);
+        clearTimeout(timeout);
+        return;
+      }
+    } catch { /* fall through */ }
+
+    // Fallback to edge function
+    try {
+      const branch = await fetchPublicBranch(branchId);
+      if (branch) {
+        const info = { id: branch.id, name: branch.name };
+        setBranchInfo(info);
+        sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
+      } else if (!branchInfo) {
+        setBranchError(true);
+      }
+    } catch {
+      if (!branchInfo) setBranchError(true);
     }
-    
-    // Try direct Supabase query first (much faster, no cold start)
-    const fetchDirect = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("branches")
-          .select("id, name")
-          .eq("id", branchId)
-          .eq("is_active", true)
-          .is("deleted_at", null)
-          .maybeSingle();
-        
-        if (!error && data) {
-          const info = { id: data.id, name: data.name };
-          setBranchInfo(info);
-          sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
-          setIsBranchLoading(false);
-          return;
-        }
-      } catch { /* fall through to edge function */ }
-      
-      // Fallback to edge function (for cases where RLS blocks anonymous read)
-      try {
-        const branch = await fetchPublicBranch(branchId);
-        if (branch) {
-          const info = { id: branch.id, name: branch.name };
-          setBranchInfo(info);
-          sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
-        }
-      } catch { /* ignore */ }
-      setIsBranchLoading(false);
-    };
-    
-    fetchDirect();
+    setIsBranchLoading(false);
+    clearTimeout(timeout);
   }, [branchId]);
+
+  useEffect(() => {
+    fetchBranchInfo();
+  }, [fetchBranchInfo]);
 
   // Handle return from Renew/ExtendPT pages
   useEffect(() => {
@@ -238,6 +285,14 @@ const Index = () => {
           <div className="flex flex-col items-center gap-2">
             <div className="h-9 w-48 bg-muted animate-pulse rounded-lg" />
             <div className="h-5 w-56 bg-muted/60 animate-pulse rounded-md" />
+          </div>
+        ) : branchError && !branchInfo ? (
+          <div className="flex flex-col items-center gap-2">
+            <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">Gym Portal</h1>
+            <p className="text-muted-foreground text-lg">Member Registration Portal</p>
+            <Button variant="ghost" size="sm" onClick={fetchBranchInfo} className="mt-1 text-accent">
+              <RefreshCw className="w-4 h-4 mr-1" /> Retry loading
+            </Button>
           </div>
         ) : (
           <>
