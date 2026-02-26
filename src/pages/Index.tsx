@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Phone, ArrowRight, Shield, Clock, CreditCard, Dumbbell, UserPlus, ArrowLeft, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
-import { fetchPublicBranch, fetchDefaultBranch, warmUpEdgeFunction } from "@/api/publicData";
+import { fetchPublicBranch, fetchDefaultBranch } from "@/api/publicData";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import { phoneSchema, validateField, validateForm } from "@/lib/validation";
 import { z } from "zod";
@@ -14,14 +14,6 @@ import { z } from "zod";
 const formSchema = z.object({
   phone: phoneSchema,
 });
-
-/** Race a promise against a timeout. Rejects with 'Timeout' if ms exceeded. */
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms)),
-  ]);
-}
 
 const Index = () => {
   const navigate = useNavigate();
@@ -51,10 +43,6 @@ const Index = () => {
   const [phoneError, setPhoneError] = useState<string | undefined>();
   const [phoneTouched, setPhoneTouched] = useState(false);
 
-  // Warm up edge function immediately on mount
-  useEffect(() => {
-    warmUpEdgeFunction();
-  }, []);
 
   // Redirect to default branch if no branchId — with 8s timeout fallback
   useEffect(() => {
@@ -65,33 +53,17 @@ const Index = () => {
         navigate("/admin/login", { replace: true });
       }, 8000);
 
-      // Try direct DB first
       const doRedirect = async () => {
         try {
-          const { data } = await supabase
-            .from("branches")
-            .select("id")
-            .eq("is_default", true)
-            .eq("is_active", true)
-            .is("deleted_at", null)
-            .maybeSingle();
-
-          clearTimeout(timeout);
-          if (data) {
-            navigate(`/b/${data.id}`, { replace: true });
-            return;
-          }
-        } catch { /* fall through */ }
-
-        try {
-          clearTimeout(timeout);
           const branch = await fetchDefaultBranch();
+          clearTimeout(timeout);
           if (branch) {
             navigate(`/b/${branch.id}`, { replace: true });
           } else {
             navigate("/admin/login", { replace: true });
           }
         } catch {
+          clearTimeout(timeout);
           navigate("/admin/login", { replace: true });
         }
       };
@@ -101,38 +73,12 @@ const Index = () => {
     }
   }, [branchId, navigate, isRedirecting]);
 
-  // Fetch branch info with timeout fallback
+  // Fetch branch info via direct DB query
   const fetchBranchInfo = useCallback(async () => {
     if (!branchId) return;
     setBranchError(false);
     if (!branchInfo) setIsBranchLoading(true);
 
-    try {
-      // Direct DB query with 6s timeout
-      const dbPromise = new Promise<{ data: any; error: any }>((resolve) => {
-        supabase
-          .from("branches")
-          .select("id, name")
-          .eq("id", branchId)
-          .eq("is_active", true)
-          .is("deleted_at", null)
-          .maybeSingle()
-          .then(resolve, () => resolve({ data: null, error: true }));
-      });
-      const { data, error } = await withTimeout(dbPromise, 6000);
-
-      if (!error && data) {
-        const info = { id: data.id, name: data.name };
-        setBranchInfo(info);
-        sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
-        setIsBranchLoading(false);
-        return;
-      }
-    } catch {
-      console.warn("Branch DB query failed/timed out, trying edge function...");
-    }
-
-    // Fallback to edge function (already has its own timeout + retry)
     try {
       const branch = await fetchPublicBranch(branchId);
       if (branch) {
@@ -211,16 +157,12 @@ const Index = () => {
     try {
       const rpcCall = async (attempt = 0): Promise<any> => {
         try {
-          const rpcPromise = new Promise<any>((resolve, reject) => {
-            supabase.rpc("check_phone_exists", {
-              phone_number: phone,
-              p_branch_id: branchId || null,
-            }).then(
-              ({ data, error }) => { if (error) reject(error); else resolve(data); },
-              reject
-            );
+          const { data, error } = await supabase.rpc("check_phone_exists", {
+            phone_number: phone,
+            p_branch_id: branchId || null,
           });
-          return await withTimeout(rpcPromise, 10000);
+          if (error) throw error;
+          return data;
         } catch (err) {
           if (attempt < 1) {
             await new Promise(r => setTimeout(r, 1000));
@@ -259,10 +201,7 @@ const Index = () => {
         navigate(basePath, { state: { phone, branchId, branchName: branchInfo?.name } });
       }
     } catch (error: any) {
-      const msg = error?.message === "Timeout" 
-        ? "Network is slow. Please check your connection and try again." 
-        : (error?.message || "Something went wrong");
-      toast.error("Error", { description: msg });
+      toast.error("Error", { description: error?.message || "Something went wrong" });
     } finally {
       setIsLoading(false);
     }

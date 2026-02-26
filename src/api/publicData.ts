@@ -2,11 +2,11 @@
  * Public Data API
  * 
  * Fetches minimal, safe data for public registration flows.
- * Uses the public-data edge function which doesn't require authentication.
- * All calls have an 8-second timeout to prevent hanging on cold starts.
+ * Uses direct Supabase client queries (no edge function dependency).
+ * Tables have public read-only RLS policies for active records.
  */
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface PublicMonthlyPackage {
   id: string;
@@ -33,28 +33,6 @@ export interface PublicBranch {
   name: string;
 }
 
-const FETCH_TIMEOUT_MS = 8000;
-const MAX_RETRIES = 2;
-const RETRY_DELAY_MS = 1000;
-
-function fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timeoutId));
-}
-
-async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
-  try {
-    return await fetchWithTimeout(url, options);
-  } catch (error) {
-    if (retries > 0) {
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-      return fetchWithRetry(url, options, retries - 1);
-    }
-    throw error;
-  }
-}
-
 /**
  * Fetch packages for public registration (minimal data only)
  */
@@ -63,30 +41,23 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
   customPackages: PublicCustomPackage[];
 }> {
   try {
-    const params = new URLSearchParams({ action: "packages" });
-    if (branchId) params.append("branchId", branchId);
+    let monthlyQuery = supabase
+      .from("monthly_packages")
+      .select("id, months, price, joining_fee")
+      .eq("is_active", true);
+    if (branchId) monthlyQuery = monthlyQuery.eq("branch_id", branchId);
 
-    const response = await fetchWithRetry(
-      `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      }
-    );
+    let customQuery = supabase
+      .from("custom_packages")
+      .select("id, name, duration_days, price")
+      .eq("is_active", true);
+    if (branchId) customQuery = customQuery.eq("branch_id", branchId);
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to fetch packages");
-    }
+    const [monthlyResult, customResult] = await Promise.all([monthlyQuery, customQuery]);
 
-    const data = await response.json();
     return {
-      monthlyPackages: data.monthlyPackages || [],
-      customPackages: data.customPackages || [],
+      monthlyPackages: (monthlyResult.data as PublicMonthlyPackage[]) || [],
+      customPackages: (customResult.data as PublicCustomPackage[]) || [],
     };
   } catch (error) {
     console.error("Error fetching public packages:", error);
@@ -99,28 +70,15 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
  */
 export async function fetchPublicTrainers(branchId?: string): Promise<PublicTrainer[]> {
   try {
-    const params = new URLSearchParams({ action: "trainers" });
-    if (branchId) params.append("branchId", branchId);
+    let query = supabase
+      .from("personal_trainers")
+      .select("id, name, monthly_fee")
+      .eq("is_active", true);
+    if (branchId) query = query.eq("branch_id", branchId);
 
-    const response = await fetchWithRetry(
-      `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to fetch trainers");
-    }
-
-    const data = await response.json();
-    return data.trainers || [];
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data as PublicTrainer[]) || [];
   } catch (error) {
     console.error("Error fetching public trainers:", error);
     return [];
@@ -132,28 +90,16 @@ export async function fetchPublicTrainers(branchId?: string): Promise<PublicTrai
  */
 export async function fetchPublicBranch(branchId: string): Promise<PublicBranch | null> {
   try {
-    const params = new URLSearchParams({ action: "branch", branchId });
+    const { data, error } = await supabase
+      .from("branches")
+      .select("id, name")
+      .eq("id", branchId)
+      .eq("is_active", true)
+      .is("deleted_at", null)
+      .maybeSingle();
 
-    const response = await fetchWithRetry(
-      `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      if (response.status === 404) return null;
-      const error = await response.json();
-      throw new Error(error.error || "Failed to fetch branch");
-    }
-
-    const data = await response.json();
-    return data.branch || null;
+    if (error) throw error;
+    return data as PublicBranch | null;
   } catch (error) {
     console.error("Error fetching public branch:", error);
     return null;
@@ -165,50 +111,18 @@ export async function fetchPublicBranch(branchId: string): Promise<PublicBranch 
  */
 export async function fetchDefaultBranch(): Promise<PublicBranch | null> {
   try {
-    const params = new URLSearchParams({ action: "default-branch" });
+    const { data, error } = await supabase
+      .from("branches")
+      .select("id, name")
+      .eq("is_default", true)
+      .eq("is_active", true)
+      .is("deleted_at", null)
+      .maybeSingle();
 
-    const response = await fetchWithRetry(
-      `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      if (response.status === 404) return null;
-      const error = await response.json();
-      throw new Error(error.error || "Failed to fetch default branch");
-    }
-
-    const data = await response.json();
-    return data.branch || null;
+    if (error) throw error;
+    return data as PublicBranch | null;
   } catch (error) {
     console.error("Error fetching default branch:", error);
     return null;
   }
-}
-
-/**
- * Warm up the public-data edge function (fire-and-forget)
- */
-export function warmUpEdgeFunction(): void {
-  try {
-    const params = new URLSearchParams({ action: "branch", branchId: "warmup" });
-    fetchWithTimeout(
-      `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      }
-    ).catch(() => { /* silent warm-up */ });
-  } catch { /* ignore */ }
 }
