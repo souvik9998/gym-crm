@@ -55,18 +55,47 @@ const Index = () => {
     }
   }, [branchId, navigate, isRedirecting]);
 
-  // Fetch branch info (with cache)
+  // Fetch branch info - try direct DB first (fast), edge function as fallback
   useEffect(() => {
-    if (branchId) {
-      fetchPublicBranch(branchId).then((branch) => {
+    if (!branchId) return;
+    if (branchInfo) {
+      // Already have cached data, still refresh in background
+      setIsBranchLoading(false);
+    }
+    
+    // Try direct Supabase query first (much faster, no cold start)
+    const fetchDirect = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("branches")
+          .select("id, name")
+          .eq("id", branchId)
+          .eq("is_active", true)
+          .is("deleted_at", null)
+          .maybeSingle();
+        
+        if (!error && data) {
+          const info = { id: data.id, name: data.name };
+          setBranchInfo(info);
+          sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
+          setIsBranchLoading(false);
+          return;
+        }
+      } catch { /* fall through to edge function */ }
+      
+      // Fallback to edge function (for cases where RLS blocks anonymous read)
+      try {
+        const branch = await fetchPublicBranch(branchId);
         if (branch) {
           const info = { id: branch.id, name: branch.name };
           setBranchInfo(info);
           sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
         }
-        setIsBranchLoading(false);
-      }).catch(() => setIsBranchLoading(false));
-    }
+      } catch { /* ignore */ }
+      setIsBranchLoading(false);
+    };
+    
+    fetchDirect();
   }, [branchId]);
 
   // Handle return from Renew/ExtendPT pages
@@ -195,9 +224,6 @@ const Index = () => {
     setPhoneError(undefined);
     setPhoneTouched(false);
   };
-
-  // Page is ready when branch info is loaded (or cached)
-  const isPageReady = !!branchInfo;
 
   return (
     <div className="min-h-screen bg-background">
@@ -357,17 +383,12 @@ const Index = () => {
                   variant="accent"
                   size="lg"
                   className="w-full mt-6"
-                  disabled={isLoading || phone.length !== 10 || !isPageReady}
+                  disabled={isLoading || phone.length !== 10}
                 >
                   {isLoading ? (
                     <div className="flex items-center gap-2">
                       <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
                       Checking...
-                    </div>
-                  ) : !isPageReady ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
-                      Loading...
                     </div>
                   ) : (
                     <>
