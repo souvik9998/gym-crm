@@ -41,8 +41,8 @@ const AdminLogin = () => {
 
   useEffect(() => {
     queryClient.clear();
-    // Clear any stale session to prevent token refresh loops on mobile networks
-    supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    // Reset refresh failure counter on login page visit
+    localStorage.removeItem("auth-refresh-fail-count");
   }, []);
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
