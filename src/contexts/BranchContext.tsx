@@ -65,15 +65,22 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
     ? allBranches.filter(b => staffRestriction!.branchIds.includes(b.id))
     : allBranches;
 
-  // Get user's tenant ID on mount
+  // Get user's tenant ID on mount — but ONLY if there's an active session.
+  // On public pages (no auth) we skip the auth calls entirely to avoid
+  // triggering token-refresh network requests that hang on mobile.
   useEffect(() => {
+    let cancelled = false;
+
     const fetchUserTenant = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setUserChecked(true);
+        // Use getSession() (local/fast) instead of getUser() (network call)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          if (!cancelled) setUserChecked(true);
           return;
         }
+
+        const user = session.user;
 
         // Check if super_admin (can see all branches)
         const { data: superAdminRole } = await supabase
@@ -83,8 +90,9 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
           .eq("role", "super_admin")
           .maybeSingle();
 
+        if (cancelled) return;
+
         if (superAdminRole) {
-          // Super admin - no tenant restriction
           setTenantId(null);
           setUserChecked(true);
           return;
@@ -97,26 +105,45 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
           .eq("user_id", user.id)
           .maybeSingle();
 
-        setTenantId(tenantMember?.tenant_id || null);
-        setUserChecked(true);
+        if (!cancelled) {
+          setTenantId(tenantMember?.tenant_id || null);
+          setUserChecked(true);
+        }
       } catch (error) {
         console.error("Error fetching user tenant:", error);
-        setUserChecked(true);
+        if (!cancelled) setUserChecked(true);
       }
     };
 
     fetchUserTenant();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        // Signed out — reset immediately, no network calls
+        setTenantId(null);
+        setUserChecked(true);
+        return;
+      }
       fetchUserTenant();
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchBranches = useCallback(async () => {
     if (!userChecked) return;
     
+    // On public pages there's no authenticated session — skip branch fetch
+    // (public pages use fetchPublicBranch from publicData.ts instead)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       // RLS policies now enforce tenant isolation at the database level.

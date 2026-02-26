@@ -24,20 +24,25 @@ interface FetchOptions {
  */
 export async function getAuthToken(): Promise<string | null> {
   try {
-    const { data: { session } } = await withTimeout(
-      supabase.auth.getSession(),
-      AUTH_TIMEOUT_MS,
-      "Get session"
-    );
-    if (session?.access_token) return session.access_token;
+    // Use getSession() (local/synchronous read) instead of getUser() (network call)
+    // to avoid triggering network requests that fail on mobile networks
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      // Check if token expires within 60 seconds — if so, refresh proactively
+      const expiresAt = session.expires_at;
+      const now = Math.floor(Date.now() / 1000);
+      if (expiresAt && expiresAt - now > 60) {
+        return session.access_token;
+      }
+    }
 
-    // If the access token is missing/expired, attempt a refresh once.
+    // If the access token is missing/about-to-expire, attempt a refresh once.
     const { data: refreshData, error: refreshError } = await withTimeout(
       supabase.auth.refreshSession(),
       AUTH_TIMEOUT_MS,
       "Refresh session"
     );
-    if (refreshError) return null;
+    if (refreshError) return session?.access_token || null; // fall back to existing token
     return refreshData.session?.access_token || null;
   } catch (error) {
     console.error("getAuthToken failed:", error);
