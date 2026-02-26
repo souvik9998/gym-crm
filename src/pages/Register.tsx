@@ -45,7 +45,6 @@ const Register = () => {
 
   useEffect(() => {
     if (!phone) {
-      // If no phone, redirect to the appropriate landing page
       const redirectPath = branchId ? `/b/${branchId}` : "/admin/login";
       navigate(redirectPath, { replace: true });
     }
@@ -61,7 +60,6 @@ const Register = () => {
 
     const isDailyPass = packageData.isCustomPackage;
 
-    // Prepare payment data
     const paymentData = {
       amount: packageData.totalAmount,
       memberName: memberDetails.fullName,
@@ -90,7 +88,6 @@ const Register = () => {
       onSuccess: async (data) => {
         const endDate = new Date(data.endDate);
         
-        // Send WhatsApp notification for new registration (if auto-send enabled)
         try {
           const notificationType = data.isDailyPass ? "daily_pass" : "new_registration";
           const shouldAutoSend = await getWhatsAppAutoSendPreference(branchId, notificationType as any);
@@ -112,6 +109,9 @@ const Register = () => {
         } catch (err) {
           console.error("Failed to send WhatsApp notification:", err);
         }
+        
+        // Clear form persistence on success
+        sessionStorage.removeItem(`member-details-form-${branchId || "default"}`);
         
         navigate("/success", {
           state: {
@@ -143,7 +143,6 @@ const Register = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Payment Processing Overlay */}
       <PaymentProcessingOverlay
         isVisible={paymentStage !== "idle"}
         stage={paymentStage === "idle" ? "verifying" : paymentStage}
@@ -175,10 +174,10 @@ const Register = () => {
             New Membership
           </span>
         </div>
-        {/* Step Indicator */}
+        {/* Step Indicator with animation */}
         <div className="flex justify-center gap-2 mt-4">
-          <div className={`w-3 h-3 rounded-full ${step === "details" ? "bg-accent" : "bg-muted"}`} />
-          <div className={`w-3 h-3 rounded-full ${step === "package" ? "bg-accent" : "bg-muted"}`} />
+          <div className={`h-2 rounded-full transition-all duration-500 ${step === "details" ? "w-8 bg-accent" : "w-3 bg-muted"}`} />
+          <div className={`h-2 rounded-full transition-all duration-500 ${step === "package" ? "w-8 bg-accent" : "w-3 bg-muted"}`} />
         </div>
       </header>
 
@@ -188,6 +187,7 @@ const Register = () => {
           <MemberDetailsForm
             onSubmit={handleDetailsSubmit}
             onBack={() => navigate(branchId ? `/b/${branchId}` : "/admin/login")}
+            initialData={memberDetails}
           />
         )}
 
