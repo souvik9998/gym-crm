@@ -5,7 +5,6 @@ import { ArrowLeft, Dumbbell } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { supabase } from "@/integrations/supabase/client";
-import { invokeEdgeFunction } from "@/api/edgeFunctionClient";
 import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
 import PackageSelectionForm, { type PackageSelectionData } from "@/components/registration/PackageSelectionForm";
 import { fetchPublicBranch } from "@/api/publicData";
@@ -117,7 +116,7 @@ const Renew = () => {
         try {
           const shouldAutoSend = await getWhatsAppAutoSendPreference(branchId, "renewal");
           if (shouldAutoSend) {
-            await invokeEdgeFunction("send-whatsapp", {
+            await supabase.functions.invoke("send-whatsapp", {
               body: {
                 phone: member.phone,
                 name: member.name,

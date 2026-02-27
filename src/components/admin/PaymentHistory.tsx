@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { invokeEdgeFunction } from "@/api/edgeFunctionClient";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useInView } from "react-intersection-observer";
 import {
@@ -229,9 +228,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const handleSendInvoice = async (paymentId: string) => {
     setSendingInvoiceId(paymentId);
     try {
-      const { data, error } = await invokeEdgeFunction<{
-        success: boolean; whatsappSent?: boolean; invoiceNumber?: string; error?: string;
-      }>("generate-invoice", {
+      const { data, error } = await supabase.functions.invoke("generate-invoice", {
         body: {
           paymentId,
           branchId: currentBranch?.id,

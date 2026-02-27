@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { invokeEdgeFunction } from "@/api/edgeFunctionClient";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import { Staff } from "@/pages/admin/StaffManagement";
@@ -44,7 +44,7 @@ export const StaffWhatsAppButton = ({
       // Get branch names for this staff
       const branchNames = staff.branch_assignments?.map((a) => a.branch_name) || [];
 
-      const { data, error } = await invokeEdgeFunction("send-whatsapp", {
+      const { data, error } = await supabase.functions.invoke("send-whatsapp", {
         body: {
           type: "staff_credentials",
           branchId: currentBranch?.id,
@@ -104,7 +104,7 @@ export const sendStaffCredentialsWhatsApp = async (
   branchNames?: string[]
 ): Promise<boolean> => {
   try {
-    const { data, error } = await invokeEdgeFunction("send-whatsapp", {
+    const { data, error } = await supabase.functions.invoke("send-whatsapp", {
       body: {
         type: "staff_credentials",
         branchId,

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { invokeEdgeFunction } from "@/api/edgeFunctionClient";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -72,7 +72,7 @@ export const StaffPasswordDialog = ({
 
     try {
       // Send password with sendWhatsApp flag - edge function handles WhatsApp with plain password
-      const { data, error } = await invokeEdgeFunction("staff-auth?action=set-password", {
+      const { data, error } = await supabase.functions.invoke("staff-auth?action=set-password", {
         body: {
           staffId: staff.id,
           password,

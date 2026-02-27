@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Dumbbell, Calendar, IndianRupee, User, Check, AlertCircle, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { invokeEdgeFunction } from "@/api/edgeFunctionClient";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { addDays, addMonths, differenceInDays, format, isBefore, isAfter, parseISO } from "date-fns";
@@ -236,7 +235,7 @@ const ExtendPT = () => {
         try {
           const shouldAutoSend = await getWhatsAppAutoSendPreference(branchId, "pt_extension");
           if (shouldAutoSend) {
-            await invokeEdgeFunction("send-whatsapp", {
+            await supabase.functions.invoke("send-whatsapp", {
               body: {
                 phone: member.phone,
                 name: member.name,

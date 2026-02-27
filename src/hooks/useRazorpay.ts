@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { invokeEdgeFunction } from "@/api/edgeFunctionClient";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 
 interface RazorpayOptions {
@@ -100,9 +100,7 @@ export const useRazorpay = () => {
         }
 
         // Create order
-        const { data: orderData, error: orderError } = await invokeEdgeFunction<{
-          keyId: string; amount: number; currency: string; orderId: string;
-        }>(
+        const { data: orderData, error: orderError } = await supabase.functions.invoke(
           "create-razorpay-order",
           {
             body: {
@@ -160,10 +158,7 @@ export const useRazorpay = () => {
               setPaymentStage("processing");
 
               // Verify payment
-              const { data: verifyData, error: verifyError } = await invokeEdgeFunction<{
-                success: boolean; memberId?: string; dailyPassUserId?: string;
-                subscriptionId: string; endDate: string; isDailyPass?: boolean;
-              }>(
+              const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
                 "verify-razorpay-payment",
                 {
                   body: {

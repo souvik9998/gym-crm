@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { invokeEdgeFunction } from "@/api/edgeFunctionClient";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import {
@@ -183,7 +182,7 @@ export const EditMemberDialog = ({
       // STAFF PATH: Use staff-operations edge function for staff users
       if (isStaffLoggedIn && currentBranch?.id) {
         // Action must be passed as query param, not in body
-        const { data, error } = await invokeEdgeFunction("staff-operations?action=update-member", {
+        const { data, error } = await supabase.functions.invoke("staff-operations?action=update-member", {
           body: {
             branchId: currentBranch.id,
             memberId: member.id,

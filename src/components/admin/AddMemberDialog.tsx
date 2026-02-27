@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { invokeEdgeFunction } from "@/api/edgeFunctionClient";
 import {
   Dialog,
   DialogContent,
@@ -428,7 +427,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           const { data: { session } } = await supabase.auth.getSession();
           const adminUserId = session?.user?.id || null;
 
-          await invokeEdgeFunction("send-whatsapp", {
+          await supabase.functions.invoke("send-whatsapp", {
             body: {
               phone: phone,
               name: name,
