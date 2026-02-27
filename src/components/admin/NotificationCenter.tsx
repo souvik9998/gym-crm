@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
+import { SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
 
 const categoryFilters = ["all", "plan", "limit", "member"] as const;
 type CategoryFilter = (typeof categoryFilters)[number];
@@ -84,7 +85,6 @@ export function NotificationCenter() {
     setSendingReminder(true);
     try {
       // Trigger manual WhatsApp reminder via the daily-whatsapp-job
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
@@ -92,10 +92,11 @@ export function NotificationCenter() {
         return;
       }
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/daily-whatsapp-job`, {
+      const response = await fetch(getEdgeFunctionUrl("daily-whatsapp-job"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ manual: true }),
