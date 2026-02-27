@@ -1,4 +1,4 @@
-import { queryTable } from "@/api/customDomainFetch";
+import { fetchGymSettings } from "@/api/publicData";
 
 export type WhatsAppAutoSendType =
   | "new_registration"
@@ -30,14 +30,9 @@ export async function getWhatsAppAutoSendPreference(
   if (!branchId) return DEFAULTS[type];
 
   try {
-    const params = `branch_id=eq.${branchId}&select=whatsapp_auto_send&limit=1`;
-    const { data: rows } = await queryTable<any[]>("gym_settings", params);
-    const data = rows?.[0];
-
-    if (!data?.whatsapp_auto_send) return DEFAULTS[type];
-
-    const prefs = data.whatsapp_auto_send as Record<string, boolean>;
-    return prefs[type] ?? DEFAULTS[type];
+    const { whatsapp_auto_send } = await fetchGymSettings(branchId);
+    if (!whatsapp_auto_send) return DEFAULTS[type];
+    return (whatsapp_auto_send as Record<string, boolean>)[type] ?? DEFAULTS[type];
   } catch {
     return DEFAULTS[type];
   }

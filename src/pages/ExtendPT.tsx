@@ -4,14 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Dumbbell, Calendar, IndianRupee, User, Check, AlertCircle, Clock } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { invokeEdgeFunction } from "@/api/customDomainFetch";
 import { addDays, addMonths, differenceInDays, format, isBefore, isAfter, parseISO } from "date-fns";
-import { fetchPublicBranch, fetchPublicTrainers } from "@/api/publicData";
+import { fetchPublicBranch, fetchPublicTrainers, fetchMemberSubscriptions } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
-import { queryTable } from "@/api/customDomainFetch";
 
 interface Trainer {
   id: string;
@@ -97,13 +95,11 @@ const ExtendPT = () => {
         setSelectedTrainer(mappedTrainers[0]);
       }
 
-      // Fetch existing active PT subscription via custom domain
-      const today = new Date().toISOString().split("T")[0];
-      const ptParams = `member_id=eq.${member.id}&end_date=gte.${today}&select=end_date&order=end_date.desc&limit=1`;
-      const { data: ptData } = await queryTable<any[]>("pt_subscriptions", ptParams);
+      // Fetch existing active PT subscription via edge function (CORS-safe)
+      const { ptSubscription } = await fetchMemberSubscriptions(member.id);
 
-      if (ptData && ptData.length > 0 && ptData[0].end_date) {
-        setExistingPTEndDate(parseISO(ptData[0].end_date));
+      if (ptSubscription?.end_date) {
+        setExistingPTEndDate(parseISO(ptSubscription.end_date));
       }
     } catch (error) {
       console.error("Error fetching data:", error);
