@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, Calendar, IndianRupee, Sparkles, User, Dumbbell, Clock, AlertCircle, CalendarDays, RefreshCw } from "lucide-react";
+import { Check, Calendar, IndianRupee, Sparkles, User, Dumbbell, Clock, AlertCircle, CalendarDays } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { addDays, addMonths, differenceInDays, format, isBefore } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -174,97 +174,39 @@ const PackageSelectionForm = ({
     fetchData();
   }, [branchId]);
 
-  const [fetchError, setFetchError] = useState(false);
-
   const fetchData = async () => {
     setIsDataLoading(true);
-    setFetchError(false);
-
-    const cacheKey = `packages-trainers-${branchId || "all"}`;
-
-    // Try loading from sessionStorage cache first for instant display
     try {
-      const cached = sessionStorage.getItem(cacheKey);
-      if (cached) {
-        const { packages, trainers: cachedTrainers, custom, ts } = JSON.parse(cached);
-        // Use cache if less than 5 minutes old
-        if (Date.now() - ts < 5 * 60 * 1000) {
-          if (packages?.length > 0) {
-            setMonthlyPackages(packages);
-            const defaultPkg = packages.find((p: any) => p.months === 3) || packages[0];
-            setSelectedMonthlyPackage(defaultPkg);
-          }
-          if (cachedTrainers?.length > 0) setTrainers(cachedTrainers);
-          if (custom?.length > 0) setCustomPackages(custom);
-          setIsDataLoading(false);
-          // Still refresh in background
-          refreshInBackground(cacheKey);
-          return;
-        }
+      const [packagesResult, trainersResult] = await Promise.all([
+        fetchPublicPackages(branchId),
+        fetchPublicTrainers(branchId),
+      ]);
+
+      if (packagesResult.monthlyPackages.length > 0) {
+        setMonthlyPackages(packagesResult.monthlyPackages);
+        // Auto-select most popular (3 months) or first
+        const defaultPkg = packagesResult.monthlyPackages.find((p) => p.months === 3) || packagesResult.monthlyPackages[0];
+        setSelectedMonthlyPackage(defaultPkg);
       }
-    } catch { /* ignore cache errors */ }
 
-    // No cache — fetch fresh
-    try {
-      await fetchFresh(cacheKey);
+      if (trainersResult.length > 0) {
+        const mapped = trainersResult.map(t => ({
+          id: t.id,
+          name: t.name,
+          specialization: null,
+          monthly_fee: t.monthly_fee,
+        }));
+        setTrainers(mapped);
+      }
+
+      if (packagesResult.customPackages.length > 0) {
+        setCustomPackages(packagesResult.customPackages);
+      }
     } catch (error) {
       console.error("Error fetching registration data:", error);
-      setFetchError(true);
     } finally {
       setIsDataLoading(false);
     }
-  };
-
-  const fetchFresh = async (cacheKey: string) => {
-    const [packagesResult, trainersResult] = await Promise.all([
-      fetchPublicPackages(branchId),
-      fetchPublicTrainers(branchId),
-    ]);
-
-    const mappedTrainers = trainersResult.map(t => ({
-      id: t.id,
-      name: t.name,
-      specialization: null as string | null,
-      monthly_fee: t.monthly_fee,
-    }));
-
-    if (packagesResult.monthlyPackages.length > 0) {
-      setMonthlyPackages(packagesResult.monthlyPackages);
-      const defaultPkg = packagesResult.monthlyPackages.find((p) => p.months === 3) || packagesResult.monthlyPackages[0];
-      setSelectedMonthlyPackage(defaultPkg);
-    }
-    if (mappedTrainers.length > 0) setTrainers(mappedTrainers);
-    if (packagesResult.customPackages.length > 0) setCustomPackages(packagesResult.customPackages);
-
-    // Cache for next visit
-    try {
-      sessionStorage.setItem(cacheKey, JSON.stringify({
-        packages: packagesResult.monthlyPackages,
-        trainers: mappedTrainers,
-        custom: packagesResult.customPackages,
-        ts: Date.now(),
-      }));
-    } catch { /* ignore */ }
-  };
-
-  const refreshInBackground = (cacheKey: string) => {
-    Promise.all([
-      fetchPublicPackages(branchId),
-      fetchPublicTrainers(branchId),
-    ]).then(([packagesResult, trainersResult]) => {
-      const mappedTrainers = trainersResult.map(t => ({
-        id: t.id, name: t.name, specialization: null as string | null, monthly_fee: t.monthly_fee,
-      }));
-      if (packagesResult.monthlyPackages.length > 0) setMonthlyPackages(packagesResult.monthlyPackages);
-      if (mappedTrainers.length > 0) setTrainers(mappedTrainers);
-      if (packagesResult.customPackages.length > 0) setCustomPackages(packagesResult.customPackages);
-      try {
-        sessionStorage.setItem(cacheKey, JSON.stringify({
-          packages: packagesResult.monthlyPackages, trainers: mappedTrainers,
-          custom: packagesResult.customPackages, ts: Date.now(),
-        }));
-      } catch { /* ignore */ }
-    }).catch(() => { /* silent background refresh */ });
   };
 
   // Calculate membership end date
@@ -502,17 +444,10 @@ const PackageSelectionForm = ({
             <TabsContent value="monthly" className="mt-4">
               {isDataLoading ? (
                 <PackageSkeleton />
-              ) : fetchError || monthlyPackages.length === 0 ? (
-                <div className="text-center py-6 space-y-3">
-                  <p className="text-muted-foreground">
-                    {fetchError ? "Failed to load packages" : "No monthly packages available"}
-                  </p>
-                  {fetchError && (
-                    <Button variant="outline" size="sm" onClick={fetchData}>
-                      <RefreshCw className="w-4 h-4 mr-1" /> Retry
-                    </Button>
-                  )}
-                </div>
+              ) : monthlyPackages.length === 0 ? (
+                <p className="text-center text-muted-foreground py-6">
+                  No monthly packages available
+                </p>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
                   {monthlyPackages.map((pkg, idx) => {

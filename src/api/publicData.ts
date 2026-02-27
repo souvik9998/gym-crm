@@ -3,7 +3,6 @@
  * 
  * Fetches minimal, safe data for public registration flows.
  * Uses the public-data edge function which doesn't require authentication.
- * All calls have an 8-second timeout to prevent hanging on cold starts.
  */
 
 import { SUPABASE_URL, SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
@@ -33,14 +32,6 @@ export interface PublicBranch {
   name: string;
 }
 
-const FETCH_TIMEOUT_MS = 8000;
-
-function fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timeoutId));
-}
-
 /**
  * Fetch packages for public registration (minimal data only)
  */
@@ -52,7 +43,7 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
     const params = new URLSearchParams({ action: "packages" });
     if (branchId) params.append("branchId", branchId);
 
-    const response = await fetchWithTimeout(
+    const response = await fetch(
       `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
       {
         method: "GET",
@@ -88,7 +79,7 @@ export async function fetchPublicTrainers(branchId?: string): Promise<PublicTrai
     const params = new URLSearchParams({ action: "trainers" });
     if (branchId) params.append("branchId", branchId);
 
-    const response = await fetchWithTimeout(
+    const response = await fetch(
       `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
       {
         method: "GET",
@@ -120,7 +111,7 @@ export async function fetchPublicBranch(branchId: string): Promise<PublicBranch 
   try {
     const params = new URLSearchParams({ action: "branch", branchId });
 
-    const response = await fetchWithTimeout(
+    const response = await fetch(
       `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
       {
         method: "GET",
@@ -153,7 +144,7 @@ export async function fetchDefaultBranch(): Promise<PublicBranch | null> {
   try {
     const params = new URLSearchParams({ action: "default-branch" });
 
-    const response = await fetchWithTimeout(
+    const response = await fetch(
       `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
       {
         method: "GET",
@@ -177,24 +168,4 @@ export async function fetchDefaultBranch(): Promise<PublicBranch | null> {
     console.error("Error fetching default branch:", error);
     return null;
   }
-}
-
-/**
- * Warm up the public-data edge function (fire-and-forget)
- */
-export function warmUpEdgeFunction(): void {
-  try {
-    const params = new URLSearchParams({ action: "branch", branchId: "warmup" });
-    fetchWithTimeout(
-      `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      }
-    ).catch(() => { /* silent warm-up */ });
-  } catch { /* ignore */ }
 }
