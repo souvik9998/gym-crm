@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Dumbbell } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
-import { supabase } from "@/integrations/supabase/client";
 import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
 import PackageSelectionForm, { type PackageSelectionData } from "@/components/registration/PackageSelectionForm";
 import { fetchPublicBranch } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
+import { invokeEdgeFunction, queryTable } from "@/api/customDomainFetch";
 
 interface Member {
   id: string;
@@ -50,40 +50,24 @@ const Renew = () => {
     const fetchMemberData = async () => {
       const today = new Date().toISOString().split("T")[0];
       
-      // Fetch existing active gym subscription to get membership end date
-      const { data: activeSubscription } = await supabase
-        .from("subscriptions")
-        .select("end_date")
-        .eq("member_id", member.id)
-        .eq("status", "active")
-        .gte("end_date", today)
-        .order("end_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Fetch existing active gym subscription via custom domain
+      const subParams = `member_id=eq.${member.id}&status=eq.active&end_date=gte.${today}&select=end_date&order=end_date.desc&limit=1`;
+      const { data: subData } = await queryTable<any[]>("subscriptions", subParams);
 
-      if (activeSubscription) {
-        setExistingMembershipEndDate(activeSubscription.end_date);
+      if (subData && subData.length > 0) {
+        setExistingMembershipEndDate(subData[0].end_date);
       }
 
-      // Fetch existing active PT subscription to determine PT start date
-      const { data: activePT } = await supabase
-        .from("pt_subscriptions")
-        .select("end_date")
-        .eq("member_id", member.id)
-        .eq("status", "active")
-        .gte("end_date", today)
-        .order("end_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Fetch existing active PT subscription via custom domain
+      const ptParams = `member_id=eq.${member.id}&status=eq.active&end_date=gte.${today}&select=end_date&order=end_date.desc&limit=1`;
+      const { data: ptData } = await queryTable<any[]>("pt_subscriptions", ptParams);
 
-      if (activePT) {
-        setExistingPTEndDate(activePT.end_date);
-        // PT start date should be existing end_date + 1
-        const existingEndDate = new Date(activePT.end_date);
+      if (ptData && ptData.length > 0) {
+        setExistingPTEndDate(ptData[0].end_date);
+        const existingEndDate = new Date(ptData[0].end_date);
         existingEndDate.setDate(existingEndDate.getDate() + 1);
         setPtStartDate(existingEndDate.toISOString().split("T")[0]);
       } else {
-        // No active PT, start from current date
         setPtStartDate(today);
       }
     };
@@ -116,7 +100,7 @@ const Renew = () => {
         try {
           const shouldAutoSend = await getWhatsAppAutoSendPreference(branchId, "renewal");
           if (shouldAutoSend) {
-            await supabase.functions.invoke("send-whatsapp", {
+            await invokeEdgeFunction("send-whatsapp", {
               body: {
                 phone: member.phone,
                 name: member.name,
