@@ -5,7 +5,6 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { withTimeout, AUTH_TIMEOUT_MS } from "@/lib/networkUtils";
 
 export interface TenantFeaturePermissions {
   members_management: boolean;
@@ -40,11 +39,7 @@ export function useTenantPermissions() {
   useEffect(() => {
     const fetchPermissions = async () => {
       try {
-        const { data: { session } } = await withTimeout(
-          supabase.auth.getSession(),
-          AUTH_TIMEOUT_MS,
-          "Tenant perm session"
-        );
+        const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) {
           setIsLoading(false);
           return;
@@ -54,15 +49,11 @@ export function useTenantPermissions() {
         const impersonatedTenantId = localStorage.getItem("superadmin-impersonated-tenant");
         
         // Check if user is super admin - they get all permissions
-        const { data: roles } = await withTimeout(
-          supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", session.user.id)
-            .in("role", ["super_admin"]),
-          AUTH_TIMEOUT_MS,
-          "Tenant perm role"
-        );
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id)
+          .in("role", ["super_admin"]);
 
         if (roles && roles.length > 0 && !impersonatedTenantId) {
           // Super admin without impersonation gets everything

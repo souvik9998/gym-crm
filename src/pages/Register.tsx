@@ -8,7 +8,7 @@ import { useRazorpay } from "@/hooks/useRazorpay";
 import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
 import MemberDetailsForm, { type MemberDetailsData } from "@/components/registration/MemberDetailsForm";
 import PackageSelectionForm, { type PackageSelectionData } from "@/components/registration/PackageSelectionForm";
-import { fetchPublicBranch } from "@/api/publicData";
+import { fetchPublicBranch, warmUpEdgeFunction } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 
 type Step = "details" | "package";
@@ -30,6 +30,10 @@ const Register = () => {
   const [memberDetails, setMemberDetails] = useState<MemberDetailsData | null>(null);
   const [branchInfo, setBranchInfo] = useState<BranchInfo | null>(null);
 
+  // Warm up edge function when details step loads (so packages are ready for step 2)
+  useEffect(() => {
+    warmUpEdgeFunction();
+  }, []);
 
   // Fetch branch info using secure public API
   useEffect(() => {

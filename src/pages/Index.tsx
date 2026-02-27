@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Phone, ArrowRight, Shield, Clock, CreditCard, Dumbbell, UserPlus, ArrowLeft, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
-import { fetchPublicBranch, fetchDefaultBranch } from "@/api/publicData";
+import { fetchPublicBranch, fetchDefaultBranch, warmUpEdgeFunction } from "@/api/publicData";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import { phoneSchema, validateField, validateForm } from "@/lib/validation";
 import { z } from "zod";
@@ -43,6 +43,10 @@ const Index = () => {
   const [phoneError, setPhoneError] = useState<string | undefined>();
   const [phoneTouched, setPhoneTouched] = useState(false);
 
+  // Warm up edge function immediately on mount
+  useEffect(() => {
+    warmUpEdgeFunction();
+  }, []);
 
   // Redirect to default branch if no branchId — with 8s timeout fallback
   useEffect(() => {
@@ -53,17 +57,33 @@ const Index = () => {
         navigate("/admin/login", { replace: true });
       }, 8000);
 
+      // Try direct DB first
       const doRedirect = async () => {
         try {
-          const branch = await fetchDefaultBranch();
+          const { data } = await supabase
+            .from("branches")
+            .select("id")
+            .eq("is_default", true)
+            .eq("is_active", true)
+            .is("deleted_at", null)
+            .maybeSingle();
+
           clearTimeout(timeout);
+          if (data) {
+            navigate(`/b/${data.id}`, { replace: true });
+            return;
+          }
+        } catch { /* fall through */ }
+
+        try {
+          clearTimeout(timeout);
+          const branch = await fetchDefaultBranch();
           if (branch) {
             navigate(`/b/${branch.id}`, { replace: true });
           } else {
             navigate("/admin/login", { replace: true });
           }
         } catch {
-          clearTimeout(timeout);
           navigate("/admin/login", { replace: true });
         }
       };
@@ -73,12 +93,38 @@ const Index = () => {
     }
   }, [branchId, navigate, isRedirecting]);
 
-  // Fetch branch info via direct DB query
+  // Fetch branch info with timeout fallback
   const fetchBranchInfo = useCallback(async () => {
     if (!branchId) return;
     setBranchError(false);
     if (!branchInfo) setIsBranchLoading(true);
 
+    // 5s timeout — show page with generic name if it takes too long
+    const timeout = setTimeout(() => {
+      setIsBranchLoading(false);
+    }, 5000);
+
+    try {
+      // Direct DB query (fast, no cold start)
+      const { data, error } = await supabase
+        .from("branches")
+        .select("id, name")
+        .eq("id", branchId)
+        .eq("is_active", true)
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      if (!error && data) {
+        const info = { id: data.id, name: data.name };
+        setBranchInfo(info);
+        sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
+        setIsBranchLoading(false);
+        clearTimeout(timeout);
+        return;
+      }
+    } catch { /* fall through */ }
+
+    // Fallback to edge function
     try {
       const branch = await fetchPublicBranch(branchId);
       if (branch) {
@@ -92,6 +138,7 @@ const Index = () => {
       if (!branchInfo) setBranchError(true);
     }
     setIsBranchLoading(false);
+    clearTimeout(timeout);
   }, [branchId]);
 
   useEffect(() => {
@@ -155,24 +202,13 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      const rpcCall = async (attempt = 0): Promise<any> => {
-        try {
-          const { data, error } = await supabase.rpc("check_phone_exists", {
-            phone_number: phone,
-            p_branch_id: branchId || null,
-          });
-          if (error) throw error;
-          return data;
-        } catch (err) {
-          if (attempt < 1) {
-            await new Promise(r => setTimeout(r, 1000));
-            return rpcCall(attempt + 1);
-          }
-          throw err;
-        }
-      };
+      const { data: memberData, error } = await supabase.rpc("check_phone_exists", {
+        phone_number: phone,
+        p_branch_id: branchId || null,
+      });
 
-      const memberData = await rpcCall();
+      if (error) throw error;
+
       const result = memberData?.[0];
 
       if (result?.member_exists) {
@@ -201,7 +237,9 @@ const Index = () => {
         navigate(basePath, { state: { phone, branchId, branchName: branchInfo?.name } });
       }
     } catch (error: any) {
-      toast.error("Error", { description: error?.message || "Something went wrong" });
+      toast.error("Error", {
+        description: error.message || "Something went wrong",
+      });
     } finally {
       setIsLoading(false);
     }

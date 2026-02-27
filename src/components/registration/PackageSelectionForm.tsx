@@ -204,21 +204,15 @@ const PackageSelectionForm = ({
       }
     } catch { /* ignore cache errors */ }
 
-    // No cache — fetch fresh with auto-retry
-    let lastError: unknown;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        await fetchFresh(cacheKey);
-        setIsDataLoading(false);
-        return;
-      } catch (error) {
-        lastError = error;
-        if (attempt < 1) await new Promise(r => setTimeout(r, 1000));
-      }
+    // No cache — fetch fresh
+    try {
+      await fetchFresh(cacheKey);
+    } catch (error) {
+      console.error("Error fetching registration data:", error);
+      setFetchError(true);
+    } finally {
+      setIsDataLoading(false);
     }
-    console.error("Error fetching registration data:", lastError);
-    setFetchError(true);
-    setIsDataLoading(false);
   };
 
   const fetchFresh = async (cacheKey: string) => {

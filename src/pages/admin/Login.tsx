@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,6 @@ import { toast } from "@/components/ui/sonner";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { queryClient } from "@/lib/queryClient";
 import { ValidatedInput } from "@/components/ui/validated-input";
-import { withTimeout, resilientCall, AUTH_TIMEOUT_MS } from "@/lib/networkUtils";
 import {
   adminLoginSchema,
   staffLoginSchema,
@@ -39,22 +38,12 @@ const AdminLogin = () => {
   const [staffErrors, setStaffErrors] = useState<FieldErrors>({});
   const [staffTouched, setStaffTouched] = useState<Record<string, boolean>>({});
 
-  // Ref-based locks to prevent double-tap / overlapping submissions
-  const adminLoginLock = useRef(false);
-  const staffLoginLock = useRef(false);
-
   useEffect(() => {
     queryClient.clear();
-    localStorage.removeItem("auth-refresh-fail-count");
-    // Kill any background token refresh that competes with login on mobile.
-    supabase.auth.signOut({ scope: "local" }).catch(() => {});
   }, []);
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Double-tap guard: ref check is synchronous and faster than state
-    if (adminLoginLock.current) return;
 
     const result = validateForm(adminLoginSchema, { email: email.trim(), password: adminPassword });
     if (!result.success) {
@@ -63,32 +52,23 @@ const AdminLogin = () => {
       return;
     }
 
-    adminLoginLock.current = true;
     setIsAdminLoading(true);
 
     try {
       clearStaffState();
 
-      const { data, error } = await resilientCall(
-        () => supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password: adminPassword,
-        }),
-        { timeoutMs: AUTH_TIMEOUT_MS, retries: 1, retryDelayMs: 2000, label: "Sign in" }
-      );
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: adminPassword,
+      });
 
       if (error) throw error;
 
-      const { data: roles, error: rolesError } = await withTimeout(
-        supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", data.user.id)
-          .in("role", ["admin", "super_admin"])
-          ,
-        AUTH_TIMEOUT_MS,
-        "Role check"
-      );
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id)
+        .in("role", ["admin", "super_admin"]);
 
       if (rolesError || !roles || roles.length === 0) {
         await supabase.auth.signOut();
@@ -99,16 +79,11 @@ const AdminLogin = () => {
       const isSuperAdmin = userRoles.includes("super_admin");
 
       if (!isSuperAdmin) {
-        const { data: membership, error: membershipError } = await withTimeout(
-          supabase
-            .from("tenant_members")
-            .select("tenant_id")
-            .eq("user_id", data.user.id)
-            .limit(1)
-            ,
-          AUTH_TIMEOUT_MS,
-          "Tenant check"
-        );
+        const { data: membership, error: membershipError } = await supabase
+          .from("tenant_members")
+          .select("tenant_id")
+          .eq("user_id", data.user.id)
+          .limit(1);
 
         if (membershipError || !membership || membership.length === 0) {
           await supabase.auth.signOut();
@@ -122,23 +97,16 @@ const AdminLogin = () => {
         navigate("/admin/dashboard");
       }
     } catch (error: any) {
-      const isTimeout = error.message?.includes("timed out");
-      toast.error(isTimeout ? "Network Error" : "Login Failed", {
-        description: isTimeout
-          ? "Slow network detected. Please check your connection and try again."
-          : error.message || "Something went wrong",
+      toast.error("Login Failed", {
+        description: error.message || "Something went wrong",
       });
     } finally {
       setIsAdminLoading(false);
-      adminLoginLock.current = false;
     }
   };
 
   const handleStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Double-tap guard
-    if (staffLoginLock.current) return;
 
     const result = validateForm(staffLoginSchema, { phone, password: staffPassword });
     if (!result.success) {
@@ -147,14 +115,10 @@ const AdminLogin = () => {
       return;
     }
 
-    staffLoginLock.current = true;
     setIsStaffLoading(true);
 
     try {
-      const { success, error } = await resilientCall(
-        () => staffLogin(phone, staffPassword),
-        { timeoutMs: AUTH_TIMEOUT_MS, retries: 1, retryDelayMs: 2000, label: "Staff login" }
-      );
+      const { success, error } = await staffLogin(phone, staffPassword);
 
       if (!success) {
         throw new Error(error || "Login failed");
@@ -165,15 +129,11 @@ const AdminLogin = () => {
       });
       navigate("/staff/dashboard");
     } catch (error: any) {
-      const isTimeout = error.message?.includes("timed out");
-      toast.error(isTimeout ? "Network Error" : "Login Failed", {
-        description: isTimeout
-          ? "Slow network detected. Please check your connection and try again."
-          : error.message || "Invalid phone number or password",
+      toast.error("Login Failed", {
+        description: error.message || "Invalid phone number or password",
       });
     } finally {
       setIsStaffLoading(false);
-      staffLoginLock.current = false;
     }
   };
 
