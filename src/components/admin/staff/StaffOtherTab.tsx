@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/api/edgeFunctionClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -216,7 +217,7 @@ export const StaffOtherTab = ({
 
       // Set password via edge function if login is enabled
       if (newStaff.enableLogin && newStaff.password) {
-        const { error: passwordError } = await supabase.functions.invoke("staff-auth?action=set-password", {
+        const { error: passwordError } = await invokeEdgeFunction("staff-auth?action=set-password", {
           body: {
             staffId: staffData.id,
             password: newStaff.password,
