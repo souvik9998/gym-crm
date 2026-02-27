@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { invokeEdgeFunction } from "@/api/edgeFunctionClient";
 import {
   Dialog,
   DialogContent,
@@ -545,7 +546,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
           const { data: { session } } = await supabase.auth.getSession();
           const adminUserId = session?.user?.id || null;
 
-          await supabase.functions.invoke("send-whatsapp", {
+          await invokeEdgeFunction("send-whatsapp", {
             body: {
               phone: member.phone,
               name: member.name,

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/api/edgeFunctionClient";
 import type { StaffBranchRestriction } from "@/contexts/BranchContext";
 
 export interface StaffUser {
@@ -104,7 +105,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
        // `Content-Type` while passing an object body, otherwise the body can be
        // coerced to the string "[object Object]" in some runtimes.
        // Pass action via querystring to avoid body parsing issues entirely.
-       const { data } = await supabase.functions.invoke("staff-auth?action=verify-session", {
+       const { data } = await invokeEdgeFunction("staff-auth?action=verify-session", {
          headers: {
            Authorization: `Bearer ${session.access_token}`,
          },
@@ -252,7 +253,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.access_token) {
-         await supabase.functions.invoke("staff-auth?action=logout", {
+         await invokeEdgeFunction("staff-auth?action=logout", {
            headers: {
              Authorization: `Bearer ${session.access_token}`,
            },

@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Dumbbell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/api/edgeFunctionClient";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
@@ -92,7 +93,7 @@ const Register = () => {
           const notificationType = data.isDailyPass ? "daily_pass" : "new_registration";
           const shouldAutoSend = await getWhatsAppAutoSendPreference(branchId, notificationType as any);
           if (shouldAutoSend) {
-            await supabase.functions.invoke("send-whatsapp", {
+            await invokeEdgeFunction("send-whatsapp", {
               body: {
                 phone: phone,
                 name: memberDetails.fullName,
