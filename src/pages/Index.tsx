@@ -4,10 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Phone, ArrowRight, Shield, Clock, CreditCard, Dumbbell, UserPlus, ArrowLeft } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
-import { invokeRpc, queryTable } from "@/api/customDomainFetch";
-import { fetchPublicBranch, fetchDefaultBranch } from "@/api/publicData";
+import { fetchPublicBranch, fetchDefaultBranch, checkPhoneExists, fetchSubscriptionInfo } from "@/api/publicData";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import { phoneSchema, validateField, validateForm } from "@/lib/validation";
 import { z } from "zod";
@@ -30,7 +28,6 @@ const Index = () => {
   const [membershipStartDate, setMembershipStartDate] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
   const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(() => {
-    // Instantly restore cached branch info to avoid "Loading..."
     if (branchId) {
       const cached = sessionStorage.getItem(`branch-info-${branchId}`);
       if (cached) {
@@ -56,42 +53,23 @@ const Index = () => {
     }
   }, [branchId, navigate, isRedirecting]);
 
-  // Fetch branch info - try direct DB first (fast), edge function as fallback
+  // Fetch branch info via edge function (CORS-safe)
   useEffect(() => {
     if (!branchId) return;
     if (branchInfo) {
-      // Already have cached data, still refresh in background
       setIsBranchLoading(false);
     }
     
-    // Try custom domain REST API first (faster, no SDK overhead)
-    const fetchDirect = async () => {
-      try {
-        const params = `id=eq.${branchId}&is_active=eq.true&deleted_at=is.null&select=id,name&limit=1`;
-        const { data, error } = await queryTable<any[]>("branches", params);
-        
-        if (!error && data && data.length > 0) {
-          const info = { id: data[0].id, name: data[0].name };
-          setBranchInfo(info);
-          sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
-          setIsBranchLoading(false);
-          return;
-        }
-      } catch { /* fall through to edge function */ }
-      
-      // Fallback to edge function (for cases where RLS blocks anonymous read)
-      try {
-        const branch = await fetchPublicBranch(branchId);
-        if (branch) {
-          const info = { id: branch.id, name: branch.name };
-          setBranchInfo(info);
-          sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
-        }
-      } catch { /* ignore */ }
+    fetchPublicBranch(branchId).then((branch) => {
+      if (branch) {
+        const info = { id: branch.id, name: branch.name };
+        setBranchInfo(info);
+        sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
+      }
       setIsBranchLoading(false);
-    };
-    
-    fetchDirect();
+    }).catch(() => {
+      setIsBranchLoading(false);
+    });
   }, [branchId]);
 
   // Handle return from Renew/ExtendPT pages
@@ -101,12 +79,7 @@ const Index = () => {
       const fetchMember = async () => {
         setIsLoading(true);
         try {
-          const { data: memberData } = await invokeRpc("check_phone_exists", {
-            phone_number: state.phone,
-            p_branch_id: branchId || null,
-          });
-
-          const result = memberData?.[0];
+          const result = await checkPhoneExists(state.phone!, branchId || null);
 
           if (result?.member_exists) {
             const member = {
@@ -116,17 +89,14 @@ const Index = () => {
               email: result.member_email,
             };
 
-            const { data: subscriptionData } = await invokeRpc("get_member_subscription_info", {
-              p_member_id: result.member_id,
-            });
+            const subscription = await fetchSubscriptionInfo(result.member_id!);
 
-            const subscription = subscriptionData?.[0];
             const isValidForPT =
               subscription && (subscription.status === "active" || subscription.status === "expiring_soon");
-            setMembershipEndDate(isValidForPT ? subscription?.end_date : null);
-            setMembershipStartDate(isValidForPT ? subscription?.start_date : null);
+            setMembershipEndDate(isValidForPT ? subscription?.end_date ?? null : null);
+            setMembershipStartDate(isValidForPT ? subscription?.start_date ?? null : null);
             setExistingMember(member);
-            setPhone(state.phone);
+            setPhone(state.phone!);
             setShowOptions(true);
           }
         } finally {
@@ -151,33 +121,23 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      const { data: memberData, error } = await invokeRpc("check_phone_exists", {
-        phone_number: phone,
-        p_branch_id: branchId || null,
-      });
+      const memberResult = await checkPhoneExists(phone, branchId || null);
 
-      if (error) throw error;
-
-      const result = memberData?.[0];
-
-      if (result?.member_exists) {
+      if (memberResult?.member_exists) {
         const member = {
-          id: result.member_id,
-          name: result.member_name,
-          phone: result.member_phone,
-          email: result.member_email,
+          id: memberResult.member_id,
+          name: memberResult.member_name,
+          phone: memberResult.member_phone,
+          email: memberResult.member_email,
           branch_id: branchId || null,
         };
 
-        const { data: subscriptionData } = await invokeRpc("get_member_subscription_info", {
-          p_member_id: result.member_id,
-        });
+        const subscription = await fetchSubscriptionInfo(memberResult.member_id!);
 
-        const subscription = subscriptionData?.[0];
         const isValidForPT =
           subscription && (subscription.status === "active" || subscription.status === "expiring_soon");
-        setMembershipEndDate(isValidForPT ? subscription?.end_date : null);
-        setMembershipStartDate(isValidForPT ? subscription?.start_date : null);
+        setMembershipEndDate(isValidForPT ? subscription?.end_date ?? null : null);
+        setMembershipStartDate(isValidForPT ? subscription?.start_date ?? null : null);
 
         setExistingMember(member);
         setShowOptions(true);

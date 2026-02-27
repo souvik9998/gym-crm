@@ -6,9 +6,9 @@ import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
 import PackageSelectionForm, { type PackageSelectionData } from "@/components/registration/PackageSelectionForm";
-import { fetchPublicBranch } from "@/api/publicData";
+import { fetchPublicBranch, fetchMemberSubscriptions } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
-import { invokeEdgeFunction, queryTable } from "@/api/customDomainFetch";
+import { invokeEdgeFunction } from "@/api/customDomainFetch";
 
 interface Member {
   id: string;
@@ -48,26 +48,20 @@ const Renew = () => {
     }
 
     const fetchMemberData = async () => {
-      const today = new Date().toISOString().split("T")[0];
-      
-      // Fetch existing active gym subscription via custom domain
-      const subParams = `member_id=eq.${member.id}&status=eq.active&end_date=gte.${today}&select=end_date&order=end_date.desc&limit=1`;
-      const { data: subData } = await queryTable<any[]>("subscriptions", subParams);
+      // Fetch subscriptions via edge function (CORS-safe)
+      const { gymSubscription, ptSubscription } = await fetchMemberSubscriptions(member.id);
 
-      if (subData && subData.length > 0) {
-        setExistingMembershipEndDate(subData[0].end_date);
+      if (gymSubscription) {
+        setExistingMembershipEndDate(gymSubscription.end_date);
       }
 
-      // Fetch existing active PT subscription via custom domain
-      const ptParams = `member_id=eq.${member.id}&status=eq.active&end_date=gte.${today}&select=end_date&order=end_date.desc&limit=1`;
-      const { data: ptData } = await queryTable<any[]>("pt_subscriptions", ptParams);
-
-      if (ptData && ptData.length > 0) {
-        setExistingPTEndDate(ptData[0].end_date);
-        const existingEndDate = new Date(ptData[0].end_date);
+      if (ptSubscription) {
+        setExistingPTEndDate(ptSubscription.end_date);
+        const existingEndDate = new Date(ptSubscription.end_date);
         existingEndDate.setDate(existingEndDate.getDate() + 1);
         setPtStartDate(existingEndDate.toISOString().split("T")[0]);
       } else {
+        const today = new Date().toISOString().split("T")[0];
         setPtStartDate(today);
       }
     };
@@ -76,7 +70,6 @@ const Renew = () => {
   }, [member, navigate, branchId, stateBranchName]);
 
   const handlePackageSubmit = (packageData: PackageSelectionData) => {
-    // Use the custom start date from package selection
     const gymStart = packageData.startDate;
 
     initiatePayment({
@@ -96,7 +89,6 @@ const Renew = () => {
       onSuccess: async (data) => {
         const endDate = new Date(data.endDate);
         
-        // Send WhatsApp notification for renewal (if auto-send enabled)
         try {
           const shouldAutoSend = await getWhatsAppAutoSendPreference(branchId, "renewal");
           if (shouldAutoSend) {
@@ -146,7 +138,6 @@ const Renew = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Payment Processing Overlay */}
       <PaymentProcessingOverlay
         isVisible={paymentStage !== "idle"}
         stage={paymentStage === "idle" ? "verifying" : paymentStage}
