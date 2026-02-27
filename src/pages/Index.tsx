@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Phone, ArrowRight, Shield, Clock, CreditCard, Dumbbell, UserPlus, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
+import { invokeRpc, queryTable } from "@/api/customDomainFetch";
 import { fetchPublicBranch, fetchDefaultBranch } from "@/api/publicData";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import { phoneSchema, validateField, validateForm } from "@/lib/validation";
@@ -63,19 +64,14 @@ const Index = () => {
       setIsBranchLoading(false);
     }
     
-    // Try direct Supabase query first (much faster, no cold start)
+    // Try custom domain REST API first (faster, no SDK overhead)
     const fetchDirect = async () => {
       try {
-        const { data, error } = await supabase
-          .from("branches")
-          .select("id, name")
-          .eq("id", branchId)
-          .eq("is_active", true)
-          .is("deleted_at", null)
-          .maybeSingle();
+        const params = `id=eq.${branchId}&is_active=eq.true&deleted_at=is.null&select=id,name&limit=1`;
+        const { data, error } = await queryTable<any[]>("branches", params);
         
-        if (!error && data) {
-          const info = { id: data.id, name: data.name };
+        if (!error && data && data.length > 0) {
+          const info = { id: data[0].id, name: data[0].name };
           setBranchInfo(info);
           sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
           setIsBranchLoading(false);
@@ -105,7 +101,7 @@ const Index = () => {
       const fetchMember = async () => {
         setIsLoading(true);
         try {
-          const { data: memberData } = await supabase.rpc("check_phone_exists", {
+          const { data: memberData } = await invokeRpc("check_phone_exists", {
             phone_number: state.phone,
             p_branch_id: branchId || null,
           });
@@ -120,7 +116,7 @@ const Index = () => {
               email: result.member_email,
             };
 
-            const { data: subscriptionData } = await supabase.rpc("get_member_subscription_info", {
+            const { data: subscriptionData } = await invokeRpc("get_member_subscription_info", {
               p_member_id: result.member_id,
             });
 
@@ -155,7 +151,7 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      const { data: memberData, error } = await supabase.rpc("check_phone_exists", {
+      const { data: memberData, error } = await invokeRpc("check_phone_exists", {
         phone_number: phone,
         p_branch_id: branchId || null,
       });
@@ -173,7 +169,7 @@ const Index = () => {
           branch_id: branchId || null,
         };
 
-        const { data: subscriptionData } = await supabase.rpc("get_member_subscription_info", {
+        const { data: subscriptionData } = await invokeRpc("get_member_subscription_info", {
           p_member_id: result.member_id,
         });
 
