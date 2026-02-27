@@ -1,7 +1,8 @@
 import { getAuthToken } from "./authenticatedFetch";
-import { SUPABASE_URL, SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
 
-const CHECK_IN_URL = getEdgeFunctionUrl("check-in");
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://nhfghwwpnqoayhsitqmp.supabase.co";
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oZmdod3dwbnFvYXloc2l0cW1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1NDExNTEsImV4cCI6MjA4MzExNzE1MX0.QMq4tpsNiKxX5lT4eyfMrNT6OtnPsm_CouOowDA5m1g";
+const CHECK_IN_URL = `${SUPABASE_URL}/functions/v1/check-in`;
 
 async function authenticatedFetch(url: string, options?: RequestInit) {
   const token = await getAuthToken();

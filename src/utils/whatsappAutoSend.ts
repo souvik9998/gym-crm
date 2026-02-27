@@ -1,4 +1,4 @@
-import { queryTable } from "@/api/customDomainFetch";
+import { supabase } from "@/integrations/supabase/client";
 
 export type WhatsAppAutoSendType =
   | "new_registration"
@@ -30,9 +30,11 @@ export async function getWhatsAppAutoSendPreference(
   if (!branchId) return DEFAULTS[type];
 
   try {
-    const params = `branch_id=eq.${branchId}&select=whatsapp_auto_send&limit=1`;
-    const { data: rows } = await queryTable<any[]>("gym_settings", params);
-    const data = rows?.[0];
+    const { data } = await supabase
+      .from("gym_settings")
+      .select("whatsapp_auto_send")
+      .eq("branch_id", branchId)
+      .maybeSingle();
 
     if (!data?.whatsapp_auto_send) return DEFAULTS[type];
 

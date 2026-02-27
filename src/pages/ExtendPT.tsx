@@ -7,11 +7,9 @@ import { ArrowLeft, Dumbbell, Calendar, IndianRupee, User, Check, AlertCircle, C
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
-import { invokeEdgeFunction } from "@/api/customDomainFetch";
 import { addDays, addMonths, differenceInDays, format, isBefore, isAfter, parseISO } from "date-fns";
 import { fetchPublicBranch, fetchPublicTrainers } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
-import { queryTable } from "@/api/customDomainFetch";
 
 interface Trainer {
   id: string;
@@ -97,13 +95,20 @@ const ExtendPT = () => {
         setSelectedTrainer(mappedTrainers[0]);
       }
 
-      // Fetch existing active PT subscription via custom domain
+      // Fetch existing active PT subscription for this member to determine start date
+      // This uses RPC which is allowed
       const today = new Date().toISOString().split("T")[0];
-      const ptParams = `member_id=eq.${member.id}&end_date=gte.${today}&select=end_date&order=end_date.desc&limit=1`;
-      const { data: ptData } = await queryTable<any[]>("pt_subscriptions", ptParams);
+      const { data: existingPT } = await supabase
+        .from("pt_subscriptions")
+        .select("end_date")
+        .eq("member_id", member.id)
+        .gte("end_date", today)
+        .order("end_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (ptData && ptData.length > 0 && ptData[0].end_date) {
-        setExistingPTEndDate(parseISO(ptData[0].end_date));
+      if (existingPT?.end_date) {
+        setExistingPTEndDate(parseISO(existingPT.end_date));
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -230,7 +235,7 @@ const ExtendPT = () => {
         try {
           const shouldAutoSend = await getWhatsAppAutoSendPreference(branchId, "pt_extension");
           if (shouldAutoSend) {
-            await invokeEdgeFunction("send-whatsapp", {
+            await supabase.functions.invoke("send-whatsapp", {
               body: {
                 phone: member.phone,
                 name: member.name,
