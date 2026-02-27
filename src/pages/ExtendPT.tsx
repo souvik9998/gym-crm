@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Dumbbell, Calendar, IndianRupee, User, Check, AlertCircle, Clock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
-import { invokeEdgeFunction } from "@/api/customDomainFetch";
 import { addDays, addMonths, differenceInDays, format, isBefore, isAfter, parseISO } from "date-fns";
-import { fetchPublicBranch, fetchPublicTrainers, fetchMemberSubscriptions } from "@/api/publicData";
+import { fetchPublicBranch, fetchPublicTrainers } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 
 interface Trainer {
@@ -95,11 +95,20 @@ const ExtendPT = () => {
         setSelectedTrainer(mappedTrainers[0]);
       }
 
-      // Fetch existing active PT subscription via edge function (CORS-safe)
-      const { ptSubscription } = await fetchMemberSubscriptions(member.id);
+      // Fetch existing active PT subscription for this member to determine start date
+      // This uses RPC which is allowed
+      const today = new Date().toISOString().split("T")[0];
+      const { data: existingPT } = await supabase
+        .from("pt_subscriptions")
+        .select("end_date")
+        .eq("member_id", member.id)
+        .gte("end_date", today)
+        .order("end_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (ptSubscription?.end_date) {
-        setExistingPTEndDate(parseISO(ptSubscription.end_date));
+      if (existingPT?.end_date) {
+        setExistingPTEndDate(parseISO(existingPT.end_date));
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -226,7 +235,7 @@ const ExtendPT = () => {
         try {
           const shouldAutoSend = await getWhatsAppAutoSendPreference(branchId, "pt_extension");
           if (shouldAutoSend) {
-            await invokeEdgeFunction("send-whatsapp", {
+            await supabase.functions.invoke("send-whatsapp", {
               body: {
                 phone: member.phone,
                 name: member.name,

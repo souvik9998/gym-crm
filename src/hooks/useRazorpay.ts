@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
-import { invokeEdgeFunction } from "@/api/customDomainFetch";
 
 interface RazorpayOptions {
   amount: number;
@@ -99,8 +99,8 @@ export const useRazorpay = () => {
           throw new Error("Failed to load payment gateway");
         }
 
-        // Create order via custom domain
-        const { data: orderData, error: orderError } = await invokeEdgeFunction(
+        // Create order
+        const { data: orderData, error: orderError } = await supabase.functions.invoke(
           "create-razorpay-order",
           {
             body: {
@@ -143,18 +143,22 @@ export const useRazorpay = () => {
             contact: memberPhone,
           },
           theme: {
-            color: "#F97316",
+            color: "#F97316", // accent color
           },
           handler: async function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
+            // Mark verification in progress so Razorpay's ondismiss doesn't reset our UI
             isVerifyingRef.current = true;
+
+            // Show verification overlay immediately after Razorpay closes
             setPaymentStage("verifying");
 
             try {
+              // Small delay for visual feedback
               await new Promise((resolve) => setTimeout(resolve, 500));
               setPaymentStage("processing");
 
-              // Verify payment via custom domain
-              const { data: verifyData, error: verifyError } = await invokeEdgeFunction(
+              // Verify payment
+              const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
                 "verify-razorpay-payment",
                 {
                   body: {
@@ -185,11 +189,14 @@ export const useRazorpay = () => {
                 throw new Error(verifyError?.message || "Payment verification failed");
               }
 
+              // Show success state and keep overlay visible during navigation
               setPaymentStage("success");
               setIsLoading(false);
               
+              // Brief delay to show success state, then navigate (overlay stays visible)
               await new Promise((resolve) => setTimeout(resolve, 800));
 
+              // Call onSuccess which triggers navigation - overlay will unmount with component
               onSuccess({
                 memberId: verifyData.memberId,
                 dailyPassUserId: verifyData.dailyPassUserId,
@@ -211,6 +218,8 @@ export const useRazorpay = () => {
           },
            modal: {
              ondismiss: function () {
+               // Razorpay calls ondismiss even after a successful payment.
+               // If we're already verifying, don't hide the overlay.
                if (isVerifyingRef.current) return;
                setIsLoading(false);
                setPaymentStage("idle");

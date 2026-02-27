@@ -1,4 +1,4 @@
-import { fetchGymSettings } from "@/api/publicData";
+import { supabase } from "@/integrations/supabase/client";
 
 export type WhatsAppAutoSendType =
   | "new_registration"
@@ -30,9 +30,16 @@ export async function getWhatsAppAutoSendPreference(
   if (!branchId) return DEFAULTS[type];
 
   try {
-    const { whatsapp_auto_send } = await fetchGymSettings(branchId);
-    if (!whatsapp_auto_send) return DEFAULTS[type];
-    return (whatsapp_auto_send as Record<string, boolean>)[type] ?? DEFAULTS[type];
+    const { data } = await supabase
+      .from("gym_settings")
+      .select("whatsapp_auto_send")
+      .eq("branch_id", branchId)
+      .maybeSingle();
+
+    if (!data?.whatsapp_auto_send) return DEFAULTS[type];
+
+    const prefs = data.whatsapp_auto_send as Record<string, boolean>;
+    return prefs[type] ?? DEFAULTS[type];
   } catch {
     return DEFAULTS[type];
   }
