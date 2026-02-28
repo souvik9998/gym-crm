@@ -57,26 +57,26 @@ const StatCard = memo(({
   iconClass?: string;
 }) => (
   <Card className="hover-lift border-0 shadow-sm h-full">
-    {/* Mobile layout - icon on right, text and number on left */}
-    <CardContent className="p-2 flex items-center justify-between md:hidden">
+    {/* Mobile/Tablet layout - icon on right, text and number on left */}
+    <CardContent className="p-2 md:p-3 lg:hidden flex items-center justify-between">
       <div className="flex-1 min-w-0 pr-2">
-        <p className={`text-base font-bold ${colorClass} leading-tight break-words`}>
+        <p className={`text-base md:text-lg font-bold ${colorClass} leading-tight break-words`}>
           {value}
         </p>
-        <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+        <p className="text-[10px] md:text-xs text-muted-foreground leading-tight mt-0.5">
           {label}
         </p>
       </div>
-      <div className={`w-8 h-8 ${bgClass} rounded-lg flex items-center justify-center flex-shrink-0`}>
-        <Icon className={`w-4 h-4 ${iconClass}`} />
+      <div className={`w-8 h-8 md:w-10 md:h-10 ${bgClass} rounded-lg flex items-center justify-center flex-shrink-0`}>
+        <Icon className={`w-4 h-4 md:w-5 md:h-5 ${iconClass}`} />
       </div>
     </CardContent>
 
-    {/* Desktop / tablet layout - keep existing design */}
-    <CardContent className="hidden md:block md:p-5">
+    {/* Desktop layout */}
+    <CardContent className="hidden lg:block lg:p-5">
       <div className="flex items-center justify-between">
         <div className="min-w-0 flex-1">
-          <p className={`text-xl lg:text-2xl font-bold ${colorClass} truncate`}>{value}</p>
+          <p className={`text-2xl font-bold ${colorClass} truncate`}>{value}</p>
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{label}</p>
         </div>
         <div className={`p-3 ${bgClass} rounded-xl flex-shrink-0 ml-2`}>
