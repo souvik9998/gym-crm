@@ -7,7 +7,7 @@ import { queryKeys, invalidationGroups } from "@/lib/queryKeys";
 import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
-import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useAuth } from "@/contexts/AuthContext";
 import * as membersApi from "@/api/members";
 
 const PAGE_SIZE = 50; // Increased for better performance
@@ -19,7 +19,7 @@ const PAGE_SIZE = 50; // Increased for better performance
 export function useInfiniteMembersQuery() {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
-  const { isAdmin } = useIsAdmin();
+  const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   
   const isAuthenticated = isAdmin || isStaffLoggedIn;
@@ -29,7 +29,7 @@ export function useInfiniteMembersQuery() {
     queryFn: ({ pageParam = 0 }) => membersApi.fetchMembersPaginated(branchId, pageParam, PAGE_SIZE),
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: 0,
-    staleTime: STALE_TIMES.DYNAMIC,
+    staleTime: STALE_TIMES.DYNAMIC, // 2 min - members change with user actions
     gcTime: GC_TIME,
     refetchOnWindowFocus: false,
     enabled: isAuthenticated,
@@ -44,7 +44,7 @@ export function useInfiniteMembersQuery() {
 export function useMembersQuery() {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
-  const { isAdmin } = useIsAdmin();
+  const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   
   const isAuthenticated = isAdmin || isStaffLoggedIn;
@@ -52,7 +52,7 @@ export function useMembersQuery() {
   return useQuery({
     queryKey: queryKeys.members.all(branchId),
     queryFn: () => membersApi.fetchMembers(branchId),
-    staleTime: STALE_TIMES.DYNAMIC,
+    staleTime: STALE_TIMES.DYNAMIC, // 2 min
     gcTime: GC_TIME,
     refetchOnWindowFocus: false,
     enabled: isAuthenticated,

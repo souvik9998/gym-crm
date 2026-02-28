@@ -7,7 +7,7 @@ import { queryKeys, invalidationGroups } from "@/lib/queryKeys";
 import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
-import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useAuth } from "@/contexts/AuthContext";
 import * as dailyPassApi from "@/api/dailyPass";
 
 // Re-export types
@@ -20,7 +20,7 @@ export type { DailyPassUserWithSubscription, PaginatedDailyPassResponse } from "
 export function useDailyPassQuery() {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
-  const { isAdmin } = useIsAdmin();
+  const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   
   const isAuthenticated = isAdmin || isStaffLoggedIn;
@@ -41,7 +41,7 @@ export function useDailyPassQuery() {
 export function useInfiniteDailyPassQuery() {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
-  const { isAdmin } = useIsAdmin();
+  const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   
   const isAuthenticated = isAdmin || isStaffLoggedIn;

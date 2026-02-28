@@ -7,7 +7,7 @@ import { queryKeys, invalidationGroups } from "@/lib/queryKeys";
 import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
-import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useAuth } from "@/contexts/AuthContext";
 import * as paymentsApi from "@/api/payments";
 
 // Re-export types
@@ -20,7 +20,7 @@ export type { PaymentWithDetails, PaymentMode, PaymentStatus, PaginatedPaymentsR
 export function usePaymentsQuery() {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
-  const { isAdmin } = useIsAdmin();
+  const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   
   const isAuthenticated = isAdmin || isStaffLoggedIn;
@@ -28,7 +28,7 @@ export function usePaymentsQuery() {
   return useQuery({
     queryKey: queryKeys.payments.all(branchId),
     queryFn: () => paymentsApi.fetchPayments(branchId),
-    staleTime: STALE_TIMES.DYNAMIC,
+    staleTime: STALE_TIMES.REAL_TIME, // 30s - payments are highly dynamic
     gcTime: GC_TIME,
     refetchOnWindowFocus: false,
     enabled: isAuthenticated,
@@ -41,7 +41,7 @@ export function usePaymentsQuery() {
 export function useInfinitePaymentsQuery() {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
-  const { isAdmin } = useIsAdmin();
+  const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   
   const isAuthenticated = isAdmin || isStaffLoggedIn;
@@ -51,7 +51,7 @@ export function useInfinitePaymentsQuery() {
     queryFn: ({ pageParam = 0 }) => paymentsApi.fetchPaymentsPaginated(branchId, pageParam, 25),
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: 0,
-    staleTime: STALE_TIMES.DYNAMIC,
+    staleTime: STALE_TIMES.REAL_TIME, // 30s
     gcTime: GC_TIME,
     refetchOnWindowFocus: false,
     enabled: isAuthenticated && !!branchId,

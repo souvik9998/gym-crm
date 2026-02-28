@@ -6,7 +6,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
-import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useAuth } from "@/contexts/AuthContext";
 import * as logsApi from "@/api/activityLogs";
 
 // Re-export types
@@ -31,7 +31,7 @@ export function useInfiniteAdminLogsQuery(filters?: {
 }) {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
-  const { isAdmin } = useIsAdmin();
+  const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   
   const isAuthenticated = isAdmin || isStaffLoggedIn;
@@ -58,7 +58,7 @@ export function useInfiniteUserLogsQuery(filters?: {
 }) {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
-  const { isAdmin } = useIsAdmin();
+  const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   
   const isAuthenticated = isAdmin || isStaffLoggedIn;
@@ -86,7 +86,7 @@ export function useInfiniteStaffLogsQuery(filters?: {
 }) {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
-  const { isAdmin } = useIsAdmin();
+  const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   
   const isAuthenticated = isAdmin || isStaffLoggedIn;
@@ -115,7 +115,7 @@ export function useInfiniteWhatsAppLogsQuery(filters?: {
 }) {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
-  const { isAdmin } = useIsAdmin();
+  const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   
   const isAuthenticated = isAdmin || isStaffLoggedIn;

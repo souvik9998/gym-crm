@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { BranchProvider } from "@/contexts/BranchContext";
 import { StaffAuthProvider } from "@/contexts/StaffAuthContext";
 import { StaffBranchBridge } from "@/components/StaffBranchBridge";
@@ -48,12 +49,13 @@ import { SuperAdminLayout } from "@/components/superadmin/SuperAdminLayout";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <BranchProvider>
-        <StaffAuthProvider>
-          <StaffBranchBridge>
-            <Toaster />
-            <BrowserRouter>
+    <AuthProvider>
+      <TooltipProvider>
+        <BranchProvider>
+          <StaffAuthProvider>
+            <StaffBranchBridge>
+              <Toaster />
+              <BrowserRouter>
             <Routes>
               {/* Default route - redirect to admin login */}
               <Route path="/" element={<Navigate to="/admin/login" replace />} />
@@ -223,11 +225,12 @@ const App = () => (
               {/* Catch all - redirect to admin login */}
               <Route path="*" element={<Navigate to="/admin/login" replace />} />
             </Routes>
-            </BrowserRouter>
-          </StaffBranchBridge>
-        </StaffAuthProvider>
-      </BranchProvider>
-    </TooltipProvider>
+              </BrowserRouter>
+            </StaffBranchBridge>
+          </StaffAuthProvider>
+        </BranchProvider>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
