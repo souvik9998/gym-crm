@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Phone, Calendar, MoreVertical, User, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserCheck, Clock, AlertTriangle, Download } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsTabletOrBelow } from "@/hooks/use-mobile";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,6 +63,7 @@ export const MembersTable = ({
   sortOrder: externalSortOrder
 }: MembersTableProps) => {
   const isMobile = useIsMobile();
+  const isCompact = useIsTabletOrBelow();
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn, permissions, staffUser } = useStaffAuth();
   const { isAdmin } = useIsAdmin();
@@ -902,7 +903,7 @@ export const MembersTable = ({
       </div>
 
       {/* Mobile Table Layout - matches desktop table style */}
-      {isMobile ? (
+      {isCompact ? (
         <div className="rounded-lg border overflow-hidden bg-card">
           {/* Table Header */}
           <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">

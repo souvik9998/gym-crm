@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useBranch } from "@/contexts/BranchContext";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { useInView } from "react-intersection-observer";
 import { toast } from "@/components/ui/sonner";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,7 @@ interface DailyPassTableProps {
 const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTableProps) => {
   const { currentBranch } = useBranch();
   const isMobile = useIsMobile();
+  const isCompact = useIsTabletOrBelow();
   const deleteMutation = useDeleteDailyPassUser();
   
   // Use infinite query for paginated data fetching
@@ -270,7 +271,7 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
       </div>
 
       {/* Mobile View */}
-      {isMobile ? (
+      {isCompact ? (
         <div className="rounded-lg border overflow-hidden">
           {filteredUsers.map((user) => (
             <MobileExpandableRow
