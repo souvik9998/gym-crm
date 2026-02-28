@@ -224,7 +224,7 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData }: MemberDetailsFormP
                 </button>
               ))}
             </div>
-            <InlineError message={touched.gender && !gender ? errors.gender : undefined} />
+            <InlineError message={touched.gender && !gender ? errors.gender : undefined} className="min-h-[1.125rem]" />
           </div>
 
           {/* Date of Birth */}
@@ -259,7 +259,7 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData }: MemberDetailsFormP
                 <SelectItem value="voter">Voter ID</SelectItem>
               </SelectContent>
             </Select>
-            <InlineError message={touched.photoIdType && !photoIdType ? errors.photoIdType : undefined} />
+            <InlineError message={touched.photoIdType && !photoIdType ? errors.photoIdType : undefined} className="min-h-[1.125rem]" />
           </div>
 
           {/* Photo ID Number */}
