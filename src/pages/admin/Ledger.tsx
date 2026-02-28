@@ -723,17 +723,17 @@ const AdminLedger = () => {
         {/* Chart */}
         {chartData.length > 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle>Income vs Expenses</CardTitle>
-              <CardDescription>Daily breakdown for the selected period</CardDescription>
+            <CardHeader className="px-3 py-3 sm:p-6">
+              <CardTitle className="text-base sm:text-xl">Income vs Expenses</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Daily breakdown for the selected period</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
+            <CardContent className="px-1 pb-3 pt-0 sm:p-6 sm:pt-0">
+              <div className="h-[220px] sm:h-[280px] lg:h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
+                  <BarChart data={chartData} margin={isMobile ? { top: 4, right: 8, left: -10, bottom: 4 } : undefined}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="date" className="text-xs" />
-                    <YAxis className="text-xs" />
+                    <XAxis dataKey="date" className="text-xs" tick={isMobile ? { fontSize: 10 } : undefined} />
+                    <YAxis className="text-xs" tick={isMobile ? { fontSize: 10 } : undefined} width={isMobile ? 36 : undefined} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: "hsl(var(--card))",
@@ -742,7 +742,7 @@ const AdminLedger = () => {
                       }}
                       formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, ""]}
                     />
-                    <Legend />
+                    <Legend wrapperStyle={isMobile ? { fontSize: 11 } : undefined} />
                     <Bar dataKey="income" name="Income" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="expense" name="Expense" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -754,15 +754,15 @@ const AdminLedger = () => {
 
         {/* Entries Table */}
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+          <CardHeader className="px-3 py-3 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
-                <CardTitle>Transactions</CardTitle>
-                <CardDescription>All income and expense entries</CardDescription>
+                <CardTitle className="text-base sm:text-xl">Transactions</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">All income and expense entries</CardDescription>
               </div>
               <Dialog open={isAddExpenseOpen} onOpenChange={setIsAddExpenseOpen}>
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button size={isMobile ? "sm" : "default"} className="w-full sm:w-auto">
                     <PlusIcon className="w-4 h-4 mr-2" />
                     Add Expense
                   </Button>
@@ -779,7 +779,6 @@ const AdminLedger = () => {
                         value={expenseCategory} 
                         onValueChange={(value) => {
                           setExpenseCategory(value);
-                          // Reset selections when category changes
                           if (value !== "trainer_percentage") {
                             setSelectedTrainerId("");
                           }
@@ -917,7 +916,7 @@ const AdminLedger = () => {
               </Dialog>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 pb-3 pt-0 sm:p-6 sm:pt-0">
             {entries.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <BookOpenIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -925,7 +924,7 @@ const AdminLedger = () => {
               </div>
             ) : (
               <>
-                <div className="flex justify-end mb-4">
+                <div className="flex justify-end mb-3 sm:mb-4">
                   <Button
                     variant="outline"
                     size="sm"
@@ -1033,11 +1032,11 @@ const AdminLedger = () => {
                     <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Date & Time</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Category</TableHead>
+                        <TableHead className="whitespace-nowrap w-[100px] md:w-[90px]">Date & Time</TableHead>
+                        <TableHead className="w-[80px]">Type</TableHead>
+                        <TableHead className="w-[120px] md:w-[110px]">Category</TableHead>
                         <TableHead>Description</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right whitespace-nowrap w-[90px]">Amount</TableHead>
                         <TableHead className="w-[80px]">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1048,17 +1047,17 @@ const AdminLedger = () => {
                           className="cursor-pointer hover:bg-muted/50 transition-colors"
                           onClick={() => handleViewEntry(entry)}
                         >
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium whitespace-nowrap py-2.5">
                             <div>
-                              <p>{format(parseISO(entry.entry_date), "MMM dd, yyyy")}</p>
+                              <p className="text-sm">{format(parseISO(entry.entry_date), "dd MMM yyyy")}</p>
                               <p className="text-xs text-muted-foreground">
                                 {format(new Date(entry.created_at), "hh:mm a")}
                               </p>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-2.5">
                             <span className={cn(
-                              "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+                              "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap",
                               entry.entry_type === "income"
                                 ? "bg-success/10 text-success"
                                 : "bg-destructive/10 text-destructive"
@@ -1071,12 +1070,12 @@ const AdminLedger = () => {
                               {entry.entry_type === "income" ? "Income" : "Expense"}
                             </span>
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
+                          <TableCell className="text-muted-foreground text-sm py-2.5">
                             {getCategoryLabel(entry.category, entry.entry_type)}
                           </TableCell>
-                          <TableCell>
-                            <div className="max-w-xs">
-                              <p className="truncate">{entry.description}</p>
+                          <TableCell className="py-2.5">
+                            <div className="max-w-[200px] lg:max-w-xs">
+                              <p className="truncate text-sm">{entry.description}</p>
                               {entry.is_auto_generated && (
                                 <span className="text-xs text-muted-foreground">(Auto-generated)</span>
                               )}
