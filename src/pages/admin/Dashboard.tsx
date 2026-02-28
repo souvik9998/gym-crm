@@ -329,10 +329,10 @@ const AdminDashboard = () => {
         {/* Tabs for Members & Payments */}
         <Card className="border-0 shadow-sm">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <CardHeader className="pb-2 md:pb-4 border-b px-2 md:px-6 pt-2 md:pt-6">
-              <div className="flex flex-col gap-2 md:gap-4">
+            <CardHeader className="pb-2 lg:pb-4 border-b px-2 lg:px-6 pt-2 lg:pt-6">
+              <div className="flex flex-col gap-2 lg:gap-4">
                 {/* Top Row - Tabs (Desktop), Search Bar (Desktop), and Actions (Desktop) */}
-                <div className="hidden md:flex flex-row items-center gap-3">
+                <div className="hidden lg:flex flex-row items-center gap-3">
                   {/* Tabs - With icons and text on desktop */}
                   <TabsList className="bg-muted/50 p-1 h-10">
                     <TabsTrigger 
@@ -469,37 +469,40 @@ const AdminDashboard = () => {
                   </div>
                 </div>
 
-                {/* Mobile: Text-only Tabs */}
-                <div className="md:hidden">
-                  <TabsList className="bg-muted/50 p-0.5 h-8 w-full">
+                {/* Mobile/Tablet: Text-only Tabs */}
+                <div className="lg:hidden">
+                  <TabsList className="bg-muted/50 p-0.5 h-8 md:h-9 w-full">
                     <TabsTrigger 
                       value="members" 
-                      className="flex-1 text-[10px] leading-tight px-1.5 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                      className="flex-1 text-[10px] md:text-xs leading-tight px-1.5 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1"
                     >
+                      <UsersIcon className="w-3.5 h-3.5 hidden md:inline" />
                       Members
                     </TabsTrigger>
                     <TabsTrigger 
                       value="daily_pass" 
-                      className="flex-1 text-[10px] leading-tight px-1.5 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                      className="flex-1 text-[10px] md:text-xs leading-tight px-1.5 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1"
                     >
+                      <ClockIcon className="w-3.5 h-3.5 hidden md:inline" />
                       Daily Passes
                     </TabsTrigger>
                     <TabsTrigger 
                       value="payments" 
-                      className="flex-1 text-[10px] leading-tight px-1.5 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                      className="flex-1 text-[10px] md:text-xs leading-tight px-1.5 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1"
                     >
+                      <CreditCardIcon className="w-3.5 h-3.5 hidden md:inline" />
                       Payments
                     </TabsTrigger>
                   </TabsList>
                 </div>
                 
-                {/* Search Bar - Mobile only */}
+                {/* Search Bar - Mobile/Tablet only */}
                 {(activeTab === "members" || activeTab === "daily_pass") && (
-                  <div className="relative w-full md:hidden group">
-                    <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
+                  <div className="relative w-full lg:hidden group">
+                    <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 md:w-4 h-3.5 md:h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
                     <Input
                       placeholder="Search by name or phone..."
-                      className="pl-8 h-8 text-xs bg-muted/30 border-transparent hover:bg-muted/50 hover:border-border focus:bg-background focus:border-border transition-all duration-200"
+                      className="pl-8 md:pl-9 h-8 md:h-9 text-xs md:text-sm bg-muted/30 border-transparent hover:bg-muted/50 hover:border-border focus:bg-background focus:border-border transition-all duration-200"
                       value={activeTab === "members" ? searchInput : dailyPassSearchInput}
                       onChange={(e) => activeTab === "members" ? setSearchInput(e.target.value) : setDailyPassSearchInput(e.target.value)}
                     />
@@ -507,12 +510,12 @@ const AdminDashboard = () => {
                 )}
               </div>
             </CardHeader>
-            <CardContent className="p-2 sm:p-4 md:pt-2 md:px-6 md:pb-6">
-              <TabsContent value="members" className="mt-0 space-y-1.5 md:space-y-4">
-                {/* Mobile: Filter Dropdown and Action Buttons Row */}
+            <CardContent className="p-2 sm:p-4 lg:pt-2 lg:px-6 lg:pb-6">
+              <TabsContent value="members" className="mt-0 space-y-1.5 lg:space-y-4">
+                {/* Mobile/Tablet: Filter Dropdown and Action Buttons Row */}
                 <div className="md:hidden flex flex-col gap-1.5">
-                  <div className="flex items-center gap-1.5">
-                    {/* Member Filter Dropdown (Mobile) */}
+                  <div className="flex items-center gap-1.5 md:gap-2">
+                    {/* Member Filter Dropdown (Mobile/Tablet) */}
                     <div className="flex-1">
                       <MemberFilter 
                         value={memberFilter} 
@@ -524,21 +527,21 @@ const AdminDashboard = () => {
                       />
                     </div>
                     
-                    {/* Action Buttons - Mobile */}
-                    <div className="flex items-center gap-1">
+                     {/* Action Buttons - Mobile/Tablet */}
+                    <div className="flex items-center gap-1 md:gap-1.5">
                       {/* Sort Button */}
                       <Popover open={sortOpen} onOpenChange={setSortOpen}>
                         <PopoverTrigger asChild>
                           <Button 
                             variant="outline" 
                             size="icon"
-                            className="h-6 w-6 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                            className="h-6 w-6 md:h-8 md:w-8 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
                             title="Sort"
                           >
                             {sortOrder === "asc" ? (
-                              <BarsArrowUpIcon className="w-3 h-3" />
+                              <BarsArrowUpIcon className="w-3 h-3 md:w-4 md:h-4" />
                             ) : (
-                              <BarsArrowDownIcon className="w-3 h-3" />
+                              <BarsArrowDownIcon className="w-3 h-3 md:w-4 md:h-4" />
                             )}
                           </Button>
                         </PopoverTrigger>
@@ -585,14 +588,14 @@ const AdminDashboard = () => {
                       </Popover>
                       
                       {/* Export Button */}
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        className="h-6 w-6 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
-                        title="Export Data"
-                        onClick={handleExport}
-                      >
-                        <ArrowDownTrayIcon className="w-3 h-3" />
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          className="h-6 w-6 md:h-8 md:w-8 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                          title="Export Data"
+                          onClick={handleExport}
+                        >
+                          <ArrowDownTrayIcon className="w-3 h-3 md:w-4 md:h-4" />
                       </Button>
                       
                       {/* Cash Payment Button */}
@@ -601,10 +604,10 @@ const AdminDashboard = () => {
                           variant="outline" 
                           size="icon"
                           onClick={() => setIsAddPaymentOpen(true)} 
-                          className="h-6 w-6 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                          className="h-6 w-6 md:h-8 md:w-8 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
                           title="Cash Payment"
                         >
-                          <CreditCardIcon className="w-3 h-3" />
+                          <CreditCardIcon className="w-3 h-3 md:w-4 md:h-4" />
                         </Button>
                       )}
                       
@@ -613,17 +616,17 @@ const AdminDashboard = () => {
                         <Button 
                           size="sm"
                           onClick={() => setIsAddMemberOpen(true)} 
-                          className="gap-0.5 h-6 bg-foreground text-background hover:bg-foreground/90 text-[10px] px-1.5"
+                          className="gap-0.5 md:gap-1 h-6 md:h-8 bg-foreground text-background hover:bg-foreground/90 text-[10px] md:text-xs px-1.5 md:px-2.5"
                         >
-                          <PlusIcon className="w-2.5 h-2.5" />
-                          <span className="hidden sm:inline">Add</span>
+                          <PlusIcon className="w-2.5 h-2.5 md:w-3.5 md:h-3.5" />
+                          <span>Add Member</span>
                         </Button>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Desktop: Inline Member Filter Chips */}
+                {/* Desktop/Tablet: Inline Member Filter Chips */}
                 <div className="hidden md:block">
                   <MemberFilter 
                     value={memberFilter} 
@@ -635,7 +638,98 @@ const AdminDashboard = () => {
                   />
                 </div>
 
-                <MembersTable 
+                {/* Tablet-only: Action buttons row */}
+                <div className="hidden md:flex lg:hidden items-center gap-2">
+                  <Popover open={sortOpen} onOpenChange={setSortOpen}>
+                    <PopoverTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        className="h-8 w-8 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                        title="Sort"
+                      >
+                        {sortOrder === "asc" ? (
+                          <BarsArrowUpIcon className="w-4 h-4" />
+                        ) : (
+                          <BarsArrowDownIcon className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-0" align="start">
+                      <div className="p-3 border-b border-border">
+                        <p className="text-sm font-medium text-foreground">Sort by</p>
+                      </div>
+                      <RadioGroup 
+                        value={sortBy} 
+                        onValueChange={(value) => setSortBy(value as typeof sortBy)}
+                        className="p-2"
+                      >
+                        <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                          <RadioGroupItem value="name" id="sort-name-tablet" />
+                          <Label htmlFor="sort-name-tablet" className="cursor-pointer flex-1 text-sm">Name</Label>
+                        </div>
+                        <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                          <RadioGroupItem value="join_date" id="sort-join-tablet" />
+                          <Label htmlFor="sort-join-tablet" className="cursor-pointer flex-1 text-sm">Join Date</Label>
+                        </div>
+                        <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                          <RadioGroupItem value="end_date" id="sort-expiry-tablet" />
+                          <Label htmlFor="sort-expiry-tablet" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
+                        </div>
+                      </RadioGroup>
+                      <Separator />
+                      <div className="p-2 space-y-1">
+                        <button
+                          onClick={() => setSortOrder("asc")}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "asc" ? "bg-muted font-medium" : ""}`}
+                        >
+                          <BarsArrowUpIcon className="w-4 h-4" />
+                          Oldest first
+                        </button>
+                        <button
+                          onClick={() => setSortOrder("desc")}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "desc" ? "bg-muted font-medium" : ""}`}
+                        >
+                          <BarsArrowDownIcon className="w-4 h-4" />
+                          Newest first
+                        </button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    className="h-8 w-8 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                    title="Export Data"
+                    onClick={handleExport}
+                  >
+                    <ArrowDownTrayIcon className="w-4 h-4" />
+                  </Button>
+                  {canManageMembers && (
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      onClick={() => setIsAddPaymentOpen(true)} 
+                      className="h-8 w-8 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                      title="Cash Payment"
+                    >
+                      <CreditCardIcon className="w-4 h-4" />
+                    </Button>
+                  )}
+                  <div className="flex-1" />
+                  {canManageMembers && (
+                    <Button 
+                      size="sm"
+                      onClick={() => setIsAddMemberOpen(true)} 
+                      className="gap-1 h-8 bg-foreground text-background hover:bg-foreground/90 text-xs px-3"
+                    >
+                      <PlusIcon className="w-3.5 h-3.5" />
+                      Add Member
+                    </Button>
+                  )}
+                </div>
+
+                <MembersTable
                   searchQuery={searchQuery} 
                   refreshKey={refreshKey} 
                   filterValue={memberFilter}

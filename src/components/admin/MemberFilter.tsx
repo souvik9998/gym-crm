@@ -355,7 +355,7 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
 
   // Desktop Mode: Filter Chips
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-2 lg:gap-3">
       {/* Filter Chips with Dropdowns */}
       {filterCategories.map((category) => {
         const isActive = currentCategory === category.category && !ptFilterActive;
@@ -375,7 +375,7 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
               <Button
                 variant="outline"
                 className={cn(
-                  "h-8 px-1.5 rounded-lg border transition-all duration-200 shadow-sm",
+                  "h-7 lg:h-8 px-1.5 rounded-lg border transition-all duration-200 shadow-sm",
                   "focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none",
                   "focus:ring-0 focus:ring-offset-0 focus:outline-none",
                   category.bgColor,
@@ -430,16 +430,16 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
                   }
                 }}
               >
-                <div className="flex items-center gap-1.5">
-                  <span className={cn("transition-colors", category.color, category.hoverTextColor)}>
+                <div className="flex items-center gap-1 lg:gap-1.5">
+                  <span className={cn("transition-colors [&>svg]:w-3.5 [&>svg]:h-3.5 lg:[&>svg]:w-4 lg:[&>svg]:h-4", category.color, category.hoverTextColor)}>
                   {category.icon}
                   </span>
-                  <span className={cn("text-xs font-medium transition-colors", category.color, category.hoverTextColor)}>
+                  <span className={cn("text-[10px] lg:text-xs font-medium transition-colors", category.color, category.hoverTextColor)}>
                     {category.label}
                   </span>
                   {counts && (
                     <span className={cn(
-                      "text-xs font-semibold px-1.5 py-0.5 rounded-md transition-colors",
+                      "text-[10px] lg:text-xs font-semibold px-1 lg:px-1.5 py-0.5 rounded-md transition-colors",
                       category.bgColor,
                       category.color,
                       category.hoverTextColor,
@@ -575,7 +575,7 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
           <Button
             variant="outline"
             className={cn(
-              "h-8 px-1.5 rounded-lg border transition-all duration-200 shadow-sm bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30",
+              "h-7 lg:h-8 px-1.5 rounded-lg border transition-all duration-200 shadow-sm bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30",
               "focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none",
               "focus:ring-0 focus:ring-offset-0 focus:outline-none",
               ptFilterActive 
@@ -587,24 +587,25 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
               handlePtClick();
             }}
           >
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 lg:gap-1.5">
               <Dumbbell className={cn(
-                "w-4 h-4 transition-colors",
+                "w-3.5 h-3.5 lg:w-4 lg:h-4 transition-colors",
                 ptFilterActive 
                   ? "text-purple-700 dark:text-purple-300"
                   : "text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
               )} />
               <span className={cn(
-                "text-xs font-medium transition-colors",
+                "text-[10px] lg:text-xs font-medium transition-colors",
                 ptFilterActive 
                   ? "text-purple-800 dark:text-purple-200"
                   : "text-purple-700 dark:text-purple-300 hover:text-purple-800 dark:hover:text-purple-200"
               )}>
-                Personal Training
+                <span className="lg:hidden">PT</span>
+                <span className="hidden lg:inline">Personal Training</span>
               </span>
               {counts && (
                 <span className={cn(
-                  "text-xs font-semibold px-1.5 py-0.5 rounded-md transition-colors",
+                  "text-[10px] lg:text-xs font-semibold px-1 lg:px-1.5 py-0.5 rounded-md transition-colors",
                   ptFilterActive
                     ? "bg-purple-200 dark:bg-purple-800/50 text-purple-800 dark:text-purple-200"
                     : "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800/50 hover:text-purple-800 dark:hover:text-purple-200"
