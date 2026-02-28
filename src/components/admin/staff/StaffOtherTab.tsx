@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,7 +60,6 @@ export const StaffOtherTab = ({
   onRefresh,
   isLoading,
 }: StaffOtherTabProps) => {
-  const isCompact = useIsTabletOrBelow();
   const [newStaff, setNewStaff] = useState({
     full_name: "",
     phone: "",
@@ -453,37 +451,35 @@ export const StaffOtherTab = ({
     <div className="space-y-6">
       {/* Add Staff Card */}
       <Card className="border-0 shadow-sm">
-        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-2">
-          <CardTitle className="text-base lg:text-xl">Add New Staff</CardTitle>
-          <CardDescription className="text-xs lg:text-sm">Add admin, manager, reception, or accountant staff</CardDescription>
+        <CardHeader>
+          <CardTitle>Add New Staff</CardTitle>
+          <CardDescription>Add admin, manager, reception, or accountant staff</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-2 lg:pt-0">
-          <div className="grid gap-3 lg:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-1 lg:space-y-2">
-              <Label className="text-xs lg:text-sm">Full Name *</Label>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label>Full Name *</Label>
               <Input
                 value={newStaff.full_name}
                 onChange={(e) => setNewStaff({ ...newStaff, full_name: e.target.value })}
                 placeholder="Enter full name"
-                className="h-9 lg:h-12 text-sm"
               />
             </div>
-            <div className="space-y-1 lg:space-y-2">
-              <Label className="text-xs lg:text-sm">Phone Number *</Label>
+            <div className="space-y-2">
+              <Label>Phone Number *</Label>
               <Input
                 value={newStaff.phone}
                 onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
                 placeholder="10-digit phone number"
-                className="h-9 lg:h-12 text-sm"
               />
             </div>
-            <div className="space-y-1 lg:space-y-2">
-              <Label className="text-xs lg:text-sm">Role *</Label>
+            <div className="space-y-2">
+              <Label>Role *</Label>
               <Select
                 value={newStaff.role}
                 onValueChange={(value: any) => handleRoleChange(value)}
               >
-                <SelectTrigger className="h-9 lg:h-12 text-sm">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -495,14 +491,14 @@ export const StaffOtherTab = ({
             </div>
           </div>
 
-          <div className="grid gap-3 lg:gap-4 grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-1 lg:space-y-2">
-              <Label className="text-xs lg:text-sm">ID Type</Label>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label>ID Type</Label>
               <Select
                 value={newStaff.id_type}
                 onValueChange={(value) => setNewStaff({ ...newStaff, id_type: value })}
               >
-                <SelectTrigger className="h-9 lg:h-12 text-sm">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -512,29 +508,27 @@ export const StaffOtherTab = ({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1 lg:space-y-2">
-              <Label className="text-xs lg:text-sm">ID Number</Label>
+            <div className="space-y-2">
+              <Label>ID Number</Label>
               <Input
                 value={newStaff.id_number}
                 onChange={(e) => setNewStaff({ ...newStaff, id_number: e.target.value })}
                 placeholder="ID number"
-                className="h-9 lg:h-12 text-sm"
               />
             </div>
-            <div className="space-y-1 lg:space-y-2">
-              <Label className="text-xs lg:text-sm">Monthly Salary (₹)</Label>
+            <div className="space-y-2">
+              <Label>Monthly Salary (₹)</Label>
               <Input
                 type="number"
                 value={newStaff.monthly_salary}
                 onChange={(e) => setNewStaff({ ...newStaff, monthly_salary: e.target.value })}
                 placeholder="Monthly salary"
-                className="h-9 lg:h-12 text-sm"
               />
             </div>
           </div>
 
-          <div className="space-y-1 lg:space-y-2">
-            <Label className="text-xs lg:text-sm">Assigned Branches</Label>
+          <div className="space-y-2">
+            <Label>Assigned Branches</Label>
             <StaffBranchSelector
               branches={branches}
               selectedBranches={newStaff.selected_branches}
