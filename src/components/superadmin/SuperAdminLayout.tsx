@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useIsSuperAdmin } from "@/hooks/useUserRoles";
+import { useAuth } from "@/contexts/AuthContext";
 import { PageLoader } from "@/components/ui/skeleton-loaders";
 import { SuperAdminSidebar } from "./SuperAdminSidebar";
 import { SuperAdminHeader } from "./SuperAdminHeader";
@@ -7,7 +7,7 @@ import { SuperAdminHeader } from "./SuperAdminHeader";
 export function SuperAdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isSuperAdmin, isLoading } = useIsSuperAdmin();
+  const { isSuperAdmin, isLoading } = useAuth();
 
   if (isLoading) {
     return <PageLoader />;

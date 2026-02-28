@@ -16,6 +16,7 @@ const LOGOUT_CLEAR_KEYS = [
   // Zustand stores
   "analytics-store",
   "dashboard-store",
+  "dashboard-ui-state",
   "branch-store",
   // Staff session data
   "staff-session",
@@ -23,8 +24,10 @@ const LOGOUT_CLEAR_KEYS = [
   "staff-permissions",
   // Branch context
   "admin-current-branch-id",
+  // Super admin impersonation
+  "superadmin-impersonated-tenant",
   // Any other cached data
-  "sb-nhfghwwpnqoayhsitqmp-auth-token", // Supabase auth token
+  "sb-nhfghwwpnqoayhsitqmp-auth-token",
 ];
 
 /**

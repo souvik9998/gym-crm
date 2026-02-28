@@ -7,7 +7,7 @@ import { queryKeys, invalidationGroups } from "@/lib/queryKeys";
 import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
-import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCallback } from "react";
 import * as dashboardApi from "@/api/dashboard";
 
@@ -21,7 +21,7 @@ export type { DashboardStats } from "@/api/dashboard";
 export function useDashboardStats() {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
-  const { isAdmin } = useIsAdmin();
+  const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   
   const isAuthenticated = isAdmin || isStaffLoggedIn;
@@ -29,7 +29,7 @@ export function useDashboardStats() {
   return useQuery({
     queryKey: queryKeys.dashboardStats(branchId),
     queryFn: () => dashboardApi.fetchDashboardStats(branchId),
-    staleTime: STALE_TIMES.REAL_TIME,
+    staleTime: STALE_TIMES.REAL_TIME, // 30s - dashboard stats change frequently
     gcTime: GC_TIME,
     refetchOnWindowFocus: false,
     enabled: isAuthenticated,

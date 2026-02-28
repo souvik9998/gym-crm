@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDashboardStore } from "@/stores/dashboardStore";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface Branch {
   id: string;
@@ -44,11 +45,16 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [staffRestriction, setStaffRestriction] = useState<StaffBranchRestriction | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [tenantId, setTenantId] = useState<string | null>(null);
-  const [userChecked, setUserChecked] = useState(false);
+  
+  // Use centralized auth for user/tenant info instead of own API calls
+  const { user, isSuperAdmin, tenantId: authTenantId, isLoading: authLoading } = useAuth();
   
   // Get persisted branch ID from Zustand store
   const { selectedBranchId, setSelectedBranchId } = useDashboardStore();
+  
+  // Derive tenant info from centralized auth
+  const tenantId = isSuperAdmin ? null : authTenantId;
+  const userChecked = !authLoading;
   
   // Use ref to track current branch without causing re-renders in fetchBranches
   const currentBranchRef = useRef<Branch | null>(null);
@@ -65,54 +71,7 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
     ? allBranches.filter(b => staffRestriction!.branchIds.includes(b.id))
     : allBranches;
 
-  // Get user's tenant ID on mount
-  useEffect(() => {
-    const fetchUserTenant = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setUserChecked(true);
-          return;
-        }
-
-        // Check if super_admin (can see all branches)
-        const { data: superAdminRole } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .eq("role", "super_admin")
-          .maybeSingle();
-
-        if (superAdminRole) {
-          // Super admin - no tenant restriction
-          setTenantId(null);
-          setUserChecked(true);
-          return;
-        }
-
-        // Get user's tenant
-        const { data: tenantMember } = await supabase
-          .from("tenant_members")
-          .select("tenant_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        setTenantId(tenantMember?.tenant_id || null);
-        setUserChecked(true);
-      } catch (error) {
-        console.error("Error fetching user tenant:", error);
-        setUserChecked(true);
-      }
-    };
-
-    fetchUserTenant();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchUserTenant();
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  // Tenant info now comes from centralized AuthProvider - no need for separate API calls
 
   const fetchBranches = useCallback(async () => {
     if (!userChecked) return;
