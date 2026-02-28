@@ -82,23 +82,23 @@ export const AdminHeader = ({
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 bg-card/95 backdrop-blur-md border-b border-border h-12 md:h-16 flex items-center px-2 md:px-6",
+        "sticky top-0 z-30 bg-card/95 backdrop-blur-md border-b border-border h-12 lg:h-16 flex items-center px-2 lg:px-6",
         className
       )}
     >
       <div className="flex items-center justify-between w-full">
         {/* Left Section */}
-        <div className="flex items-center gap-2 md:gap-4">
+        <div className="flex items-center gap-2 lg:gap-4">
           {showMobileMenu && (
             <button
               onClick={onMobileMenuClick}
-              className="md:hidden p-1.5 hover:bg-muted rounded-lg transition-colors"
+             className="lg:hidden p-1.5 hover:bg-muted rounded-lg transition-colors"
             >
-              <Bars3Icon className="w-4 h-4 md:w-5 md:h-5 text-foreground" />
+              <Bars3Icon className="w-4 h-4 lg:w-5 lg:h-5 text-foreground" />
             </button>
           )}
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="min-w-0 hidden md:block">
+            <div className="min-w-0 hidden lg:block">
               <h1 className="text-base sm:text-lg font-semibold text-foreground truncate">{title}</h1>
               {subtitle && (
                 <p className="text-xs text-muted-foreground truncate hidden sm:block">{subtitle}</p>
@@ -108,12 +108,12 @@ export const AdminHeader = ({
         </div>
 
         {/* Center Section - Branch Selector (Desktop only) */}
-        <div className="hidden md:flex items-center">
+        <div className="hidden lg:flex items-center">
           <BranchSelector />
         </div>
 
         {/* Right Section */}
-        <div className="flex items-center gap-1 md:gap-1.5">
+        <div className="flex items-center gap-1 lg:gap-1.5">
           {/* Notification Center */}
           {!isStaffUser && <NotificationCenter />}
 
@@ -123,7 +123,7 @@ export const AdminHeader = ({
               variant="ghost"
               size="icon"
               onClick={handleRefresh}
-              className="hidden md:inline-flex text-muted-foreground hover:text-foreground hover:bg-muted h-9 w-9"
+              className="hidden lg:inline-flex text-muted-foreground hover:text-foreground hover:bg-muted h-9 w-9"
               title="Refresh"
             >
               <ArrowPathIcon className="w-5 h-5" />
@@ -137,20 +137,20 @@ export const AdminHeader = ({
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate("/admin/qr-code")}
-                className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-7 w-7 md:h-9 md:w-9"
+                 className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-7 w-7 lg:h-9 lg:w-9"
                 title="QR Code"
               >
-                <QrCodeIcon className="w-4 h-4 md:w-5 md:h-5" />
+                <QrCodeIcon className="w-4 h-4 lg:w-5 lg:h-5" />
               </Button>
 
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate("/admin/settings")}
-                className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-7 w-7 md:h-9 md:w-9"
+                className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-7 w-7 lg:h-9 lg:w-9"
                 title="Settings"
               >
-                <Cog6ToothIcon className="w-4 h-4 md:w-5 md:h-5" />
+                <Cog6ToothIcon className="w-4 h-4 lg:w-5 lg:h-5" />
               </Button>
             </>
           )}
@@ -158,7 +158,7 @@ export const AdminHeader = ({
           {/* Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="rounded-xl overflow-hidden h-7 w-7 md:h-9 md:w-9 hover:ring-2 hover:ring-primary/50 transition-all">
+              <button className="rounded-xl overflow-hidden h-7 w-7 lg:h-9 lg:w-9 hover:ring-2 hover:ring-primary/50 transition-all">
                 <BranchLogo logoUrl={currentBranch?.logo_url} name={gymName} size="sm" className="w-full h-full" />
               </button>
             </DropdownMenuTrigger>
