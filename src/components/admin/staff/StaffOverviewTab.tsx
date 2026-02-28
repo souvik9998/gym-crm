@@ -14,6 +14,7 @@ import { UserGroupIcon, AcademicCapIcon, CurrencyRupeeIcon, BuildingOfficeIcon, 
 import { StaffDetailDialog } from "./StaffDetailDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
+import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 
 interface StaffOverviewTabProps {
   allStaff: Staff[];
@@ -40,20 +41,18 @@ export const StaffOverviewTab = ({
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [totalPaidToStaff, setTotalPaidToStaff] = useState(0);
   const [isLoadingTotalPaid, setIsLoadingTotalPaid] = useState(false);
+  const isCompact = useIsTabletOrBelow();
   
   const activeStaff = allStaff.filter((s) => s.is_active);
   const trainers = allStaff.filter((s) => s.role === "trainer");
-  const otherStaff = allStaff.filter((s) => s.role !== "trainer");
   
   const handleStaffClick = (staff: Staff) => {
     setSelectedStaff(staff);
     setIsDetailOpen(true);
   };
   
-  // Calculate total monthly salary
   const totalMonthlySalary = activeStaff.reduce((sum, s) => sum + (s.monthly_salary || 0), 0);
 
-  // Fetch total paid to all staff
   useEffect(() => {
     if (currentBranch?.id || branchContext?.id) {
       fetchTotalPaidToStaff();
@@ -66,57 +65,23 @@ export const StaffOverviewTab = ({
 
     setIsLoadingTotalPaid(true);
     try {
-      // Get all staff names for matching
       const staffNames = allStaff.map((s) => s.full_name);
 
-      // Fetch all trainer and staff expenses
       const [trainerPercentageExpenses, trainerSessionExpenses, staffSalaryExpenses] = await Promise.all([
-        // Trainer percentage expenses (auto-generated and manual)
-        supabase
-          .from("ledger_entries")
-          .select("amount")
-          .eq("entry_type", "expense")
-          .eq("category", "trainer_percentage")
-          .eq("branch_id", branchId),
-        
-        // Trainer session expenses
-        supabase
-          .from("ledger_entries")
-          .select("amount")
-          .eq("entry_type", "expense")
-          .eq("category", "trainer_session")
-          .eq("branch_id", branchId),
-        
-        // Staff salary expenses
-        supabase
-          .from("ledger_entries")
-          .select("amount")
-          .eq("entry_type", "expense")
-          .eq("category", "staff_salary")
-          .eq("branch_id", branchId)
+        supabase.from("ledger_entries").select("amount").eq("entry_type", "expense").eq("category", "trainer_percentage").eq("branch_id", branchId),
+        supabase.from("ledger_entries").select("amount").eq("entry_type", "expense").eq("category", "trainer_session").eq("branch_id", branchId),
+        supabase.from("ledger_entries").select("amount").eq("entry_type", "expense").eq("category", "staff_salary").eq("branch_id", branchId)
       ]);
 
-      // Also fetch expenses with staff names in description (for backward compatibility)
       let nameBasedExpenses: any[] = [];
       if (staffNames.length > 0) {
-        // Build OR conditions for staff names
         const nameQueries = staffNames.map((name) => 
-          supabase
-            .from("ledger_entries")
-            .select("amount")
-            .eq("entry_type", "expense")
-            .neq("category", "trainer_percentage") // Exclude already counted
-            .neq("category", "trainer_session") // Exclude already counted
-            .neq("category", "staff_salary") // Exclude already counted
-            .ilike("description", `%${name}%`)
-            .eq("branch_id", branchId)
+          supabase.from("ledger_entries").select("amount").eq("entry_type", "expense").neq("category", "trainer_percentage").neq("category", "trainer_session").neq("category", "staff_salary").ilike("description", `%${name}%`).eq("branch_id", branchId)
         );
-        
         const nameResults = await Promise.all(nameQueries);
         nameBasedExpenses = nameResults.flatMap((result) => result.data || []);
       }
 
-      // Calculate total
       const total = 
         (trainerPercentageExpenses.data?.reduce((sum, e) => sum + Number(e.amount || 0), 0) || 0) +
         (trainerSessionExpenses.data?.reduce((sum, e) => sum + Number(e.amount || 0), 0) || 0) +
@@ -131,13 +96,11 @@ export const StaffOverviewTab = ({
     }
   };
   
-  // Group by role
   const staffByRole = allStaff.reduce((acc, s) => {
     acc[s.role] = (acc[s.role] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  // Staff with login access
   const staffWithLogin = allStaff.filter((s) => s.auth_user_id);
 
   const getRoleBadgeColor = (role: string) => {
@@ -154,7 +117,6 @@ export const StaffOverviewTab = ({
   const getPermissionBadges = (staff: Staff) => {
     const perms = staff.permissions;
     if (!perms) return null;
-
     const badges = [];
     if (perms.can_view_members) badges.push("View Members");
     if (perms.can_manage_members) badges.push("Manage Members");
@@ -162,101 +124,99 @@ export const StaffOverviewTab = ({
     if ((perms as any).can_access_payments) badges.push("Payments");
     if (perms.can_access_analytics) badges.push("Analytics");
     if (perms.can_change_settings) badges.push("Settings");
-
     return badges;
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-6">
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2 grid-cols-2 lg:gap-4 lg:grid-cols-4">
         <Card className="border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Staff</CardTitle>
-            <UserGroupIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{allStaff.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {activeStaff.length} active, {allStaff.length - activeStaff.length} inactive
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Trainers</CardTitle>
-            <AcademicCapIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{trainers.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {trainers.filter((t) => t.is_active).length} active trainers
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Salary</CardTitle>
-            <CurrencyRupeeIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{totalMonthlySalary.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Total for active staff</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">With Login Access</CardTitle>
-            <BuildingOfficeIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{staffWithLogin.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {allStaff.length - staffWithLogin.length} without credentials
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm border-l-4 border-l-green-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Paid to Staff</CardTitle>
-            <CurrencyRupeeIcon className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            {isLoadingTotalPaid ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-green-600/30 border-t-green-600 rounded-full animate-spin" />
-                <span className="text-xs text-muted-foreground">Loading...</span>
+          <CardContent className="p-3 lg:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-lg lg:text-2xl font-bold">{allStaff.length}</p>
+                <p className="text-[10px] lg:text-xs text-muted-foreground">Total Staff</p>
               </div>
-            ) : (
-              <>
-                <div className="text-2xl font-bold text-green-600">
-                  ₹{totalPaidToStaff.toLocaleString("en-IN")}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  All salary expenses (trainers + staff)
-                </p>
-              </>
-            )}
+              <UserGroupIcon className="h-4 w-4 lg:h-5 lg:w-5 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-3 lg:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-lg lg:text-2xl font-bold">{trainers.length}</p>
+                <p className="text-[10px] lg:text-xs text-muted-foreground">Trainers</p>
+              </div>
+              <AcademicCapIcon className="h-4 w-4 lg:h-5 lg:w-5 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-3 lg:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-lg lg:text-2xl font-bold">₹{totalMonthlySalary.toLocaleString()}</p>
+                <p className="text-[10px] lg:text-xs text-muted-foreground">Monthly Salary</p>
+              </div>
+              <CurrencyRupeeIcon className="h-4 w-4 lg:h-5 lg:w-5 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-3 lg:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-lg lg:text-2xl font-bold">{staffWithLogin.length}</p>
+                <p className="text-[10px] lg:text-xs text-muted-foreground">With Login</p>
+              </div>
+              <BuildingOfficeIcon className="h-4 w-4 lg:h-5 lg:w-5 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm border-l-4 border-l-green-500 col-span-2 lg:col-span-1">
+          <CardContent className="p-3 lg:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                {isLoadingTotalPaid ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-green-600/30 border-t-green-600 rounded-full animate-spin" />
+                    <span className="text-xs text-muted-foreground">Loading...</span>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-lg lg:text-2xl font-bold text-green-600">
+                      ₹{totalPaidToStaff.toLocaleString("en-IN")}
+                    </p>
+                    <p className="text-[10px] lg:text-xs text-muted-foreground">
+                      All salary expenses (trainers + staff)
+                    </p>
+                  </>
+                )}
+              </div>
+              <CurrencyRupeeIcon className="h-4 w-4 lg:h-5 lg:w-5 text-green-600" />
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Role Distribution */}
       <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle>Staff by Role</CardTitle>
-          <CardDescription>Distribution of staff across different roles</CardDescription>
+        <CardHeader className="p-3 lg:p-6 pb-2 lg:pb-4">
+          <CardTitle className="text-base lg:text-lg">Staff by Role</CardTitle>
+          <CardDescription className="text-xs lg:text-sm">Distribution of staff across different roles</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4">
+        <CardContent className="p-3 lg:p-6 pt-0 lg:pt-0">
+          <div className="flex flex-wrap gap-2 lg:gap-4">
             {Object.entries(staffByRole).map(([role, count]) => (
-              <div key={role} className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
-                <Badge className={getRoleBadgeColor(role)}>{ROLE_LABELS[role] || role}</Badge>
-                <span className="text-lg font-semibold">{count}</span>
+              <div key={role} className="flex items-center gap-1.5 lg:gap-2 p-2 lg:p-3 bg-muted/50 rounded-lg">
+                <Badge className={`${getRoleBadgeColor(role)} text-[10px] lg:text-xs`}>{ROLE_LABELS[role] || role}</Badge>
+                <span className="text-sm lg:text-lg font-semibold">{count}</span>
               </div>
             ))}
           </div>
@@ -265,120 +225,165 @@ export const StaffOverviewTab = ({
 
       {/* Staff Table */}
       <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle>All Staff Members</CardTitle>
-          <CardDescription>Complete overview of all staff with their details and permissions</CardDescription>
+        <CardHeader className="p-3 lg:p-6 pb-2 lg:pb-4">
+          <CardTitle className="text-base lg:text-lg">All Staff Members</CardTitle>
+          <CardDescription className="text-xs lg:text-sm">Complete overview of all staff with their details and permissions</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Branches</TableHead>
-                  <TableHead>Salary</TableHead>
-                  <TableHead>Permissions</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {allStaff.length === 0 ? (
+        <CardContent className="p-3 lg:p-6 pt-0 lg:pt-0">
+          {isCompact ? (
+            <div className="space-y-2">
+              {allStaff.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground text-sm">No staff members found</p>
+              ) : (
+                allStaff.map((member) => (
+                  <div
+                    key={member.id}
+                    className="p-3 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => handleStaffClick(member)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-sm">{member.full_name}</p>
+                          <Badge className={`${getRoleBadgeColor(member.role)} text-[10px] px-1.5 py-0`}>
+                            {ROLE_LABELS[member.role] || member.role}
+                          </Badge>
+                        </div>
+                        {member.specialization && (
+                          <p className="text-[11px] text-muted-foreground">{member.specialization}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-0.5">{member.phone}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {member.is_active ? (
+                          <Badge className="bg-green-100 text-green-800 text-[10px] px-1.5 py-0">Active</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Inactive</Badge>
+                        )}
+                        {member.auth_user_id && (
+                          <KeyIcon className="w-3.5 h-3.5 text-blue-600" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-1.5 gap-2">
+                      <div className="flex flex-wrap gap-1 flex-1 min-w-0">
+                        {member.branch_assignments?.map((a) => (
+                          <Badge key={a.id} variant="outline" className="text-[10px] px-1.5 py-0">
+                            {a.branch_name}{a.is_primary && " ★"}
+                          </Badge>
+                        ))}
+                      </div>
+                      <div className="text-xs text-right flex-shrink-0">
+                        {member.monthly_salary > 0 && <span>₹{member.monthly_salary.toLocaleString()}/mo</span>}
+                        {member.percentage_fee > 0 && <span className="text-muted-foreground ml-1">{member.percentage_fee}%</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No staff members found
-                    </TableCell>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Branches</TableHead>
+                    <TableHead>Salary</TableHead>
+                    <TableHead>Permissions</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ) : (
-                  allStaff.map((member) => (
-                    <TableRow 
-                      key={member.id} 
-                      className="transition-colors duration-150 hover:bg-muted/50 cursor-pointer"
-                      onClick={() => handleStaffClick(member)}
-                    >
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{member.full_name}</p>
-                          {member.specialization && (
-                            <p className="text-xs text-muted-foreground">{member.specialization}</p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getRoleBadgeColor(member.role)}>
-                          {ROLE_LABELS[member.role] || member.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{member.phone}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {member.branch_assignments?.map((a) => (
-                            <Badge key={a.id} variant="outline" className="text-xs">
-                              {a.branch_name}
-                              {a.is_primary && " ★"}
-                            </Badge>
-                          ))}
-                          {(!member.branch_assignments || member.branch_assignments.length === 0) && (
-                            <span className="text-xs text-muted-foreground">No branch</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {member.monthly_salary > 0 && (
-                            <div>₹{member.monthly_salary.toLocaleString()}/mo</div>
-                          )}
-                          {member.session_fee > 0 && (
-                            <div className="text-xs text-muted-foreground">
-                              ₹{member.session_fee}/session
-                            </div>
-                          )}
-                          {member.percentage_fee > 0 && (
-                            <div className="text-xs text-muted-foreground">
-                              {member.percentage_fee}% fee
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {getPermissionBadges(member)?.slice(0, 2).map((perm) => (
-                            <Badge key={perm} variant="secondary" className="text-xs">
-                              {perm}
-                            </Badge>
-                          ))}
-                          {getPermissionBadges(member)?.length && getPermissionBadges(member)!.length > 2 && (
-                            <Badge variant="secondary" className="text-xs">
-                              +{getPermissionBadges(member)!.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {member.is_active ? (
-                            <Badge className="bg-green-100 text-green-800">Active</Badge>
-                          ) : (
-                            <Badge variant="secondary">Inactive</Badge>
-                          )}
-                          {member.auth_user_id && (
-                            <Badge variant="outline" className="text-xs text-blue-600 flex items-center gap-1">
-                              <KeyIcon className="w-3 h-3" />
-                            </Badge>
-                          )}
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {allStaff.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        No staff members found
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ) : (
+                    allStaff.map((member) => (
+                      <TableRow 
+                        key={member.id} 
+                        className="transition-colors duration-150 hover:bg-muted/50 cursor-pointer"
+                        onClick={() => handleStaffClick(member)}
+                      >
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{member.full_name}</p>
+                            {member.specialization && (
+                              <p className="text-xs text-muted-foreground">{member.specialization}</p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getRoleBadgeColor(member.role)}>
+                            {ROLE_LABELS[member.role] || member.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{member.phone}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {member.branch_assignments?.map((a) => (
+                              <Badge key={a.id} variant="outline" className="text-xs">
+                                {a.branch_name}
+                                {a.is_primary && " ★"}
+                              </Badge>
+                            ))}
+                            {(!member.branch_assignments || member.branch_assignments.length === 0) && (
+                              <span className="text-xs text-muted-foreground">No branch</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {member.monthly_salary > 0 && (
+                              <div>₹{member.monthly_salary.toLocaleString()}/mo</div>
+                            )}
+                            {member.session_fee > 0 && (
+                              <div className="text-xs text-muted-foreground">₹{member.session_fee}/session</div>
+                            )}
+                            {member.percentage_fee > 0 && (
+                              <div className="text-xs text-muted-foreground">{member.percentage_fee}% fee</div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {getPermissionBadges(member)?.slice(0, 2).map((perm) => (
+                              <Badge key={perm} variant="secondary" className="text-xs">{perm}</Badge>
+                            ))}
+                            {getPermissionBadges(member)?.length && getPermissionBadges(member)!.length > 2 && (
+                              <Badge variant="secondary" className="text-xs">+{getPermissionBadges(member)!.length - 2}</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {member.is_active ? (
+                              <Badge className="bg-green-100 text-green-800">Active</Badge>
+                            ) : (
+                              <Badge variant="secondary">Inactive</Badge>
+                            )}
+                            {member.auth_user_id && (
+                              <Badge variant="outline" className="text-xs text-blue-600 flex items-center gap-1">
+                                <KeyIcon className="w-3 h-3" />
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Staff Detail Dialog */}
       <StaffDetailDialog
         staff={selectedStaff}
         open={isDetailOpen}
