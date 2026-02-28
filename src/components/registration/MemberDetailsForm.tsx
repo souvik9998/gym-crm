@@ -3,12 +3,9 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { DobInput } from "@/components/ui/dob-input";
 import { ArrowRight, IdCard, MapPin, User, CalendarDays } from "lucide-react";
-import { format } from "date-fns";
 import { ValidatedInput, InlineError } from "@/components/ui/validated-input";
 import {
   memberDetailsSchema,
@@ -60,10 +57,9 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData }: MemberDetailsFormP
   const [photoIdNumber, setPhotoIdNumber] = useState(initial?.photoIdNumber || "");
   const [address, setAddress] = useState(initial?.address || "");
   const [gender, setGender] = useState(initial?.gender || "");
-  const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(
-    initial?.dateOfBirth ? new Date(initial.dateOfBirth) : undefined
+  const [dateOfBirth, setDateOfBirth] = useState<string | undefined>(
+    initial?.dateOfBirth || undefined
   );
-  const [showDobPicker, setShowDobPicker] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
@@ -75,7 +71,7 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData }: MemberDetailsFormP
       photoIdNumber,
       address,
       gender,
-      dateOfBirth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : undefined,
+      dateOfBirth: dateOfBirth || undefined,
     };
     sessionStorage.setItem(storageKey, JSON.stringify(data));
   }, [fullName, photoIdType, photoIdNumber, address, gender, dateOfBirth, storageKey]);
@@ -140,7 +136,7 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData }: MemberDetailsFormP
       photoIdNumber: photoIdNumber.replace(/\s/g, ""),
       address: sanitizedAddress,
       gender,
-      dateOfBirth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : undefined,
+      dateOfBirth: dateOfBirth || undefined,
     });
   };
 
@@ -156,10 +152,8 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData }: MemberDetailsFormP
     return cleaned;
   };
 
-  const maxDobDate = new Date();
-  maxDobDate.setFullYear(maxDobDate.getFullYear() - 10);
-  const minDobDate = new Date();
-  minDobDate.setFullYear(minDobDate.getFullYear() - 100);
+
+
 
   const isFormValid =
     fullName.trim().length >= 2 &&
@@ -239,36 +233,7 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData }: MemberDetailsFormP
               <CalendarDays className="w-4 h-4 text-accent" />
               Date of Birth
             </Label>
-            <Popover open={showDobPicker} onOpenChange={setShowDobPicker}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal transition-all duration-200",
-                    dateOfBirth && "border-accent/40 bg-accent/5"
-                  )}
-                >
-                  <CalendarDays className="mr-2 h-4 w-4" />
-                  {dateOfBirth ? format(dateOfBirth, "dd MMM yyyy") : "Select date of birth"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={dateOfBirth}
-                  onSelect={(date) => {
-                    setDateOfBirth(date);
-                    setShowDobPicker(false);
-                  }}
-                  disabled={(date) => date > maxDobDate || date < minDobDate}
-                  defaultMonth={dateOfBirth || new Date(2000, 0, 1)}
-                  captionLayout="dropdown-buttons"
-                  fromYear={1925}
-                  toYear={maxDobDate.getFullYear()}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <DobInput value={dateOfBirth} onChange={setDateOfBirth} />
           </div>
 
           {/* Photo ID Type */}
