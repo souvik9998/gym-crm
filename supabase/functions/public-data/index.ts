@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
         // Get branch info - ONLY name for public display
         const { data: branch, error: branchError } = await supabase
           .from("branches")
-          .select("id, name")
+          .select("id, name, logo_url")
           .eq("id", branchId)
           .eq("is_active", true)
           .is("deleted_at", null)
@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
         }
 
         return new Response(
-          JSON.stringify({ branch: { id: branch.id, name: branch.name } }),
+          JSON.stringify({ branch: { id: branch.id, name: branch.name, logo_url: branch.logo_url } }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
         // Get the default branch for redirects
         const { data: branch, error: branchError } = await supabase
           .from("branches")
-          .select("id, name")
+          .select("id, name, logo_url")
           .eq("is_active", true)
           .is("deleted_at", null)
           .order("is_default", { ascending: false })
@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
         }
 
         return new Response(
-          JSON.stringify({ branch: { id: branch.id, name: branch.name } }),
+          JSON.stringify({ branch: { id: branch.id, name: branch.name, logo_url: branch.logo_url } }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }

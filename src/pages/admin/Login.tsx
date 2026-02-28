@@ -142,11 +142,9 @@ const AdminLogin = () => {
       <div className="w-full max-w-md">
         <Card className="border">
           <CardHeader className="text-center pb-4">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <div style={{ height: "4rem" }} className="flex items-center justify-center gap-3 mb-4 w-full h-20">
-                <div style={{ width: "4rem" }} className="h-full rounded-xl overflow-hidden">
-                  <img src="/logo.jpg" alt="Icon" className="w-full h-full object-contain" />
-                </div>
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-16 h-16 rounded-xl flex items-center justify-center bg-primary text-primary-foreground font-bold text-lg shadow-sm">
+                <Dumbbell className="w-8 h-8" />
               </div>
             </div>
             <CardTitle className="flex items-center justify-center gap-2">

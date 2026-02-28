@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BranchLogo } from "@/components/admin/BranchLogo";
 import { useNavigate } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
@@ -121,7 +122,7 @@ const QRCodePage = () => {
                 <QRCodeSVG id="qr-code-svg-registration" value={portalUrl} size={256} level="H" includeMargin />
               </div>
               <div className="flex items-center gap-2 text-primary">
-                <img src="/logo.jpg" alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
+                <BranchLogo logoUrl={currentBranch.logo_url} name={currentBranch.name} size="sm" />
                 <span className="font-semibold text-lg">{currentBranch.name}</span>
               </div>
               <div className="w-full max-w-md">
@@ -172,7 +173,7 @@ const QRCodePage = () => {
                 <QRCodeSVG id="qr-code-svg-attendance" value={attendanceUrl} size={256} level="H" includeMargin />
               </div>
               <div className="flex items-center gap-2 text-primary">
-                <img src="/logo.jpg" alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
+                <BranchLogo logoUrl={currentBranch.logo_url} name={currentBranch.name} size="sm" />
                 <span className="font-semibold text-lg">{currentBranch.name}</span>
               </div>
               <div className="w-full max-w-md">

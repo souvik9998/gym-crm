@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminSidebar } from "./AdminSidebar";
+import { BranchLogo } from "./BranchLogo";
 import { AdminHeader } from "./AdminHeader";
 import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
@@ -112,9 +113,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
       >
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary overflow-hidden shadow-sm">
-              <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
-            </div>
+            <BranchLogo logoUrl={currentBranch?.logo_url} name={currentBranch?.name || "Gym"} size="md" />
             <div>
               <h1 className="text-sm font-semibold text-foreground">{currentBranch?.name || "Pro Plus Fitness"}</h1>
               <p className="text-xs text-muted-foreground">

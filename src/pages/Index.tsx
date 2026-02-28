@@ -28,7 +28,7 @@ const Index = () => {
   const [membershipEndDate, setMembershipEndDate] = useState<string | null>(null);
   const [membershipStartDate, setMembershipStartDate] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
-  const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(() => {
+  const [branchInfo, setBranchInfo] = useState<{ id: string; name: string; logo_url?: string | null } | null>(() => {
     // Instantly restore cached branch info to avoid "Loading..."
     if (branchId) {
       const cached = sessionStorage.getItem(`branch-info-${branchId}`);
@@ -68,14 +68,14 @@ const Index = () => {
       try {
         const { data, error } = await supabase
           .from("branches")
-          .select("id, name")
+          .select("id, name, logo_url")
           .eq("id", branchId)
           .eq("is_active", true)
           .is("deleted_at", null)
           .maybeSingle();
         
         if (!error && data) {
-          const info = { id: data.id, name: data.name };
+          const info = { id: data.id, name: data.name, logo_url: data.logo_url };
           setBranchInfo(info);
           sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
           setIsBranchLoading(false);
@@ -229,10 +229,19 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Hero Header */}
       <header className="px-4 pt-12 pb-8 text-center">
-        <div style={{ height: "4rem" }} className="flex items-center justify-center gap-3 mb-4 w-full h-20">
-          <div style={{ width: "4rem" }} className="h-full rounded-xl overflow-hidden">
-            <img src="/logo.jpg" alt="Icon" className="w-full h-full object-contain" />
-          </div>
+        <div className="flex items-center justify-center mb-4">
+          {branchInfo?.logo_url ? (
+            <div className="w-16 h-16 rounded-xl overflow-hidden shadow-sm">
+              <img src={branchInfo.logo_url} alt={`${branchInfo.name} logo`} className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <div className="w-16 h-16 rounded-xl flex items-center justify-center bg-primary text-primary-foreground font-bold text-lg shadow-sm">
+              {branchInfo?.name ? branchInfo.name.trim().split(/\s+/).length > 1 
+                ? (branchInfo.name.trim().split(/\s+/)[0][0] + branchInfo.name.trim().split(/\s+/)[1][0]).toUpperCase()
+                : branchInfo.name.substring(0, 2).toUpperCase()
+              : "GK"}
+            </div>
+          )}
         </div>
         {isBranchLoading && !branchInfo ? (
           <div className="flex flex-col items-center gap-2">
@@ -405,16 +414,6 @@ const Index = () => {
           ))}
         </div>
 
-        {/* Admin Link */}
-        <div className="max-w-md mx-auto mt-8 text-center">
-          <Button
-            variant="ghost"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => navigate("/admin/login")}
-          >
-            Admin Login
-          </Button>
-        </div>
       </main>
     </div>
   );
