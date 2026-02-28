@@ -24,7 +24,7 @@ const RevenueChart = memo(({ data, isLoading }: RevenueChartProps) => {
 
   if (isLoading) {
     return (
-      <div className="h-[clamp(220px,34vh,360px)] md:h-[clamp(260px,34vh,420px)] flex items-center justify-center">
+      <div className="h-[180px] sm:h-[clamp(220px,34vh,360px)] md:h-[clamp(260px,34vh,420px)] flex items-center justify-center">
         <div className="w-full h-full flex flex-col gap-2 p-4">
           <div className="flex items-end justify-between h-full gap-2">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -47,18 +47,18 @@ const RevenueChart = memo(({ data, isLoading }: RevenueChartProps) => {
   return (
     <ChartContainer
       config={chartConfig}
-      className="h-[clamp(220px,34vh,360px)] md:h-[clamp(260px,34vh,420px)] overflow-hidden"
+      className="h-[180px] sm:h-[clamp(220px,34vh,360px)] md:h-[clamp(260px,34vh,420px)] overflow-hidden"
     >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}
-          margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 8 } : undefined}
+          margin={isMobile ? { top: 4, right: 8, left: -10, bottom: 4 } : undefined}
         >
           <XAxis
             dataKey="month"
             tickLine={false}
             axisLine={false}
-            tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined}
+            tick={isMobile ? { fontSize: 9, textAnchor: "end" } : undefined}
             minTickGap={isMobile ? 24 : undefined}
             interval={isMobile ? "preserveStartEnd" : undefined}
             tickMargin={isMobile ? 8 : undefined}
@@ -67,12 +67,12 @@ const RevenueChart = memo(({ data, isLoading }: RevenueChartProps) => {
           <YAxis
             tickLine={false}
             axisLine={false}
-            tick={isMobile ? { fontSize: 10 } : undefined}
-            width={isMobile ? 36 : undefined}
-            tickFormatter={(v) => `₹${v / 1000}k`}
+            tick={isMobile ? { fontSize: 9 } : undefined}
+            width={isMobile ? 32 : undefined}
+            tickFormatter={(v) => `₹${v >= 1000 ? `${v / 1000}k` : v}`}
           />
           <ChartTooltip content={<ChartTooltipContent />} />
-          <Bar dataKey="revenue" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="revenue" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} maxBarSize={isMobile ? 20 : 40} />
         </BarChart>
       </ResponsiveContainer>
     </ChartContainer>

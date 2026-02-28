@@ -170,7 +170,7 @@ const RevenueChartSection = () => {
         <CardDescription className="text-xs sm:text-sm">Revenue trend over the selected period</CardDescription>
       </CardHeader>
       <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
-        <Suspense fallback={<ChartSkeleton height="h-[clamp(220px,34vh,360px)] md:h-[clamp(260px,34vh,420px)]" />}>
+        <Suspense fallback={<ChartSkeleton height="h-[180px] sm:h-[clamp(220px,34vh,360px)] md:h-[clamp(260px,34vh,420px)]" />}>
           <RevenueChart data={data || []} isLoading={isLoading} />
         </Suspense>
       </CardContent>
@@ -201,7 +201,7 @@ const MemberGrowthSection = () => {
           <CardDescription className="text-xs sm:text-sm">Total members over time</CardDescription>
         </CardHeader>
         <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
-          <Suspense fallback={<ChartSkeleton height="h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)]" />}>
+          <Suspense fallback={<ChartSkeleton height="h-[180px] sm:h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)]" />}>
             <MemberGrowthChart data={data || []} isLoading={isLoading} />
           </Suspense>
         </CardContent>
@@ -213,7 +213,7 @@ const MemberGrowthSection = () => {
           <CardDescription className="text-xs sm:text-sm">New registrations per period</CardDescription>
         </CardHeader>
         <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
-          <Suspense fallback={<ChartSkeleton height="h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)]" />}>
+          <Suspense fallback={<ChartSkeleton height="h-[180px] sm:h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)]" />}>
             <NewMembersChart data={data || []} isLoading={isLoading} />
           </Suspense>
         </CardContent>
@@ -247,7 +247,7 @@ const TrainerPerformanceSection = () => {
         <CardDescription className="text-xs sm:text-sm">Revenue and client distribution by trainer</CardDescription>
       </CardHeader>
       <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 overflow-hidden">
-        <Suspense fallback={<ChartSkeleton height="h-[clamp(200px,28vh,300px)] md:h-[clamp(220px,26vh,320px)]" />}>
+        <Suspense fallback={<ChartSkeleton height="h-[160px] sm:h-[clamp(200px,28vh,300px)] md:h-[clamp(220px,26vh,320px)]" />}>
           <TrainerPerformanceChart data={data || []} isLoading={isLoading} />
         </Suspense>
       </CardContent>
@@ -280,7 +280,7 @@ const PackageSalesSection = () => {
         <CardDescription className="text-xs sm:text-sm">Subscription sales by package type</CardDescription>
       </CardHeader>
       <CardContent className="overflow-hidden p-3 pt-0 sm:p-6 sm:pt-0">
-        <Suspense fallback={<ChartSkeleton height="h-[clamp(220px,34vh,380px)] md:h-[clamp(260px,34vh,440px)]" />}>
+        <Suspense fallback={<ChartSkeleton height="h-[180px] sm:h-[clamp(220px,34vh,380px)] md:h-[clamp(260px,34vh,440px)]" />}>
           <PackageSalesChart 
             data={data?.packageSalesData || []} 
             packageList={data?.packageList || []} 

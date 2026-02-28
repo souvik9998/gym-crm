@@ -24,7 +24,7 @@ const MemberGrowthChart = memo(({ data, isLoading }: MemberGrowthChartProps) => 
 
   if (isLoading) {
     return (
-      <div className="h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)] flex items-center justify-center">
+      <div className="h-[180px] sm:h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)] flex items-center justify-center">
         <div className="w-full h-full flex flex-col gap-2 p-4">
           <div className="flex items-end justify-between h-full gap-2">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -47,18 +47,18 @@ const MemberGrowthChart = memo(({ data, isLoading }: MemberGrowthChartProps) => 
   return (
     <ChartContainer
       config={chartConfig}
-      className="h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)] overflow-hidden"
+      className="h-[180px] sm:h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)] overflow-hidden"
     >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={data}
-          margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 8 } : undefined}
+          margin={isMobile ? { top: 4, right: 8, left: -10, bottom: 4 } : undefined}
         >
           <XAxis
             dataKey="month"
             tickLine={false}
             axisLine={false}
-            tick={isMobile ? { fontSize: 10, textAnchor: "end" } : undefined}
+            tick={isMobile ? { fontSize: 9, textAnchor: "end" } : undefined}
             minTickGap={isMobile ? 24 : undefined}
             interval={isMobile ? "preserveStartEnd" : undefined}
             tickMargin={isMobile ? 8 : undefined}
@@ -67,8 +67,8 @@ const MemberGrowthChart = memo(({ data, isLoading }: MemberGrowthChartProps) => 
           <YAxis
             tickLine={false}
             axisLine={false}
-            tick={isMobile ? { fontSize: 10 } : undefined}
-            width={isMobile ? 30 : undefined}
+            tick={isMobile ? { fontSize: 9 } : undefined}
+            width={isMobile ? 24 : undefined}
           />
           <ChartTooltip content={<ChartTooltipContent />} />
           <Line
