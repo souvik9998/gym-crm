@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { useInView } from "react-intersection-observer";
 import { useBranch } from "@/contexts/BranchContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,6 +68,7 @@ interface UserActivityLogsTabProps {
 
 const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
   const { currentBranch } = useBranch();
+  const isCompact = useIsTabletOrBelow();
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
@@ -288,41 +290,41 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
         </TabsList>
 
         <TabsContent value="stats" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Activities</CardTitle>
+              <CardHeader className="p-3 lg:pb-3 lg:p-6 pb-1">
+                <CardTitle className="text-xs lg:text-sm font-medium text-muted-foreground">Total Activities</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-accent">{stats.totalActivities}</div>
-                <p className="text-xs text-muted-foreground mt-1">All time</p>
+              <CardContent className="p-3 pt-0 lg:p-6 lg:pt-0">
+                <div className="text-xl lg:text-3xl font-bold text-accent">{stats.totalActivities}</div>
+                <p className="text-[10px] lg:text-xs text-muted-foreground mt-0.5">All time</p>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Today</CardTitle>
+              <CardHeader className="p-3 lg:pb-3 lg:p-6 pb-1">
+                <CardTitle className="text-xs lg:text-sm font-medium text-muted-foreground">Today</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-foreground">{stats.activitiesToday}</div>
-                <p className="text-xs text-muted-foreground mt-1">Activities today</p>
+              <CardContent className="p-3 pt-0 lg:p-6 lg:pt-0">
+                <div className="text-xl lg:text-3xl font-bold text-foreground">{stats.activitiesToday}</div>
+                <p className="text-[10px] lg:text-xs text-muted-foreground mt-0.5">Activities today</p>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">This Week</CardTitle>
+              <CardHeader className="p-3 lg:pb-3 lg:p-6 pb-1">
+                <CardTitle className="text-xs lg:text-sm font-medium text-muted-foreground">This Week</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-foreground">{stats.activitiesThisWeek}</div>
-                <p className="text-xs text-muted-foreground mt-1">Last 7 days</p>
+              <CardContent className="p-3 pt-0 lg:p-6 lg:pt-0">
+                <div className="text-xl lg:text-3xl font-bold text-foreground">{stats.activitiesThisWeek}</div>
+                <p className="text-[10px] lg:text-xs text-muted-foreground mt-0.5">Last 7 days</p>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">This Month</CardTitle>
+              <CardHeader className="p-3 lg:pb-3 lg:p-6 pb-1">
+                <CardTitle className="text-xs lg:text-sm font-medium text-muted-foreground">This Month</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-foreground">{stats.activitiesThisMonth}</div>
-                <p className="text-xs text-muted-foreground mt-1">Last 30 days</p>
+              <CardContent className="p-3 pt-0 lg:p-6 lg:pt-0">
+                <div className="text-xl lg:text-3xl font-bold text-foreground">{stats.activitiesThisMonth}</div>
+                <p className="text-[10px] lg:text-xs text-muted-foreground mt-0.5">Last 30 days</p>
               </CardContent>
             </Card>
           </div>
@@ -348,164 +350,158 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="logs" className="mt-6">
+        <TabsContent value="logs" className="mt-4 lg:mt-6">
           <Card>
-            <CardHeader>
-              <CardTitle>User Activity Logs</CardTitle>
-              <CardDescription>Track all user activities ({totalCount} total)</CardDescription>
+            <CardHeader className="p-3 lg:p-6 pb-2 lg:pb-2">
+              <CardTitle className="text-base lg:text-xl">User Activity Logs</CardTitle>
+              <CardDescription className="text-xs lg:text-sm">Track all user activities ({totalCount} total)</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 lg:space-y-4 p-3 lg:p-6 pt-0">
               {/* Filters */}
-              <div className="flex flex-wrap gap-3">
+              <div className="space-y-2 lg:space-y-0 lg:flex lg:flex-wrap lg:gap-3">
                 <div className="relative flex-1 min-w-[200px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     placeholder="Search by name, phone, description..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 h-9 lg:h-12 text-sm"
                   />
                 </div>
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <Filter className="w-4 h-4 mr-2" />
-                    <SelectValue placeholder="Activity Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="registration">Registration</SelectItem>
-                    <SelectItem value="renewal">Renewal</SelectItem>
-                    <SelectItem value="pt_subscription">PT Subscription</SelectItem>
-                    <SelectItem value="pt_extension">PT Extension</SelectItem>
-                    <SelectItem value="daily_pass">Daily Pass</SelectItem>
-                  </SelectContent>
-                </Select>
-                <DateRangePicker
-                  dateFrom={dateFrom}
-                  dateTo={dateTo}
-                  onDateChange={(from, to) => {
-                    setDateFrom(from);
-                    setDateTo(to);
-                  }}
-                />
-                {hasActiveFilters && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters}>
-                    <X className="w-4 h-4 mr-1" />
-                    Clear
+                <div className="flex flex-wrap gap-2 lg:gap-3">
+                  <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="w-auto min-w-[120px] lg:w-[180px] h-9 lg:h-12 text-xs lg:text-sm">
+                      <Filter className="w-3.5 h-3.5 mr-1" />
+                      <SelectValue placeholder="Activity Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="registration">Registration</SelectItem>
+                      <SelectItem value="renewal">Renewal</SelectItem>
+                      <SelectItem value="pt_subscription">PT Subscription</SelectItem>
+                      <SelectItem value="pt_extension">PT Extension</SelectItem>
+                      <SelectItem value="daily_pass">Daily Pass</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <DateRangePicker
+                    dateFrom={dateFrom}
+                    dateTo={dateTo}
+                    onDateChange={(from, to) => { setDateFrom(from); setDateTo(to); }}
+                  />
+                  {hasActiveFilters && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9">
+                      <X className="w-4 h-4 mr-1" /> Clear
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5 h-9 text-xs lg:text-sm">
+                    <Download className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Export Data</span>
+                    <span className="sm:hidden">Export</span>
                   </Button>
-                )}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleExport} 
-                  className="gap-2 hover:bg-accent/50 transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                  Export Data
-                </Button>
+                </div>
               </div>
 
-              {/* Table */}
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Member</TableHead>
-                      <TableHead>Details</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead className="w-[80px]">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isDataConfirmedEmpty ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          No user activity logs found
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      <>
-                        {filteredLogs.map((log) => (
-                          <TableRow 
-                            key={log.id} 
-                            className="cursor-pointer hover:bg-muted/50 transition-colors"
-                            onClick={() => handleViewActivity(log)}
-                          >
-                            <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                              {formatDateTime(log.created_at)}
-                            </TableCell>
-                            <TableCell>{getTypeBadge(log.activity_type)}</TableCell>
-                            <TableCell>
-                              {log.member_name ? (
-                                <div>
-                                  <p className="text-sm font-medium">{log.member_name}</p>
-                                  {log.member_phone && (
-                                    <p className="text-xs text-muted-foreground">{log.member_phone}</p>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <div className="max-w-xs">
-                                {log.package_name && (
-                                  <div className="flex items-center gap-1 text-sm">
-                                    <Package className="w-3 h-3 text-muted-foreground" />
-                                    <span>{log.package_name}</span>
-                                  </div>
-                                )}
-                                {log.trainer_name && (
-                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                    <Dumbbell className="w-3 h-3" />
-                                    <span>{log.trainer_name}</span>
-                                  </div>
-                                )}
-                                {!log.package_name && !log.trainer_name && (
-                                  <span className="text-muted-foreground text-sm">{log.description}</span>
+              {/* Mobile/Tablet: Card list */}
+              {isCompact ? (
+                <div className="space-y-2">
+                  {isDataConfirmedEmpty ? (
+                    <p className="text-center py-8 text-muted-foreground text-sm">No user activity logs found</p>
+                  ) : (
+                    <>
+                      {filteredLogs.map((log) => (
+                        <div key={log.id} className="p-3 rounded-lg border bg-card cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleViewActivity(log)}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0 space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {getTypeBadge(log.activity_type)}
+                                {log.amount && (
+                                  <span className="text-xs font-medium text-success flex items-center gap-0.5">
+                                    <IndianRupee className="w-3 h-3" />₹{log.amount}
+                                  </span>
                                 )}
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              {log.amount ? (
-                                <div className="flex items-center gap-1">
-                                  <IndianRupee className="w-3 h-3 text-success" />
-                                  <span className="font-medium text-success">{log.amount}</span>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
+                              {log.member_name && (
+                                <p className="text-sm font-medium">{log.member_name}
+                                  {log.member_phone && <span className="text-xs text-muted-foreground ml-1">{log.member_phone}</span>}
+                                </p>
                               )}
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewActivity(log);
-                                }}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        
-                        {/* Infinite scroll sentinel */}
-                        {hasNextPage && (
-                          <TableRow ref={loadMoreRef}>
-                            <TableCell colSpan={6} className="p-0">
-                              {isFetchingNextPage && <InfiniteScrollSkeleton />}
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                              <p className="text-xs text-muted-foreground line-clamp-1">{log.description}</p>
+                              <p className="text-[11px] text-muted-foreground">{formatDateTime(log.created_at)}</p>
+                            </div>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0" onClick={(e) => { e.stopPropagation(); handleViewActivity(log); }}>
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      {hasNextPage && (
+                        <div ref={loadMoreRef}>{isFetchingNextPage && <InfiniteScrollSkeleton />}</div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Time</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Member</TableHead>
+                        <TableHead>Details</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead className="w-[80px]">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {isDataConfirmedEmpty ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No user activity logs found</TableCell>
+                        </TableRow>
+                      ) : (
+                        <>
+                          {filteredLogs.map((log) => (
+                            <TableRow key={log.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleViewActivity(log)}>
+                              <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{formatDateTime(log.created_at)}</TableCell>
+                              <TableCell>{getTypeBadge(log.activity_type)}</TableCell>
+                              <TableCell>
+                                {log.member_name ? (
+                                  <div>
+                                    <p className="text-sm font-medium">{log.member_name}</p>
+                                    {log.member_phone && <p className="text-xs text-muted-foreground">{log.member_phone}</p>}
+                                  </div>
+                                ) : <span className="text-muted-foreground">-</span>}
+                              </TableCell>
+                              <TableCell>
+                                <div className="max-w-xs">
+                                  {log.package_name && (
+                                    <div className="flex items-center gap-1 text-sm"><Package className="w-3 h-3 text-muted-foreground" /><span>{log.package_name}</span></div>
+                                  )}
+                                  {log.trainer_name && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground"><Dumbbell className="w-3 h-3" /><span>{log.trainer_name}</span></div>
+                                  )}
+                                  {!log.package_name && !log.trainer_name && <span className="text-muted-foreground text-sm">{log.description}</span>}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {log.amount ? (
+                                  <div className="flex items-center gap-1"><IndianRupee className="w-3 h-3 text-success" /><span className="font-medium text-success">{log.amount}</span></div>
+                                ) : <span className="text-muted-foreground">-</span>}
+                              </TableCell>
+                              <TableCell>
+                                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleViewActivity(log); }}><Eye className="w-4 h-4" /></Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {hasNextPage && (
+                            <TableRow ref={loadMoreRef}><TableCell colSpan={6} className="p-0">{isFetchingNextPage && <InfiniteScrollSkeleton />}</TableCell></TableRow>
+                          )}
+                        </>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
