@@ -859,7 +859,7 @@ const BranchAnalytics = () => {
             </div>
 
             {/* Loading Skeleton for Best & Worst Performers */}
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid lg:grid-cols-2 gap-4">
               {Array.from({ length: 2 }).map((_, i) => (
                 <Card key={i} className="border-l-4">
                   <CardHeader>
@@ -921,7 +921,7 @@ const BranchAnalytics = () => {
             </Card>
 
             {/* Loading Skeleton for Additional Charts */}
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid lg:grid-cols-2 gap-6">
               {Array.from({ length: 2 }).map((_, i) => (
                 <Card key={i}>
                   <CardHeader>
@@ -1074,7 +1074,7 @@ const BranchAnalytics = () => {
 
         {/* Best & Worst Performers */}
         {(bestPerformer || worstPerformer) && (
-          <div className="grid md:grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid lg:grid-cols-2 gap-3 sm:gap-4">
             {bestPerformer && (
               <Card className="border-l-4 border-l-success">
                 <CardHeader className="p-3 sm:p-6">
@@ -1193,7 +1193,7 @@ const BranchAnalytics = () => {
                 config={{
                   revenue: { label: "Revenue", color: "hsl(var(--accent))" },
                 }}
-                className="h-[min(400px,42vh)] overflow-hidden"
+                className="h-[220px] sm:h-[280px] lg:h-[min(400px,42vh)] overflow-hidden"
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={timeSeriesData} margin={isMobile ? { top: 8, right: 32, left: 0, bottom: 8 } : undefined}>
@@ -1378,7 +1378,7 @@ const BranchAnalytics = () => {
 
         {/* Trainer Analytics Section */}
         <Card>
-          <CardHeader className="px-2 py-2 sm:p-6">
+          <CardHeader className="px-3 py-3 sm:p-4 lg:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <CardTitle className="flex items-center gap-2 text-base sm:text-xl">
@@ -1405,7 +1405,7 @@ const BranchAnalytics = () => {
               </Select>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 sm:px-4 lg:px-6">
             {isLoadingTrainers ? (
               <div className="space-y-6">
                 {/* Loading Skeleton for Summary Cards */}
@@ -1421,7 +1421,7 @@ const BranchAnalytics = () => {
                 </div>
 
                 {/* Loading Skeleton for Best/Worst Performers */}
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid lg:grid-cols-2 gap-4">
                   {Array.from({ length: 2 }).map((_, i) => (
                     <Card key={i} className="border-l-4">
                       <CardHeader>
@@ -1524,7 +1524,7 @@ const BranchAnalytics = () => {
 
                 {/* Best & Worst Trainers */}
                 {(bestTrainer || worstTrainer) && (
-                  <div className="grid md:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="grid lg:grid-cols-2 gap-3 sm:gap-4">
                     {bestTrainer && (
                       <Card className="border-l-4 border-l-success">
                         <CardHeader className="p-3 sm:p-6">
@@ -1744,7 +1744,7 @@ const BranchAnalytics = () => {
                       config={{
                         revenue: { label: "Revenue", color: "hsl(var(--accent))" },
                       }}
-                      className="h-[min(400px,42vh)] overflow-hidden"
+                      className="h-[220px] sm:h-[280px] lg:h-[min(400px,42vh)] overflow-hidden"
                     >
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
@@ -1806,7 +1806,7 @@ const BranchAnalytics = () => {
                       config={{
                         efficiency: { label: "Efficiency", color: "hsl(var(--success))" },
                       }}
-                      className="h-[min(400px,42vh)] overflow-hidden"
+                      className="h-[220px] sm:h-[280px] lg:h-[min(400px,42vh)] overflow-hidden"
                     >
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
@@ -1870,7 +1870,7 @@ const BranchAnalytics = () => {
                       config={{
                         revenue: { label: "Revenue", color: "hsl(var(--accent))" },
                       }}
-                      className="h-[min(400px,42vh)] overflow-hidden"
+                      className="h-[220px] sm:h-[280px] lg:h-[min(400px,42vh)] overflow-hidden"
                     >
                       <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart
@@ -1955,7 +1955,7 @@ const BranchAnalytics = () => {
                         config={{
                           revenue: { label: "Revenue", color: "hsl(var(--accent))" },
                         }}
-                        className="h-[min(400px,42vh)] overflow-hidden"
+                        className="h-[220px] sm:h-[280px] lg:h-[min(400px,42vh)] overflow-hidden"
                       >
                         <ResponsiveContainer width="100%" height="100%">
                           <RadarChart
@@ -1998,7 +1998,7 @@ const BranchAnalytics = () => {
 
               <TabsContent value="insights" className="space-y-3 sm:space-y-6">
                 {/* Trainer Insights */}
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid lg:grid-cols-2 gap-4">
                   {/* High Performers */}
                   <Card>
                     <CardHeader>
@@ -2134,7 +2134,7 @@ const BranchAnalytics = () => {
         </Card>
 
             {/* Additional Charts */}
-            <div className="grid md:grid-cols-2 gap-3 sm:gap-6">
+            <div className="grid lg:grid-cols-2 gap-3 sm:gap-6">
               {/* Revenue Distribution */}
               <Card>
                 <CardHeader className="px-2 py-2 sm:p-6">
@@ -2146,7 +2146,7 @@ const BranchAnalytics = () => {
                     config={{
                       revenue: { label: "Revenue", color: "hsl(var(--accent))" },
                     }}
-                    className="h-[min(300px,36vh)] overflow-hidden"
+                    className="h-[220px] sm:h-[280px] lg:h-[min(300px,36vh)] overflow-hidden"
                   >
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -2200,7 +2200,7 @@ const BranchAnalytics = () => {
                     config={{
                       revenue: { label: "Revenue", color: "hsl(var(--accent))" },
                     }}
-                    className="h-[min(300px,36vh)] overflow-hidden"
+                    className="h-[220px] sm:h-[280px] lg:h-[min(300px,36vh)] overflow-hidden"
                   >
                     <ResponsiveContainer width="100%" height="100%">
                       <RadarChart data={branchMetrics.slice(0, 3).map((m) => {
