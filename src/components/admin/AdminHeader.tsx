@@ -101,7 +101,7 @@ export const AdminHeader = ({
             <div className="min-w-0 hidden md:block">
               <h1 className="text-base lg:text-lg font-semibold text-foreground truncate">{title}</h1>
               {subtitle && (
-                <p className="text-xs text-muted-foreground truncate hidden lg:block">{subtitle}</p>
+                <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
               )}
             </div>
           </div>
