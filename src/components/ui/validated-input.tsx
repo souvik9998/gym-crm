@@ -6,18 +6,12 @@ interface InlineErrorProps {
   className?: string;
 }
 
-/** Inline error message shown below a form field – always reserves vertical space */
+/** Inline error message shown below a form field */
 export const InlineError = ({ message, className }: InlineErrorProps) => {
+  if (!message) return null;
   return (
-    <p
-      className={cn(
-        "text-xs font-medium mt-1 min-h-[1.125rem] transition-opacity duration-200",
-        message ? "text-destructive opacity-100" : "opacity-0",
-        className
-      )}
-      aria-live="polite"
-    >
-      {message || "\u00A0"}
+    <p className={cn("text-xs font-medium text-destructive mt-1", className)}>
+      {message}
     </p>
   );
 };
