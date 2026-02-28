@@ -29,10 +29,10 @@ const TrainerPerformanceChart = memo(({ data, isLoading }: TrainerPerformanceCha
   if (isLoading) {
     return (
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="h-[clamp(200px,28vh,300px)] md:h-[clamp(220px,26vh,320px)] flex items-center justify-center">
-          <div className="w-32 h-32 rounded-full bg-muted animate-pulse" />
+        <div className="h-[160px] sm:h-[clamp(200px,28vh,300px)] md:h-[clamp(220px,26vh,320px)] flex items-center justify-center">
+          <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-muted animate-pulse" />
         </div>
-        <div className="h-[clamp(200px,28vh,300px)] md:h-[clamp(220px,26vh,320px)] flex items-center justify-center">
+        <div className="h-[160px] sm:h-[clamp(200px,28vh,300px)] md:h-[clamp(220px,26vh,320px)] flex items-center justify-center">
           <div className="w-full h-full flex flex-col gap-2 p-4">
             <div className="flex items-end justify-between h-full gap-2">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -62,7 +62,7 @@ const TrainerPerformanceChart = memo(({ data, isLoading }: TrainerPerformanceCha
         <h4 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4 text-center">Revenue Distribution</h4>
         <ChartContainer
           config={chartConfig}
-          className="h-[clamp(200px,28vh,300px)] md:h-[clamp(220px,26vh,320px)] overflow-hidden"
+          className="h-[160px] sm:h-[clamp(200px,28vh,300px)] md:h-[clamp(220px,26vh,320px)] overflow-hidden"
         >
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -103,18 +103,18 @@ const TrainerPerformanceChart = memo(({ data, isLoading }: TrainerPerformanceCha
         <h4 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4 text-center">Client Count</h4>
         <ChartContainer
           config={chartConfig}
-          className="h-[clamp(200px,28vh,300px)] md:h-[clamp(220px,26vh,320px)] overflow-hidden"
+          className="h-[160px] sm:h-[clamp(200px,28vh,300px)] md:h-[clamp(220px,26vh,320px)] overflow-hidden"
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}
               layout="vertical"
-              margin={isMobile ? { top: 8, right: 24, left: 0, bottom: 8 } : undefined}
+              margin={isMobile ? { top: 4, right: 16, left: 0, bottom: 4 } : undefined}
             >
-              <XAxis type="number" tickLine={false} axisLine={false} tick={isMobile ? { fontSize: 10 } : undefined} />
-              <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} width={isMobile ? 60 : 80} tick={isMobile ? { fontSize: 10 } : undefined} />
+              <XAxis type="number" tickLine={false} axisLine={false} tick={isMobile ? { fontSize: 9 } : undefined} />
+              <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} width={isMobile ? 50 : 80} tick={isMobile ? { fontSize: 9 } : undefined} />
               <ChartTooltip />
-              <Bar dataKey="members" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="members" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} maxBarSize={isMobile ? 18 : 36} />
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>
