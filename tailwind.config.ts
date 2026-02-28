@@ -28,11 +28,11 @@ export default {
   				'Segoe UI Symbol',
   				'Noto Color Emoji'
   			],
-  			display: [
-  				'Space Grotesk',
-  				'system-ui',
-  				'sans-serif'
-  			],
+		display: [
+			'Inter',
+			'system-ui',
+			'sans-serif'
+		],
   			serif: [
   				'ui-serif',
   				'Georgia',
