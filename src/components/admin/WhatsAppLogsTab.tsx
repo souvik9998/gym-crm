@@ -287,9 +287,9 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
   return (
     <div className="space-y-6">
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-        <TabsList className="grid w-full max-w-xs grid-cols-2">
-          <TabsTrigger value="stats">Statistics</TabsTrigger>
-          <TabsTrigger value="logs">Message Logs</TabsTrigger>
+        <TabsList className="grid w-full max-w-[240px] lg:max-w-xs grid-cols-2 h-8 lg:h-10">
+          <TabsTrigger value="stats" className="text-xs lg:text-sm py-1 lg:py-1.5">Statistics</TabsTrigger>
+          <TabsTrigger value="logs" className="text-xs lg:text-sm py-1 lg:py-1.5">Message Logs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="stats" className="space-y-6 mt-6">
@@ -382,68 +382,65 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
             </CardHeader>
             <CardContent className="space-y-3 lg:space-y-4 p-3 lg:p-6 pt-0">
               {/* Filters */}
-              <div className="space-y-2 lg:space-y-0 lg:flex lg:flex-wrap lg:gap-3">
-                <div className="relative flex-1 min-w-[200px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <div className="flex flex-wrap items-center gap-1.5 lg:gap-3">
+                <div className="relative flex-1 min-w-[120px] lg:min-w-[200px]">
+                  <Search className="absolute left-2.5 lg:left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 lg:w-4 lg:h-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by name or phone..."
+                    placeholder="Search..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 h-9 lg:h-12 text-sm"
+                    className="pl-8 lg:pl-10 h-8 lg:h-12 text-xs lg:text-sm"
                   />
                 </div>
-                <div className="flex flex-wrap gap-2 lg:gap-3">
-                  <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="w-auto min-w-[100px] lg:w-[160px] h-9 lg:h-12 text-xs lg:text-sm">
-                      <SelectValue placeholder="Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="promotional">Promotional</SelectItem>
-                      <SelectItem value="expiry_reminder">Expiry Reminder</SelectItem>
-                      <SelectItem value="expired_reminder">Expired Reminder</SelectItem>
-                      <SelectItem value="payment_details">Payment Details</SelectItem>
-                      <SelectItem value="new_registration">New Registration</SelectItem>
-                      <SelectItem value="renewal">Renewal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-auto min-w-[90px] lg:w-[120px] h-9 lg:h-12 text-xs lg:text-sm">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="sent">Sent</SelectItem>
-                      <SelectItem value="failed">Failed</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={manualFilter} onValueChange={setManualFilter}>
-                    <SelectTrigger className="w-auto min-w-[90px] lg:w-[130px] h-9 lg:h-12 text-xs lg:text-sm">
-                      <SelectValue placeholder="Source" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Sources</SelectItem>
-                      <SelectItem value="manual">Manual</SelectItem>
-                      <SelectItem value="automated">Automated</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <DateRangePicker
-                    dateFrom={dateFrom}
-                    dateTo={dateTo}
-                    onDateChange={(from, to) => { setDateFrom(from); setDateTo(to); }}
-                  />
-                  {hasActiveFilters && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9">
-                      <X className="w-4 h-4 mr-1" /> Clear
-                    </Button>
-                  )}
-                  <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5 h-9 text-xs lg:text-sm">
-                    <Download className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Export Data</span>
-                    <span className="sm:hidden">Export</span>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="w-auto min-w-[70px] lg:w-[160px] h-8 lg:h-12 text-[11px] lg:text-sm">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="promotional">Promotional</SelectItem>
+                    <SelectItem value="expiry_reminder">Expiry Reminder</SelectItem>
+                    <SelectItem value="expired_reminder">Expired Reminder</SelectItem>
+                    <SelectItem value="payment_details">Payment Details</SelectItem>
+                    <SelectItem value="new_registration">New Registration</SelectItem>
+                    <SelectItem value="renewal">Renewal</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-auto min-w-[70px] lg:w-[120px] h-8 lg:h-12 text-[11px] lg:text-sm">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="sent">Sent</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={manualFilter} onValueChange={setManualFilter}>
+                  <SelectTrigger className="w-auto min-w-[70px] lg:w-[130px] h-8 lg:h-12 text-[11px] lg:text-sm">
+                    <SelectValue placeholder="Source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sources</SelectItem>
+                    <SelectItem value="manual">Manual</SelectItem>
+                    <SelectItem value="automated">Automated</SelectItem>
+                  </SelectContent>
+                </Select>
+                <DateRangePicker
+                  dateFrom={dateFrom}
+                  dateTo={dateTo}
+                  onDateChange={(from, to) => { setDateFrom(from); setDateTo(to); }}
+                />
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 lg:px-3">
+                    <X className="w-3.5 h-3.5" />
                   </Button>
-                </div>
+                )}
+                <Button variant="outline" size="sm" onClick={handleExport} className="gap-1 h-8 text-[11px] lg:text-sm px-2 lg:px-3">
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Export</span>
+                </Button>
               </div>
 
               {/* Mobile/Tablet: Card list */}
