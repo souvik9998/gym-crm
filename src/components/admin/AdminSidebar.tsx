@@ -343,9 +343,9 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
           {navItems.map((item) => renderNavItem(item))}
         </nav>
 
-        {/* Bottom Navigation */}
+        {/* Bottom Navigation - hidden on mobile/tablet */}
         {bottomNavItems.length > 0 && (
-          <div className="p-3 border-t border-border space-y-1.5">
+          <div className="hidden lg:block p-3 border-t border-border space-y-1.5">
             {bottomNavItems.map((item) => renderNavItem(item, true))}
           </div>
         )}
