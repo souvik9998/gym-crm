@@ -194,7 +194,7 @@ const MemberGrowthSection = () => {
   );
 
   return (
-    <div className="grid md:grid-cols-2 gap-3 sm:gap-6" ref={ref}>
+    <div className="grid lg:grid-cols-2 gap-3 sm:gap-6" ref={ref}>
       <Card className="border-0 shadow-sm overflow-hidden">
         <CardHeader className="p-3 sm:p-6">
           <CardTitle className="text-base sm:text-xl">Member Growth</CardTitle>

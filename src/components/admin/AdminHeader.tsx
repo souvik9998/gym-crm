@@ -98,10 +98,10 @@ export const AdminHeader = ({
             </button>
           )}
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="min-w-0 hidden lg:block">
-              <h1 className="text-base sm:text-lg font-semibold text-foreground truncate">{title}</h1>
+            <div className="min-w-0 hidden md:block">
+              <h1 className="text-base lg:text-lg font-semibold text-foreground truncate">{title}</h1>
               {subtitle && (
-                <p className="text-xs text-muted-foreground truncate hidden sm:block">{subtitle}</p>
+                <p className="text-xs text-muted-foreground truncate hidden lg:block">{subtitle}</p>
               )}
             </div>
           </div>
