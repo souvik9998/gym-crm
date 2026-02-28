@@ -210,7 +210,7 @@ export function SubscriptionPlanTab() {
           <CardDescription className="text-xs lg:text-sm">Current resource usage against your plan limits</CardDescription>
         </CardHeader>
         <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
-          <div className="grid gap-3 lg:gap-5 grid-cols-2 sm:grid-cols-2">
+          <div className="grid gap-3 lg:gap-5 grid-cols-1 sm:grid-cols-2">
             {usageItems.map((item) => {
               const percentage = item.max > 0 ? Math.min((item.used / item.max) * 100, 100) : 0;
               const isNearLimit = percentage >= 80;
