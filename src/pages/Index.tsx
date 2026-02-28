@@ -226,7 +226,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Hero Header */}
       <header className="px-4 pt-12 pb-8 text-center">
         <div className="flex items-center justify-center mb-4">
@@ -259,7 +259,7 @@ const Index = () => {
       </header>
 
       {/* Main Content */}
-      <main className="px-4 pb-8">
+      <main className="flex-1 px-4 pb-8">
         {showOptions ? (
           <Card className="max-w-md mx-auto mt-6 border-0 shadow-xl bg-gradient-to-br from-card to-card/80">
             <CardHeader className="text-center pb-2">
@@ -366,7 +366,6 @@ const Index = () => {
                         const cleaned = e.target.value.replace(/\D/g, "").slice(0, 10);
                         setPhone(cleaned);
                         sessionStorage.setItem(`registration-phone-${branchId || "default"}`, cleaned);
-                        // Clear error as user types after a failed submit
                         if (phoneError) setPhoneError(undefined);
                       }}
                       error={phoneError}
@@ -413,8 +412,19 @@ const Index = () => {
             </div>
           ))}
         </div>
-
       </main>
+
+      {/* Powered by GymKloud - fixed bottom right on desktop, centered bottom on mobile */}
+      <div className="fixed bottom-4 right-4 hidden md:block">
+        <p className="text-xs text-muted-foreground/60">
+          Powered by <span className="font-semibold text-muted-foreground">GymKloud</span>
+        </p>
+      </div>
+      <div className="py-4 text-center md:hidden">
+        <p className="text-xs text-muted-foreground/60">
+          Powered by <span className="font-semibold text-muted-foreground">GymKloud</span>
+        </p>
+      </div>
     </div>
   );
 };
