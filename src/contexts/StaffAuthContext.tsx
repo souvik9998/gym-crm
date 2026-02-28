@@ -43,7 +43,7 @@ interface StaffAuthContextType {
   setBranchRestrictionCallback: (callback: ((restriction: StaffBranchRestriction | null) => void) | null) => void;
 }
 
-const StaffAuthContext = createContext<StaffAuthContextType | undefined>(undefined);
+export const StaffAuthContext = createContext<StaffAuthContextType | undefined>(undefined);
 
 // Helper to check if email is a staff email
 function isStaffEmail(email: string | undefined): boolean {
