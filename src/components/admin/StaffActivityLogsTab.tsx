@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { useInView } from "react-intersection-observer";
 import { useBranch } from "@/contexts/BranchContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -68,6 +69,7 @@ interface StaffActivityLogsTabProps {
 
 const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
   const { currentBranch } = useBranch();
+  const isCompact = useIsTabletOrBelow();
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -357,41 +359,41 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
         </TabsList>
 
         <TabsContent value="stats" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Activities</CardTitle>
+              <CardHeader className="p-3 lg:pb-3 lg:p-6 pb-1">
+                <CardTitle className="text-xs lg:text-sm font-medium text-muted-foreground">Total Activities</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-accent">{stats.totalActivities}</div>
-                <p className="text-xs text-muted-foreground mt-1">All time</p>
+              <CardContent className="p-3 pt-0 lg:p-6 lg:pt-0">
+                <div className="text-xl lg:text-3xl font-bold text-accent">{stats.totalActivities}</div>
+                <p className="text-[10px] lg:text-xs text-muted-foreground mt-0.5">All time</p>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Today</CardTitle>
+              <CardHeader className="p-3 lg:pb-3 lg:p-6 pb-1">
+                <CardTitle className="text-xs lg:text-sm font-medium text-muted-foreground">Today</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-foreground">{stats.activitiesToday}</div>
-                <p className="text-xs text-muted-foreground mt-1">Activities today</p>
+              <CardContent className="p-3 pt-0 lg:p-6 lg:pt-0">
+                <div className="text-xl lg:text-3xl font-bold text-foreground">{stats.activitiesToday}</div>
+                <p className="text-[10px] lg:text-xs text-muted-foreground mt-0.5">Activities today</p>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Members Added</CardTitle>
+              <CardHeader className="p-3 lg:pb-3 lg:p-6 pb-1">
+                <CardTitle className="text-xs lg:text-sm font-medium text-muted-foreground">Members Added</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-foreground">{stats.membersAdded}</div>
-                <p className="text-xs text-muted-foreground mt-1">By staff</p>
+              <CardContent className="p-3 pt-0 lg:p-6 lg:pt-0">
+                <div className="text-xl lg:text-3xl font-bold text-foreground">{stats.membersAdded}</div>
+                <p className="text-[10px] lg:text-xs text-muted-foreground mt-0.5">By staff</p>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Payments</CardTitle>
+              <CardHeader className="p-3 lg:pb-3 lg:p-6 pb-1">
+                <CardTitle className="text-xs lg:text-sm font-medium text-muted-foreground">Payments</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-foreground">{stats.paymentsRecorded}</div>
-                <p className="text-xs text-muted-foreground mt-1">Cash payments recorded</p>
+              <CardContent className="p-3 pt-0 lg:p-6 lg:pt-0">
+                <div className="text-xl lg:text-3xl font-bold text-foreground">{stats.paymentsRecorded}</div>
+                <p className="text-[10px] lg:text-xs text-muted-foreground mt-0.5">Cash payments</p>
               </CardContent>
             </Card>
           </div>
@@ -424,149 +426,151 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
           </div>
         </TabsContent>
 
-        <TabsContent value="logs" className="mt-6">
+        <TabsContent value="logs" className="mt-4 lg:mt-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Staff Activity Logs</CardTitle>
-              <CardDescription>Track all staff activities ({totalCount} total)</CardDescription>
+            <CardHeader className="p-3 lg:p-6 pb-2 lg:pb-2">
+              <CardTitle className="text-base lg:text-xl">Staff Activity Logs</CardTitle>
+              <CardDescription className="text-xs lg:text-sm">Track all staff activities ({totalCount} total)</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 lg:space-y-4 p-3 lg:p-6 pt-0">
               {/* Filters */}
-              <div className="flex flex-wrap gap-3">
+              <div className="space-y-2 lg:space-y-0 lg:flex lg:flex-wrap lg:gap-3">
                 <div className="relative flex-1 min-w-[200px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     placeholder="Search activities..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 h-9 lg:h-12 text-sm"
                   />
                 </div>
-                <Select value={staffFilter} onValueChange={setStaffFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <Filter className="w-4 h-4 mr-2" />
-                    <SelectValue placeholder="Staff Member" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Staff</SelectItem>
-                    {staffList.map((staff) => (
-                      <SelectItem key={staff.id} value={staff.id}>
-                        {staff.full_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <DateRangePicker
-                  dateFrom={dateFrom}
-                  dateTo={dateTo}
-                  onDateChange={(from, to) => {
-                    setDateFrom(from);
-                    setDateTo(to);
-                  }}
-                />
-                {hasActiveFilters && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters}>
-                    <X className="w-4 h-4 mr-1" />
-                    Clear
+                <div className="flex flex-wrap gap-2 lg:gap-3">
+                  <Select value={staffFilter} onValueChange={setStaffFilter}>
+                    <SelectTrigger className="w-auto min-w-[110px] lg:w-[180px] h-9 lg:h-12 text-xs lg:text-sm">
+                      <Filter className="w-3.5 h-3.5 mr-1" />
+                      <SelectValue placeholder="Staff" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Staff</SelectItem>
+                      {staffList.map((staff) => (
+                        <SelectItem key={staff.id} value={staff.id}>{staff.full_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <DateRangePicker
+                    dateFrom={dateFrom}
+                    dateTo={dateTo}
+                    onDateChange={(from, to) => { setDateFrom(from); setDateTo(to); }}
+                  />
+                  {hasActiveFilters && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9">
+                      <X className="w-4 h-4 mr-1" /> Clear
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5 h-9 text-xs lg:text-sm">
+                    <Download className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Export Data</span>
+                    <span className="sm:hidden">Export</span>
                   </Button>
-                )}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleExport} 
-                  className="gap-2 hover:bg-accent/50 transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                  Export Data
-                </Button>
+                </div>
               </div>
 
-              {/* Table */}
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Staff</TableHead>
-                      <TableHead>Activity</TableHead>
-                      <TableHead>Entity</TableHead>
-                      <TableHead className="w-[80px]">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isDataConfirmedEmpty ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                          No staff activity logs found
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      <>
-                        {filteredLogs.map((log) => {
-                          const metadata = log.metadata as any;
-                          return (
-                            <TableRow 
-                              key={log.id} 
-                              className="cursor-pointer hover:bg-muted/50 transition-colors"
-                              onClick={() => handleViewActivity(log)}
-                            >
-                              <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                                {formatDateTime(log.created_at)}
-                              </TableCell>
-                              <TableCell>
-                                {metadata?.staff_name ? (
-                                  <div>
-                                    <p className="text-sm font-medium">{metadata.staff_name}</p>
-                                    <p className="text-xs text-muted-foreground capitalize">{metadata.staff_role}</p>
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground">-</span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <div className="max-w-md">
-                                  <div className="mb-1">{getActivityBadge(log.activity_type)}</div>
-                                  <p className={`text-xs ${isDeleteActivity(log.activity_type) ? "text-red-400" : "text-muted-foreground"}`}>
-                                    {formatDescription(log.description)}
-                                  </p>
+              {/* Mobile/Tablet: Card list */}
+              {isCompact ? (
+                <div className="space-y-2">
+                  {isDataConfirmedEmpty ? (
+                    <p className="text-center py-8 text-muted-foreground text-sm">No staff activity logs found</p>
+                  ) : (
+                    <>
+                      {filteredLogs.map((log) => {
+                        const metadata = log.metadata as any;
+                        return (
+                          <div key={log.id} className="p-3 rounded-lg border bg-card cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleViewActivity(log)}>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0 space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {getActivityBadge(log.activity_type)}
+                                  {log.entity_name && <Badge variant="outline" className="text-[10px]">{log.entity_name}</Badge>}
                                 </div>
-                              </TableCell>
-                              <TableCell>
-                                {log.entity_name && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {log.entity_name}
-                                  </Badge>
+                                {metadata?.staff_name && (
+                                  <p className="text-xs text-muted-foreground">by <span className="font-medium text-foreground">{metadata.staff_name}</span></p>
                                 )}
-                              </TableCell>
-                              <TableCell>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleViewActivity(log);
-                                  }}
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                        
-                        {/* Infinite scroll sentinel */}
-                        {hasNextPage && (
-                          <TableRow ref={loadMoreRef}>
-                            <TableCell colSpan={5} className="p-0">
-                              {isFetchingNextPage && <InfiniteScrollSkeleton />}
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                                <p className="text-xs text-muted-foreground line-clamp-1">{formatDescription(log.description)}</p>
+                                <p className="text-[11px] text-muted-foreground">{formatDateTime(log.created_at)}</p>
+                              </div>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0" onClick={(e) => { e.stopPropagation(); handleViewActivity(log); }}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {hasNextPage && (
+                        <div ref={loadMoreRef}>{isFetchingNextPage && <InfiniteScrollSkeleton />}</div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Time</TableHead>
+                        <TableHead>Staff</TableHead>
+                        <TableHead>Activity</TableHead>
+                        <TableHead>Entity</TableHead>
+                        <TableHead className="w-[80px]">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {isDataConfirmedEmpty ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No staff activity logs found</TableCell>
+                        </TableRow>
+                      ) : (
+                        <>
+                          {filteredLogs.map((log) => {
+                            const metadata = log.metadata as any;
+                            return (
+                              <TableRow key={log.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleViewActivity(log)}>
+                                <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{formatDateTime(log.created_at)}</TableCell>
+                                <TableCell>
+                                  {metadata?.staff_name ? (
+                                    <div>
+                                      <p className="text-sm font-medium">{metadata.staff_name}</p>
+                                      <p className="text-xs text-muted-foreground capitalize">{metadata.staff_role}</p>
+                                    </div>
+                                  ) : <span className="text-muted-foreground">-</span>}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="max-w-md">
+                                    <div className="mb-1">{getActivityBadge(log.activity_type)}</div>
+                                    <p className={`text-xs ${isDeleteActivity(log.activity_type) ? "text-red-400" : "text-muted-foreground"}`}>
+                                      {formatDescription(log.description)}
+                                    </p>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {log.entity_name && <Badge variant="outline" className="text-xs">{log.entity_name}</Badge>}
+                                </TableCell>
+                                <TableCell>
+                                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleViewActivity(log); }}>
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                          {hasNextPage && (
+                            <TableRow ref={loadMoreRef}><TableCell colSpan={5} className="p-0">{isFetchingNextPage && <InfiniteScrollSkeleton />}</TableCell></TableRow>
+                          )}
+                        </>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
