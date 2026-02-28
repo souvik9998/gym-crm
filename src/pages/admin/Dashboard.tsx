@@ -498,14 +498,105 @@ const AdminDashboard = () => {
                 
                 {/* Search Bar - Mobile/Tablet only */}
                 {(activeTab === "members" || activeTab === "daily_pass") && (
-                  <div className="relative w-full lg:hidden group">
-                    <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 md:w-4 h-3.5 md:h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
-                    <Input
-                      placeholder="Search by name or phone..."
-                      className="pl-8 md:pl-9 h-8 md:h-9 text-xs md:text-sm bg-muted/30 border-transparent hover:bg-muted/50 hover:border-border focus:bg-background focus:border-border transition-all duration-200"
-                      value={activeTab === "members" ? searchInput : dailyPassSearchInput}
-                      onChange={(e) => activeTab === "members" ? setSearchInput(e.target.value) : setDailyPassSearchInput(e.target.value)}
-                    />
+                  <div className="flex items-center gap-1.5 lg:hidden">
+                    <div className="relative flex-1 group">
+                      <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 md:w-4 h-3.5 md:h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
+                      <Input
+                        placeholder="Search by name or phone..."
+                        className="pl-8 md:pl-9 h-8 md:h-9 text-xs md:text-sm bg-muted/30 border-transparent hover:bg-muted/50 hover:border-border focus:bg-background focus:border-border transition-all duration-200"
+                        value={activeTab === "members" ? searchInput : dailyPassSearchInput}
+                        onChange={(e) => activeTab === "members" ? setSearchInput(e.target.value) : setDailyPassSearchInput(e.target.value)}
+                      />
+                    </div>
+                    {/* Tablet-only inline action buttons next to search */}
+                    <div className="hidden md:flex lg:hidden items-center gap-1.5">
+                      <Popover open={sortOpen} onOpenChange={setSortOpen}>
+                        <PopoverTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                            title="Sort"
+                          >
+                            {sortOrder === "asc" ? (
+                              <BarsArrowUpIcon className="w-4 h-4" />
+                            ) : (
+                              <BarsArrowDownIcon className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56 p-0" align="end">
+                          <div className="p-3 border-b border-border">
+                            <p className="text-sm font-medium text-foreground">Sort by</p>
+                          </div>
+                          <RadioGroup 
+                            value={sortBy} 
+                            onValueChange={(value) => setSortBy(value as typeof sortBy)}
+                            className="p-2"
+                          >
+                            <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                              <RadioGroupItem value="name" id="sort-name-tablet" />
+                              <Label htmlFor="sort-name-tablet" className="cursor-pointer flex-1 text-sm">Name</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                              <RadioGroupItem value="join_date" id="sort-join-tablet" />
+                              <Label htmlFor="sort-join-tablet" className="cursor-pointer flex-1 text-sm">Join Date</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                              <RadioGroupItem value="end_date" id="sort-expiry-tablet" />
+                              <Label htmlFor="sort-expiry-tablet" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
+                            </div>
+                          </RadioGroup>
+                          <Separator />
+                          <div className="p-2 space-y-1">
+                            <button
+                              onClick={() => setSortOrder("asc")}
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "asc" ? "bg-muted font-medium" : ""}`}
+                            >
+                              <BarsArrowUpIcon className="w-4 h-4" />
+                              Oldest first
+                            </button>
+                            <button
+                              onClick={() => setSortOrder("desc")}
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "desc" ? "bg-muted font-medium" : ""}`}
+                            >
+                              <BarsArrowDownIcon className="w-4 h-4" />
+                              Newest first
+                            </button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                        title="Export Data"
+                        onClick={handleExport}
+                      >
+                        <ArrowDownTrayIcon className="w-4 h-4" />
+                      </Button>
+                      {canManageMembers && (
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={() => setIsAddPaymentOpen(true)} 
+                          className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                          title="Cash Payment"
+                        >
+                          <CreditCardIcon className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {canManageMembers && (
+                        <Button 
+                          size="sm"
+                          onClick={() => setIsAddMemberOpen(true)} 
+                          className="gap-1 h-9 bg-foreground text-background hover:bg-foreground/90 text-xs px-3 whitespace-nowrap"
+                        >
+                          <PlusIcon className="w-3.5 h-3.5" />
+                          Add Member
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -638,96 +729,8 @@ const AdminDashboard = () => {
                   />
                 </div>
 
-                {/* Tablet-only: Action buttons row */}
-                <div className="hidden md:flex lg:hidden items-center gap-2">
-                  <Popover open={sortOpen} onOpenChange={setSortOpen}>
-                    <PopoverTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        className="h-8 w-8 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
-                        title="Sort"
-                      >
-                        {sortOrder === "asc" ? (
-                          <BarsArrowUpIcon className="w-4 h-4" />
-                        ) : (
-                          <BarsArrowDownIcon className="w-4 h-4" />
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-56 p-0" align="start">
-                      <div className="p-3 border-b border-border">
-                        <p className="text-sm font-medium text-foreground">Sort by</p>
-                      </div>
-                      <RadioGroup 
-                        value={sortBy} 
-                        onValueChange={(value) => setSortBy(value as typeof sortBy)}
-                        className="p-2"
-                      >
-                        <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                          <RadioGroupItem value="name" id="sort-name-tablet" />
-                          <Label htmlFor="sort-name-tablet" className="cursor-pointer flex-1 text-sm">Name</Label>
-                        </div>
-                        <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                          <RadioGroupItem value="join_date" id="sort-join-tablet" />
-                          <Label htmlFor="sort-join-tablet" className="cursor-pointer flex-1 text-sm">Join Date</Label>
-                        </div>
-                        <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                          <RadioGroupItem value="end_date" id="sort-expiry-tablet" />
-                          <Label htmlFor="sort-expiry-tablet" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
-                        </div>
-                      </RadioGroup>
-                      <Separator />
-                      <div className="p-2 space-y-1">
-                        <button
-                          onClick={() => setSortOrder("asc")}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "asc" ? "bg-muted font-medium" : ""}`}
-                        >
-                          <BarsArrowUpIcon className="w-4 h-4" />
-                          Oldest first
-                        </button>
-                        <button
-                          onClick={() => setSortOrder("desc")}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "desc" ? "bg-muted font-medium" : ""}`}
-                        >
-                          <BarsArrowDownIcon className="w-4 h-4" />
-                          Newest first
-                        </button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    className="h-8 w-8 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
-                    title="Export Data"
-                    onClick={handleExport}
-                  >
-                    <ArrowDownTrayIcon className="w-4 h-4" />
-                  </Button>
-                  {canManageMembers && (
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      onClick={() => setIsAddPaymentOpen(true)} 
-                      className="h-8 w-8 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
-                      title="Cash Payment"
-                    >
-                      <CreditCardIcon className="w-4 h-4" />
-                    </Button>
-                  )}
-                  <div className="flex-1" />
-                  {canManageMembers && (
-                    <Button 
-                      size="sm"
-                      onClick={() => setIsAddMemberOpen(true)} 
-                      className="gap-1 h-8 bg-foreground text-background hover:bg-foreground/90 text-xs px-3"
-                    >
-                      <PlusIcon className="w-3.5 h-3.5" />
-                      Add Member
-                    </Button>
-                  )}
-                </div>
+
+
 
                 <MembersTable
                   searchQuery={searchQuery} 
