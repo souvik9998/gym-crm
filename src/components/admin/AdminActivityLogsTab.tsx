@@ -352,55 +352,58 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
             </CardHeader>
             <CardContent className="space-y-3 lg:space-y-4 p-3 lg:p-6 pt-0">
               {/* Filters */}
-              <div className="flex flex-wrap items-center gap-1.5 lg:gap-3">
-                <div className="relative flex-1 min-w-[140px] lg:min-w-[200px]">
-                  <Search className="absolute left-2.5 lg:left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 lg:w-4 lg:h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 lg:pl-10 h-8 lg:h-12 text-xs lg:text-sm"
-                  />
+              <div className="space-y-1.5 lg:space-y-0 lg:flex lg:flex-wrap lg:items-center lg:gap-3">
+                <div className="flex items-center gap-1.5 lg:gap-3">
+                  <div className="relative flex-1 min-w-[120px] lg:min-w-[200px]">
+                    <Search className="absolute left-2.5 lg:left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 lg:w-4 lg:h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-8 lg:pl-10 h-8 lg:h-12 text-xs lg:text-sm"
+                    />
+                  </div>
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger className="w-auto min-w-[90px] lg:w-[180px] h-8 lg:h-12 text-[11px] lg:text-sm">
+                      <Filter className="w-3 h-3 lg:w-4 lg:h-4 mr-0.5 lg:mr-2" />
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="members">Members</SelectItem>
+                      <SelectItem value="payments">Payments</SelectItem>
+                      <SelectItem value="packages">Packages</SelectItem>
+                      <SelectItem value="trainers">Trainers</SelectItem>
+                      <SelectItem value="staff">Staff</SelectItem>
+                      <SelectItem value="settings">Settings</SelectItem>
+                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                      <SelectItem value="subscriptions">Subscriptions</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-auto min-w-[90px] lg:w-[180px] h-8 lg:h-12 text-[11px] lg:text-sm">
-                    <Filter className="w-3 h-3 lg:w-4 lg:h-4 mr-0.5 lg:mr-2" />
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="members">Members</SelectItem>
-                    <SelectItem value="payments">Payments</SelectItem>
-                    <SelectItem value="packages">Packages</SelectItem>
-                    <SelectItem value="trainers">Trainers</SelectItem>
-                    <SelectItem value="staff">Staff</SelectItem>
-                    <SelectItem value="settings">Settings</SelectItem>
-                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                    <SelectItem value="subscriptions">Subscriptions</SelectItem>
-                  </SelectContent>
-                </Select>
-                <DateRangePicker
-                  dateFrom={dateFrom}
-                  dateTo={dateTo}
-                  onDateChange={(from, to) => {
-                    setDateFrom(from);
-                    setDateTo(to);
-                  }}
-                />
-                {hasActiveFilters && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 lg:px-3">
-                    <X className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-1.5 lg:gap-3">
+                  <DateRangePicker
+                    dateFrom={dateFrom}
+                    dateTo={dateTo}
+                    onDateChange={(from, to) => {
+                      setDateFrom(from);
+                      setDateTo(to);
+                    }}
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleExport} 
+                    className="gap-1 h-8 text-[11px] lg:text-sm px-2 lg:px-3 shrink-0"
+                  >
+                    <Download className="w-3.5 h-3.5" />
                   </Button>
-                )}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleExport} 
-                  className="gap-1 h-8 text-[11px] lg:text-sm px-2 lg:px-3"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Export</span>
-                </Button>
+                  {hasActiveFilters && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2 lg:px-3 shrink-0">
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Mobile/Tablet: Card list */}
