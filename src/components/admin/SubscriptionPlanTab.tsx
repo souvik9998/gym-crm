@@ -148,52 +148,52 @@ export function SubscriptionPlanTab() {
   const disabledModules = Object.entries(limits.features).filter(([, v]) => v !== true);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-6">
       {/* Plan Overview Card */}
       <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarDaysIcon className="w-5 h-5 text-primary" />
+        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+          <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
+            <CalendarDaysIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
             Plan Overview
           </CardTitle>
-          <CardDescription>Your current subscription plan details</CardDescription>
+          <CardDescription className="text-xs lg:text-sm">Your current subscription plan details</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-muted-foreground">Organization:</span>
-            <span className="font-semibold">{tenantName}</span>
+        <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
+          <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+            <span className="text-xs lg:text-sm font-medium text-muted-foreground">Organization:</span>
+            <span className="font-semibold text-sm lg:text-base">{tenantName}</span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-muted-foreground">Plan Expiry:</span>
+          <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+            <span className="text-xs lg:text-sm font-medium text-muted-foreground">Plan Expiry:</span>
             {limits.plan_expiry_date ? (
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">
+              <div className="flex items-center gap-1.5 lg:gap-2">
+                <span className="font-semibold text-sm lg:text-base">
                   {format(new Date(limits.plan_expiry_date), "dd MMM yyyy")}
                 </span>
                 {isExpired ? (
-                  <Badge variant="destructive">Expired</Badge>
+                  <Badge variant="destructive" className="text-[10px] lg:text-xs">Expired</Badge>
                 ) : daysUntilExpiry !== null && daysUntilExpiry <= 30 ? (
-                  <Badge variant="outline" className="border-yellow-500 text-yellow-600">
+                  <Badge variant="outline" className="border-yellow-500 text-yellow-600 text-[10px] lg:text-xs">
                     {daysUntilExpiry} days left
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="border-green-500 text-green-600">Active</Badge>
+                  <Badge variant="outline" className="border-green-500 text-green-600 text-[10px] lg:text-xs">Active</Badge>
                 )}
               </div>
             ) : (
-              <Badge variant="outline" className="border-green-500 text-green-600">No Expiry (Unlimited)</Badge>
+              <Badge variant="outline" className="border-green-500 text-green-600 text-[10px] lg:text-xs">No Expiry (Unlimited)</Badge>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-muted-foreground">Storage Limit:</span>
-            <span className="font-semibold">{limits.max_storage_mb} MB</span>
+          <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+            <span className="text-xs lg:text-sm font-medium text-muted-foreground">Storage Limit:</span>
+            <span className="font-semibold text-sm lg:text-base">{limits.max_storage_mb} MB</span>
           </div>
 
           {isExpired && (
-            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-2">
-              <ExclamationTriangleIcon className="w-5 h-5 flex-shrink-0" />
+            <div className="p-2 lg:p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs lg:text-sm flex items-center gap-2">
+              <ExclamationTriangleIcon className="w-4 h-4 lg:w-5 lg:h-5 flex-shrink-0" />
               Your plan has expired. Some features may be restricted. Contact your platform administrator to renew.
             </div>
           )}
@@ -202,34 +202,34 @@ export function SubscriptionPlanTab() {
 
       {/* Usage Limits Card */}
       <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ChartBarIcon className="w-5 h-5 text-primary" />
+        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+          <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
+            <ChartBarIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
             Usage & Quotas
           </CardTitle>
-          <CardDescription>Current resource usage against your plan limits</CardDescription>
+          <CardDescription className="text-xs lg:text-sm">Current resource usage against your plan limits</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-5 sm:grid-cols-2">
+        <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
+          <div className="grid gap-3 lg:gap-5 grid-cols-2 sm:grid-cols-2">
             {usageItems.map((item) => {
               const percentage = item.max > 0 ? Math.min((item.used / item.max) * 100, 100) : 0;
               const isNearLimit = percentage >= 80;
               const isAtLimit = percentage >= 100;
 
               return (
-                <div key={item.label} className="space-y-2 p-3 rounded-lg bg-muted/30">
+                <div key={item.label} className="space-y-1.5 lg:space-y-2 p-2 lg:p-3 rounded-lg bg-muted/30">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{item.label}</span>
-                    <span className={`text-sm font-semibold ${isAtLimit ? "text-destructive" : isNearLimit ? "text-yellow-600" : "text-foreground"}`}>
+                    <span className="text-xs lg:text-sm font-medium">{item.label}</span>
+                    <span className={`text-[10px] lg:text-sm font-semibold ${isAtLimit ? "text-destructive" : isNearLimit ? "text-yellow-600" : "text-foreground"}`}>
                       {item.used.toLocaleString()} / {item.max.toLocaleString()}
                     </span>
                   </div>
                   <Progress
                     value={percentage}
-                    className={`h-2 ${isAtLimit ? "[&>div]:bg-destructive" : isNearLimit ? "[&>div]:bg-yellow-500" : ""}`}
+                    className={`h-1.5 lg:h-2 ${isAtLimit ? "[&>div]:bg-destructive" : isNearLimit ? "[&>div]:bg-yellow-500" : ""}`}
                   />
                   {isAtLimit && (
-                    <p className="text-xs text-destructive">Limit reached — contact admin to upgrade</p>
+                    <p className="text-[10px] lg:text-xs text-destructive">Limit reached — contact admin to upgrade</p>
                   )}
                 </div>
               );
@@ -240,28 +240,28 @@ export function SubscriptionPlanTab() {
 
       {/* Feature Permissions Card */}
       <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShieldCheckIcon className="w-5 h-5 text-primary" />
+        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+          <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
+            <ShieldCheckIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
             Feature Permissions
           </CardTitle>
-          <CardDescription>Modules enabled on your current plan</CardDescription>
+          <CardDescription className="text-xs lg:text-sm">Modules enabled on your current plan</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+        <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
+          <div className="space-y-3 lg:space-y-4">
             {enabledModules.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Enabled</p>
-                <div className="grid gap-2 sm:grid-cols-2">
+              <div className="space-y-1.5 lg:space-y-2">
+                <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-wider text-muted-foreground">Enabled</p>
+                <div className="grid gap-1.5 lg:gap-2 grid-cols-1 sm:grid-cols-2">
                   {enabledModules.map(([key]) => {
                     const info = MODULE_LABELS[key];
                     if (!info) return null;
                     return (
-                      <div key={key} className="flex items-center gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
-                        <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                      <div key={key} className="flex items-center gap-2 lg:gap-3 p-2 lg:p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+                        <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full bg-green-500 flex-shrink-0" />
                         <div>
-                          <p className="text-sm font-medium">{info.label}</p>
-                          <p className="text-xs text-muted-foreground">{info.description}</p>
+                          <p className="text-xs lg:text-sm font-medium">{info.label}</p>
+                          <p className="text-[10px] lg:text-xs text-muted-foreground hidden sm:block">{info.description}</p>
                         </div>
                       </div>
                     );
@@ -271,18 +271,18 @@ export function SubscriptionPlanTab() {
             )}
 
             {disabledModules.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Not Included</p>
-                <div className="grid gap-2 sm:grid-cols-2">
+              <div className="space-y-1.5 lg:space-y-2">
+                <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-wider text-muted-foreground">Not Included</p>
+                <div className="grid gap-1.5 lg:gap-2 grid-cols-1 sm:grid-cols-2">
                   {disabledModules.map(([key]) => {
                     const info = MODULE_LABELS[key];
                     if (!info) return null;
                     return (
-                      <div key={key} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border opacity-60">
-                        <div className="w-2 h-2 rounded-full bg-muted-foreground flex-shrink-0" />
+                      <div key={key} className="flex items-center gap-2 lg:gap-3 p-2 lg:p-3 rounded-lg bg-muted/50 border border-border opacity-60">
+                        <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full bg-muted-foreground flex-shrink-0" />
                         <div>
-                          <p className="text-sm font-medium">{info.label}</p>
-                          <p className="text-xs text-muted-foreground">{info.description}</p>
+                          <p className="text-xs lg:text-sm font-medium">{info.label}</p>
+                          <p className="text-[10px] lg:text-xs text-muted-foreground hidden sm:block">{info.description}</p>
                         </div>
                       </div>
                     );
@@ -292,7 +292,7 @@ export function SubscriptionPlanTab() {
             )}
 
             {enabledModules.length === 0 && disabledModules.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">
+              <p className="text-xs lg:text-sm text-muted-foreground text-center py-3 lg:py-4">
                 No permission data available.
               </p>
             )}

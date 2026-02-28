@@ -106,30 +106,30 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
 
   return (
     <Card className={cn("border-0 shadow-sm", !whatsappEnabled && "opacity-60")}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Cog6ToothIcon className="w-5 h-5 text-primary" />
+      <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+        <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
+          <Cog6ToothIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
           Auto-Send Preferences
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-xs lg:text-sm">
           {whatsappEnabled
             ? "Choose which WhatsApp messages are sent automatically. Disabled messages can still be sent manually."
             : "WhatsApp messaging is disabled. Enable the main WhatsApp toggle above to configure auto-send preferences."}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-1">
+      <CardContent className="space-y-1 p-4 lg:p-6 pt-0 lg:pt-0">
         {MESSAGE_TYPES.map((type) => (
           <div
             key={type.key}
-            className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+            className="flex items-center justify-between p-2 lg:p-3 rounded-lg hover:bg-muted/50 transition-colors"
           >
-            <div className="space-y-0.5 flex-1 mr-4">
-              <p className="text-sm font-medium">{type.label}</p>
-              <p className="text-xs text-muted-foreground">{type.description}</p>
+            <div className="space-y-0.5 flex-1 mr-3 lg:mr-4">
+              <p className="text-xs lg:text-sm font-medium">{type.label}</p>
+              <p className="text-[10px] lg:text-xs text-muted-foreground">{type.description}</p>
               {type.hasDaySelector && preferences[type.key] && (
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs text-muted-foreground">
-                    {type.hasDaySelector === "before" ? "Send" : "Send"}
+                <div className="flex items-center gap-1.5 lg:gap-2 mt-1.5 lg:mt-2">
+                  <span className="text-[10px] lg:text-xs text-muted-foreground">
+                    Send
                   </span>
                   <Select
                     value={String(
@@ -144,7 +144,7 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
                       )
                     }
                   >
-                    <SelectTrigger className="h-7 w-16 text-xs">
+                    <SelectTrigger className="h-6 lg:h-7 w-14 lg:w-16 text-[10px] lg:text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -155,7 +155,7 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
                       ))}
                     </SelectContent>
                   </Select>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-[10px] lg:text-xs text-muted-foreground">
                     {type.hasDaySelector === "before" ? "days before expiry" : "days after expiry"}
                   </span>
                 </div>
@@ -170,12 +170,12 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
         ))}
 
         {/* Promotional - always manual */}
-        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-          <div className="space-y-0.5 flex-1 mr-4">
-            <p className="text-sm font-medium text-muted-foreground">Promotional</p>
-            <p className="text-xs text-muted-foreground">Promotional messages can only be sent manually</p>
+        <div className="flex items-center justify-between p-2 lg:p-3 rounded-lg bg-muted/30">
+          <div className="space-y-0.5 flex-1 mr-3 lg:mr-4">
+            <p className="text-xs lg:text-sm font-medium text-muted-foreground">Promotional</p>
+            <p className="text-[10px] lg:text-xs text-muted-foreground">Promotional messages can only be sent manually</p>
           </div>
-          <Badge variant="secondary" className="text-xs">Manual Only</Badge>
+          <Badge variant="secondary" className="text-[10px] lg:text-xs">Manual Only</Badge>
         </div>
       </CardContent>
     </Card>

@@ -703,131 +703,134 @@ const AdminSettings = () => {
 
   return (
     <Fragment>
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-4 lg:space-y-6">
         <Tabs defaultValue={initialTab}>
-          <TabsList className="grid w-full grid-cols-5 bg-muted/50">
-            <TabsTrigger value="packages" className="gap-2 data-[state=active]:bg-background">
-              <CubeIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">Packages</span>
+          <TabsList className="grid w-full grid-cols-5 bg-muted/50 h-auto">
+            <TabsTrigger value="packages" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
+              <CubeIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+              <span>Packages</span>
             </TabsTrigger>
-            <TabsTrigger value="branches" className="gap-2 data-[state=active]:bg-background">
-              <BuildingStorefrontIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">Branches</span>
+            <TabsTrigger value="branches" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
+              <BuildingStorefrontIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+              <span>Branches</span>
             </TabsTrigger>
-            <TabsTrigger value="whatsapp" className="gap-2 data-[state=active]:bg-background">
-              <ChatBubbleLeftEllipsisIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">WhatsApp</span>
+            <TabsTrigger value="whatsapp" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
+              <ChatBubbleLeftEllipsisIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+              <span>WhatsApp</span>
             </TabsTrigger>
-            <TabsTrigger value="general" className="gap-2 data-[state=active]:bg-background">
-              <Cog6ToothIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">General</span>
+            <TabsTrigger value="general" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
+              <Cog6ToothIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+              <span>General</span>
             </TabsTrigger>
-            <TabsTrigger value="subscription" className="gap-2 data-[state=active]:bg-background">
-              <ShieldCheckIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">Plan</span>
+            <TabsTrigger value="subscription" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
+              <ShieldCheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+              <span>Plan</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Packages Tab */}
-          <TabsContent value="packages" className="space-y-6 mt-6">
+          <TabsContent value="packages" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
             {/* Monthly Packages */}
             <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle>Monthly Packages</CardTitle>
-                <CardDescription>Configure monthly subscription plans with custom pricing</CardDescription>
+              <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+                <CardTitle className="text-base lg:text-xl">Monthly Packages</CardTitle>
+                <CardDescription className="text-xs lg:text-sm">Configure monthly subscription plans with custom pricing</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label>Duration (Months) *</Label>
+              <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
+                <div className="grid gap-2 lg:gap-4 grid-cols-3">
+                  <div className="space-y-1 lg:space-y-2">
+                    <Label className="text-xs lg:text-sm">Duration *</Label>
                     <Input
                       type="number"
                       min="1"
                       value={newMonthlyPackage.months}
                       onChange={(e) => setNewMonthlyPackage({ ...newMonthlyPackage, months: e.target.value })}
-                      placeholder="e.g., 1, 3, 6"
+                      placeholder="1, 3, 6"
+                      className="h-9 lg:h-12 text-xs lg:text-base"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Price (₹) *</Label>
+                  <div className="space-y-1 lg:space-y-2">
+                    <Label className="text-xs lg:text-sm">Price (₹) *</Label>
                     <Input
                       type="number"
                       value={newMonthlyPackage.price}
                       onChange={(e) => setNewMonthlyPackage({ ...newMonthlyPackage, price: e.target.value })}
-                      placeholder="e.g., 1000"
+                      placeholder="1000"
+                      className="h-9 lg:h-12 text-xs lg:text-base"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Joining Fee (₹)</Label>
+                  <div className="space-y-1 lg:space-y-2">
+                    <Label className="text-xs lg:text-sm">Joining Fee</Label>
                     <Input
                       type="number"
                       value={newMonthlyPackage.joining_fee}
                       onChange={(e) => setNewMonthlyPackage({ ...newMonthlyPackage, joining_fee: e.target.value })}
-                      placeholder="e.g., 200"
+                      placeholder="200"
+                      className="h-9 lg:h-12 text-xs lg:text-base"
                     />
                   </div>
                 </div>
-                <Button onClick={handleAddMonthlyPackage} className="gap-2">
-                  <PlusIcon className="w-4 h-4" />
+                <Button onClick={handleAddMonthlyPackage} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
+                  <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                   Add Package
                 </Button>
 
                 {monthlyPackages.length > 0 && (
-                  <div className="space-y-3 pt-4 border-t">
+                  <div className="space-y-2 lg:space-y-3 pt-3 lg:pt-4 border-t">
                     {monthlyPackages.map((pkg) => (
-                      <div key={pkg.id} className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
+                      <div key={pkg.id} className="flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-muted/50 rounded-lg">
                         {editingMonthlyId === pkg.id ? (
                           <>
-                            <div className="flex-1 grid grid-cols-2 gap-3">
+                            <div className="flex-1 grid grid-cols-2 gap-2 lg:gap-3">
                               <div className="space-y-1">
-                                <Label className="text-xs">Price (₹)</Label>
+                                <Label className="text-[10px] lg:text-xs">Price (₹)</Label>
                                 <Input
                                   type="number"
                                   value={editMonthlyData.price}
                                   onChange={(e) => setEditMonthlyData({ ...editMonthlyData, price: e.target.value })}
-                                  className="h-9"
+                                  className="h-8 lg:h-9 text-xs lg:text-sm"
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label className="text-xs">Joining Fee (₹)</Label>
+                                <Label className="text-[10px] lg:text-xs">Joining Fee (₹)</Label>
                                 <Input
                                   type="number"
                                   value={editMonthlyData.joining_fee}
                                   onChange={(e) => setEditMonthlyData({ ...editMonthlyData, joining_fee: e.target.value })}
-                                  className="h-9"
+                                  className="h-8 lg:h-9 text-xs lg:text-sm"
                                 />
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 pt-6">
+                            <div className="flex items-center gap-1.5 lg:gap-2 pt-5 lg:pt-6">
                               <Button 
                                 size="icon" 
                                 variant="ghost"
                                 onClick={() => handleSaveMonthlyPackage(pkg.id)}
-                                className="h-9 w-9 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 hover:text-green-800 dark:hover:text-green-300 border border-green-200 dark:border-green-800 transition-all duration-150 shadow-sm hover:shadow-md"
+                                className="h-8 w-8 lg:h-9 lg:w-9 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 hover:text-green-800 dark:hover:text-green-300 border border-green-200 dark:border-green-800 transition-all duration-150 shadow-sm hover:shadow-md"
                               >
-                                <CheckIcon className="w-4 h-4" />
+                                <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                               </Button>
                               <Button 
                                 size="icon" 
                                 variant="ghost"
                                 onClick={() => setEditingMonthlyId(null)}
-                                className="h-9 w-9 bg-gray-50 dark:bg-gray-900/20 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 border border-gray-200 dark:border-gray-800 transition-all duration-150 shadow-sm hover:shadow-md"
+                                className="h-8 w-8 lg:h-9 lg:w-9 bg-gray-50 dark:bg-gray-900/20 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 border border-gray-200 dark:border-gray-800 transition-all duration-150 shadow-sm hover:shadow-md"
                               >
-                                <XMarkIcon className="w-4 h-4" />
+                                <XMarkIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                               </Button>
                             </div>
                           </>
                         ) : (
                           <>
-                            <div className="flex-1">
-                              <p className="font-medium">{pkg.months} {pkg.months === 1 ? "Month" : "Months"}</p>
-                              <p className="text-sm text-muted-foreground">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm lg:text-base">{pkg.months} {pkg.months === 1 ? "Month" : "Months"}</p>
+                              <p className="text-xs lg:text-sm text-muted-foreground">
                                 ₹{pkg.price} + ₹{pkg.joining_fee} joining fee
                               </p>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-2">
-                                <Label htmlFor={`monthly-${pkg.id}`} className="text-sm">Active</Label>
+                            <div className="flex items-center gap-1 lg:gap-2 shrink-0">
+                              <div className="flex items-center gap-1 lg:gap-2">
+                                <Label htmlFor={`monthly-${pkg.id}`} className="text-[10px] lg:text-sm hidden sm:inline">Active</Label>
                                 <Switch
                                   id={`monthly-${pkg.id}`}
                                   checked={pkg.is_active}
@@ -835,15 +838,16 @@ const AdminSettings = () => {
                                   onCheckedChange={(checked) => handleToggleMonthlyPackage(pkg.id, checked)}
                                 />
                               </div>
-                              <Button variant="ghost" size="icon" onClick={() => handleEditMonthlyPackage(pkg)}>
-                                <PencilIcon className="w-4 h-4 text-muted-foreground" />
+                              <Button variant="ghost" size="icon" onClick={() => handleEditMonthlyPackage(pkg)} className="h-8 w-8 lg:h-10 lg:w-10">
+                                <PencilIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-muted-foreground" />
                               </Button>
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
                                 onClick={() => handleDeleteMonthlyPackage(pkg.id, pkg.months)}
+                                className="h-8 w-8 lg:h-10 lg:w-10"
                               >
-                                <TrashIcon className="w-4 h-4 text-destructive" />
+                                <TrashIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-destructive" />
                               </Button>
                             </div>
                           </>
@@ -857,100 +861,103 @@ const AdminSettings = () => {
 
             {/* Daily/Custom Packages */}
             <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle>Daily Passes</CardTitle>
-                <CardDescription>Create packages for daily or short-term memberships (no joining fee)</CardDescription>
+              <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+                <CardTitle className="text-base lg:text-xl">Daily Passes</CardTitle>
+                <CardDescription className="text-xs lg:text-sm">Create packages for daily or short-term memberships (no joining fee)</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label>Package Name *</Label>
+              <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
+                <div className="grid gap-2 lg:gap-4 grid-cols-3">
+                  <div className="space-y-1 lg:space-y-2">
+                    <Label className="text-xs lg:text-sm">Name *</Label>
                     <Input
                       value={newPackage.name}
                       onChange={(e) => setNewPackage({ ...newPackage, name: e.target.value })}
-                      placeholder="e.g., 1 Week Pass"
+                      placeholder="1 Week"
+                      className="h-9 lg:h-12 text-xs lg:text-base"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Duration (Days) *</Label>
+                  <div className="space-y-1 lg:space-y-2">
+                    <Label className="text-xs lg:text-sm">Days *</Label>
                     <Input
                       type="number"
                       min="1"
                       value={newPackage.duration_days}
                       onChange={(e) => setNewPackage({ ...newPackage, duration_days: e.target.value })}
-                      placeholder="e.g., 7"
+                      placeholder="7"
+                      className="h-9 lg:h-12 text-xs lg:text-base"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Price (₹) *</Label>
+                  <div className="space-y-1 lg:space-y-2">
+                    <Label className="text-xs lg:text-sm">Price (₹) *</Label>
                     <Input
                       type="number"
                       value={newPackage.price}
                       onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })}
-                      placeholder="e.g., 300"
+                      placeholder="300"
+                      className="h-9 lg:h-12 text-xs lg:text-base"
                     />
                   </div>
                 </div>
-                <Button onClick={handleAddPackage} className="gap-2">
-                  <PlusIcon className="w-4 h-4" />
+                <Button onClick={handleAddPackage} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
+                  <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                   Add Daily Pass
                 </Button>
 
                 {customPackages.length > 0 && (
-                  <div className="space-y-3 pt-4 border-t">
+                  <div className="space-y-2 lg:space-y-3 pt-3 lg:pt-4 border-t">
                     {customPackages.map((pkg) => (
-                      <div key={pkg.id} className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
+                      <div key={pkg.id} className="flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-muted/50 rounded-lg">
                         {editingPackageId === pkg.id ? (
                           <>
-                            <div className="flex-1 grid grid-cols-2 gap-3">
+                            <div className="flex-1 grid grid-cols-2 gap-2 lg:gap-3">
                               <div className="space-y-1">
-                                <Label className="text-xs">Name</Label>
+                                <Label className="text-[10px] lg:text-xs">Name</Label>
                                 <Input
                                   value={editPackageData.name}
                                   onChange={(e) => setEditPackageData({ ...editPackageData, name: e.target.value })}
-                                  className="h-9"
+                                  className="h-8 lg:h-9 text-xs lg:text-sm"
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label className="text-xs">Price (₹)</Label>
+                                <Label className="text-[10px] lg:text-xs">Price (₹)</Label>
                                 <Input
                                   type="number"
                                   value={editPackageData.price}
                                   onChange={(e) => setEditPackageData({ ...editPackageData, price: e.target.value })}
-                                  className="h-9"
+                                  className="h-8 lg:h-9 text-xs lg:text-sm"
                                 />
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 pt-6">
+                            <div className="flex items-center gap-1.5 lg:gap-2 pt-5 lg:pt-6">
                               <Button 
                                 size="icon" 
                                 variant="ghost"
                                 onClick={() => handleSavePackage(pkg.id)}
-                                className="h-9 w-9 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 hover:text-green-800 dark:hover:text-green-300 border border-green-200 dark:border-green-800 transition-all duration-150 shadow-sm hover:shadow-md"
+                                className="h-8 w-8 lg:h-9 lg:w-9 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 hover:text-green-800 dark:hover:text-green-300 border border-green-200 dark:border-green-800 transition-all duration-150 shadow-sm hover:shadow-md"
                               >
-                                <CheckIcon className="w-4 h-4" />
+                                <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                               </Button>
                               <Button 
                                 size="icon" 
                                 variant="ghost"
                                 onClick={() => setEditingPackageId(null)}
-                                className="h-9 w-9 bg-gray-50 dark:bg-gray-900/20 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 border border-gray-200 dark:border-gray-800 transition-all duration-150 shadow-sm hover:shadow-md"
+                                className="h-8 w-8 lg:h-9 lg:w-9 bg-gray-50 dark:bg-gray-900/20 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 border border-gray-200 dark:border-gray-800 transition-all duration-150 shadow-sm hover:shadow-md"
                               >
-                                <XMarkIcon className="w-4 h-4" />
+                                <XMarkIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                               </Button>
                             </div>
                           </>
                         ) : (
                           <>
-                            <div className="flex-1">
-                              <p className="font-medium">{pkg.name}</p>
-                              <p className="text-sm text-muted-foreground">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm lg:text-base">{pkg.name}</p>
+                              <p className="text-xs lg:text-sm text-muted-foreground">
                                 {pkg.duration_days} {pkg.duration_days === 1 ? "Day" : "Days"} • ₹{pkg.price}
                               </p>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-2">
-                                <Label htmlFor={`custom-${pkg.id}`} className="text-sm">Active</Label>
+                            <div className="flex items-center gap-1 lg:gap-2 shrink-0">
+                              <div className="flex items-center gap-1 lg:gap-2">
+                                <Label htmlFor={`custom-${pkg.id}`} className="text-[10px] lg:text-sm hidden sm:inline">Active</Label>
                                 <Switch
                                   id={`custom-${pkg.id}`}
                                   checked={pkg.is_active}
@@ -958,15 +965,16 @@ const AdminSettings = () => {
                                   onCheckedChange={(checked) => handleTogglePackage(pkg.id, checked)}
                                 />
                               </div>
-                              <Button variant="ghost" size="icon" onClick={() => handleEditPackage(pkg)}>
-                                <PencilIcon className="w-4 h-4 text-muted-foreground" />
+                              <Button variant="ghost" size="icon" onClick={() => handleEditPackage(pkg)} className="h-8 w-8 lg:h-10 lg:w-10">
+                                <PencilIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-muted-foreground" />
                               </Button>
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
                                 onClick={() => handleDeletePackage(pkg.id, pkg.name)}
+                                className="h-8 w-8 lg:h-10 lg:w-10"
                               >
-                                <TrashIcon className="w-4 h-4 text-destructive" />
+                                <TrashIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-destructive" />
                               </Button>
                             </div>
                           </>
@@ -980,26 +988,26 @@ const AdminSettings = () => {
           </TabsContent>
 
           {/* Branches Tab */}
-          <TabsContent value="branches" className="space-y-6 mt-6">
+          <TabsContent value="branches" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
             <BranchManagement />
           </TabsContent>
 
           {/* WhatsApp Templates */}
-          <TabsContent value="whatsapp" className="space-y-6 mt-6">
+          <TabsContent value="whatsapp" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
             {/* WhatsApp Enable/Disable Toggle */}
             <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ChatBubbleLeftEllipsisIcon className="w-5 h-5 text-primary" />
+              <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+                <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
+                  <ChatBubbleLeftEllipsisIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
                   WhatsApp Messaging
                 </CardTitle>
-                <CardDescription>Enable or disable all WhatsApp messaging features</CardDescription>
+                <CardDescription className="text-xs lg:text-sm">Enable or disable all WhatsApp messaging features</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="space-y-1">
-                    <p className="font-medium">WhatsApp Notifications</p>
-                    <p className="text-sm text-muted-foreground">
+              <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
+                <div className="flex items-center justify-between p-3 lg:p-4 border rounded-lg">
+                  <div className="space-y-0.5 lg:space-y-1">
+                    <p className="font-medium text-sm lg:text-base">WhatsApp Notifications</p>
+                    <p className="text-[10px] lg:text-sm text-muted-foreground">
                       {whatsappEnabled 
                         ? "Automated and manual WhatsApp messages are enabled" 
                         : "All WhatsApp messages are disabled"}
@@ -1129,40 +1137,40 @@ const AdminSettings = () => {
           </TabsContent>
 
           {/* General Settings */}
-          <TabsContent value="general" className="space-y-6 mt-6">
+          <TabsContent value="general" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
             <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BuildingStorefrontIcon className="w-5 h-5 text-primary" />
+              <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+                <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
+                  <BuildingStorefrontIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
                   Gym Information
                 </CardTitle>
-                <CardDescription>Basic gym details and contact information</CardDescription>
+                <CardDescription className="text-xs lg:text-sm">Basic gym details and contact information</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Gym Name</Label>
-                    <Input value={gymName} onChange={(e) => setGymName(e.target.value)} placeholder="Pro Plus Fitness" />
+              <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
+                <div className="grid gap-2 lg:gap-4 grid-cols-1 md:grid-cols-2">
+                  <div className="space-y-1 lg:space-y-2">
+                    <Label className="text-xs lg:text-sm">Gym Name</Label>
+                    <Input value={gymName} onChange={(e) => setGymName(e.target.value)} placeholder="Pro Plus Fitness" className="h-9 lg:h-12 text-xs lg:text-base" />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Phone Number</Label>
-                    <Input value={gymPhone} onChange={(e) => setGymPhone(e.target.value)} placeholder="+91 9876543210" />
+                  <div className="space-y-1 lg:space-y-2">
+                    <Label className="text-xs lg:text-sm">Phone Number</Label>
+                    <Input value={gymPhone} onChange={(e) => setGymPhone(e.target.value)} placeholder="+91 9876543210" className="h-9 lg:h-12 text-xs lg:text-base" />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Address</Label>
-                  <Input value={gymAddress} onChange={(e) => setGymAddress(e.target.value)} placeholder="Gym address" />
+                <div className="space-y-1 lg:space-y-2">
+                  <Label className="text-xs lg:text-sm">Address</Label>
+                  <Input value={gymAddress} onChange={(e) => setGymAddress(e.target.value)} placeholder="Gym address" className="h-9 lg:h-12 text-xs lg:text-base" />
                 </div>
               </CardContent>
             </Card>
 
-            <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full gap-2">
-              <CheckIcon className="w-4 h-4" />
+            <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
+              <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               {isSaving ? "Saving..." : "Save Settings"}
             </Button>
           </TabsContent>
           {/* Subscription & Plan Tab */}
-          <TabsContent value="subscription" className="space-y-6 mt-6">
+          <TabsContent value="subscription" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
             <SubscriptionPlanTab />
           </TabsContent>
         </Tabs>

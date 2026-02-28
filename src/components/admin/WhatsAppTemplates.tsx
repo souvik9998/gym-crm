@@ -317,60 +317,60 @@ export const WhatsAppTemplates = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-6">
       {/* Branch indicator */}
       {currentBranch && (
-        <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
-          <MessageCircle className="w-4 h-4 text-primary" />
-          <span className="text-sm">
+        <div className="flex items-center gap-2 p-2 lg:p-3 bg-primary/10 rounded-lg border border-primary/20">
+          <MessageCircle className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-primary shrink-0" />
+          <span className="text-xs lg:text-sm">
             Templates for: <strong>{currentBranch.name}</strong>
           </span>
-          <Badge variant="outline" className="ml-auto text-xs">
-            Messages will use "{currentBranch.name}" as gym name
+          <Badge variant="outline" className="ml-auto text-[10px] lg:text-xs hidden sm:inline-flex">
+            Uses "{currentBranch.name}" as gym name
           </Badge>
         </div>
       )}
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TemplateCategory)}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="promotional" className="gap-2">
-            <Megaphone className="w-4 h-4" />
-            <span className="hidden sm:inline">Promotional</span>
+        <TabsList className="grid w-full grid-cols-3 h-auto">
+          <TabsTrigger value="promotional" className="gap-1 lg:gap-2 text-[10px] lg:text-sm py-2">
+            <Megaphone className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+            <span>Promo</span>
           </TabsTrigger>
-          <TabsTrigger value="expiry_reminder" className="gap-2">
-            <Clock className="w-4 h-4" />
-            <span className="hidden sm:inline">Expiry Reminder</span>
+          <TabsTrigger value="expiry_reminder" className="gap-1 lg:gap-2 text-[10px] lg:text-sm py-2">
+            <Clock className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+            <span>Expiry</span>
           </TabsTrigger>
-          <TabsTrigger value="expired_reminder" className="gap-2">
-            <AlertTriangle className="w-4 h-4" />
-            <span className="hidden sm:inline">Expired Reminder</span>
+          <TabsTrigger value="expired_reminder" className="gap-1 lg:gap-2 text-[10px] lg:text-sm py-2">
+            <AlertTriangle className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+            <span>Expired</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={activeTab} className="mt-4 space-y-6">
+        <TabsContent value={activeTab} className="mt-3 lg:mt-4 space-y-4 lg:space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+              <CardTitle className="flex items-center gap-2 text-sm lg:text-xl">
                 {getCategoryIcon(activeTab)}
                 {activeTab === "promotional" && "Promotional Templates"}
                 {activeTab === "expiry_reminder" && "Expiry Reminder Templates"}
                 {activeTab === "expired_reminder" && "Expired Reminder Templates"}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-[10px] lg:text-sm">
                 {getCategoryDescription(activeTab)}
                 {currentBranch && (
-                  <span className="block mt-1 text-xs text-primary">
+                  <span className="block mt-1 text-[10px] lg:text-xs text-primary">
                     All messages will include "{currentBranch.name}" as the gym/branch name.
                   </span>
                 )}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
+              <div className="grid gap-2 lg:gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {templates.map((template) => (
                   <div
                     key={template.id}
-                    className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
+                    className={`p-3 lg:p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
                       selectedTemplate === template.id
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-primary/50"
@@ -379,27 +379,27 @@ export const WhatsAppTemplates = () => {
                   >
                     <div className="flex items-start justify-between">
                       <div>
-                        <h4 className="font-medium text-sm">{template.name}</h4>
-                        <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
+                        <h4 className="font-medium text-xs lg:text-sm">{template.name}</h4>
+                        <p className="text-[10px] lg:text-xs text-muted-foreground mt-0.5 lg:mt-1">{template.description}</p>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7"
+                        className="h-6 w-6 lg:h-7 lg:w-7"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCopyTemplate(template);
                         }}
                       >
                         {copiedId === template.id ? (
-                          <Check className="w-4 h-4 text-success" />
+                          <Check className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-success" />
                         ) : (
-                          <Copy className="w-4 h-4 text-muted-foreground" />
+                          <Copy className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-muted-foreground" />
                         )}
                       </Button>
                     </div>
                     {selectedTemplate === template.id && (
-                      <Badge className="mt-2 text-xs" variant="secondary">
+                      <Badge className="mt-1.5 lg:mt-2 text-[10px] lg:text-xs" variant="secondary">
                         Selected
                       </Badge>
                     )}
@@ -410,60 +410,59 @@ export const WhatsAppTemplates = () => {
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageCircle className="w-5 h-5 text-accent" />
+            <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+              <CardTitle className="flex items-center gap-2 text-sm lg:text-xl">
+                <MessageCircle className="w-4 h-4 lg:w-5 lg:h-5 text-accent" />
                 Custom {activeTab === "promotional" ? "Promotional" : activeTab === "expiry_reminder" ? "Expiry Reminder" : "Expired Reminder"} Message
                 {currentBranch && (
-                  <Badge variant="secondary" className="ml-2 text-xs">
+                  <Badge variant="secondary" className="ml-1 lg:ml-2 text-[10px] lg:text-xs">
                     {currentBranch.name}
                   </Badge>
                 )}
               </CardTitle>
-              <CardDescription>
-                Edit the selected template or write your own. This message will be used when sending {activeTab.replace("_", " ")} notifications for <strong>{currentBranch?.name || "this branch"}</strong>.
+              <CardDescription className="text-[10px] lg:text-sm">
+                Edit the selected template or write your own for <strong>{currentBranch?.name || "this branch"}</strong>.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
               {/* Warning if hardcoded gym name detected */}
               {currentMessage && !currentMessage.includes("{branch_name}") && currentMessage.trim().length > 0 && (
-                <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-warning mt-0.5 flex-shrink-0" />
-                  <div className="text-sm">
-                    <strong className="text-warning">Tip:</strong> Use <code className="bg-warning/20 px-1 rounded">{"{branch_name}"}</code> instead of hardcoding the gym name. 
-                    This will automatically insert "<strong>{currentBranch?.name}</strong>" when sending messages.
+                <div className="p-2 lg:p-3 bg-warning/10 border border-warning/30 rounded-lg flex items-start gap-1.5 lg:gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-warning mt-0.5 flex-shrink-0" />
+                  <div className="text-[10px] lg:text-sm">
+                    <strong className="text-warning">Tip:</strong> Use <code className="bg-warning/20 px-1 rounded">{"{branch_name}"}</code> instead of hardcoding the gym name.
                   </div>
                 </div>
               )}
-              <div className="space-y-2">
-                <Label>Message Content</Label>
+              <div className="space-y-1.5 lg:space-y-2">
+                <Label className="text-xs lg:text-sm">Message Content</Label>
                 <Textarea
                   value={currentMessage}
                   onChange={(e) => setCurrentMessage(e.target.value)}
                   placeholder={`Write your custom message here...\n\nUse {branch_name} to automatically insert "${currentBranch?.name || "your gym name"}"`}
-                  className="min-h-[250px] font-mono text-sm"
+                  className="min-h-[180px] lg:min-h-[250px] font-mono text-xs lg:text-sm"
                 />
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline" className="text-xs">
+              <div className="flex items-center gap-1.5 lg:gap-2 flex-wrap">
+                <Badge variant="outline" className="text-[10px] lg:text-xs">
                   {"{name}"} = Member name
                 </Badge>
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-[10px] lg:text-xs">
                   {"{expiry_date}"} = Expiry date
                 </Badge>
-                <Badge variant="outline" className="text-xs">
-                  {"{days}"} = Days remaining/expired
+                <Badge variant="outline" className="text-[10px] lg:text-xs">
+                  {"{days}"} = Days remaining
                 </Badge>
-                <Badge variant="destructive" className="text-xs">
-                  {"{branch_name}"} → {currentBranch?.name || "Branch name"} (REQUIRED)
+                <Badge variant="destructive" className="text-[10px] lg:text-xs">
+                  {"{branch_name}"} → {currentBranch?.name || "Branch"} (REQUIRED)
                 </Badge>
                 {activeTab === "promotional" && (
                   <>
-                    <Badge variant="outline" className="text-xs">
-                      {"{amount}"} = Payment amount
+                    <Badge variant="outline" className="text-[10px] lg:text-xs">
+                      {"{amount}"} = Amount
                     </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      {"{payment_date}"} = Payment date
+                    <Badge variant="outline" className="text-[10px] lg:text-xs">
+                      {"{payment_date}"} = Date
                     </Badge>
                   </>
                 )}
