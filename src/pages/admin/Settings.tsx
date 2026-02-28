@@ -1,4 +1,5 @@
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, Fragment, memo } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,75 @@ interface GymSettings {
   whatsapp_enabled: boolean | null;
 }
 
+/** Skeleton for Packages tab */
+const SettingsPackagesSkeleton = memo(() => (
+  <div className="space-y-4 lg:space-y-6">
+    {[0, 1].map((i) => (
+      <Card key={i} className="border-0 shadow-sm">
+        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+          <Skeleton className="h-5 lg:h-6 w-40" />
+          <Skeleton className="h-3 lg:h-4 w-64 mt-1" />
+        </CardHeader>
+        <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
+          <div className="grid gap-2 lg:gap-4 grid-cols-3">
+            {[0, 1, 2].map((j) => (
+              <div key={j} className="space-y-1 lg:space-y-2">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-9 lg:h-12 w-full" />
+              </div>
+            ))}
+          </div>
+          <Skeleton className="h-9 lg:h-10 w-32" />
+          <div className="space-y-2 lg:space-y-3 pt-3 lg:pt-4 border-t">
+            {[0, 1, 2].map((k) => (
+              <div key={k} className="flex items-center gap-2 lg:gap-4 p-3 lg:p-4 bg-muted/50 rounded-lg">
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-40" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-5 w-9 rounded-full" />
+                  <Skeleton className="h-8 w-8 rounded" />
+                  <Skeleton className="h-8 w-8 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+));
+SettingsPackagesSkeleton.displayName = "SettingsPackagesSkeleton";
+
+/** Skeleton for General tab */
+const SettingsGeneralSkeleton = memo(() => (
+  <div className="space-y-4 lg:space-y-6">
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+        <Skeleton className="h-5 lg:h-6 w-40" />
+        <Skeleton className="h-3 lg:h-4 w-56 mt-1" />
+      </CardHeader>
+      <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
+        <div className="grid gap-2 lg:gap-4 grid-cols-1 md:grid-cols-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="space-y-1 lg:space-y-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-9 lg:h-12 w-full" />
+            </div>
+          ))}
+        </div>
+        <div className="space-y-1 lg:space-y-2">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-9 lg:h-12 w-full" />
+        </div>
+      </CardContent>
+    </Card>
+    <Skeleton className="h-9 lg:h-10 w-full" />
+  </div>
+));
+SettingsGeneralSkeleton.displayName = "SettingsGeneralSkeleton";
+
 const AdminSettings = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -65,6 +135,7 @@ const AdminSettings = () => {
   const staffOps = useStaffOperations();
   const [user, setUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   
   // Loading states for toggle buttons
   const [isTogglingWhatsApp, setIsTogglingWhatsApp] = useState(false);
@@ -131,7 +202,7 @@ const AdminSettings = () => {
   // Reset settings state when branch changes to ensure fresh data
   useEffect(() => {
     if (currentBranch) {
-      // Reset to prevent showing old branch data while loading
+      setIsLoadingData(true);
       setSettings(null);
       setGymName("");
       setGymPhone("");
@@ -144,6 +215,7 @@ const AdminSettings = () => {
 
   const fetchData = async () => {
     if (!currentBranch) return;
+    setIsLoadingData(true);
 
     // Fetch gym settings for the current branch
     let { data: settingsData } = await supabase
@@ -175,6 +247,7 @@ const AdminSettings = () => {
         setGymPhone(currentBranch.phone || "");
         setGymAddress(currentBranch.address || "");
         setWhatsappEnabled(false);
+        setIsLoadingData(false);
         return;
       }
       settingsData = newSettings;
@@ -220,6 +293,7 @@ const AdminSettings = () => {
     } else {
       setCustomPackages([]);
     }
+    setIsLoadingData(false);
   };
 
   const handleSaveSettings = async () => {
@@ -730,6 +804,10 @@ const AdminSettings = () => {
 
           {/* Packages Tab */}
           <TabsContent value="packages" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
+            {isLoadingData ? (
+              <SettingsPackagesSkeleton />
+            ) : (
+            <>
             {/* Monthly Packages */}
             <Card className="border-0 shadow-sm">
               <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
@@ -985,6 +1063,8 @@ const AdminSettings = () => {
                 )}
               </CardContent>
             </Card>
+            </>
+            )}
           </TabsContent>
 
           {/* Branches Tab */}
@@ -1138,36 +1218,42 @@ const AdminSettings = () => {
 
           {/* General Settings */}
           <TabsContent value="general" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-                <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
-                  <BuildingStorefrontIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
-                  Gym Information
-                </CardTitle>
-                <CardDescription className="text-xs lg:text-sm">Basic gym details and contact information</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
-                <div className="grid gap-2 lg:gap-4 grid-cols-1 md:grid-cols-2">
-                  <div className="space-y-1 lg:space-y-2">
-                    <Label className="text-xs lg:text-sm">Gym Name</Label>
-                    <Input value={gymName} onChange={(e) => setGymName(e.target.value)} placeholder="Pro Plus Fitness" className="h-9 lg:h-12 text-xs lg:text-base" />
-                  </div>
-                  <div className="space-y-1 lg:space-y-2">
-                    <Label className="text-xs lg:text-sm">Phone Number</Label>
-                    <Input value={gymPhone} onChange={(e) => setGymPhone(e.target.value)} placeholder="+91 9876543210" className="h-9 lg:h-12 text-xs lg:text-base" />
-                  </div>
-                </div>
-                <div className="space-y-1 lg:space-y-2">
-                  <Label className="text-xs lg:text-sm">Address</Label>
-                  <Input value={gymAddress} onChange={(e) => setGymAddress(e.target.value)} placeholder="Gym address" className="h-9 lg:h-12 text-xs lg:text-base" />
-                </div>
-              </CardContent>
-            </Card>
+            {isLoadingData ? (
+              <SettingsGeneralSkeleton />
+            ) : (
+              <>
+                <Card className="border-0 shadow-sm">
+                  <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+                    <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
+                      <BuildingStorefrontIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
+                      Gym Information
+                    </CardTitle>
+                    <CardDescription className="text-xs lg:text-sm">Basic gym details and contact information</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
+                    <div className="grid gap-2 lg:gap-4 grid-cols-1 md:grid-cols-2">
+                      <div className="space-y-1 lg:space-y-2">
+                        <Label className="text-xs lg:text-sm">Gym Name</Label>
+                        <Input value={gymName} onChange={(e) => setGymName(e.target.value)} placeholder="Pro Plus Fitness" className="h-9 lg:h-12 text-xs lg:text-base" />
+                      </div>
+                      <div className="space-y-1 lg:space-y-2">
+                        <Label className="text-xs lg:text-sm">Phone Number</Label>
+                        <Input value={gymPhone} onChange={(e) => setGymPhone(e.target.value)} placeholder="+91 9876543210" className="h-9 lg:h-12 text-xs lg:text-base" />
+                      </div>
+                    </div>
+                    <div className="space-y-1 lg:space-y-2">
+                      <Label className="text-xs lg:text-sm">Address</Label>
+                      <Input value={gymAddress} onChange={(e) => setGymAddress(e.target.value)} placeholder="Gym address" className="h-9 lg:h-12 text-xs lg:text-base" />
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
-              <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              {isSaving ? "Saving..." : "Save Settings"}
-            </Button>
+                <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
+                  <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                  {isSaving ? "Saving..." : "Save Settings"}
+                </Button>
+              </>
+            )}
           </TabsContent>
           {/* Subscription & Plan Tab */}
           <TabsContent value="subscription" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
