@@ -974,14 +974,14 @@ const BranchAnalytics = () => {
                       {insight.type === "success" && (
                         <CheckCircleIcon className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
                       )}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-semibold">{insight.title}</p>
-                          <Badge variant="outline" className="text-xs">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 mb-1 flex-wrap">
+                          <p className="font-semibold text-xs sm:text-sm">{insight.title}</p>
+                          <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 sm:px-2">
                             {insight.branchName}
                           </Badge>
                         </div>
-                        <p className="text-xs sm:text-sm text-muted-foreground">{insight.description}</p>
+                        <p className="text-[10px] sm:text-sm text-muted-foreground leading-snug">{insight.description}</p>
                       </div>
                     </div>
                   </div>
@@ -1627,14 +1627,14 @@ const BranchAnalytics = () => {
                         className="cursor-pointer hover:bg-muted/30 transition-colors"
                         onClick={() => openTrainerDetail(trainer)}
                       >
-                        <CardContent className="p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <div>
-                              <p className="font-medium text-sm">{trainer.trainerName}</p>
-                              <p className="text-xs text-muted-foreground">{trainer.branchName}</p>
+                        <CardContent className="p-2.5 sm:p-3">
+                          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                            <div className="min-w-0">
+                              <p className="font-medium text-xs sm:text-sm truncate">{trainer.trainerName}</p>
+                              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{trainer.branchName}</p>
                             </div>
                             <Badge className={cn(
-                              "text-xs",
+                              "text-[10px] sm:text-xs px-1.5 sm:px-2 ml-2 flex-shrink-0",
                               trainer.efficiencyScore >= 70 ? "bg-success/10 text-success border-success/20" :
                               trainer.efficiencyScore >= 50 ? "bg-warning/10 text-warning border-warning/20" :
                               "bg-destructive/10 text-destructive border-destructive/20"
@@ -1642,7 +1642,7 @@ const BranchAnalytics = () => {
                               {trainer.efficiencyScore.toFixed(0)}%
                             </Badge>
                           </div>
-                          <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-[10px] sm:text-xs">
                             <div>
                               <p className="text-muted-foreground">Revenue</p>
                               <p className="font-medium">{formatCurrency(trainer.revenue)}</p>
