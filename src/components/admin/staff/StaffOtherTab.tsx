@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsTabletOrBelow } from "@/hooks/use-mobile";
+import { InformationCircleIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,6 +62,7 @@ export const StaffOtherTab = ({
   onRefresh,
   isLoading,
 }: StaffOtherTabProps) => {
+  const isCompact = useIsTabletOrBelow();
   const [newStaff, setNewStaff] = useState({
     full_name: "",
     phone: "",
@@ -451,35 +454,37 @@ export const StaffOtherTab = ({
     <div className="space-y-6">
       {/* Add Staff Card */}
       <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle>Add New Staff</CardTitle>
-          <CardDescription>Add admin, manager, reception, or accountant staff</CardDescription>
+        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-2">
+          <CardTitle className="text-base lg:text-xl">Add New Staff</CardTitle>
+          <CardDescription className="text-xs lg:text-sm">Add admin, manager, reception, or accountant staff</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-2">
-              <Label>Full Name *</Label>
+        <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-2 lg:pt-0">
+          <div className="grid gap-3 lg:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-1 lg:space-y-2">
+              <Label className="text-xs lg:text-sm">Full Name *</Label>
               <Input
                 value={newStaff.full_name}
                 onChange={(e) => setNewStaff({ ...newStaff, full_name: e.target.value })}
                 placeholder="Enter full name"
+                className="h-9 lg:h-12 text-sm"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Phone Number *</Label>
+            <div className="space-y-1 lg:space-y-2">
+              <Label className="text-xs lg:text-sm">Phone Number *</Label>
               <Input
                 value={newStaff.phone}
                 onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
                 placeholder="10-digit phone number"
+                className="h-9 lg:h-12 text-sm"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Role *</Label>
+            <div className="space-y-1 lg:space-y-2">
+              <Label className="text-xs lg:text-sm">Role *</Label>
               <Select
                 value={newStaff.role}
                 onValueChange={(value: any) => handleRoleChange(value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-9 lg:h-12 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -491,14 +496,14 @@ export const StaffOtherTab = ({
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-2">
-              <Label>ID Type</Label>
+          <div className="grid gap-3 lg:gap-4 grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-1 lg:space-y-2">
+              <Label className="text-xs lg:text-sm">ID Type</Label>
               <Select
                 value={newStaff.id_type}
                 onValueChange={(value) => setNewStaff({ ...newStaff, id_type: value })}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-9 lg:h-12 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -508,27 +513,29 @@ export const StaffOtherTab = ({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>ID Number</Label>
+            <div className="space-y-1 lg:space-y-2">
+              <Label className="text-xs lg:text-sm">ID Number</Label>
               <Input
                 value={newStaff.id_number}
                 onChange={(e) => setNewStaff({ ...newStaff, id_number: e.target.value })}
                 placeholder="ID number"
+                className="h-9 lg:h-12 text-sm"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Monthly Salary (₹)</Label>
+            <div className="space-y-1 lg:space-y-2">
+              <Label className="text-xs lg:text-sm">Monthly Salary (₹)</Label>
               <Input
                 type="number"
                 value={newStaff.monthly_salary}
                 onChange={(e) => setNewStaff({ ...newStaff, monthly_salary: e.target.value })}
                 placeholder="Monthly salary"
+                className="h-9 lg:h-12 text-sm"
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Assigned Branches</Label>
+          <div className="space-y-1 lg:space-y-2">
+            <Label className="text-xs lg:text-sm">Assigned Branches</Label>
             <StaffBranchSelector
               branches={branches}
               selectedBranches={newStaff.selected_branches}
@@ -581,13 +588,13 @@ export const StaffOtherTab = ({
 
       {/* Existing Staff */}
       <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle>Existing Staff</CardTitle>
-          <CardDescription>
+        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-2">
+          <CardTitle className="text-base lg:text-xl">Existing Staff</CardTitle>
+          <CardDescription className="text-xs lg:text-sm">
             {staff.length} staff member{staff.length !== 1 ? "s" : ""} registered
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 lg:p-6 pt-2 lg:pt-0">
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Loading...</div>
           ) : staff.length === 0 ? (
@@ -597,10 +604,10 @@ export const StaffOtherTab = ({
               {staff.map((member) => (
                 <div
                   key={member.id}
-                  className="flex items-center justify-between p-4 bg-muted/50 rounded-lg transition-colors duration-150 hover:bg-muted/70"
+                  className={`p-3 lg:p-4 bg-muted/50 rounded-lg transition-colors duration-150 hover:bg-muted/70 ${isCompact ? '' : 'flex items-center justify-between'}`}
                 >
                   {editingId === member.id ? (
-                    <div className="flex-1 space-y-3 mr-4">
+                    <div className="flex-1 space-y-3 mr-0 lg:mr-4">
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <Label className="text-xs">Name *</Label>
@@ -656,7 +663,99 @@ export const StaffOtherTab = ({
                         </Button>
                       </div>
                     </div>
+                  ) : isCompact ? (
+                    /* Mobile/Tablet compact layout */
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                          <p className="font-medium text-sm truncate">{member.full_name}</p>
+                          <Badge className={`text-[10px] shrink-0 ${getRoleBadgeColor(member.role)}`}>
+                            {ROLE_LABELS[member.role] || member.role}
+                          </Badge>
+                          {!member.is_active && (
+                            <Badge variant="secondary" className="text-[10px] bg-destructive/10 text-destructive shrink-0">Inactive</Badge>
+                          )}
+                          {member.auth_user_id && (
+                            <Badge variant="outline" className="text-[10px] text-primary shrink-0">Has Login</Badge>
+                          )}
+                        </div>
+                        <Switch
+                          checked={member.is_active}
+                          onCheckedChange={(checked) => handleToggle(member.id, checked)}
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                        {member.phone && <span>📱 {member.phone}</span>}
+                        {member.monthly_salary > 0 && <span>💰 ₹{member.monthly_salary}/month</span>}
+                        {member.branch_assignments && member.branch_assignments.length > 0 && (
+                          <span>📍 {member.branch_assignments.map((a) => a.branch_name).join(", ")}</span>
+                        )}
+                      </div>
+                      {/* Action buttons row */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <StaffWhatsAppButton staff={member} />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setBranchAssignmentDialog({ open: true, staff: member })}
+                          title="Manage Branch Assignments"
+                        >
+                          <BuildingOfficeIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={async () => {
+                            const { data: activities } = await supabase
+                              .from("admin_activity_logs")
+                              .select("metadata")
+                              .eq("entity_type", "staff")
+                              .eq("entity_id", member.id)
+                              .eq("activity_type", "staff_password_set")
+                              .order("created_at", { ascending: false })
+                              .limit(1)
+                              .maybeSingle();
+                            if (activities?.metadata && (activities.metadata as any).password) {
+                              setViewPasswordDialog({ open: true, staff: member, password: (activities.metadata as any).password });
+                            } else {
+                              setPasswordDialog({ open: true, staff: member });
+                            }
+                          }}
+                          title={member.auth_user_id ? "View/Update Password" : "Set Password"}
+                        >
+                          <KeyIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setPermissionsDialog({ open: true, staff: member })}
+                          title="Manage Permissions"
+                        >
+                          <ShieldCheckIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleEdit(member)}
+                        >
+                          <PencilIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleDelete(member.id, member.full_name)}
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
                   ) : (
+                    /* Desktop layout */
                     <>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
@@ -695,7 +794,6 @@ export const StaffOtherTab = ({
                           size="sm"
                           variant="outline"
                           onClick={async () => {
-                            // Try to fetch last password from activity log
                             const { data: activities } = await supabase
                               .from("admin_activity_logs")
                               .select("metadata")
