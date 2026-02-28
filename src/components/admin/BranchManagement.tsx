@@ -525,14 +525,14 @@ export const BranchManagement = () => {
 
   return (
     <Card className="border-0 shadow-sm">
-      <CardHeader>
+      <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <BuildingOffice2Icon className="w-5 h-5 text-primary" />
+            <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
+              <BuildingOffice2Icon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
               Gym Branches
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs lg:text-sm">
               {isStaffLoggedIn && !isAdmin
                 ? "View and edit branch details for your assigned branches" 
                 : "Manage gym branches"}
@@ -540,56 +540,57 @@ export const BranchManagement = () => {
           </div>
           {/* Show Add Branch button for admins (not for staff) */}
           {(!isStaffLoggedIn || isAdmin) && (
-            <Button onClick={handleOpenAdd} className="gap-2">
-              <PlusIcon className="w-4 h-4" />
+            <Button onClick={handleOpenAdd} className="gap-1.5 lg:gap-2 h-8 lg:h-10 text-xs lg:text-sm px-3 lg:px-4">
+              <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               Add Branch
             </Button>
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
         {displayBranches.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <BuildingOffice2Icon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p className="font-medium">No branches yet</p>
-            <p className="text-sm">Add your first branch to get started</p>
+          <div className="text-center py-6 lg:py-8 text-muted-foreground">
+            <BuildingOffice2Icon className="w-10 h-10 lg:w-12 lg:h-12 mx-auto mb-2 lg:mb-3 opacity-50" />
+            <p className="font-medium text-sm lg:text-base">No branches yet</p>
+            <p className="text-xs lg:text-sm">Add your first branch to get started</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2 lg:space-y-3">
             {displayBranches.map((branch) => (
               <div
                 key={branch.id}
-                className="flex items-center justify-between p-4 bg-muted/50 rounded-lg"
+                className="flex items-center justify-between p-3 lg:p-4 bg-muted/50 rounded-lg gap-2"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
                   <BranchLogo logoUrl={branch.logo_url} name={branch.name} size="md" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{branch.name}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 lg:gap-2 flex-wrap">
+                      <p className="font-medium text-sm lg:text-base truncate">{branch.name}</p>
                       {currentBranch?.id === branch.id && (
-                        <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
+                        <Badge variant="outline" className="text-[10px] lg:text-xs bg-primary/10 text-primary border-primary/30 shrink-0">
                           Active
                         </Badge>
                       )}
                     </div>
-                    <div className="text-sm text-muted-foreground space-y-0.5">
-                      {branch.address && <p>{branch.address}</p>}
-                      <div className="flex gap-3">
-                        {branch.phone && <span>{branch.phone}</span>}
-                        {branch.email && <span>{branch.email}</span>}
+                    <div className="text-xs lg:text-sm text-muted-foreground space-y-0.5">
+                      {branch.address && <p className="truncate">{branch.address}</p>}
+                      <div className="flex gap-2 lg:gap-3">
+                        {branch.phone && <span className="text-[11px] lg:text-sm">{branch.phone}</span>}
+                        {branch.email && <span className="text-[11px] lg:text-sm hidden sm:inline">{branch.email}</span>}
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 lg:gap-2 shrink-0">
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => handleOpenEdit(branch)}
                     disabled={isLoading}
                     title="Edit branch"
+                    className="h-8 w-8 lg:h-10 lg:w-10"
                   >
-                    <PencilIcon className="w-4 h-4 text-muted-foreground" />
+                    <PencilIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-muted-foreground" />
                   </Button>
                   {/* Show delete button for admins (not for staff) */}
                   {(!isStaffLoggedIn || isAdmin) && (
@@ -599,8 +600,9 @@ export const BranchManagement = () => {
                       onClick={() => setDeleteConfirm({ open: true, branch })}
                       disabled={isLoading || (branch.is_default && displayBranches.length > 1)}
                       title={branch.is_default && displayBranches.length > 1 ? "Cannot delete default branch" : "Delete branch"}
+                      className="h-8 w-8 lg:h-10 lg:w-10"
                     >
-                      <TrashIcon className="w-4 h-4 text-destructive" />
+                      <TrashIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-destructive" />
                     </Button>
                   )}
                 </div>
