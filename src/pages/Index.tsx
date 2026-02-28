@@ -41,7 +41,7 @@ const Index = () => {
   const [isBranchLoading, setIsBranchLoading] = useState(!branchInfo);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [phoneError, setPhoneError] = useState<string | undefined>();
-  const [phoneTouched, setPhoneTouched] = useState(false);
+  
 
   // Redirect to default branch if no branchId is provided
   useEffect(() => {
@@ -148,7 +148,7 @@ const Index = () => {
     const result = validateForm(formSchema, { phone });
     if (!result.success) {
       setPhoneError(result.errors.phone);
-      setPhoneTouched(true);
+      
       return;
     }
 
@@ -222,7 +222,7 @@ const Index = () => {
     setMembershipStartDate(null);
     setPhone("");
     setPhoneError(undefined);
-    setPhoneTouched(false);
+    
   };
 
   return (
@@ -344,7 +344,7 @@ const Index = () => {
                     <Phone className="w-4 h-4 text-accent" />
                     Phone Number
                   </Label>
-                  <div className="flex items-center w-full">
+                  <div className="flex items-start w-full">
                     <span className="inline-flex items-center justify-center px-4 h-12 rounded-l-lg border border-r-0 border-input bg-muted text-muted-foreground text-sm font-medium shrink-0">
                       +91
                     </span>
@@ -357,19 +357,10 @@ const Index = () => {
                         const cleaned = e.target.value.replace(/\D/g, "").slice(0, 10);
                         setPhone(cleaned);
                         sessionStorage.setItem(`registration-phone-${branchId || "default"}`, cleaned);
-                        if (phoneTouched && cleaned.length === 10) {
-                          setPhoneError(validateField(phoneSchema, cleaned));
-                        } else if (phoneTouched && cleaned.length > 0 && cleaned.length < 10) {
-                          setPhoneError("Enter a valid 10-digit Indian mobile number");
-                        } else {
-                          setPhoneError(undefined);
-                        }
+                        // Clear error as user types after a failed submit
+                        if (phoneError) setPhoneError(undefined);
                       }}
-                      onValidate={(v) => {
-                        setPhoneTouched(true);
-                        setPhoneError(validateField(phoneSchema, v));
-                      }}
-                      error={phoneTouched ? phoneError : undefined}
+                      error={phoneError}
                       className="rounded-l-none flex-1 min-w-0"
                       autoComplete="tel"
                     />
@@ -381,7 +372,7 @@ const Index = () => {
                   variant="accent"
                   size="lg"
                   className="w-full mt-6"
-                  disabled={isLoading || phone.length !== 10}
+                  disabled={isLoading}
                 >
                   {isLoading ? (
                     <div className="flex items-center gap-2">

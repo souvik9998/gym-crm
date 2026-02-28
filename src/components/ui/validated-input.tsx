@@ -40,7 +40,7 @@ export const ValidatedInput = React.forwardRef<HTMLInputElement, ValidatedInputP
     };
 
     return (
-      <>
+      <div className="w-full">
         <input
           ref={ref}
           className={cn(
@@ -57,8 +57,10 @@ export const ValidatedInput = React.forwardRef<HTMLInputElement, ValidatedInputP
           onBlur={handleBlur}
           {...props}
         />
-        <InlineError message={error} />
-      </>
+        {error && (
+          <p className="text-xs font-medium text-destructive mt-2 px-1">{error}</p>
+        )}
+      </div>
     );
   }
 );
