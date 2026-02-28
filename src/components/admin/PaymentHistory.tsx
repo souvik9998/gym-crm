@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { useInView } from "react-intersection-observer";
 import {
   Table,
@@ -38,6 +38,7 @@ interface PaymentHistoryProps {
 
 export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const isMobile = useIsMobile();
+  const isCompact = useIsTabletOrBelow();
   const { currentBranch } = useBranch();
   const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null);
   
@@ -373,7 +374,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
             <p className="text-sm mt-1">Try adjusting your filters</p>
           )}
         </div>
-      ) : isMobile ? (
+      ) : isCompact ? (
         /* Mobile View */
         <div className="rounded-lg border overflow-hidden">
           {filteredPayments.map((payment) => (
