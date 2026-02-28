@@ -1409,7 +1409,7 @@ const BranchAnalytics = () => {
             {isLoadingTrainers ? (
               <div className="space-y-6">
                 {/* Loading Skeleton for Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <Card key={i}>
                       <CardContent className="p-4">
@@ -1483,7 +1483,7 @@ const BranchAnalytics = () => {
 
                 <TabsContent value="overview" className="space-y-3 sm:space-y-6">
                 {/* Trainer Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   <Card>
                     <CardContent className="p-3 sm:p-4">
                       <p className="text-[10px] sm:text-sm text-muted-foreground leading-tight">Total Trainers</p>

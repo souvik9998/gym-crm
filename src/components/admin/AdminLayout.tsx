@@ -86,8 +86,8 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Desktop/Tablet Sidebar - visible on md and up */}
-      <div className="hidden md:block">
+      {/* Desktop Sidebar - visible on lg and up */}
+      <div className="hidden lg:block">
         <AdminSidebar
           collapsed={sidebarCollapsed}
           onCollapsedChange={handleSidebarCollapse}
@@ -98,7 +98,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
       {/* Mobile Sidebar Overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -106,7 +106,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
       {/* Mobile Sidebar */}
       <div
         className={cn(
-          "fixed left-0 top-0 h-screen w-72 bg-card border-r border-border z-50 transform transition-transform duration-300 ease-in-out md:hidden shadow-xl",
+          "fixed left-0 top-0 h-screen w-72 bg-card border-r border-border z-50 transform transition-transform duration-300 ease-in-out lg:hidden shadow-xl",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -141,7 +141,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
       <div
         className={cn(
           "min-h-screen transition-all duration-300 ease-in-out",
-          sidebarCollapsed ? "md:pl-[68px]" : "md:pl-64"
+          sidebarCollapsed ? "lg:pl-[68px]" : "lg:pl-64"
         )}
       >
         <AdminHeader
@@ -153,7 +153,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
           isStaffUser={isStaffSession}
           staffName={staffUser?.fullName}
         />
-        <main className="p-3 sm:p-4 md:p-6 max-w-full overflow-x-hidden">{children}</main>
+        <main className="p-3 sm:p-4 lg:p-6 max-w-full overflow-x-hidden">{children}</main>
       </div>
     </div>
   );
