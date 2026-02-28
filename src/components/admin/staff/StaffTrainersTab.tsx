@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsTabletOrBelow } from "@/hooks/use-mobile";
+import { InformationCircleIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +56,8 @@ export const StaffTrainersTab = ({
   onRefresh,
   isLoading,
 }: StaffTrainersTabProps) => {
+  const isCompact = useIsTabletOrBelow();
+  const [infoDialog, setInfoDialog] = useState<{ open: boolean; trainer: Staff | null }>({ open: false, trainer: null });
   const [newTrainer, setNewTrainer] = useState({
     full_name: "",
     phone: "",
@@ -511,46 +515,49 @@ export const StaffTrainersTab = ({
     <div className="space-y-6">
       {/* Add Trainer Card */}
       <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle>Add New Trainer</CardTitle>
-          <CardDescription>Add a trainer with salary and permission settings</CardDescription>
+        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-2">
+          <CardTitle className="text-base lg:text-xl">Add New Trainer</CardTitle>
+          <CardDescription className="text-xs lg:text-sm">Add a trainer with salary and permission settings</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-2">
-              <Label>Full Name *</Label>
+        <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-2 lg:pt-0">
+          <div className="grid gap-3 lg:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-1 lg:space-y-2">
+              <Label className="text-xs lg:text-sm">Full Name *</Label>
               <Input
                 value={newTrainer.full_name}
                 onChange={(e) => setNewTrainer({ ...newTrainer, full_name: e.target.value })}
                 placeholder="Enter full name"
+                className="h-9 lg:h-12 text-sm"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Phone Number *</Label>
+            <div className="space-y-1 lg:space-y-2">
+              <Label className="text-xs lg:text-sm">Phone Number *</Label>
               <Input
                 value={newTrainer.phone}
                 onChange={(e) => setNewTrainer({ ...newTrainer, phone: e.target.value })}
                 placeholder="10-digit phone number"
+                className="h-9 lg:h-12 text-sm"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Specialization</Label>
+            <div className="space-y-1 lg:space-y-2">
+              <Label className="text-xs lg:text-sm">Specialization</Label>
               <Input
                 value={newTrainer.specialization}
                 onChange={(e) => setNewTrainer({ ...newTrainer, specialization: e.target.value })}
                 placeholder="e.g., Weight Training"
+                className="h-9 lg:h-12 text-sm"
               />
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-2">
-              <Label>ID Type</Label>
+          <div className="grid gap-3 lg:gap-4 grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-1 lg:space-y-2">
+              <Label className="text-xs lg:text-sm">ID Type</Label>
               <Select
                 value={newTrainer.id_type}
                 onValueChange={(value) => setNewTrainer({ ...newTrainer, id_type: value })}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-9 lg:h-12 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -560,18 +567,19 @@ export const StaffTrainersTab = ({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>ID Number</Label>
+            <div className="space-y-1 lg:space-y-2">
+              <Label className="text-xs lg:text-sm">ID Number</Label>
               <Input
                 value={newTrainer.id_number}
                 onChange={(e) => setNewTrainer({ ...newTrainer, id_number: e.target.value })}
                 placeholder="ID number"
+                className="h-9 lg:h-12 text-sm"
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Payment Category *</Label>
+          <div className="space-y-1 lg:space-y-2">
+            <Label className="text-xs lg:text-sm">Payment Category *</Label>
             <div className="flex gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -594,54 +602,58 @@ export const StaffTrainersTab = ({
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-2">
-              <Label>Monthly Fee (₹) * <span className="text-xs text-muted-foreground">(Member charge)</span></Label>
+          <div className="grid gap-3 lg:gap-4 grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1 lg:space-y-2">
+              <Label className="text-xs lg:text-sm">Monthly Fee (₹) * <span className="text-[10px] lg:text-xs text-muted-foreground">(Member charge)</span></Label>
               <Input
                 type="number"
                 value={newTrainer.monthly_fee}
                 onChange={(e) => setNewTrainer({ ...newTrainer, monthly_fee: e.target.value })}
                 placeholder="What members pay per month"
+                className="h-9 lg:h-12 text-sm"
               />
             </div>
             
             {newTrainer.payment_category === "monthly_percentage" && (
               <>
-                <div className="space-y-2">
-                  <Label>Monthly Salary (₹) <span className="text-xs text-muted-foreground">(Trainer's salary)</span></Label>
+                <div className="space-y-1 lg:space-y-2">
+                  <Label className="text-xs lg:text-sm">Monthly Salary (₹) <span className="text-[10px] lg:text-xs text-muted-foreground">(Trainer's salary)</span></Label>
                   <Input
                     type="number"
                     value={newTrainer.monthly_salary}
                     onChange={(e) => setNewTrainer({ ...newTrainer, monthly_salary: e.target.value })}
                     placeholder="Trainer's monthly salary"
+                    className="h-9 lg:h-12 text-sm"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Percentage Fee (%) <span className="text-xs text-muted-foreground">(% of PT fee)</span></Label>
+                <div className="space-y-1 lg:space-y-2">
+                  <Label className="text-xs lg:text-sm">Percentage Fee (%) <span className="text-[10px] lg:text-xs text-muted-foreground">(% of PT fee)</span></Label>
                   <Input
                     type="number"
                     value={newTrainer.percentage_fee}
                     onChange={(e) => setNewTrainer({ ...newTrainer, percentage_fee: e.target.value })}
                     placeholder="e.g., 20"
+                    className="h-9 lg:h-12 text-sm"
                   />
                 </div>
               </>
             )}
             {newTrainer.payment_category === "session_basis" && (
-              <div className="space-y-2">
-                <Label>Session Fee (₹) * <span className="text-xs text-muted-foreground">(Per session/day)</span></Label>
+              <div className="space-y-1 lg:space-y-2">
+                <Label className="text-xs lg:text-sm">Session Fee (₹) * <span className="text-[10px] lg:text-xs text-muted-foreground">(Per session/day)</span></Label>
                 <Input
                   type="number"
                   value={newTrainer.session_fee}
                   onChange={(e) => setNewTrainer({ ...newTrainer, session_fee: e.target.value })}
                   placeholder="Per session fee"
+                  className="h-9 lg:h-12 text-sm"
                 />
               </div>
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label>Assigned Branches</Label>
+          <div className="space-y-1 lg:space-y-2">
+            <Label className="text-xs lg:text-sm">Assigned Branches</Label>
             <StaffBranchSelector
               branches={branches}
               selectedBranches={newTrainer.selected_branches}
@@ -693,13 +705,13 @@ export const StaffTrainersTab = ({
 
       {/* Existing Trainers */}
       <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle>Existing Trainers</CardTitle>
-          <CardDescription>
+        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-2">
+          <CardTitle className="text-base lg:text-xl">Existing Trainers</CardTitle>
+          <CardDescription className="text-xs lg:text-sm">
             {trainers.length} trainer{trainers.length !== 1 ? "s" : ""} registered
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 lg:p-6 pt-2 lg:pt-0">
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Loading...</div>
           ) : trainers.length === 0 ? (
@@ -709,10 +721,10 @@ export const StaffTrainersTab = ({
               {trainers.map((trainer) => (
                 <div
                   key={trainer.id}
-                  className="flex items-center justify-between p-4 bg-muted/50 rounded-lg transition-colors duration-150 hover:bg-muted/70"
+                  className={`p-3 lg:p-4 bg-muted/50 rounded-lg transition-colors duration-150 hover:bg-muted/70 ${isCompact ? '' : 'flex items-center justify-between'}`}
                 >
                   {editingId === trainer.id ? (
-                    <div className="flex-1 space-y-3 mr-4">
+                    <div className="flex-1 space-y-3 mr-0 lg:mr-4">
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <Label className="text-xs">Name *</Label>
@@ -771,7 +783,7 @@ export const StaffTrainersTab = ({
                           </label>
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                         {editData.payment_category === "monthly_percentage" && (
                           <>
                             <div className="space-y-1">
@@ -817,7 +829,96 @@ export const StaffTrainersTab = ({
                         </Button>
                       </div>
                     </div>
+                  ) : isCompact ? (
+                    /* Mobile/Tablet compact layout */
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <p className="font-medium text-sm truncate">{trainer.full_name}</p>
+                          <Badge variant="secondary" className="text-[10px] shrink-0">Trainer</Badge>
+                          {!trainer.is_active && (
+                            <Badge variant="secondary" className="text-[10px] bg-destructive/10 text-destructive shrink-0">Inactive</Badge>
+                          )}
+                        </div>
+                        <Switch
+                          checked={trainer.is_active}
+                          onCheckedChange={(checked) => handleToggle(trainer.id, checked)}
+                        />
+                      </div>
+                      {/* Action buttons row */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setInfoDialog({ open: true, trainer })}
+                          title="View Details"
+                        >
+                          <InformationCircleIcon className="w-4 h-4" />
+                        </Button>
+                        <StaffWhatsAppButton staff={trainer} />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setBranchAssignmentDialog({ open: true, staff: trainer })}
+                          title="Manage Branch Assignments"
+                        >
+                          <BuildingOfficeIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={async () => {
+                            const { data: activities } = await supabase
+                              .from("admin_activity_logs")
+                              .select("metadata")
+                              .eq("entity_type", "staff")
+                              .eq("entity_id", trainer.id)
+                              .eq("activity_type", "staff_password_set")
+                              .order("created_at", { ascending: false })
+                              .limit(1)
+                              .maybeSingle();
+                            if (activities?.metadata && (activities.metadata as any).password) {
+                              setViewPasswordDialog({ open: true, staff: trainer, password: (activities.metadata as any).password });
+                            } else {
+                              setPasswordDialog({ open: true, staff: trainer });
+                            }
+                          }}
+                          title={trainer.auth_user_id ? "View/Update Password" : "Set Password"}
+                        >
+                          <KeyIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setPermissionsDialog({ open: true, staff: trainer })}
+                          title="Manage Permissions"
+                        >
+                          <ShieldCheckIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleEdit(trainer)}
+                        >
+                          <PencilIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleDelete(trainer.id, trainer.full_name)}
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
                   ) : (
+                    /* Desktop layout */
                     <>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
@@ -833,7 +934,6 @@ export const StaffTrainersTab = ({
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
                           {trainer.phone && <span>📱 {trainer.phone}</span>}
                           {trainer.specialization && <span>🎯 {trainer.specialization}</span>}
-                          {/* Show payment info based on salary_type which maps to payment_category */}
                           {trainer.salary_type === "both" && (
                             <span>💰 ₹{trainer.monthly_salary}/mo + {trainer.percentage_fee}% of PT fees</span>
                           )}
@@ -861,7 +961,6 @@ export const StaffTrainersTab = ({
                           size="sm"
                           variant="outline"
                           onClick={async () => {
-                            // Try to fetch last password from activity log
                             const { data: activities } = await supabase
                               .from("admin_activity_logs")
                               .select("metadata")
@@ -921,6 +1020,58 @@ export const StaffTrainersTab = ({
           )}
         </CardContent>
       </Card>
+
+      {/* Trainer Info Dialog - Mobile/Tablet */}
+      <Dialog open={infoDialog.open} onOpenChange={(open) => setInfoDialog({ ...infoDialog, open })}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">{infoDialog.trainer?.full_name}</DialogTitle>
+            <DialogDescription>Trainer Details</DialogDescription>
+          </DialogHeader>
+          {infoDialog.trainer && (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between py-1.5 border-b">
+                <span className="text-muted-foreground">Phone</span>
+                <span className="font-medium">{infoDialog.trainer.phone}</span>
+              </div>
+              {infoDialog.trainer.specialization && (
+                <div className="flex justify-between py-1.5 border-b">
+                  <span className="text-muted-foreground">Specialization</span>
+                  <span className="font-medium">{infoDialog.trainer.specialization}</span>
+                </div>
+              )}
+              <div className="flex justify-between py-1.5 border-b">
+                <span className="text-muted-foreground">Salary</span>
+                <span className="font-medium text-right">
+                  {infoDialog.trainer.salary_type === "both"
+                    ? `₹${infoDialog.trainer.monthly_salary}/mo + ${infoDialog.trainer.percentage_fee}%`
+                    : infoDialog.trainer.session_fee > 0
+                    ? `₹${infoDialog.trainer.session_fee}/session`
+                    : "Not set"}
+                </span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b">
+                <span className="text-muted-foreground">Status</span>
+                <Badge variant={infoDialog.trainer.is_active ? "success" : "destructive"} className="text-[10px]">
+                  {infoDialog.trainer.is_active ? "Active" : "Inactive"}
+                </Badge>
+              </div>
+              {infoDialog.trainer.auth_user_id && (
+                <div className="flex justify-between py-1.5 border-b">
+                  <span className="text-muted-foreground">Login</span>
+                  <Badge variant="outline" className="text-[10px] text-primary">Has Login</Badge>
+                </div>
+              )}
+              {infoDialog.trainer.branch_assignments && infoDialog.trainer.branch_assignments.length > 0 && (
+                <div className="flex justify-between py-1.5">
+                  <span className="text-muted-foreground">Branches</span>
+                  <span className="font-medium text-right">{infoDialog.trainer.branch_assignments.map(a => a.branch_name).join(", ")}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={confirmDialog.open}
