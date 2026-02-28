@@ -30,6 +30,7 @@ export interface PublicTrainer {
 export interface PublicBranch {
   id: string;
   name: string;
+  logo_url?: string | null;
 }
 
 /**
