@@ -705,25 +705,25 @@ const AdminSettings = () => {
     <Fragment>
       <div className="max-w-4xl mx-auto space-y-4 lg:space-y-6">
         <Tabs defaultValue={initialTab}>
-          <TabsList className="grid w-full grid-cols-5 bg-muted/50 h-auto">
-            <TabsTrigger value="packages" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
-              <CubeIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <TabsList className="flex w-full overflow-x-auto no-scrollbar bg-muted/50 h-auto lg:grid lg:grid-cols-5 gap-0.5 lg:gap-0">
+            <TabsTrigger value="packages" className="flex-shrink-0 gap-1.5 lg:gap-2 data-[state=active]:bg-background text-xs lg:text-sm px-3 lg:px-3 py-2.5 lg:py-2">
+              <CubeIcon className="w-4 h-4" />
               <span>Packages</span>
             </TabsTrigger>
-            <TabsTrigger value="branches" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
-              <BuildingStorefrontIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+            <TabsTrigger value="branches" className="flex-shrink-0 gap-1.5 lg:gap-2 data-[state=active]:bg-background text-xs lg:text-sm px-3 lg:px-3 py-2.5 lg:py-2">
+              <BuildingStorefrontIcon className="w-4 h-4" />
               <span>Branches</span>
             </TabsTrigger>
-            <TabsTrigger value="whatsapp" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
-              <ChatBubbleLeftEllipsisIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+            <TabsTrigger value="whatsapp" className="flex-shrink-0 gap-1.5 lg:gap-2 data-[state=active]:bg-background text-xs lg:text-sm px-3 lg:px-3 py-2.5 lg:py-2">
+              <ChatBubbleLeftEllipsisIcon className="w-4 h-4" />
               <span>WhatsApp</span>
             </TabsTrigger>
-            <TabsTrigger value="general" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
-              <Cog6ToothIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+            <TabsTrigger value="general" className="flex-shrink-0 gap-1.5 lg:gap-2 data-[state=active]:bg-background text-xs lg:text-sm px-3 lg:px-3 py-2.5 lg:py-2">
+              <Cog6ToothIcon className="w-4 h-4" />
               <span>General</span>
             </TabsTrigger>
-            <TabsTrigger value="subscription" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
-              <ShieldCheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+            <TabsTrigger value="subscription" className="flex-shrink-0 gap-1.5 lg:gap-2 data-[state=active]:bg-background text-xs lg:text-sm px-3 lg:px-3 py-2.5 lg:py-2">
+              <ShieldCheckIcon className="w-4 h-4" />
               <span>Plan</span>
             </TabsTrigger>
           </TabsList>
