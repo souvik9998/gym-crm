@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dumbbell, Mail, Lock, Phone, User } from "lucide-react";
+import { Mail, Lock, Phone, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
@@ -138,197 +138,211 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <Card className="border">
-          <CardHeader className="text-center pb-4">
-            <div className="flex items-center justify-center mb-4">
-              <div className="w-16 h-16 rounded-xl flex items-center justify-center bg-primary text-primary-foreground font-bold text-lg shadow-sm">
-                <Dumbbell className="w-8 h-8" />
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Main centered content */}
+      <div className="flex-1 flex items-center justify-center p-4 pb-16">
+        <div className="w-full max-w-md">
+          <Card className="border shadow-lg">
+            <CardHeader className="text-center pb-4">
+              <div className="flex items-center justify-center mb-4">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-foreground text-background font-bold text-xl shadow-md">
+                  GK
+                </div>
               </div>
-            </div>
-            <CardTitle className="flex items-center justify-center gap-2">
-              <Dumbbell className="w-5 h-5 text-accent" />
-              Login Portal
-            </CardTitle>
-            <CardDescription>Sign in to access the admin dashboard</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="admin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="admin" className="gap-2">
-                  <Mail className="w-4 h-4" />
-                  Admin
-                </TabsTrigger>
-                <TabsTrigger value="staff" className="gap-2">
-                  <User className="w-4 h-4" />
-                  Staff
-                </TabsTrigger>
-              </TabsList>
+              <CardTitle className="text-xl md:text-2xl font-semibold">
+                GymKloud Login
+              </CardTitle>
+              <CardDescription>Sign in to access the admin dashboard</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="admin" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="admin" className="gap-2">
+                    <Mail className="w-4 h-4" />
+                    Admin
+                  </TabsTrigger>
+                  <TabsTrigger value="staff" className="gap-2">
+                    <User className="w-4 h-4" />
+                    Staff
+                  </TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="admin">
-                <form onSubmit={handleAdminSubmit} className="space-y-5">
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-accent" />
-                      Email Address
-                    </Label>
-                    <ValidatedInput
-                      id="email"
-                      type="email"
-                      placeholder="Enter your email address"
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        if (adminTouched.email) {
-                          setAdminErrors((prev) => ({
-                            ...prev,
-                            email: validateField(emailSchema, e.target.value.trim()),
-                          }));
-                        }
-                      }}
-                      onValidate={(v) => {
-                        setAdminTouched((prev) => ({ ...prev, email: true }));
-                        setAdminErrors((prev) => ({ ...prev, email: validateField(emailSchema, v) }));
-                      }}
-                      error={adminTouched.email ? adminErrors.email : undefined}
-                      autoComplete="email"
-                    />
-                  </div>
+                <TabsContent value="admin">
+                  <form onSubmit={handleAdminSubmit} className="space-y-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-accent" />
+                        Email Address
+                      </Label>
+                      <ValidatedInput
+                        id="email"
+                        type="email"
+                        placeholder="Enter your email address"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (adminTouched.email) {
+                            setAdminErrors((prev) => ({
+                              ...prev,
+                              email: validateField(emailSchema, e.target.value.trim()),
+                            }));
+                          }
+                        }}
+                        onValidate={(v) => {
+                          setAdminTouched((prev) => ({ ...prev, email: true }));
+                          setAdminErrors((prev) => ({ ...prev, email: validateField(emailSchema, v) }));
+                        }}
+                        error={adminTouched.email ? adminErrors.email : undefined}
+                        autoComplete="email"
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="admin-password" className="text-sm font-medium flex items-center gap-2">
-                      <Lock className="w-4 h-4 text-accent" />
-                      Password
-                    </Label>
-                    <ValidatedInput
-                      id="admin-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={adminPassword}
-                      onChange={(e) => {
-                        setAdminPassword(e.target.value);
-                        if (adminTouched.password && e.target.value.length > 0 && e.target.value.length < 6) {
-                          setAdminErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
-                        } else {
-                          setAdminErrors((prev) => ({ ...prev, password: undefined }));
-                        }
-                      }}
-                      onValidate={() => {
-                        setAdminTouched((prev) => ({ ...prev, password: true }));
-                        if (adminPassword.length > 0 && adminPassword.length < 6) {
-                          setAdminErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
-                        }
-                      }}
-                      error={adminTouched.password ? adminErrors.password : undefined}
-                      autoComplete="current-password"
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-password" className="text-sm font-medium flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-accent" />
+                        Password
+                      </Label>
+                      <ValidatedInput
+                        id="admin-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={adminPassword}
+                        onChange={(e) => {
+                          setAdminPassword(e.target.value);
+                          if (adminTouched.password && e.target.value.length > 0 && e.target.value.length < 6) {
+                            setAdminErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                          } else {
+                            setAdminErrors((prev) => ({ ...prev, password: undefined }));
+                          }
+                        }}
+                        onValidate={() => {
+                          setAdminTouched((prev) => ({ ...prev, password: true }));
+                          if (adminPassword.length > 0 && adminPassword.length < 6) {
+                            setAdminErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                          }
+                        }}
+                        error={adminTouched.password ? adminErrors.password : undefined}
+                        autoComplete="current-password"
+                      />
+                    </div>
 
-                  <Button
-                    type="submit"
-                    variant="accent"
-                    size="lg"
-                    className="w-full"
-                    disabled={isAdminLoading || !email.trim() || !adminPassword}
-                  >
-                    {isAdminLoading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
-                        Signing In...
-                      </div>
-                    ) : (
-                      "Sign In"
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
+                    <Button
+                      type="submit"
+                      variant="accent"
+                      size="lg"
+                      className="w-full"
+                      disabled={isAdminLoading || !email.trim() || !adminPassword}
+                    >
+                      {isAdminLoading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
+                          Signing In...
+                        </div>
+                      ) : (
+                        "Sign In"
+                      )}
+                    </Button>
+                  </form>
+                </TabsContent>
 
-              <TabsContent value="staff">
-                <form onSubmit={handleStaffSubmit} className="space-y-5">
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-accent" />
-                      Phone Number
-                    </Label>
-                    <ValidatedInput
-                      id="phone"
-                      type="tel"
-                      placeholder="Enter your phone number"
-                      value={phone}
-                      onChange={(e) => {
-                        const cleaned = e.target.value.replace(/\D/g, "").slice(0, 10);
-                        setPhone(cleaned);
-                        if (staffTouched.phone && cleaned.length === 10) {
-                          setStaffErrors((prev) => ({
-                            ...prev,
-                            phone: validateField(phoneSchema, cleaned),
-                          }));
-                        }
-                      }}
-                      onValidate={(v) => {
-                        setStaffTouched((prev) => ({ ...prev, phone: true }));
-                        setStaffErrors((prev) => ({ ...prev, phone: validateField(phoneSchema, v) }));
-                      }}
-                      error={staffTouched.phone ? staffErrors.phone : undefined}
-                      autoComplete="tel"
-                    />
-                  </div>
+                <TabsContent value="staff">
+                  <form onSubmit={handleStaffSubmit} className="space-y-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-accent" />
+                        Phone Number
+                      </Label>
+                      <ValidatedInput
+                        id="phone"
+                        type="tel"
+                        placeholder="Enter your phone number"
+                        value={phone}
+                        onChange={(e) => {
+                          const cleaned = e.target.value.replace(/\D/g, "").slice(0, 10);
+                          setPhone(cleaned);
+                          if (staffTouched.phone && cleaned.length === 10) {
+                            setStaffErrors((prev) => ({
+                              ...prev,
+                              phone: validateField(phoneSchema, cleaned),
+                            }));
+                          }
+                        }}
+                        onValidate={(v) => {
+                          setStaffTouched((prev) => ({ ...prev, phone: true }));
+                          setStaffErrors((prev) => ({ ...prev, phone: validateField(phoneSchema, v) }));
+                        }}
+                        error={staffTouched.phone ? staffErrors.phone : undefined}
+                        autoComplete="tel"
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="staff-password" className="text-sm font-medium flex items-center gap-2">
-                      <Lock className="w-4 h-4 text-accent" />
-                      Password
-                    </Label>
-                    <ValidatedInput
-                      id="staff-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={staffPassword}
-                      onChange={(e) => {
-                        setStaffPassword(e.target.value);
-                        if (staffTouched.password && e.target.value.length > 0 && e.target.value.length < 6) {
-                          setStaffErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
-                        } else {
-                          setStaffErrors((prev) => ({ ...prev, password: undefined }));
-                        }
-                      }}
-                      onValidate={() => {
-                        setStaffTouched((prev) => ({ ...prev, password: true }));
-                        if (staffPassword.length > 0 && staffPassword.length < 6) {
-                          setStaffErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
-                        }
-                      }}
-                      error={staffTouched.password ? staffErrors.password : undefined}
-                      autoComplete="current-password"
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="staff-password" className="text-sm font-medium flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-accent" />
+                        Password
+                      </Label>
+                      <ValidatedInput
+                        id="staff-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={staffPassword}
+                        onChange={(e) => {
+                          setStaffPassword(e.target.value);
+                          if (staffTouched.password && e.target.value.length > 0 && e.target.value.length < 6) {
+                            setStaffErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                          } else {
+                            setStaffErrors((prev) => ({ ...prev, password: undefined }));
+                          }
+                        }}
+                        onValidate={() => {
+                          setStaffTouched((prev) => ({ ...prev, password: true }));
+                          if (staffPassword.length > 0 && staffPassword.length < 6) {
+                            setStaffErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                          }
+                        }}
+                        error={staffTouched.password ? staffErrors.password : undefined}
+                        autoComplete="current-password"
+                      />
+                    </div>
 
-                  <Button
-                    type="submit"
-                    variant="accent"
-                    size="lg"
-                    className="w-full"
-                    disabled={isStaffLoading || phone.length !== 10 || !staffPassword}
-                  >
-                    {isStaffLoading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
-                        Signing In...
-                      </div>
-                    ) : (
-                      "Sign In"
-                    )}
-                  </Button>
+                    <Button
+                      type="submit"
+                      variant="accent"
+                      size="lg"
+                      className="w-full"
+                      disabled={isStaffLoading || phone.length !== 10 || !staffPassword}
+                    >
+                      {isStaffLoading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
+                          Signing In...
+                        </div>
+                      ) : (
+                        "Sign In"
+                      )}
+                    </Button>
 
-                  <p className="text-center text-xs text-muted-foreground">
-                    Staff credentials are provided by your admin
-                  </p>
-                </form>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+                    <p className="text-center text-xs text-muted-foreground">
+                      Staff credentials are provided by your admin
+                    </p>
+                  </form>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Powered by GymKloud - fixed bottom right on desktop, centered bottom on mobile */}
+      <div className="fixed bottom-4 right-4 hidden md:block">
+        <p className="text-xs text-muted-foreground/60">
+          Powered by <span className="font-semibold text-muted-foreground">GymKloud</span>
+        </p>
+      </div>
+      <div className="py-4 text-center md:hidden">
+        <p className="text-xs text-muted-foreground/60">
+          Powered by <span className="font-semibold text-muted-foreground">GymKloud</span>
+        </p>
       </div>
     </div>
   );
