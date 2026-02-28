@@ -36,22 +36,22 @@ const Logs = () => {
   return (
     <div className="max-w-7xl mx-auto">
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="grid w-full max-w-2xl grid-cols-4 mb-6 bg-muted/50 p-1">
-            <TabsTrigger value="activity" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <ClipboardDocumentListIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">Admin</span>
+          <TabsList className="grid w-full max-w-2xl grid-cols-4 mb-4 lg:mb-6 bg-muted/50 p-0.5 lg:p-1 h-auto">
+            <TabsTrigger value="activity" className="gap-1 lg:gap-2 text-[11px] lg:text-sm py-1.5 lg:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <ClipboardDocumentListIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+              Admin
             </TabsTrigger>
-            <TabsTrigger value="user" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <UserGroupIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">User</span>
+            <TabsTrigger value="user" className="gap-1 lg:gap-2 text-[11px] lg:text-sm py-1.5 lg:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <UserGroupIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+              User
             </TabsTrigger>
-            <TabsTrigger value="staff" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <UsersIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">Staff</span>
+            <TabsTrigger value="staff" className="gap-1 lg:gap-2 text-[11px] lg:text-sm py-1.5 lg:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <UsersIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+              Staff
             </TabsTrigger>
-            <TabsTrigger value="whatsapp" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <ChatBubbleLeftRightIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">WhatsApp</span>
+            <TabsTrigger value="whatsapp" className="gap-1 lg:gap-2 text-[11px] lg:text-sm py-1.5 lg:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <ChatBubbleLeftRightIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+              WhatsApp
             </TabsTrigger>
           </TabsList>
 
