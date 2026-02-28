@@ -344,37 +344,35 @@ const Index = () => {
                     <Phone className="w-4 h-4 text-accent" />
                     Phone Number
                   </Label>
-                  <div className="flex items-stretch w-full">
-                    <span className="inline-flex items-center px-4 rounded-l-lg border border-r-0 border-input bg-muted text-muted-foreground text-sm font-medium shrink-0">
+                  <div className="flex items-center w-full">
+                    <span className="inline-flex items-center justify-center px-4 h-12 rounded-l-lg border border-r-0 border-input bg-muted text-muted-foreground text-sm font-medium shrink-0">
                       +91
                     </span>
-                    <div className="flex-1 min-w-0">
-                      <ValidatedInput
-                        id="phone"
-                        type="tel"
-                        placeholder="9876543210"
-                        value={phone}
-                        onChange={(e) => {
-                          const cleaned = e.target.value.replace(/\D/g, "").slice(0, 10);
-                          setPhone(cleaned);
-                          sessionStorage.setItem(`registration-phone-${branchId || "default"}`, cleaned);
-                          if (phoneTouched && cleaned.length === 10) {
-                            setPhoneError(validateField(phoneSchema, cleaned));
-                          } else if (phoneTouched && cleaned.length > 0 && cleaned.length < 10) {
-                            setPhoneError("Enter a valid 10-digit Indian mobile number");
-                          } else {
-                            setPhoneError(undefined);
-                          }
-                        }}
-                        onValidate={(v) => {
-                          setPhoneTouched(true);
-                          setPhoneError(validateField(phoneSchema, v));
-                        }}
-                        error={phoneTouched ? phoneError : undefined}
-                        className="rounded-l-none h-11 text-sm w-full"
-                        autoComplete="tel"
-                      />
-                    </div>
+                    <ValidatedInput
+                      id="phone"
+                      type="tel"
+                      placeholder="9876543210"
+                      value={phone}
+                      onChange={(e) => {
+                        const cleaned = e.target.value.replace(/\D/g, "").slice(0, 10);
+                        setPhone(cleaned);
+                        sessionStorage.setItem(`registration-phone-${branchId || "default"}`, cleaned);
+                        if (phoneTouched && cleaned.length === 10) {
+                          setPhoneError(validateField(phoneSchema, cleaned));
+                        } else if (phoneTouched && cleaned.length > 0 && cleaned.length < 10) {
+                          setPhoneError("Enter a valid 10-digit Indian mobile number");
+                        } else {
+                          setPhoneError(undefined);
+                        }
+                      }}
+                      onValidate={(v) => {
+                        setPhoneTouched(true);
+                        setPhoneError(validateField(phoneSchema, v));
+                      }}
+                      error={phoneTouched ? phoneError : undefined}
+                      className="rounded-l-none flex-1 min-w-0"
+                      autoComplete="tel"
+                    />
                   </div>
                 </div>
 

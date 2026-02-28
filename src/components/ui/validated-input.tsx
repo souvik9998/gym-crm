@@ -40,7 +40,7 @@ export const ValidatedInput = React.forwardRef<HTMLInputElement, ValidatedInputP
     };
 
     return (
-      <div>
+      <>
         <input
           ref={ref}
           className={cn(
@@ -58,7 +58,7 @@ export const ValidatedInput = React.forwardRef<HTMLInputElement, ValidatedInputP
           {...props}
         />
         <InlineError message={error} />
-      </div>
+      </>
     );
   }
 );
