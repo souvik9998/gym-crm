@@ -605,15 +605,15 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[90vw] sm:max-w-2xl max-h-[90vh] md:max-h-[90vh] flex flex-col p-0 mx-auto my-4 md:mx-4 md:my-0">
-        <DialogHeader className="p-2.5 md:p-6 pb-2 md:pb-4 flex-shrink-0 border-b">
+        <DialogHeader className="p-3 md:p-4 pb-2 flex-shrink-0 border-b">
           <DialogTitle className="text-sm md:text-lg">Record Cash Payment</DialogTitle>
           <DialogDescription className="text-[10px] md:text-sm">
             Add a cash payment for an existing member
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-2.5 md:px-6 py-2 md:py-4">
-            <form onSubmit={handleSubmit} className="space-y-2.5 md:space-y-5 pr-0.5 md:pr-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 md:px-4 py-2 md:py-3">
+            <form onSubmit={handleSubmit} className="space-y-2.5 md:space-y-4 pr-0.5 md:pr-2">
           <div className="space-y-1 md:space-y-2">
             <Label htmlFor="search-phone" className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm">
               <Phone className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
