@@ -87,8 +87,8 @@ const LedgerDetailDialog = ({ entry, open, onOpenChange, getCategoryLabel }: Led
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-4 md:p-3">
-        <DialogHeader className="pb-2 md:pb-2">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto p-0">
+        <DialogHeader className="p-3 sm:p-4 pb-2 border-b">
           <DialogTitle className="flex items-center gap-2 md:gap-3 text-base md:text-lg">
             <div className={cn(
               "p-2 rounded-lg",
@@ -109,7 +109,7 @@ const LedgerDetailDialog = ({ entry, open, onOpenChange, getCategoryLabel }: Led
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3 md:space-y-2 mt-2 md:mt-3">
+        <div className="space-y-3 px-3 sm:px-4 py-3">
           {/* Amount */}
           <div className="text-center py-3 md:py-2 rounded-lg bg-muted/30">
             <p className="text-xs md:text-sm text-muted-foreground mb-1">Amount</p>

@@ -305,44 +305,50 @@ export const EditMemberDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-md max-h-[95vh] overflow-y-auto p-3 sm:p-4 md:p-3">
-        <DialogHeader className="pb-2 md:pb-2">
+      <DialogContent className="w-[95vw] sm:max-w-md max-h-[95vh] overflow-y-auto p-0">
+        <DialogHeader className="p-3 sm:p-4 pb-2 flex-shrink-0 border-b">
           <DialogTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg">
-            <User className="w-4 h-4 md:w-5 md:h-5" />
+            <User className="w-4 h-4 md:w-5 md:h-5 text-accent" />
             Edit Member
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 md:space-y-3">
+        <div className="space-y-3 px-3 sm:px-4 py-3">
           {/* Contact Details */}
-          <div className="space-y-3 md:space-y-2">
+          <div className="space-y-2.5 animate-fade-in" style={{ animationDelay: "50ms" }}>
             <h4 className="font-medium text-xs md:text-sm flex items-center gap-2 text-muted-foreground">
               <Phone className="w-3.5 h-3.5 md:w-4 md:h-4" />
               Contact Information
             </h4>
-            <div className="space-y-2 md:space-y-2">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
+            <div className="space-y-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="flex items-center gap-1.5 text-xs md:text-sm">
+                  <User className="w-3 h-3 md:w-3.5 md:h-3.5 text-accent" />
+                  Name
+                </Label>
                 <Input
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Member name"
+                  className="h-10 text-sm transition-all duration-200"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <div className="flex gap-2">
-                  <div className="flex items-center px-3 bg-muted rounded-md border">
-                    <Phone className="w-4 h-4 text-muted-foreground" />
-                    <span className="ml-2 text-sm text-muted-foreground">+91</span>
-                  </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="phone" className="flex items-center gap-1.5 text-xs md:text-sm">
+                  <Phone className="w-3 h-3 md:w-3.5 md:h-3.5 text-accent" />
+                  Phone
+                </Label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-input bg-muted text-muted-foreground text-sm">
+                    +91
+                  </span>
                   <Input
                     id="phone"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                     placeholder="10-digit number"
-                    className="flex-1"
+                    className="flex-1 rounded-l-none h-10 text-sm transition-all duration-200"
                   />
                 </div>
               </div>
@@ -350,16 +356,16 @@ export const EditMemberDialog = ({
           </div>
 
           {/* Personal Details */}
-          <div className="border-t pt-4 space-y-4">
-            <h4 className="font-medium text-sm flex items-center gap-2 text-muted-foreground">
-              <Users className="w-4 h-4" />
+          <div className="border-t pt-3 space-y-2.5 animate-fade-in" style={{ animationDelay: "100ms" }}>
+            <h4 className="font-medium text-xs md:text-sm flex items-center gap-2 text-muted-foreground">
+              <Users className="w-3.5 h-3.5 md:w-4 md:h-4" />
               Personal Details
             </h4>
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="gender">Gender</Label>
+            <div className="space-y-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="gender" className="text-xs md:text-sm">Gender</Label>
                 <Select value={gender} onValueChange={setGender}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10 text-sm transition-all duration-200">
                     <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                   <SelectContent>
@@ -369,10 +375,13 @@ export const EditMemberDialog = ({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="photoIdType">Photo ID Type</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="photoIdType" className="flex items-center gap-1.5 text-xs md:text-sm">
+                  <CreditCard className="w-3 h-3 md:w-3.5 md:h-3.5 text-accent" />
+                  Photo ID Type
+                </Label>
                 <Select value={photoIdType} onValueChange={setPhotoIdType}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10 text-sm transition-all duration-200">
                     <SelectValue placeholder="Select ID type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -384,50 +393,51 @@ export const EditMemberDialog = ({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="photoIdNumber">ID Number</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="photoIdNumber" className="text-xs md:text-sm">ID Number</Label>
                 <Input
                   id="photoIdNumber"
                   value={photoIdNumber}
                   onChange={(e) => setPhotoIdNumber(e.target.value)}
                   placeholder="Enter ID number"
+                  className="h-10 text-sm transition-all duration-200"
                 />
               </div>
             </div>
           </div>
 
           {/* Address */}
-          <div className="border-t pt-4 space-y-4">
-            <h4 className="font-medium text-sm flex items-center gap-2 text-muted-foreground">
-              <MapPin className="w-4 h-4" />
+          <div className="border-t pt-3 space-y-2.5 animate-fade-in" style={{ animationDelay: "150ms" }}>
+            <h4 className="font-medium text-xs md:text-sm flex items-center gap-2 text-muted-foreground">
+              <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4" />
               Address
             </h4>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Textarea
                 id="address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Enter full address"
-                className="min-h-[80px]"
+                className="min-h-[70px] text-sm transition-all duration-200"
               />
             </div>
           </div>
 
           {/* Subscription Info (Read-only) */}
           {member.subscription && (
-            <div className="border-t pt-4 space-y-4">
-              <h4 className="font-medium text-sm flex items-center gap-2 text-muted-foreground">
-                <Calendar className="w-4 h-4" />
+            <div className="border-t pt-3 space-y-2.5 animate-fade-in" style={{ animationDelay: "200ms" }}>
+              <h4 className="font-medium text-xs md:text-sm flex items-center gap-2 text-muted-foreground">
+                <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 Subscription
               </h4>
-              <div className="p-3 bg-muted rounded-lg text-sm">
+              <div className="p-2.5 bg-muted/50 rounded-lg text-sm space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Status:</span>
-                  <span className="font-medium capitalize">{member.subscription.status}</span>
+                  <span className="text-muted-foreground text-xs">Status:</span>
+                  <span className="font-medium capitalize text-xs">{member.subscription.status}</span>
                 </div>
-                <div className="flex justify-between mt-1">
-                  <span className="text-muted-foreground">Expires:</span>
-                  <span className="font-medium">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground text-xs">Expires:</span>
+                  <span className="font-medium text-xs">
                     {new Date(member.subscription.end_date).toLocaleDateString("en-IN", {
                       day: "numeric",
                       month: "short",
@@ -436,20 +446,23 @@ export const EditMemberDialog = ({
                   </span>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] text-muted-foreground">
                 To extend membership, use the Renew page or Add Payment option.
               </p>
             </div>
           )}
 
-          <Button
-            onClick={handleSaveMember}
-            disabled={isLoading || !name || phone.length !== 10}
-            className="w-full"
-          >
-            <Save className="w-4 h-4 mr-2" />
-            Save Changes
-          </Button>
+          <div className="pt-1 pb-1 animate-fade-in" style={{ animationDelay: "250ms" }}>
+            <Button
+              onClick={handleSaveMember}
+              disabled={isLoading || !name || phone.length !== 10}
+              className="w-full h-10 text-sm transition-all duration-200"
+              variant="accent"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {isLoading ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

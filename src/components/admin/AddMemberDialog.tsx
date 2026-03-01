@@ -491,17 +491,17 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[95vh] md:max-h-[90vh] flex flex-col p-0">
-        <DialogHeader className="p-3 sm:p-4 md:p-6 pb-2 md:pb-4 flex-shrink-0 border-b">
+        <DialogHeader className="p-3 sm:p-4 pb-2 flex-shrink-0 border-b">
           <DialogTitle className="text-sm sm:text-base md:text-lg">Add New Member</DialogTitle>
           <DialogDescription className="text-[10px] sm:text-xs md:text-sm">
             Add a new member with cash payment
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-2.5 md:px-6 py-2 md:py-4">
-            <form onSubmit={handleSubmit} className="space-y-2.5 md:space-y-5 pr-0.5 md:pr-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 md:px-4 py-2 md:py-3">
+            <form onSubmit={handleSubmit} className="space-y-2.5 md:space-y-4 pr-0.5 md:pr-2">
             {/* Contact Details Section */}
-            <div className="space-y-1.5 md:space-y-4">
+            <div className="space-y-1.5 md:space-y-3 animate-fade-in" style={{ animationDelay: "50ms" }}>
               <h3 className="text-[10px] md:text-sm font-medium text-muted-foreground">Contact Details</h3>
               
               <div className="space-y-1 md:space-y-2">
@@ -550,7 +550,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
             </div>
 
             {/* Personal Details Section */}
-            <div className="space-y-1.5 md:space-y-4 pt-1 md:pt-2 border-t">
+            <div className="space-y-1.5 md:space-y-3 pt-1 md:pt-2 border-t animate-fade-in" style={{ animationDelay: "100ms" }}>
               <h3 className="text-[10px] md:text-sm font-medium text-muted-foreground">Personal Details</h3>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 md:gap-4">
@@ -656,7 +656,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
             </div>
 
             {/* Package Selection Section */}
-            <div className="space-y-1.5 md:space-y-4 pt-1 md:pt-2 border-t">
+            <div className="space-y-1.5 md:space-y-3 pt-1 md:pt-2 border-t animate-fade-in" style={{ animationDelay: "150ms" }}>
               <h3 className="text-[10px] md:text-sm font-medium text-muted-foreground">Membership Package</h3>
               
               {/* Start Date Selection */}
@@ -746,7 +746,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
             </div>
 
             {/* Personal Training Section */}
-            <div className="space-y-1.5 md:space-y-4 pt-1 md:pt-2 border-t">
+            <div className="space-y-1.5 md:space-y-3 pt-1 md:pt-2 border-t animate-fade-in" style={{ animationDelay: "200ms" }}>
               <div className="flex items-center justify-between">
                 <h3 className="text-[10px] md:text-sm font-medium text-muted-foreground flex items-center gap-1 md:gap-2">
                   <Dumbbell className="w-2.5 h-2.5 md:w-4 md:h-4" />
