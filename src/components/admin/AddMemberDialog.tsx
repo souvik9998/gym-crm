@@ -19,6 +19,8 @@ import {
   Dumbbell,
   CalendarDays,
 } from "lucide-react";
+import { DobInput } from "@/components/ui/dob-input";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
@@ -44,9 +46,9 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
+import { format, addMonths } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { format, addMonths } from "date-fns";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
@@ -87,8 +89,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const [address, setAddress] = useState("");
   const [photoIdType, setPhotoIdType] = useState("");
   const [photoIdNumber, setPhotoIdNumber] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(undefined);
-  const [showDobPicker, setShowDobPicker] = useState(false);
+  const [dateOfBirth, setDateOfBirth] = useState<string | undefined>(undefined);
   
   // Package selection
   const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
@@ -283,7 +284,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           address: address || null,
           photo_id_type: photoIdType || null,
           photo_id_number: photoIdNumber || null,
-          date_of_birth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : null,
+          date_of_birth: dateOfBirth || null,
           personal_trainer_id: wantsPT ? selectedTrainerId : null,
         });
         if (detailsError) throw detailsError;
@@ -553,57 +554,37 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
             <div className="space-y-1.5 md:space-y-3 pt-1 md:pt-2 border-t animate-fade-in" style={{ animationDelay: "100ms" }}>
               <h3 className="text-[10px] md:text-sm font-medium text-muted-foreground">Personal Details</h3>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 md:gap-4">
-                <div className="space-y-1 md:space-y-2">
-                  <Label className="text-[10px] md:text-sm">Gender</Label>
-                  <Select value={gender} onValueChange={setGender}>
-                    <SelectTrigger className="h-8 md:h-10 text-xs md:text-sm">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-1.5 md:space-y-2">
+                <Label className="text-[10px] md:text-sm">Gender</Label>
+                <div className="flex gap-1.5 md:gap-2">
+                  {[
+                    { value: "male", label: "Male" },
+                    { value: "female", label: "Female" },
+                    { value: "other", label: "Other" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setGender(opt.value)}
+                      className={cn(
+                        "flex-1 py-1.5 md:py-2.5 px-2 md:px-4 rounded-xl border-2 text-[10px] md:text-sm font-medium transition-all duration-200",
+                        gender === opt.value
+                          ? "border-accent bg-accent/10 text-accent scale-[1.02] shadow-sm"
+                          : "border-border bg-card text-muted-foreground hover:border-accent/40 hover:bg-accent/5"
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                <div className="space-y-1 md:space-y-2">
-                  <Label className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm">
-                    <CalendarDays className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
-                    Date of Birth
-                  </Label>
-                  <Popover open={showDobPicker} onOpenChange={setShowDobPicker}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={`w-full justify-start text-left font-normal h-8 md:h-10 text-xs md:text-sm ${
-                          !dateOfBirth && "text-muted-foreground"
-                        }`}
-                      >
-                        <CalendarDays className="mr-1.5 md:mr-2 h-2.5 w-2.5 md:h-4 md:w-4" />
-                        {dateOfBirth ? format(dateOfBirth, "dd MMM yyyy") : "Select date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start" sideOffset={4}>
-                      <CalendarComponent
-                        mode="single"
-                        selected={dateOfBirth}
-                        onSelect={(date) => {
-                          setDateOfBirth(date);
-                          setShowDobPicker(false);
-                        }}
-                        disabled={(date) => date > maxDobDate || date < minDobDate}
-                        defaultMonth={dateOfBirth || new Date(2000, 0, 1)}
-                        captionLayout="dropdown-buttons"
-                        fromYear={1925}
-                        toYear={maxDobDate.getFullYear()}
-                        initialFocus
-                        className="rounded-md border bg-popover"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+              <div className="space-y-1 md:space-y-2">
+                <Label className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm">
+                  <CalendarDays className="w-2.5 h-2.5 md:w-4 md:h-4 text-accent" />
+                  Date of Birth
+                </Label>
+                <DobInput value={dateOfBirth} onChange={setDateOfBirth} />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 md:gap-4">
