@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
@@ -177,9 +176,8 @@ const MemberProfile = () => {
 
       <main className="container py-6 max-w-2xl mx-auto space-y-6">
         {isLoading ? (
-          <div className="space-y-4">
-            <Card className="p-4"><Skeleton className="h-6 w-40 mb-3" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4 mt-2" /></Card>
-            <Card className="p-4"><Skeleton className="h-6 w-40 mb-3" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-1/2 mt-2" /></Card>
+          <div className="flex items-center justify-center py-12">
+            <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
           </div>
         ) : (
           <>

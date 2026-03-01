@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeftIcon, BuildingOffice2Icon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CreateTenant() {
   const navigate = useNavigate();
@@ -91,17 +90,8 @@ export default function CreateTenant() {
 
   if (roleLoading) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6 p-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-72" />
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ))}
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
       </div>
     );
   }

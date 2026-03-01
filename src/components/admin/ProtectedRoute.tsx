@@ -6,7 +6,6 @@ import { TenantFeaturePermissions } from "@/contexts/AuthContext";
 import { ShieldExclamationIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 
 type PermissionKey = keyof StaffPermissions;
 
@@ -44,21 +43,8 @@ export const ProtectedRoute = ({
   // Still loading auth state
   if (auth.isLoading || staffLoading) {
     return (
-      <div className="space-y-4 p-6">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-card rounded-xl border border-border p-5">
-              <Skeleton className="h-8 w-16 mb-2" />
-              <Skeleton className="h-3 w-24" />
-            </div>
-          ))}
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full mb-2" />
-          ))}
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
       </div>
     );
   }

@@ -35,8 +35,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth, useStaffPermission } from "@/contexts/StaffAuthContext";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useDashboardStats, useInvalidateDashboard } from "@/hooks/queries";
-import { DashboardStatsSkeleton, TableSkeleton } from "@/components/ui/skeleton-loaders";
-import { Skeleton } from "@/components/ui/skeleton";
+import { DashboardStatsSkeleton } from "@/components/ui/skeleton-loaders";
 
 // Memoized stat card component
 const StatCard = memo(({ 
@@ -163,12 +162,8 @@ const StaffDashboard = () => {
 
   if (staffLoading) {
     return (
-      <div className="space-y-3 md:space-y-6 max-w-7xl mx-auto">
-        <DashboardStatsSkeleton />
-        <Card className="border-0 shadow-sm p-4">
-          <Skeleton className="h-10 w-64 mb-4" />
-          <TableSkeleton rows={5} columns={5} />
-        </Card>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
       </div>
     );
   }

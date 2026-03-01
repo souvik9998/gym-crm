@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -405,10 +404,8 @@ export const PerformanceInsights = () => {
           </Card>
 
           {isLoading ? (
-            <div className="space-y-3 py-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full rounded-lg" />
-              ))}
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
             </div>
           ) : (
             <>
@@ -669,10 +666,8 @@ export const PerformanceInsights = () => {
           )}
 
           {isLoading ? (
-            <div className="space-y-3 py-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full rounded-lg" />
-              ))}
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
             </div>
           ) : (
             <>
