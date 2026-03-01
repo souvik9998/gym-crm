@@ -782,23 +782,23 @@ const AdminSettings = () => {
           <TabsList className="grid w-full grid-cols-5 bg-muted/50 h-auto">
             <TabsTrigger value="packages" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
               <CubeIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              <span>Packages</span>
+              <span className="hidden lg:inline">Packages</span>
             </TabsTrigger>
             <TabsTrigger value="branches" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
               <BuildingStorefrontIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              <span>Branches</span>
+              <span className="hidden lg:inline">Branches</span>
             </TabsTrigger>
             <TabsTrigger value="whatsapp" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
               <ChatBubbleLeftEllipsisIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              <span>WhatsApp</span>
+              <span className="hidden lg:inline">WhatsApp</span>
             </TabsTrigger>
             <TabsTrigger value="general" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
               <Cog6ToothIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              <span>General</span>
+              <span className="hidden lg:inline">General</span>
             </TabsTrigger>
             <TabsTrigger value="subscription" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
               <ShieldCheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              <span>Plan</span>
+              <span className="hidden lg:inline">Plan</span>
             </TabsTrigger>
           </TabsList>
 
