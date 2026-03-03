@@ -177,7 +177,7 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [staffRestriction, selectedBranchId, setSelectedBranchId, isInitialized, userChecked, tenantId]);
+  }, [staffRestriction, selectedBranchId, setSelectedBranchId, isInitialized, userChecked, tenantId, user]);
 
   const setCurrentBranch = useCallback((branch: Branch) => {
     // For staff users, verify the branch is in their allowed list
