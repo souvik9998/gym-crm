@@ -1,6 +1,61 @@
 import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch, type Branch } from "@/contexts/BranchContext";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  CartesianGrid,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  ComposedChart,
+} from "recharts";
+import {
+  BuildingOffice2Icon,
+  CurrencyRupeeIcon,
+  UsersIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  ExclamationTriangleIcon,
+  CheckCircleIcon,
+  ChartBarIcon,
+  UserGroupIcon,
+  SparklesIcon,
+  AcademicCapIcon,
+  TrophyIcon,
+  FireIcon,
+} from "@heroicons/react/24/outline";
+import { format, subDays, startOfMonth, endOfMonth, parseISO, startOfWeek, endOfWeek, subMonths } from "date-fns";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PeriodSelector, PeriodType, getPeriodDates, getPeriodLabel } from "@/components/admin/PeriodSelector";
 import { useBranchAnalyticsData, useBranchTimeSeriesQuery, type BranchMetrics, type TrainerMetrics, type Insight, type TimeSeriesData } from "@/hooks/queries/useBranchAnalytics";
 
 const COLORS = [
