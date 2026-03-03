@@ -230,7 +230,7 @@ const TrainerPerformanceSection = () => {
     triggerOnce: true,
   });
   
-  const { data, isLoading } = useAnalyticsTrainerStats(
+  const { data, isLoading } = useAggregatedAnalyticsTrainerStats(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
