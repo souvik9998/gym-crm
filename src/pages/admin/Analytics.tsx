@@ -9,7 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { PeriodSelector, PeriodType } from "@/components/admin/PeriodSelector";
-import { useAnalyticsTotals, useAnalyticsRevenue, useAnalyticsMemberGrowth, useAnalyticsTrainerStats, useAnalyticsPackageSales } from "@/hooks/queries";
+import { useAggregatedAnalyticsTotals, useAggregatedAnalyticsRevenue, useAggregatedAnalyticsMemberGrowth, useAggregatedAnalyticsTrainerStats, useAggregatedAnalyticsPackageSales } from "@/hooks/queries";
 import { useAnalyticsStore } from "@/stores/analyticsStore";
 import { Skeleton } from "@/components/ui/skeleton";
 
