@@ -434,12 +434,14 @@ const AdminSettings = () => {
 
   const handleToggleMonthlyPackage = async (id: string, isActive: boolean) => {
     const pkg = monthlyPackages.find(p => p.id === id);
-    
+
+    // Optimistic: update local state instantly (Switch already flipped visually)
+    setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: isActive } : p));
     setTogglingMonthlyId(id);
-    toast.loading(`${isActive ? "Activating" : "Deactivating"} package...`, { id: `toggle-monthly-${id}` });
-    
+
     try {
-      // Use staff operations if staff is logged in
+      let failed = false;
+
       if (isStaffLoggedIn && currentBranch) {
         const { error } = await staffOps.updateMonthlyPackage({
           packageId: id,
@@ -447,28 +449,34 @@ const AdminSettings = () => {
           isActive,
         });
         if (error) {
-          toast.error("Error", { id: `toggle-monthly-${id}`, description: error });
-        } else {
-          toast.success(`Package ${isActive ? "activated" : "deactivated"}`, { id: `toggle-monthly-${id}` });
-          fetchData();
+          failed = true;
+          toast.error("Failed to update package", { description: error });
         }
-        return;
+      } else {
+        const { error } = await supabase.from("monthly_packages").update({ is_active: isActive }).eq("id", id);
+        if (error) {
+          failed = true;
+          toast.error("Failed to update package", { description: error.message });
+        } else {
+          await logAdminActivity({
+            category: "packages",
+            type: "monthly_package_toggled",
+            description: `${isActive ? "Activated" : "Deactivated"} ${pkg?.months} month package`,
+            entityType: "monthly_packages",
+            entityId: id,
+            entityName: `${pkg?.months} Month Package`,
+            newValue: { is_active: isActive },
+            branchId: currentBranch?.id,
+          });
+        }
       }
 
-      // Admin flow
-      await supabase.from("monthly_packages").update({ is_active: isActive }).eq("id", id);
-      await logAdminActivity({
-        category: "packages",
-        type: "monthly_package_toggled",
-        description: `${isActive ? "Activated" : "Deactivated"} ${pkg?.months} month package`,
-        entityType: "monthly_packages",
-        entityId: id,
-        entityName: `${pkg?.months} Month Package`,
-        newValue: { is_active: isActive },
-        branchId: currentBranch?.id,
-      });
-      toast.success(`Package ${isActive ? "activated" : "deactivated"}`, { id: `toggle-monthly-${id}` });
-      fetchData();
+      if (failed) {
+        // Revert optimistic update — Switch will smoothly animate back
+        setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: !isActive } : p));
+      } else {
+        toast.success(`Package ${isActive ? "activated" : "deactivated"}`);
+      }
     } finally {
       setTogglingMonthlyId(null);
     }
@@ -647,12 +655,14 @@ const AdminSettings = () => {
 
   const handleTogglePackage = async (id: string, isActive: boolean) => {
     const pkg = customPackages.find(p => p.id === id);
-    
+
+    // Optimistic: update local state instantly
+    setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: isActive } : p));
     setTogglingCustomId(id);
-    toast.loading(`${isActive ? "Activating" : "Deactivating"} package...`, { id: `toggle-custom-${id}` });
-    
+
     try {
-      // Use staff operations if staff is logged in
+      let failed = false;
+
       if (isStaffLoggedIn && currentBranch) {
         const { error } = await staffOps.updateCustomPackage({
           packageId: id,
@@ -660,29 +670,35 @@ const AdminSettings = () => {
           isActive,
         });
         if (error) {
-          toast.error("Error", { id: `toggle-custom-${id}`, description: error });
-        } else {
-          toast.success(`Package ${isActive ? "activated" : "deactivated"}`, { id: `toggle-custom-${id}` });
-          fetchData();
+          failed = true;
+          toast.error("Failed to update package", { description: error });
         }
-        return;
+      } else {
+        const { error } = await supabase.from("custom_packages").update({ is_active: isActive }).eq("id", id);
+        if (error) {
+          failed = true;
+          toast.error("Failed to update package", { description: error.message });
+        } else {
+          await logAdminActivity({
+            category: "packages",
+            type: "custom_package_toggled",
+            description: `${isActive ? "Activated" : "Deactivated"} daily pass "${pkg?.name}"`,
+            entityType: "custom_packages",
+            entityId: id,
+            entityName: pkg?.name,
+            oldValue: { is_active: !isActive },
+            newValue: { is_active: isActive },
+            branchId: currentBranch?.id,
+          });
+        }
       }
 
-      // Admin flow
-      await supabase.from("custom_packages").update({ is_active: isActive }).eq("id", id);
-      await logAdminActivity({
-        category: "packages",
-        type: "custom_package_toggled",
-        description: `${isActive ? "Activated" : "Deactivated"} daily pass "${pkg?.name}"`,
-        entityType: "custom_packages",
-        entityId: id,
-        entityName: pkg?.name,
-        oldValue: { is_active: !isActive },
-        newValue: { is_active: isActive },
-        branchId: currentBranch?.id,
-      });
-      toast.success(`Package ${isActive ? "activated" : "deactivated"}`, { id: `toggle-custom-${id}` });
-      fetchData();
+      if (failed) {
+        // Revert optimistic update
+        setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: !isActive } : p));
+      } else {
+        toast.success(`Package ${isActive ? "activated" : "deactivated"}`);
+      }
     } finally {
       setTogglingCustomId(null);
     }
@@ -870,7 +886,8 @@ const AdminSettings = () => {
                               <Switch
                                 id={`monthly-${pkg.id}`}
                                 checked={pkg.is_active}
-                                disabled={togglingMonthlyId === pkg.id}
+                                loading={togglingMonthlyId === pkg.id}
+                                disabled={togglingMonthlyId !== null && togglingMonthlyId !== pkg.id}
                                 onCheckedChange={(checked) => handleToggleMonthlyPackage(pkg.id, checked)}
                               />
                               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -1001,7 +1018,8 @@ const AdminSettings = () => {
                               <Switch
                                 id={`custom-${pkg.id}`}
                                 checked={pkg.is_active}
-                                disabled={togglingCustomId === pkg.id}
+                                loading={togglingCustomId === pkg.id}
+                                disabled={togglingCustomId !== null && togglingCustomId !== pkg.id}
                                 onCheckedChange={(checked) => handleTogglePackage(pkg.id, checked)}
                               />
                               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -1062,12 +1080,13 @@ const AdminSettings = () => {
                     </span>
                     <Switch
                       checked={whatsappEnabled}
-                      disabled={isTogglingWhatsApp}
+                      loading={isTogglingWhatsApp}
                       onCheckedChange={async (checked) => {
                         if (!currentBranch?.id) return;
                         
+                        // Optimistic: flip local state instantly
+                        setWhatsappEnabled(checked);
                         setIsTogglingWhatsApp(true);
-                        toast.loading(`${checked ? "Enabling" : "Disabling"} WhatsApp...`, { id: "toggle-whatsapp" });
                         
                         try {
                           let settingsId = settings?.id;
@@ -1087,13 +1106,13 @@ const AdminSettings = () => {
                               .single();
                             
                             if (createError) {
-                              toast.error("Error", { id: "toggle-whatsapp", description: createError.message });
+                              setWhatsappEnabled(!checked); // revert
+                              toast.error("Error", { description: createError.message });
                               return;
                             }
                             
                             settingsId = newSettings.id;
                             setSettings({ ...settings, id: settingsId } as GymSettings);
-                            setWhatsappEnabled(checked);
                             await logAdminActivity({
                               category: "settings",
                               type: "whatsapp_toggled",
@@ -1105,12 +1124,13 @@ const AdminSettings = () => {
                               newValue: { whatsapp_enabled: checked },
                               branchId: currentBranch?.id,
                             });
-                            toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled", { id: "toggle-whatsapp" });
+                            toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled");
                             return;
                           }
 
                           if (!settingsId) {
-                            toast.error("Settings not found", { id: "toggle-whatsapp" });
+                            setWhatsappEnabled(!checked); // revert
+                            toast.error("Settings not found");
                             return;
                           }
                           
@@ -1122,20 +1142,15 @@ const AdminSettings = () => {
                               enabled: checked,
                             });
                             if (error) {
-                              toast.error("Error", { id: "toggle-whatsapp", description: error });
+                              setWhatsappEnabled(!checked); // revert
+                              toast.error("Error", { description: error });
                             } else {
-                              setWhatsappEnabled(checked);
-                              toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled", {
-                                id: "toggle-whatsapp",
-                                description: checked 
-                                  ? `WhatsApp messaging is now active for ${currentBranch?.name || "this branch"}` 
-                                  : `All WhatsApp messages are now disabled for ${currentBranch?.name || "this branch"}`
-                              });
+                              toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled");
                             }
                             return;
                           }
                           
-                          // Admin flow - Update the WhatsApp enabled status
+                          // Admin flow
                           const { error } = await supabase
                             .from("gym_settings")
                             .update({ whatsapp_enabled: checked })
@@ -1143,9 +1158,9 @@ const AdminSettings = () => {
                             .eq("branch_id", currentBranch.id);
                           
                           if (error) {
-                            toast.error("Error", { id: "toggle-whatsapp", description: error.message });
+                            setWhatsappEnabled(!checked); // revert
+                            toast.error("Error", { description: error.message });
                           } else {
-                            setWhatsappEnabled(checked);
                             await logAdminActivity({
                               category: "settings",
                               type: "whatsapp_toggled",
@@ -1157,12 +1172,7 @@ const AdminSettings = () => {
                               newValue: { whatsapp_enabled: checked },
                               branchId: currentBranch?.id,
                             });
-                            toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled", {
-                              id: "toggle-whatsapp",
-                              description: checked 
-                                ? `WhatsApp messaging is now active for ${currentBranch?.name || "this branch"}` 
-                                : `All WhatsApp messages are now disabled for ${currentBranch?.name || "this branch"}`
-                            });
+                            toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled");
                           }
                         } finally {
                           setIsTogglingWhatsApp(false);
