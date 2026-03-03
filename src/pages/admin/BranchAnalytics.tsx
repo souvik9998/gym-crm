@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch, type Branch } from "@/contexts/BranchContext";
+import { useBranchAnalyticsData, type BranchMetrics, type TrainerMetrics } from "@/hooks/queries/useBranchAnalytics";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
