@@ -142,12 +142,12 @@ export function NotificationCenter() {
           >
             <Bell className="w-[18px] h-[18px]" />
             {dangerCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground px-1 shadow-lg shadow-destructive/40 animate-in zoom-in-50 duration-300 border-2 border-card">
+              <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground px-1 animate-in zoom-in-50 duration-300 border-2 border-card">
                 {dangerCount > 9 ? "9+" : dangerCount}
               </span>
             )}
             {dangerCount === 0 && totalCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1 shadow-lg shadow-primary/40 animate-in zoom-in-50 duration-300 border-2 border-card">
+              <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1 animate-in zoom-in-50 duration-300 border-2 border-card">
                 {totalCount > 9 ? "9+" : totalCount}
               </span>
             )}
