@@ -21,8 +21,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
   const navigate = useNavigate();
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn, staffUser, isLoading: staffLoading } = useStaffAuth();
-  const [adminUser, setAdminUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user: adminUser, isLoading, isAuthenticated } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
@@ -30,25 +29,12 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
   const gymName = currentBranch?.name || "Pro Plus Fitness";
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setAdminUser(session?.user ?? null);
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setAdminUser(session?.user ?? null);
-      setIsLoading(false);
-    });
-
     // Load sidebar state from localStorage
     const savedCollapsed = localStorage.getItem("admin-sidebar-collapsed");
     if (savedCollapsed !== null) {
       setSidebarCollapsed(savedCollapsed === "true");
     }
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, []);
 
   // Check authentication - either admin user OR staff user
   useEffect(() => {
