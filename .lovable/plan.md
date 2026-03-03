@@ -1,129 +1,93 @@
 
 
-## Backend Performance Optimization Plan
+# WhatsApp Auto-Send Preferences per Message Type
 
-### 1. Database Indexes (Migration)
+## Overview
+Add a new "Auto-Send Preferences" section to the WhatsApp tab in Settings. This gives the gym admin toggle controls for each WhatsApp message type -- choosing whether messages are sent automatically after the corresponding action, or only manually. Promotional messages are always manual-only (no toggle).
 
-Add indexes on frequently filtered/joined columns across all major tables. These are missing and cause sequential scans:
+## Current State
+- WhatsApp messages are triggered automatically in several flows: Registration (`Register.tsx`), Renewal (`Renew.tsx`), PT Extension (`ExtendPT.tsx`), Admin Add Member (`AddMemberDialog.tsx`), Admin Add Payment (`AddPaymentDialog.tsx`)
+- The daily cron job (`daily-whatsapp-job`) auto-sends expiring-in-2-days and expiring-today notifications
+- There is no per-message-type auto/manual preference -- all are auto-sent when WhatsApp is enabled
+- Templates exist for: Promotional, Expiry Reminder, Expired Reminder (in WhatsAppTemplates component)
 
-```sql
--- Members
-CREATE INDEX IF NOT EXISTS idx_members_branch_id ON members(branch_id);
-CREATE INDEX IF NOT EXISTS idx_members_phone ON members(phone);
-CREATE INDEX IF NOT EXISTS idx_members_created_at ON members(created_at);
+## Message Types and Auto-Send Toggles
 
--- Subscriptions
-CREATE INDEX IF NOT EXISTS idx_subscriptions_member_id ON subscriptions(member_id);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_branch_id ON subscriptions(branch_id);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_end_date ON subscriptions(end_date);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_branch_status ON subscriptions(branch_id, status);
+| Message Type | Default | Notes |
+|---|---|---|
+| New Member Registration | ON | Sent after a new member registers |
+| Member Renewal | ON | Sent after membership renewal |
+| Daily Pass | ON | Sent after daily pass purchase |
+| PT Extension | ON | Sent after personal training extension |
+| Expiring Soon (2 days) | ON | Daily cron job |
+| Expiring Today | ON | Daily cron job |
+| Expired Reminder | OFF | Not currently auto-sent, but available for manual |
+| Payment Receipt | OFF | Not currently auto-sent |
+| Admin Add Member | ON | When admin adds a member manually |
+| Promotional | N/A | Always manual only, no toggle shown |
 
--- Payments
-CREATE INDEX IF NOT EXISTS idx_payments_branch_id ON payments(branch_id);
-CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
-CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at);
-CREATE INDEX IF NOT EXISTS idx_payments_branch_status_created ON payments(branch_id, status, created_at);
-CREATE INDEX IF NOT EXISTS idx_payments_member_id ON payments(member_id);
+## Database Changes
 
--- Ledger
-CREATE INDEX IF NOT EXISTS idx_ledger_branch_id ON ledger_entries(branch_id);
-CREATE INDEX IF NOT EXISTS idx_ledger_entry_type ON ledger_entries(entry_type);
-CREATE INDEX IF NOT EXISTS idx_ledger_category ON ledger_entries(category);
-CREATE INDEX IF NOT EXISTS idx_ledger_entry_date ON ledger_entries(entry_date);
-CREATE INDEX IF NOT EXISTS idx_ledger_branch_type_cat ON ledger_entries(branch_id, entry_type, category);
+### Add `whatsapp_auto_send` JSONB column to `gym_settings`
+A new column storing per-type preferences:
 
--- PT Subscriptions
-CREATE INDEX IF NOT EXISTS idx_pt_subs_member_id ON pt_subscriptions(member_id);
-CREATE INDEX IF NOT EXISTS idx_pt_subs_branch_id ON pt_subscriptions(branch_id);
-CREATE INDEX IF NOT EXISTS idx_pt_subs_trainer_id ON pt_subscriptions(personal_trainer_id);
-CREATE INDEX IF NOT EXISTS idx_pt_subs_status ON pt_subscriptions(status);
-CREATE INDEX IF NOT EXISTS idx_pt_subs_end_date ON pt_subscriptions(end_date);
-
--- Activity Logs
-CREATE INDEX IF NOT EXISTS idx_admin_logs_branch_id ON admin_activity_logs(branch_id);
-CREATE INDEX IF NOT EXISTS idx_admin_logs_created_at ON admin_activity_logs(created_at);
-CREATE INDEX IF NOT EXISTS idx_admin_logs_admin_user_id ON admin_activity_logs(admin_user_id);
-CREATE INDEX IF NOT EXISTS idx_user_logs_branch_id ON user_activity_logs(branch_id);
-CREATE INDEX IF NOT EXISTS idx_user_logs_created_at ON user_activity_logs(created_at);
-
--- Attendance
-CREATE INDEX IF NOT EXISTS idx_attendance_branch_id ON attendance_logs(branch_id);
-CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance_logs(date);
-CREATE INDEX IF NOT EXISTS idx_attendance_member_id ON attendance_logs(member_id);
-
--- Staff
-CREATE INDEX IF NOT EXISTS idx_staff_auth_user_id ON staff(auth_user_id);
-CREATE INDEX IF NOT EXISTS idx_staff_branch_assignments_branch ON staff_branch_assignments(branch_id);
-CREATE INDEX IF NOT EXISTS idx_staff_branch_assignments_staff ON staff_branch_assignments(staff_id);
-CREATE INDEX IF NOT EXISTS idx_staff_permissions_staff ON staff_permissions(staff_id);
-
--- Daily pass
-CREATE INDEX IF NOT EXISTS idx_daily_pass_branch_id ON daily_pass_users(branch_id);
-CREATE INDEX IF NOT EXISTS idx_daily_pass_subs_user ON daily_pass_subscriptions(daily_pass_user_id);
-CREATE INDEX IF NOT EXISTS idx_daily_pass_subs_branch ON daily_pass_subscriptions(branch_id);
-
--- Branches
-CREATE INDEX IF NOT EXISTS idx_branches_tenant_id ON branches(tenant_id);
-
--- Tenant
-CREATE INDEX IF NOT EXISTS idx_tenant_members_user ON tenant_members(user_id);
-CREATE INDEX IF NOT EXISTS idx_tenant_members_tenant ON tenant_members(tenant_id);
+```text
+{
+  "new_registration": true,
+  "renewal": true,
+  "daily_pass": true,
+  "pt_extension": true,
+  "expiring_2days": true,
+  "expiring_today": true,
+  "expired_reminder": false,
+  "payment_details": false,
+  "admin_add_member": true
+}
 ```
 
-### 2. Optimize Edge Function: Move Aggregations to SQL
+Default: all true except `expired_reminder` and `payment_details`.
 
-**`dashboard-stats` action**: Replace the current 5+ sequential queries + JS aggregation with a single call to the existing `get_dashboard_stats` RPC function (already exists in the database). The edge function currently duplicates this logic inefficiently.
+## Frontend Changes
 
-**`log-stats` action (category counting)**: Currently fetches ALL rows to count categories in JS. Replace with `GROUP BY` via a small RPC or simply use `select("activity_category")` with `.limit(10000)` — but better: use `count` with filters per category. However since Supabase JS doesn't support GROUP BY, the current approach of fetching just the category column is acceptable, but add `.limit(50000)` to prevent unbounded fetches.
+### 1. New component: `WhatsAppAutoSendSettings.tsx`
+A card with toggle switches for each message type listed above. Each toggle:
+- Shows the message type name and a short description
+- Saves immediately to `gym_settings.whatsapp_auto_send` via database update
+- Promotional is shown as a disabled row with "Manual Only" badge (no toggle)
 
-**`staff-page-data` ledger aggregation**: Currently fetches all matching ledger amounts and sums in JS. Replace with a count-only approach using `select("amount")` which is already minimal — acceptable as-is.
+### 2. Integrate into Settings WhatsApp tab
+Place the new `WhatsAppAutoSendSettings` component between the WhatsApp enable/disable card and the `WhatsAppTemplates` component in `Settings.tsx`.
 
-**`branch-analytics-data`**: The `fetchBranchMetrics` function makes 9 parallel queries PER branch PER period. For 5 branches with previous period = 90 queries. Optimize by:
-- Fetching payments/expenses/members for ALL branches in single queries, then grouping by branch_id in JS
-- This reduces from N*9*2 queries to ~9*2 queries total
+### 3. Update auto-send call sites
+In each file that calls `send-whatsapp`, check the preference before sending:
 
-### 3. Optimize `members` Action N+1 Problem
+- `Register.tsx` -- check `new_registration` (or `daily_pass`) preference before calling send-whatsapp
+- `Renew.tsx` -- check `renewal` preference
+- `ExtendPT.tsx` -- check `pt_extension` preference
+- `AddMemberDialog.tsx` -- check `admin_add_member` preference
+- `AddPaymentDialog.tsx` -- check `payment_details` preference (if applicable)
 
-Currently fetches members, then runs 2 queries per member (subscription + PT). For 25 members = 50 extra queries. Replace with:
-- Batch fetch all subscriptions for the member IDs in one query
-- Batch fetch all PT subscriptions for the member IDs in one query
-- Join in JS (already have member IDs from the page)
+Each call site will fetch the `whatsapp_auto_send` from `gym_settings` for the branch, and skip the WhatsApp call if the relevant type is set to false.
 
-### 4. Optimize `daily-pass-users` N+1 Problem
+### 4. Update `daily-whatsapp-job` edge function
+Before sending expiring-in-2-days and expiring-today messages, read the `whatsapp_auto_send` JSONB from `gym_settings` for each branch. Skip sending if the corresponding type is disabled.
 
-Same pattern — fetches subscription per user. Replace with batch fetch.
+## Technical Details
 
-### 5. Add Cache-Control Headers
+### Files to Create
+- `src/components/admin/WhatsAppAutoSendSettings.tsx` -- Toggle switches UI component
 
-Add `Cache-Control` response headers for read-heavy, non-transactional endpoints:
-- `dashboard-stats`: `max-age=30` (30s)
-- `analytics-data`: `max-age=60` (1min)
-- `branch-analytics-data`: `max-age=120` (2min)
-- `log-stats`: `max-age=60` (1min)
-- `settings-page-data`: `max-age=120` (2min)
-- `staff-page-data`: `max-age=60` (1min)
-- Transactional endpoints (members, payments, ledger): no cache
+### Files to Modify
+- Database migration -- Add `whatsapp_auto_send` JSONB column to `gym_settings`
+- `src/pages/admin/Settings.tsx` -- Insert the new component in WhatsApp tab
+- `src/pages/Register.tsx` -- Check auto-send preference before WhatsApp call
+- `src/pages/Renew.tsx` -- Check auto-send preference before WhatsApp call
+- `src/pages/ExtendPT.tsx` -- Check auto-send preference before WhatsApp call
+- `src/components/admin/AddMemberDialog.tsx` -- Check auto-send preference before WhatsApp call
+- `src/components/admin/AddPaymentDialog.tsx` -- Check auto-send preference before WhatsApp call
+- `supabase/functions/daily-whatsapp-job/index.ts` -- Check per-branch auto-send preferences
+- `src/integrations/supabase/types.ts` -- Will auto-update after migration
 
-### 6. Select Only Required Columns
-
-Audit each action and replace `select("*")` with explicit column lists where possible. Key areas:
-- `dashboard-stats`: members only needs `id`, subscriptions needs `member_id, status, end_date`
-- `log-stats`: already optimized (head: true counts)
-- `members`: keep `*` since all fields displayed
-- `payments`: reduce join fields
-
-### Summary of Changes
-
-| Change | Files |
-|--------|-------|
-| Database indexes | Migration SQL |
-| Dashboard-stats: use RPC | `protected-data/index.ts` |
-| Members N+1 fix (batch) | `protected-data/index.ts` |
-| Daily-pass N+1 fix (batch) | `protected-data/index.ts` |
-| Branch-analytics batch queries | `protected-data/index.ts` |
-| Cache-Control headers | `protected-data/index.ts` |
-| Column pruning | `protected-data/index.ts` |
-
-No frontend or business logic changes. Only backend query structure, indexing, and caching improvements.
+### Helper function
+A shared utility `getWhatsAppAutoSendPreference(branchId, type)` that fetches `gym_settings.whatsapp_auto_send` for the branch and returns whether that type is enabled. This avoids duplicating the fetch logic in every call site.
 

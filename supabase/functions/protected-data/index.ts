@@ -11,7 +11,13 @@
  * - Permission-based feature access
  * - Branch-level data isolation for staff
  * 
- * Version: 2.0
+ * Performance optimizations:
+ * - Batch queries instead of N+1
+ * - Cache-Control headers for read-heavy endpoints
+ * - Column pruning (select only needed fields)
+ * - SQL-level aggregations where possible
+ * 
+ * Version: 3.0
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -48,7 +54,6 @@ async function authenticateRequest(
     return { valid: false, isAdmin: false, isStaff: false };
   }
 
-  // Verify JWT - try getClaims first, fall back to getUser
   let userId: string | null = null;
 
   const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
@@ -56,7 +61,6 @@ async function authenticateRequest(
     userId = String(claimsData.claims.sub);
   } else {
     console.warn("getClaims failed, trying getUser:", claimsError?.message);
-    // Fallback: use getUser with explicit token
     const { data: userData, error: userError } = await anonClient.auth.getUser(token);
     if (!userError && userData?.user?.id) {
       userId = userData.user.id;
@@ -66,11 +70,6 @@ async function authenticateRequest(
     }
   }
 
-  // Check if user is an admin-like user.
-  // In this SaaS: 
-  // - super_admin (platform)
-  // - tenant_admin (gym owner)
-  // - admin (tenant internal admin)
   const { data: adminRoles, error: adminRolesError } = await serviceClient
     .from("user_roles")
     .select("role")
@@ -88,33 +87,26 @@ async function authenticateRequest(
     return { valid: true, isAdmin: true, isSuperAdmin, isStaff: false, userId };
   }
 
-  // Check if user is staff (may have multiple records across branches)
   const { data: staffList } = await serviceClient
     .from("staff")
-    .select("id, is_active")
+    .select("id")
     .eq("auth_user_id", userId)
     .eq("is_active", true);
 
-  const staff = (staffList as { id: string; is_active: boolean }[] | null)?.[0];
+  const staff = (staffList as { id: string }[] | null)?.[0];
   if (!staff) {
     return { valid: false, isAdmin: false, isStaff: false };
   }
 
-  // Get staff permissions (from primary staff record)
-  const { data: permissions } = await serviceClient
-    .from("staff_permissions")
-    .select("*")
-    .eq("staff_id", staff.id)
-    .single();
-
-  // Get assigned branches across ALL staff records for this user
   const allStaffIds = (staffList || []).map((s: { id: string }) => s.id);
-  const { data: assignments } = await serviceClient
-    .from("staff_branch_assignments")
-    .select("branch_id")
-    .in("staff_id", allStaffIds);
 
-  const branchIds = (assignments || []).map((a: { branch_id: string }) => a.branch_id);
+  // Fetch permissions and assignments in parallel
+  const [permResult, assignResult] = await Promise.all([
+    serviceClient.from("staff_permissions").select("*").eq("staff_id", staff.id).single(),
+    serviceClient.from("staff_branch_assignments").select("branch_id").in("staff_id", allStaffIds),
+  ]);
+
+  const branchIds = (assignResult.data || []).map((a: { branch_id: string }) => a.branch_id);
 
   return {
     valid: true,
@@ -122,7 +114,7 @@ async function authenticateRequest(
     isStaff: true,
     userId,
     staffId: staff.id,
-    permissions: permissions || {},
+    permissions: permResult.data || {},
     branchIds,
   };
 }
@@ -139,45 +131,26 @@ async function resolveAllowedBranchIds(
   auth: AuthResult,
   requestedBranchId: string | null
 ): Promise<string[] | null> {
-  // If a specific branch is requested, scope to that branch (permission checks happen separately)
   if (requestedBranchId) return [requestedBranchId];
-
-  // Staff are restricted to assigned branches
   if (auth.isStaff) return auth.branchIds || [];
-
-  // Super admins can see everything (no tenant scoping)
   if (auth.isAdmin && auth.isSuperAdmin) return null;
 
-  // Tenant-scoped admins: only branches belonging to their tenant
   if (auth.isAdmin && auth.userId) {
-    const { data: membership, error: membershipError } = await serviceClient
+    const { data: membership } = await serviceClient
       .from("tenant_members")
       .select("tenant_id")
       .eq("user_id", auth.userId)
       .limit(1)
       .maybeSingle();
 
-    if (membershipError) {
-      console.error("Error resolving tenant membership:", membershipError);
-      return [];
-    }
-
     const tenantId = membership?.tenant_id as string | undefined;
-    if (!tenantId) {
-      // Not a tenant member means: deny data (prevents accidental global leakage)
-      return [];
-    }
+    if (!tenantId) return [];
 
-    const { data: branches, error: branchesError } = await serviceClient
+    const { data: branches } = await serviceClient
       .from("branches")
       .select("id")
       .eq("tenant_id", tenantId)
       .eq("is_active", true);
-
-    if (branchesError) {
-      console.error("Error resolving tenant branches:", branchesError);
-      return [];
-    }
 
     return (branches || []).map((b: { id: string }) => b.id);
   }
@@ -196,6 +169,14 @@ function errorResponse(message: string, status: number) {
     JSON.stringify({ error: message }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" }, status }
   );
+}
+
+function jsonResponse(data: unknown, cacheMaxAge: number = 0) {
+  const headers: Record<string, string> = { ...corsHeaders, "Content-Type": "application/json" };
+  if (cacheMaxAge > 0) {
+    headers["Cache-Control"] = `public, max-age=${cacheMaxAge}`;
+  }
+  return new Response(JSON.stringify(data), { headers });
 }
 
 Deno.serve(async (req) => {
@@ -220,7 +201,6 @@ Deno.serve(async (req) => {
       return errorResponse("Authorization required", 401);
     }
 
-    // Validate UUIDs
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (branchId && !uuidRegex.test(branchId)) {
       return errorResponse("Invalid branch ID format", 400);
@@ -237,13 +217,11 @@ Deno.serve(async (req) => {
       throw new Error("Server configuration error");
     }
 
-    // Client used ONLY for JWT validation (does not need service role)
     const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Client used for data access (service role). Authorization is still validated above.
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { autoRefreshToken: false, persistSession: false }
     });
@@ -278,7 +256,6 @@ Deno.serve(async (req) => {
           .single();
 
         if (limits) {
-          // Check plan expiry
           if (limits.plan_expiry_date) {
             const expiry = new Date(limits.plan_expiry_date as string);
             const today = new Date();
@@ -292,29 +269,32 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Helper to check if a module is enabled
     const isModuleEnabled = (module: string): boolean => {
       if (auth.isSuperAdmin) return true;
-      if (!tenantFeatures) return true; // No restrictions found
+      if (!tenantFeatures) return true;
       return tenantFeatures[module] !== false;
+    };
+
+    // Helper: apply branch filter to a query
+    // deno-lint-ignore no-explicit-any
+    const applyBranchFilter = (query: any, col = "branch_id") => {
+      if (Array.isArray(allowedBranchIds)) {
+        return query.in(col, allowedBranchIds);
+      }
+      return query;
     };
 
     switch (action) {
       case "health": {
-        // Health check endpoint - no permissions required, just valid auth
-        return new Response(
-          JSON.stringify({ 
-            status: "ok", 
-            isAdmin: auth.isAdmin, 
-            isStaff: auth.isStaff,
-            timestamp: new Date().toISOString(),
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ 
+          status: "ok", 
+          isAdmin: auth.isAdmin, 
+          isStaff: auth.isStaff,
+          timestamp: new Date().toISOString(),
+        });
       }
 
       case "dashboard-stats": {
-        // Dashboard stats - admin or staff with view members permission
         if (!hasPermission(auth, "can_view_members") && !auth.isAdmin) {
           return errorResponse("Permission denied: cannot view dashboard", 403);
         }
@@ -322,151 +302,89 @@ Deno.serve(async (req) => {
         // Refresh subscription statuses
         await supabase.rpc("refresh_subscription_statuses");
 
-        // If tenant admin has no branches, return zeroed stats
         if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
-          return new Response(
-            JSON.stringify({
-              totalMembers: 0,
-              activeMembers: 0,
-              expiringSoon: 0,
-              expiredMembers: 0,
-              inactiveMembers: 0,
-              monthlyRevenue: 0,
-              withPT: 0,
-              dailyPassUsers: 0,
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return jsonResponse({
+            totalMembers: 0, activeMembers: 0, expiringSoon: 0,
+            expiredMembers: 0, inactiveMembers: 0, monthlyRevenue: 0,
+            withPT: 0, dailyPassUsers: 0,
+          }, 30);
         }
 
-        // Build query with branch/tenant filter
-        let membersCountQuery = supabase.from("members").select("*", { count: "exact", head: true });
-        if (Array.isArray(allowedBranchIds)) {
-          membersCountQuery = membersCountQuery.in("branch_id", allowedBranchIds);
+        // Use RPC for single-branch queries, manual for multi-branch
+        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 1) {
+          const { data: rpcData, error: rpcError } = await supabase.rpc("get_dashboard_stats", {
+            _branch_id: allowedBranchIds[0],
+          });
+          if (!rpcError && rpcData && rpcData.length > 0) {
+            const s = rpcData[0];
+            return jsonResponse({
+              totalMembers: Number(s.total_members) || 0,
+              activeMembers: Number(s.active_members) || 0,
+              expiringSoon: Number(s.expiring_soon) || 0,
+              expiredMembers: Number(s.expired_members) || 0,
+              inactiveMembers: Number(s.inactive_members) || 0,
+              monthlyRevenue: Number(s.monthly_revenue) || 0,
+              withPT: Number(s.with_pt) || 0,
+              dailyPassUsers: Number(s.daily_pass_users) || 0,
+            }, 30);
+          }
         }
-        const { count: totalMembers, error: membersCountError } = await membersCountQuery;
-        if (membersCountError) throw membersCountError;
 
-        // Get all members
-        let memberDataQuery = supabase.from("members").select("id");
-        if (Array.isArray(allowedBranchIds)) {
-          memberDataQuery = memberDataQuery.in("branch_id", allowedBranchIds);
-        }
-        const { data: membersData, error: membersDataError } = await memberDataQuery;
-        if (membersDataError) throw membersDataError;
+        // Multi-branch: parallel queries with column pruning
+        const [membersCountRes, memberIdsRes, subsRes, paymentsRes, ptRes, dailyPassRes] = await Promise.all([
+          applyBranchFilter(supabase.from("members").select("*", { count: "exact", head: true })),
+          applyBranchFilter(supabase.from("members").select("id")),
+          applyBranchFilter(supabase.from("subscriptions").select("member_id, status, end_date").order("end_date", { ascending: false })),
+          applyBranchFilter(
+            supabase.from("payments").select("amount")
+              .eq("status", "success")
+              .gte("created_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
+          ),
+          applyBranchFilter(
+            supabase.from("pt_subscriptions").select("member_id")
+              .eq("status", "active")
+              .gte("end_date", new Date().toISOString().split("T")[0])
+          ),
+          applyBranchFilter(supabase.from("daily_pass_users").select("*", { count: "exact", head: true })),
+        ]);
 
-        // Get subscriptions for status calculations
-        let subscriptionsQuery = supabase
-          .from("subscriptions")
-          .select("member_id, status, end_date")
-          .order("end_date", { ascending: false });
-        if (Array.isArray(allowedBranchIds)) {
-          subscriptionsQuery = subscriptionsQuery.in("branch_id", allowedBranchIds);
-        }
-        const { data: allSubscriptions, error: subsError } = await subscriptionsQuery;
-        if (subsError) throw subsError;
-
-        // Group subscriptions by member (latest first)
-        const memberSubscriptions = new Map<string, { status: string; end_date: string }>();
-        if (allSubscriptions) {
-          for (const sub of allSubscriptions) {
-            if (!memberSubscriptions.has(sub.member_id)) {
-              memberSubscriptions.set(sub.member_id, { status: sub.status || "inactive", end_date: sub.end_date });
-            }
+        // Group subscriptions by member (latest first) - already ordered
+        const memberSubs = new Map<string, { status: string; end_date: string }>();
+        for (const sub of subsRes.data || []) {
+          if (!memberSubs.has(sub.member_id)) {
+            memberSubs.set(sub.member_id, { status: sub.status || "inactive", end_date: sub.end_date });
           }
         }
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        let activeCount = 0, expiringSoonCount = 0, expiredCount = 0, inactiveCount = 0;
 
-        let activeCount = 0;
-        let expiringSoonCount = 0;
-        let expiredCount = 0;
-        let inactiveCount = 0;
-
-        // Calculate status based on actual dates
-        if (membersData) {
-          for (const member of membersData) {
-            const sub = memberSubscriptions.get(member.id);
-
-            if (!sub) {
-              continue;
-            }
-
-            if (sub.status === "inactive") {
-              inactiveCount++;
-              continue;
-            }
-
-            const endDate = new Date(sub.end_date);
-            endDate.setHours(0, 0, 0, 0);
-            const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-            const isExpired = diffDays < 0;
-            const isExpiringSoon = !isExpired && diffDays >= 0 && diffDays <= 7;
-
-            if (isExpired) {
-              expiredCount++;
-            } else if (isExpiringSoon) {
-              expiringSoonCount++;
-            } else {
-              activeCount++;
-            }
-          }
+        for (const member of memberIdsRes.data || []) {
+          const sub = memberSubs.get(member.id);
+          if (!sub) continue;
+          if (sub.status === "inactive") { inactiveCount++; continue; }
+          const endDate = new Date(sub.end_date);
+          endDate.setHours(0, 0, 0, 0);
+          const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays < 0) expiredCount++;
+          else if (diffDays <= 7) expiringSoonCount++;
+          else activeCount++;
         }
 
-        const startOfMonth = new Date();
-        startOfMonth.setDate(1);
-        startOfMonth.setHours(0, 0, 0, 0);
+        const monthlyRevenue = (paymentsRes.data || []).reduce((s: number, p: any) => s + Number(p.amount), 0);
+        const uniquePTMembers = new Set((ptRes.data || []).map((pt: any) => pt.member_id)).size;
 
-        let paymentsQuery = supabase
-          .from("payments")
-          .select("amount")
-          .eq("status", "success")
-          .gte("created_at", startOfMonth.toISOString());
-        if (Array.isArray(allowedBranchIds)) {
-          paymentsQuery = paymentsQuery.in("branch_id", allowedBranchIds);
-        }
-        const { data: payments, error: paymentsError } = await paymentsQuery;
-        if (paymentsError) throw paymentsError;
-
-        const monthlyRevenue = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
-
-        // Get active PT subscriptions count
-        const todayStr = new Date().toISOString().split("T")[0];
-        let ptQuery = supabase
-          .from("pt_subscriptions")
-          .select("member_id")
-          .eq("status", "active")
-          .gte("end_date", todayStr);
-        if (Array.isArray(allowedBranchIds)) {
-          ptQuery = ptQuery.in("branch_id", allowedBranchIds);
-        }
-        const { data: activePTData, error: ptError } = await ptQuery;
-        if (ptError) throw ptError;
-
-        const uniquePTMembers = new Set(activePTData?.map((pt) => pt.member_id) || []).size;
-
-        // Get daily pass users count
-        let dailyPassQuery = supabase.from("daily_pass_users").select("*", { count: "exact", head: true });
-        if (Array.isArray(allowedBranchIds)) {
-          dailyPassQuery = dailyPassQuery.in("branch_id", allowedBranchIds);
-        }
-        const { count: dailyPassCount, error: dailyPassError } = await dailyPassQuery;
-        if (dailyPassError) throw dailyPassError;
-
-        return new Response(
-          JSON.stringify({
-            totalMembers: totalMembers || 0,
-            activeMembers: activeCount,
-            expiringSoon: expiringSoonCount,
-            expiredMembers: expiredCount,
-            inactiveMembers: inactiveCount,
-            monthlyRevenue,
-            withPT: uniquePTMembers,
-            dailyPassUsers: dailyPassCount || 0,
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({
+          totalMembers: membersCountRes.count || 0,
+          activeMembers: activeCount,
+          expiringSoon: expiringSoonCount,
+          expiredMembers: expiredCount,
+          inactiveMembers: inactiveCount,
+          monthlyRevenue,
+          withPT: uniquePTMembers,
+          dailyPassUsers: dailyPassRes.count || 0,
+        }, 30);
       }
 
       case "trainers": {
@@ -474,19 +392,12 @@ Deno.serve(async (req) => {
           return errorResponse("Permission denied: cannot view trainers", 403);
         }
 
-        let query = supabase.from("personal_trainers").select("*").eq("is_active", true);
-
-        if (Array.isArray(allowedBranchIds)) {
-          query = query.in("branch_id", allowedBranchIds);
-        }
+        let query = supabase.from("personal_trainers").select("id, name, phone, specialization, monthly_fee, monthly_salary, session_fee, percentage_fee, payment_category, is_active, branch_id, created_at, updated_at").eq("is_active", true);
+        if (Array.isArray(allowedBranchIds)) query = query.in("branch_id", allowedBranchIds);
 
         const { data: trainers, error } = await query;
         if (error) throw new Error("Failed to fetch trainers");
-
-        return new Response(
-          JSON.stringify({ trainers: trainers || [] }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ trainers: trainers || [] });
       }
 
       case "all-trainers": {
@@ -495,41 +406,23 @@ Deno.serve(async (req) => {
         }
 
         let query = supabase.from("personal_trainers").select("*");
-
-        if (Array.isArray(allowedBranchIds)) {
-          query = query.in("branch_id", allowedBranchIds);
-        }
+        if (Array.isArray(allowedBranchIds)) query = query.in("branch_id", allowedBranchIds);
 
         const { data: trainers, error } = await query;
         if (error) throw new Error("Failed to fetch trainers");
-
-        return new Response(
-          JSON.stringify({ trainers: trainers || [] }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ trainers: trainers || [] });
       }
 
       case "settings": {
         if (!hasPermission(auth, "can_change_settings")) {
           return errorResponse("Permission denied: cannot access settings", 403);
         }
-
-        if (!branchId) {
-          return errorResponse("Branch ID required", 400);
-        }
+        if (!branchId) return errorResponse("Branch ID required", 400);
 
         const { data: settings, error } = await supabase
-          .from("gym_settings")
-          .select("*")
-          .eq("branch_id", branchId)
-          .maybeSingle();
-
+          .from("gym_settings").select("*").eq("branch_id", branchId).maybeSingle();
         if (error) throw new Error("Failed to fetch settings");
-
-        return new Response(
-          JSON.stringify({ settings: settings || null }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ settings: settings || null });
       }
 
       case "packages": {
@@ -550,17 +443,8 @@ Deno.serve(async (req) => {
           customQuery.order("duration_days"),
         ]);
 
-        if (monthlyResult.error || customResult.error) {
-          throw new Error("Failed to fetch packages");
-        }
-
-        return new Response(
-          JSON.stringify({
-            monthlyPackages: monthlyResult.data || [],
-            customPackages: customResult.data || [],
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        if (monthlyResult.error || customResult.error) throw new Error("Failed to fetch packages");
+        return jsonResponse({ monthlyPackages: monthlyResult.data || [], customPackages: customResult.data || [] });
       }
 
       case "members": {
@@ -571,12 +455,8 @@ Deno.serve(async (req) => {
           return errorResponse("Permission denied: cannot view members", 403);
         }
 
-        // If tenant admin has no branches, return empty list (prevents cross-tenant leakage)
         if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
-          return new Response(
-            JSON.stringify({ members: [], nextCursor: null, totalCount: 0 }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return jsonResponse({ members: [], nextCursor: null, totalCount: 0 });
         }
 
         let countQuery = supabase.from("members").select("*", { count: "exact", head: true });
@@ -595,88 +475,75 @@ Deno.serve(async (req) => {
         if (membersError) throw new Error("Failed to fetch members");
 
         const today = new Date().toISOString().split("T")[0];
+        const memberIds = (members || []).map((m: any) => m.id);
 
-        const membersWithData = await Promise.all(
-          (members || []).map(async (member: Record<string, unknown>) => {
-            const { data: subData } = await supabase
-              .from("subscriptions")
-              .select("id, status, end_date, start_date")
-              .eq("member_id", member.id)
-              .order("end_date", { ascending: false })
-              .limit(1)
-              .maybeSingle();
+        // BATCH: fetch all subscriptions and PT subs for this page in 2 queries instead of N*2
+        const [subsResult, ptResult] = memberIds.length > 0
+          ? await Promise.all([
+              supabase.from("subscriptions")
+                .select("id, member_id, status, end_date, start_date")
+                .in("member_id", memberIds)
+                .order("end_date", { ascending: false }),
+              supabase.from("pt_subscriptions")
+                .select("member_id, end_date, personal_trainer:personal_trainers(name)")
+                .in("member_id", memberIds)
+                .eq("status", "active")
+                .gte("end_date", today)
+                .order("end_date", { ascending: false }),
+            ])
+          : [{ data: [] }, { data: [] }];
 
-            const { data: ptData } = await supabase
-              .from("pt_subscriptions")
-              .select("end_date, personal_trainer:personal_trainers(name)")
-              .eq("member_id", member.id)
-              .eq("status", "active")
-              .gte("end_date", today)
-              .order("end_date", { ascending: false })
-              .limit(1)
-              .maybeSingle();
+        // Build lookup maps (latest sub per member)
+        const subsByMember = new Map<string, any>();
+        for (const sub of subsResult.data || []) {
+          if (!subsByMember.has(sub.member_id)) {
+            subsByMember.set(sub.member_id, sub);
+          }
+        }
 
-            // deno-lint-ignore no-explicit-any
-            const trainerData = ptData?.personal_trainer as any;
-            return {
-              ...member,
-              subscription: subData || undefined,
-              activePT: ptData
-                ? {
-                    trainer_name: trainerData?.name || "Unknown",
-                    end_date: ptData.end_date,
-                  }
-                : null,
-            };
-          })
-        );
+        const ptByMember = new Map<string, any>();
+        for (const pt of ptResult.data || []) {
+          if (!ptByMember.has(pt.member_id)) {
+            ptByMember.set(pt.member_id, pt);
+          }
+        }
+
+        const membersWithData = (members || []).map((member: any) => {
+          const subData = subsByMember.get(member.id);
+          const ptData = ptByMember.get(member.id);
+          const trainerData = ptData?.personal_trainer as any;
+
+          return {
+            ...member,
+            subscription: subData || undefined,
+            activePT: ptData
+              ? { trainer_name: trainerData?.name || "Unknown", end_date: ptData.end_date }
+              : null,
+          };
+        });
 
         const nextCursor = cursor + (members?.length || 0) < (count || 0) ? cursor + limit : null;
 
-        return new Response(
-          JSON.stringify({
-            members: membersWithData,
-            nextCursor,
-            totalCount: count || 0,
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ members: membersWithData, nextCursor, totalCount: count || 0 });
       }
 
       case "member": {
         if (!hasPermission(auth, "can_view_members") && !hasPermission(auth, "can_manage_members")) {
           return errorResponse("Permission denied: cannot view member", 403);
         }
-
-        if (!memberId) {
-          return errorResponse("Member ID required", 400);
-        }
+        if (!memberId) return errorResponse("Member ID required", 400);
 
         const { data: member, error: memberError } = await supabase
-          .from("members")
-          .select("*")
-          .eq("id", memberId)
-          .single();
+          .from("members").select("*").eq("id", memberId).single();
+        if (memberError || !member) return errorResponse("Member not found", 404);
 
-        if (memberError || !member) {
-          return errorResponse("Member not found", 404);
-        }
-
-        // Enforce branch/tenant isolation for staff + tenant-scoped admins
         if (Array.isArray(allowedBranchIds) && !allowedBranchIds.includes(member.branch_id)) {
           return errorResponse("Access denied to this member", 403);
         }
 
         const { data: details } = await supabase
-          .from("member_details")
-          .select("*")
-          .eq("member_id", memberId)
-          .maybeSingle();
-
-        return new Response(
-          JSON.stringify({ member, details: details || null }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+          .from("member_details").select("*").eq("member_id", memberId).maybeSingle();
+        return jsonResponse({ member, details: details || null });
       }
 
       case "payments": {
@@ -684,23 +551,15 @@ Deno.serve(async (req) => {
           return errorResponse("Permission denied: cannot view payments", 403);
         }
 
+        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
+          return jsonResponse({ payments: [], nextCursor: null, totalCount: 0 });
+        }
+
         let countQuery = supabase.from("payments").select("*", { count: "exact", head: true });
         let paymentsQuery = supabase
           .from("payments")
-          .select(`
-            *,
-            member:members(id, name, phone),
-            subscription:subscriptions(id, plan_months, start_date, end_date),
-            daily_pass_user:daily_pass_users(id, name, phone)
-          `)
+          .select("id, amount, payment_mode, status, created_at, notes, payment_type, razorpay_payment_id, razorpay_order_id, branch_id, member_id, subscription_id, daily_pass_user_id, daily_pass_subscription_id, member:members(id, name, phone), daily_pass_user:daily_pass_users(id, name, phone)")
           .order("created_at", { ascending: false });
-
-        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
-          return new Response(
-            JSON.stringify({ payments: [], nextCursor: null, totalCount: 0 }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
 
         if (Array.isArray(allowedBranchIds)) {
           countQuery = countQuery.in("branch_id", allowedBranchIds);
@@ -715,15 +574,7 @@ Deno.serve(async (req) => {
         if (paymentsError) throw new Error("Failed to fetch payments");
 
         const nextCursor = cursor + (payments?.length || 0) < (count || 0) ? cursor + limit : null;
-
-        return new Response(
-          JSON.stringify({
-            payments: payments || [],
-            nextCursor,
-            totalCount: count || 0,
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ payments: payments || [], nextCursor, totalCount: count || 0 });
       }
 
       case "ledger": {
@@ -731,23 +582,15 @@ Deno.serve(async (req) => {
           return errorResponse("Permission denied: cannot view ledger", 403);
         }
 
+        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
+          return jsonResponse({ entries: [], nextCursor: null, totalCount: 0 });
+        }
+
         let countQuery = supabase.from("ledger_entries").select("*", { count: "exact", head: true });
         let ledgerQuery = supabase
           .from("ledger_entries")
-          .select(`
-            *,
-            member:members(id, name, phone),
-            trainer:personal_trainers(id, name),
-            daily_pass_user:daily_pass_users(id, name, phone)
-          `)
+          .select("id, amount, entry_type, category, description, entry_date, notes, branch_id, member_id, daily_pass_user_id, trainer_id, is_auto_generated, created_at, member:members(id, name, phone), trainer:personal_trainers(id, name), daily_pass_user:daily_pass_users(id, name, phone)")
           .order("entry_date", { ascending: false });
-
-        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
-          return new Response(
-            JSON.stringify({ entries: [], nextCursor: null, totalCount: 0 }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
 
         if (Array.isArray(allowedBranchIds)) {
           countQuery = countQuery.in("branch_id", allowedBranchIds);
@@ -762,15 +605,7 @@ Deno.serve(async (req) => {
         if (ledgerError) throw new Error("Failed to fetch ledger entries");
 
         const nextCursor = cursor + (entries?.length || 0) < (count || 0) ? cursor + limit : null;
-
-        return new Response(
-          JSON.stringify({
-            entries: entries || [],
-            nextCursor,
-            totalCount: count || 0,
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ entries: entries || [], nextCursor, totalCount: count || 0 });
       }
 
       case "subscriptions": {
@@ -778,34 +613,21 @@ Deno.serve(async (req) => {
           return errorResponse("Permission denied: cannot view subscriptions", 403);
         }
 
+        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
+          return jsonResponse({ subscriptions: [] });
+        }
+
         let query = supabase
           .from("subscriptions")
-          .select(`
-            *,
-            member:members(id, name, phone),
-            personal_trainer:personal_trainers(id, name)
-          `)
+          .select("id, member_id, start_date, end_date, plan_months, status, branch_id, personal_trainer_id, trainer_fee, is_custom_package, custom_days, created_at, member:members(id, name, phone), personal_trainer:personal_trainers(id, name)")
           .order("created_at", { ascending: false });
 
-        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
-          return new Response(
-            JSON.stringify({ subscriptions: [] }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        if (Array.isArray(allowedBranchIds)) {
-          query = query.in("branch_id", allowedBranchIds);
-        }
+        if (Array.isArray(allowedBranchIds)) query = query.in("branch_id", allowedBranchIds);
 
         query = query.range(cursor, cursor + limit - 1);
         const { data: subscriptions, error } = await query;
         if (error) throw new Error("Failed to fetch subscriptions");
-
-        return new Response(
-          JSON.stringify({ subscriptions: subscriptions || [] }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ subscriptions: subscriptions || [] });
       }
 
       case "daily-pass-users": {
@@ -813,15 +635,12 @@ Deno.serve(async (req) => {
           return errorResponse("Permission denied: cannot view daily pass users", 403);
         }
 
+        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
+          return jsonResponse({ users: [], nextCursor: null, totalCount: 0 });
+        }
+
         let countQuery = supabase.from("daily_pass_users").select("*", { count: "exact", head: true });
         let usersQuery = supabase.from("daily_pass_users").select("*").order("created_at", { ascending: false });
-
-        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
-          return new Response(
-            JSON.stringify({ users: [], nextCursor: null, totalCount: 0 }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
 
         if (Array.isArray(allowedBranchIds)) {
           countQuery = countQuery.in("branch_id", allowedBranchIds);
@@ -836,79 +655,53 @@ Deno.serve(async (req) => {
         if (usersError) throw new Error("Failed to fetch daily pass users");
 
         const today = new Date().toISOString().split("T")[0];
+        const userIds = (users || []).map((u: any) => u.id);
 
-        const usersWithSubs = await Promise.all(
-          (users || []).map(async (user: Record<string, unknown>) => {
-            const { data: subData } = await supabase
-              .from("daily_pass_subscriptions")
-              .select("*")
-              .eq("daily_pass_user_id", user.id)
+        // BATCH: fetch all subscriptions for this page in 1 query instead of N
+        const subsResult = userIds.length > 0
+          ? await supabase.from("daily_pass_subscriptions")
+              .select("id, daily_pass_user_id, package_name, duration_days, start_date, end_date, price, status")
+              .in("daily_pass_user_id", userIds)
               .order("end_date", { ascending: false })
-              .limit(1)
-              .maybeSingle();
+          : { data: [] };
 
-            const isActive = subData && subData.end_date >= today;
+        // Build lookup (latest sub per user)
+        const subsByUser = new Map<string, any>();
+        for (const sub of subsResult.data || []) {
+          if (!subsByUser.has(sub.daily_pass_user_id)) {
+            subsByUser.set(sub.daily_pass_user_id, sub);
+          }
+        }
 
-            return {
-              ...user,
-              latestSubscription: subData || null,
-              isActive,
-            };
-          })
-        );
+        const usersWithSubs = (users || []).map((user: any) => {
+          const subData = subsByUser.get(user.id) || null;
+          return { ...user, latestSubscription: subData, isActive: subData && subData.end_date >= today };
+        });
 
         const nextCursor = cursor + (users?.length || 0) < (count || 0) ? cursor + limit : null;
-
-        return new Response(
-          JSON.stringify({
-            users: usersWithSubs,
-            nextCursor,
-            totalCount: count || 0,
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ users: usersWithSubs, nextCursor, totalCount: count || 0 });
       }
 
       case "settings-page-data": {
-        // Aggregated settings page data: gym_settings + monthly_packages + custom_packages
-        if (!branchId) {
-          return errorResponse("Branch ID required", 400);
-        }
+        if (!branchId) return errorResponse("Branch ID required", 400);
 
         const [settingsRes, monthlyRes, customRes] = await Promise.all([
-          supabase
-            .from("gym_settings")
-            .select("id, gym_name, gym_phone, gym_address, whatsapp_enabled")
-            .eq("branch_id", branchId)
-            .limit(1)
-            .maybeSingle(),
-          supabase
-            .from("monthly_packages")
-            .select("*")
-            .eq("branch_id", branchId)
-            .order("months"),
-          supabase
-            .from("custom_packages")
-            .select("*")
-            .eq("branch_id", branchId)
-            .order("duration_days"),
+          supabase.from("gym_settings")
+            .select("id, gym_name, gym_phone, gym_address, whatsapp_enabled, whatsapp_auto_send")
+            .eq("branch_id", branchId).limit(1).maybeSingle(),
+          supabase.from("monthly_packages").select("*").eq("branch_id", branchId).order("months"),
+          supabase.from("custom_packages").select("*").eq("branch_id", branchId).order("duration_days"),
         ]);
 
-        return new Response(
-          JSON.stringify({
-            settings: settingsRes.data || null,
-            monthlyPackages: monthlyRes.data || [],
-            customPackages: customRes.data || [],
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({
+          settings: settingsRes.data || null,
+          monthlyPackages: monthlyRes.data || [],
+          customPackages: customRes.data || [],
+        }, 120);
       }
 
       case "log-stats": {
-        // Aggregated stats for activity logs - counts only, no full data
-        if (!branchId) {
-          return errorResponse("Branch ID required", 400);
-        }
+        if (!branchId) return errorResponse("Branch ID required", 400);
 
         const logType = url.searchParams.get("logType") || "admin";
         const today = new Date();
@@ -928,7 +721,7 @@ Deno.serve(async (req) => {
               .gte("created_at", weekAgo.toISOString()),
             baseFilter(supabase.from("admin_activity_logs").select("*", { count: "exact", head: true }))
               .gte("created_at", monthAgo.toISOString()),
-            baseFilter(supabase.from("admin_activity_logs").select("activity_category")),
+            baseFilter(supabase.from("admin_activity_logs").select("activity_category")).limit(50000),
           ]);
 
           const byCategory: Record<string, number> = {};
@@ -936,16 +729,13 @@ Deno.serve(async (req) => {
             byCategory[r.activity_category] = (byCategory[r.activity_category] || 0) + 1;
           });
 
-          return new Response(
-            JSON.stringify({
-              totalActivities: totalRes.count || 0,
-              activitiesToday: todayRes.count || 0,
-              activitiesThisWeek: weekRes.count || 0,
-              activitiesThisMonth: monthRes.count || 0,
-              byCategory,
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return jsonResponse({
+            totalActivities: totalRes.count || 0,
+            activitiesToday: todayRes.count || 0,
+            activitiesThisWeek: weekRes.count || 0,
+            activitiesThisMonth: monthRes.count || 0,
+            byCategory,
+          }, 60);
         }
 
         if (logType === "user") {
@@ -958,7 +748,7 @@ Deno.serve(async (req) => {
               .gte("created_at", weekAgo.toISOString()),
             baseFilter(supabase.from("user_activity_logs").select("*", { count: "exact", head: true }))
               .gte("created_at", monthAgo.toISOString()),
-            baseFilter(supabase.from("user_activity_logs").select("activity_type")),
+            baseFilter(supabase.from("user_activity_logs").select("activity_type")).limit(50000),
           ]);
 
           const byType: Record<string, number> = {};
@@ -966,25 +756,23 @@ Deno.serve(async (req) => {
             byType[r.activity_type] = (byType[r.activity_type] || 0) + 1;
           });
 
-          return new Response(
-            JSON.stringify({
-              totalActivities: totalRes.count || 0,
-              activitiesToday: todayRes.count || 0,
-              activitiesThisWeek: weekRes.count || 0,
-              activitiesThisMonth: monthRes.count || 0,
-              byType,
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return jsonResponse({
+            totalActivities: totalRes.count || 0,
+            activitiesToday: todayRes.count || 0,
+            activitiesThisWeek: weekRes.count || 0,
+            activitiesThisMonth: monthRes.count || 0,
+            byType,
+          }, 60);
         }
 
         if (logType === "staff") {
           const baseFilter = (q: any) => q.eq("branch_id", branchId).is("admin_user_id", null);
-          const [totalRes, todayRes, typeRes] = await Promise.all([
+          const [totalRes, todayRes, typeRes, assignmentsRes] = await Promise.all([
             baseFilter(supabase.from("admin_activity_logs").select("*", { count: "exact", head: true })),
             baseFilter(supabase.from("admin_activity_logs").select("*", { count: "exact", head: true }))
               .gte("created_at", today.toISOString()),
-            baseFilter(supabase.from("admin_activity_logs").select("activity_type")),
+            baseFilter(supabase.from("admin_activity_logs").select("activity_type")).limit(50000),
+            supabase.from("staff_branch_assignments").select("staff_id").eq("branch_id", branchId),
           ]);
 
           const typeCounts: Record<string, number> = {};
@@ -992,51 +780,33 @@ Deno.serve(async (req) => {
             typeCounts[r.activity_type] = (typeCounts[r.activity_type] || 0) + 1;
           });
 
-          // Also fetch staff list for the filter dropdown
-          const { data: assignments } = await supabase
-            .from("staff_branch_assignments")
-            .select("staff_id")
-            .eq("branch_id", branchId);
-          const staffIds = (assignments || []).map((a: any) => a.staff_id);
+          const staffIds = (assignmentsRes.data || []).map((a: any) => a.staff_id);
           let staffList: any[] = [];
           if (staffIds.length > 0) {
             const { data: staffData } = await supabase
-              .from("staff")
-              .select("id, full_name, phone")
-              .in("id", staffIds)
-              .eq("is_active", true)
-              .order("full_name");
+              .from("staff").select("id, full_name, phone").in("id", staffIds).eq("is_active", true).order("full_name");
             staffList = staffData || [];
           }
 
-          return new Response(
-            JSON.stringify({
-              totalActivities: totalRes.count || 0,
-              activitiesToday: todayRes.count || 0,
-              typeCounts,
-              staffList,
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return jsonResponse({
+            totalActivities: totalRes.count || 0,
+            activitiesToday: todayRes.count || 0,
+            typeCounts,
+            staffList,
+          }, 60);
         }
 
         if (logType === "whatsapp") {
           const baseFilter = (q: any) => q.eq("branch_id", branchId);
           const [totalRes, sentRes, failedRes, manualRes, todayRes, weekRes, monthRes, typeRes] = await Promise.all([
             baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true })),
-            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true }))
-              .eq("status", "sent"),
-            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true }))
-              .eq("status", "failed"),
-            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true }))
-              .eq("is_manual", true),
-            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true }))
-              .gte("sent_at", today.toISOString()),
-            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true }))
-              .gte("sent_at", weekAgo.toISOString()),
-            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true }))
-              .gte("sent_at", monthAgo.toISOString()),
-            baseFilter(supabase.from("whatsapp_notifications").select("notification_type")),
+            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true })).eq("status", "sent"),
+            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true })).eq("status", "failed"),
+            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true })).eq("is_manual", true),
+            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true })).gte("sent_at", today.toISOString()),
+            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true })).gte("sent_at", weekAgo.toISOString()),
+            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true })).gte("sent_at", monthAgo.toISOString()),
+            baseFilter(supabase.from("whatsapp_notifications").select("notification_type")).limit(50000),
           ]);
 
           const messagesByType: Record<string, number> = {};
@@ -1044,145 +814,77 @@ Deno.serve(async (req) => {
             messagesByType[r.notification_type] = (messagesByType[r.notification_type] || 0) + 1;
           });
 
-          return new Response(
-            JSON.stringify({
-              totalMessages: totalRes.count || 0,
-              sentMessages: sentRes.count || 0,
-              failedMessages: failedRes.count || 0,
-              manualMessages: manualRes.count || 0,
-              automatedMessages: (totalRes.count || 0) - (manualRes.count || 0),
-              messagesToday: todayRes.count || 0,
-              messagesThisWeek: weekRes.count || 0,
-              messagesThisMonth: monthRes.count || 0,
-              messagesByType,
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return jsonResponse({
+            totalMessages: totalRes.count || 0,
+            sentMessages: sentRes.count || 0,
+            failedMessages: failedRes.count || 0,
+            manualMessages: manualRes.count || 0,
+            automatedMessages: (totalRes.count || 0) - (manualRes.count || 0),
+            messagesToday: todayRes.count || 0,
+            messagesThisWeek: weekRes.count || 0,
+            messagesThisMonth: monthRes.count || 0,
+            messagesByType,
+          }, 60);
         }
 
         return errorResponse("Invalid logType", 400);
       }
 
       case "analytics-data": {
-        // Aggregated analytics data for the Analytics page
         if (!isModuleEnabled("reports_analytics")) {
           return errorResponse("Analytics is not available on your plan", 403);
         }
-
-        if (!branchId) {
-          return errorResponse("Branch ID required", 400);
-        }
+        if (!branchId) return errorResponse("Branch ID required", 400);
 
         const dateFromParam = url.searchParams.get("dateFrom");
         const dateToParam = url.searchParams.get("dateTo");
-        if (!dateFromParam || !dateToParam) {
-          return errorResponse("dateFrom and dateTo required", 400);
-        }
+        if (!dateFromParam || !dateToParam) return errorResponse("dateFrom and dateTo required", 400);
 
-        // Fetch all analytics data in parallel
-        const [
-          paymentsRes,
-          membersInRangeRes,
-          membersBeforeRes,
-          totalMembersRes,
-          activeMembersRes,
-          trainersRes,
-          ptSubsRes,
-          monthlyPkgsRes,
-          subsInRangeRes,
-        ] = await Promise.all([
-          supabase
-            .from("payments")
-            .select("amount, created_at")
-            .eq("branch_id", branchId)
-            .eq("status", "success")
-            .gte("created_at", `${dateFromParam}T00:00:00`)
-            .lte("created_at", `${dateToParam}T23:59:59`)
-            .order("created_at", { ascending: true }),
-          supabase
-            .from("members")
-            .select("created_at")
-            .eq("branch_id", branchId)
-            .gte("created_at", `${dateFromParam}T00:00:00`)
-            .lte("created_at", `${dateToParam}T23:59:59`)
-            .order("created_at", { ascending: true }),
-          supabase
-            .from("members")
-            .select("*", { count: "exact", head: true })
-            .eq("branch_id", branchId)
+        const [paymentsRes, membersInRangeRes, membersBeforeRes, totalMembersRes, activeMembersRes, trainersRes, ptSubsRes, monthlyPkgsRes, subsInRangeRes] = await Promise.all([
+          supabase.from("payments").select("amount, created_at").eq("branch_id", branchId).eq("status", "success")
+            .gte("created_at", `${dateFromParam}T00:00:00`).lte("created_at", `${dateToParam}T23:59:59`).order("created_at", { ascending: true }),
+          supabase.from("members").select("created_at").eq("branch_id", branchId)
+            .gte("created_at", `${dateFromParam}T00:00:00`).lte("created_at", `${dateToParam}T23:59:59`).order("created_at", { ascending: true }),
+          supabase.from("members").select("*", { count: "exact", head: true }).eq("branch_id", branchId)
             .lt("created_at", `${dateFromParam}T00:00:00`),
-          supabase
-            .from("members")
-            .select("*", { count: "exact", head: true })
-            .eq("branch_id", branchId),
-          supabase
-            .from("subscriptions")
-            .select("*", { count: "exact", head: true })
-            .eq("branch_id", branchId)
-            .eq("status", "active"),
-          supabase
-            .from("personal_trainers")
-            .select("id, name")
-            .eq("branch_id", branchId)
-            .eq("is_active", true),
-          supabase
-            .from("pt_subscriptions")
-            .select("personal_trainer_id, member_id, total_fee, created_at, status")
-            .eq("branch_id", branchId)
-            .gte("created_at", `${dateFromParam}T00:00:00`)
-            .lte("created_at", `${dateToParam}T23:59:59`),
-          supabase
-            .from("monthly_packages")
-            .select("id, months, price")
-            .eq("branch_id", branchId)
-            .eq("is_active", true)
-            .order("months", { ascending: true }),
-          supabase
-            .from("subscriptions")
-            .select("plan_months, created_at, is_custom_package")
-            .eq("branch_id", branchId)
-            .gte("created_at", `${dateFromParam}T00:00:00`)
-            .lte("created_at", `${dateToParam}T23:59:59`),
+          supabase.from("members").select("*", { count: "exact", head: true }).eq("branch_id", branchId),
+          supabase.from("subscriptions").select("*", { count: "exact", head: true }).eq("branch_id", branchId).eq("status", "active"),
+          supabase.from("personal_trainers").select("id, name").eq("branch_id", branchId).eq("is_active", true),
+          supabase.from("pt_subscriptions").select("personal_trainer_id, member_id, total_fee, created_at, status").eq("branch_id", branchId)
+            .gte("created_at", `${dateFromParam}T00:00:00`).lte("created_at", `${dateToParam}T23:59:59`),
+          supabase.from("monthly_packages").select("id, months, price").eq("branch_id", branchId).eq("is_active", true).order("months", { ascending: true }),
+          supabase.from("subscriptions").select("plan_months, created_at, is_custom_package").eq("branch_id", branchId)
+            .gte("created_at", `${dateFromParam}T00:00:00`).lte("created_at", `${dateToParam}T23:59:59`),
         ]);
 
-        return new Response(
-          JSON.stringify({
-            payments: paymentsRes.data || [],
-            membersInRange: membersInRangeRes.data || [],
-            membersBefore: membersBeforeRes.count || 0,
-            totalMembers: totalMembersRes.count || 0,
-            activeMembers: activeMembersRes.count || 0,
-            trainers: trainersRes.data || [],
-            ptSubscriptions: ptSubsRes.data || [],
-            monthlyPackages: monthlyPkgsRes.data || [],
-            subscriptionsInRange: subsInRangeRes.data || [],
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({
+          payments: paymentsRes.data || [],
+          membersInRange: membersInRangeRes.data || [],
+          membersBefore: membersBeforeRes.count || 0,
+          totalMembers: totalMembersRes.count || 0,
+          activeMembers: activeMembersRes.count || 0,
+          trainers: trainersRes.data || [],
+          ptSubscriptions: ptSubsRes.data || [],
+          monthlyPackages: monthlyPkgsRes.data || [],
+          subscriptionsInRange: subsInRangeRes.data || [],
+        }, 60);
       }
 
       case "staff-page-data": {
-        // Aggregated staff page data - requires admin access
         if (!auth.isAdmin && !auth.isStaff) {
           return errorResponse("Permission denied", 403);
         }
 
         const [staffResult, permissionsResult, assignmentsResult, ledgerResult] = await Promise.all([
-          supabase
-            .from("staff")
+          supabase.from("staff")
             .select("id, full_name, phone, role, id_type, id_number, salary_type, monthly_salary, session_fee, percentage_fee, specialization, auth_user_id, password_set_at, is_active, created_at, updated_at, last_login_at, last_login_ip, failed_login_attempts, locked_until")
             .order("full_name"),
-          supabase
-            .from("staff_permissions")
+          supabase.from("staff_permissions")
             .select("id, staff_id, can_view_members, can_manage_members, can_access_ledger, can_access_payments, can_access_analytics, can_change_settings"),
-          supabase
-            .from("staff_branch_assignments")
+          supabase.from("staff_branch_assignments")
             .select("id, staff_id, branch_id, is_primary, branches(name)"),
-          // Aggregate ledger expenses for staff-related categories
           (() => {
-            let q = supabase
-              .from("ledger_entries")
-              .select("amount")
+            let q = supabase.from("ledger_entries").select("amount")
               .eq("entry_type", "expense")
               .in("category", ["trainer_percentage", "trainer_session", "staff_salary"]);
             if (Array.isArray(allowedBranchIds) && allowedBranchIds.length > 0) {
@@ -1194,22 +896,17 @@ Deno.serve(async (req) => {
 
         if (staffResult.error) throw new Error("Failed to fetch staff: " + staffResult.error.message);
 
-        // Combine staff with permissions and assignments
         const combinedStaff = (staffResult.data || []).map((s: any) => ({
           ...s,
           permissions: (permissionsResult.data || []).find((p: any) => p.staff_id === s.id) || null,
           branch_assignments: (assignmentsResult.data || [])
             .filter((a: any) => a.staff_id === s.id)
             .map((a: any) => ({
-              id: a.id,
-              staff_id: a.staff_id,
-              branch_id: a.branch_id,
-              is_primary: a.is_primary,
-              branch_name: a.branches?.name || null,
+              id: a.id, staff_id: a.staff_id, branch_id: a.branch_id,
+              is_primary: a.is_primary, branch_name: a.branches?.name || null,
             })),
         }));
 
-        // Filter by allowed branches
         let filteredStaff = combinedStaff;
         if (Array.isArray(allowedBranchIds) && allowedBranchIds.length > 0) {
           filteredStaff = combinedStaff.filter((s: any) =>
@@ -1219,137 +916,131 @@ Deno.serve(async (req) => {
         }
 
         const totalPaidToStaff = (ledgerResult.data || []).reduce(
-          (sum: number, e: any) => sum + Number(e.amount || 0),
-          0
+          (sum: number, e: any) => sum + Number(e.amount || 0), 0
         );
 
-        return new Response(
-          JSON.stringify({ staff: filteredStaff, totalPaidToStaff }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ staff: filteredStaff, totalPaidToStaff }, 60);
       }
 
       case "branch-analytics-data": {
-        // Aggregated branch analytics: metrics for all branches + trainer metrics
         const dateFromParam = url.searchParams.get("dateFrom");
         const dateToParam = url.searchParams.get("dateTo");
         const prevFromParam = url.searchParams.get("prevFrom");
         const prevToParam = url.searchParams.get("prevTo");
 
-        if (!dateFromParam || !dateToParam) {
-          return errorResponse("dateFrom and dateTo required", 400);
-        }
+        if (!dateFromParam || !dateToParam) return errorResponse("dateFrom and dateTo required", 400);
 
         // Resolve allowed branches based on user's tenant (data isolation)
-        const allowedBranchIds = await resolveAllowedBranchIds(supabase, auth, null);
+        const branchAllowed = await resolveAllowedBranchIds(supabase, auth, null);
 
-        // Build query scoped to user's tenant branches
-        let branchQuery = supabase
-          .from("branches")
-          .select("id, name")
-          .eq("is_active", true)
-          .is("deleted_at", null);
-
-        // If allowedBranchIds is not null, filter to only those branches
-        if (allowedBranchIds !== null) {
-          if (allowedBranchIds.length === 0) {
-            return new Response(
-              JSON.stringify({ branchMetrics: [], trainerMetrics: [] }),
-              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
+        let branchQuery = supabase.from("branches").select("id, name").eq("is_active", true).is("deleted_at", null);
+        if (branchAllowed !== null) {
+          if (branchAllowed.length === 0) {
+            return jsonResponse({ branchMetrics: [], trainerMetrics: [] }, 120);
           }
-          branchQuery = branchQuery.in("id", allowedBranchIds);
+          branchQuery = branchQuery.in("id", branchAllowed);
         }
 
         const { data: activeBranches } = await branchQuery;
-
         if (!activeBranches || activeBranches.length === 0) {
-          return new Response(
-            JSON.stringify({ branchMetrics: [], trainerMetrics: [] }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return jsonResponse({ branchMetrics: [], trainerMetrics: [] }, 120);
         }
 
         const branchIds = activeBranches.map((b: any) => b.id);
         const branchNameMap: Record<string, string> = {};
         activeBranches.forEach((b: any) => { branchNameMap[b.id] = b.name; });
 
-        // Helper to fetch metrics for a single branch and period
-        const fetchBranchMetrics = async (bid: string, from: string, to: string) => {
-          const [
-            { data: payments },
-            { data: expenses },
-            { count: totalMembers },
-            { count: newMembersCount },
-            { count: activeMembers },
-            { count: churnedMembers },
-            { count: ptSubscriptions },
-            { count: staffCount },
-            { data: marketingExpenses },
-          ] = await Promise.all([
-            supabase.from("payments").select("amount").eq("branch_id", bid).eq("status", "success")
+        // BATCH: Fetch all data for ALL branches in bulk queries instead of per-branch
+        const fetchPeriodData = async (from: string, to: string) => {
+          const [paymentsRes, expensesRes, totalMembersRes, newMembersRes, activeSubsRes, churnedRes, ptSubsRes, staffCountRes, marketingRes] = await Promise.all([
+            supabase.from("payments").select("amount, branch_id").in("branch_id", branchIds).eq("status", "success")
               .gte("created_at", `${from}T00:00:00`).lte("created_at", `${to}T23:59:59`),
-            supabase.from("ledger_entries").select("amount").eq("branch_id", bid).eq("entry_type", "expense")
+            supabase.from("ledger_entries").select("amount, branch_id").in("branch_id", branchIds).eq("entry_type", "expense")
               .gte("entry_date", from).lte("entry_date", to),
-            supabase.from("members").select("*", { count: "exact", head: true }).eq("branch_id", bid),
-            supabase.from("members").select("*", { count: "exact", head: true }).eq("branch_id", bid)
+            supabase.from("members").select("id, branch_id").in("branch_id", branchIds),
+            supabase.from("members").select("id, branch_id").in("branch_id", branchIds)
               .gte("created_at", `${from}T00:00:00`).lte("created_at", `${to}T23:59:59`),
-            supabase.from("subscriptions").select("*", { count: "exact", head: true }).eq("branch_id", bid).eq("status", "active"),
-            supabase.from("subscriptions").select("*", { count: "exact", head: true }).eq("branch_id", bid).eq("status", "expired")
+            supabase.from("subscriptions").select("id, branch_id").in("branch_id", branchIds).eq("status", "active"),
+            supabase.from("subscriptions").select("id, branch_id").in("branch_id", branchIds).eq("status", "expired")
               .gte("end_date", from).lte("end_date", to),
-            supabase.from("pt_subscriptions").select("*", { count: "exact", head: true }).eq("branch_id", bid)
+            supabase.from("pt_subscriptions").select("id, branch_id").in("branch_id", branchIds)
               .gte("created_at", `${from}T00:00:00`).lte("created_at", `${to}T23:59:59`),
-            supabase.from("staff_branch_assignments").select("*", { count: "exact", head: true }).eq("branch_id", bid),
-            supabase.from("ledger_entries").select("amount").eq("branch_id", bid).eq("entry_type", "expense")
+            supabase.from("staff_branch_assignments").select("id, branch_id").in("branch_id", branchIds),
+            supabase.from("ledger_entries").select("amount, branch_id").in("branch_id", branchIds).eq("entry_type", "expense")
               .ilike("category", "%marketing%").gte("entry_date", from).lte("entry_date", to),
           ]);
 
-          const revenue = payments?.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0) || 0;
-          const totalExpenses = expenses?.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0) || 0;
+          // Group by branch_id
+          const groupSum = (data: any[], field = "amount") => {
+            const map: Record<string, number> = {};
+            for (const row of data || []) {
+              map[row.branch_id] = (map[row.branch_id] || 0) + Number(row[field] || 0);
+            }
+            return map;
+          };
+
+          const groupCount = (data: any[]) => {
+            const map: Record<string, number> = {};
+            for (const row of data || []) {
+              map[row.branch_id] = (map[row.branch_id] || 0) + 1;
+            }
+            return map;
+          };
+
+          return {
+            revenueByBranch: groupSum(paymentsRes.data || []),
+            expensesByBranch: groupSum(expensesRes.data || []),
+            totalMembersByBranch: groupCount(totalMembersRes.data || []),
+            newMembersByBranch: groupCount(newMembersRes.data || []),
+            activeMembersByBranch: groupCount(activeSubsRes.data || []),
+            churnedByBranch: groupCount(churnedRes.data || []),
+            ptSubsByBranch: groupCount(ptSubsRes.data || []),
+            staffByBranch: groupCount(staffCountRes.data || []),
+            marketingByBranch: groupSum(marketingRes.data || []),
+          };
+        };
+
+        const [currentData, previousData] = await Promise.all([
+          fetchPeriodData(dateFromParam, dateToParam),
+          prevFromParam && prevToParam ? fetchPeriodData(prevFromParam, prevToParam) : Promise.resolve(null),
+        ]);
+
+        const branchMetrics = branchIds.map((bid: string) => {
+          const revenue = currentData.revenueByBranch[bid] || 0;
+          const totalExpenses = currentData.expensesByBranch[bid] || 0;
           const profit = revenue - totalExpenses;
           const profitMargin = revenue > 0 ? (profit / revenue) * 100 : 0;
-          const newMembers = newMembersCount || 0;
-          const churnRate = (totalMembers || 0) > 0 ? ((churnedMembers || 0) / (totalMembers || 0)) * 100 : 0;
+          const totalMembers = currentData.totalMembersByBranch[bid] || 0;
+          const newMembers = currentData.newMembersByBranch[bid] || 0;
+          const activeMembers = currentData.activeMembersByBranch[bid] || 0;
+          const churnedMembers = currentData.churnedByBranch[bid] || 0;
+          const churnRate = totalMembers > 0 ? (churnedMembers / totalMembers) * 100 : 0;
           const conversionRate = newMembers > 0 ? Math.min((newMembers / (newMembers + 10)) * 100, 100) : 0;
-          const staffPerformance = (staffCount || 0) > 0 ? revenue / (staffCount || 1) : 0;
-          const marketingExpense = marketingExpenses?.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0) || 0;
+          const staffCount = currentData.staffByBranch[bid] || 0;
+          const staffPerformance = staffCount > 0 ? revenue / staffCount : 0;
+          const marketingExpense = currentData.marketingByBranch[bid] || 0;
           const marketingROI = marketingExpense > 0 ? ((revenue - marketingExpense) / marketingExpense) * 100 : 0;
-          const avgRevenuePerMember = (totalMembers || 0) > 0 ? revenue / (totalMembers || 1) : 0;
+          const avgRevenuePerMember = totalMembers > 0 ? revenue / totalMembers : 0;
+
+          let previousPeriodRevenue = 0, revenueGrowth = 0, previousPeriodMembers = 0, memberGrowth = 0;
+          if (previousData) {
+            previousPeriodRevenue = previousData.revenueByBranch[bid] || 0;
+            revenueGrowth = previousPeriodRevenue > 0 ? ((revenue - previousPeriodRevenue) / previousPeriodRevenue) * 100 : revenue > 0 ? 100 : 0;
+            previousPeriodMembers = previousData.totalMembersByBranch[bid] || 0;
+            memberGrowth = previousPeriodMembers > 0 ? ((totalMembers - previousPeriodMembers) / previousPeriodMembers) * 100 : totalMembers > 0 ? 100 : 0;
+          }
 
           return {
             branchId: bid, branchName: branchNameMap[bid],
             revenue, expenses: totalExpenses, profit, profitMargin,
-            totalMembers: totalMembers || 0, activeMembers: activeMembers || 0,
-            newMembers, churnedMembers: churnedMembers || 0, churnRate, conversionRate,
-            ptSubscriptions: ptSubscriptions || 0, avgRevenuePerMember,
-            staffCount: staffCount || 0, staffPerformance, marketingROI,
-            previousPeriodRevenue: 0, revenueGrowth: 0, previousPeriodMembers: 0, memberGrowth: 0,
+            totalMembers, activeMembers, newMembers, churnedMembers, churnRate, conversionRate,
+            ptSubscriptions: currentData.ptSubsByBranch[bid] || 0, avgRevenuePerMember,
+            staffCount, staffPerformance, marketingROI,
+            previousPeriodRevenue, revenueGrowth, previousPeriodMembers, memberGrowth,
           };
-        };
-
-        // Fetch current + previous period for all branches in parallel
-        const currentPromises = branchIds.map((bid: string) => fetchBranchMetrics(bid, dateFromParam, dateToParam));
-        const previousPromises = prevFromParam && prevToParam
-          ? branchIds.map((bid: string) => fetchBranchMetrics(bid, prevFromParam, prevToParam))
-          : [];
-
-        const [currentResults, previousResults] = await Promise.all([
-          Promise.all(currentPromises),
-          previousPromises.length > 0 ? Promise.all(previousPromises) : Promise.resolve([]),
-        ]);
-
-        // Merge current and previous metrics
-        const branchMetrics = currentResults.map((current: any, i: number) => {
-          const prev = previousResults[i];
-          if (prev) {
-            const revenueGrowth = prev.revenue > 0 ? ((current.revenue - prev.revenue) / prev.revenue) * 100 : current.revenue > 0 ? 100 : 0;
-            const memberGrowth = prev.totalMembers > 0 ? ((current.totalMembers - prev.totalMembers) / prev.totalMembers) * 100 : current.totalMembers > 0 ? 100 : 0;
-            return { ...current, previousPeriodRevenue: prev.revenue, revenueGrowth, previousPeriodMembers: prev.totalMembers, memberGrowth };
-          }
-          return current;
         });
 
-        // Fetch trainer metrics
+        // Trainer metrics - batch fetch all trainers + their PT subs
         const { data: trainers } = await supabase
           .from("personal_trainers")
           .select("id, name, branch_id, payment_category, percentage_fee, session_fee, monthly_salary")
@@ -1358,37 +1049,61 @@ Deno.serve(async (req) => {
 
         let trainerMetricsResult: any[] = [];
         if (trainers && trainers.length > 0) {
-          const trainerPromises = trainers.map(async (trainer: any) => {
-            const [{ data: currentPtSubs }, { data: allPtSubs }, { data: previousPtSubs }] = await Promise.all([
-              supabase.from("pt_subscriptions").select("id, member_id, total_fee, created_at, status, start_date, end_date")
-                .eq("personal_trainer_id", trainer.id).eq("branch_id", trainer.branch_id)
-                .gte("created_at", `${dateFromParam}T00:00:00`).lte("created_at", `${dateToParam}T23:59:59`),
-              supabase.from("pt_subscriptions").select("id, member_id, total_fee, created_at, status, start_date, end_date")
-                .eq("personal_trainer_id", trainer.id).eq("branch_id", trainer.branch_id),
-              prevFromParam && prevToParam
-                ? supabase.from("pt_subscriptions").select("id, member_id, total_fee, created_at")
-                    .eq("personal_trainer_id", trainer.id).eq("branch_id", trainer.branch_id)
-                    .gte("created_at", `${prevFromParam}T00:00:00`).lte("created_at", `${prevToParam}T23:59:59`)
-                : Promise.resolve({ data: [] }),
-            ]);
+          const trainerIds = trainers.map((t: any) => t.id);
 
-            const currentRevenue = currentPtSubs?.reduce((sum: number, s: any) => sum + Number(s.total_fee || 0), 0) || 0;
-            const previousRevenue = previousPtSubs?.reduce((sum: number, s: any) => sum + Number(s.total_fee || 0), 0) || 0;
+          // BATCH: fetch all PT subs for all trainers at once
+          const [allPtSubsRes, currentPtSubsRes, previousPtSubsRes] = await Promise.all([
+            supabase.from("pt_subscriptions")
+              .select("id, personal_trainer_id, member_id, total_fee, created_at, status, start_date, end_date")
+              .in("personal_trainer_id", trainerIds).in("branch_id", branchIds),
+            supabase.from("pt_subscriptions")
+              .select("id, personal_trainer_id, member_id, total_fee, created_at, status")
+              .in("personal_trainer_id", trainerIds).in("branch_id", branchIds)
+              .gte("created_at", `${dateFromParam}T00:00:00`).lte("created_at", `${dateToParam}T23:59:59`),
+            prevFromParam && prevToParam
+              ? supabase.from("pt_subscriptions")
+                  .select("id, personal_trainer_id, member_id, total_fee, created_at")
+                  .in("personal_trainer_id", trainerIds).in("branch_id", branchIds)
+                  .gte("created_at", `${prevFromParam}T00:00:00`).lte("created_at", `${prevToParam}T23:59:59`)
+              : Promise.resolve({ data: [] }),
+          ]);
+
+          // Group by trainer
+          const groupByTrainer = (data: any[]) => {
+            const map: Record<string, any[]> = {};
+            for (const row of data || []) {
+              if (!map[row.personal_trainer_id]) map[row.personal_trainer_id] = [];
+              map[row.personal_trainer_id].push(row);
+            }
+            return map;
+          };
+
+          const allByTrainer = groupByTrainer(allPtSubsRes.data || []);
+          const currentByTrainer = groupByTrainer(currentPtSubsRes.data || []);
+          const prevByTrainer = groupByTrainer(previousPtSubsRes.data || []);
+
+          trainerMetricsResult = trainers.map((trainer: any) => {
+            const allPtSubs = allByTrainer[trainer.id] || [];
+            const currentPtSubs = currentByTrainer[trainer.id] || [];
+            const previousPtSubs = prevByTrainer[trainer.id] || [];
+
+            const currentRevenue = currentPtSubs.reduce((sum: number, s: any) => sum + Number(s.total_fee || 0), 0);
+            const previousRevenue = previousPtSubs.reduce((sum: number, s: any) => sum + Number(s.total_fee || 0), 0);
             const revenueGrowth = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : currentRevenue > 0 ? 100 : 0;
 
-            const uniqueCurrentClients = new Set(currentPtSubs?.map((s: any) => s.member_id) || []).size;
-            const uniqueAllClients = new Set(allPtSubs?.map((s: any) => s.member_id) || []).size;
-            const uniquePreviousClients = new Set(previousPtSubs?.map((s: any) => s.member_id) || []).size;
+            const uniqueCurrentClients = new Set(currentPtSubs.map((s: any) => s.member_id)).size;
+            const uniqueAllClients = new Set(allPtSubs.map((s: any) => s.member_id)).size;
+            const uniquePreviousClients = new Set(previousPtSubs.map((s: any) => s.member_id)).size;
             const clientGrowth = uniquePreviousClients > 0 ? ((uniqueCurrentClients - uniquePreviousClients) / uniquePreviousClients) * 100 : uniqueCurrentClients > 0 ? 100 : 0;
 
-            const activeSubs = allPtSubs?.filter((s: any) => s.status === "active") || [];
+            const activeSubs = allPtSubs.filter((s: any) => s.status === "active");
             const activeClients = new Set(activeSubs.map((s: any) => s.member_id)).size;
-            const churnedSubs = allPtSubs?.filter((s: any) => s.status === "expired" && new Date(s.end_date) >= new Date(dateFromParam) && new Date(s.end_date) <= new Date(dateToParam)) || [];
+            const churnedSubs = allPtSubs.filter((s: any) => s.status === "expired" && new Date(s.end_date) >= new Date(dateFromParam) && new Date(s.end_date) <= new Date(dateToParam));
             const churnedClients = churnedSubs.length;
             const retentionRate = uniqueAllClients > 0 ? ((uniqueAllClients - churnedClients) / uniqueAllClients) * 100 : 100;
             const renewalRate = uniqueAllClients > 0 ? (activeClients / uniqueAllClients) * 100 : 0;
             const avgRevenuePerClient = uniqueCurrentClients > 0 ? currentRevenue / uniqueCurrentClients : 0;
-            const totalSessions = currentPtSubs?.length || 0;
+            const totalSessions = currentPtSubs.length;
             const avgRevenuePerSession = totalSessions > 0 ? currentRevenue / totalSessions : 0;
             const efficiencyScore = (revenueGrowth * 0.4 + retentionRate * 0.3 + (clientGrowth > 0 ? clientGrowth : 0) * 0.3) / 100;
 
@@ -1409,14 +1124,10 @@ Deno.serve(async (req) => {
             };
           });
 
-          trainerMetricsResult = await Promise.all(trainerPromises);
           trainerMetricsResult.sort((a: any, b: any) => b.efficiencyScore - a.efficiencyScore);
         }
 
-        return new Response(
-          JSON.stringify({ branchMetrics, trainerMetrics: trainerMetricsResult }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ branchMetrics, trainerMetrics: trainerMetricsResult }, 120);
       }
 
       default:
