@@ -186,7 +186,7 @@ const MemberGrowthSection = () => {
     triggerOnce: true,
   });
   
-  const { data, isLoading } = useAnalyticsMemberGrowth(
+  const { data, isLoading } = useAggregatedAnalyticsMemberGrowth(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
