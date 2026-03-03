@@ -434,12 +434,14 @@ const AdminSettings = () => {
 
   const handleToggleMonthlyPackage = async (id: string, isActive: boolean) => {
     const pkg = monthlyPackages.find(p => p.id === id);
-    
+
+    // Optimistic: update local state instantly (Switch already flipped visually)
+    setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: isActive } : p));
     setTogglingMonthlyId(id);
-    toast.loading(`${isActive ? "Activating" : "Deactivating"} package...`, { id: `toggle-monthly-${id}` });
-    
+
     try {
-      // Use staff operations if staff is logged in
+      let failed = false;
+
       if (isStaffLoggedIn && currentBranch) {
         const { error } = await staffOps.updateMonthlyPackage({
           packageId: id,
@@ -447,28 +449,34 @@ const AdminSettings = () => {
           isActive,
         });
         if (error) {
-          toast.error("Error", { id: `toggle-monthly-${id}`, description: error });
-        } else {
-          toast.success(`Package ${isActive ? "activated" : "deactivated"}`, { id: `toggle-monthly-${id}` });
-          fetchData();
+          failed = true;
+          toast.error("Failed to update package", { description: error });
         }
-        return;
+      } else {
+        const { error } = await supabase.from("monthly_packages").update({ is_active: isActive }).eq("id", id);
+        if (error) {
+          failed = true;
+          toast.error("Failed to update package", { description: error.message });
+        } else {
+          await logAdminActivity({
+            category: "packages",
+            type: "monthly_package_toggled",
+            description: `${isActive ? "Activated" : "Deactivated"} ${pkg?.months} month package`,
+            entityType: "monthly_packages",
+            entityId: id,
+            entityName: `${pkg?.months} Month Package`,
+            newValue: { is_active: isActive },
+            branchId: currentBranch?.id,
+          });
+        }
       }
 
-      // Admin flow
-      await supabase.from("monthly_packages").update({ is_active: isActive }).eq("id", id);
-      await logAdminActivity({
-        category: "packages",
-        type: "monthly_package_toggled",
-        description: `${isActive ? "Activated" : "Deactivated"} ${pkg?.months} month package`,
-        entityType: "monthly_packages",
-        entityId: id,
-        entityName: `${pkg?.months} Month Package`,
-        newValue: { is_active: isActive },
-        branchId: currentBranch?.id,
-      });
-      toast.success(`Package ${isActive ? "activated" : "deactivated"}`, { id: `toggle-monthly-${id}` });
-      fetchData();
+      if (failed) {
+        // Revert optimistic update — Switch will smoothly animate back
+        setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: !isActive } : p));
+      } else {
+        toast.success(`Package ${isActive ? "activated" : "deactivated"}`);
+      }
     } finally {
       setTogglingMonthlyId(null);
     }
