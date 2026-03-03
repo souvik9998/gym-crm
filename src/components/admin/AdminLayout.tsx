@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { AdminSidebar } from "./AdminSidebar";
 import { BranchLogo } from "./BranchLogo";
 import { AdminHeader } from "./AdminHeader";
 import { cn } from "@/lib/utils";
-import type { User } from "@supabase/supabase-js";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
