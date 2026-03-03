@@ -132,6 +132,21 @@ const BranchAnalytics = () => {
     !!(allBranches && allBranches.length > 0)
   );
 
+  // Memoize expensive calculations
+  const bestPerformer = useMemo(() => {
+    if (branchMetrics.length === 0) return null;
+    return branchMetrics.reduce((best, current) =>
+      current.revenue > best.revenue ? current : best
+    );
+  }, [branchMetrics]);
+
+  const worstPerformer = useMemo(() => {
+    if (branchMetrics.length === 0) return null;
+    return branchMetrics.reduce((worst, current) =>
+      current.revenue < worst.revenue ? current : worst
+    );
+  }, [branchMetrics]);
+
   const formatCurrency = (value: number) => {
     return `₹${value.toLocaleString("en-IN")}`;
   };
