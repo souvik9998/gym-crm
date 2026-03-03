@@ -1018,7 +1018,8 @@ const AdminSettings = () => {
                               <Switch
                                 id={`custom-${pkg.id}`}
                                 checked={pkg.is_active}
-                                disabled={togglingCustomId === pkg.id}
+                                loading={togglingCustomId === pkg.id}
+                                disabled={togglingCustomId !== null && togglingCustomId !== pkg.id}
                                 onCheckedChange={(checked) => handleTogglePackage(pkg.id, checked)}
                               />
                               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
