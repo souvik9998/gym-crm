@@ -1,68 +1,93 @@
 
 
-## Backend API Call Optimization Plan
+# WhatsApp Auto-Send Preferences per Message Type
 
-### Problem Analysis
+## Overview
+Add a new "Auto-Send Preferences" section to the WhatsApp tab in Settings. This gives the gym admin toggle controls for each WhatsApp message type -- choosing whether messages are sent automatically after the corresponding action, or only manually. Promotional messages are always manual-only (no toggle).
 
-From the network screenshot, 53 requests are fired on dashboard load. The primary sources of redundancy:
+## Current State
+- WhatsApp messages are triggered automatically in several flows: Registration (`Register.tsx`), Renewal (`Renew.tsx`), PT Extension (`ExtendPT.tsx`), Admin Add Member (`AddMemberDialog.tsx`), Admin Add Payment (`AddPaymentDialog.tsx`)
+- The daily cron job (`daily-whatsapp-job`) auto-sends expiring-in-2-days and expiring-today notifications
+- There is no per-message-type auto/manual preference -- all are auto-sent when WhatsApp is enabled
+- Templates exist for: Promotional, Expiry Reminder, Expired Reminder (in WhatsAppTemplates component)
 
-1. **`user_roles` query called 8+ times** - `AuthContext` calls it once, but `onAuthStateChange` in `AuthContext` fires `loadUserData` again on token refresh. Additionally, `AdminLayout` sets up its OWN `onAuthStateChange` + `getSession()` (lines 34-43), causing redundant auth checks.
+## Message Types and Auto-Send Toggles
 
-2. **`tenant_members` query called 8+ times** - Same pattern as above. Each `loadUserData` re-execution queries `tenant_members`.
+| Message Type | Default | Notes |
+|---|---|---|
+| New Member Registration | ON | Sent after a new member registers |
+| Member Renewal | ON | Sent after membership renewal |
+| Daily Pass | ON | Sent after daily pass purchase |
+| PT Extension | ON | Sent after personal training extension |
+| Expiring Soon (2 days) | ON | Daily cron job |
+| Expiring Today | ON | Daily cron job |
+| Expired Reminder | OFF | Not currently auto-sent, but available for manual |
+| Payment Receipt | OFF | Not currently auto-sent |
+| Admin Add Member | ON | When admin adds a member manually |
+| Promotional | N/A | Always manual only, no toggle shown |
 
-3. **`tenant_limits` query called 8+ times** - Same cascade. Plus `useAdminNotifications` makes its own `tenant_members` + `tenant_limits` queries instead of using `tenantId` from `AuthContext`.
+## Database Changes
 
-4. **`get_tenant_current_usage` called 4+ times** - `useAdminNotifications` calls this on every `dashStats` change, and it re-triggers on mount.
+### Add `whatsapp_auto_send` JSONB column to `gym_settings`
+A new column storing per-type preferences:
 
-5. **`get_dashboard_stats` called multiple times** - Token refresh triggers re-renders which re-fire the query.
+```text
+{
+  "new_registration": true,
+  "renewal": true,
+  "daily_pass": true,
+  "pt_extension": true,
+  "expiring_2days": true,
+  "expiring_today": true,
+  "expired_reminder": false,
+  "payment_details": false,
+  "admin_add_member": true
+}
+```
 
-6. **`branches` query called 4+ times** - `BranchContext.fetchBranches` is called multiple times due to dependency array changes.
+Default: all true except `expired_reminder` and `payment_details`.
 
-### Root Causes
+## Frontend Changes
 
-- **`AdminLayout` has redundant `onAuthStateChange` listener** (line 34) that duplicates what `AuthContext` already does
-- **`useAdminNotifications` bypasses centralized auth** - queries `tenant_members` and `tenant_limits` directly instead of using `useAuth().tenantId`
-- **`AuthContext.loadUserData` is called on every `onAuthStateChange` event** including token refresh (which happens frequently) - needs deduplication guard
-- **`BranchContext.fetchBranches` dependency array** causes re-execution when auth state settles
+### 1. New component: `WhatsAppAutoSendSettings.tsx`
+A card with toggle switches for each message type listed above. Each toggle:
+- Shows the message type name and a short description
+- Saves immediately to `gym_settings.whatsapp_auto_send` via database update
+- Promotional is shown as a disabled row with "Manual Only" badge (no toggle)
 
-### Changes (Backend-only focus, no UI/business logic changes)
+### 2. Integrate into Settings WhatsApp tab
+Place the new `WhatsAppAutoSendSettings` component between the WhatsApp enable/disable card and the `WhatsAppTemplates` component in `Settings.tsx`.
 
-#### 1. Add deduplication guard to `AuthContext.loadUserData`
-- Add a `lastLoadedUserId` ref to skip re-fetching if the same user's data was already loaded
-- Only re-fetch on actual user change (sign-in/sign-out), not on token refresh events
-- This eliminates ~6 redundant `user_roles` + `tenant_members` + `tenant_limits` calls
+### 3. Update auto-send call sites
+In each file that calls `send-whatsapp`, check the preference before sending:
 
-#### 2. Refactor `AdminLayout` to use `AuthContext`
-- Remove the redundant `onAuthStateChange` listener + `getSession()` call (lines 33-52)
-- Use `useAuth()` for `adminUser` state instead of maintaining separate state
-- This eliminates 2+ redundant auth-related requests per page load
+- `Register.tsx` -- check `new_registration` (or `daily_pass`) preference before calling send-whatsapp
+- `Renew.tsx` -- check `renewal` preference
+- `ExtendPT.tsx` -- check `pt_extension` preference
+- `AddMemberDialog.tsx` -- check `admin_add_member` preference
+- `AddPaymentDialog.tsx` -- check `payment_details` preference (if applicable)
 
-#### 3. Refactor `useAdminNotifications` to use centralized auth
-- Replace direct `tenant_members` query with `useAuth().tenantId` (already available)
-- Replace direct `tenant_limits` query with data from `useAuth().tenantPermissions` for feature checks, and only query `tenant_limits` once for numeric limit values
-- Combine remaining queries into single `protectedFetch` call via new `notification-data` edge function action
+Each call site will fetch the `whatsapp_auto_send` from `gym_settings` for the branch, and skip the WhatsApp call if the relevant type is set to false.
 
-#### 4. Consolidate `BranchContext` fetch stability
-- Wrap `fetchBranches` dependencies to prevent re-execution on stable values
-- Use a `hasFetched` ref to prevent double-fetch during auth settling
+### 4. Update `daily-whatsapp-job` edge function
+Before sending expiring-in-2-days and expiring-today messages, read the `whatsapp_auto_send` JSONB from `gym_settings` for each branch. Skip sending if the corresponding type is disabled.
 
-### Summary of Expected Impact
+## Technical Details
 
-| Before | After |
-|--------|-------|
-| 53 requests on page load | ~15-20 requests |
-| 8x `user_roles` calls | 1x |
-| 8x `tenant_members` calls | 1x |
-| 8x `tenant_limits` calls | 1-2x |
-| 4x `get_tenant_current_usage` | 1x |
+### Files to Create
+- `src/components/admin/WhatsAppAutoSendSettings.tsx` -- Toggle switches UI component
 
 ### Files to Modify
+- Database migration -- Add `whatsapp_auto_send` JSONB column to `gym_settings`
+- `src/pages/admin/Settings.tsx` -- Insert the new component in WhatsApp tab
+- `src/pages/Register.tsx` -- Check auto-send preference before WhatsApp call
+- `src/pages/Renew.tsx` -- Check auto-send preference before WhatsApp call
+- `src/pages/ExtendPT.tsx` -- Check auto-send preference before WhatsApp call
+- `src/components/admin/AddMemberDialog.tsx` -- Check auto-send preference before WhatsApp call
+- `src/components/admin/AddPaymentDialog.tsx` -- Check auto-send preference before WhatsApp call
+- `supabase/functions/daily-whatsapp-job/index.ts` -- Check per-branch auto-send preferences
+- `src/integrations/supabase/types.ts` -- Will auto-update after migration
 
-| File | Change |
-|------|--------|
-| `src/contexts/AuthContext.tsx` | Add deduplication guard to `loadUserData` |
-| `src/components/admin/AdminLayout.tsx` | Remove redundant auth listener, use `useAuth()` |
-| `src/hooks/useAdminNotifications.ts` | Use `useAuth().tenantId` instead of own queries |
-| `src/contexts/BranchContext.tsx` | Add fetch stability guard |
-| `supabase/functions/protected-data/index.ts` | Add `notification-data` action (optional) |
+### Helper function
+A shared utility `getWhatsAppAutoSendPreference(branchId, type)` that fetches `gym_settings.whatsapp_auto_send` for the branch and returns whether that type is enabled. This avoids duplicating the fetch logic in every call site.
 

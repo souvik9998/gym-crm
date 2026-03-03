@@ -96,8 +96,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   });
 
   const isMounted = useRef(true);
+  const lastLoadedUserId = useRef<string | null>(null);
 
-  const loadUserData = useCallback(async (user: User) => {
+  const loadUserData = useCallback(async (user: User, force = false) => {
+    // Skip if same user already loaded (prevents redundant calls on token refresh)
+    if (!force && lastLoadedUserId.current === user.id && !state.isLoading) {
+      return;
+    }
     try {
       // Skip role loading for staff emails - handled by StaffAuthContext
       if (isStaffEmail(user.email)) {
@@ -186,6 +191,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (isMounted.current) {
+        lastLoadedUserId.current = user.id;
         setState({
           user,
           session: null, // will be set by the session handler
@@ -240,6 +246,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (!isMounted.current) return;
 
         if (event === "SIGNED_OUT") {
+          lastLoadedUserId.current = null;
           clearAuthState();
           return;
         }
@@ -247,10 +254,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (session?.user) {
           // Update session immediately
           setState(prev => ({ ...prev, session }));
-          // Defer data loading to avoid Supabase deadlock
-          setTimeout(() => {
-            if (isMounted.current) loadUserData(session.user);
-          }, 0);
+          // Only reload user data on actual sign-in, not token refresh
+          if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+            setTimeout(() => {
+              if (isMounted.current) loadUserData(session.user);
+            }, 0);
+          } else if (event === "TOKEN_REFRESHED") {
+            // Token refresh: update user/session but skip full data reload
+            setState(prev => ({ ...prev, user: session.user, session }));
+          } else {
+            setTimeout(() => {
+              if (isMounted.current) loadUserData(session.user);
+            }, 0);
+          }
         }
       }
     );
@@ -283,7 +299,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const refreshAuth = useCallback(async () => {
     if (state.user) {
-      await loadUserData(state.user);
+      await loadUserData(state.user, true);
     }
   }, [state.user, loadUserData]);
 

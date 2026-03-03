@@ -4,10 +4,11 @@
  * - Resource limit warnings (members, branches, staff, whatsapp, trainers)
  * - Expiring/expired members
  */
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
 import { useDashboardStats } from "@/hooks/queries/useDashboard";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface AdminNotification {
   id: string;
@@ -43,31 +44,24 @@ export function useAdminNotifications() {
   const [isLoading, setIsLoading] = useState(true);
   const { currentBranch } = useBranch();
   const { data: dashStats } = useDashboardStats();
+  const { tenantId, isLoading: authLoading } = useAuth();
+  const hasFetched = useRef(false);
 
   useEffect(() => {
+    if (authLoading || !tenantId) {
+      if (!authLoading && !tenantId) setIsLoading(false);
+      return;
+    }
     fetchNotifications();
-  }, [currentBranch?.id, dashStats]);
+  }, [tenantId, currentBranch?.id, dashStats]);
 
   const fetchNotifications = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) { setIsLoading(false); return; }
+    if (!tenantId) { setIsLoading(false); return; }
 
+    try {
       const items: AdminNotification[] = [];
 
-      // Get tenant ID
-      const { data: membership } = await supabase
-        .from("tenant_members")
-        .select("tenant_id")
-        .eq("user_id", session.user.id)
-        .limit(1)
-        .maybeSingle();
-
-      if (!membership?.tenant_id) { setIsLoading(false); return; }
-
-      const tenantId = membership.tenant_id;
-
-      // Fetch limits and usage in parallel
+      // Fetch limits and usage in parallel — tenantId from AuthContext (no redundant query)
       const [limitsRes, usageRes] = await Promise.all([
         supabase.from("tenant_limits").select("*").eq("tenant_id", tenantId).single(),
         supabase.rpc("get_tenant_current_usage", { _tenant_id: tenantId }),

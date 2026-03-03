@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { AdminSidebar } from "./AdminSidebar";
 import { BranchLogo } from "./BranchLogo";
 import { AdminHeader } from "./AdminHeader";
 import { cn } from "@/lib/utils";
-import type { User } from "@supabase/supabase-js";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -22,8 +21,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
   const navigate = useNavigate();
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn, staffUser, isLoading: staffLoading } = useStaffAuth();
-  const [adminUser, setAdminUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user: adminUser, isLoading, isAuthenticated } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
@@ -31,35 +29,22 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
   const gymName = currentBranch?.name || "Pro Plus Fitness";
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setAdminUser(session?.user ?? null);
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setAdminUser(session?.user ?? null);
-      setIsLoading(false);
-    });
-
     // Load sidebar state from localStorage
     const savedCollapsed = localStorage.getItem("admin-sidebar-collapsed");
     if (savedCollapsed !== null) {
       setSidebarCollapsed(savedCollapsed === "true");
     }
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, []);
 
   // Check authentication - either admin user OR staff user
   useEffect(() => {
     if (!isLoading && !staffLoading) {
-      const isAuthenticated = !!adminUser || isStaffLoggedIn;
-      if (!isAuthenticated) {
+      const isAuth = isAuthenticated || isStaffLoggedIn;
+      if (!isAuth) {
         navigate("/admin/login");
       }
     }
-  }, [isLoading, staffLoading, adminUser, isStaffLoggedIn, navigate]);
+  }, [isLoading, staffLoading, isAuthenticated, isStaffLoggedIn, navigate]);
 
   const handleSidebarCollapse = (collapsed: boolean) => {
     setSidebarCollapsed(collapsed);
@@ -114,8 +99,8 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
   }
 
   // Check if either admin or staff is logged in
-  const isAuthenticated = !!adminUser || isStaffLoggedIn;
-  if (!isAuthenticated) return null;
+  const isUserAuthenticated = isAuthenticated || isStaffLoggedIn;
+  if (!isUserAuthenticated) return null;
 
   // Check if this is a staff session by examining the email pattern
   // Staff users use email format: staff_{phone}@gym.local
