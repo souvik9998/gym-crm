@@ -19,7 +19,7 @@ export default {
   	extend: {
   		fontFamily: {
 		sans: [
-				'Anek Latin',
+				'Geist',
 				'ui-sans-serif',
 				'system-ui',
 				'sans-serif',
@@ -29,7 +29,7 @@ export default {
 				'Noto Color Emoji'
 			],
 		display: [
-			'Anek Latin',
+			'Geist',
 			'system-ui',
 			'sans-serif'
 		],
