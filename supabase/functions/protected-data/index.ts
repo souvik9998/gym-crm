@@ -1240,12 +1240,28 @@ Deno.serve(async (req) => {
           return errorResponse("dateFrom and dateTo required", 400);
         }
 
-        // Get all active branches for the tenant
-        const { data: activeBranches } = await supabase
+        // Resolve allowed branches based on user's tenant (data isolation)
+        const allowedBranchIds = await resolveAllowedBranchIds(supabase, auth, null);
+
+        // Build query scoped to user's tenant branches
+        let branchQuery = supabase
           .from("branches")
           .select("id, name")
           .eq("is_active", true)
           .is("deleted_at", null);
+
+        // If allowedBranchIds is not null, filter to only those branches
+        if (allowedBranchIds !== null) {
+          if (allowedBranchIds.length === 0) {
+            return new Response(
+              JSON.stringify({ branchMetrics: [], trainerMetrics: [] }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          branchQuery = branchQuery.in("id", allowedBranchIds);
+        }
+
+        const { data: activeBranches } = await branchQuery;
 
         if (!activeBranches || activeBranches.length === 0) {
           return new Response(
