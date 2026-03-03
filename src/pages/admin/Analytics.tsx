@@ -263,7 +263,7 @@ const PackageSalesSection = () => {
     triggerOnce: true,
   });
   
-  const { data, isLoading } = useAnalyticsPackageSales(
+  const { data, isLoading } = useAggregatedAnalyticsPackageSales(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
