@@ -33,6 +33,7 @@ import { SubscriptionPlanTab } from "@/components/admin/SubscriptionPlanTab";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useStaffOperations } from "@/hooks/useStaffOperations";
+import { useSettingsPageData } from "@/hooks/queries/useSettingsPageData";
 
 interface CustomPackage {
   id: string;
