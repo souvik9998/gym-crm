@@ -136,21 +136,12 @@ export const StaffOverviewTab = ({
           <CardContent className="p-3 lg:p-6">
             <div className="flex items-center justify-between">
               <div>
-                {isLoadingTotalPaid ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-green-600/30 border-t-green-600 rounded-full animate-spin" />
-                    <span className="text-xs text-muted-foreground">Loading...</span>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-lg lg:text-2xl font-bold text-green-600">
-                      ₹{totalPaidToStaff.toLocaleString("en-IN")}
-                    </p>
-                    <p className="text-[10px] lg:text-xs text-muted-foreground">
-                      All salary expenses (trainers + staff)
-                    </p>
-                  </>
-                )}
+                <p className="text-lg lg:text-2xl font-bold text-green-600">
+                  ₹{totalPaidToStaff.toLocaleString("en-IN")}
+                </p>
+                <p className="text-[10px] lg:text-xs text-muted-foreground">
+                  All salary expenses (trainers + staff)
+                </p>
               </div>
               <CurrencyRupeeIcon className="h-4 w-4 lg:h-5 lg:w-5 text-green-600" />
             </div>
