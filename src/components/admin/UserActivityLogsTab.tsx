@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { useInView } from "react-intersection-observer";
 import { useBranch } from "@/contexts/BranchContext";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,16 +50,10 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
 import { format, parseISO } from "date-fns";
-import { useInfiniteUserLogsQuery, type UserActivityLog } from "@/hooks/queries";
+import { useInfiniteUserLogsQuery, useUserLogStats, type UserActivityLog } from "@/hooks/queries";
 import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 
-interface ActivityStats {
-  totalActivities: number;
-  activitiesToday: number;
-  activitiesThisWeek: number;
-  activitiesThisMonth: number;
-  byType: Record<string, number>;
-}
+// Stats interface removed - using UserLogStats from useLogStats hook
 
 interface UserActivityLogsTabProps {
   refreshKey: number;
@@ -73,16 +66,19 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [stats, setStats] = useState<ActivityStats>({
+  const [activeSubTab, setActiveSubTab] = useState("logs");
+  const [selectedActivity, setSelectedActivity] = useState<UserActivityLog | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  // Use aggregated stats from edge function
+  const { data: statsData, refetch: refetchStats } = useUserLogStats();
+  const stats = statsData || {
     totalActivities: 0,
     activitiesToday: 0,
     activitiesThisWeek: 0,
     activitiesThisMonth: 0,
     byType: {},
-  });
-  const [activeSubTab, setActiveSubTab] = useState("logs");
-  const [selectedActivity, setSelectedActivity] = useState<UserActivityLog | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  };
 
   // Create filters object for the query
   const filters = useMemo(() => ({
@@ -123,60 +119,14 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
     }
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // Fetch stats separately
-  useEffect(() => {
-    if (currentBranch?.id) {
-      fetchStats();
-    }
-  }, [refreshKey, currentBranch?.id]);
-
   useEffect(() => {
     if (refreshKey > 0) {
       refetch();
+      refetchStats();
     }
-  }, [refreshKey, refetch]);
+  }, [refreshKey, refetch, refetchStats]);
 
-  const fetchStats = async () => {
-    if (!currentBranch?.id) return;
-    
-    try {
-      const { data: allLogs, error } = await supabase
-        .from("user_activity_logs")
-        .select("*")
-        .eq("branch_id", currentBranch.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const weekAgo = new Date(today);
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      const monthAgo = new Date(today);
-      monthAgo.setMonth(monthAgo.getMonth() - 1);
-
-      const statsData: ActivityStats = {
-        totalActivities: allLogs?.length || 0,
-        activitiesToday: 0,
-        activitiesThisWeek: 0,
-        activitiesThisMonth: 0,
-        byType: {},
-      };
-
-      allLogs?.forEach((log: UserActivityLog) => {
-        const createdAt = new Date(log.created_at);
-        if (createdAt >= today) statsData.activitiesToday++;
-        if (createdAt >= weekAgo) statsData.activitiesThisWeek++;
-        if (createdAt >= monthAgo) statsData.activitiesThisMonth++;
-        statsData.byType[log.activity_type] = 
-          (statsData.byType[log.activity_type] || 0) + 1;
-      });
-
-      setStats(statsData);
-    } catch (error: any) {
-      console.error("Error fetching stats:", error);
-    }
-  };
+  // fetchStats removed - now using useUserLogStats hook
 
   const handleViewActivity = (activity: UserActivityLog) => {
     setSelectedActivity(activity);

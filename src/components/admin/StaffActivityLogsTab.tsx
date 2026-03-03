@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { useInView } from "react-intersection-observer";
 import { useBranch } from "@/contexts/BranchContext";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,7 +41,7 @@ import ActivityDetailDialog from "./ActivityDetailDialog";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
-import { useInfiniteStaffLogsQuery, type StaffActivityLog } from "@/hooks/queries";
+import { useInfiniteStaffLogsQuery, useStaffLogStats, type StaffActivityLog } from "@/hooks/queries";
 import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 
 interface StaffActivityStats {

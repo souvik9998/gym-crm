@@ -63,15 +63,15 @@ export type {
   PaginatedWhatsAppLogsResponse,
 } from './useActivityLogs';
 
-// Analytics
+// Analytics (aggregated - single API call)
 export {
-  useAnalyticsQuery,
-  useAnalyticsTotals,
-  useAnalyticsRevenue,
-  useAnalyticsMemberGrowth,
-  useAnalyticsTrainerStats,
-  useAnalyticsPackageSales,
-} from './useAnalytics';
+  useAggregatedAnalyticsQuery,
+  useAggregatedAnalyticsTotals,
+  useAggregatedAnalyticsRevenue,
+  useAggregatedAnalyticsMemberGrowth,
+  useAggregatedAnalyticsTrainerStats,
+  useAggregatedAnalyticsPackageSales,
+} from './useAnalyticsData';
 export type {
   AnalyticsData,
   AnalyticsTotals,
@@ -80,6 +80,16 @@ export type {
   TrainerStats,
   PackageSalesData,
   PackageInfo,
+} from './useAnalyticsData';
+
+// Legacy Analytics (kept for backward compat)
+export {
+  useAnalyticsQuery,
+  useAnalyticsTotals,
+  useAnalyticsRevenue,
+  useAnalyticsMemberGrowth,
+  useAnalyticsTrainerStats,
+  useAnalyticsPackageSales,
 } from './useAnalytics';
 
 // Branch Analytics
@@ -94,3 +104,21 @@ export type {
   TimeSeriesData,
   TrainerMetrics,
 } from './useBranchAnalytics';
+
+// Log Stats (aggregated - single API call per tab)
+export {
+  useAdminLogStats,
+  useUserLogStats,
+  useStaffLogStats,
+  useWhatsAppLogStats,
+} from './useLogStats';
+export type {
+  AdminLogStats,
+  UserLogStats,
+  StaffLogStats,
+  WhatsAppLogStats,
+} from './useLogStats';
+
+// Settings Page Data (aggregated - single API call)
+export { useSettingsPageData } from './useSettingsPageData';
+export type { GymSettings, MonthlyPackage, CustomPackage } from './useSettingsPageData';

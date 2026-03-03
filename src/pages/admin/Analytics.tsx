@@ -9,7 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { PeriodSelector, PeriodType } from "@/components/admin/PeriodSelector";
-import { useAnalyticsTotals, useAnalyticsRevenue, useAnalyticsMemberGrowth, useAnalyticsTrainerStats, useAnalyticsPackageSales } from "@/hooks/queries";
+import { useAggregatedAnalyticsTotals, useAggregatedAnalyticsRevenue, useAggregatedAnalyticsMemberGrowth, useAggregatedAnalyticsTrainerStats, useAggregatedAnalyticsPackageSales } from "@/hooks/queries";
 import { useAnalyticsStore } from "@/stores/analyticsStore";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -50,7 +50,7 @@ const ChartSkeleton = ({ height = "h-64" }: { height?: string }) => (
 // Overview Stats Section
 const OverviewStats = () => {
   const { analyticsPeriod, analyticsCustomDateFrom, analyticsCustomDateTo } = useAnalyticsStore();
-  const { data: totals, isLoading } = useAnalyticsTotals(
+  const { data: totals, isLoading } = useAggregatedAnalyticsTotals(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
@@ -156,7 +156,7 @@ const RevenueChartSection = () => {
     triggerOnce: true,
   });
   
-  const { data, isLoading } = useAnalyticsRevenue(
+  const { data, isLoading } = useAggregatedAnalyticsRevenue(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
@@ -186,7 +186,7 @@ const MemberGrowthSection = () => {
     triggerOnce: true,
   });
   
-  const { data, isLoading } = useAnalyticsMemberGrowth(
+  const { data, isLoading } = useAggregatedAnalyticsMemberGrowth(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
@@ -230,7 +230,7 @@ const TrainerPerformanceSection = () => {
     triggerOnce: true,
   });
   
-  const { data, isLoading } = useAnalyticsTrainerStats(
+  const { data, isLoading } = useAggregatedAnalyticsTrainerStats(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
@@ -263,7 +263,7 @@ const PackageSalesSection = () => {
     triggerOnce: true,
   });
   
-  const { data, isLoading } = useAnalyticsPackageSales(
+  const { data, isLoading } = useAggregatedAnalyticsPackageSales(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,

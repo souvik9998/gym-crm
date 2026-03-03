@@ -869,6 +869,298 @@ Deno.serve(async (req) => {
         );
       }
 
+      case "settings-page-data": {
+        // Aggregated settings page data: gym_settings + monthly_packages + custom_packages
+        if (!branchId) {
+          return errorResponse("Branch ID required", 400);
+        }
+
+        const [settingsRes, monthlyRes, customRes] = await Promise.all([
+          supabase
+            .from("gym_settings")
+            .select("id, gym_name, gym_phone, gym_address, whatsapp_enabled")
+            .eq("branch_id", branchId)
+            .limit(1)
+            .maybeSingle(),
+          supabase
+            .from("monthly_packages")
+            .select("*")
+            .eq("branch_id", branchId)
+            .order("months"),
+          supabase
+            .from("custom_packages")
+            .select("*")
+            .eq("branch_id", branchId)
+            .order("duration_days"),
+        ]);
+
+        return new Response(
+          JSON.stringify({
+            settings: settingsRes.data || null,
+            monthlyPackages: monthlyRes.data || [],
+            customPackages: customRes.data || [],
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "log-stats": {
+        // Aggregated stats for activity logs - counts only, no full data
+        if (!branchId) {
+          return errorResponse("Branch ID required", 400);
+        }
+
+        const logType = url.searchParams.get("logType") || "admin";
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const monthAgo = new Date(today);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+
+        if (logType === "admin") {
+          const baseFilter = (q: any) => q.eq("branch_id", branchId).not("admin_user_id", "is", null);
+          const [totalRes, todayRes, weekRes, monthRes, catRes] = await Promise.all([
+            baseFilter(supabase.from("admin_activity_logs").select("*", { count: "exact", head: true })),
+            baseFilter(supabase.from("admin_activity_logs").select("*", { count: "exact", head: true }))
+              .gte("created_at", today.toISOString()),
+            baseFilter(supabase.from("admin_activity_logs").select("*", { count: "exact", head: true }))
+              .gte("created_at", weekAgo.toISOString()),
+            baseFilter(supabase.from("admin_activity_logs").select("*", { count: "exact", head: true }))
+              .gte("created_at", monthAgo.toISOString()),
+            baseFilter(supabase.from("admin_activity_logs").select("activity_category")),
+          ]);
+
+          const byCategory: Record<string, number> = {};
+          (catRes.data || []).forEach((r: any) => {
+            byCategory[r.activity_category] = (byCategory[r.activity_category] || 0) + 1;
+          });
+
+          return new Response(
+            JSON.stringify({
+              totalActivities: totalRes.count || 0,
+              activitiesToday: todayRes.count || 0,
+              activitiesThisWeek: weekRes.count || 0,
+              activitiesThisMonth: monthRes.count || 0,
+              byCategory,
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (logType === "user") {
+          const baseFilter = (q: any) => q.eq("branch_id", branchId);
+          const [totalRes, todayRes, weekRes, monthRes, typeRes] = await Promise.all([
+            baseFilter(supabase.from("user_activity_logs").select("*", { count: "exact", head: true })),
+            baseFilter(supabase.from("user_activity_logs").select("*", { count: "exact", head: true }))
+              .gte("created_at", today.toISOString()),
+            baseFilter(supabase.from("user_activity_logs").select("*", { count: "exact", head: true }))
+              .gte("created_at", weekAgo.toISOString()),
+            baseFilter(supabase.from("user_activity_logs").select("*", { count: "exact", head: true }))
+              .gte("created_at", monthAgo.toISOString()),
+            baseFilter(supabase.from("user_activity_logs").select("activity_type")),
+          ]);
+
+          const byType: Record<string, number> = {};
+          (typeRes.data || []).forEach((r: any) => {
+            byType[r.activity_type] = (byType[r.activity_type] || 0) + 1;
+          });
+
+          return new Response(
+            JSON.stringify({
+              totalActivities: totalRes.count || 0,
+              activitiesToday: todayRes.count || 0,
+              activitiesThisWeek: weekRes.count || 0,
+              activitiesThisMonth: monthRes.count || 0,
+              byType,
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (logType === "staff") {
+          const baseFilter = (q: any) => q.eq("branch_id", branchId).is("admin_user_id", null);
+          const [totalRes, todayRes, typeRes] = await Promise.all([
+            baseFilter(supabase.from("admin_activity_logs").select("*", { count: "exact", head: true })),
+            baseFilter(supabase.from("admin_activity_logs").select("*", { count: "exact", head: true }))
+              .gte("created_at", today.toISOString()),
+            baseFilter(supabase.from("admin_activity_logs").select("activity_type")),
+          ]);
+
+          const typeCounts: Record<string, number> = {};
+          (typeRes.data || []).forEach((r: any) => {
+            typeCounts[r.activity_type] = (typeCounts[r.activity_type] || 0) + 1;
+          });
+
+          // Also fetch staff list for the filter dropdown
+          const { data: assignments } = await supabase
+            .from("staff_branch_assignments")
+            .select("staff_id")
+            .eq("branch_id", branchId);
+          const staffIds = (assignments || []).map((a: any) => a.staff_id);
+          let staffList: any[] = [];
+          if (staffIds.length > 0) {
+            const { data: staffData } = await supabase
+              .from("staff")
+              .select("id, full_name, phone")
+              .in("id", staffIds)
+              .eq("is_active", true)
+              .order("full_name");
+            staffList = staffData || [];
+          }
+
+          return new Response(
+            JSON.stringify({
+              totalActivities: totalRes.count || 0,
+              activitiesToday: todayRes.count || 0,
+              typeCounts,
+              staffList,
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (logType === "whatsapp") {
+          const baseFilter = (q: any) => q.eq("branch_id", branchId);
+          const [totalRes, sentRes, failedRes, manualRes, todayRes, weekRes, monthRes, typeRes] = await Promise.all([
+            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true })),
+            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true }))
+              .eq("status", "sent"),
+            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true }))
+              .eq("status", "failed"),
+            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true }))
+              .eq("is_manual", true),
+            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true }))
+              .gte("sent_at", today.toISOString()),
+            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true }))
+              .gte("sent_at", weekAgo.toISOString()),
+            baseFilter(supabase.from("whatsapp_notifications").select("*", { count: "exact", head: true }))
+              .gte("sent_at", monthAgo.toISOString()),
+            baseFilter(supabase.from("whatsapp_notifications").select("notification_type")),
+          ]);
+
+          const messagesByType: Record<string, number> = {};
+          (typeRes.data || []).forEach((r: any) => {
+            messagesByType[r.notification_type] = (messagesByType[r.notification_type] || 0) + 1;
+          });
+
+          return new Response(
+            JSON.stringify({
+              totalMessages: totalRes.count || 0,
+              sentMessages: sentRes.count || 0,
+              failedMessages: failedRes.count || 0,
+              manualMessages: manualRes.count || 0,
+              automatedMessages: (totalRes.count || 0) - (manualRes.count || 0),
+              messagesToday: todayRes.count || 0,
+              messagesThisWeek: weekRes.count || 0,
+              messagesThisMonth: monthRes.count || 0,
+              messagesByType,
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return errorResponse("Invalid logType", 400);
+      }
+
+      case "analytics-data": {
+        // Aggregated analytics data for the Analytics page
+        if (!isModuleEnabled("reports_analytics")) {
+          return errorResponse("Analytics is not available on your plan", 403);
+        }
+
+        if (!branchId) {
+          return errorResponse("Branch ID required", 400);
+        }
+
+        const dateFromParam = url.searchParams.get("dateFrom");
+        const dateToParam = url.searchParams.get("dateTo");
+        if (!dateFromParam || !dateToParam) {
+          return errorResponse("dateFrom and dateTo required", 400);
+        }
+
+        // Fetch all analytics data in parallel
+        const [
+          paymentsRes,
+          membersInRangeRes,
+          membersBeforeRes,
+          totalMembersRes,
+          activeMembersRes,
+          trainersRes,
+          ptSubsRes,
+          monthlyPkgsRes,
+          subsInRangeRes,
+        ] = await Promise.all([
+          supabase
+            .from("payments")
+            .select("amount, created_at")
+            .eq("branch_id", branchId)
+            .eq("status", "success")
+            .gte("created_at", `${dateFromParam}T00:00:00`)
+            .lte("created_at", `${dateToParam}T23:59:59`)
+            .order("created_at", { ascending: true }),
+          supabase
+            .from("members")
+            .select("created_at")
+            .eq("branch_id", branchId)
+            .gte("created_at", `${dateFromParam}T00:00:00`)
+            .lte("created_at", `${dateToParam}T23:59:59`)
+            .order("created_at", { ascending: true }),
+          supabase
+            .from("members")
+            .select("*", { count: "exact", head: true })
+            .eq("branch_id", branchId)
+            .lt("created_at", `${dateFromParam}T00:00:00`),
+          supabase
+            .from("members")
+            .select("*", { count: "exact", head: true })
+            .eq("branch_id", branchId),
+          supabase
+            .from("subscriptions")
+            .select("*", { count: "exact", head: true })
+            .eq("branch_id", branchId)
+            .eq("status", "active"),
+          supabase
+            .from("personal_trainers")
+            .select("id, name")
+            .eq("branch_id", branchId)
+            .eq("is_active", true),
+          supabase
+            .from("pt_subscriptions")
+            .select("personal_trainer_id, member_id, total_fee, created_at, status")
+            .eq("branch_id", branchId)
+            .gte("created_at", `${dateFromParam}T00:00:00`)
+            .lte("created_at", `${dateToParam}T23:59:59`),
+          supabase
+            .from("monthly_packages")
+            .select("id, months, price")
+            .eq("branch_id", branchId)
+            .eq("is_active", true)
+            .order("months", { ascending: true }),
+          supabase
+            .from("subscriptions")
+            .select("plan_months, created_at, is_custom_package")
+            .eq("branch_id", branchId)
+            .gte("created_at", `${dateFromParam}T00:00:00`)
+            .lte("created_at", `${dateToParam}T23:59:59`),
+        ]);
+
+        return new Response(
+          JSON.stringify({
+            payments: paymentsRes.data || [],
+            membersInRange: membersInRangeRes.data || [],
+            membersBefore: membersBeforeRes.count || 0,
+            totalMembers: totalMembersRes.count || 0,
+            activeMembers: activeMembersRes.count || 0,
+            trainers: trainersRes.data || [],
+            ptSubscriptions: ptSubsRes.data || [],
+            monthlyPackages: monthlyPkgsRes.data || [],
+            subscriptionsInRange: subsInRangeRes.data || [],
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       case "staff-page-data": {
         // Aggregated staff page data - requires admin access
         if (!auth.isAdmin && !auth.isStaff) {
