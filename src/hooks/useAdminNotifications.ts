@@ -4,10 +4,11 @@
  * - Resource limit warnings (members, branches, staff, whatsapp, trainers)
  * - Expiring/expired members
  */
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
 import { useDashboardStats } from "@/hooks/queries/useDashboard";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface AdminNotification {
   id: string;
