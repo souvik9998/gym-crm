@@ -156,7 +156,7 @@ const RevenueChartSection = () => {
     triggerOnce: true,
   });
   
-  const { data, isLoading } = useAnalyticsRevenue(
+  const { data, isLoading } = useAggregatedAnalyticsRevenue(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
