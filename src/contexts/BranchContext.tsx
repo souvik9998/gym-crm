@@ -73,8 +73,15 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
 
   // Tenant info now comes from centralized AuthProvider - no need for separate API calls
 
+  const hasFetchedForUser = useRef<string | null>(null);
+
   const fetchBranches = useCallback(async () => {
-    if (!userChecked) return;
+    if (!userChecked || !user) return;
+    
+    // Skip if already fetched for this user (prevents duplicate fetches during auth settling)
+    const userKey = `${user.id}-${tenantId || "no-tenant"}`;
+    if (hasFetchedForUser.current === userKey && isInitialized) return;
+    hasFetchedForUser.current = userKey;
     
     setIsLoading(true);
     try {

@@ -99,8 +99,8 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
   }
 
   // Check if either admin or staff is logged in
-  const isAuthenticated = !!adminUser || isStaffLoggedIn;
-  if (!isAuthenticated) return null;
+  const isUserAuthenticated = isAuthenticated || isStaffLoggedIn;
+  if (!isUserAuthenticated) return null;
 
   // Check if this is a staff session by examining the email pattern
   // Staff users use email format: staff_{phone}@gym.local

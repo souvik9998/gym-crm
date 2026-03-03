@@ -299,7 +299,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const refreshAuth = useCallback(async () => {
     if (state.user) {
-      await loadUserData(state.user);
+      await loadUserData(state.user, true);
     }
   }, [state.user, loadUserData]);
 
