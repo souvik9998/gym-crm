@@ -96,8 +96,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   });
 
   const isMounted = useRef(true);
+  const lastLoadedUserId = useRef<string | null>(null);
 
-  const loadUserData = useCallback(async (user: User) => {
+  const loadUserData = useCallback(async (user: User, force = false) => {
+    // Skip if same user already loaded (prevents redundant calls on token refresh)
+    if (!force && lastLoadedUserId.current === user.id && !state.isLoading) {
+      return;
+    }
     try {
       // Skip role loading for staff emails - handled by StaffAuthContext
       if (isStaffEmail(user.email)) {
