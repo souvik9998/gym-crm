@@ -41,7 +41,7 @@ import ActivityDetailDialog from "./ActivityDetailDialog";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
-import { useInfiniteAdminLogsQuery, type AdminActivityLog } from "@/hooks/queries";
+import { useInfiniteAdminLogsQuery, useAdminLogStats, type AdminActivityLog } from "@/hooks/queries";
 import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 
 interface ActivityStats {
