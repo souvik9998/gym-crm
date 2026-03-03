@@ -246,6 +246,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (!isMounted.current) return;
 
         if (event === "SIGNED_OUT") {
+          lastLoadedUserId.current = null;
           clearAuthState();
           return;
         }
@@ -253,10 +254,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (session?.user) {
           // Update session immediately
           setState(prev => ({ ...prev, session }));
-          // Defer data loading to avoid Supabase deadlock
-          setTimeout(() => {
-            if (isMounted.current) loadUserData(session.user);
-          }, 0);
+          // Only reload user data on actual sign-in, not token refresh
+          if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+            setTimeout(() => {
+              if (isMounted.current) loadUserData(session.user);
+            }, 0);
+          } else if (event === "TOKEN_REFRESHED") {
+            // Token refresh: update user/session but skip full data reload
+            setState(prev => ({ ...prev, user: session.user, session }));
+          } else {
+            setTimeout(() => {
+              if (isMounted.current) loadUserData(session.user);
+            }, 0);
+          }
         }
       }
     );
