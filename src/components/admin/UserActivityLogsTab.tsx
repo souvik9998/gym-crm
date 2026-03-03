@@ -50,7 +50,7 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
 import { format, parseISO } from "date-fns";
-import { useInfiniteUserLogsQuery, type UserActivityLog } from "@/hooks/queries";
+import { useInfiniteUserLogsQuery, useUserLogStats, type UserActivityLog } from "@/hooks/queries";
 import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 
 interface ActivityStats {
