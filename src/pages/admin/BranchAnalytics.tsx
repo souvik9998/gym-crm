@@ -56,72 +56,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PeriodSelector, PeriodType, getPeriodDates, getPeriodLabel } from "@/components/admin/PeriodSelector";
-
-interface BranchMetrics {
-  branchId: string;
-  branchName: string;
-  revenue: number;
-  expenses: number;
-  profit: number;
-  profitMargin: number;
-  totalMembers: number;
-  activeMembers: number;
-  newMembers: number;
-  churnedMembers: number;
-  churnRate: number;
-  conversionRate: number;
-  ptSubscriptions: number;
-  avgRevenuePerMember: number;
-  staffCount: number;
-  staffPerformance: number;
-  marketingROI: number;
-  previousPeriodRevenue: number;
-  revenueGrowth: number;
-  previousPeriodMembers: number;
-  memberGrowth: number;
-}
-
-interface Insight {
-  type: "warning" | "success" | "info";
-  title: string;
-  description: string;
-  branchId: string;
-  branchName: string;
-  metric: string;
-  value: number;
-}
-
-interface TimeSeriesData {
-  date: string;
-  [key: string]: string | number;
-}
-
-interface TrainerMetrics {
-  trainerId: string;
-  trainerName: string;
-  branchId: string;
-  branchName: string;
-  revenue: number;
-  activeClients: number;
-  totalClients: number;
-  newClients: number;
-  churnedClients: number;
-  clientRetentionRate: number;
-  avgRevenuePerClient: number;
-  avgRevenuePerSession: number;
-  totalSessions: number;
-  renewalRate: number;
-  clientGrowthRate: number;
-  efficiencyScore: number;
-  paymentCategory: string;
-  percentageFee: number;
-  sessionFee: number;
-  monthlySalary: number;
-  previousPeriodRevenue: number;
-  revenueGrowth: number;
-  previousPeriodClients: number;
-  clientGrowth: number;
-}
+import { useBranchAnalyticsData, useBranchTimeSeriesQuery, type BranchMetrics, type TrainerMetrics, type Insight, type TimeSeriesData } from "@/hooks/queries/useBranchAnalytics";
 
 const COLORS = [
   "hsl(var(--accent))",
@@ -151,428 +86,51 @@ const BranchAnalytics = () => {
   // Calculate actual dates based on period selection
   const { from: dateFrom, to: dateTo } = getPeriodDates(period, customDateFrom, customDateTo);
   
-  const [branchMetrics, setBranchMetrics] = useState<BranchMetrics[]>([]);
-  const [insights, setInsights] = useState<Insight[]>([]);
-  const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [detailBranch, setDetailBranch] = useState<BranchMetrics | null>(null);
-  const [trainerMetrics, setTrainerMetrics] = useState<TrainerMetrics[]>([]);
   const [selectedBranchForTrainers, setSelectedBranchForTrainers] = useState<string | "all">("all");
   const [isTrainerDetailOpen, setIsTrainerDetailOpen] = useState(false);
   const [detailTrainer, setDetailTrainer] = useState<TrainerMetrics | null>(null);
-  const [isLoadingTrainers, setIsLoadingTrainers] = useState(false);
 
   // Debounce date changes to avoid excessive API calls
   const debouncedDateFrom = useDebounce(dateFrom, 500);
   const debouncedDateTo = useDebounce(dateTo, 500);
 
-  // Define fetchBranchMetrics first (used by fetchAllBranchMetrics)
-  const fetchBranchMetrics = useCallback(async (
-    branchId: string,
-    branchName: string,
-    from: string,
-    to: string
-  ): Promise<BranchMetrics> => {
-    // Execute all queries in parallel for maximum performance
-    const [
-      { data: payments },
-      { data: expenses },
-      { count: totalMembers },
-      { count: newMembersCount },
-      { count: activeMembers },
-      { count: churnedMembers },
-      { count: ptSubscriptions },
-      { count: staffCount },
-      { data: marketingExpenses },
-    ] = await Promise.all([
-      // Revenue - use aggregation if possible, otherwise fetch and sum
-      supabase
-        .from("payments")
-        .select("amount", { count: "exact" })
-        .eq("branch_id", branchId)
-        .eq("status", "success")
-        .gte("created_at", `${from}T00:00:00`)
-        .lte("created_at", `${to}T23:59:59`),
-      
-      // Expenses
-      supabase
-        .from("ledger_entries")
-        .select("amount")
-        .eq("branch_id", branchId)
-        .eq("entry_type", "expense")
-        .gte("entry_date", from)
-        .lte("entry_date", to),
-      
-      // Total members count (optimized)
-      supabase
-        .from("members")
-        .select("*", { count: "exact", head: true })
-        .eq("branch_id", branchId),
-      
-      // New members count (optimized)
-      supabase
-        .from("members")
-        .select("*", { count: "exact", head: true })
-        .eq("branch_id", branchId)
-        .gte("created_at", `${from}T00:00:00`)
-        .lte("created_at", `${to}T23:59:59`),
-      
-      // Active subscriptions count (optimized)
-      supabase
-        .from("subscriptions")
-        .select("*", { count: "exact", head: true })
-        .eq("branch_id", branchId)
-        .eq("status", "active"),
-      
-      // Churned members count (optimized)
-      supabase
-        .from("subscriptions")
-        .select("*", { count: "exact", head: true })
-        .eq("branch_id", branchId)
-        .eq("status", "expired")
-        .gte("end_date", from)
-        .lte("end_date", to),
-      
-      // PT subscriptions count (optimized)
-      supabase
-        .from("pt_subscriptions")
-        .select("*", { count: "exact", head: true })
-        .eq("branch_id", branchId)
-        .gte("created_at", `${from}T00:00:00`)
-        .lte("created_at", `${to}T23:59:59`),
-      
-      // Staff count (optimized)
-      supabase
-        .from("staff_branch_assignments")
-        .select("*", { count: "exact", head: true })
-        .eq("branch_id", branchId),
-      
-      // Marketing expenses
-      supabase
-        .from("ledger_entries")
-        .select("amount")
-        .eq("branch_id", branchId)
-        .eq("entry_type", "expense")
-        .ilike("category", "%marketing%")
-        .gte("entry_date", from)
-        .lte("entry_date", to),
-    ]);
-
-    // Calculate revenue from payments
-    const revenue = payments?.reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0;
-    
-    // Calculate expenses
-    const totalExpenses = expenses?.reduce((sum, e) => sum + Number(e.amount || 0), 0) || 0;
-    const profit = revenue - totalExpenses;
-    const profitMargin = revenue > 0 ? (profit / revenue) * 100 : 0;
-
-    // Use count results
-    const newMembers = newMembersCount || 0;
-    const churnRate = (totalMembers || 0) > 0 ? ((churnedMembers || 0) / (totalMembers || 0)) * 100 : 0;
-    const conversionRate = newMembers > 0 ? Math.min((newMembers / (newMembers + 10)) * 100, 100) : 0;
-
-    // Calculate staff performance
-    const staffPerformance = (staffCount || 0) > 0 ? revenue / (staffCount || 1) : 0;
-
-    // Calculate marketing ROI
-    const marketingExpense = marketingExpenses?.reduce((sum, e) => sum + Number(e.amount || 0), 0) || 0;
-    const marketingROI = marketingExpense > 0 ? ((revenue - marketingExpense) / marketingExpense) * 100 : 0;
-
-    const avgRevenuePerMember = (totalMembers || 0) > 0 ? revenue / (totalMembers || 1) : 0;
-
+  // Calculate previous period dates
+  const { prevFrom, prevTo } = useMemo(() => {
+    const currentStart = new Date(debouncedDateFrom);
+    const currentEnd = new Date(debouncedDateTo);
+    const periodDays = Math.ceil((currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60 * 24));
+    const previousStart = new Date(currentStart);
+    previousStart.setDate(previousStart.getDate() - periodDays - 1);
+    const previousEnd = new Date(currentStart);
+    previousEnd.setDate(previousEnd.getDate() - 1);
     return {
-      branchId,
-      branchName,
-      revenue,
-      expenses: totalExpenses,
-      profit,
-      profitMargin,
-      totalMembers: totalMembers || 0,
-      activeMembers: activeMembers || 0,
-      newMembers,
-      churnedMembers: churnedMembers || 0,
-      churnRate,
-      conversionRate,
-      ptSubscriptions: ptSubscriptions || 0,
-      avgRevenuePerMember,
-      staffCount: staffCount || 0,
-      staffPerformance,
-      marketingROI,
-      previousPeriodRevenue: 0,
-      revenueGrowth: 0,
-      previousPeriodMembers: 0,
-      memberGrowth: 0,
+      prevFrom: format(previousStart, "yyyy-MM-dd"),
+      prevTo: format(previousEnd, "yyyy-MM-dd"),
     };
-  }, []);
+  }, [debouncedDateFrom, debouncedDateTo]);
 
-  // Define generateTimeSeriesData (used by fetchAllBranchMetrics)
-  const generateTimeSeriesData = useCallback(async () => {
-    try {
-      const activeBranches = (allBranches || []).filter((b) => b.is_active && !b.deleted_at);
-      if (activeBranches.length === 0) {
-        setTimeSeriesData([]);
-        return;
-      }
+  // Single aggregated API call for branch + trainer metrics
+  const { data: analyticsData, isLoading } = useBranchAnalyticsData(
+    debouncedDateFrom,
+    debouncedDateTo,
+    prevFrom,
+    prevTo,
+    !!(allBranches && allBranches.length > 0)
+  );
 
-      const startDate = new Date(debouncedDateFrom);
-      const endDate = new Date(debouncedDateTo);
-      const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      const groupBy = days <= 30 ? "day" : days <= 90 ? "week" : "month";
+  const branchMetrics = analyticsData?.branchMetrics || [];
+  const insights = analyticsData?.insights || [];
+  const trainerMetrics = analyticsData?.trainerMetrics || [];
+  const isLoadingTrainers = isLoading;
 
-      // Fetch all payments for all branches in parallel
-      const branchIds = activeBranches.map((b) => b.id);
-      const paymentsPromises = branchIds.map((branchId) =>
-        supabase
-          .from("payments")
-          .select("amount, created_at, status")
-          .eq("branch_id", branchId)
-          .eq("status", "success")
-          .gte("created_at", `${debouncedDateFrom}T00:00:00`)
-          .lte("created_at", `${debouncedDateTo}T23:59:59`)
-          .order("created_at", { ascending: true })
-      );
-
-      const paymentsResults = await Promise.all(paymentsPromises);
-
-      const timeSeries: TimeSeriesData[] = [];
-      const branchData: Record<string, Record<string, number>> = {};
-
-      // Initialize branch data structure
-      branchIds.forEach((branchId) => {
-        branchData[branchId] = {};
-      });
-
-      // Process payments for each branch
-      paymentsResults.forEach(({ data: payments }, index) => {
-        const branchId = branchIds[index];
-        payments?.forEach((payment) => {
-          const date = new Date(payment.created_at);
-          const key =
-            groupBy === "day"
-              ? format(date, "MMM dd")
-              : groupBy === "week"
-              ? `Week ${format(date, "w")}`
-              : format(date, "MMM yyyy");
-
-          if (!branchData[branchId][key]) {
-            branchData[branchId][key] = 0;
-          }
-          branchData[branchId][key] += Number(payment.amount || 0);
-        });
-      });
-
-      // Get all unique dates
-      const allDates = new Set<string>();
-      Object.keys(branchData).forEach((branchId) => {
-        Object.keys(branchData[branchId]).forEach((date) => allDates.add(date));
-      });
-
-      // Create time series data
-      Array.from(allDates)
-        .sort()
-        .forEach((date) => {
-          const dataPoint: TimeSeriesData = { date };
-          activeBranches.forEach((branch) => {
-            dataPoint[branch.name] = branchData[branch.id][date] || 0;
-          });
-          timeSeries.push(dataPoint);
-        });
-
-      setTimeSeriesData(timeSeries);
-    } catch (error) {
-      console.error("Error generating time series data:", error);
-    }
-  }, [allBranches, debouncedDateFrom, debouncedDateTo]);
-
-  const fetchAllBranchMetrics = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const activeBranches = (allBranches || []).filter((b) => b.is_active && !b.deleted_at);
-      if (activeBranches.length === 0) {
-        setBranchMetrics([]);
-        setInsights([]);
-        setIsLoading(false);
-        return;
-      }
-
-      // Calculate previous period for comparison
-      const currentStart = new Date(debouncedDateFrom);
-      const currentEnd = new Date(debouncedDateTo);
-      const periodDays = Math.ceil((currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60 * 24));
-      const previousStart = new Date(currentStart);
-      previousStart.setDate(previousStart.getDate() - periodDays - 1);
-      const previousEnd = new Date(currentStart);
-      previousEnd.setDate(previousEnd.getDate() - 1);
-
-      const previousFrom = format(previousStart, "yyyy-MM-dd");
-      const previousTo = format(previousEnd, "yyyy-MM-dd");
-
-      // Fetch all branch metrics in parallel for current period
-      const currentMetricsPromises = activeBranches.map((branch) =>
-        fetchBranchMetrics(branch.id, branch.name, debouncedDateFrom, debouncedDateTo)
-      );
-
-      // Fetch all branch metrics in parallel for previous period
-      const previousMetricsPromises = activeBranches.map((branch) =>
-        fetchBranchMetrics(branch.id, branch.name, previousFrom, previousTo)
-      );
-
-      // Execute both periods in parallel
-      const [currentMetricsResults, previousMetricsResults] = await Promise.all([
-        Promise.all(currentMetricsPromises),
-        Promise.all(previousMetricsPromises),
-      ]);
-
-      // Process results and generate insights
-      const metrics: BranchMetrics[] = [];
-      const allInsights: Insight[] = [];
-
-      for (let i = 0; i < activeBranches.length; i++) {
-        const currentMetrics = currentMetricsResults[i];
-        const previousMetrics = previousMetricsResults[i];
-
-        const revenueGrowth =
-          previousMetrics.revenue > 0
-            ? ((currentMetrics.revenue - previousMetrics.revenue) / previousMetrics.revenue) * 100
-            : currentMetrics.revenue > 0
-            ? 100
-            : 0;
-
-        const memberGrowth =
-          previousMetrics.totalMembers > 0
-            ? ((currentMetrics.totalMembers - previousMetrics.totalMembers) / previousMetrics.totalMembers) * 100
-            : currentMetrics.totalMembers > 0
-            ? 100
-            : 0;
-
-        const metric: BranchMetrics = {
-          ...currentMetrics,
-          previousPeriodRevenue: previousMetrics.revenue,
-          revenueGrowth,
-          previousPeriodMembers: previousMetrics.totalMembers,
-          memberGrowth,
-        };
-
-        metrics.push(metric);
-
-        // Generate insights
-        const branchInsights = generateInsights(metric);
-        allInsights.push(...branchInsights);
-      }
-
-      setBranchMetrics(metrics);
-      setInsights(
-        allInsights.sort((a, b) => {
-          const priority = { warning: 3, info: 2, success: 1 };
-          return priority[b.type] - priority[a.type];
-        })
-      );
-
-      // Generate time series data in parallel (non-blocking)
-      generateTimeSeriesData();
-    } catch (error) {
-      console.error("Error fetching branch metrics:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [allBranches, debouncedDateFrom, debouncedDateTo, fetchBranchMetrics, generateTimeSeriesData]);
-
-  useEffect(() => {
-    if (allBranches && allBranches.length > 0) {
-      fetchAllBranchMetrics();
-      fetchTrainerMetrics();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allBranches, debouncedDateFrom, debouncedDateTo]);
-
-  const generateInsights = (metric: BranchMetrics): Insight[] => {
-    const insights: Insight[] = [];
-
-    // Revenue drop alert - only show if there was previous revenue
-    if (metric.previousPeriodRevenue > 0 && metric.revenueGrowth < -10) {
-      insights.push({
-        type: "warning",
-        title: "Revenue Drop Detected",
-        description: `Revenue decreased by ${Math.abs(metric.revenueGrowth).toFixed(1)}% compared to previous period.`,
-        branchId: metric.branchId,
-        branchName: metric.branchName,
-        metric: "revenue",
-        value: metric.revenueGrowth,
-      });
-    }
-
-    // High churn rate alert
-    if (metric.churnRate > 15) {
-      insights.push({
-        type: "warning",
-        title: "High Churn Rate",
-        description: `Churn rate is ${metric.churnRate.toFixed(1)}%, which is above the healthy threshold of 15%.`,
-        branchId: metric.branchId,
-        branchName: metric.branchName,
-        metric: "churn",
-        value: metric.churnRate,
-      });
-    }
-
-    // Low conversion rate alert - only show if there are leads
-    if (metric.newMembers > 0 && metric.conversionRate < 20) {
-      insights.push({
-        type: "warning",
-        title: "Low Conversion Rate",
-        description: `Conversion rate is ${metric.conversionRate.toFixed(1)}%, indicating potential issues with lead quality or sales process.`,
-        branchId: metric.branchId,
-        branchName: metric.branchName,
-        metric: "conversion",
-        value: metric.conversionRate,
-      });
-    }
-
-    // Negative profit margin - only show if there's revenue
-    if (metric.revenue > 0 && metric.profitMargin < 0) {
-      insights.push({
-        type: "warning",
-        title: "Negative Profit Margin",
-        description: `Branch is operating at a loss with ${Math.abs(metric.profitMargin).toFixed(1)}% negative margin.`,
-        branchId: metric.branchId,
-        branchName: metric.branchName,
-        metric: "profit",
-        value: metric.profitMargin,
-      });
-    }
-
-    // Positive growth - only show if there was previous revenue (not just new revenue)
-    if (metric.previousPeriodRevenue > 0 && metric.revenueGrowth > 20) {
-      insights.push({
-        type: "success",
-        title: "Strong Revenue Growth",
-        description: `Revenue increased by ${metric.revenueGrowth.toFixed(1)}% compared to previous period.`,
-        branchId: metric.branchId,
-        branchName: metric.branchName,
-        metric: "revenue",
-        value: metric.revenueGrowth,
-      });
-    }
-
-    // Low churn rate success
-    if (metric.churnRate < 5 && metric.churnRate > 0) {
-      insights.push({
-        type: "success",
-        title: "Excellent Retention",
-        description: `Churn rate is only ${metric.churnRate.toFixed(1)}%, indicating strong member retention.`,
-        branchId: metric.branchId,
-        branchName: metric.branchName,
-        metric: "churn",
-        value: metric.churnRate,
-      });
-    }
-
-    return insights;
-  };
-
-  const formatCurrency = (value: number) => {
-    return `₹${value.toLocaleString("en-IN")}`;
-  };
+  // Time series still fetched client-side (needs per-payment granularity)
+  const { data: timeSeriesData = [] } = useBranchTimeSeriesQuery(
+    debouncedDateFrom,
+    debouncedDateTo,
+    !!(allBranches && allBranches.length > 0)
+  );
 
   // Memoize expensive calculations
   const bestPerformer = useMemo(() => {
@@ -589,162 +147,9 @@ const BranchAnalytics = () => {
     );
   }, [branchMetrics]);
 
-  const fetchTrainerMetrics = useCallback(async () => {
-    setIsLoadingTrainers(true);
-    try {
-      const activeBranches = (allBranches || []).filter((b) => b.is_active && !b.deleted_at);
-      if (activeBranches.length === 0) {
-        setTrainerMetrics([]);
-        setIsLoadingTrainers(false);
-        return;
-      }
-
-      // Calculate previous period for comparison
-      const currentStart = new Date(debouncedDateFrom);
-      const currentEnd = new Date(debouncedDateTo);
-      const periodDays = Math.ceil((currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60 * 24));
-      const previousStart = new Date(currentStart);
-      previousStart.setDate(previousStart.getDate() - periodDays - 1);
-      const previousEnd = new Date(currentStart);
-      previousEnd.setDate(previousEnd.getDate() - 1);
-
-      const previousFrom = format(previousStart, "yyyy-MM-dd");
-      const previousTo = format(previousEnd, "yyyy-MM-dd");
-      const branchIds = activeBranches.map((b) => b.id);
-
-      // Fetch all trainers from active branches in one query
-      const { data: trainers } = await supabase
-        .from("personal_trainers")
-        .select("id, name, branch_id, payment_category, percentage_fee, session_fee, monthly_salary")
-        .eq("is_active", true)
-        .in("branch_id", branchIds);
-
-      if (!trainers || trainers.length === 0) {
-        setTrainerMetrics([]);
-        setIsLoadingTrainers(false);
-        return;
-      }
-
-      // Fetch all trainer data in parallel batches
-      const trainerMetricsPromises = trainers.map(async (trainer) => {
-        const branch = activeBranches.find((b) => b.id === trainer.branch_id);
-        if (!branch) return null;
-
-        // Fetch all trainer data in parallel
-        const [
-          { data: currentPtSubs },
-          { data: allPtSubs },
-          { data: previousPtSubs },
-        ] = await Promise.all([
-          supabase
-            .from("pt_subscriptions")
-            .select("id, member_id, total_fee, created_at, status, start_date, end_date")
-            .eq("personal_trainer_id", trainer.id)
-            .eq("branch_id", trainer.branch_id)
-            .gte("created_at", `${debouncedDateFrom}T00:00:00`)
-            .lte("created_at", `${debouncedDateTo}T23:59:59`),
-          
-          supabase
-            .from("pt_subscriptions")
-            .select("id, member_id, total_fee, created_at, status, start_date, end_date")
-            .eq("personal_trainer_id", trainer.id)
-            .eq("branch_id", trainer.branch_id),
-          
-          supabase
-            .from("pt_subscriptions")
-            .select("id, member_id, total_fee, created_at")
-            .eq("personal_trainer_id", trainer.id)
-            .eq("branch_id", trainer.branch_id)
-            .gte("created_at", `${previousFrom}T00:00:00`)
-            .lte("created_at", `${previousTo}T23:59:59`),
-        ]);
-
-        const currentRevenue = currentPtSubs?.reduce((sum, sub) => sum + Number(sub.total_fee || 0), 0) || 0;
-        const previousRevenue = previousPtSubs?.reduce((sum, sub) => sum + Number(sub.total_fee || 0), 0) || 0;
-        const revenueGrowth = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : currentRevenue > 0 ? 100 : 0;
-
-        const uniqueCurrentClients = new Set(currentPtSubs?.map((sub) => sub.member_id) || []).size;
-        const uniqueAllClients = new Set(allPtSubs?.map((sub) => sub.member_id) || []).size;
-        const uniquePreviousClients = new Set(previousPtSubs?.map((sub) => sub.member_id) || []).size;
-        const clientGrowth = uniquePreviousClients > 0 ? ((uniqueCurrentClients - uniquePreviousClients) / uniquePreviousClients) * 100 : uniqueCurrentClients > 0 ? 100 : 0;
-
-        // Calculate active clients (subscriptions with active status)
-        const activeSubs = allPtSubs?.filter((sub) => sub.status === "active") || [];
-        const activeClients = new Set(activeSubs.map((sub) => sub.member_id)).size;
-
-        // Calculate new clients in current period
-        const newClients = uniqueCurrentClients;
-
-        // Calculate churned clients (expired subscriptions in current period)
-        const churnedSubs = allPtSubs?.filter(
-          (sub) =>
-            sub.status === "expired" &&
-            new Date(sub.end_date) >= new Date(debouncedDateFrom) &&
-            new Date(sub.end_date) <= new Date(debouncedDateTo)
-        ) || [];
-        const churnedClients = churnedSubs.length;
-
-        // Calculate client retention rate
-        const retentionRate =
-          uniqueAllClients > 0
-            ? ((uniqueAllClients - churnedClients) / uniqueAllClients) * 100
-            : 100;
-
-        // Calculate renewal rate (simplified - based on active subscriptions)
-        const renewalRate = uniqueAllClients > 0 ? (activeClients / uniqueAllClients) * 100 : 0;
-
-        // Calculate average revenue per client
-        const avgRevenuePerClient = uniqueCurrentClients > 0 ? currentRevenue / uniqueCurrentClients : 0;
-
-        // Calculate total sessions (number of subscriptions)
-        const totalSessions = currentPtSubs?.length || 0;
-        const avgRevenuePerSession = totalSessions > 0 ? currentRevenue / totalSessions : 0;
-
-        // Calculate efficiency score (composite metric: revenue + retention + growth)
-        const efficiencyScore =
-          (revenueGrowth * 0.4 + retentionRate * 0.3 + (clientGrowth > 0 ? clientGrowth : 0) * 0.3) / 100;
-
-        return {
-          trainerId: trainer.id,
-          trainerName: trainer.name,
-          branchId: trainer.branch_id || "",
-          branchName: branch.name,
-          revenue: currentRevenue,
-          activeClients,
-          totalClients: uniqueAllClients,
-          newClients,
-          churnedClients,
-          clientRetentionRate: retentionRate,
-          avgRevenuePerClient,
-          avgRevenuePerSession,
-          totalSessions,
-          renewalRate,
-          clientGrowthRate: clientGrowth,
-          efficiencyScore: efficiencyScore * 100,
-          paymentCategory: trainer.payment_category || "monthly_percentage",
-          percentageFee: trainer.percentage_fee || 0,
-          sessionFee: trainer.session_fee || 0,
-          monthlySalary: trainer.monthly_salary || 0,
-          previousPeriodRevenue: previousRevenue,
-          revenueGrowth,
-          previousPeriodClients: uniquePreviousClients,
-          clientGrowth,
-        };
-      });
-
-      // Wait for all trainer metrics to be calculated in parallel
-      const metricsResults = await Promise.all(trainerMetricsPromises);
-      const metrics = metricsResults.filter((m): m is TrainerMetrics => m !== null);
-
-      // Sort by efficiency score descending
-      metrics.sort((a, b) => b.efficiencyScore - a.efficiencyScore);
-      setTrainerMetrics(metrics);
-    } catch (error) {
-      console.error("Error fetching trainer metrics:", error);
-    } finally {
-      setIsLoadingTrainers(false);
-    }
-  }, [allBranches, debouncedDateFrom, debouncedDateTo]);
+  const formatCurrency = (value: number) => {
+    return `₹${value.toLocaleString("en-IN")}`;
+  };
 
   const openBranchDetail = (branch: BranchMetrics) => {
     setDetailBranch(branch);

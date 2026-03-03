@@ -33,6 +33,7 @@ import { SubscriptionPlanTab } from "@/components/admin/SubscriptionPlanTab";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useStaffOperations } from "@/hooks/useStaffOperations";
+import { useSettingsPageData } from "@/hooks/queries/useSettingsPageData";
 
 interface CustomPackage {
   id: string;
@@ -135,7 +136,9 @@ const AdminSettings = () => {
   const staffOps = useStaffOperations();
   const [user, setUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoadingData, setIsLoadingData] = useState(true);
+  
+  // Use aggregated settings page data hook (single API call)
+  const { settings: fetchedSettings, monthlyPackages: fetchedMonthlyPackages, customPackages: fetchedCustomPackages, isLoading: isLoadingData, refetch: refetchData } = useSettingsPageData();
   
   // Loading states for toggle buttons
   const [isTogglingWhatsApp, setIsTogglingWhatsApp] = useState(false);
@@ -192,109 +195,61 @@ const AdminSettings = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Sync hook data to local state when it arrives
   useEffect(() => {
-    // Fetch data when: admin is logged in OR staff is logged in
-    if ((user || isStaffLoggedIn) && currentBranch) {
-      fetchData();
+    if (fetchedSettings) {
+      setSettings(fetchedSettings);
+      setGymName(fetchedSettings.gym_name || "");
+      setGymPhone(fetchedSettings.gym_phone || "");
+      setGymAddress(fetchedSettings.gym_address || "");
+      setWhatsappEnabled(fetchedSettings.whatsapp_enabled === true);
     }
-  }, [user, isStaffLoggedIn, currentBranch]);
+  }, [fetchedSettings]);
 
-  // Reset settings state when branch changes to ensure fresh data
   useEffect(() => {
-    if (currentBranch) {
-      setIsLoadingData(true);
-      setSettings(null);
-      setGymName("");
-      setGymPhone("");
-      setGymAddress("");
-      setWhatsappEnabled(false);
-      setMonthlyPackages([]);
-      setCustomPackages([]);
+    if (fetchedMonthlyPackages) {
+      setMonthlyPackages(fetchedMonthlyPackages);
     }
-  }, [currentBranch?.id]);
+  }, [fetchedMonthlyPackages]);
 
-  const fetchData = async () => {
-    if (!currentBranch) return;
-    setIsLoadingData(true);
-
-    // Fetch gym settings for the current branch
-    let { data: settingsData } = await supabase
-      .from("gym_settings")
-      .select("id, gym_name, gym_phone, gym_address, whatsapp_enabled")
-      .eq("branch_id", currentBranch.id)
-      .limit(1)
-      .maybeSingle();
-
-    // If no settings exist, create them for this branch
-    if (!settingsData) {
-      const { data: newSettings, error: createError } = await supabase
-        .from("gym_settings")
-        .insert({
-          branch_id: currentBranch.id,
-          gym_name: currentBranch.name || "",
-          gym_phone: currentBranch.phone || null,
-          gym_address: currentBranch.address || null,
-          whatsapp_enabled: false,
-        })
-        .select("id, gym_name, gym_phone, gym_address, whatsapp_enabled")
-        .single();
-
-      if (createError) {
-        console.error("Error creating gym_settings:", createError);
-        // Still set state even if creation fails
-        setSettings(null);
-        setGymName(currentBranch.name || "");
-        setGymPhone(currentBranch.phone || "");
-        setGymAddress(currentBranch.address || "");
-        setWhatsappEnabled(false);
-        setIsLoadingData(false);
-        return;
-      }
-      settingsData = newSettings;
+  useEffect(() => {
+    if (fetchedCustomPackages) {
+      setCustomPackages(fetchedCustomPackages);
     }
+  }, [fetchedCustomPackages]);
 
-    if (settingsData) {
-      setSettings(settingsData as GymSettings);
-      setGymName(settingsData.gym_name || "");
-      setGymPhone(settingsData.gym_phone || "");
-      setGymAddress(settingsData.gym_address || "");
-      setWhatsappEnabled(settingsData.whatsapp_enabled === true);
-    } else {
-      // Fallback: reset state
-      setSettings(null);
-      setGymName("");
-      setGymPhone("");
-      setGymAddress("");
-      setWhatsappEnabled(false);
+  // Handle case where no settings exist for the branch - create them
+  useEffect(() => {
+    if (!isLoadingData && !fetchedSettings && currentBranch && (user || isStaffLoggedIn)) {
+      // Create default settings for this branch
+      const createDefaultSettings = async () => {
+        const { error } = await supabase
+          .from("gym_settings")
+          .insert({
+            branch_id: currentBranch.id,
+            gym_name: currentBranch.name || "",
+            gym_phone: currentBranch.phone || null,
+            gym_address: currentBranch.address || null,
+            whatsapp_enabled: false,
+          });
+
+        if (!error) {
+          refetchData();
+        } else {
+          console.error("Error creating gym_settings:", error);
+          setSettings(null);
+          setGymName(currentBranch.name || "");
+          setGymPhone(currentBranch.phone || "");
+          setGymAddress(currentBranch.address || "");
+          setWhatsappEnabled(false);
+        }
+      };
+      createDefaultSettings();
     }
+  }, [isLoadingData, fetchedSettings, currentBranch, user, isStaffLoggedIn, refetchData]);
 
-    // Fetch monthly packages for the current branch
-    const { data: monthlyData } = await supabase
-      .from("monthly_packages")
-      .select("*")
-      .eq("branch_id", currentBranch.id)
-      .order("months");
-
-    if (monthlyData) {
-      setMonthlyPackages(monthlyData);
-    } else {
-      setMonthlyPackages([]);
-    }
-
-    // Fetch custom packages for the current branch
-    const { data: packagesData } = await supabase
-      .from("custom_packages")
-      .select("*")
-      .eq("branch_id", currentBranch.id)
-      .order("duration_days");
-
-    if (packagesData) {
-      setCustomPackages(packagesData);
-    } else {
-      setCustomPackages([]);
-    }
-    setIsLoadingData(false);
-  };
+  // Use refetchData instead of fetchData for mutations
+  const fetchData = () => refetchData();
 
   const handleSaveSettings = async () => {
     if (!settings?.id || !currentBranch?.id) return;

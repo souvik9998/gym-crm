@@ -1229,6 +1229,180 @@ Deno.serve(async (req) => {
         );
       }
 
+      case "branch-analytics-data": {
+        // Aggregated branch analytics: metrics for all branches + trainer metrics
+        const dateFromParam = url.searchParams.get("dateFrom");
+        const dateToParam = url.searchParams.get("dateTo");
+        const prevFromParam = url.searchParams.get("prevFrom");
+        const prevToParam = url.searchParams.get("prevTo");
+
+        if (!dateFromParam || !dateToParam) {
+          return errorResponse("dateFrom and dateTo required", 400);
+        }
+
+        // Get all active branches for the tenant
+        const { data: activeBranches } = await supabase
+          .from("branches")
+          .select("id, name")
+          .eq("is_active", true)
+          .is("deleted_at", null);
+
+        if (!activeBranches || activeBranches.length === 0) {
+          return new Response(
+            JSON.stringify({ branchMetrics: [], trainerMetrics: [] }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const branchIds = activeBranches.map((b: any) => b.id);
+        const branchNameMap: Record<string, string> = {};
+        activeBranches.forEach((b: any) => { branchNameMap[b.id] = b.name; });
+
+        // Helper to fetch metrics for a single branch and period
+        const fetchBranchMetrics = async (bid: string, from: string, to: string) => {
+          const [
+            { data: payments },
+            { data: expenses },
+            { count: totalMembers },
+            { count: newMembersCount },
+            { count: activeMembers },
+            { count: churnedMembers },
+            { count: ptSubscriptions },
+            { count: staffCount },
+            { data: marketingExpenses },
+          ] = await Promise.all([
+            supabase.from("payments").select("amount").eq("branch_id", bid).eq("status", "success")
+              .gte("created_at", `${from}T00:00:00`).lte("created_at", `${to}T23:59:59`),
+            supabase.from("ledger_entries").select("amount").eq("branch_id", bid).eq("entry_type", "expense")
+              .gte("entry_date", from).lte("entry_date", to),
+            supabase.from("members").select("*", { count: "exact", head: true }).eq("branch_id", bid),
+            supabase.from("members").select("*", { count: "exact", head: true }).eq("branch_id", bid)
+              .gte("created_at", `${from}T00:00:00`).lte("created_at", `${to}T23:59:59`),
+            supabase.from("subscriptions").select("*", { count: "exact", head: true }).eq("branch_id", bid).eq("status", "active"),
+            supabase.from("subscriptions").select("*", { count: "exact", head: true }).eq("branch_id", bid).eq("status", "expired")
+              .gte("end_date", from).lte("end_date", to),
+            supabase.from("pt_subscriptions").select("*", { count: "exact", head: true }).eq("branch_id", bid)
+              .gte("created_at", `${from}T00:00:00`).lte("created_at", `${to}T23:59:59`),
+            supabase.from("staff_branch_assignments").select("*", { count: "exact", head: true }).eq("branch_id", bid),
+            supabase.from("ledger_entries").select("amount").eq("branch_id", bid).eq("entry_type", "expense")
+              .ilike("category", "%marketing%").gte("entry_date", from).lte("entry_date", to),
+          ]);
+
+          const revenue = payments?.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0) || 0;
+          const totalExpenses = expenses?.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0) || 0;
+          const profit = revenue - totalExpenses;
+          const profitMargin = revenue > 0 ? (profit / revenue) * 100 : 0;
+          const newMembers = newMembersCount || 0;
+          const churnRate = (totalMembers || 0) > 0 ? ((churnedMembers || 0) / (totalMembers || 0)) * 100 : 0;
+          const conversionRate = newMembers > 0 ? Math.min((newMembers / (newMembers + 10)) * 100, 100) : 0;
+          const staffPerformance = (staffCount || 0) > 0 ? revenue / (staffCount || 1) : 0;
+          const marketingExpense = marketingExpenses?.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0) || 0;
+          const marketingROI = marketingExpense > 0 ? ((revenue - marketingExpense) / marketingExpense) * 100 : 0;
+          const avgRevenuePerMember = (totalMembers || 0) > 0 ? revenue / (totalMembers || 1) : 0;
+
+          return {
+            branchId: bid, branchName: branchNameMap[bid],
+            revenue, expenses: totalExpenses, profit, profitMargin,
+            totalMembers: totalMembers || 0, activeMembers: activeMembers || 0,
+            newMembers, churnedMembers: churnedMembers || 0, churnRate, conversionRate,
+            ptSubscriptions: ptSubscriptions || 0, avgRevenuePerMember,
+            staffCount: staffCount || 0, staffPerformance, marketingROI,
+            previousPeriodRevenue: 0, revenueGrowth: 0, previousPeriodMembers: 0, memberGrowth: 0,
+          };
+        };
+
+        // Fetch current + previous period for all branches in parallel
+        const currentPromises = branchIds.map((bid: string) => fetchBranchMetrics(bid, dateFromParam, dateToParam));
+        const previousPromises = prevFromParam && prevToParam
+          ? branchIds.map((bid: string) => fetchBranchMetrics(bid, prevFromParam, prevToParam))
+          : [];
+
+        const [currentResults, previousResults] = await Promise.all([
+          Promise.all(currentPromises),
+          previousPromises.length > 0 ? Promise.all(previousPromises) : Promise.resolve([]),
+        ]);
+
+        // Merge current and previous metrics
+        const branchMetrics = currentResults.map((current: any, i: number) => {
+          const prev = previousResults[i];
+          if (prev) {
+            const revenueGrowth = prev.revenue > 0 ? ((current.revenue - prev.revenue) / prev.revenue) * 100 : current.revenue > 0 ? 100 : 0;
+            const memberGrowth = prev.totalMembers > 0 ? ((current.totalMembers - prev.totalMembers) / prev.totalMembers) * 100 : current.totalMembers > 0 ? 100 : 0;
+            return { ...current, previousPeriodRevenue: prev.revenue, revenueGrowth, previousPeriodMembers: prev.totalMembers, memberGrowth };
+          }
+          return current;
+        });
+
+        // Fetch trainer metrics
+        const { data: trainers } = await supabase
+          .from("personal_trainers")
+          .select("id, name, branch_id, payment_category, percentage_fee, session_fee, monthly_salary")
+          .eq("is_active", true)
+          .in("branch_id", branchIds);
+
+        let trainerMetricsResult: any[] = [];
+        if (trainers && trainers.length > 0) {
+          const trainerPromises = trainers.map(async (trainer: any) => {
+            const [{ data: currentPtSubs }, { data: allPtSubs }, { data: previousPtSubs }] = await Promise.all([
+              supabase.from("pt_subscriptions").select("id, member_id, total_fee, created_at, status, start_date, end_date")
+                .eq("personal_trainer_id", trainer.id).eq("branch_id", trainer.branch_id)
+                .gte("created_at", `${dateFromParam}T00:00:00`).lte("created_at", `${dateToParam}T23:59:59`),
+              supabase.from("pt_subscriptions").select("id, member_id, total_fee, created_at, status, start_date, end_date")
+                .eq("personal_trainer_id", trainer.id).eq("branch_id", trainer.branch_id),
+              prevFromParam && prevToParam
+                ? supabase.from("pt_subscriptions").select("id, member_id, total_fee, created_at")
+                    .eq("personal_trainer_id", trainer.id).eq("branch_id", trainer.branch_id)
+                    .gte("created_at", `${prevFromParam}T00:00:00`).lte("created_at", `${prevToParam}T23:59:59`)
+                : Promise.resolve({ data: [] }),
+            ]);
+
+            const currentRevenue = currentPtSubs?.reduce((sum: number, s: any) => sum + Number(s.total_fee || 0), 0) || 0;
+            const previousRevenue = previousPtSubs?.reduce((sum: number, s: any) => sum + Number(s.total_fee || 0), 0) || 0;
+            const revenueGrowth = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : currentRevenue > 0 ? 100 : 0;
+
+            const uniqueCurrentClients = new Set(currentPtSubs?.map((s: any) => s.member_id) || []).size;
+            const uniqueAllClients = new Set(allPtSubs?.map((s: any) => s.member_id) || []).size;
+            const uniquePreviousClients = new Set(previousPtSubs?.map((s: any) => s.member_id) || []).size;
+            const clientGrowth = uniquePreviousClients > 0 ? ((uniqueCurrentClients - uniquePreviousClients) / uniquePreviousClients) * 100 : uniqueCurrentClients > 0 ? 100 : 0;
+
+            const activeSubs = allPtSubs?.filter((s: any) => s.status === "active") || [];
+            const activeClients = new Set(activeSubs.map((s: any) => s.member_id)).size;
+            const churnedSubs = allPtSubs?.filter((s: any) => s.status === "expired" && new Date(s.end_date) >= new Date(dateFromParam) && new Date(s.end_date) <= new Date(dateToParam)) || [];
+            const churnedClients = churnedSubs.length;
+            const retentionRate = uniqueAllClients > 0 ? ((uniqueAllClients - churnedClients) / uniqueAllClients) * 100 : 100;
+            const renewalRate = uniqueAllClients > 0 ? (activeClients / uniqueAllClients) * 100 : 0;
+            const avgRevenuePerClient = uniqueCurrentClients > 0 ? currentRevenue / uniqueCurrentClients : 0;
+            const totalSessions = currentPtSubs?.length || 0;
+            const avgRevenuePerSession = totalSessions > 0 ? currentRevenue / totalSessions : 0;
+            const efficiencyScore = (revenueGrowth * 0.4 + retentionRate * 0.3 + (clientGrowth > 0 ? clientGrowth : 0) * 0.3) / 100;
+
+            return {
+              trainerId: trainer.id, trainerName: trainer.name,
+              branchId: trainer.branch_id || "", branchName: branchNameMap[trainer.branch_id] || "",
+              revenue: currentRevenue, activeClients, totalClients: uniqueAllClients,
+              newClients: uniqueCurrentClients, churnedClients,
+              clientRetentionRate: retentionRate, avgRevenuePerClient, avgRevenuePerSession,
+              totalSessions, renewalRate, clientGrowthRate: clientGrowth,
+              efficiencyScore: efficiencyScore * 100,
+              paymentCategory: trainer.payment_category || "monthly_percentage",
+              percentageFee: trainer.percentage_fee || 0,
+              sessionFee: trainer.session_fee || 0,
+              monthlySalary: trainer.monthly_salary || 0,
+              previousPeriodRevenue: previousRevenue, revenueGrowth,
+              previousPeriodClients: uniquePreviousClients, clientGrowth,
+            };
+          });
+
+          trainerMetricsResult = await Promise.all(trainerPromises);
+          trainerMetricsResult.sort((a: any, b: any) => b.efficiencyScore - a.efficiencyScore);
+        }
+
+        return new Response(
+          JSON.stringify({ branchMetrics, trainerMetrics: trainerMetricsResult }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       default:
         return errorResponse("Invalid action", 400);
     }
