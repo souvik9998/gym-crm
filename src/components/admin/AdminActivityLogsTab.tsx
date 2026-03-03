@@ -44,13 +44,7 @@ import { toast } from "@/components/ui/sonner";
 import { useInfiniteAdminLogsQuery, useAdminLogStats, type AdminActivityLog } from "@/hooks/queries";
 import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 
-interface ActivityStats {
-  totalActivities: number;
-  activitiesToday: number;
-  activitiesThisWeek: number;
-  activitiesThisMonth: number;
-  byCategory: Record<string, number>;
-}
+// Stats interface removed - using AdminLogStats from useLogStats hook
 
 interface AdminActivityLogsTabProps {
   refreshKey: number;
