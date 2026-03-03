@@ -191,6 +191,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (isMounted.current) {
+        lastLoadedUserId.current = user.id;
         setState({
           user,
           session: null, // will be set by the session handler
