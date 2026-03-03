@@ -123,48 +123,7 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
     }
   }, [refreshKey, refetch, refetchStats]);
 
-  const fetchStats = async () => {
-    if (!currentBranch?.id) return;
-    
-    try {
-      const { data: allLogs, error } = await supabase
-        .from("admin_activity_logs")
-        .select("*")
-        .eq("branch_id", currentBranch.id)
-        .not("admin_user_id", "is", null)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const weekAgo = new Date(today);
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      const monthAgo = new Date(today);
-      monthAgo.setMonth(monthAgo.getMonth() - 1);
-
-      const statsData: ActivityStats = {
-        totalActivities: allLogs?.length || 0,
-        activitiesToday: 0,
-        activitiesThisWeek: 0,
-        activitiesThisMonth: 0,
-        byCategory: {},
-      };
-
-      allLogs?.forEach((log: AdminActivityLog) => {
-        const createdAt = new Date(log.created_at);
-        if (createdAt >= today) statsData.activitiesToday++;
-        if (createdAt >= weekAgo) statsData.activitiesThisWeek++;
-        if (createdAt >= monthAgo) statsData.activitiesThisMonth++;
-        statsData.byCategory[log.activity_category] = 
-          (statsData.byCategory[log.activity_category] || 0) + 1;
-      });
-
-      setStats(statsData);
-    } catch (error: any) {
-      console.error("Error fetching stats:", error);
-    }
-  };
+  // fetchStats removed - now using useAdminLogStats hook
 
   const handleViewActivity = (activity: AdminActivityLog) => {
     setSelectedActivity(activity);
