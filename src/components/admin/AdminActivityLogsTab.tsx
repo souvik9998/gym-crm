@@ -116,18 +116,12 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
     }
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // Fetch stats separately (not paginated)
-  useEffect(() => {
-    if (currentBranch?.id) {
-      fetchStats();
-    }
-  }, [refreshKey, currentBranch?.id]);
-
   useEffect(() => {
     if (refreshKey > 0) {
       refetch();
+      refetchStats();
     }
-  }, [refreshKey, refetch]);
+  }, [refreshKey, refetch, refetchStats]);
 
   const fetchStats = async () => {
     if (!currentBranch?.id) return;
