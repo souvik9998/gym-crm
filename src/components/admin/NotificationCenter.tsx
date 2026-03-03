@@ -1,9 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Bell, AlertTriangle, AlertCircle, Info, ChevronRight, Send, CreditCard, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import {
   Popover,
   PopoverContent,
@@ -34,14 +32,34 @@ const categoryLabels: Record<CategoryFilter, string> = {
 };
 
 function NotificationIcon({ type }: { type: AdminNotification["type"] }) {
-  if (type === "danger") return <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />;
-  if (type === "warning") return <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />;
-  return <Info className="h-4 w-4 text-primary flex-shrink-0" />;
+  if (type === "danger") return (
+    <div className="h-9 w-9 rounded-xl bg-destructive/10 flex items-center justify-center flex-shrink-0">
+      <AlertCircle className="h-[18px] w-[18px] text-destructive" />
+    </div>
+  );
+  if (type === "warning") return (
+    <div className="h-9 w-9 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
+      <AlertTriangle className="h-[18px] w-[18px] text-accent-foreground" />
+    </div>
+  );
+  return (
+    <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+      <Info className="h-[18px] w-[18px] text-primary" />
+    </div>
+  );
 }
 
 function NotificationBadge({ type }: { type: AdminNotification["type"] }) {
-  if (type === "danger") return <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Urgent</Badge>;
-  if (type === "warning") return <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-amber-400 text-amber-600">Warning</Badge>;
+  if (type === "danger") return (
+    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-destructive/10 text-destructive tracking-wide uppercase">
+      Urgent
+    </span>
+  );
+  if (type === "warning") return (
+    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-accent text-accent-foreground tracking-wide uppercase">
+      Warning
+    </span>
+  );
   return null;
 }
 
@@ -67,11 +85,9 @@ export function NotificationCenter() {
 
   const handleClick = (n: AdminNotification) => {
     if (n.category === "plan") {
-      // Show plan expiry dialog
       setOpen(false);
       setPlanDialog({ open: true, notification: n });
     } else if (n.category === "member") {
-      // Show member reminder dialog
       setOpen(false);
       setMemberDialog({ open: true, notification: n });
     } else if (n.actionRoute) {
@@ -83,7 +99,6 @@ export function NotificationCenter() {
   const handleSendReminder = async () => {
     setSendingReminder(true);
     try {
-      // Trigger manual WhatsApp reminder via the daily-whatsapp-job
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -122,17 +137,17 @@ export function NotificationCenter() {
           <Button
             variant="ghost"
             size="icon"
-            className="relative text-muted-foreground hover:text-foreground hover:bg-muted h-7 w-7 md:h-9 md:w-9"
+            className="relative text-muted-foreground hover:text-foreground hover:bg-muted/60 h-8 w-8 md:h-9 md:w-9 rounded-xl transition-all duration-200"
             title="Notifications"
           >
-            <Bell className="w-4 h-4 md:w-5 md:h-5" />
+            <Bell className="w-[18px] h-[18px]" />
             {dangerCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground px-1 ring-2 ring-card">
+              <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground px-1 shadow-lg shadow-destructive/40 animate-in zoom-in-50 duration-300 border-2 border-card">
                 {dangerCount > 9 ? "9+" : dangerCount}
               </span>
             )}
             {dangerCount === 0 && totalCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1 ring-2 ring-card">
+              <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1 shadow-lg shadow-primary/40 animate-in zoom-in-50 duration-300 border-2 border-card">
                 {totalCount > 9 ? "9+" : totalCount}
               </span>
             )}
@@ -140,40 +155,42 @@ export function NotificationCenter() {
         </PopoverTrigger>
         <PopoverContent
           align="end"
-          className="w-80 md:w-96 p-0 bg-card border shadow-xl rounded-xl overflow-hidden"
-          sideOffset={8}
+          className="w-[340px] md:w-[400px] p-0 bg-card/80 backdrop-blur-2xl border border-border/40 shadow-2xl shadow-foreground/5 rounded-2xl overflow-hidden"
+          sideOffset={10}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 pt-4 pb-3 bg-muted/30">
-            <div className="flex items-center gap-2">
-              <Bell className="w-4 h-4 text-primary" />
-              <h3 className="font-semibold text-foreground text-sm">Notifications</h3>
+          <div className="flex items-center justify-between px-5 pt-5 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Bell className="w-4 h-4 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground text-[15px] tracking-tight">Notifications</h3>
             </div>
             {totalCount > 0 && (
-              <Badge className="text-xs bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
+              <span className="text-xs font-medium px-2.5 py-1 rounded-lg bg-muted text-muted-foreground tabular-nums">
                 {totalCount} alert{totalCount !== 1 ? "s" : ""}
-              </Badge>
+              </span>
             )}
           </div>
 
           {/* Filter Tabs */}
-          <div className="flex gap-1 px-3 py-2 bg-muted/20">
+          <div className="flex gap-1 px-4 pb-3">
             {categoryFilters.map(cat => (
               <button
                 key={cat}
                 onClick={() => setFilter(cat)}
                 className={cn(
-                  "text-xs px-3 py-1.5 rounded-full transition-all font-medium",
+                  "text-xs px-3 py-1.5 rounded-lg transition-all duration-200 font-medium",
                   filter === cat
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-foreground text-background shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
                 {categoryLabels[cat]}
                 {filterCounts[cat] > 0 && (
                   <span className={cn(
-                    "ml-1.5 text-[10px] font-bold",
-                    filter === cat ? "opacity-80" : "text-muted-foreground"
+                    "ml-1.5 text-[10px] font-bold tabular-nums",
+                    filter === cat ? "opacity-70" : "text-muted-foreground"
                   )}>
                     {filterCounts[cat]}
                   </span>
@@ -182,47 +199,46 @@ export function NotificationCenter() {
             ))}
           </div>
 
-          <Separator />
+          <div className="h-px bg-border/40 mx-4" />
 
           {/* Notification List */}
-          <ScrollArea className="max-h-80">
+          <ScrollArea className="max-h-[340px]">
             {filtered.length === 0 ? (
-              <div className="py-10 text-center">
-                <Bell className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No notifications</p>
+              <div className="py-14 text-center">
+                <div className="h-12 w-12 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-3">
+                  <Bell className="w-5 h-5 text-muted-foreground/40" />
+                </div>
+                <p className="text-sm text-muted-foreground font-medium">All clear!</p>
+                <p className="text-xs text-muted-foreground/60 mt-0.5">No notifications right now</p>
               </div>
             ) : (
-              <div className="py-1">
+              <div className="p-2 space-y-0.5">
                 {filtered.map((n) => (
                   <button
                     key={n.id}
                     onClick={() => handleClick(n)}
                     className={cn(
-                      "w-full flex items-start gap-3 px-4 py-3 text-left transition-colors group",
+                      "w-full flex items-start gap-3 px-3 py-3 text-left transition-all duration-200 group rounded-xl",
                       n.type === "danger"
-                        ? "bg-destructive/5 hover:bg-destructive/10"
-                        : n.type === "warning"
-                        ? "hover:bg-amber-50 dark:hover:bg-amber-950/10"
-                        : "hover:bg-muted/50"
+                        ? "bg-destructive/5 hover:bg-destructive/8"
+                        : "hover:bg-muted/60"
                     )}
                   >
-                    <div className="mt-0.5 p-1.5 rounded-full bg-muted/50 group-hover:bg-muted">
-                      <NotificationIcon type={n.type} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <p className="text-sm font-medium text-foreground leading-tight truncate">{n.title}</p>
+                    <NotificationIcon type={n.type} />
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                        <p className="text-[13px] font-semibold text-foreground leading-tight truncate">{n.title}</p>
                         <NotificationBadge type={n.type} />
                       </div>
-                      <p className="text-xs text-muted-foreground leading-snug line-clamp-2">{n.description}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{n.description}</p>
                       {n.category === "member" && (
-                        <p className="text-[11px] text-primary mt-1 font-medium">Tap to send reminder →</p>
+                        <p className="text-[11px] text-primary mt-1.5 font-medium group-hover:underline">Tap to send reminder →</p>
                       )}
                       {n.category === "plan" && (
-                        <p className="text-[11px] text-primary mt-1 font-medium">Tap to view options →</p>
+                        <p className="text-[11px] text-primary mt-1.5 font-medium group-hover:underline">Tap to view options →</p>
                       )}
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground/50 flex-shrink-0 mt-1 group-hover:text-foreground transition-colors" />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/30 flex-shrink-0 mt-2.5 group-hover:text-foreground/60 group-hover:translate-x-0.5 transition-all duration-200" />
                   </button>
                 ))}
               </div>
@@ -233,16 +249,16 @@ export function NotificationCenter() {
 
       {/* Plan Expiry Dialog */}
       <Dialog open={planDialog.open} onOpenChange={(o) => setPlanDialog({ open: o, notification: o ? planDialog.notification : null })}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
               <div className={cn(
-                "flex h-12 w-12 items-center justify-center rounded-full",
-                planDialog.notification?.type === "danger" ? "bg-destructive/10" : "bg-amber-100 dark:bg-amber-900/20"
+                "flex h-12 w-12 items-center justify-center rounded-2xl",
+                planDialog.notification?.type === "danger" ? "bg-destructive/10" : "bg-accent"
               )}>
                 {planDialog.notification?.type === "danger" 
                   ? <AlertCircle className="h-6 w-6 text-destructive" />
-                  : <AlertTriangle className="h-6 w-6 text-amber-500" />
+                  : <AlertTriangle className="h-6 w-6 text-accent-foreground" />
                 }
               </div>
               <div>
@@ -257,9 +273,8 @@ export function NotificationCenter() {
           <div className="grid grid-cols-2 gap-3 pt-2">
             <Button
               variant="outline"
-              className="flex flex-col items-center gap-2 h-auto py-4 hover:bg-muted/80"
+              className="flex flex-col items-center gap-2 h-auto py-4 rounded-xl hover:bg-muted/80"
               onClick={() => {
-                // Open WhatsApp or email to super admin
                 window.open("mailto:support@example.com", "_blank");
               }}
             >
@@ -270,7 +285,7 @@ export function NotificationCenter() {
               </div>
             </Button>
             <Button
-              className="flex flex-col items-center gap-2 h-auto py-4"
+              className="flex flex-col items-center gap-2 h-auto py-4 rounded-xl"
               onClick={() => {
                 setPlanDialog({ open: false, notification: null });
                 navigate("/admin/settings?tab=plan");
@@ -285,7 +300,7 @@ export function NotificationCenter() {
           </div>
 
           <DialogFooter className="pt-2">
-            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => setPlanDialog({ open: false, notification: null })}>
+            <Button variant="ghost" size="sm" className="w-full text-muted-foreground rounded-xl" onClick={() => setPlanDialog({ open: false, notification: null })}>
               Dismiss
             </Button>
           </DialogFooter>
@@ -294,16 +309,16 @@ export function NotificationCenter() {
 
       {/* Member Expiry Reminder Dialog */}
       <Dialog open={memberDialog.open} onOpenChange={(o) => setMemberDialog({ open: o, notification: o ? memberDialog.notification : null })}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
               <div className={cn(
-                "flex h-12 w-12 items-center justify-center rounded-full",
-                memberDialog.notification?.type === "danger" ? "bg-destructive/10" : "bg-amber-100 dark:bg-amber-900/20"
+                "flex h-12 w-12 items-center justify-center rounded-2xl",
+                memberDialog.notification?.type === "danger" ? "bg-destructive/10" : "bg-accent"
               )}>
                 {memberDialog.notification?.type === "danger"
                   ? <AlertCircle className="h-6 w-6 text-destructive" />
-                  : <AlertTriangle className="h-6 w-6 text-amber-500" />
+                  : <AlertTriangle className="h-6 w-6 text-accent-foreground" />
                 }
               </div>
               <div>
@@ -318,7 +333,7 @@ export function NotificationCenter() {
           <div className="grid grid-cols-2 gap-3 pt-2">
             <Button
               variant="outline"
-              className="flex flex-col items-center gap-2 h-auto py-4 hover:bg-muted/80"
+              className="flex flex-col items-center gap-2 h-auto py-4 rounded-xl hover:bg-muted/80"
               onClick={() => {
                 setMemberDialog({ open: false, notification: null });
                 navigate("/admin/dashboard");
@@ -331,7 +346,7 @@ export function NotificationCenter() {
               </div>
             </Button>
             <Button
-              className="flex flex-col items-center gap-2 h-auto py-4"
+              className="flex flex-col items-center gap-2 h-auto py-4 rounded-xl"
               onClick={handleSendReminder}
               disabled={sendingReminder}
             >
@@ -344,7 +359,7 @@ export function NotificationCenter() {
           </div>
 
           <DialogFooter className="pt-2">
-            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => setMemberDialog({ open: false, notification: null })}>
+            <Button variant="ghost" size="sm" className="w-full text-muted-foreground rounded-xl" onClick={() => setMemberDialog({ open: false, notification: null })}>
               Dismiss
             </Button>
           </DialogFooter>
