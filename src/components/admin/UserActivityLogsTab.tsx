@@ -53,13 +53,7 @@ import { format, parseISO } from "date-fns";
 import { useInfiniteUserLogsQuery, useUserLogStats, type UserActivityLog } from "@/hooks/queries";
 import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 
-interface ActivityStats {
-  totalActivities: number;
-  activitiesToday: number;
-  activitiesThisWeek: number;
-  activitiesThisMonth: number;
-  byType: Record<string, number>;
-}
+// Stats interface removed - using UserLogStats from useLogStats hook
 
 interface UserActivityLogsTabProps {
   refreshKey: number;
