@@ -943,12 +943,12 @@ const AdminSettings = () => {
                 {customPackages.length > 0 && (
                   <div className="space-y-2 lg:space-y-3 pt-3 lg:pt-4 border-t">
                     {customPackages.map((pkg) => (
-                      <div key={pkg.id} className="flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-muted/50 rounded-lg">
+                      <div key={pkg.id} className="group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/60 rounded-xl transition-all duration-200 hover:shadow-md hover:border-border">
                         {editingPackageId === pkg.id ? (
                           <>
                             <div className="flex-1 grid grid-cols-2 gap-2 lg:gap-3">
                               <div className="space-y-1">
-                                <Label className="text-[10px] lg:text-xs">Name</Label>
+                                <Label className="text-[10px] lg:text-xs text-muted-foreground">Name</Label>
                                 <Input
                                   value={editPackageData.name}
                                   onChange={(e) => setEditPackageData({ ...editPackageData, name: e.target.value })}
@@ -956,7 +956,7 @@ const AdminSettings = () => {
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label className="text-[10px] lg:text-xs">Price (₹)</Label>
+                                <Label className="text-[10px] lg:text-xs text-muted-foreground">Price (₹)</Label>
                                 <Input
                                   type="number"
                                   value={editPackageData.price}
@@ -968,17 +968,17 @@ const AdminSettings = () => {
                             <div className="flex items-center gap-1.5 lg:gap-2 pt-5 lg:pt-6">
                               <Button 
                                 size="icon" 
-                                variant="ghost"
+                                variant="outline"
                                 onClick={() => handleSavePackage(pkg.id)}
-                                className="h-8 w-8 lg:h-9 lg:w-9 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 hover:text-green-800 dark:hover:text-green-300 border border-green-200 dark:border-green-800 transition-all duration-150 shadow-sm hover:shadow-md"
+                                className="h-8 w-8 lg:h-9 lg:w-9 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200"
                               >
                                 <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                               </Button>
                               <Button 
                                 size="icon" 
-                                variant="ghost"
+                                variant="outline"
                                 onClick={() => setEditingPackageId(null)}
-                                className="h-8 w-8 lg:h-9 lg:w-9 bg-gray-50 dark:bg-gray-900/20 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 border border-gray-200 dark:border-gray-800 transition-all duration-150 shadow-sm hover:shadow-md"
+                                className="h-8 w-8 lg:h-9 lg:w-9 transition-all duration-200"
                               >
                                 <XMarkIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                               </Button>
@@ -987,32 +987,36 @@ const AdminSettings = () => {
                         ) : (
                           <>
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm lg:text-base">{pkg.name}</p>
-                              <p className="text-xs lg:text-sm text-muted-foreground">
-                                {pkg.duration_days} {pkg.duration_days === 1 ? "Day" : "Days"} • ₹{pkg.price}
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-sm lg:text-base">{pkg.name}</p>
+                                {!pkg.is_active && (
+                                  <span className="text-[10px] lg:text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Inactive</span>
+                                )}
+                              </div>
+                              <p className="text-xs lg:text-sm text-muted-foreground mt-0.5">
+                                {pkg.duration_days} {pkg.duration_days === 1 ? "Day" : "Days"} • ₹{pkg.price.toLocaleString()}
                               </p>
                             </div>
-                            <div className="flex items-center gap-1 lg:gap-2 shrink-0">
-                              <div className="flex items-center gap-1 lg:gap-2">
-                                <Label htmlFor={`custom-${pkg.id}`} className="text-[10px] lg:text-sm hidden sm:inline">Active</Label>
-                                <Switch
-                                  id={`custom-${pkg.id}`}
-                                  checked={pkg.is_active}
-                                  disabled={togglingCustomId === pkg.id}
-                                  onCheckedChange={(checked) => handleTogglePackage(pkg.id, checked)}
-                                />
+                            <div className="flex items-center gap-2 lg:gap-3 shrink-0">
+                              <Switch
+                                id={`custom-${pkg.id}`}
+                                checked={pkg.is_active}
+                                disabled={togglingCustomId === pkg.id}
+                                onCheckedChange={(checked) => handleTogglePackage(pkg.id, checked)}
+                              />
+                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                <Button variant="ghost" size="icon" onClick={() => handleEditPackage(pkg)} className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-foreground">
+                                  <PencilIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleDeletePackage(pkg.id, pkg.name)}
+                                  className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-destructive"
+                                >
+                                  <TrashIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                </Button>
                               </div>
-                              <Button variant="ghost" size="icon" onClick={() => handleEditPackage(pkg)} className="h-8 w-8 lg:h-10 lg:w-10">
-                                <PencilIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-muted-foreground" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => handleDeletePackage(pkg.id, pkg.name)}
-                                className="h-8 w-8 lg:h-10 lg:w-10"
-                              >
-                                <TrashIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-destructive" />
-                              </Button>
                             </div>
                           </>
                         )}
