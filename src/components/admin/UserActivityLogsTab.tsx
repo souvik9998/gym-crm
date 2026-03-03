@@ -66,16 +66,19 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [stats, setStats] = useState<ActivityStats>({
+  const [activeSubTab, setActiveSubTab] = useState("logs");
+  const [selectedActivity, setSelectedActivity] = useState<UserActivityLog | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  // Use aggregated stats from edge function
+  const { data: statsData, refetch: refetchStats } = useUserLogStats();
+  const stats = statsData || {
     totalActivities: 0,
     activitiesToday: 0,
     activitiesThisWeek: 0,
     activitiesThisMonth: 0,
     byType: {},
-  });
-  const [activeSubTab, setActiveSubTab] = useState("logs");
-  const [selectedActivity, setSelectedActivity] = useState<UserActivityLog | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  };
 
   // Create filters object for the query
   const filters = useMemo(() => ({
