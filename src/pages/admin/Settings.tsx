@@ -655,12 +655,14 @@ const AdminSettings = () => {
 
   const handleTogglePackage = async (id: string, isActive: boolean) => {
     const pkg = customPackages.find(p => p.id === id);
-    
+
+    // Optimistic: update local state instantly
+    setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: isActive } : p));
     setTogglingCustomId(id);
-    toast.loading(`${isActive ? "Activating" : "Deactivating"} package...`, { id: `toggle-custom-${id}` });
-    
+
     try {
-      // Use staff operations if staff is logged in
+      let failed = false;
+
       if (isStaffLoggedIn && currentBranch) {
         const { error } = await staffOps.updateCustomPackage({
           packageId: id,
@@ -668,29 +670,35 @@ const AdminSettings = () => {
           isActive,
         });
         if (error) {
-          toast.error("Error", { id: `toggle-custom-${id}`, description: error });
-        } else {
-          toast.success(`Package ${isActive ? "activated" : "deactivated"}`, { id: `toggle-custom-${id}` });
-          fetchData();
+          failed = true;
+          toast.error("Failed to update package", { description: error });
         }
-        return;
+      } else {
+        const { error } = await supabase.from("custom_packages").update({ is_active: isActive }).eq("id", id);
+        if (error) {
+          failed = true;
+          toast.error("Failed to update package", { description: error.message });
+        } else {
+          await logAdminActivity({
+            category: "packages",
+            type: "custom_package_toggled",
+            description: `${isActive ? "Activated" : "Deactivated"} daily pass "${pkg?.name}"`,
+            entityType: "custom_packages",
+            entityId: id,
+            entityName: pkg?.name,
+            oldValue: { is_active: !isActive },
+            newValue: { is_active: isActive },
+            branchId: currentBranch?.id,
+          });
+        }
       }
 
-      // Admin flow
-      await supabase.from("custom_packages").update({ is_active: isActive }).eq("id", id);
-      await logAdminActivity({
-        category: "packages",
-        type: "custom_package_toggled",
-        description: `${isActive ? "Activated" : "Deactivated"} daily pass "${pkg?.name}"`,
-        entityType: "custom_packages",
-        entityId: id,
-        entityName: pkg?.name,
-        oldValue: { is_active: !isActive },
-        newValue: { is_active: isActive },
-        branchId: currentBranch?.id,
-      });
-      toast.success(`Package ${isActive ? "activated" : "deactivated"}`, { id: `toggle-custom-${id}` });
-      fetchData();
+      if (failed) {
+        // Revert optimistic update
+        setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: !isActive } : p));
+      } else {
+        toast.success(`Package ${isActive ? "activated" : "deactivated"}`);
+      }
     } finally {
       setTogglingCustomId(null);
     }
