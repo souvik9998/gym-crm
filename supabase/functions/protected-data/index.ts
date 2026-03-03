@@ -869,6 +869,74 @@ Deno.serve(async (req) => {
         );
       }
 
+      case "staff-page-data": {
+        // Aggregated staff page data - requires admin access
+        if (!auth.isAdmin && !auth.isStaff) {
+          return errorResponse("Permission denied", 403);
+        }
+
+        const [staffResult, permissionsResult, assignmentsResult, ledgerResult] = await Promise.all([
+          supabase
+            .from("staff")
+            .select("id, full_name, phone, role, id_type, id_number, salary_type, monthly_salary, session_fee, percentage_fee, specialization, auth_user_id, password_set_at, is_active, created_at, updated_at, last_login_at, last_login_ip, failed_login_attempts, locked_until")
+            .order("full_name"),
+          supabase
+            .from("staff_permissions")
+            .select("id, staff_id, can_view_members, can_manage_members, can_access_ledger, can_access_payments, can_access_analytics, can_change_settings"),
+          supabase
+            .from("staff_branch_assignments")
+            .select("id, staff_id, branch_id, is_primary, branches(name)"),
+          // Aggregate ledger expenses for staff-related categories
+          (() => {
+            let q = supabase
+              .from("ledger_entries")
+              .select("amount")
+              .eq("entry_type", "expense")
+              .in("category", ["trainer_percentage", "trainer_session", "staff_salary"]);
+            if (Array.isArray(allowedBranchIds) && allowedBranchIds.length > 0) {
+              q = q.in("branch_id", allowedBranchIds);
+            }
+            return q;
+          })(),
+        ]);
+
+        if (staffResult.error) throw new Error("Failed to fetch staff: " + staffResult.error.message);
+
+        // Combine staff with permissions and assignments
+        const combinedStaff = (staffResult.data || []).map((s: any) => ({
+          ...s,
+          permissions: (permissionsResult.data || []).find((p: any) => p.staff_id === s.id) || null,
+          branch_assignments: (assignmentsResult.data || [])
+            .filter((a: any) => a.staff_id === s.id)
+            .map((a: any) => ({
+              id: a.id,
+              staff_id: a.staff_id,
+              branch_id: a.branch_id,
+              is_primary: a.is_primary,
+              branch_name: a.branches?.name || null,
+            })),
+        }));
+
+        // Filter by allowed branches
+        let filteredStaff = combinedStaff;
+        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length > 0) {
+          filteredStaff = combinedStaff.filter((s: any) =>
+            s.branch_assignments.some((a: any) => allowedBranchIds.includes(a.branch_id)) ||
+            s.branch_assignments.length === 0
+          );
+        }
+
+        const totalPaidToStaff = (ledgerResult.data || []).reduce(
+          (sum: number, e: any) => sum + Number(e.amount || 0),
+          0
+        );
+
+        return new Response(
+          JSON.stringify({ staff: filteredStaff, totalPaidToStaff }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       default:
         return errorResponse("Invalid action", 400);
     }
