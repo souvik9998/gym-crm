@@ -39,12 +39,12 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
   // Check authentication - either admin user OR staff user
   useEffect(() => {
     if (!isLoading && !staffLoading) {
-      const isAuthenticated = !!adminUser || isStaffLoggedIn;
-      if (!isAuthenticated) {
+      const isAuth = isAuthenticated || isStaffLoggedIn;
+      if (!isAuth) {
         navigate("/admin/login");
       }
     }
-  }, [isLoading, staffLoading, adminUser, isStaffLoggedIn, navigate]);
+  }, [isLoading, staffLoading, isAuthenticated, isStaffLoggedIn, navigate]);
 
   const handleSidebarCollapse = (collapsed: boolean) => {
     setSidebarCollapsed(collapsed);
