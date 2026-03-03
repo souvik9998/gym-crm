@@ -1080,7 +1080,7 @@ const AdminSettings = () => {
                     </span>
                     <Switch
                       checked={whatsappEnabled}
-                      disabled={isTogglingWhatsApp}
+                      loading={isTogglingWhatsApp}
                       onCheckedChange={async (checked) => {
                         if (!currentBranch?.id) return;
                         
