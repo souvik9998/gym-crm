@@ -1047,9 +1047,9 @@ const AdminSettings = () => {
                 <CardDescription className="text-xs lg:text-sm">Enable or disable all WhatsApp messaging features</CardDescription>
               </CardHeader>
               <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
-                <div className="flex items-center justify-between p-3 lg:p-4 border rounded-lg">
+                <div className="flex items-center justify-between p-3 lg:p-4 bg-card border border-border/60 rounded-xl transition-all duration-200 hover:shadow-md hover:border-border">
                   <div className="space-y-0.5 lg:space-y-1">
-                    <p className="font-medium text-sm lg:text-base">WhatsApp Notifications</p>
+                    <p className="font-semibold text-sm lg:text-base">WhatsApp Notifications</p>
                     <p className="text-[10px] lg:text-sm text-muted-foreground">
                       {whatsappEnabled 
                         ? "Automated and manual WhatsApp messages are enabled" 
@@ -1057,7 +1057,7 @@ const AdminSettings = () => {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`text-sm font-medium ${isTogglingWhatsApp ? 'text-muted-foreground' : whatsappEnabled ? 'text-success' : 'text-muted-foreground'}`}>
+                    <span className={`text-xs lg:text-sm font-medium transition-colors duration-200 ${isTogglingWhatsApp ? 'text-muted-foreground' : whatsappEnabled ? 'text-primary' : 'text-muted-foreground'}`}>
                       {isTogglingWhatsApp ? "Updating..." : whatsappEnabled ? "Enabled" : "Disabled"}
                     </span>
                     <Switch
