@@ -3,7 +3,6 @@ import { Bell, AlertTriangle, AlertCircle, Info, ChevronRight, Send, CreditCard,
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import {
   Popover,
   PopoverContent,
@@ -34,14 +33,34 @@ const categoryLabels: Record<CategoryFilter, string> = {
 };
 
 function NotificationIcon({ type }: { type: AdminNotification["type"] }) {
-  if (type === "danger") return <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />;
-  if (type === "warning") return <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />;
-  return <Info className="h-4 w-4 text-primary flex-shrink-0" />;
+  if (type === "danger") return (
+    <div className="h-8 w-8 rounded-xl bg-destructive/10 flex items-center justify-center">
+      <AlertCircle className="h-4 w-4 text-destructive" />
+    </div>
+  );
+  if (type === "warning") return (
+    <div className="h-8 w-8 rounded-xl bg-amber-500/10 flex items-center justify-center">
+      <AlertTriangle className="h-4 w-4 text-amber-500" />
+    </div>
+  );
+  return (
+    <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
+      <Info className="h-4 w-4 text-primary" />
+    </div>
+  );
 }
 
 function NotificationBadge({ type }: { type: AdminNotification["type"] }) {
-  if (type === "danger") return <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Urgent</Badge>;
-  if (type === "warning") return <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-amber-400 text-amber-600">Warning</Badge>;
+  if (type === "danger") return (
+    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-destructive/10 text-destructive">
+      Urgent
+    </span>
+  );
+  if (type === "warning") return (
+    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
+      Warning
+    </span>
+  );
   return null;
 }
 
