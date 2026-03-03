@@ -19,19 +19,18 @@ export default {
   	extend: {
   		fontFamily: {
 		sans: [
-				'Geist',
-				'ui-sans-serif',
-				'system-ui',
-				'sans-serif',
-				'Apple Color Emoji',
-				'Segoe UI Emoji',
-				'Segoe UI Symbol',
-				'Noto Color Emoji'
+				'JetBrains Mono',
+				'ui-monospace',
+				'SFMono-Regular',
+				'Menlo',
+				'Monaco',
+				'Consolas',
+				'monospace'
 			],
 		display: [
-			'Geist',
-			'system-ui',
-			'sans-serif'
+			'JetBrains Mono',
+			'ui-monospace',
+			'monospace'
 		],
   			serif: [
   				'ui-serif',
