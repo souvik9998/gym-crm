@@ -1084,8 +1084,12 @@ const AdminSettings = () => {
                       onCheckedChange={async (checked) => {
                         if (!currentBranch?.id) return;
                         
+                        // Optimistic: flip local state instantly
+                        setWhatsappEnabled(checked);
                         setIsTogglingWhatsApp(true);
-                        toast.loading(`${checked ? "Enabling" : "Disabling"} WhatsApp...`, { id: "toggle-whatsapp" });
+                        
+                        try {
+                          let failed = false;
                         
                         try {
                           let settingsId = settings?.id;
