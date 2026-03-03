@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 import { useBranch } from "@/contexts/BranchContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StaffTrainersTab } from "@/components/admin/staff/StaffTrainersTab";
 import { StaffOtherTab } from "@/components/admin/staff/StaffOtherTab";
 import { StaffOverviewTab } from "@/components/admin/staff/StaffOverviewTab";
 import { AcademicCapIcon, UserGroupIcon, ChartBarIcon } from "@heroicons/react/24/outline";
+import { useStaffPageData } from "@/hooks/queries/useStaffPageData";
 
 export interface Staff {
   id: string;
@@ -19,7 +19,7 @@ export interface Staff {
   session_fee: number;
   percentage_fee: number;
   specialization: string | null;
-  auth_user_id: string | null; // Supabase Auth user ID - indicates password is set
+  auth_user_id: string | null;
   password_set_at: string | null;
   is_active: boolean;
   created_at: string;
@@ -28,7 +28,6 @@ export interface Staff {
   last_login_ip: string | null;
   failed_login_attempts: number;
   locked_until: string | null;
-  // Joined data
   permissions?: StaffPermissions;
   branch_assignments?: StaffBranchAssignment[];
 }
@@ -54,67 +53,8 @@ export interface StaffBranchAssignment {
 
 const StaffManagement = () => {
   const { currentBranch, branches } = useBranch();
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [staff, setStaff] = useState<Staff[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("trainers");
-
-  useEffect(() => {
-    fetchStaff();
-  }, [refreshKey, currentBranch?.id]);
-
-  const fetchStaff = async () => {
-    setIsLoading(true);
-    try {
-      // Fetch all staff
-      const { data: staffData, error: staffError } = await supabase
-        .from("staff")
-        .select("*")
-        .order("full_name");
-
-      if (staffError) throw staffError;
-
-      // Fetch permissions for all staff
-      const { data: permissionsData } = await supabase
-        .from("staff_permissions")
-        .select("*");
-
-      // Fetch branch assignments
-      const { data: assignmentsData } = await supabase
-        .from("staff_branch_assignments")
-        .select("*, branches(name)");
-
-      // Combine data
-      const combinedStaff = (staffData || []).map((s: any) => ({
-        ...s,
-        permissions: permissionsData?.find((p: any) => p.staff_id === s.id),
-        branch_assignments: assignmentsData
-          ?.filter((a: any) => a.staff_id === s.id)
-          .map((a: any) => ({
-            ...a,
-            branch_name: a.branches?.name,
-          })),
-      }));
-
-      // Filter by current branch if needed
-      const filteredStaff = currentBranch?.id
-        ? combinedStaff.filter(
-            (s: Staff) =>
-              s.branch_assignments?.some((a) => a.branch_id === currentBranch.id) ||
-              s.branch_assignments?.length === 0
-          )
-        : combinedStaff;
-
-      setStaff(filteredStaff);
-    } catch (error) {
-      console.error("Error fetching staff:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const trainers = staff.filter((s) => s.role === "trainer");
-  const otherStaff = staff.filter((s) => s.role !== "trainer");
+  const { staff, trainers, otherStaff, totalPaidToStaff, isLoading, refetch } = useStaffPageData();
 
   return (
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -138,7 +78,7 @@ const StaffManagement = () => {
             trainers={trainers}
             branches={branches}
             currentBranch={currentBranch}
-            onRefresh={() => setRefreshKey((k) => k + 1)}
+            onRefresh={() => refetch()}
             isLoading={isLoading}
           />
         </TabsContent>
@@ -148,7 +88,7 @@ const StaffManagement = () => {
             staff={otherStaff}
             branches={branches}
             currentBranch={currentBranch}
-            onRefresh={() => setRefreshKey((k) => k + 1)}
+            onRefresh={() => refetch()}
             isLoading={isLoading}
           />
         </TabsContent>
@@ -158,7 +98,8 @@ const StaffManagement = () => {
             allStaff={staff}
             branches={branches}
             currentBranch={currentBranch}
-            onRefresh={() => setRefreshKey((k) => k + 1)}
+            onRefresh={() => refetch()}
+            totalPaidToStaff={totalPaidToStaff}
           />
         </TabsContent>
       </Tabs>

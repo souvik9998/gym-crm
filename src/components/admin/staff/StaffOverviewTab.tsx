@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,8 +12,6 @@ import {
 import { Staff } from "@/pages/admin/StaffManagement";
 import { UserGroupIcon, AcademicCapIcon, CurrencyRupeeIcon, BuildingOfficeIcon, KeyIcon } from "@heroicons/react/24/outline";
 import { StaffDetailDialog } from "./StaffDetailDialog";
-import { supabase } from "@/integrations/supabase/client";
-import { useBranch } from "@/contexts/BranchContext";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 
 interface StaffOverviewTabProps {
@@ -21,6 +19,7 @@ interface StaffOverviewTabProps {
   branches: any[];
   currentBranch: any;
   onRefresh: () => void;
+  totalPaidToStaff: number;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -35,12 +34,10 @@ export const StaffOverviewTab = ({
   allStaff,
   branches,
   currentBranch,
+  totalPaidToStaff,
 }: StaffOverviewTabProps) => {
-  const { currentBranch: branchContext } = useBranch();
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [totalPaidToStaff, setTotalPaidToStaff] = useState(0);
-  const [isLoadingTotalPaid, setIsLoadingTotalPaid] = useState(false);
   const isCompact = useIsTabletOrBelow();
   
   const activeStaff = allStaff.filter((s) => s.is_active);
@@ -52,50 +49,6 @@ export const StaffOverviewTab = ({
   };
   
   const totalMonthlySalary = activeStaff.reduce((sum, s) => sum + (s.monthly_salary || 0), 0);
-
-  useEffect(() => {
-    if (currentBranch?.id || branchContext?.id) {
-      fetchTotalPaidToStaff();
-    }
-  }, [currentBranch?.id, branchContext?.id, allStaff]);
-
-  const fetchTotalPaidToStaff = async () => {
-    const branchId = currentBranch?.id || branchContext?.id;
-    if (!branchId) return;
-
-    setIsLoadingTotalPaid(true);
-    try {
-      const staffNames = allStaff.map((s) => s.full_name);
-
-      const [trainerPercentageExpenses, trainerSessionExpenses, staffSalaryExpenses] = await Promise.all([
-        supabase.from("ledger_entries").select("amount").eq("entry_type", "expense").eq("category", "trainer_percentage").eq("branch_id", branchId),
-        supabase.from("ledger_entries").select("amount").eq("entry_type", "expense").eq("category", "trainer_session").eq("branch_id", branchId),
-        supabase.from("ledger_entries").select("amount").eq("entry_type", "expense").eq("category", "staff_salary").eq("branch_id", branchId)
-      ]);
-
-      let nameBasedExpenses: any[] = [];
-      if (staffNames.length > 0) {
-        const nameQueries = staffNames.map((name) => 
-          supabase.from("ledger_entries").select("amount").eq("entry_type", "expense").neq("category", "trainer_percentage").neq("category", "trainer_session").neq("category", "staff_salary").ilike("description", `%${name}%`).eq("branch_id", branchId)
-        );
-        const nameResults = await Promise.all(nameQueries);
-        nameBasedExpenses = nameResults.flatMap((result) => result.data || []);
-      }
-
-      const total = 
-        (trainerPercentageExpenses.data?.reduce((sum, e) => sum + Number(e.amount || 0), 0) || 0) +
-        (trainerSessionExpenses.data?.reduce((sum, e) => sum + Number(e.amount || 0), 0) || 0) +
-        (staffSalaryExpenses.data?.reduce((sum, e) => sum + Number(e.amount || 0), 0) || 0) +
-        (nameBasedExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0));
-
-      setTotalPaidToStaff(total);
-    } catch (error: any) {
-      console.error("Error fetching total paid to staff:", error);
-    } finally {
-      setIsLoadingTotalPaid(false);
-    }
-  };
-  
   const staffByRole = allStaff.reduce((acc, s) => {
     acc[s.role] = (acc[s.role] || 0) + 1;
     return acc;
