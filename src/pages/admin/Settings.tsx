@@ -1089,9 +1089,6 @@ const AdminSettings = () => {
                         setIsTogglingWhatsApp(true);
                         
                         try {
-                          let failed = false;
-                        
-                        try {
                           let settingsId = settings?.id;
                           
                           // If settings don't exist, create them first (admin only)
@@ -1109,13 +1106,13 @@ const AdminSettings = () => {
                               .single();
                             
                             if (createError) {
-                              toast.error("Error", { id: "toggle-whatsapp", description: createError.message });
+                              setWhatsappEnabled(!checked); // revert
+                              toast.error("Error", { description: createError.message });
                               return;
                             }
                             
                             settingsId = newSettings.id;
                             setSettings({ ...settings, id: settingsId } as GymSettings);
-                            setWhatsappEnabled(checked);
                             await logAdminActivity({
                               category: "settings",
                               type: "whatsapp_toggled",
@@ -1127,12 +1124,13 @@ const AdminSettings = () => {
                               newValue: { whatsapp_enabled: checked },
                               branchId: currentBranch?.id,
                             });
-                            toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled", { id: "toggle-whatsapp" });
+                            toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled");
                             return;
                           }
 
                           if (!settingsId) {
-                            toast.error("Settings not found", { id: "toggle-whatsapp" });
+                            setWhatsappEnabled(!checked); // revert
+                            toast.error("Settings not found");
                             return;
                           }
                           
@@ -1144,20 +1142,15 @@ const AdminSettings = () => {
                               enabled: checked,
                             });
                             if (error) {
-                              toast.error("Error", { id: "toggle-whatsapp", description: error });
+                              setWhatsappEnabled(!checked); // revert
+                              toast.error("Error", { description: error });
                             } else {
-                              setWhatsappEnabled(checked);
-                              toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled", {
-                                id: "toggle-whatsapp",
-                                description: checked 
-                                  ? `WhatsApp messaging is now active for ${currentBranch?.name || "this branch"}` 
-                                  : `All WhatsApp messages are now disabled for ${currentBranch?.name || "this branch"}`
-                              });
+                              toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled");
                             }
                             return;
                           }
                           
-                          // Admin flow - Update the WhatsApp enabled status
+                          // Admin flow
                           const { error } = await supabase
                             .from("gym_settings")
                             .update({ whatsapp_enabled: checked })
@@ -1165,9 +1158,9 @@ const AdminSettings = () => {
                             .eq("branch_id", currentBranch.id);
                           
                           if (error) {
-                            toast.error("Error", { id: "toggle-whatsapp", description: error.message });
+                            setWhatsappEnabled(!checked); // revert
+                            toast.error("Error", { description: error.message });
                           } else {
-                            setWhatsappEnabled(checked);
                             await logAdminActivity({
                               category: "settings",
                               type: "whatsapp_toggled",
@@ -1179,12 +1172,7 @@ const AdminSettings = () => {
                               newValue: { whatsapp_enabled: checked },
                               branchId: currentBranch?.id,
                             });
-                            toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled", {
-                              id: "toggle-whatsapp",
-                              description: checked 
-                                ? `WhatsApp messaging is now active for ${currentBranch?.name || "this branch"}` 
-                                : `All WhatsApp messages are now disabled for ${currentBranch?.name || "this branch"}`
-                            });
+                            toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled");
                           }
                         } finally {
                           setIsTogglingWhatsApp(false);
