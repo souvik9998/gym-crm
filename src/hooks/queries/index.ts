@@ -94,9 +94,8 @@ export {
 
 // Branch Analytics
 export {
-  useBranchMetricsQuery,
+  useBranchAnalyticsData,
   useBranchTimeSeriesQuery,
-  useBranchTrainerMetricsQuery,
 } from './useBranchAnalytics';
 export type {
   BranchMetrics,
