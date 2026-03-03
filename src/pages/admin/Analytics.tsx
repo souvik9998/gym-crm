@@ -50,7 +50,7 @@ const ChartSkeleton = ({ height = "h-64" }: { height?: string }) => (
 // Overview Stats Section
 const OverviewStats = () => {
   const { analyticsPeriod, analyticsCustomDateFrom, analyticsCustomDateTo } = useAnalyticsStore();
-  const { data: totals, isLoading } = useAnalyticsTotals(
+  const { data: totals, isLoading } = useAggregatedAnalyticsTotals(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
