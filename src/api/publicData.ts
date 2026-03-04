@@ -3,6 +3,7 @@
  * 
  * Fetches minimal, safe data for public registration flows.
  * Uses the public-data edge function which doesn't require authentication.
+ * Includes sessionStorage caching to avoid redundant API calls.
  */
 
 import { SUPABASE_URL, SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
@@ -33,6 +34,36 @@ export interface PublicBranch {
   logo_url?: string | null;
 }
 
+// Cache duration: 5 minutes
+const CACHE_TTL = 5 * 60 * 1000;
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+function getCached<T>(key: string): T | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const entry: CacheEntry<T> = JSON.parse(raw);
+    if (Date.now() - entry.timestamp > CACHE_TTL) {
+      sessionStorage.removeItem(key);
+      return null;
+    }
+    return entry.data;
+  } catch {
+    return null;
+  }
+}
+
+function setCache<T>(key: string, data: T): void {
+  try {
+    const entry: CacheEntry<T> = { data, timestamp: Date.now() };
+    sessionStorage.setItem(key, JSON.stringify(entry));
+  } catch { /* storage full, ignore */ }
+}
+
 /**
  * Fetch packages for public registration (minimal data only)
  */
@@ -40,6 +71,10 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
   monthlyPackages: PublicMonthlyPackage[];
   customPackages: PublicCustomPackage[];
 }> {
+  const cacheKey = `public-packages-${branchId || "all"}`;
+  const cached = getCached<{ monthlyPackages: PublicMonthlyPackage[]; customPackages: PublicCustomPackage[] }>(cacheKey);
+  if (cached) return cached;
+
   try {
     const params = new URLSearchParams({ action: "packages" });
     if (branchId) params.append("branchId", branchId);
@@ -62,10 +97,12 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
     }
 
     const data = await response.json();
-    return {
+    const result = {
       monthlyPackages: data.monthlyPackages || [],
       customPackages: data.customPackages || [],
     };
+    setCache(cacheKey, result);
+    return result;
   } catch (error) {
     console.error("Error fetching public packages:", error);
     return { monthlyPackages: [], customPackages: [] };
@@ -76,6 +113,10 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
  * Fetch trainers for public registration (name and fee only)
  */
 export async function fetchPublicTrainers(branchId?: string): Promise<PublicTrainer[]> {
+  const cacheKey = `public-trainers-${branchId || "all"}`;
+  const cached = getCached<PublicTrainer[]>(cacheKey);
+  if (cached) return cached;
+
   try {
     const params = new URLSearchParams({ action: "trainers" });
     if (branchId) params.append("branchId", branchId);
@@ -98,7 +139,9 @@ export async function fetchPublicTrainers(branchId?: string): Promise<PublicTrai
     }
 
     const data = await response.json();
-    return data.trainers || [];
+    const trainers = data.trainers || [];
+    setCache(cacheKey, trainers);
+    return trainers;
   } catch (error) {
     console.error("Error fetching public trainers:", error);
     return [];
@@ -109,6 +152,10 @@ export async function fetchPublicTrainers(branchId?: string): Promise<PublicTrai
  * Fetch branch info for public display (name only)
  */
 export async function fetchPublicBranch(branchId: string): Promise<PublicBranch | null> {
+  const cacheKey = `public-branch-${branchId}`;
+  const cached = getCached<PublicBranch>(cacheKey);
+  if (cached) return cached;
+
   try {
     const params = new URLSearchParams({ action: "branch", branchId });
 
@@ -131,7 +178,9 @@ export async function fetchPublicBranch(branchId: string): Promise<PublicBranch 
     }
 
     const data = await response.json();
-    return data.branch || null;
+    const branch = data.branch || null;
+    if (branch) setCache(cacheKey, branch);
+    return branch;
   } catch (error) {
     console.error("Error fetching public branch:", error);
     return null;
@@ -142,6 +191,10 @@ export async function fetchPublicBranch(branchId: string): Promise<PublicBranch 
  * Fetch default branch for redirects
  */
 export async function fetchDefaultBranch(): Promise<PublicBranch | null> {
+  const cacheKey = "public-default-branch";
+  const cached = getCached<PublicBranch>(cacheKey);
+  if (cached) return cached;
+
   try {
     const params = new URLSearchParams({ action: "default-branch" });
 
@@ -164,7 +217,9 @@ export async function fetchDefaultBranch(): Promise<PublicBranch | null> {
     }
 
     const data = await response.json();
-    return data.branch || null;
+    const branch = data.branch || null;
+    if (branch) setCache(cacheKey, branch);
+    return branch;
   } catch (error) {
     console.error("Error fetching default branch:", error);
     return null;

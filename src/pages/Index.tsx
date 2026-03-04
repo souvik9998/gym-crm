@@ -118,6 +118,7 @@ const Index = () => {
               name: result.member_name,
               phone: result.member_phone,
               email: result.member_email,
+              branch_id: branchId || null,
             };
 
             const { data: subscriptionData } = await supabase.rpc("get_member_subscription_info", {
