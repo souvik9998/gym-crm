@@ -247,55 +247,24 @@ export const MembersTable = ({
 
   const handleSendPromotional = async (member: Member, e: React.MouseEvent) => {
     e.stopPropagation();
-    const success = await sendWhatsAppMessage(member.id, member.name, member.phone, "promotional");
-    if (success) {
-      toast.success(`Promotional message sent to ${member.name}`);
-    }
+    await sendWhatsAppMessage(member.id, member.name, member.phone, "promotional");
   };
 
   const handleSendExpiryReminder = async (member: Member, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!member.subscription) return;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const endDate = new Date(member.subscription.end_date);
-    endDate.setHours(0, 0, 0, 0);
-    const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    
-    const success = await sendWhatsAppMessage(member.id, member.name, member.phone, "expiry_reminder");
-    if (success) {
-      const dayText = diffDays === 0 ? "today" : diffDays < 0 ? `${Math.abs(diffDays)} days ago` : `in ${diffDays} days`;
-      toast.success(`Expiry reminder sent to ${member.name}`, {
-        description: `Expires ${dayText}`,
-      });
-    }
+    await sendWhatsAppMessage(member.id, member.name, member.phone, "expiry_reminder");
   };
 
   const handleSendExpiredReminder = async (member: Member, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!member.subscription) return;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const endDate = new Date(member.subscription.end_date);
-    endDate.setHours(0, 0, 0, 0);
-    const diffDays = Math.abs(Math.ceil((today.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24)));
-    
-    const success = await sendWhatsAppMessage(member.id, member.name, member.phone, "expired_reminder");
-    if (success) {
-      toast.success(`Expired reminder sent to ${member.name}`, {
-        description: `Expired ${diffDays} days ago`,
-      });
-    }
+    await sendWhatsAppMessage(member.id, member.name, member.phone, "expired_reminder");
   };
 
   const handleSendPaymentDetails = async (member: Member, e: React.MouseEvent) => {
     e.stopPropagation();
-    const success = await sendWhatsAppMessage(member.id, member.name, member.phone, "payment_details");
-    if (success) {
-      toast.success(`Payment details sent to ${member.name}`);
-    }
+    await sendWhatsAppMessage(member.id, member.name, member.phone, "payment_details");
   };
 
   const isInactive = (member: Member): boolean => {
