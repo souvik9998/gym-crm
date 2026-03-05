@@ -262,6 +262,7 @@ const TrainersPage = () => {
       branchId: currentBranch?.id,
     });
     fetchTrainers();
+    invalidateSettings();
   };
 
   const handleDeleteTrainer = (id: string, name: string) => {
