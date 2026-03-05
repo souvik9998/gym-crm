@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
+import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
+import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 
 const categoryFilters = ["all", "plan", "limit", "member"] as const;
 type CategoryFilter = (typeof categoryFilters)[number];
