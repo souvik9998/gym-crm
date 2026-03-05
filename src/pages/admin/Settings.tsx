@@ -683,9 +683,11 @@ const AdminSettings = () => {
         newValue: { name: editPackageData.name, price: Number(editPackageData.price) },
         branchId: currentBranch?.id,
       });
+      // Instant local state update
+      setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, name: editPackageData.name, price: Number(editPackageData.price) } : p));
       toast.success("Package updated");
       setEditingPackageId(null);
-      fetchData();
+      backgroundInvalidate();
     }
   };
 
