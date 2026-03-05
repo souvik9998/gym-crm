@@ -1099,9 +1099,10 @@ const AdminSettings = () => {
                                 size="icon" 
                                 variant="outline"
                                 onClick={() => handleSavePackage(pkg.id)}
+                                disabled={savingCustomId === pkg.id}
                                 className="h-8 w-8 lg:h-9 lg:w-9 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200"
                               >
-                                <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                {savingCustomId === pkg.id ? <ButtonSpinner /> : <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
                               </Button>
                               <Button 
                                 size="icon" 
