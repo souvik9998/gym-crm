@@ -8,6 +8,7 @@ import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import * as paymentsApi from "@/api/payments";
 
 // Re-export types
@@ -15,22 +16,19 @@ export type { PaymentWithDetails, PaymentMode, PaymentStatus, PaginatedPaymentsR
 
 /**
  * Hook to fetch all payments
- * Auth-aware: only fetches when user is authenticated
  */
 export function usePaymentsQuery() {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
   const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
-  
   const isAuthenticated = isAdmin || isStaffLoggedIn;
 
   return useQuery({
     queryKey: queryKeys.payments.all(branchId),
     queryFn: () => paymentsApi.fetchPayments(branchId),
-    staleTime: STALE_TIMES.REAL_TIME, // 30s - payments are highly dynamic
+    staleTime: STALE_TIMES.REAL_TIME,
     gcTime: GC_TIME,
-    refetchOnWindowFocus: false,
     enabled: isAuthenticated,
   });
 }
@@ -43,7 +41,6 @@ export function useInfinitePaymentsQuery() {
   const { isStaffLoggedIn } = useStaffAuth();
   const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
-  
   const isAuthenticated = isAdmin || isStaffLoggedIn;
 
   return useInfiniteQuery({
@@ -51,9 +48,8 @@ export function useInfinitePaymentsQuery() {
     queryFn: ({ pageParam = 0 }) => paymentsApi.fetchPaymentsPaginated(branchId, pageParam, 25),
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: 0,
-    staleTime: STALE_TIMES.REAL_TIME, // 30s
+    staleTime: STALE_TIMES.REAL_TIME,
     gcTime: GC_TIME,
-    refetchOnWindowFocus: false,
     enabled: isAuthenticated && !!branchId,
   });
 }
@@ -67,7 +63,6 @@ export function usePaymentQuery(paymentId: string | undefined) {
     queryFn: () => paymentsApi.fetchPaymentById(paymentId!),
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
-    refetchOnWindowFocus: false,
     enabled: !!paymentId,
   });
 }
@@ -81,7 +76,6 @@ export function useMemberPaymentsQuery(memberId: string | undefined) {
     queryFn: () => paymentsApi.fetchMemberPayments(memberId!),
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
-    refetchOnWindowFocus: false,
     enabled: !!memberId,
   });
 }
@@ -90,17 +84,15 @@ export function useMemberPaymentsQuery(memberId: string | undefined) {
  * Mutation hook to create a new payment
  */
 export function useCreatePayment() {
-  const queryClient = useQueryClient();
-  const { currentBranch } = useBranch();
+  const { invalidatePayments, invalidateMembers } = useInvalidateQueries();
 
   return useMutation({
     mutationFn: paymentsApi.createPayment,
     onSuccess: () => {
-      // Invalidate related queries
-      const keysToInvalidate = invalidationGroups.payments(currentBranch?.id);
-      keysToInvalidate.forEach(key => {
-        queryClient.invalidateQueries({ queryKey: key });
-      });
+      // Payments affect dashboard stats and ledger
+      invalidatePayments();
+      // Membership payments affect member subscription status
+      invalidateMembers();
     },
   });
 }
@@ -109,19 +101,13 @@ export function useCreatePayment() {
  * Mutation hook to update a payment
  */
 export function useUpdatePayment() {
-  const queryClient = useQueryClient();
-  const { currentBranch } = useBranch();
+  const { invalidatePayments } = useInvalidateQueries();
 
   return useMutation({
     mutationFn: ({ paymentId, updates }: { paymentId: string; updates: Parameters<typeof paymentsApi.updatePayment>[1] }) =>
       paymentsApi.updatePayment(paymentId, updates),
-    onSuccess: (_, { paymentId }) => {
-      // Invalidate related queries
-      queryClient.invalidateQueries({ queryKey: queryKeys.payments.detail(paymentId) });
-      const keysToInvalidate = invalidationGroups.payments(currentBranch?.id);
-      keysToInvalidate.forEach(key => {
-        queryClient.invalidateQueries({ queryKey: key });
-      });
+    onSuccess: () => {
+      invalidatePayments();
     },
   });
 }
