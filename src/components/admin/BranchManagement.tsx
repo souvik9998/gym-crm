@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useBranch, type Branch } from "@/contexts/BranchContext";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ValidatedInput } from "@/components/ui/validated-input";
 import { Textarea } from "@/components/ui/textarea";
+import { phoneSchema, nameSchema, optionalEmailSchema } from "@/lib/validation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/sonner";
