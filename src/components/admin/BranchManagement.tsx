@@ -182,18 +182,7 @@ export const BranchManagement = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.name.trim()) {
-      toast.error("Branch name is required");
-      return;
-    }
-    if (!editingBranch && !formData.address.trim()) {
-      toast.error("Address is required");
-      return;
-    }
-    if (!editingBranch && !formData.phone.trim()) {
-      toast.error("Phone number is required");
-      return;
-    }
+    if (!validateAllFields()) return;
 
     setIsLoading(true);
     try {
