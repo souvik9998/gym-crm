@@ -23,6 +23,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { User } from "@supabase/supabase-js";
 import { WhatsAppTemplates } from "@/components/admin/WhatsAppTemplates";
