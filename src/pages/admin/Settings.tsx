@@ -34,6 +34,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useStaffOperations } from "@/hooks/useStaffOperations";
 import { useSettingsPageData } from "@/hooks/queries/useSettingsPageData";
+import { useInvalidateQueries } from "@/hooks/useQueryCache";
 
 interface CustomPackage {
   id: string;
