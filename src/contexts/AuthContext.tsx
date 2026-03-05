@@ -222,6 +222,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const clearAuthState = useCallback(() => {
     if (isMounted.current) {
+      // Clear all cached queries to prevent cross-tenant data leakage
+      queryClient.clear();
+      lastLoadedUserId.current = null;
       setState({
         user: null,
         session: null,
