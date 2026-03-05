@@ -38,6 +38,7 @@ interface SidebarProps {
   onCollapsedChange: (collapsed: boolean) => void;
   isMobile?: boolean;
   isStaffUser?: boolean;
+  onNavigate?: () => void;
 }
 
 interface NavItem {
