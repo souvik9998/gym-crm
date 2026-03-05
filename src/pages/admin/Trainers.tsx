@@ -452,9 +452,9 @@ const TrainersPage = () => {
                 </div>
               )}
             </div>
-            <Button onClick={handleAddTrainer} className="gap-2">
-              <PlusIcon className="w-4 h-4" />
-              Add Trainer
+            <Button onClick={handleAddTrainer} disabled={isAddingTrainer} className="gap-2">
+              {isAddingTrainer ? <ButtonSpinner /> : <PlusIcon className="w-4 h-4" />}
+              {isAddingTrainer ? "Adding..." : "Add Trainer"}
             </Button>
           </CardContent>
         </Card>
