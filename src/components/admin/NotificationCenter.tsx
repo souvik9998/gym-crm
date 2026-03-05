@@ -101,8 +101,18 @@ export function NotificationCenter() {
   const waOverlay = useWhatsAppOverlay();
 
   const handleSendReminder = async () => {
-    if (!waOverlay.startSending("expiring members")) return;
+    // Close dialog first so overlay isn't competing
+    setMemberDialog({ open: false, notification: null });
     setSendingReminder(true);
+
+    // Small delay so dialog closes smoothly before overlay appears
+    await new Promise(r => setTimeout(r, 250));
+
+    if (!waOverlay.startSending("expiring members")) {
+      setSendingReminder(false);
+      return;
+    }
+
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const { data: { session } } = await supabase.auth.getSession();
@@ -131,7 +141,6 @@ export function NotificationCenter() {
       waOverlay.markError("Please try again later.");
     } finally {
       setSendingReminder(false);
-      setMemberDialog({ open: false, notification: null });
     }
   };
 
