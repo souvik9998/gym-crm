@@ -160,6 +160,7 @@ const TrainersPage = () => {
         session_fee: "",
       });
       fetchTrainers();
+      invalidateSettings();
     }
   };
 
