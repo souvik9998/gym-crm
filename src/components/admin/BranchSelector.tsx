@@ -93,11 +93,29 @@ export const BranchSelector = () => {
     }, 100);
   };
 
-  const handleAddBranch = async () => {
-    if (!newBranch.name.trim()) {
-      toast.error("Branch name is required");
-      return;
+  const validateFields = (): boolean => {
+    const errors: Record<string, string | undefined> = {};
+    const nameResult = nameSchema.safeParse(newBranch.name);
+    if (!nameResult.success) errors.name = nameResult.error.errors[0]?.message;
+    if (!newBranch.address.trim() || newBranch.address.trim().length < 3) {
+      errors.address = "Address is required (min 3 characters)";
     }
+    const phoneResult = phoneSchema.safeParse(newBranch.phone);
+    if (!newBranch.phone.trim()) {
+      errors.phone = "Phone number is required";
+    } else if (!phoneResult.success) {
+      errors.phone = phoneResult.error.errors[0]?.message;
+    }
+    if (newBranch.email.trim()) {
+      const emailResult = optionalEmailSchema.safeParse(newBranch.email);
+      if (!emailResult.success) errors.email = emailResult.error.errors[0]?.message;
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleAddBranch = async () => {
+    if (!validateFields()) return;
 
     setIsLoading(true);
     try {
