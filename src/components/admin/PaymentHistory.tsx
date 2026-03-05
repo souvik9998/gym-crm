@@ -233,7 +233,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const handleSendInvoice = async (paymentId: string) => {
     // Find the payment to get member name
     const payment = filteredPayments.find(p => p.id === paymentId);
-    const recipientName = payment?.member_name || payment?.daily_pass_user_name || undefined;
+    const recipientName = payment?.member?.name || payment?.daily_pass_user?.name || undefined;
     if (!waOverlay.startSending(recipientName)) return;
     setSendingInvoiceId(paymentId);
     try {

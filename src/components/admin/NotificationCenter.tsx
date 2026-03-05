@@ -370,6 +370,7 @@ export function NotificationCenter() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <WhatsAppSendingOverlay {...waOverlay.overlayProps} />
     </>
   );
 }
