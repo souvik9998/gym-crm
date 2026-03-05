@@ -151,8 +151,8 @@ const AdminLogin = () => {
               <div className={`flex items-center justify-center mb-5 transition-all duration-500 delay-200 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}>
                 <div className="relative group cursor-default">
                   <div className="absolute -inset-1.5 rounded-2xl bg-gradient-to-br from-foreground/20 to-foreground/5 blur-lg opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
-                  <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center bg-foreground text-background font-bold text-xl shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all duration-300">
-                    <img src="/favicon.svg" alt="GK" className="w-10 h-10" />
+                  <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center bg-foreground shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all duration-300">
+                    <span className="text-background font-bold text-2xl tracking-tight select-none">GK</span>
                   </div>
                 </div>
               </div>
