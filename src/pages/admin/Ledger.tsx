@@ -332,8 +332,14 @@ const AdminLedger = () => {
       toast.success("Expense added successfully");
       setIsAddExpenseOpen(false);
       resetExpenseForm();
-      fetchEntries();
-      invalidatePayments(); // Invalidate cross-page caches (dashboard, payments)
+      // Instant local update via query cache
+      if (inserted) {
+        const queryKey = ["ledger-entries", dateRange.start, dateRange.end, currentBranch?.id];
+        queryClient.setQueryData<LedgerEntry[]>(queryKey, (old) => 
+          old ? [inserted as LedgerEntry, ...old] : [inserted as LedgerEntry]
+        );
+      }
+      invalidatePayments(); // Background cross-page invalidation
     }
   };
 
