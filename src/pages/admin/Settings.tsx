@@ -252,11 +252,9 @@ const AdminSettings = () => {
     }
   }, [isLoadingData, fetchedSettings, currentBranch, user, isStaffLoggedIn, refetchData]);
 
-  // Use refetchData instead of fetchData for mutations
-  // Also invalidate settings cache so other pages pick up changes
-  const fetchData = async () => {
-    await invalidateSettings();
-    await refetchData();
+  // Background invalidation for cross-page consistency (fire-and-forget)
+  const backgroundInvalidate = () => {
+    invalidateSettings().catch(() => {});
   };
 
   const handleSaveSettings = async () => {
@@ -279,8 +277,10 @@ const AdminSettings = () => {
       if (error) {
         toast.error("Error", { description: error });
       } else {
+        // Instant local state update
+        setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress } : prev);
         toast.success("Settings saved successfully");
-        fetchData();
+        backgroundInvalidate();
       }
       return;
     }
@@ -314,8 +314,10 @@ const AdminSettings = () => {
         newValue: newSettings,
         branchId: currentBranch?.id,
       });
+      // Instant local state update
+      setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress } : prev);
       toast.success("Settings saved successfully");
-      fetchData();
+      backgroundInvalidate();
     }
   };
 
@@ -349,20 +351,23 @@ const AdminSettings = () => {
       if (error) {
         toast.error("Error", { description: error });
       } else {
+        // Instant local state update - add with temp ID, will sync on next fetch
+        const tempPkg: MonthlyPackage = { id: crypto.randomUUID(), months, price: Number(newMonthlyPackage.price), joining_fee: Number(newMonthlyPackage.joining_fee) || 0, is_active: true };
+        setMonthlyPackages(prev => [...prev, tempPkg].sort((a, b) => a.months - b.months));
         toast.success("Package added");
         setNewMonthlyPackage({ months: "", price: "", joining_fee: "" });
-        fetchData();
+        backgroundInvalidate();
       }
       return;
     }
 
-    // Admin flow
-    const { error } = await supabase.from("monthly_packages").insert({
+    // Admin flow - use .select() to get the inserted record back
+    const { data: inserted, error } = await supabase.from("monthly_packages").insert({
       months,
       price: Number(newMonthlyPackage.price),
       joining_fee: Number(newMonthlyPackage.joining_fee) || 0,
       branch_id: currentBranch.id,
-    });
+    }).select().single();
 
     if (error) {
       toast.error("Error", {
@@ -378,9 +383,13 @@ const AdminSettings = () => {
         newValue: { months, price: Number(newMonthlyPackage.price), joining_fee: Number(newMonthlyPackage.joining_fee) || 0 },
         branchId: currentBranch.id,
       });
+      // Instant local state update
+      if (inserted) {
+        setMonthlyPackages(prev => [...prev, { id: inserted.id, months: inserted.months, price: inserted.price, joining_fee: inserted.joining_fee, is_active: inserted.is_active }].sort((a, b) => a.months - b.months));
+      }
       toast.success("Package added");
       setNewMonthlyPackage({ months: "", price: "", joining_fee: "" });
-      fetchData();
+      backgroundInvalidate();
     }
   };
 
@@ -404,9 +413,11 @@ const AdminSettings = () => {
       if (error) {
         toast.error("Error", { description: error });
       } else {
+        // Instant local state update
+        setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 } : p));
         toast.success("Package updated");
         setEditingMonthlyId(null);
-        fetchData();
+        backgroundInvalidate();
       }
       return;
     }
@@ -436,9 +447,11 @@ const AdminSettings = () => {
         newValue: { price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 },
         branchId: currentBranch?.id,
       });
+      // Instant local state update
+      setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 } : p));
       toast.success("Package updated");
       setEditingMonthlyId(null);
-      fetchData();
+      backgroundInvalidate();
     }
   };
 
@@ -508,8 +521,10 @@ const AdminSettings = () => {
           if (error) {
             toast.error("Error", { description: error });
           } else {
-            fetchData();
+            // Instant local state update
+            setMonthlyPackages(prev => prev.filter(p => p.id !== id));
             toast.success("Package deleted");
+            backgroundInvalidate();
           }
           return;
         }
@@ -525,8 +540,10 @@ const AdminSettings = () => {
           entityName: `${months} Month Package`,
           branchId: currentBranch?.id,
         });
-        fetchData();
+        // Instant local state update
+        setMonthlyPackages(prev => prev.filter(p => p.id !== id));
         toast.success("Package deleted");
+        backgroundInvalidate();
       },
     });
   };
@@ -561,20 +578,23 @@ const AdminSettings = () => {
       if (error) {
         toast.error("Error", { description: error });
       } else {
+        // Instant local state update with temp ID
+        const tempPkg: CustomPackage = { id: crypto.randomUUID(), name: newPackage.name, duration_days: durationDays, price: Number(newPackage.price), is_active: true };
+        setCustomPackages(prev => [...prev, tempPkg]);
         toast.success("Package added");
         setNewPackage({ name: "", duration_days: "", price: "" });
-        fetchData();
+        backgroundInvalidate();
       }
       return;
     }
 
-    // Admin flow
-    const { error } = await supabase.from("custom_packages").insert({
+    // Admin flow - use .select() to get the inserted record back
+    const { data: inserted, error } = await supabase.from("custom_packages").insert({
       name: newPackage.name,
       duration_days: durationDays,
       price: Number(newPackage.price),
       branch_id: currentBranch.id,
-    });
+    }).select().single();
 
     if (error) {
       if (error.code === "23505") {
@@ -594,9 +614,13 @@ const AdminSettings = () => {
         newValue: { name: newPackage.name, duration_days: durationDays, price: Number(newPackage.price) },
         branchId: currentBranch.id,
       });
+      // Instant local state update
+      if (inserted) {
+        setCustomPackages(prev => [...prev, { id: inserted.id, name: inserted.name, duration_days: inserted.duration_days, price: inserted.price, is_active: inserted.is_active }]);
+      }
       toast.success("Package added");
       setNewPackage({ name: "", duration_days: "", price: "" });
-      fetchData();
+      backgroundInvalidate();
     }
   };
 
@@ -625,9 +649,11 @@ const AdminSettings = () => {
       if (error) {
         toast.error("Error", { description: error });
       } else {
+        // Instant local state update
+        setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, name: editPackageData.name, price: Number(editPackageData.price) } : p));
         toast.success("Package updated");
         setEditingPackageId(null);
-        fetchData();
+        backgroundInvalidate();
       }
       return;
     }
@@ -657,9 +683,11 @@ const AdminSettings = () => {
         newValue: { name: editPackageData.name, price: Number(editPackageData.price) },
         branchId: currentBranch?.id,
       });
+      // Instant local state update
+      setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, name: editPackageData.name, price: Number(editPackageData.price) } : p));
       toast.success("Package updated");
       setEditingPackageId(null);
-      fetchData();
+      backgroundInvalidate();
     }
   };
 
@@ -732,8 +760,10 @@ const AdminSettings = () => {
           if (error) {
             toast.error("Error", { description: error });
           } else {
-            fetchData();
+            // Instant local state update
+            setCustomPackages(prev => prev.filter(p => p.id !== id));
             toast.success("Package deleted");
+            backgroundInvalidate();
           }
           return;
         }
@@ -750,8 +780,10 @@ const AdminSettings = () => {
           oldValue: pkg ? { name: pkg.name, duration_days: pkg.duration_days, price: pkg.price } : null,
           branchId: currentBranch?.id,
         });
-        fetchData();
+        // Instant local state update
+        setCustomPackages(prev => prev.filter(p => p.id !== id));
         toast.success("Package deleted");
+        backgroundInvalidate();
       },
     });
   };

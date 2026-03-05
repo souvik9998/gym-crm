@@ -110,6 +110,7 @@ const AdminLedger = () => {
   const isMobile = useIsMobile();
   const { isStaffLoggedIn, staffUser } = useStaffAuth();
   const { invalidatePayments } = useInvalidateQueries();
+  const queryClient = useQueryClient();
   // Date range state
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("this_month");
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
@@ -275,7 +276,7 @@ const AdminLedger = () => {
       }
     }
 
-    const { error } = await supabase.from("ledger_entries").insert({
+    const { data: inserted, error } = await supabase.from("ledger_entries").insert({
       entry_type: "expense",
       category: expenseCategory,
       description: expenseDescription,
@@ -286,7 +287,7 @@ const AdminLedger = () => {
       created_by: session?.session?.user?.id,
       branch_id: currentBranch?.id,
       trainer_id: trainerId || null,
-    });
+    }).select().single();
 
     setIsSaving(false);
 
@@ -332,8 +333,14 @@ const AdminLedger = () => {
       toast.success("Expense added successfully");
       setIsAddExpenseOpen(false);
       resetExpenseForm();
-      fetchEntries();
-      invalidatePayments(); // Invalidate cross-page caches (dashboard, payments)
+      // Instant local update via query cache
+      if (inserted) {
+        const queryKey = ["ledger-entries", dateRange.start, dateRange.end, currentBranch?.id];
+        queryClient.setQueryData<LedgerEntry[]>(queryKey, (old) => 
+          old ? [inserted as LedgerEntry, ...old] : [inserted as LedgerEntry]
+        );
+      }
+      invalidatePayments(); // Background cross-page invalidation
     }
   };
 
@@ -549,7 +556,11 @@ const AdminLedger = () => {
             });
           }
           toast.success("Entry deleted");
-          fetchEntries();
+          // Instant local update via query cache
+          const queryKey = ["ledger-entries", dateRange.start, dateRange.end, currentBranch?.id];
+          queryClient.setQueryData<LedgerEntry[]>(queryKey, (old) => 
+            old ? old.filter(e => e.id !== entry.id) : []
+          );
           invalidatePayments();
         }
       },

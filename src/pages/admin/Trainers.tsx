@@ -115,7 +115,7 @@ const TrainersPage = () => {
       return;
     }
 
-    const { error } = await supabase.from("personal_trainers").insert({
+    const { data: inserted, error } = await supabase.from("personal_trainers").insert({
       name: newTrainer.name,
       phone: newTrainer.phone || null,
       specialization: newTrainer.specialization || null,
@@ -125,7 +125,7 @@ const TrainersPage = () => {
       percentage_fee: Number(newTrainer.percentage_fee) || 0,
       session_fee: Number(newTrainer.session_fee) || 0,
       branch_id: currentBranch?.id,
-    });
+    }).select().single();
 
     if (error) {
       toast.error("Error", {
@@ -149,6 +149,14 @@ const TrainersPage = () => {
         branchId: currentBranch?.id,
       });
       toast.success("Trainer added");
+      // Instant local state update
+      if (inserted) {
+        setTrainers(prev => [...prev, {
+          ...inserted,
+          monthly_salary: inserted.monthly_salary ?? 0,
+          payment_category: inserted.payment_category as "monthly_percentage" | "session_basis",
+        }].sort((a, b) => a.name.localeCompare(b.name)));
+      }
       setNewTrainer({ 
         name: "", 
         phone: "", 
@@ -159,7 +167,6 @@ const TrainersPage = () => {
         percentage_fee: "",
         session_fee: "",
       });
-      fetchTrainers();
       invalidateSettings();
     }
   };
@@ -241,14 +248,27 @@ const TrainersPage = () => {
         branchId: currentBranch?.id,
       });
       toast.success("Trainer updated");
+      // Instant local state update
+      setTrainers(prev => prev.map(t => t.id === id ? {
+        ...t,
+        name: editTrainerData.name,
+        phone: editTrainerData.phone || null,
+        specialization: editTrainerData.specialization || null,
+        monthly_fee: Number(editTrainerData.monthly_fee) || 0,
+        monthly_salary: Number(editTrainerData.monthly_salary) || 0,
+        payment_category: editTrainerData.payment_category,
+        percentage_fee: Number(editTrainerData.percentage_fee) || 0,
+        session_fee: Number(editTrainerData.session_fee) || 0,
+      } : t));
       setEditingTrainerId(null);
-      fetchTrainers();
       invalidateSettings();
     }
   };
 
   const handleToggleTrainer = async (id: string, isActive: boolean) => {
     const trainer = trainers.find(t => t.id === id);
+    // Instant local state update
+    setTrainers(prev => prev.map(t => t.id === id ? { ...t, is_active: isActive } : t));
     await supabase.from("personal_trainers").update({ is_active: isActive }).eq("id", id);
     await logAdminActivity({
       category: "trainers",
@@ -261,7 +281,6 @@ const TrainersPage = () => {
       newValue: { is_active: isActive },
       branchId: currentBranch?.id,
     });
-    fetchTrainers();
     invalidateSettings();
   };
 
@@ -289,7 +308,8 @@ const TrainersPage = () => {
           } : null,
           branchId: currentBranch?.id,
         });
-        fetchTrainers();
+        // Instant local state update
+        setTrainers(prev => prev.filter(t => t.id !== id));
         invalidateSettings();
         toast.success("Trainer deleted");
       },
