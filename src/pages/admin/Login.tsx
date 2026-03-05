@@ -8,6 +8,7 @@ import { Mail, Lock, Phone, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import PoweredByBadge from "@/components/PoweredByBadge";
 import { queryClient } from "@/lib/queryClient";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import {
