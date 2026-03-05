@@ -149,6 +149,15 @@ const AdminSettings = () => {
   const [togglingMonthlyId, setTogglingMonthlyId] = useState<string | null>(null);
   const [togglingCustomId, setTogglingCustomId] = useState<string | null>(null);
 
+  // Loading states for CRUD buttons
+  const [isAddingMonthly, setIsAddingMonthly] = useState(false);
+  const [savingMonthlyId, setSavingMonthlyId] = useState<string | null>(null);
+  const [isAddingCustom, setIsAddingCustom] = useState(false);
+  const [savingCustomId, setSavingCustomId] = useState<string | null>(null);
+  
+  // Track recently added items for highlight animation
+  const [recentlyAddedIds, setRecentlyAddedIds] = useState<Set<string>>(new Set());
+
   // Gym Settings
   const [settings, setSettings] = useState<GymSettings | null>(null);
   const [gymName, setGymName] = useState("");
