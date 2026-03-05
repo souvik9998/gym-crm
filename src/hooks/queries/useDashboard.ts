@@ -48,6 +48,8 @@ export function useInvalidateDashboard() {
     keys.forEach(key => {
       queryClient.invalidateQueries({ queryKey: key });
     });
+    // Also broadly invalidate all member queries (infinite scroll variants)
+    queryClient.invalidateQueries({ queryKey: ["members"] });
   }, [queryClient, currentBranch?.id]);
 
   const invalidatePayments = useCallback(() => {
@@ -55,6 +57,8 @@ export function useInvalidateDashboard() {
     keys.forEach(key => {
       queryClient.invalidateQueries({ queryKey: key });
     });
+    // Also broadly invalidate all payment queries (infinite scroll variants)
+    queryClient.invalidateQueries({ queryKey: ["payments"] });
   }, [queryClient, currentBranch?.id]);
 
   const invalidateDailyPass = useCallback(() => {
@@ -62,6 +66,8 @@ export function useInvalidateDashboard() {
     keys.forEach(key => {
       queryClient.invalidateQueries({ queryKey: key });
     });
+    // Also broadly invalidate all daily pass queries (infinite scroll variants)
+    queryClient.invalidateQueries({ queryKey: ["daily-pass-users"] });
   }, [queryClient, currentBranch?.id]);
 
   const invalidateAll = useCallback(() => {

@@ -34,6 +34,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useStaffOperations } from "@/hooks/useStaffOperations";
 import { useSettingsPageData } from "@/hooks/queries/useSettingsPageData";
+import { useInvalidateQueries } from "@/hooks/useQueryCache";
 
 interface CustomPackage {
   id: string;
@@ -139,6 +140,9 @@ const AdminSettings = () => {
   
   // Use aggregated settings page data hook (single API call)
   const { settings: fetchedSettings, monthlyPackages: fetchedMonthlyPackages, customPackages: fetchedCustomPackages, isLoading: isLoadingData, refetch: refetchData } = useSettingsPageData();
+  
+  // Cache invalidation for cross-page updates
+  const { invalidateSettings } = useInvalidateQueries();
   
   // Loading states for toggle buttons
   const [isTogglingWhatsApp, setIsTogglingWhatsApp] = useState(false);
@@ -249,7 +253,11 @@ const AdminSettings = () => {
   }, [isLoadingData, fetchedSettings, currentBranch, user, isStaffLoggedIn, refetchData]);
 
   // Use refetchData instead of fetchData for mutations
-  const fetchData = () => refetchData();
+  // Also invalidate settings cache so other pages pick up changes
+  const fetchData = () => {
+    invalidateSettings();
+    refetchData();
+  };
 
   const handleSaveSettings = async () => {
     if (!settings?.id || !currentBranch?.id) return;
@@ -272,6 +280,7 @@ const AdminSettings = () => {
         toast.error("Error", { description: error });
       } else {
         toast.success("Settings saved successfully");
+        fetchData();
       }
       return;
     }
@@ -306,6 +315,7 @@ const AdminSettings = () => {
         branchId: currentBranch?.id,
       });
       toast.success("Settings saved successfully");
+      fetchData();
     }
   };
 
