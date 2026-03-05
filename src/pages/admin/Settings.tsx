@@ -383,9 +383,13 @@ const AdminSettings = () => {
         newValue: { months, price: Number(newMonthlyPackage.price), joining_fee: Number(newMonthlyPackage.joining_fee) || 0 },
         branchId: currentBranch.id,
       });
+      // Instant local state update
+      if (inserted) {
+        setMonthlyPackages(prev => [...prev, { id: inserted.id, months: inserted.months, price: inserted.price, joining_fee: inserted.joining_fee, is_active: inserted.is_active }].sort((a, b) => a.months - b.months));
+      }
       toast.success("Package added");
       setNewMonthlyPackage({ months: "", price: "", joining_fee: "" });
-      fetchData();
+      backgroundInvalidate();
     }
   };
 
