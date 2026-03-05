@@ -438,6 +438,8 @@ export const MembersTable = ({
   const handleBulkWhatsApp = async (type: string) => {
     if (selectedMembers.size === 0) return;
     
+    const count = selectedMembers.size;
+    if (!waOverlay.startSending(`${count} members`)) return;
     setBulkActionType(type);
     try {
       // Get saved template for the message type
@@ -479,9 +481,7 @@ export const MembersTable = ({
         const typeLabel = type === "promotional" ? "Promotional messages" : 
                           type === "expiry_reminder" ? "Expiry reminders" : 
                           type === "expired_reminder" ? "Expired reminders" : "Messages";
-        toast.success(`${typeLabel} sent to ${sentCount} members`, {
-          description: failedCount > 0 ? `${failedCount} failed` : undefined,
-        });
+        waOverlay.markSuccess(`${sentCount} members${failedCount > 0 ? ` (${failedCount} failed)` : ""}`);
 
         // Log bulk WhatsApp activity for staff
         if (isStaffLoggedIn && staffUser && sentCount > 0) {
@@ -508,9 +508,7 @@ export const MembersTable = ({
         throw new Error(data.error || "Failed to send WhatsApp");
       }
     } catch (error: any) {
-      toast.error("Failed to send bulk WhatsApp", {
-        description: error.message,
-      });
+      waOverlay.markError(error.message);
     } finally {
       setBulkActionType(null);
     }
