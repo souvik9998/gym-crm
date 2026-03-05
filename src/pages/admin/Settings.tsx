@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment, memo } from "react";
+import { useState, useEffect, Fragment, memo, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { User } from "@supabase/supabase-js";
 import { WhatsAppTemplates } from "@/components/admin/WhatsAppTemplates";
@@ -35,6 +36,7 @@ import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useStaffOperations } from "@/hooks/useStaffOperations";
 import { useSettingsPageData } from "@/hooks/queries/useSettingsPageData";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 
 interface CustomPackage {
   id: string;
@@ -149,6 +151,15 @@ const AdminSettings = () => {
   const [togglingMonthlyId, setTogglingMonthlyId] = useState<string | null>(null);
   const [togglingCustomId, setTogglingCustomId] = useState<string | null>(null);
 
+  // Loading states for CRUD buttons
+  const [isAddingMonthly, setIsAddingMonthly] = useState(false);
+  const [savingMonthlyId, setSavingMonthlyId] = useState<string | null>(null);
+  const [isAddingCustom, setIsAddingCustom] = useState(false);
+  const [savingCustomId, setSavingCustomId] = useState<string | null>(null);
+  
+  // Track recently added items for highlight animation
+  const [recentlyAddedIds, setRecentlyAddedIds] = useState<Set<string>>(new Set());
+
   // Gym Settings
   const [settings, setSettings] = useState<GymSettings | null>(null);
   const [gymName, setGymName] = useState("");
@@ -257,6 +268,18 @@ const AdminSettings = () => {
     invalidateSettings().catch(() => {});
   };
 
+  // Mark an item as recently added for highlight animation
+  const markRecentlyAdded = useCallback((id: string) => {
+    setRecentlyAddedIds(prev => new Set(prev).add(id));
+    setTimeout(() => {
+      setRecentlyAddedIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 1500);
+  }, []);
+
   const handleSaveSettings = async () => {
     if (!settings?.id || !currentBranch?.id) return;
     setIsSaving(true);
@@ -323,6 +346,15 @@ const AdminSettings = () => {
 
   // Monthly Package handlers
   const handleAddMonthlyPackage = async () => {
+    setIsAddingMonthly(true);
+    try {
+    await _handleAddMonthlyPackage();
+    } finally {
+      setIsAddingMonthly(false);
+    }
+  };
+
+  const _handleAddMonthlyPackage = async () => {
     if (!newMonthlyPackage.months || !newMonthlyPackage.price) {
       toast.error("Please fill months and price");
       return;
@@ -351,9 +383,10 @@ const AdminSettings = () => {
       if (error) {
         toast.error("Error", { description: error });
       } else {
-        // Instant local state update - add with temp ID, will sync on next fetch
-        const tempPkg: MonthlyPackage = { id: crypto.randomUUID(), months, price: Number(newMonthlyPackage.price), joining_fee: Number(newMonthlyPackage.joining_fee) || 0, is_active: true };
+        const tempId = crypto.randomUUID();
+        const tempPkg: MonthlyPackage = { id: tempId, months, price: Number(newMonthlyPackage.price), joining_fee: Number(newMonthlyPackage.joining_fee) || 0, is_active: true };
         setMonthlyPackages(prev => [...prev, tempPkg].sort((a, b) => a.months - b.months));
+        markRecentlyAdded(tempId);
         toast.success("Package added");
         setNewMonthlyPackage({ months: "", price: "", joining_fee: "" });
         backgroundInvalidate();
@@ -386,6 +419,7 @@ const AdminSettings = () => {
       // Instant local state update
       if (inserted) {
         setMonthlyPackages(prev => [...prev, { id: inserted.id, months: inserted.months, price: inserted.price, joining_fee: inserted.joining_fee, is_active: inserted.is_active }].sort((a, b) => a.months - b.months));
+        markRecentlyAdded(inserted.id);
       }
       toast.success("Package added");
       setNewMonthlyPackage({ months: "", price: "", joining_fee: "" });
@@ -399,6 +433,15 @@ const AdminSettings = () => {
   };
 
   const handleSaveMonthlyPackage = async (id: string) => {
+    setSavingMonthlyId(id);
+    try {
+    await _handleSaveMonthlyPackage(id);
+    } finally {
+      setSavingMonthlyId(null);
+    }
+  };
+
+  const _handleSaveMonthlyPackage = async (id: string) => {
     const pkg = monthlyPackages.find(p => p.id === id);
     const oldValue = pkg ? { price: pkg.price, joining_fee: pkg.joining_fee } : null;
     
@@ -550,6 +593,15 @@ const AdminSettings = () => {
 
   // Custom Package handlers
   const handleAddPackage = async () => {
+    setIsAddingCustom(true);
+    try {
+    await _handleAddPackage();
+    } finally {
+      setIsAddingCustom(false);
+    }
+  };
+
+  const _handleAddPackage = async () => {
     if (!newPackage.name || !newPackage.duration_days || !newPackage.price) {
       toast.error("Please fill all fields");
       return;
@@ -578,9 +630,10 @@ const AdminSettings = () => {
       if (error) {
         toast.error("Error", { description: error });
       } else {
-        // Instant local state update with temp ID
-        const tempPkg: CustomPackage = { id: crypto.randomUUID(), name: newPackage.name, duration_days: durationDays, price: Number(newPackage.price), is_active: true };
+        const tempId = crypto.randomUUID();
+        const tempPkg: CustomPackage = { id: tempId, name: newPackage.name, duration_days: durationDays, price: Number(newPackage.price), is_active: true };
         setCustomPackages(prev => [...prev, tempPkg]);
+        markRecentlyAdded(tempId);
         toast.success("Package added");
         setNewPackage({ name: "", duration_days: "", price: "" });
         backgroundInvalidate();
@@ -617,6 +670,7 @@ const AdminSettings = () => {
       // Instant local state update
       if (inserted) {
         setCustomPackages(prev => [...prev, { id: inserted.id, name: inserted.name, duration_days: inserted.duration_days, price: inserted.price, is_active: inserted.is_active }]);
+        markRecentlyAdded(inserted.id);
       }
       toast.success("Package added");
       setNewPackage({ name: "", duration_days: "", price: "" });
@@ -630,6 +684,15 @@ const AdminSettings = () => {
   };
 
   const handleSavePackage = async (id: string) => {
+    setSavingCustomId(id);
+    try {
+    await _handleSavePackage(id);
+    } finally {
+      setSavingCustomId(null);
+    }
+  };
+
+  const _handleSavePackage = async (id: string) => {
     if (!editPackageData.name || !editPackageData.price) {
       toast.error("Name and price are required");
       return;
@@ -861,15 +924,18 @@ const AdminSettings = () => {
                     />
                   </div>
                 </div>
-                <Button onClick={handleAddMonthlyPackage} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
-                  <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                  Add Package
+                <Button onClick={handleAddMonthlyPackage} disabled={isAddingMonthly} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
+                  {isAddingMonthly ? <ButtonSpinner /> : <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
+                  {isAddingMonthly ? "Adding..." : "Add Package"}
                 </Button>
 
                 {monthlyPackages.length > 0 && (
                   <div className="space-y-2 lg:space-y-3 pt-3 lg:pt-4 border-t">
                     {monthlyPackages.map((pkg) => (
-                      <div key={pkg.id} className="group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/60 rounded-xl transition-all duration-200 hover:shadow-md hover:border-border">
+                      <div key={pkg.id} className={cn(
+                        "group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/60 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border",
+                        recentlyAddedIds.has(pkg.id) && "animate-fade-in ring-2 ring-primary/30"
+                      )}>
                         {editingMonthlyId === pkg.id ? (
                           <>
                             <div className="flex-1 grid grid-cols-2 gap-2 lg:gap-3">
@@ -897,9 +963,10 @@ const AdminSettings = () => {
                                 size="icon" 
                                 variant="outline"
                                 onClick={() => handleSaveMonthlyPackage(pkg.id)}
+                                disabled={savingMonthlyId === pkg.id}
                                 className="h-8 w-8 lg:h-9 lg:w-9 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200"
                               >
-                                <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                {savingMonthlyId === pkg.id ? <ButtonSpinner /> : <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
                               </Button>
                               <Button 
                                 size="icon" 
@@ -994,15 +1061,18 @@ const AdminSettings = () => {
                     />
                   </div>
                 </div>
-                <Button onClick={handleAddPackage} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
-                  <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                  Add Daily Pass
+                <Button onClick={handleAddPackage} disabled={isAddingCustom} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
+                  {isAddingCustom ? <ButtonSpinner /> : <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
+                  {isAddingCustom ? "Adding..." : "Add Daily Pass"}
                 </Button>
 
                 {customPackages.length > 0 && (
                   <div className="space-y-2 lg:space-y-3 pt-3 lg:pt-4 border-t">
                     {customPackages.map((pkg) => (
-                      <div key={pkg.id} className="group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/60 rounded-xl transition-all duration-200 hover:shadow-md hover:border-border">
+                      <div key={pkg.id} className={cn(
+                        "group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/60 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border",
+                        recentlyAddedIds.has(pkg.id) && "animate-fade-in ring-2 ring-primary/30"
+                      )}>
                         {editingPackageId === pkg.id ? (
                           <>
                             <div className="flex-1 grid grid-cols-2 gap-2 lg:gap-3">
@@ -1029,9 +1099,10 @@ const AdminSettings = () => {
                                 size="icon" 
                                 variant="outline"
                                 onClick={() => handleSavePackage(pkg.id)}
+                                disabled={savingCustomId === pkg.id}
                                 className="h-8 w-8 lg:h-9 lg:w-9 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200"
                               >
-                                <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                {savingCustomId === pkg.id ? <ButtonSpinner /> : <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
                               </Button>
                               <Button 
                                 size="icon" 
@@ -1264,7 +1335,7 @@ const AdminSettings = () => {
                 </Card>
 
                 <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
-                  <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                  {isSaving ? <ButtonSpinner /> : <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
                   {isSaving ? "Saving..." : "Save Settings"}
                 </Button>
               </>

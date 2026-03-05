@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, Fragment, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ import { toast } from "@/components/ui/sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
+import { cn } from "@/lib/utils";
 
 interface Trainer {
   id: string;
@@ -35,6 +37,20 @@ const TrainersPage = () => {
   const { currentBranch } = useBranch();
   const { invalidateSettings } = useInvalidateQueries();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isAddingTrainer, setIsAddingTrainer] = useState(false);
+  const [savingTrainerId, setSavingTrainerId] = useState<string | null>(null);
+  const [recentlyAddedIds, setRecentlyAddedIds] = useState<Set<string>>(new Set());
+
+  const markRecentlyAdded = useCallback((id: string) => {
+    setRecentlyAddedIds(prev => new Set(prev).add(id));
+    setTimeout(() => {
+      setRecentlyAddedIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 1500);
+  }, []);
 
   // Trainers
   const [trainers, setTrainers] = useState<Trainer[]>([]);
@@ -115,59 +131,64 @@ const TrainersPage = () => {
       return;
     }
 
-    const { data: inserted, error } = await supabase.from("personal_trainers").insert({
-      name: newTrainer.name,
-      phone: newTrainer.phone || null,
-      specialization: newTrainer.specialization || null,
-      monthly_fee: Number(newTrainer.monthly_fee) || 0,
-      monthly_salary: Number(newTrainer.monthly_salary) || 0,
-      payment_category: newTrainer.payment_category,
-      percentage_fee: Number(newTrainer.percentage_fee) || 0,
-      session_fee: Number(newTrainer.session_fee) || 0,
-      branch_id: currentBranch?.id,
-    }).select().single();
+    setIsAddingTrainer(true);
+    try {
+      const { data: inserted, error } = await supabase.from("personal_trainers").insert({
+        name: newTrainer.name,
+        phone: newTrainer.phone || null,
+        specialization: newTrainer.specialization || null,
+        monthly_fee: Number(newTrainer.monthly_fee) || 0,
+        monthly_salary: Number(newTrainer.monthly_salary) || 0,
+        payment_category: newTrainer.payment_category,
+        percentage_fee: Number(newTrainer.percentage_fee) || 0,
+        session_fee: Number(newTrainer.session_fee) || 0,
+        branch_id: currentBranch?.id,
+      }).select().single();
 
-    if (error) {
-      toast.error("Error", {
-        description: error.message,
-      });
-    } else {
-      await logAdminActivity({
-        category: "trainers",
-        type: "trainer_added",
-        description: `Added trainer "${newTrainer.name}" with ${newTrainer.payment_category === "monthly_percentage" ? "monthly + percentage" : "session"} payment`,
-        entityType: "personal_trainers",
-        entityName: newTrainer.name,
-        newValue: { 
-          name: newTrainer.name, 
-          payment_category: newTrainer.payment_category,
-          monthly_fee: Number(newTrainer.monthly_fee) || 0,
-          monthly_salary: Number(newTrainer.monthly_salary) || 0,
-          percentage_fee: Number(newTrainer.percentage_fee) || 0,
-          session_fee: Number(newTrainer.session_fee) || 0,
-        },
-        branchId: currentBranch?.id,
-      });
-      toast.success("Trainer added");
-      // Instant local state update
-      if (inserted) {
-        setTrainers(prev => [...prev, {
-          ...inserted,
-          monthly_salary: inserted.monthly_salary ?? 0,
-          payment_category: inserted.payment_category as "monthly_percentage" | "session_basis",
-        }].sort((a, b) => a.name.localeCompare(b.name)));
+      if (error) {
+        toast.error("Error", {
+          description: error.message,
+        });
+      } else {
+        await logAdminActivity({
+          category: "trainers",
+          type: "trainer_added",
+          description: `Added trainer "${newTrainer.name}" with ${newTrainer.payment_category === "monthly_percentage" ? "monthly + percentage" : "session"} payment`,
+          entityType: "personal_trainers",
+          entityName: newTrainer.name,
+          newValue: { 
+            name: newTrainer.name, 
+            payment_category: newTrainer.payment_category,
+            monthly_fee: Number(newTrainer.monthly_fee) || 0,
+            monthly_salary: Number(newTrainer.monthly_salary) || 0,
+            percentage_fee: Number(newTrainer.percentage_fee) || 0,
+            session_fee: Number(newTrainer.session_fee) || 0,
+          },
+          branchId: currentBranch?.id,
+        });
+        toast.success("Trainer added");
+        if (inserted) {
+          setTrainers(prev => [...prev, {
+            ...inserted,
+            monthly_salary: inserted.monthly_salary ?? 0,
+            payment_category: inserted.payment_category as "monthly_percentage" | "session_basis",
+          }].sort((a, b) => a.name.localeCompare(b.name)));
+          markRecentlyAdded(inserted.id);
+        }
+        setNewTrainer({ 
+          name: "", 
+          phone: "", 
+          specialization: "", 
+          monthly_fee: "",
+          monthly_salary: "",
+          payment_category: "monthly_percentage",
+          percentage_fee: "",
+          session_fee: "",
+        });
+        invalidateSettings();
       }
-      setNewTrainer({ 
-        name: "", 
-        phone: "", 
-        specialization: "", 
-        monthly_fee: "",
-        monthly_salary: "",
-        payment_category: "monthly_percentage",
-        percentage_fee: "",
-        session_fee: "",
-      });
-      invalidateSettings();
+    } finally {
+      setIsAddingTrainer(false);
     }
   };
 
@@ -186,6 +207,15 @@ const TrainersPage = () => {
   };
 
   const handleSaveTrainer = async (id: string) => {
+    setSavingTrainerId(id);
+    try {
+    await _handleSaveTrainer(id);
+    } finally {
+      setSavingTrainerId(null);
+    }
+  };
+
+  const _handleSaveTrainer = async (id: string) => {
     if (!editTrainerData.name) {
       toast.error("Name is required");
       return;
@@ -422,9 +452,9 @@ const TrainersPage = () => {
                 </div>
               )}
             </div>
-            <Button onClick={handleAddTrainer} className="gap-2">
-              <PlusIcon className="w-4 h-4" />
-              Add Trainer
+            <Button onClick={handleAddTrainer} disabled={isAddingTrainer} className="gap-2">
+              {isAddingTrainer ? <ButtonSpinner /> : <PlusIcon className="w-4 h-4" />}
+              {isAddingTrainer ? "Adding..." : "Add Trainer"}
             </Button>
           </CardContent>
         </Card>
@@ -443,7 +473,10 @@ const TrainersPage = () => {
             ) : (
               <div className="space-y-3">
                 {trainers.map((trainer) => (
-                  <div key={trainer.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div key={trainer.id} className={cn(
+                    "flex items-center justify-between p-4 bg-muted/50 rounded-lg transition-all duration-300",
+                    recentlyAddedIds.has(trainer.id) && "animate-fade-in ring-2 ring-primary/30"
+                  )}>
                     {editingTrainerId === trainer.id ? (
                       <div className="flex-1 space-y-3 mr-4">
                         <div className="grid grid-cols-2 gap-3">
@@ -561,8 +594,8 @@ const TrainersPage = () => {
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {editingTrainerId === trainer.id ? (
                         <>
-                          <Button size="icon" variant="ghost" onClick={() => handleSaveTrainer(trainer.id)}>
-                            <CheckIcon className="w-4 h-4 text-success" />
+                          <Button size="icon" variant="ghost" onClick={() => handleSaveTrainer(trainer.id)} disabled={savingTrainerId === trainer.id}>
+                            {savingTrainerId === trainer.id ? <ButtonSpinner className="text-primary" /> : <CheckIcon className="w-4 h-4 text-primary" />}
                           </Button>
                           <Button size="icon" variant="ghost" onClick={() => setEditingTrainerId(null)}>
                             <XMarkIcon className="w-4 h-4 text-muted-foreground" />
