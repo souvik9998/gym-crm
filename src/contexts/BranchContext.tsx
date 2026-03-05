@@ -211,7 +211,7 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
         allBranches,
         currentBranch,
         setCurrentBranch,
-        refreshBranches: fetchBranches,
+        refreshBranches: () => fetchBranches(true),
         isLoading,
         isStaffRestricted,
         setStaffBranchRestriction,
