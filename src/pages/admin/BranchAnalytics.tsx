@@ -56,7 +56,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PeriodSelector, PeriodType, getPeriodDates, getPeriodLabel } from "@/components/admin/PeriodSelector";
-import { useBranchAnalyticsData, useBranchTimeSeriesQuery, type BranchMetrics, type TrainerMetrics, type Insight, type TimeSeriesData } from "@/hooks/queries/useBranchAnalytics";
+import { useBranchAnalyticsData, type BranchMetrics, type TrainerMetrics, type Insight, type TimeSeriesData } from "@/hooks/queries/useBranchAnalytics";
 
 const COLORS = [
   "hsl(var(--accent))",
