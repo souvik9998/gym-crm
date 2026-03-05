@@ -10,6 +10,7 @@ import { fetchPublicBranch, fetchDefaultBranch } from "@/api/publicData";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import { phoneSchema, validateField, validateForm } from "@/lib/validation";
 import { z } from "zod";
+import PoweredByBadge from "@/components/PoweredByBadge";
 
 const formSchema = z.object({
   phone: phoneSchema,

@@ -10,6 +10,7 @@ import MemberDetailsForm, { type MemberDetailsData } from "@/components/registra
 import PackageSelectionForm, { type PackageSelectionData } from "@/components/registration/PackageSelectionForm";
 import { fetchPublicBranch } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
+import PoweredByBadge from "@/components/PoweredByBadge";
 
 type Step = "details" | "package";
 
