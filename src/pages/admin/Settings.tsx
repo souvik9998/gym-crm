@@ -683,6 +683,15 @@ const AdminSettings = () => {
   };
 
   const handleSavePackage = async (id: string) => {
+    setSavingCustomId(id);
+    try {
+    await _handleSavePackage(id);
+    } finally {
+      setSavingCustomId(null);
+    }
+  };
+
+  const _handleSavePackage = async (id: string) => {
     if (!editPackageData.name || !editPackageData.price) {
       toast.error("Name and price are required");
       return;
