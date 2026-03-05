@@ -588,13 +588,13 @@ const AdminSettings = () => {
       return;
     }
 
-    // Admin flow
-    const { error } = await supabase.from("custom_packages").insert({
+    // Admin flow - use .select() to get the inserted record back
+    const { data: inserted, error } = await supabase.from("custom_packages").insert({
       name: newPackage.name,
       duration_days: durationDays,
       price: Number(newPackage.price),
       branch_id: currentBranch.id,
-    });
+    }).select().single();
 
     if (error) {
       if (error.code === "23505") {
