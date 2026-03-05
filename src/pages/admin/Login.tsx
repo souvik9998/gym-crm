@@ -24,6 +24,7 @@ import {
 const AdminLogin = () => {
   const navigate = useNavigate();
   const { login: staffLogin, clearStaffState } = useStaffAuth();
+  const [mounted, setMounted] = useState(false);
 
   // Admin state
   const [email, setEmail] = useState("");
