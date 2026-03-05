@@ -51,7 +51,8 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
     localStorage.setItem("admin-sidebar-collapsed", String(collapsed));
   };
 
-  if (isLoading || staffLoading) {
+  // Show skeleton while auth OR branch is loading to prevent stale data flash
+  if (isLoading || staffLoading || branchLoading) {
     return (
       <div className="min-h-screen bg-background">
         {/* Skeleton sidebar - desktop only */}
