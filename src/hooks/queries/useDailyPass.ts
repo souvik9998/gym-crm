@@ -87,6 +87,8 @@ export function useCreateDailyPassUser() {
       keysToInvalidate.forEach(key => {
         queryClient.invalidateQueries({ queryKey: key });
       });
+      // Broadly invalidate all daily pass queries (including infinite scroll)
+      queryClient.invalidateQueries({ queryKey: ["daily-pass-users"] });
     },
   });
 }
