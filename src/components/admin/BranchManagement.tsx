@@ -62,6 +62,7 @@ export const BranchManagement = () => {
     phone: "",
     email: "",
   });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string | undefined>>({});
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
