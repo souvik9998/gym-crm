@@ -144,37 +144,43 @@ const AdminLogin = () => {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Main centered content */}
       <div className="flex-1 flex items-center justify-center p-4 pb-16">
-        <div className="w-full max-w-md">
-          <Card className="border shadow-lg">
-            <CardHeader className="text-center pb-4">
-              <div className="flex items-center justify-center mb-4">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-foreground text-background font-bold text-xl shadow-md">
-                  GK
+        <div className={`w-full max-w-md transition-all duration-700 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+          <Card className="border border-border/50 shadow-2xl shadow-foreground/5 overflow-hidden">
+            <CardHeader className="text-center pb-4 pt-8">
+              {/* Animated GK Logo */}
+              <div className={`flex items-center justify-center mb-5 transition-all duration-500 delay-200 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}>
+                <div className="relative group cursor-default">
+                  <div className="absolute -inset-1.5 rounded-2xl bg-gradient-to-br from-foreground/20 to-foreground/5 blur-lg opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center bg-foreground text-background font-bold text-xl shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all duration-300">
+                    <img src="/favicon.svg" alt="GK" className="w-10 h-10" />
+                  </div>
                 </div>
               </div>
-              <CardTitle className="text-xl md:text-2xl font-semibold">
+              <CardTitle className={`text-xl md:text-2xl font-semibold transition-all duration-500 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
                 GymKloud Login
               </CardTitle>
-              <CardDescription>Sign in to access the admin dashboard</CardDescription>
+              <CardDescription className={`transition-all duration-500 delay-400 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+                Sign in to access the admin dashboard
+              </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 pb-8">
               <Tabs defaultValue="admin" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-4">
-                  <TabsTrigger value="admin" className="gap-2">
+                <TabsList className="grid w-full grid-cols-2 mb-6 h-11">
+                  <TabsTrigger value="admin" className="gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:shadow-sm">
                     <Mail className="w-4 h-4" />
                     Admin
                   </TabsTrigger>
-                  <TabsTrigger value="staff" className="gap-2">
+                  <TabsTrigger value="staff" className="gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:shadow-sm">
                     <User className="w-4 h-4" />
                     Staff
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="admin">
+                <TabsContent value="admin" className="animate-fade-in">
                   <form onSubmit={handleAdminSubmit} className="space-y-5">
                     <div className="space-y-2">
                       <Label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-accent" />
+                        <Mail className="w-4 h-4 text-muted-foreground" />
                         Email Address
                       </Label>
                       <ValidatedInput
@@ -202,7 +208,7 @@ const AdminLogin = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="admin-password" className="text-sm font-medium flex items-center gap-2">
-                        <Lock className="w-4 h-4 text-accent" />
+                        <Lock className="w-4 h-4 text-muted-foreground" />
                         Password
                       </Label>
                       <ValidatedInput
@@ -233,7 +239,7 @@ const AdminLogin = () => {
                       type="submit"
                       variant="accent"
                       size="lg"
-                      className="w-full"
+                      className="w-full transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                       disabled={isAdminLoading || !email.trim() || !adminPassword}
                     >
                       {isAdminLoading ? (
@@ -248,11 +254,11 @@ const AdminLogin = () => {
                   </form>
                 </TabsContent>
 
-                <TabsContent value="staff">
+                <TabsContent value="staff" className="animate-fade-in">
                   <form onSubmit={handleStaffSubmit} className="space-y-5">
                     <div className="space-y-2">
                       <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-accent" />
+                        <Phone className="w-4 h-4 text-muted-foreground" />
                         Phone Number
                       </Label>
                       <ValidatedInput
@@ -281,7 +287,7 @@ const AdminLogin = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="staff-password" className="text-sm font-medium flex items-center gap-2">
-                        <Lock className="w-4 h-4 text-accent" />
+                        <Lock className="w-4 h-4 text-muted-foreground" />
                         Password
                       </Label>
                       <ValidatedInput
@@ -312,7 +318,7 @@ const AdminLogin = () => {
                       type="submit"
                       variant="accent"
                       size="lg"
-                      className="w-full"
+                      className="w-full transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                       disabled={isStaffLoading || phone.length !== 10 || !staffPassword}
                     >
                       {isStaffLoading ? (
