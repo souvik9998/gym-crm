@@ -75,12 +75,12 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
 
   const hasFetchedForUser = useRef<string | null>(null);
 
-  const fetchBranches = useCallback(async () => {
+  const fetchBranches = useCallback(async (force = false) => {
     if (!userChecked || !user) return;
     
     // Skip if already fetched for this user (prevents duplicate fetches during auth settling)
     const userKey = `${user.id}-${tenantId || "no-tenant"}`;
-    if (hasFetchedForUser.current === userKey && isInitialized) return;
+    if (!force && hasFetchedForUser.current === userKey && isInitialized) return;
     hasFetchedForUser.current = userKey;
     
     setIsLoading(true);
@@ -211,7 +211,7 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
         allBranches,
         currentBranch,
         setCurrentBranch,
-        refreshBranches: fetchBranches,
+        refreshBranches: () => fetchBranches(true),
         isLoading,
         isStaffRestricted,
         setStaffBranchRestriction,
