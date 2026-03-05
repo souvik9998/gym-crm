@@ -19,14 +19,14 @@ interface AdminLayoutProps {
 
 export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayoutProps) => {
   const navigate = useNavigate();
-  const { currentBranch } = useBranch();
+  const { currentBranch, isLoading: branchLoading } = useBranch();
   const { isStaffLoggedIn, staffUser, isLoading: staffLoading } = useStaffAuth();
   const { user: adminUser, isLoading, isAuthenticated } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // Get branch name dynamically from currentBranch
-  const gymName = currentBranch?.name || "Pro Plus Fitness";
+  const gymName = currentBranch?.name || "Loading...";
 
   useEffect(() => {
     // Load sidebar state from localStorage
@@ -51,7 +51,8 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
     localStorage.setItem("admin-sidebar-collapsed", String(collapsed));
   };
 
-  if (isLoading || staffLoading) {
+  // Show skeleton while auth OR branch is loading to prevent stale data flash
+  if (isLoading || staffLoading || branchLoading) {
     return (
       <div className="min-h-screen bg-background">
         {/* Skeleton sidebar - desktop only */}
@@ -140,7 +141,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
           <div className="flex items-center gap-3">
             <BranchLogo logoUrl={currentBranch?.logo_url} name={currentBranch?.name || "Gym"} size="md" />
             <div>
-              <h1 className="text-sm font-semibold text-foreground">{currentBranch?.name || "Pro Plus Fitness"}</h1>
+              <h1 className="text-sm font-semibold text-foreground">{currentBranch?.name || "Loading..."}</h1>
               <p className="text-xs text-muted-foreground">
                 {isStaffSession ? `${staffUser?.role} Panel` : "Admin Panel"}
               </p>

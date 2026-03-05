@@ -12,6 +12,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { queryClient } from "@/lib/queryClient";
 import type { User, Session } from "@supabase/supabase-js";
 
 export type AppRole = "admin" | "member" | "staff" | "super_admin" | "tenant_admin";
@@ -221,6 +222,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const clearAuthState = useCallback(() => {
     if (isMounted.current) {
+      // Clear all cached queries to prevent cross-tenant data leakage
+      queryClient.clear();
+      lastLoadedUserId.current = null;
       setState({
         user: null,
         session: null,
