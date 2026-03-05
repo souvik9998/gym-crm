@@ -382,10 +382,10 @@ const AdminSettings = () => {
       if (error) {
         toast.error("Error", { description: error });
       } else {
-        // Instant local state update - add with temp ID, will sync on next fetch
-        const tempPkg: MonthlyPackage = { id: crypto.randomUUID(), months, price: Number(newMonthlyPackage.price), joining_fee: Number(newMonthlyPackage.joining_fee) || 0, is_active: true };
+        const tempId = crypto.randomUUID();
+        const tempPkg: MonthlyPackage = { id: tempId, months, price: Number(newMonthlyPackage.price), joining_fee: Number(newMonthlyPackage.joining_fee) || 0, is_active: true };
         setMonthlyPackages(prev => [...prev, tempPkg].sort((a, b) => a.months - b.months));
-        toast.success("Package added");
+        markRecentlyAdded(tempId);
         setNewMonthlyPackage({ months: "", price: "", joining_fee: "" });
         backgroundInvalidate();
       }
