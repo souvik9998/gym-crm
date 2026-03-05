@@ -578,9 +578,12 @@ const AdminSettings = () => {
       if (error) {
         toast.error("Error", { description: error });
       } else {
+        // Instant local state update with temp ID
+        const tempPkg: CustomPackage = { id: crypto.randomUUID(), name: newPackage.name, duration_days: durationDays, price: Number(newPackage.price), is_active: true };
+        setCustomPackages(prev => [...prev, tempPkg]);
         toast.success("Package added");
         setNewPackage({ name: "", duration_days: "", price: "" });
-        fetchData();
+        backgroundInvalidate();
       }
       return;
     }
