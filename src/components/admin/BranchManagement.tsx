@@ -635,16 +635,16 @@ export const BranchManagement = () => {
 
       {/* Add/Edit Branch Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[425px] p-4 md:p-3">
-          <DialogHeader className="pb-2 md:pb-2">
+        <DialogContent className="sm:max-w-[460px] p-5 md:p-6">
+          <DialogHeader className="pb-3">
             <DialogTitle className="text-base md:text-lg">{editingBranch ? "Edit Branch" : "Add New Branch"}</DialogTitle>
             <DialogDescription className="text-xs md:text-sm">
               {editingBranch
                 ? "Update the branch details below."
-                : "Create a new gym branch. Each branch will have its own QR code for member registration."}
+                : "Create a new gym branch. Fields marked with * are required."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 md:space-y-2 py-2 md:py-3">
+          <div className="space-y-4 py-1">
             {/* Logo Upload */}
             <div className="flex items-center gap-4">
               <div className="relative cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
@@ -666,52 +666,75 @@ export const BranchManagement = () => {
               </div>
               <div className="text-sm text-muted-foreground">
                 <p className="font-medium text-foreground">Branch Logo</p>
-                <p>Click to upload (max 2MB)</p>
+                <p className="text-xs">Click to upload (max 2MB)</p>
               </div>
             </div>
-            <div className="space-y-1.5 md:space-y-2">
+
+            <div className="space-y-1.5">
               <Label htmlFor="branch-name">Branch Name *</Label>
-              <Input
+              <ValidatedInput
                 id="branch-name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: undefined }));
+                }}
+                error={fieldErrors.name}
                 placeholder="e.g., Main Branch, Downtown Gym"
               />
             </div>
-            <div className="space-y-2">
+
+            <div className="space-y-1.5">
               <Label htmlFor="branch-address">Address {!editingBranch && "*"}</Label>
               <Textarea
                 id="branch-address"
                 value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, address: e.target.value });
+                  if (fieldErrors.address) setFieldErrors(prev => ({ ...prev, address: undefined }));
+                }}
                 placeholder="Full address of the branch"
                 rows={2}
+                className={fieldErrors.address ? "border-destructive" : ""}
               />
+              {fieldErrors.address && (
+                <p className="text-xs font-medium text-destructive mt-1 px-1">{fieldErrors.address}</p>
+              )}
             </div>
+
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="branch-phone">Phone {!editingBranch && "*"}</Label>
-                <Input
+                <ValidatedInput
                   id="branch-phone"
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="Phone number"
+                  onChange={(e) => {
+                    setFormData({ ...formData, phone: e.target.value });
+                    if (fieldErrors.phone) setFieldErrors(prev => ({ ...prev, phone: undefined }));
+                  }}
+                  error={fieldErrors.phone}
+                  placeholder="10-digit number"
+                  maxLength={10}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="branch-email">Email</Label>
-                <Input
+              <div className="space-y-1.5">
+                <Label htmlFor="branch-email">Email <span className="text-muted-foreground text-xs font-normal">(optional)</span></Label>
+                <ValidatedInput
                   id="branch-email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="Email address (optional)"
+                  onChange={(e) => {
+                    setFormData({ ...formData, email: e.target.value });
+                    if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }));
+                  }}
+                  error={fieldErrors.email}
+                  placeholder="Email address"
                 />
               </div>
             </div>
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 pt-2">
             <Button
               variant="outline"
               onClick={() => {
