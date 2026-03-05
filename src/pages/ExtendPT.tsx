@@ -10,6 +10,7 @@ import { useRazorpay } from "@/hooks/useRazorpay";
 import { addDays, addMonths, differenceInDays, format, isBefore, isAfter, parseISO } from "date-fns";
 import { fetchPublicBranch, fetchPublicTrainers } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
+import PoweredByBadge from "@/components/PoweredByBadge";
 
 interface Trainer {
   id: string;
@@ -515,6 +516,7 @@ const ExtendPT = () => {
           </CardContent>
         </Card>
       </main>
+      <PoweredByBadge />
     </div>
   );
 };

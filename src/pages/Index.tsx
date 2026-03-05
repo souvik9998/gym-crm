@@ -10,6 +10,7 @@ import { fetchPublicBranch, fetchDefaultBranch } from "@/api/publicData";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import { phoneSchema, validateField, validateForm } from "@/lib/validation";
 import { z } from "zod";
+import PoweredByBadge from "@/components/PoweredByBadge";
 
 const formSchema = z.object({
   phone: phoneSchema,
@@ -415,21 +416,7 @@ const Index = () => {
         </div>
       </main>
 
-      {/* Powered by GymKloud - chip style, fixed bottom right on desktop, centered bottom on mobile */}
-      <div className="fixed bottom-4 right-4 hidden md:block">
-        <div className="bg-card border border-border rounded-full px-5 py-2 shadow-md">
-          <p className="text-sm text-muted-foreground">
-            Powered by <span className="font-bold text-foreground">GymKloud</span>
-          </p>
-        </div>
-      </div>
-      <div className="py-4 flex justify-center md:hidden">
-        <div className="bg-card border border-border rounded-full px-5 py-2 shadow-md">
-          <p className="text-sm text-muted-foreground">
-            Powered by <span className="font-bold text-foreground">GymKloud</span>
-          </p>
-        </div>
-      </div>
+      <PoweredByBadge />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Calendar, Phone, User, IndianRupee, Home, MessageCircle, Building2 } from "lucide-react";
+import PoweredByBadge from "@/components/PoweredByBadge";
 
 interface SuccessState {
   memberName: string;
@@ -146,6 +147,7 @@ const Success = () => {
           </p>
         </CardContent>
       </Card>
+      <PoweredByBadge />
     </div>
   );
 };

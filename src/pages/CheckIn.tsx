@@ -13,6 +13,7 @@ import {
   getStaffDeviceUUID,
 } from "@/api/attendance";
 import { supabase } from "@/integrations/supabase/client";
+import PoweredByBadge from "@/components/PoweredByBadge";
 
 type CheckInStatus = "loading" | "login" | "success" | "checked_out" | "expired" | "duplicate" | "device_mismatch" | "not_found" | "error";
 
@@ -300,6 +301,7 @@ const CheckIn = () => {
           </Card>
         )}
       </div>
+      <PoweredByBadge />
     </div>
   );
 };

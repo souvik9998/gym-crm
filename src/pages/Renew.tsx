@@ -9,6 +9,7 @@ import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-ove
 import PackageSelectionForm, { type PackageSelectionData } from "@/components/registration/PackageSelectionForm";
 import { fetchPublicBranch } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
+import PoweredByBadge from "@/components/PoweredByBadge";
 
 interface Member {
   id: string;
@@ -203,6 +204,7 @@ const Renew = () => {
           branchId={member.branch_id || undefined}
         />
       </main>
+      <PoweredByBadge />
     </div>
   );
 };

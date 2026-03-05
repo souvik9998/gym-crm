@@ -8,6 +8,7 @@ import { Mail, Lock, Phone, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import PoweredByBadge from "@/components/PoweredByBadge";
 import { queryClient } from "@/lib/queryClient";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import {
@@ -333,21 +334,7 @@ const AdminLogin = () => {
         </div>
       </div>
 
-      {/* Powered by GymKloud - chip style, fixed bottom right on desktop, centered bottom on mobile */}
-      <div className="fixed bottom-4 right-4 hidden md:block">
-        <div className="bg-card border border-border rounded-full px-5 py-2 shadow-md">
-          <p className="text-sm text-muted-foreground">
-            Powered by <span className="font-bold text-foreground">GymKloud</span>
-          </p>
-        </div>
-      </div>
-      <div className="py-4 flex justify-center md:hidden">
-        <div className="bg-card border border-border rounded-full px-5 py-2 shadow-md">
-          <p className="text-sm text-muted-foreground">
-            Powered by <span className="font-bold text-foreground">GymKloud</span>
-          </p>
-        </div>
-      </div>
+      <PoweredByBadge />
     </div>
   );
 };
