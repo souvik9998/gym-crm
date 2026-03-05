@@ -422,51 +422,57 @@ export const BranchSelector = () => {
       {/* Add branch dialog - for admins (not for staff) */}
       {(!isStaffRestricted || isAdmin) && (
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
+          <DialogContent className="sm:max-w-[460px] p-5 md:p-6">
+            <DialogHeader className="pb-2">
               <DialogTitle>Add New Branch</DialogTitle>
               <DialogDescription>
-                Create a new gym branch. Each branch will have its own QR code for member registration.
+                Fields marked with * are required.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="branch-name">Branch Name *</Label>
-                <Input
-                  id="branch-name"
+            <div className="space-y-4 py-1">
+              <div className="space-y-1.5">
+                <Label htmlFor="sel-branch-name">Branch Name *</Label>
+                <ValidatedInput
+                  id="sel-branch-name"
                   value={newBranch.name}
-                  onChange={(e) => setNewBranch({ ...newBranch, name: e.target.value })}
+                  onChange={(e) => { setNewBranch({ ...newBranch, name: e.target.value }); if (fieldErrors.name) setFieldErrors(p => ({ ...p, name: undefined })); }}
+                  error={fieldErrors.name}
                   placeholder="e.g., Main Branch, Downtown Gym"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="branch-address">Address</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="sel-branch-address">Address *</Label>
                 <Textarea
-                  id="branch-address"
+                  id="sel-branch-address"
                   value={newBranch.address}
-                  onChange={(e) => setNewBranch({ ...newBranch, address: e.target.value })}
+                  onChange={(e) => { setNewBranch({ ...newBranch, address: e.target.value }); if (fieldErrors.address) setFieldErrors(p => ({ ...p, address: undefined })); }}
                   placeholder="Full address of the branch"
                   rows={2}
+                  className={fieldErrors.address ? "border-destructive" : ""}
                 />
+                {fieldErrors.address && <p className="text-xs font-medium text-destructive mt-1 px-1">{fieldErrors.address}</p>}
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="branch-phone">Phone</Label>
-                  <Input
-                    id="branch-phone"
+                <div className="space-y-1.5">
+                  <Label htmlFor="sel-branch-phone">Phone *</Label>
+                  <ValidatedInput
+                    id="sel-branch-phone"
                     type="tel"
                     value={newBranch.phone}
-                    onChange={(e) => setNewBranch({ ...newBranch, phone: e.target.value })}
-                    placeholder="Phone number"
+                    onChange={(e) => { setNewBranch({ ...newBranch, phone: e.target.value }); if (fieldErrors.phone) setFieldErrors(p => ({ ...p, phone: undefined })); }}
+                    error={fieldErrors.phone}
+                    placeholder="10-digit number"
+                    maxLength={10}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="branch-email">Email</Label>
-                  <Input
-                    id="branch-email"
+                <div className="space-y-1.5">
+                  <Label htmlFor="sel-branch-email">Email <span className="text-muted-foreground text-xs font-normal">(optional)</span></Label>
+                  <ValidatedInput
+                    id="sel-branch-email"
                     type="email"
                     value={newBranch.email}
-                    onChange={(e) => setNewBranch({ ...newBranch, email: e.target.value })}
+                    onChange={(e) => { setNewBranch({ ...newBranch, email: e.target.value }); if (fieldErrors.email) setFieldErrors(p => ({ ...p, email: undefined })); }}
+                    error={fieldErrors.email}
                     placeholder="Email address"
                   />
                 </div>
