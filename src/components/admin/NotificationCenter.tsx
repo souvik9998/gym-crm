@@ -105,8 +105,8 @@ export function NotificationCenter() {
     setMemberDialog({ open: false, notification: null });
     setSendingReminder(true);
 
-    // Small delay so dialog closes smoothly before overlay appears
-    await new Promise(r => setTimeout(r, 250));
+    // Wait for dialog close animation to finish
+    await new Promise(r => setTimeout(r, 300));
 
     if (!waOverlay.startSending("expiring members")) {
       setSendingReminder(false);
@@ -119,6 +119,7 @@ export function NotificationCenter() {
       
       if (!session?.access_token) {
         waOverlay.markError("Please log in to send reminders");
+        setSendingReminder(false);
         return;
       }
 
@@ -131,14 +132,17 @@ export function NotificationCenter() {
         body: JSON.stringify({ manual: true }),
       });
 
-      if (response.ok) {
-        waOverlay.markSuccess("expiring members");
+      const responseData = await response.json().catch(() => ({}));
+
+      if (response.ok && responseData?.error == null) {
+        const sentCount = responseData?.sent ?? responseData?.results?.filter((r: any) => r.success)?.length;
+        const label = sentCount != null ? `${sentCount} expiring member${sentCount !== 1 ? "s" : ""}` : "expiring members";
+        waOverlay.markSuccess(label);
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        waOverlay.markError(errorData?.error || "Please try again later.");
+        waOverlay.markError(responseData?.error || responseData?.message || "Failed to send reminders. Please try again.");
       }
-    } catch (error) {
-      waOverlay.markError("Please try again later.");
+    } catch (error: any) {
+      waOverlay.markError(error?.message || "Network error. Please try again.");
     } finally {
       setSendingReminder(false);
     }
