@@ -16,6 +16,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { useInvalidateQueries } from "@/hooks/useQueryCache";
 
 interface Trainer {
   id: string;
