@@ -594,8 +594,8 @@ const TrainersPage = () => {
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {editingTrainerId === trainer.id ? (
                         <>
-                          <Button size="icon" variant="ghost" onClick={() => handleSaveTrainer(trainer.id)}>
-                            <CheckIcon className="w-4 h-4 text-success" />
+                          <Button size="icon" variant="ghost" onClick={() => handleSaveTrainer(trainer.id)} disabled={savingTrainerId === trainer.id}>
+                            {savingTrainerId === trainer.id ? <ButtonSpinner className="text-primary" /> : <CheckIcon className="w-4 h-4 text-primary" />}
                           </Button>
                           <Button size="icon" variant="ghost" onClick={() => setEditingTrainerId(null)}>
                             <XMarkIcon className="w-4 h-4 text-muted-foreground" />
