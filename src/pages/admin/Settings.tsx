@@ -447,9 +447,11 @@ const AdminSettings = () => {
         newValue: { price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 },
         branchId: currentBranch?.id,
       });
+      // Instant local state update
+      setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 } : p));
       toast.success("Package updated");
       setEditingMonthlyId(null);
-      fetchData();
+      backgroundInvalidate();
     }
   };
 
