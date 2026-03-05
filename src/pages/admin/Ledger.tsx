@@ -204,6 +204,7 @@ const AdminLedger = () => {
       return data as LedgerEntry[];
     },
     enabled: !!currentBranch?.id,
+    staleTime: STALE_TIMES.DYNAMIC,
   });
 
   const handleAddExpense = async () => {
