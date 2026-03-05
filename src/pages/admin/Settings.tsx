@@ -252,11 +252,9 @@ const AdminSettings = () => {
     }
   }, [isLoadingData, fetchedSettings, currentBranch, user, isStaffLoggedIn, refetchData]);
 
-  // Use refetchData instead of fetchData for mutations
-  // Also invalidate settings cache so other pages pick up changes
-  const fetchData = async () => {
-    await invalidateSettings();
-    await refetchData();
+  // Background invalidation for cross-page consistency (fire-and-forget)
+  const backgroundInvalidate = () => {
+    invalidateSettings().catch(() => {});
   };
 
   const handleSaveSettings = async () => {
