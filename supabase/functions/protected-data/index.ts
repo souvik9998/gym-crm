@@ -1245,7 +1245,48 @@ Deno.serve(async (req) => {
           trainerMetricsResult.sort((a: any, b: any) => b.efficiencyScore - a.efficiencyScore);
         }
 
-        return jsonResponse({ branchMetrics, trainerMetrics: trainerMetricsResult }, 120);
+        // === TIME SERIES: Server-side computation ===
+        // Fetch all payments for the current period across branches (already have them in currentData fetch)
+        const { data: tsPayments } = await supabase.from("payments")
+          .select("amount, created_at, branch_id")
+          .in("branch_id", branchIds).eq("status", "success")
+          .gte("created_at", `${dateFromParam}T00:00:00`).lte("created_at", `${dateToParam}T23:59:59`)
+          .order("created_at", { ascending: true });
+
+        const tsDays = Math.ceil((new Date(`${dateToParam}T23:59:59`).getTime() - new Date(`${dateFromParam}T00:00:00`).getTime()) / (1000 * 60 * 60 * 24));
+        const tsGroupBy = tsDays <= 30 ? "day" : tsDays <= 90 ? "week" : "month";
+
+        const branchRevByDate: Record<string, Record<string, number>> = {};
+        branchIds.forEach((id: string) => { branchRevByDate[id] = {}; });
+        const allDateKeys = new Set<string>();
+
+        for (const p of tsPayments || []) {
+          const date = new Date(p.created_at);
+          let key: string;
+          if (tsGroupBy === "day") {
+            key = date.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+          } else if (tsGroupBy === "week") {
+            // ISO week number
+            const jan1 = new Date(date.getFullYear(), 0, 1);
+            const weekNum = Math.ceil(((date.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
+            key = `Week ${weekNum}`;
+          } else {
+            key = date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+          }
+          if (!branchRevByDate[p.branch_id]) branchRevByDate[p.branch_id] = {};
+          branchRevByDate[p.branch_id][key] = (branchRevByDate[p.branch_id][key] || 0) + Number(p.amount || 0);
+          allDateKeys.add(key);
+        }
+
+        const timeSeries = Array.from(allDateKeys).sort().map((dateKey: string) => {
+          const point: Record<string, any> = { date: dateKey };
+          activeBranches.forEach((branch: any) => {
+            point[branch.name] = branchRevByDate[branch.id]?.[dateKey] || 0;
+          });
+          return point;
+        });
+
+        return jsonResponse({ branchMetrics, trainerMetrics: trainerMetricsResult, timeSeries }, 30);
       }
 
       default:
