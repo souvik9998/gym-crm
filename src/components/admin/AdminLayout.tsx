@@ -141,7 +141,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
           <div className="flex items-center gap-3">
             <BranchLogo logoUrl={currentBranch?.logo_url} name={currentBranch?.name || "Gym"} size="md" />
             <div>
-              <h1 className="text-sm font-semibold text-foreground">{currentBranch?.name || "Pro Plus Fitness"}</h1>
+              <h1 className="text-sm font-semibold text-foreground">{currentBranch?.name || "Loading..."}</h1>
               <p className="text-xs text-muted-foreground">
                 {isStaffSession ? `${staffUser?.role} Panel` : "Admin Panel"}
               </p>
