@@ -55,13 +55,21 @@ export function useInvalidateQueries() {
 
   const invalidateMembers = useCallback(() => {
     invalidate([CACHE_KEYS.MEMBERS, CACHE_KEYS.DASHBOARD_STATS, CACHE_KEYS.SUBSCRIPTIONS]);
-    // Also invalidate infinite query
+    // Broadly invalidate all member queries (including infinite scroll variants)
     queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.MEMBERS] });
   }, [invalidate, queryClient]);
 
   const invalidatePayments = useCallback(() => {
     invalidate([CACHE_KEYS.PAYMENTS, CACHE_KEYS.DASHBOARD_STATS, CACHE_KEYS.LEDGER]);
-  }, [invalidate]);
+    // Broadly invalidate all payment queries (including infinite scroll variants)
+    queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.PAYMENTS] });
+  }, [invalidate, queryClient]);
+
+  const invalidateDailyPass = useCallback(() => {
+    invalidate([CACHE_KEYS.DAILY_PASS_USERS, CACHE_KEYS.DASHBOARD_STATS]);
+    // Broadly invalidate all daily pass queries (including infinite scroll variants)
+    queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.DAILY_PASS_USERS] });
+  }, [invalidate, queryClient]);
 
   const invalidateSettings = useCallback(() => {
     invalidate([
@@ -71,11 +79,14 @@ export function useInvalidateQueries() {
       CACHE_KEYS.CUSTOM_PACKAGES,
       CACHE_KEYS.TRAINERS,
     ]);
-  }, [invalidate]);
+    // Also invalidate the aggregated settings page data query
+    queryClient.invalidateQueries({ queryKey: ["settings-page-data"] });
+  }, [invalidate, queryClient]);
 
   const invalidateStaff = useCallback(() => {
     invalidate([CACHE_KEYS.STAFF], true); // Staff is often cross-branch
-  }, [invalidate]);
+    queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.STAFF] });
+  }, [invalidate, queryClient]);
 
   const invalidateAll = useCallback(() => {
     queryClient.invalidateQueries();
