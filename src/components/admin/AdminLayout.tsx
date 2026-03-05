@@ -19,14 +19,14 @@ interface AdminLayoutProps {
 
 export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayoutProps) => {
   const navigate = useNavigate();
-  const { currentBranch } = useBranch();
+  const { currentBranch, isLoading: branchLoading } = useBranch();
   const { isStaffLoggedIn, staffUser, isLoading: staffLoading } = useStaffAuth();
   const { user: adminUser, isLoading, isAuthenticated } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // Get branch name dynamically from currentBranch
-  const gymName = currentBranch?.name || "Pro Plus Fitness";
+  const gymName = currentBranch?.name || "Loading...";
 
   useEffect(() => {
     // Load sidebar state from localStorage
