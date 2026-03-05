@@ -243,6 +243,7 @@ const TrainersPage = () => {
       toast.success("Trainer updated");
       setEditingTrainerId(null);
       fetchTrainers();
+      invalidateSettings();
     }
   };
 
