@@ -112,6 +112,7 @@ export function useInvalidateQueries() {
     invalidate,
     invalidateMembers,
     invalidatePayments,
+    invalidateDailyPass,
     invalidateSettings,
     invalidateStaff,
     invalidateAll,
