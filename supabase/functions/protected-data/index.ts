@@ -1054,14 +1054,14 @@ Deno.serve(async (req) => {
         let branchQuery = supabase.from("branches").select("id, name").eq("is_active", true).is("deleted_at", null);
         if (branchAllowed !== null) {
           if (branchAllowed.length === 0) {
-            return jsonResponse({ branchMetrics: [], trainerMetrics: [] }, 120);
+            return jsonResponse({ branchMetrics: [], trainerMetrics: [], timeSeries: [] }, 120);
           }
           branchQuery = branchQuery.in("id", branchAllowed);
         }
 
         const { data: activeBranches } = await branchQuery;
         if (!activeBranches || activeBranches.length === 0) {
-          return jsonResponse({ branchMetrics: [], trainerMetrics: [] }, 120);
+          return jsonResponse({ branchMetrics: [], trainerMetrics: [], timeSeries: [] }, 120);
         }
 
         const branchIds = activeBranches.map((b: any) => b.id);
