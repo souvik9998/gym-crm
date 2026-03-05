@@ -133,58 +133,62 @@ const TrainersPage = () => {
 
     setIsAddingTrainer(true);
     try {
-      name: newTrainer.name,
-      phone: newTrainer.phone || null,
-      specialization: newTrainer.specialization || null,
-      monthly_fee: Number(newTrainer.monthly_fee) || 0,
-      monthly_salary: Number(newTrainer.monthly_salary) || 0,
-      payment_category: newTrainer.payment_category,
-      percentage_fee: Number(newTrainer.percentage_fee) || 0,
-      session_fee: Number(newTrainer.session_fee) || 0,
-      branch_id: currentBranch?.id,
-    }).select().single();
+      const { data: inserted, error } = await supabase.from("personal_trainers").insert({
+        name: newTrainer.name,
+        phone: newTrainer.phone || null,
+        specialization: newTrainer.specialization || null,
+        monthly_fee: Number(newTrainer.monthly_fee) || 0,
+        monthly_salary: Number(newTrainer.monthly_salary) || 0,
+        payment_category: newTrainer.payment_category,
+        percentage_fee: Number(newTrainer.percentage_fee) || 0,
+        session_fee: Number(newTrainer.session_fee) || 0,
+        branch_id: currentBranch?.id,
+      }).select().single();
 
-    if (error) {
-      toast.error("Error", {
-        description: error.message,
-      });
-    } else {
-      await logAdminActivity({
-        category: "trainers",
-        type: "trainer_added",
-        description: `Added trainer "${newTrainer.name}" with ${newTrainer.payment_category === "monthly_percentage" ? "monthly + percentage" : "session"} payment`,
-        entityType: "personal_trainers",
-        entityName: newTrainer.name,
-        newValue: { 
-          name: newTrainer.name, 
-          payment_category: newTrainer.payment_category,
-          monthly_fee: Number(newTrainer.monthly_fee) || 0,
-          monthly_salary: Number(newTrainer.monthly_salary) || 0,
-          percentage_fee: Number(newTrainer.percentage_fee) || 0,
-          session_fee: Number(newTrainer.session_fee) || 0,
-        },
-        branchId: currentBranch?.id,
-      });
-      toast.success("Trainer added");
-      // Instant local state update
-      if (inserted) {
-        setTrainers(prev => [...prev, {
-          ...inserted,
-          monthly_salary: inserted.monthly_salary ?? 0,
-          payment_category: inserted.payment_category as "monthly_percentage" | "session_basis",
-        }].sort((a, b) => a.name.localeCompare(b.name)));
+      if (error) {
+        toast.error("Error", {
+          description: error.message,
+        });
+      } else {
+        await logAdminActivity({
+          category: "trainers",
+          type: "trainer_added",
+          description: `Added trainer "${newTrainer.name}" with ${newTrainer.payment_category === "monthly_percentage" ? "monthly + percentage" : "session"} payment`,
+          entityType: "personal_trainers",
+          entityName: newTrainer.name,
+          newValue: { 
+            name: newTrainer.name, 
+            payment_category: newTrainer.payment_category,
+            monthly_fee: Number(newTrainer.monthly_fee) || 0,
+            monthly_salary: Number(newTrainer.monthly_salary) || 0,
+            percentage_fee: Number(newTrainer.percentage_fee) || 0,
+            session_fee: Number(newTrainer.session_fee) || 0,
+          },
+          branchId: currentBranch?.id,
+        });
+        toast.success("Trainer added");
+        if (inserted) {
+          setTrainers(prev => [...prev, {
+            ...inserted,
+            monthly_salary: inserted.monthly_salary ?? 0,
+            payment_category: inserted.payment_category as "monthly_percentage" | "session_basis",
+          }].sort((a, b) => a.name.localeCompare(b.name)));
+          markRecentlyAdded(inserted.id);
+        }
+        setNewTrainer({ 
+          name: "", 
+          phone: "", 
+          specialization: "", 
+          monthly_fee: "",
+          monthly_salary: "",
+          payment_category: "monthly_percentage",
+          percentage_fee: "",
+          session_fee: "",
+        });
+        invalidateSettings();
       }
-      setNewTrainer({ 
-        name: "", 
-        phone: "", 
-        specialization: "", 
-        monthly_fee: "",
-        monthly_salary: "",
-        payment_category: "monthly_percentage",
-        percentage_fee: "",
-        session_fee: "",
-      });
-      invalidateSettings();
+    } finally {
+      setIsAddingTrainer(false);
     }
   };
 
