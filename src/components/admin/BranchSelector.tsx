@@ -49,6 +49,7 @@ export const BranchSelector = () => {
     phone: "",
     email: "",
   });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string | undefined>>({});
 
   // For admins, show all branches. For staff, show only their assigned branches.
   const displayBranches = isAdmin ? allBranches : branches;
