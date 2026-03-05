@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
+import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
+import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 
 const categoryFilters = ["all", "plan", "limit", "member"] as const;
 type CategoryFilter = (typeof categoryFilters)[number];
@@ -96,14 +98,17 @@ export function NotificationCenter() {
     }
   };
 
+  const waOverlay = useWhatsAppOverlay();
+
   const handleSendReminder = async () => {
+    if (!waOverlay.startSending("expiring members")) return;
     setSendingReminder(true);
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
-        toast.error("Please log in to send reminders");
+        waOverlay.markError("Please log in to send reminders");
         return;
       }
 
@@ -117,13 +122,13 @@ export function NotificationCenter() {
       });
 
       if (response.ok) {
-        toast.success("Reminders sent", { description: "WhatsApp reminders have been queued for expiring/expired members." });
+        waOverlay.markSuccess("expiring members");
       } else {
         const errorData = await response.json().catch(() => ({}));
-        toast.error("Failed to send reminders", { description: errorData?.error || "Please try again later." });
+        waOverlay.markError(errorData?.error || "Please try again later.");
       }
     } catch (error) {
-      toast.error("Failed to send reminders", { description: "Please try again later." });
+      waOverlay.markError("Please try again later.");
     } finally {
       setSendingReminder(false);
       setMemberDialog({ open: false, notification: null });
@@ -365,6 +370,7 @@ export function NotificationCenter() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <WhatsAppSendingOverlay {...waOverlay.overlayProps} />
     </>
   );
 }

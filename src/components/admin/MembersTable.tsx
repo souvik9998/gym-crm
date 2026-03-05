@@ -38,6 +38,8 @@ import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 import { useInfiniteMembersQuery } from "@/hooks/queries";
 import type { MemberWithSubscription } from "@/api/members";
+import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
+import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 
 // Use MemberWithSubscription from the API
 type Member = MemberWithSubscription;
@@ -157,6 +159,8 @@ export const MembersTable = ({
     return savedTemplate || undefined;
   };
 
+  const waOverlay = useWhatsAppOverlay();
+
   const sendWhatsAppMessage = async (
     memberId: string, 
     memberName: string, 
@@ -164,6 +168,7 @@ export const MembersTable = ({
     type: string,
     customMessage?: string
   ) => {
+    if (!waOverlay.startSending(memberName)) return false;
     setSendingWhatsApp(memberId);
     
     try {
@@ -227,14 +232,13 @@ export const MembersTable = ({
             metadata: { staff_role: staffUser.role },
           });
         }
+        waOverlay.markSuccess(memberName);
         return true;
       } else {
         throw new Error(data.error || "Failed to send WhatsApp");
       }
     } catch (error: any) {
-      toast.error("Failed to send WhatsApp", {
-        description: error.message,
-      });
+      waOverlay.markError(error.message);
       return false;
     } finally {
       setSendingWhatsApp(null);
@@ -1332,6 +1336,8 @@ export const MembersTable = ({
         memberId={viewingMemberId}
         memberName={viewingMemberName}
       />
+
+      <WhatsAppSendingOverlay {...waOverlay.overlayProps} />
     </div>
   );
 };

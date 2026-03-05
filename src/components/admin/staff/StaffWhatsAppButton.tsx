@@ -5,6 +5,8 @@ import { toast } from "@/components/ui/sonner";
 import { Staff } from "@/pages/admin/StaffManagement";
 import { useBranch } from "@/contexts/BranchContext";
 import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
+import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
+import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 
 interface StaffWhatsAppButtonProps {
   staff: Staff;
@@ -23,6 +25,7 @@ export const StaffWhatsAppButton = ({
 }: StaffWhatsAppButtonProps) => {
   const [isSending, setIsSending] = useState(false);
   const { currentBranch } = useBranch();
+  const waOverlay = useWhatsAppOverlay();
 
   const handleSendCredentials = async () => {
     if (!staff.phone) {
@@ -38,6 +41,7 @@ export const StaffWhatsAppButton = ({
       return;
     }
 
+    if (!waOverlay.startSending(staff.full_name)) return;
     setIsSending(true);
 
     try {
@@ -64,14 +68,12 @@ export const StaffWhatsAppButton = ({
       const response = typeof data === "string" ? JSON.parse(data) : data;
 
       if (response.success) {
-        toast.success("Credentials sent via WhatsApp", {
-          description: `Login details sent to ${staff.full_name}`,
-        });
+        waOverlay.markSuccess(staff.full_name);
       } else {
         throw new Error(response.error || "Failed to send WhatsApp message");
       }
     } catch (error: any) {
-      toast.error("Failed to send WhatsApp", { description: error.message });
+      waOverlay.markError(error.message);
     } finally {
       setIsSending(false);
     }
@@ -81,17 +83,20 @@ export const StaffWhatsAppButton = ({
   const canSend = !!(password || staff.auth_user_id);
 
   return (
-    <Button
-      size={size}
-      variant={variant}
-      onClick={handleSendCredentials}
-      disabled={isSending || !canSend}
-      title={canSend ? "Send credentials via WhatsApp" : "Set password first to send credentials"}
-      className="gap-1"
-    >
-      <ChatBubbleLeftRightIcon className="w-4 h-4" />
-      {showLabel && (isSending ? "Sending..." : "WhatsApp")}
-    </Button>
+    <>
+      <Button
+        size={size}
+        variant={variant}
+        onClick={handleSendCredentials}
+        disabled={isSending || !canSend || waOverlay.isBusy}
+        title={canSend ? "Send credentials via WhatsApp" : "Set password first to send credentials"}
+        className="gap-1"
+      >
+        <ChatBubbleLeftRightIcon className="w-4 h-4" />
+        {showLabel && (isSending ? "Sending..." : "WhatsApp")}
+      </Button>
+      <WhatsAppSendingOverlay {...waOverlay.overlayProps} />
+    </>
   );
 };
 

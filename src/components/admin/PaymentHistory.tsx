@@ -28,6 +28,8 @@ import { useInfinitePaymentsQuery, type PaymentWithDetails } from "@/hooks/queri
 import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
+import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
+import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 
 type PaymentMode = Database["public"]["Enums"]["payment_mode"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
@@ -226,7 +228,13 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
 
   const hasActiveFilters = dateFrom || dateTo || paymentMode !== "all" || statusFilter !== "all" || typeFilter !== "all";
 
+  const waOverlay = useWhatsAppOverlay();
+
   const handleSendInvoice = async (paymentId: string) => {
+    // Find the payment to get member name
+    const payment = filteredPayments.find(p => p.id === paymentId);
+    const recipientName = payment?.member?.name || payment?.daily_pass_user?.name || undefined;
+    if (!waOverlay.startSending(recipientName)) return;
     setSendingInvoiceId(paymentId);
     try {
       const { data, error } = await supabase.functions.invoke("generate-invoice", {
@@ -241,19 +249,16 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
 
       if (data?.success) {
         if (data.whatsappSent) {
-          toast.success("Invoice sent via WhatsApp", {
-            description: `Invoice ${data.invoiceNumber} sent successfully`,
-          });
+          waOverlay.markSuccess(recipientName);
         } else {
-          toast.success("Invoice generated", {
-            description: `Invoice ${data.invoiceNumber} created. WhatsApp delivery may be disabled.`,
-          });
+          waOverlay.markSuccess(recipientName);
+          toast.info("Invoice generated but WhatsApp delivery may be disabled.");
         }
       } else {
-        toast.error("Failed to generate invoice", { description: data?.error });
+        waOverlay.markError(data?.error || "Failed to generate invoice");
       }
     } catch (err: any) {
-      toast.error("Error sending invoice", { description: err.message });
+      waOverlay.markError(err.message);
     } finally {
       setSendingInvoiceId(null);
     }
@@ -575,6 +580,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
           </Table>
         </div>
       )}
+      <WhatsAppSendingOverlay {...waOverlay.overlayProps} />
     </div>
   );
 };
