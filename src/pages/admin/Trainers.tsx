@@ -248,8 +248,19 @@ const TrainersPage = () => {
         branchId: currentBranch?.id,
       });
       toast.success("Trainer updated");
+      // Instant local state update
+      setTrainers(prev => prev.map(t => t.id === id ? {
+        ...t,
+        name: editTrainerData.name,
+        phone: editTrainerData.phone || null,
+        specialization: editTrainerData.specialization || null,
+        monthly_fee: Number(editTrainerData.monthly_fee) || 0,
+        monthly_salary: Number(editTrainerData.monthly_salary) || 0,
+        payment_category: editTrainerData.payment_category,
+        percentage_fee: Number(editTrainerData.percentage_fee) || 0,
+        session_fee: Number(editTrainerData.session_fee) || 0,
+      } : t));
       setEditingTrainerId(null);
-      fetchTrainers();
       invalidateSettings();
     }
   };
