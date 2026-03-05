@@ -115,7 +115,7 @@ const TrainersPage = () => {
       return;
     }
 
-    const { error } = await supabase.from("personal_trainers").insert({
+    const { data: inserted, error } = await supabase.from("personal_trainers").insert({
       name: newTrainer.name,
       phone: newTrainer.phone || null,
       specialization: newTrainer.specialization || null,
@@ -125,7 +125,7 @@ const TrainersPage = () => {
       percentage_fee: Number(newTrainer.percentage_fee) || 0,
       session_fee: Number(newTrainer.session_fee) || 0,
       branch_id: currentBranch?.id,
-    });
+    }).select().single();
 
     if (error) {
       toast.error("Error", {
@@ -149,6 +149,14 @@ const TrainersPage = () => {
         branchId: currentBranch?.id,
       });
       toast.success("Trainer added");
+      // Instant local state update
+      if (inserted) {
+        setTrainers(prev => [...prev, {
+          ...inserted,
+          monthly_salary: inserted.monthly_salary ?? 0,
+          payment_category: inserted.payment_category as "monthly_percentage" | "session_basis",
+        }].sort((a, b) => a.name.localeCompare(b.name)));
+      }
       setNewTrainer({ 
         name: "", 
         phone: "", 
@@ -159,7 +167,6 @@ const TrainersPage = () => {
         percentage_fee: "",
         session_fee: "",
       });
-      fetchTrainers();
       invalidateSettings();
     }
   };
