@@ -361,13 +361,13 @@ const AdminSettings = () => {
       return;
     }
 
-    // Admin flow
-    const { error } = await supabase.from("monthly_packages").insert({
+    // Admin flow - use .select() to get the inserted record back
+    const { data: inserted, error } = await supabase.from("monthly_packages").insert({
       months,
       price: Number(newMonthlyPackage.price),
       joining_fee: Number(newMonthlyPackage.joining_fee) || 0,
       branch_id: currentBranch.id,
-    });
+    }).select().single();
 
     if (error) {
       toast.error("Error", {
