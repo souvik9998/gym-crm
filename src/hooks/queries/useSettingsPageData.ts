@@ -45,7 +45,7 @@ export function useSettingsPageData() {
         params: { branchId },
       }),
     enabled: !!branchId,
-    staleTime: STALE_TIMES.REAL_TIME, // 30s - settings must reflect changes instantly after mutations
+    staleTime: STALE_TIMES.SEMI_STATIC, // 5 min - invalidated on mutations
     gcTime: GC_TIME,
   });
 

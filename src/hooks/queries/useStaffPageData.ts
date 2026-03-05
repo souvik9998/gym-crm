@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { protectedFetch } from "@/api/authenticatedFetch";
 import { useBranch } from "@/contexts/BranchContext";
+import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { Staff } from "@/pages/admin/StaffManagement";
 
 interface StaffPageDataResponse {
@@ -19,7 +20,8 @@ export function useStaffPageData() {
         action: "staff-page-data",
         params: { branchId },
       }),
-    staleTime: 30_000,
+    staleTime: STALE_TIMES.DYNAMIC,
+    gcTime: GC_TIME,
   });
 
   const staff = data?.staff || [];

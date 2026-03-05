@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchAttendanceLogs, fetchAttendanceInsights } from "@/api/attendance";
 import type { AttendanceLogsResponse, AttendanceInsights } from "@/api/attendance";
+import { STALE_TIMES } from "@/lib/queryClient";
 
 export function useAttendanceLogs(params: {
   branchId?: string;
@@ -15,7 +16,7 @@ export function useAttendanceLogs(params: {
     queryKey: ["attendance-logs", params.branchId, params.dateFrom, params.dateTo, params.userType, params.page],
     queryFn: () => fetchAttendanceLogs(params),
     enabled: params.enabled !== false,
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIMES.DYNAMIC,
   });
 }
 
@@ -29,6 +30,6 @@ export function useAttendanceInsights(params: {
     queryKey: ["attendance-insights", params.branchId, params.dateFrom, params.dateTo],
     queryFn: () => fetchAttendanceInsights(params),
     enabled: params.enabled !== false,
-    staleTime: 60 * 1000,
+    staleTime: STALE_TIMES.SEMI_STATIC,
   });
 }

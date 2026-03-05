@@ -2,12 +2,13 @@
  * Daily Pass Query Hooks
  * TanStack Query hooks for daily pass users data
  */
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryKeys, invalidationGroups } from "@/lib/queryKeys";
+import { useQuery, useInfiniteQuery, useMutation } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import * as dailyPassApi from "@/api/dailyPass";
 
 // Re-export types
@@ -15,14 +16,12 @@ export type { DailyPassUserWithSubscription, PaginatedDailyPassResponse } from "
 
 /**
  * Hook to fetch all daily pass users with subscriptions
- * Auth-aware: only fetches when user is authenticated and branch is selected
  */
 export function useDailyPassQuery() {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn } = useStaffAuth();
   const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
-  
   const isAuthenticated = isAdmin || isStaffLoggedIn;
 
   return useQuery({
@@ -30,7 +29,6 @@ export function useDailyPassQuery() {
     queryFn: () => dailyPassApi.fetchDailyPassUsers(branchId),
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
-    refetchOnWindowFocus: false,
     enabled: isAuthenticated && !!branchId,
   });
 }
@@ -43,7 +41,6 @@ export function useInfiniteDailyPassQuery() {
   const { isStaffLoggedIn } = useStaffAuth();
   const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
-  
   const isAuthenticated = isAdmin || isStaffLoggedIn;
 
   return useInfiniteQuery({
@@ -53,7 +50,6 @@ export function useInfiniteDailyPassQuery() {
     initialPageParam: 0,
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
-    refetchOnWindowFocus: false,
     enabled: isAuthenticated && !!branchId,
   });
 }
@@ -67,7 +63,6 @@ export function useDailyPassUserQuery(userId: string | undefined) {
     queryFn: () => dailyPassApi.fetchDailyPassUserById(userId!),
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
-    refetchOnWindowFocus: false,
     enabled: !!userId,
   });
 }
@@ -76,19 +71,12 @@ export function useDailyPassUserQuery(userId: string | undefined) {
  * Mutation hook to create a new daily pass user
  */
 export function useCreateDailyPassUser() {
-  const queryClient = useQueryClient();
-  const { currentBranch } = useBranch();
+  const { invalidateDailyPass } = useInvalidateQueries();
 
   return useMutation({
     mutationFn: dailyPassApi.createDailyPassUser,
     onSuccess: () => {
-      // Invalidate related queries
-      const keysToInvalidate = invalidationGroups.dailyPass(currentBranch?.id);
-      keysToInvalidate.forEach(key => {
-        queryClient.invalidateQueries({ queryKey: key });
-      });
-      // Broadly invalidate all daily pass queries (including infinite scroll)
-      queryClient.invalidateQueries({ queryKey: ["daily-pass-users"] });
+      invalidateDailyPass();
     },
   });
 }
@@ -97,19 +85,12 @@ export function useCreateDailyPassUser() {
  * Mutation hook to delete a daily pass user
  */
 export function useDeleteDailyPassUser() {
-  const queryClient = useQueryClient();
-  const { currentBranch } = useBranch();
+  const { invalidateDailyPass } = useInvalidateQueries();
 
   return useMutation({
     mutationFn: dailyPassApi.deleteDailyPassUser,
     onSuccess: () => {
-      // Invalidate related queries
-      const keysToInvalidate = invalidationGroups.dailyPass(currentBranch?.id);
-      keysToInvalidate.forEach(key => {
-        queryClient.invalidateQueries({ queryKey: key });
-      });
-      // Broadly invalidate all daily pass queries (including infinite scroll)
-      queryClient.invalidateQueries({ queryKey: ["daily-pass-users"] });
+      invalidateDailyPass();
     },
   });
 }
@@ -121,7 +102,7 @@ export function useCheckDailyPassUserByPhone(phone: string, branchId: string) {
   return useQuery({
     queryKey: ['check-daily-pass-phone', phone, branchId],
     queryFn: () => dailyPassApi.checkDailyPassUserByPhone(phone, branchId),
-    staleTime: 0, // Always fresh for checks
+    staleTime: 0,
     enabled: !!phone && phone.length >= 10 && !!branchId,
   });
 }

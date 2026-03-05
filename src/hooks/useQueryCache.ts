@@ -24,74 +24,74 @@ export const CACHE_KEYS = {
 export { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 
 /**
- * Hook for invalidating related queries after mutations
- * Now branch-aware - invalidates only current branch queries by default
+ * Hook for invalidating related queries after mutations.
+ * Uses refetchType: 'all' to force immediate refetch of active queries.
+ * Branch-aware - invalidates only current branch queries by default.
  */
 export function useInvalidateQueries() {
   const queryClient = useQueryClient();
   const { currentBranch } = useBranch();
   const branchId = currentBranch?.id;
 
-  // Invalidate with branch context - only invalidates queries for current branch
-  const invalidate = useCallback(
-    async (keys: string | string[], allBranches = false) => {
-      const keysArray = Array.isArray(keys) ? keys : [keys];
-      await Promise.all(
-        keysArray.map((key) => {
-          if (allBranches) {
-            // Invalidate all queries with this key regardless of branch
-            return queryClient.invalidateQueries({ queryKey: [key] });
-          }
-          // Invalidate only queries for current branch
-          return queryClient.invalidateQueries({ 
-            queryKey: [key, branchId || "all"],
-            exact: false 
-          });
-        })
-      );
+  // Force-invalidate with immediate refetch
+  const forceInvalidate = useCallback(
+    async (queryKey: string | readonly unknown[]) => {
+      const key = typeof queryKey === "string" ? [queryKey] : queryKey;
+      await queryClient.invalidateQueries({
+        queryKey: key as unknown[],
+        refetchType: "all", // Force refetch even if not actively observed
+      });
     },
-    [queryClient, branchId]
+    [queryClient]
   );
 
   const invalidateMembers = useCallback(async () => {
-    await invalidate([CACHE_KEYS.MEMBERS, CACHE_KEYS.DASHBOARD_STATS, CACHE_KEYS.SUBSCRIPTIONS]);
-    // Broadly invalidate all member queries (including infinite scroll variants)
-    await queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.MEMBERS] });
-  }, [invalidate, queryClient]);
+    await Promise.all([
+      forceInvalidate([CACHE_KEYS.MEMBERS]),
+      forceInvalidate([CACHE_KEYS.DASHBOARD_STATS]),
+      forceInvalidate([CACHE_KEYS.SUBSCRIPTIONS]),
+      forceInvalidate(["member-details"]),
+      forceInvalidate(["member-payments"]),
+    ]);
+  }, [forceInvalidate]);
 
   const invalidatePayments = useCallback(async () => {
-    await invalidate([CACHE_KEYS.PAYMENTS, CACHE_KEYS.DASHBOARD_STATS, CACHE_KEYS.LEDGER]);
-    // Broadly invalidate all payment queries (including infinite scroll variants)
-    await queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.PAYMENTS] });
-    // Also invalidate ledger queries used on the Ledger page
-    await queryClient.invalidateQueries({ queryKey: ["ledger-entries"] });
-  }, [invalidate, queryClient]);
+    await Promise.all([
+      forceInvalidate([CACHE_KEYS.PAYMENTS]),
+      forceInvalidate([CACHE_KEYS.DASHBOARD_STATS]),
+      forceInvalidate([CACHE_KEYS.LEDGER]),
+      forceInvalidate(["ledger-entries"]),
+      forceInvalidate(["member-payments"]),
+    ]);
+  }, [forceInvalidate]);
 
   const invalidateDailyPass = useCallback(async () => {
-    await invalidate([CACHE_KEYS.DAILY_PASS_USERS, CACHE_KEYS.DASHBOARD_STATS]);
-    // Broadly invalidate all daily pass queries (including infinite scroll variants)
-    await queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.DAILY_PASS_USERS] });
-  }, [invalidate, queryClient]);
+    await Promise.all([
+      forceInvalidate([CACHE_KEYS.DAILY_PASS_USERS]),
+      forceInvalidate([CACHE_KEYS.DASHBOARD_STATS]),
+    ]);
+  }, [forceInvalidate]);
 
   const invalidateSettings = useCallback(async () => {
-    await invalidate([
-      CACHE_KEYS.GYM_SETTINGS,
-      CACHE_KEYS.PACKAGES,
-      CACHE_KEYS.MONTHLY_PACKAGES,
-      CACHE_KEYS.CUSTOM_PACKAGES,
-      CACHE_KEYS.TRAINERS,
+    await Promise.all([
+      forceInvalidate([CACHE_KEYS.GYM_SETTINGS]),
+      forceInvalidate([CACHE_KEYS.PACKAGES]),
+      forceInvalidate([CACHE_KEYS.MONTHLY_PACKAGES]),
+      forceInvalidate([CACHE_KEYS.CUSTOM_PACKAGES]),
+      forceInvalidate([CACHE_KEYS.TRAINERS]),
+      forceInvalidate(["settings-page-data"]),
     ]);
-    // Also invalidate the aggregated settings page data query
-    await queryClient.invalidateQueries({ queryKey: ["settings-page-data"] });
-  }, [invalidate, queryClient]);
+  }, [forceInvalidate]);
 
   const invalidateStaff = useCallback(async () => {
-    await invalidate([CACHE_KEYS.STAFF], true); // Staff is often cross-branch
-    await queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.STAFF] });
-  }, [invalidate, queryClient]);
+    await Promise.all([
+      forceInvalidate([CACHE_KEYS.STAFF]),
+      forceInvalidate(["staff-page-data"]),
+    ]);
+  }, [forceInvalidate]);
 
   const invalidateAll = useCallback(() => {
-    queryClient.invalidateQueries();
+    queryClient.invalidateQueries({ refetchType: "all" });
   }, [queryClient]);
 
   // Invalidate all cached data for a specific branch (useful when switching branches)
@@ -102,7 +102,7 @@ export function useInvalidateQueries() {
         allKeys.map((key) =>
           queryClient.invalidateQueries({
             queryKey: [key, targetBranchId],
-            exact: false,
+            refetchType: "all",
           })
         )
       );
@@ -111,7 +111,7 @@ export function useInvalidateQueries() {
   );
 
   return {
-    invalidate,
+    invalidate: forceInvalidate,
     invalidateMembers,
     invalidatePayments,
     invalidateDailyPass,

@@ -63,6 +63,7 @@ import {
 } from "recharts";
 import LedgerDetailDialog from "@/components/admin/LedgerDetailDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { STALE_TIMES } from "@/lib/queryClient";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 
@@ -203,6 +204,7 @@ const AdminLedger = () => {
       return data as LedgerEntry[];
     },
     enabled: !!currentBranch?.id,
+    staleTime: STALE_TIMES.DYNAMIC,
   });
 
   const handleAddExpense = async () => {
