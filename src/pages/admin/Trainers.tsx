@@ -207,6 +207,15 @@ const TrainersPage = () => {
   };
 
   const handleSaveTrainer = async (id: string) => {
+    setSavingTrainerId(id);
+    try {
+    await _handleSaveTrainer(id);
+    } finally {
+      setSavingTrainerId(null);
+    }
+  };
+
+  const _handleSaveTrainer = async (id: string) => {
     if (!editTrainerData.name) {
       toast.error("Name is required");
       return;
