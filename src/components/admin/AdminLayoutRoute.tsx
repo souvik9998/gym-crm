@@ -1,8 +1,8 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { AdminLayout } from "./AdminLayout";
 import { useMemo, useCallback } from "react";
-import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 // Route title mapping
 const routeTitles: Record<string, { title: string; subtitle?: string }> = {
@@ -15,7 +15,59 @@ const routeTitles: Record<string, { title: string; subtitle?: string }> = {
   "/admin/trainers": { title: "Trainers", subtitle: "Manage trainers" },
   "/admin/settings": { title: "Settings", subtitle: "Configure gym settings" },
   "/admin/qr-code": { title: "QR Code", subtitle: "Member Registration Portal" },
+  "/admin/attendance": { title: "Attendance", subtitle: "Track member and staff attendance" },
   "/staff/dashboard": { title: "Dashboard", subtitle: "Staff dashboard overview" },
+};
+
+/**
+ * Route-specific query key prefixes to invalidate.
+ * These match the actual queryKey arrays used in hooks.
+ */
+const routeQueryKeys: Record<string, string[][]> = {
+  "/admin/dashboard": [
+    ["dashboard-stats"],
+    ["members"],
+    ["payments"],
+    ["daily-pass-users"],
+  ],
+  "/staff/dashboard": [
+    ["dashboard-stats"],
+    ["members"],
+    ["payments"],
+  ],
+  "/admin/analytics": [
+    ["analytics"],
+    ["analytics-aggregated"],
+  ],
+  "/admin/branch-analytics": [
+    ["branch-analytics-data"],
+    ["branch-timeseries"],
+  ],
+  "/admin/ledger": [
+    ["ledger-entries"],
+    ["payments"],
+  ],
+  "/admin/staff": [
+    ["staff-page-data"],
+  ],
+  "/admin/trainers": [
+    ["settings-page-data"],
+  ],
+  "/admin/logs": [
+    ["admin-activity-logs"],
+    ["user-activity-logs"],
+    ["staff-activity-logs"],
+    ["whatsapp-logs"],
+    ["log-stats"],
+  ],
+  "/admin/settings": [
+    ["settings-page-data"],
+  ],
+  "/admin/attendance": [
+    ["attendance-logs"],
+    ["attendance-insights"],
+  ],
+  "/admin/qr-code": [],
 };
 
 /**
@@ -25,42 +77,26 @@ const routeTitles: Record<string, { title: string; subtitle?: string }> = {
 export const AdminLayoutRoute = () => {
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { invalidateAll, invalidateMembers, invalidatePayments, invalidateStaff } = useInvalidateQueries();
-  
-  // Get title and subtitle based on current route
+
   const { title, subtitle } = useMemo(() => {
     return routeTitles[location.pathname] || { title: "Admin", subtitle: "" };
   }, [location.pathname]);
 
-  // Refresh handler that invalidates queries based on current route
-  const handleRefresh = useCallback(() => {
-    const path = location.pathname;
-    
-    // Invalidate queries based on the current route
-    if (path === "/admin/dashboard" || path === "/staff/dashboard") {
-      invalidateMembers();
-      invalidatePayments();
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-    } else if (path === "/admin/analytics" || path === "/admin/branch-analytics") {
-      queryClient.invalidateQueries({ queryKey: ["analytics"] });
-      queryClient.invalidateQueries({ queryKey: ["branch-analytics"] });
-    } else if (path === "/admin/ledger") {
-      invalidatePayments();
-      queryClient.invalidateQueries({ queryKey: ["ledger"] });
-    } else if (path === "/admin/staff" || path === "/admin/trainers") {
-      invalidateStaff();
-      queryClient.invalidateQueries({ queryKey: ["trainers"] });
-    } else if (path === "/admin/logs") {
-      queryClient.invalidateQueries({ queryKey: ["activity-logs"] });
-      queryClient.invalidateQueries({ queryKey: ["user-activity"] });
-      queryClient.invalidateQueries({ queryKey: ["staff-activity"] });
-    } else if (path === "/admin/settings") {
-      queryClient.invalidateQueries({ queryKey: ["settings"] });
+  // Dynamic refresh: invalidates only the queries relevant to the current page
+  const handleRefresh = useCallback(async () => {
+    const keys = routeQueryKeys[location.pathname];
+
+    if (keys && keys.length > 0) {
+      await Promise.all(
+        keys.map((key) =>
+          queryClient.invalidateQueries({ queryKey: key, refetchType: "all" })
+        )
+      );
+    } else {
+      // Fallback for unknown routes — refetch everything active
+      await queryClient.invalidateQueries({ refetchType: "all" });
     }
-    
-    // Always invalidate all queries as a fallback
-    invalidateAll();
-  }, [location.pathname, invalidateAll, invalidateMembers, invalidatePayments, invalidateStaff, queryClient]);
+  }, [location.pathname, queryClient]);
 
   return (
     <AdminLayout title={title} subtitle={subtitle} onRefresh={handleRefresh}>
