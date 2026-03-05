@@ -85,9 +85,9 @@ export function useInvalidateQueries() {
     await queryClient.invalidateQueries({ queryKey: ["settings-page-data"] });
   }, [invalidate, queryClient]);
 
-  const invalidateStaff = useCallback(() => {
-    invalidate([CACHE_KEYS.STAFF], true); // Staff is often cross-branch
-    queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.STAFF] });
+  const invalidateStaff = useCallback(async () => {
+    await invalidate([CACHE_KEYS.STAFF], true); // Staff is often cross-branch
+    await queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.STAFF] });
   }, [invalidate, queryClient]);
 
   const invalidateAll = useCallback(() => {
