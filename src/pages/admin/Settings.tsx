@@ -1335,7 +1335,7 @@ const AdminSettings = () => {
                 </Card>
 
                 <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
-                  <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                  {isSaving ? <ButtonSpinner /> : <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
                   {isSaving ? "Saving..." : "Save Settings"}
                 </Button>
               </>
