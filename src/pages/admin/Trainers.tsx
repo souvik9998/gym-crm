@@ -473,7 +473,10 @@ const TrainersPage = () => {
             ) : (
               <div className="space-y-3">
                 {trainers.map((trainer) => (
-                  <div key={trainer.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div key={trainer.id} className={cn(
+                    "flex items-center justify-between p-4 bg-muted/50 rounded-lg transition-all duration-300",
+                    recentlyAddedIds.has(trainer.id) && "animate-fade-in ring-2 ring-primary/30"
+                  )}>
                     {editingTrainerId === trainer.id ? (
                       <div className="flex-1 space-y-3 mr-4">
                         <div className="grid grid-cols-2 gap-3">
