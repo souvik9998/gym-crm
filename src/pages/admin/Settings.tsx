@@ -140,6 +140,9 @@ const AdminSettings = () => {
   // Use aggregated settings page data hook (single API call)
   const { settings: fetchedSettings, monthlyPackages: fetchedMonthlyPackages, customPackages: fetchedCustomPackages, isLoading: isLoadingData, refetch: refetchData } = useSettingsPageData();
   
+  // Cache invalidation for cross-page updates
+  const { invalidateSettings } = useInvalidateQueries();
+  
   // Loading states for toggle buttons
   const [isTogglingWhatsApp, setIsTogglingWhatsApp] = useState(false);
   const [togglingMonthlyId, setTogglingMonthlyId] = useState<string | null>(null);
