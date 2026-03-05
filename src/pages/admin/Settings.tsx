@@ -345,6 +345,15 @@ const AdminSettings = () => {
 
   // Monthly Package handlers
   const handleAddMonthlyPackage = async () => {
+    setIsAddingMonthly(true);
+    try {
+    await _handleAddMonthlyPackage();
+    } finally {
+      setIsAddingMonthly(false);
+    }
+  };
+
+  const _handleAddMonthlyPackage = async () => {
     if (!newMonthlyPackage.months || !newMonthlyPackage.price) {
       toast.error("Please fill months and price");
       return;
