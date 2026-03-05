@@ -131,7 +131,8 @@ const TrainersPage = () => {
       return;
     }
 
-    const { data: inserted, error } = await supabase.from("personal_trainers").insert({
+    setIsAddingTrainer(true);
+    try {
       name: newTrainer.name,
       phone: newTrainer.phone || null,
       specialization: newTrainer.specialization || null,
