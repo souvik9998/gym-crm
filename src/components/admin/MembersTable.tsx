@@ -159,6 +159,8 @@ export const MembersTable = ({
     return savedTemplate || undefined;
   };
 
+  const waOverlay = useWhatsAppOverlay();
+
   const sendWhatsAppMessage = async (
     memberId: string, 
     memberName: string, 
@@ -166,6 +168,7 @@ export const MembersTable = ({
     type: string,
     customMessage?: string
   ) => {
+    if (!waOverlay.startSending(memberName)) return false;
     setSendingWhatsApp(memberId);
     
     try {
@@ -229,14 +232,13 @@ export const MembersTable = ({
             metadata: { staff_role: staffUser.role },
           });
         }
+        waOverlay.markSuccess(memberName);
         return true;
       } else {
         throw new Error(data.error || "Failed to send WhatsApp");
       }
     } catch (error: any) {
-      toast.error("Failed to send WhatsApp", {
-        description: error.message,
-      });
+      waOverlay.markError(error.message);
       return false;
     } finally {
       setSendingWhatsApp(null);
