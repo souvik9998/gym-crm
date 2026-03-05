@@ -33,6 +33,7 @@ interface Trainer {
 
 const TrainersPage = () => {
   const { currentBranch } = useBranch();
+  const { invalidateSettings } = useInvalidateQueries();
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Trainers
