@@ -277,8 +277,10 @@ const AdminSettings = () => {
       if (error) {
         toast.error("Error", { description: error });
       } else {
+        // Instant local state update
+        setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress } : prev);
         toast.success("Settings saved successfully");
-        fetchData();
+        backgroundInvalidate();
       }
       return;
     }
