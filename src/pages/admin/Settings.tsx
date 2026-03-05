@@ -1069,7 +1069,10 @@ const AdminSettings = () => {
                 {customPackages.length > 0 && (
                   <div className="space-y-2 lg:space-y-3 pt-3 lg:pt-4 border-t">
                     {customPackages.map((pkg) => (
-                      <div key={pkg.id} className="group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/60 rounded-xl transition-all duration-200 hover:shadow-md hover:border-border">
+                      <div key={pkg.id} className={cn(
+                        "group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/60 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border",
+                        recentlyAddedIds.has(pkg.id) && "animate-fade-in ring-2 ring-primary/30"
+                      )}>
                         {editingPackageId === pkg.id ? (
                           <>
                             <div className="flex-1 grid grid-cols-2 gap-2 lg:gap-3">
