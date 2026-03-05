@@ -124,7 +124,6 @@ export function useInfiniteWhatsAppLogsQuery(filters?: {
     initialPageParam: 0,
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
-    refetchOnWindowFocus: false,
     enabled: isAuthenticated && !!branchId,
   });
 }
