@@ -840,6 +840,7 @@ Deno.serve(async (req) => {
         const dateToParam = url.searchParams.get("dateTo");
         if (!dateFromParam || !dateToParam) return errorResponse("dateFrom and dateTo required", 400);
 
+        // Fetch all data in parallel
         const [paymentsRes, membersInRangeRes, membersBeforeRes, totalMembersRes, activeMembersRes, trainersRes, ptSubsRes, monthlyPkgsRes, subsInRangeRes] = await Promise.all([
           supabase.from("payments").select("amount, created_at").eq("branch_id", branchId).eq("status", "success")
             .gte("created_at", `${dateFromParam}T00:00:00`).lte("created_at", `${dateToParam}T23:59:59`).order("created_at", { ascending: true }),
@@ -857,17 +858,134 @@ Deno.serve(async (req) => {
             .gte("created_at", `${dateFromParam}T00:00:00`).lte("created_at", `${dateToParam}T23:59:59`),
         ]);
 
+        // === SERVER-SIDE AGGREGATION ===
+        const payments = paymentsRes.data || [];
+        const membersInRange = membersInRangeRes.data || [];
+        const membersBefore = membersBeforeRes.count || 0;
+        const totalMembers = totalMembersRes.count || 0;
+        const activeMembers = activeMembersRes.count || 0;
+        const trainers = trainersRes.data || [];
+        const ptSubs = ptSubsRes.data || [];
+        const monthlyPkgs = monthlyPkgsRes.data || [];
+        const subsInRange = subsInRangeRes.data || [];
+
+        const startDate = new Date(`${dateFromParam}T00:00:00Z`);
+        const endDate = new Date(`${dateToParam}T23:59:59Z`);
+        const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        // Generate time intervals
+        type Interval = { label: string; start: Date; end: Date };
+        const intervals: Interval[] = [];
+        
+        if (daysDiff <= 14) {
+          for (let d = new Date(startDate); d <= endDate; d = new Date(d.getTime() + 86400000)) {
+            const label = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+            intervals.push({ label, start: new Date(d), end: new Date(d.getTime() + 86400000 - 1) });
+          }
+        } else if (daysDiff <= 90) {
+          // Weekly intervals
+          const d = new Date(startDate);
+          // Align to Monday
+          const dayOfWeek = d.getDay();
+          const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+          d.setDate(d.getDate() + mondayOffset);
+          while (d <= endDate) {
+            const weekEnd = new Date(d.getTime() + 6 * 86400000);
+            const label = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+            intervals.push({ label, start: new Date(d), end: weekEnd > endDate ? new Date(endDate) : weekEnd });
+            d.setDate(d.getDate() + 7);
+          }
+        } else {
+          // Monthly intervals
+          const d = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+          while (d <= endDate) {
+            const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+            const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+            intervals.push({ label, start: new Date(d), end: monthEnd > endDate ? new Date(endDate) : monthEnd });
+            d.setMonth(d.getMonth() + 1);
+          }
+        }
+
+        const findInterval = (dateStr: string): string | null => {
+          const date = new Date(dateStr);
+          for (let i = intervals.length - 1; i >= 0; i--) {
+            if (date >= intervals[i].start && date <= intervals[i].end) return intervals[i].label;
+          }
+          // Fallback: find closest
+          if (intervals.length > 0) {
+            if (date < intervals[0].start) return intervals[0].label;
+            return intervals[intervals.length - 1].label;
+          }
+          return null;
+        };
+
+        // Revenue aggregation
+        const revenueMap: Record<string, { revenue: number; payments: number }> = {};
+        intervals.forEach(i => { revenueMap[i.label] = { revenue: 0, payments: 0 }; });
+        for (const p of payments) {
+          const label = findInterval(p.created_at);
+          if (label && revenueMap[label]) { revenueMap[label].revenue += Number(p.amount); revenueMap[label].payments += 1; }
+        }
+        const revenueData = intervals.map(i => ({ month: i.label, revenue: revenueMap[i.label]?.revenue || 0, payments: revenueMap[i.label]?.payments || 0 }));
+
+        // Member growth aggregation
+        const memberMap: Record<string, number> = {};
+        intervals.forEach(i => { memberMap[i.label] = 0; });
+        for (const m of membersInRange) {
+          const label = findInterval(m.created_at);
+          if (label && memberMap[label] !== undefined) memberMap[label] += 1;
+        }
+        let cumulative = membersBefore;
+        const memberGrowth = intervals.map(i => {
+          cumulative += memberMap[i.label] || 0;
+          return { month: i.label, members: cumulative, newMembers: memberMap[i.label] || 0 };
+        });
+
+        // Totals
+        const totalRevenue = payments.reduce((s: number, p: any) => s + Number(p.amount), 0);
+        const avgRevenue = (totalRevenue / Math.max(1, daysDiff)) * 30;
+
+        // Trainer stats
+        const trainerStats = trainers.map((trainer: any) => {
+          const subs = ptSubs.filter((s: any) => s.personal_trainer_id === trainer.id);
+          const uniqueMembers = new Set(subs.map((s: any) => s.member_id)).size;
+          const revenue = subs.reduce((sum: number, s: any) => sum + Number(s.total_fee || 0), 0);
+          const trainerRevMap: Record<string, number> = {};
+          intervals.forEach(i => { trainerRevMap[i.label] = 0; });
+          subs.forEach((s: any) => {
+            const label = findInterval(s.created_at);
+            if (label && trainerRevMap[label] !== undefined) trainerRevMap[label] += Number(s.total_fee || 0);
+          });
+          return {
+            id: trainer.id, name: trainer.name, members: uniqueMembers, revenue,
+            monthlyRevenue: intervals.map(i => ({ month: i.label, revenue: trainerRevMap[i.label] || 0, payments: 0 })),
+          };
+        }).filter((t: any) => t.members > 0 || t.revenue > 0);
+
+        // Package sales
+        const packageList = monthlyPkgs.map((pkg: any) => ({
+          id: pkg.id, label: `${pkg.months} Month${pkg.months > 1 ? "s" : ""}`, months: pkg.months,
+        }));
+        const pkgSalesMap: Record<string, Record<number, number>> = {};
+        intervals.forEach(i => { pkgSalesMap[i.label] = {}; packageList.forEach((p: any) => { pkgSalesMap[i.label][p.months] = 0; }); });
+        subsInRange.filter((s: any) => !s.is_custom_package).forEach((s: any) => {
+          const label = findInterval(s.created_at);
+          if (label && pkgSalesMap[label]?.[s.plan_months] !== undefined) pkgSalesMap[label][s.plan_months] += 1;
+        });
+        const packageSalesData = intervals.map(i => {
+          const dp: Record<string, any> = { month: i.label };
+          packageList.forEach((p: any) => { dp[p.label] = pkgSalesMap[i.label][p.months] || 0; });
+          return dp;
+        });
+
         return jsonResponse({
-          payments: paymentsRes.data || [],
-          membersInRange: membersInRangeRes.data || [],
-          membersBefore: membersBeforeRes.count || 0,
-          totalMembers: totalMembersRes.count || 0,
-          activeMembers: activeMembersRes.count || 0,
-          trainers: trainersRes.data || [],
-          ptSubscriptions: ptSubsRes.data || [],
-          monthlyPackages: monthlyPkgsRes.data || [],
-          subscriptionsInRange: subsInRangeRes.data || [],
-        }, 60);
+          revenueData,
+          memberGrowth,
+          trainerStats,
+          packageSalesData,
+          packageList,
+          totals: { totalRevenue, totalMembers, activeMembers, avgRevenue },
+        }, 30);
       }
 
       case "staff-page-data": {
@@ -936,14 +1054,14 @@ Deno.serve(async (req) => {
         let branchQuery = supabase.from("branches").select("id, name").eq("is_active", true).is("deleted_at", null);
         if (branchAllowed !== null) {
           if (branchAllowed.length === 0) {
-            return jsonResponse({ branchMetrics: [], trainerMetrics: [] }, 120);
+            return jsonResponse({ branchMetrics: [], trainerMetrics: [], timeSeries: [] }, 120);
           }
           branchQuery = branchQuery.in("id", branchAllowed);
         }
 
         const { data: activeBranches } = await branchQuery;
         if (!activeBranches || activeBranches.length === 0) {
-          return jsonResponse({ branchMetrics: [], trainerMetrics: [] }, 120);
+          return jsonResponse({ branchMetrics: [], trainerMetrics: [], timeSeries: [] }, 120);
         }
 
         const branchIds = activeBranches.map((b: any) => b.id);
@@ -1127,7 +1245,48 @@ Deno.serve(async (req) => {
           trainerMetricsResult.sort((a: any, b: any) => b.efficiencyScore - a.efficiencyScore);
         }
 
-        return jsonResponse({ branchMetrics, trainerMetrics: trainerMetricsResult }, 120);
+        // === TIME SERIES: Server-side computation ===
+        // Fetch all payments for the current period across branches (already have them in currentData fetch)
+        const { data: tsPayments } = await supabase.from("payments")
+          .select("amount, created_at, branch_id")
+          .in("branch_id", branchIds).eq("status", "success")
+          .gte("created_at", `${dateFromParam}T00:00:00`).lte("created_at", `${dateToParam}T23:59:59`)
+          .order("created_at", { ascending: true });
+
+        const tsDays = Math.ceil((new Date(`${dateToParam}T23:59:59`).getTime() - new Date(`${dateFromParam}T00:00:00`).getTime()) / (1000 * 60 * 60 * 24));
+        const tsGroupBy = tsDays <= 30 ? "day" : tsDays <= 90 ? "week" : "month";
+
+        const branchRevByDate: Record<string, Record<string, number>> = {};
+        branchIds.forEach((id: string) => { branchRevByDate[id] = {}; });
+        const allDateKeys = new Set<string>();
+
+        for (const p of tsPayments || []) {
+          const date = new Date(p.created_at);
+          let key: string;
+          if (tsGroupBy === "day") {
+            key = date.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+          } else if (tsGroupBy === "week") {
+            // ISO week number
+            const jan1 = new Date(date.getFullYear(), 0, 1);
+            const weekNum = Math.ceil(((date.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
+            key = `Week ${weekNum}`;
+          } else {
+            key = date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+          }
+          if (!branchRevByDate[p.branch_id]) branchRevByDate[p.branch_id] = {};
+          branchRevByDate[p.branch_id][key] = (branchRevByDate[p.branch_id][key] || 0) + Number(p.amount || 0);
+          allDateKeys.add(key);
+        }
+
+        const timeSeries = Array.from(allDateKeys).sort().map((dateKey: string) => {
+          const point: Record<string, any> = { date: dateKey };
+          activeBranches.forEach((branch: any) => {
+            point[branch.name] = branchRevByDate[branch.id]?.[dateKey] || 0;
+          });
+          return point;
+        });
+
+        return jsonResponse({ branchMetrics, trainerMetrics: trainerMetricsResult, timeSeries }, 30);
       }
 
       default:

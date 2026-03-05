@@ -41,7 +41,6 @@ const routeQueryKeys: Record<string, string[][]> = {
   ],
   "/admin/branch-analytics": [
     ["branch-analytics-data"],
-    ["branch-timeseries"],
   ],
   "/admin/ledger": [
     ["ledger-entries"],
