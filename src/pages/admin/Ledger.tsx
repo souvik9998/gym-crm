@@ -924,8 +924,9 @@ const AdminLedger = () => {
                       <Button variant="outline" className="flex-1" onClick={() => setIsAddExpenseOpen(false)}>
                         Cancel
                       </Button>
-                      <Button className="flex-1" onClick={handleAddExpense} disabled={isSaving}>
-                        {isSaving ? "Saving..." : "Add Expense"}
+                      <Button className="flex-1 gap-2" onClick={handleAddExpense} disabled={isSaving}>
+                        {isSaving && <ButtonSpinner />}
+                        {isSaving ? "Adding..." : "Add Expense"}
                       </Button>
                     </div>
                   </div>
