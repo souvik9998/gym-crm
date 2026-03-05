@@ -62,8 +62,9 @@ import {
   Legend,
 } from "recharts";
 import LedgerDetailDialog from "@/components/admin/LedgerDetailDialog";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
+import { useInvalidateQueries } from "@/hooks/useQueryCache";
 
 interface LedgerEntry {
   id: string;
