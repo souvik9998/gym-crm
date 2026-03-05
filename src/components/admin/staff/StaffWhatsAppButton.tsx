@@ -25,6 +25,7 @@ export const StaffWhatsAppButton = ({
 }: StaffWhatsAppButtonProps) => {
   const [isSending, setIsSending] = useState(false);
   const { currentBranch } = useBranch();
+  const waOverlay = useWhatsAppOverlay();
 
   const handleSendCredentials = async () => {
     if (!staff.phone) {
@@ -40,6 +41,7 @@ export const StaffWhatsAppButton = ({
       return;
     }
 
+    if (!waOverlay.startSending(staff.full_name)) return;
     setIsSending(true);
 
     try {
@@ -66,14 +68,12 @@ export const StaffWhatsAppButton = ({
       const response = typeof data === "string" ? JSON.parse(data) : data;
 
       if (response.success) {
-        toast.success("Credentials sent via WhatsApp", {
-          description: `Login details sent to ${staff.full_name}`,
-        });
+        waOverlay.markSuccess(staff.full_name);
       } else {
         throw new Error(response.error || "Failed to send WhatsApp message");
       }
     } catch (error: any) {
-      toast.error("Failed to send WhatsApp", { description: error.message });
+      waOverlay.markError(error.message);
     } finally {
       setIsSending(false);
     }
