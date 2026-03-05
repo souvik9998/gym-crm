@@ -386,6 +386,7 @@ const AdminSettings = () => {
         const tempPkg: MonthlyPackage = { id: tempId, months, price: Number(newMonthlyPackage.price), joining_fee: Number(newMonthlyPackage.joining_fee) || 0, is_active: true };
         setMonthlyPackages(prev => [...prev, tempPkg].sort((a, b) => a.months - b.months));
         markRecentlyAdded(tempId);
+        toast.success("Package added");
         setNewMonthlyPackage({ months: "", price: "", joining_fee: "" });
         backgroundInvalidate();
       }
