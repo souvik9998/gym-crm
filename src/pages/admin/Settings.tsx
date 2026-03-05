@@ -592,6 +592,15 @@ const AdminSettings = () => {
 
   // Custom Package handlers
   const handleAddPackage = async () => {
+    setIsAddingCustom(true);
+    try {
+    await _handleAddPackage();
+    } finally {
+      setIsAddingCustom(false);
+    }
+  };
+
+  const _handleAddPackage = async () => {
     if (!newPackage.name || !newPackage.duration_days || !newPackage.price) {
       toast.error("Please fill all fields");
       return;
