@@ -184,6 +184,7 @@ export const BranchSelector = () => {
 
       toast.success("Branch added successfully");
       setNewBranch({ name: "", address: "", phone: "", email: "" });
+      setFieldErrors({});
       setIsAddDialogOpen(false);
       await refreshBranches();
       
