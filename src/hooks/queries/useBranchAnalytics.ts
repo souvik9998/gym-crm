@@ -1,10 +1,10 @@
+/**
+ * Branch Analytics Query Hook
+ * Single API call returns branch metrics, trainer metrics, AND time series
+ */
 import { useQuery } from "@tanstack/react-query";
 import { protectedFetch } from "@/api/authenticatedFetch";
-import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
-import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
-import { format, parseISO, differenceInDays, subDays, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval } from "date-fns";
-import { PeriodType, getPeriodDates } from "@/components/admin/PeriodSelector";
 
 const ANALYTICS_STALE_TIME = 1000 * 60 * 30;
 const ANALYTICS_GC_TIME = 1000 * 60 * 60;
@@ -78,6 +78,7 @@ export interface TrainerMetrics {
 interface BranchAnalyticsResponse {
   branchMetrics: BranchMetrics[];
   trainerMetrics: TrainerMetrics[];
+  timeSeries: TimeSeriesData[];
 }
 
 const generateInsights = (metrics: BranchMetrics[]): Insight[] => {
@@ -109,7 +110,8 @@ const generateInsights = (metrics: BranchMetrics[]): Insight[] => {
 };
 
 /**
- * Primary hook: fetches all branch + trainer metrics via single edge function call
+ * Primary hook: fetches ALL branch analytics in a single edge function call
+ * Returns branch metrics, trainer metrics, time series, and computed insights
  */
 export function useBranchAnalyticsData(
   dateFrom: string,
@@ -136,69 +138,19 @@ export function useBranchAnalyticsData(
 }
 
 /**
- * Time series data - still fetched client-side since it needs per-payment granularity
+ * @deprecated Use useBranchAnalyticsData which now includes timeSeries
  */
 export const useBranchTimeSeriesQuery = (
   dateFrom: string,
   dateTo: string,
   enabled: boolean = true
 ) => {
-  const { allBranches } = useBranch();
-
-  return useQuery({
-    queryKey: ["branch-timeseries", dateFrom, dateTo],
-    queryFn: async () => {
-      const activeBranches = (allBranches || []).filter((b) => b.is_active && !b.deleted_at);
-      const branchIds = activeBranches.map((b) => b.id);
-      if (branchIds.length === 0) return [];
-
-      const startDate = parseISO(dateFrom);
-      const endDate = parseISO(dateTo);
-      const days = differenceInDays(endDate, startDate);
-      const groupBy = days <= 30 ? "day" : days <= 90 ? "week" : "month";
-
-      const paymentsResults = await Promise.all(
-        branchIds.map((branchId) =>
-          supabase
-            .from("payments")
-            .select("amount, created_at, branch_id")
-            .eq("branch_id", branchId)
-            .eq("status", "success")
-            .gte("created_at", `${dateFrom}T00:00:00`)
-            .lte("created_at", `${dateTo}T23:59:59`)
-            .order("created_at", { ascending: true })
-        )
-      );
-
-      const branchNameMap: Record<string, string> = {};
-      activeBranches.forEach((b) => { branchNameMap[b.id] = b.name; });
-
-      const branchData: Record<string, Record<string, number>> = {};
-      branchIds.forEach((id) => { branchData[id] = {}; });
-
-      paymentsResults.forEach(({ data: payments }, index) => {
-        const branchId = branchIds[index];
-        payments?.forEach((payment) => {
-          const date = new Date(payment.created_at);
-          const key = groupBy === "day" ? format(date, "MMM dd") : groupBy === "week" ? `Week ${format(date, "w")}` : format(date, "MMM yyyy");
-          branchData[branchId][key] = (branchData[branchId][key] || 0) + Number(payment.amount || 0);
-        });
-      });
-
-      const allDates = new Set<string>();
-      Object.values(branchData).forEach((data) => Object.keys(data).forEach((d) => allDates.add(d)));
-
-      return Array.from(allDates).sort().map((date) => {
-        const dataPoint: TimeSeriesData = { date };
-        activeBranches.forEach((branch) => {
-          dataPoint[branch.name] = branchData[branch.id][date] || 0;
-        });
-        return dataPoint;
-      });
-    },
-    enabled: enabled && (allBranches?.length || 0) > 0,
-    staleTime: ANALYTICS_STALE_TIME,
-    gcTime: ANALYTICS_GC_TIME,
-    refetchOnWindowFocus: false,
+  // This is now a no-op that returns empty data
+  // Time series is included in useBranchAnalyticsData response
+  return useQuery<TimeSeriesData[]>({
+    queryKey: ["branch-timeseries-deprecated", dateFrom, dateTo],
+    queryFn: async () => [],
+    enabled: false, // Never actually fetches
+    staleTime: Infinity,
   });
 };
