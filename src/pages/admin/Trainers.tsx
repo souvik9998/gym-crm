@@ -290,6 +290,7 @@ const TrainersPage = () => {
           branchId: currentBranch?.id,
         });
         fetchTrainers();
+        invalidateSettings();
         toast.success("Trainer deleted");
       },
     });
