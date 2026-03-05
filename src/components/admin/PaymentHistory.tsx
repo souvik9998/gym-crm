@@ -228,7 +228,13 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
 
   const hasActiveFilters = dateFrom || dateTo || paymentMode !== "all" || statusFilter !== "all" || typeFilter !== "all";
 
+  const waOverlay = useWhatsAppOverlay();
+
   const handleSendInvoice = async (paymentId: string) => {
+    // Find the payment to get member name
+    const payment = filteredPayments.find(p => p.id === paymentId);
+    const recipientName = payment?.member_name || payment?.daily_pass_user_name || undefined;
+    if (!waOverlay.startSending(recipientName)) return;
     setSendingInvoiceId(paymentId);
     try {
       const { data, error } = await supabase.functions.invoke("generate-invoice", {
@@ -243,19 +249,16 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
 
       if (data?.success) {
         if (data.whatsappSent) {
-          toast.success("Invoice sent via WhatsApp", {
-            description: `Invoice ${data.invoiceNumber} sent successfully`,
-          });
+          waOverlay.markSuccess(recipientName);
         } else {
-          toast.success("Invoice generated", {
-            description: `Invoice ${data.invoiceNumber} created. WhatsApp delivery may be disabled.`,
-          });
+          waOverlay.markSuccess(recipientName);
+          toast.info("Invoice generated but WhatsApp delivery may be disabled.");
         }
       } else {
-        toast.error("Failed to generate invoice", { description: data?.error });
+        waOverlay.markError(data?.error || "Failed to generate invoice");
       }
     } catch (err: any) {
-      toast.error("Error sending invoice", { description: err.message });
+      waOverlay.markError(err.message);
     } finally {
       setSendingInvoiceId(null);
     }
