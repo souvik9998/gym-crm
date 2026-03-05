@@ -42,6 +42,7 @@ const AdminLogin = () => {
 
   useEffect(() => {
     queryClient.clear();
+    setTimeout(() => setMounted(true), 50);
   }, []);
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
