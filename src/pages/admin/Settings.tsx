@@ -923,9 +923,9 @@ const AdminSettings = () => {
                     />
                   </div>
                 </div>
-                <Button onClick={handleAddMonthlyPackage} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
-                  <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                  Add Package
+                <Button onClick={handleAddMonthlyPackage} disabled={isAddingMonthly} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
+                  {isAddingMonthly ? <ButtonSpinner /> : <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
+                  {isAddingMonthly ? "Adding..." : "Add Package"}
                 </Button>
 
                 {monthlyPackages.length > 0 && (
