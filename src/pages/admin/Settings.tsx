@@ -418,6 +418,7 @@ const AdminSettings = () => {
       // Instant local state update
       if (inserted) {
         setMonthlyPackages(prev => [...prev, { id: inserted.id, months: inserted.months, price: inserted.price, joining_fee: inserted.joining_fee, is_active: inserted.is_active }].sort((a, b) => a.months - b.months));
+        markRecentlyAdded(inserted.id);
       }
       toast.success("Package added");
       setNewMonthlyPackage({ months: "", price: "", joining_fee: "" });
