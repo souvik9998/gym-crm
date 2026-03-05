@@ -8,7 +8,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Calendar, 
@@ -24,7 +23,11 @@ import {
   Clock,
   Banknote,
   UserX,
+  Mail,
+  TrendingUp,
+  Wallet,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface MemberActivityDialogProps {
   open: boolean;
@@ -81,6 +84,19 @@ interface MemberData {
   join_date: string;
 }
 
+// Staggered animation wrapper
+const AnimatedItem = ({ children, index, className }: { children: React.ReactNode; index: number; className?: string }) => (
+  <div
+    className={cn("opacity-0", className)}
+    style={{
+      animation: `memberDialogFadeSlide 0.4s ease-out forwards`,
+      animationDelay: `${index * 80}ms`,
+    }}
+  >
+    {children}
+  </div>
+);
+
 export const MemberActivityDialog = ({
   open,
   onOpenChange,
@@ -94,9 +110,11 @@ export const MemberActivityDialog = ({
   const [ptSubscriptions, setPtSubscriptions] = useState<PTSubscription[]>([]);
   const [activePT, setActivePT] = useState<PTSubscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
     if (open && memberId) {
+      setActiveTab("overview");
       fetchMemberData();
     }
   }, [open, memberId]);
@@ -106,7 +124,6 @@ export const MemberActivityDialog = ({
     setIsLoading(true);
 
     try {
-      // Fetch member info
       const { data: memberData } = await supabase
         .from("members")
         .select("*")
@@ -115,7 +132,6 @@ export const MemberActivityDialog = ({
 
       if (memberData) setMember(memberData);
 
-      // Fetch member details
       const { data: detailsData } = await supabase
         .from("member_details")
         .select("*, personal_trainer:personal_trainers(name)")
@@ -124,7 +140,6 @@ export const MemberActivityDialog = ({
 
       if (detailsData) setDetails(detailsData);
 
-      // Fetch subscriptions with trainer info
       const { data: subsData } = await supabase
         .from("subscriptions")
         .select("*, personal_trainer:personal_trainers(name)")
@@ -133,7 +148,6 @@ export const MemberActivityDialog = ({
 
       if (subsData) setSubscriptions(subsData);
 
-      // Fetch payments
       const { data: paymentsData } = await supabase
         .from("payments")
         .select("*")
@@ -142,7 +156,6 @@ export const MemberActivityDialog = ({
 
       if (paymentsData) setPayments(paymentsData);
 
-      // Fetch PT subscriptions
       const { data: ptData } = await supabase
         .from("pt_subscriptions")
         .select("*, personal_trainer:personal_trainers(id, name, specialization)")
@@ -151,7 +164,6 @@ export const MemberActivityDialog = ({
 
       if (ptData) {
         setPtSubscriptions(ptData);
-        // Find active PT
         const today = new Date().toISOString().split("T")[0];
         const active = ptData.find(pt => pt.end_date >= today && pt.status === "active");
         setActivePT(active || null);
@@ -166,43 +178,42 @@ export const MemberActivityDialog = ({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
-        return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
+        return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] px-2 py-0.5">Active</Badge>;
       case "expiring_soon":
-        return <Badge className="bg-warning/10 text-warning border-warning/20">Expiring Soon</Badge>;
+        return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] px-2 py-0.5">Expiring Soon</Badge>;
       case "expired":
-        return <Badge className="bg-destructive/10 text-destructive border-destructive/20">Expired</Badge>;
+        return <Badge className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px] px-2 py-0.5">Expired</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline" className="text-[10px] px-2 py-0.5">{status}</Badge>;
     }
   };
 
   const getPaymentStatusIcon = (status: string) => {
     switch (status) {
       case "success":
-        return <CheckCircle className="w-4 h-4 text-success" />;
+        return <CheckCircle className="w-4 h-4 text-emerald-500" />;
       case "failed":
         return <XCircle className="w-4 h-4 text-destructive" />;
       default:
-        return <Clock className="w-4 h-4 text-warning" />;
+        return <Clock className="w-4 h-4 text-amber-500" />;
     }
   };
 
   const getPaymentTypeLabel = (type: string | null) => {
     switch (type) {
       case "gym_and_pt":
-        return <Badge variant="outline" className="text-xs">Gym + PT</Badge>;
+        return <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-accent/30 text-accent">Gym + PT</Badge>;
       case "pt_only":
       case "pt":
-        return <Badge variant="outline" className="text-xs bg-warning/10 text-warning">PT</Badge>;
+        return <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/30 text-amber-600">PT</Badge>;
       case "gym_membership":
       default:
-        return <Badge variant="outline" className="text-xs bg-primary/10 text-primary">Gym</Badge>;
+        return <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">Gym</Badge>;
     }
   };
 
   const formatPaymentNotes = (notes: string | null) => {
     if (!notes) return null;
-    // Hide internal IDs from display
     if (notes.startsWith("pt_subscription_id:")) return null;
     return notes;
   };
@@ -215,289 +226,339 @@ export const MemberActivityDialog = ({
     });
   };
 
+  const totalPaid = payments
+    .filter((p) => p.status === "success")
+    .reduce((sum, p) => sum + Number(p.amount), 0);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-       <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:max-w-2xl h-[80vh] sm:h-[75vh] overflow-hidden flex flex-col p-0 left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]">
-        <DialogHeader className="px-5 pt-5 pb-2 sm:px-6 sm:pt-6 flex-shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
-            <User className="w-4 h-4 md:w-5 md:h-5 text-accent" />
-            {memberName}
-          </DialogTitle>
-          <DialogDescription className="text-xs md:text-sm">
-            Member activity, subscriptions, and payment history
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:max-w-2xl h-[80vh] sm:h-[75vh] overflow-hidden flex flex-col p-0 left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] rounded-2xl border-border/60 shadow-2xl bg-background/95 backdrop-blur-xl">
+        
+        {/* Header with gradient accent */}
+        <div className="relative px-5 pt-5 pb-3 sm:px-6 sm:pt-6 flex-shrink-0">
+          <div className="absolute inset-0 bg-gradient-to-b from-accent/5 to-transparent rounded-t-2xl pointer-events-none" />
+          <DialogHeader className="relative">
+            <DialogTitle className="flex items-center gap-3 text-base md:text-lg">
+              <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-accent/10 ring-1 ring-accent/20">
+                <User className="w-4 h-4 text-accent" />
+              </div>
+              <div>
+                <span className="block font-semibold tracking-tight">{memberName}</span>
+                <DialogDescription className="text-[11px] md:text-xs mt-0.5 font-normal">
+                  Member activity, subscriptions, and payment history
+                </DialogDescription>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+        </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 py-12">
+            <div className="relative w-10 h-10">
+              <div className="absolute inset-0 rounded-full border-2 border-accent/20" />
+              <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-accent animate-spin" />
+            </div>
+            <p className="text-xs text-muted-foreground animate-pulse">Loading member data...</p>
           </div>
         ) : (
-          <Tabs defaultValue="overview" className="flex-1 flex flex-col px-5 sm:px-6 pb-5 sm:pb-6 min-h-0 overflow-hidden">
-            <TabsList className="grid w-full grid-cols-4 h-9 md:h-10 flex-shrink-0 p-1 overflow-hidden">
-              <TabsTrigger value="overview" className="text-xs md:text-sm py-1.5 px-2 md:px-3">Overview</TabsTrigger>
-              <TabsTrigger value="subscriptions" className="text-xs md:text-sm py-1.5 px-2 md:px-3">Gym</TabsTrigger>
-              <TabsTrigger value="pt" className="text-xs md:text-sm py-1.5 px-2 md:px-3">PT History</TabsTrigger>
-              <TabsTrigger value="payments" className="text-xs md:text-sm py-1.5 px-2 md:px-3">Payments</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col px-5 sm:px-6 pb-5 sm:pb-6 min-h-0 overflow-hidden">
+            <TabsList className="grid w-full grid-cols-4 h-10 flex-shrink-0 p-1 bg-muted/50 rounded-xl">
+              <TabsTrigger value="overview" className="text-xs md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Overview</TabsTrigger>
+              <TabsTrigger value="subscriptions" className="text-xs md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Gym</TabsTrigger>
+              <TabsTrigger value="pt" className="text-xs md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">PT History</TabsTrigger>
+              <TabsTrigger value="payments" className="text-xs md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Payments</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}
-            <TabsContent value="overview" className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1">
-                <div className="space-y-3">
-                  <Card>
-                    <CardHeader className="pb-2 px-4 pt-3">
-                      <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
-                        Contact Information
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2.5 px-4 pb-3">
-                      <div className="flex items-center gap-2.5">
-                        <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                        <span className="text-sm">+91 {member?.phone}</span>
+            <TabsContent value="overview" className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-thin" key="overview">
+              <div className="space-y-3">
+                {/* Contact Info */}
+                <AnimatedItem index={0}>
+                  <div className="rounded-xl border border-border/60 bg-card/50 p-4 space-y-3 hover:border-border transition-colors duration-200">
+                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">Contact Information</h4>
+                    <div className="space-y-2.5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-muted/80">
+                          <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+                        </div>
+                        <span className="text-sm font-medium">+91 {member?.phone}</span>
                       </div>
                       {member?.email && (
-                        <div className="flex items-center gap-2.5">
-                          <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-muted/80">
+                            <Mail className="w-3.5 h-3.5 text-muted-foreground" />
+                          </div>
                           <span className="text-sm break-words">{member.email}</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-2.5">
-                        <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                        <span className="text-sm">Joined: {member?.join_date ? formatDate(member.join_date) : "N/A"}</span>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-muted/80">
+                          <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                        </div>
+                        <span className="text-sm">
+                          <span className="text-muted-foreground">Joined </span>
+                          <span className="font-medium">{member?.join_date ? formatDate(member.join_date) : "N/A"}</span>
+                        </span>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
+                </AnimatedItem>
 
-                  <Card>
-                    <CardHeader className="pb-2 px-4 pt-3">
-                      <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground">
-                        Personal Details
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2.5 px-4 pb-3">
-                      <div className="flex items-start gap-2.5">
-                        <User className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                {/* Personal Details */}
+                <AnimatedItem index={1}>
+                  <div className="rounded-xl border border-border/60 bg-card/50 p-4 space-y-3 hover:border-border transition-colors duration-200">
+                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">Personal Details</h4>
+                    <div className="space-y-2.5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-muted/80">
+                          <User className="w-3.5 h-3.5 text-muted-foreground" />
+                        </div>
                         <span className="text-sm">
                           <span className="text-muted-foreground">Gender: </span>
-                          <span className="capitalize">{details?.gender || "Not provided"}</span>
+                          <span className="font-medium capitalize">{details?.gender || "Not provided"}</span>
                         </span>
                       </div>
-                      <div className="flex items-start gap-2.5">
-                        <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-muted/80">
+                          <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                        </div>
                         <span className="text-sm break-words">
                           <span className="text-muted-foreground">Address: </span>
-                          {details?.address || "Not provided"}
+                          <span className="font-medium">{details?.address || "Not provided"}</span>
                         </span>
                       </div>
-                      <div className="flex items-start gap-2.5">
-                        <IdCard className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-muted/80">
+                          <IdCard className="w-3.5 h-3.5 text-muted-foreground" />
+                        </div>
                         <span className="text-sm break-words">
                           <span className="text-muted-foreground">Photo ID: </span>
                           {details?.photo_id_type ? (
-                            <span className="capitalize">{details.photo_id_type}: {details.photo_id_number || "N/A"}</span>
+                            <span className="font-medium capitalize">{details.photo_id_type}: {details.photo_id_number || "N/A"}</span>
                           ) : (
-                            "Not provided"
+                            <span className="font-medium">Not provided</span>
                           )}
                         </span>
                       </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Current PT Status */}
-                  <Card>
-                    <CardHeader className="pb-2 px-4 pt-3">
-                      <CardTitle className="text-xs md:text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-                        <Dumbbell className="w-3.5 h-3.5" />
-                        Personal Training Status
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0 px-4 pb-3">
-                      {activePT ? (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{activePT.personal_trainer?.name}</span>
-                            <Badge className="bg-success/10 text-success text-xs">Active</Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {formatDate(activePT.start_date)} — {formatDate(activePT.end_date)}
-                          </p>
-                          {activePT.personal_trainer?.specialization && (
-                            <p className="text-xs text-muted-foreground">
-                              Specialization: {activePT.personal_trainer.specialization}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2.5 text-muted-foreground">
-                          <UserX className="w-5 h-5" />
-                          <span className="text-sm">No active personal training</span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Summary Stats */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Card>
-                      <CardContent className="p-3 text-center">
-                        <p className="text-lg font-bold text-accent">{subscriptions.length}</p>
-                        <p className="text-xs text-muted-foreground mt-1">Gym Subscriptions</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-3 text-center">
-                        <p className="text-lg font-bold text-success flex items-center justify-center gap-0.5">
-                          <IndianRupee className="w-3.5 h-3.5" />
-                          {payments
-                            .filter((p) => p.status === "success")
-                            .reduce((sum, p) => sum + Number(p.amount), 0)
-                            .toLocaleString("en-IN")}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">Total Paid</p>
-                      </CardContent>
-                    </Card>
+                    </div>
                   </div>
-                </div>
+                </AnimatedItem>
+
+                {/* PT Status */}
+                <AnimatedItem index={2}>
+                  <div className="rounded-xl border border-border/60 bg-card/50 p-4 space-y-3 hover:border-border transition-colors duration-200">
+                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 flex items-center gap-1.5">
+                      <Dumbbell className="w-3 h-3" />
+                      Personal Training Status
+                    </h4>
+                    {activePT ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold">{activePT.personal_trainer?.name}</span>
+                          <Badge className="bg-emerald-500/10 text-emerald-600 text-[10px] px-2 py-0.5 border-emerald-500/20">Active</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(activePT.start_date)} — {formatDate(activePT.end_date)}
+                        </p>
+                        {activePT.personal_trainer?.specialization && (
+                          <p className="text-xs text-muted-foreground/70">
+                            Specialization: {activePT.personal_trainer.specialization}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3 text-muted-foreground py-1">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-muted/60">
+                          <UserX className="w-4 h-4" />
+                        </div>
+                        <span className="text-sm">No active personal training</span>
+                      </div>
+                    )}
+                  </div>
+                </AnimatedItem>
+
+                {/* Summary Stats */}
+                <AnimatedItem index={3}>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-border/60 bg-card/50 p-4 text-center hover:border-accent/30 transition-all duration-200 group">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-accent/10 mx-auto mb-2 group-hover:scale-110 transition-transform duration-200">
+                        <TrendingUp className="w-4 h-4 text-accent" />
+                      </div>
+                      <p className="text-xl font-bold text-accent">{subscriptions.length}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Gym Subscriptions</p>
+                    </div>
+                    <div className="rounded-xl border border-border/60 bg-card/50 p-4 text-center hover:border-emerald-500/30 transition-all duration-200 group">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-500/10 mx-auto mb-2 group-hover:scale-110 transition-transform duration-200">
+                        <Wallet className="w-4 h-4 text-emerald-500" />
+                      </div>
+                      <p className="text-xl font-bold text-emerald-600 flex items-center justify-center gap-0.5">
+                        <IndianRupee className="w-4 h-4" />
+                        {totalPaid.toLocaleString("en-IN")}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Total Paid</p>
+                    </div>
+                  </div>
+                </AnimatedItem>
+              </div>
             </TabsContent>
 
             {/* Subscriptions Tab */}
-            <TabsContent value="subscriptions" className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1">
-                <div className="space-y-3">
-                  {subscriptions.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-12 text-sm">No subscriptions found</p>
-                  ) : (
-                    subscriptions.map((sub) => (
-                      <Card key={sub.id}>
-                        <CardContent className="p-3 md:p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-1.5">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-sm">
-                                  {sub.is_custom_package 
-                                    ? `${sub.custom_days} Day Pass` 
-                                    : `${sub.plan_months} Month${sub.plan_months > 1 ? "s" : ""}`}
-                                </span>
-                                {getStatusBadge(sub.status)}
-                              </div>
-                              <div className="text-sm text-muted-foreground space-y-1">
-                                <p className="flex items-center gap-2">
-                                  <Calendar className="w-3.5 h-3.5" />
-                                  {formatDate(sub.start_date)} — {formatDate(sub.end_date)}
-                                </p>
-                                {sub.personal_trainer && (
-                                  <p className="flex items-center gap-2">
-                                    <Dumbbell className="w-3.5 h-3.5" />
-                                    Trainer: {sub.personal_trainer.name}
-                                    {sub.trainer_fee && ` (₹${sub.trainer_fee})`}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
-            </TabsContent>
-
-            {/* PT History Tab */}
-            <TabsContent value="pt" className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1">
-                <div className="space-y-3">
-                  {ptSubscriptions.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Dumbbell className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                      <p className="text-sm text-muted-foreground">No personal training history</p>
+            <TabsContent value="subscriptions" className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1" key="subscriptions">
+              <div className="space-y-2.5">
+                {subscriptions.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-muted/60 mx-auto mb-3">
+                      <Calendar className="w-6 h-6 text-muted-foreground/40" />
                     </div>
-                  ) : (
-                    ptSubscriptions.map((pt) => (
-                      <Card key={pt.id}>
-                        <CardContent className="p-3 md:p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-1.5">
-                              <div className="flex items-center gap-2">
-                                <Dumbbell className="w-4 h-4 text-warning" />
-                                <span className="font-medium text-sm">{pt.personal_trainer?.name || "Unknown Trainer"}</span>
-                                {pt.status === "active" && new Date(pt.end_date) >= new Date() ? (
-                                  <Badge className="bg-success/10 text-success">Active</Badge>
-                                ) : (
-                                  <Badge variant="outline" className="text-muted-foreground">Completed</Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">No subscriptions found</p>
+                  </div>
+                ) : (
+                  subscriptions.map((sub, i) => (
+                    <AnimatedItem key={sub.id} index={i}>
+                      <div className="rounded-xl border border-border/60 bg-card/50 p-3.5 md:p-4 hover:border-border transition-colors duration-200">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm">
+                                {sub.is_custom_package 
+                                  ? `${sub.custom_days} Day Pass` 
+                                  : `${sub.plan_months} Month${sub.plan_months > 1 ? "s" : ""}`}
+                              </span>
+                              {getStatusBadge(sub.status)}
+                            </div>
+                            <div className="text-sm text-muted-foreground space-y-1">
+                              <p className="flex items-center gap-2">
                                 <Calendar className="w-3.5 h-3.5" />
-                                {formatDate(pt.start_date)} — {formatDate(pt.end_date)}
+                                {formatDate(sub.start_date)} — {formatDate(sub.end_date)}
                               </p>
-                              {pt.personal_trainer?.specialization && (
-                                <p className="text-xs text-muted-foreground">
-                                  Specialization: {pt.personal_trainer.specialization}
+                              {sub.personal_trainer && (
+                                <p className="flex items-center gap-2">
+                                  <Dumbbell className="w-3.5 h-3.5" />
+                                  Trainer: {sub.personal_trainer.name}
+                                  {sub.trainer_fee && ` (₹${sub.trainer_fee})`}
                                 </p>
                               )}
                             </div>
-                            <div className="text-right">
-                              <p className="font-semibold text-accent flex items-center gap-1">
-                                <IndianRupee className="w-4 h-4" />
-                                {Number(pt.total_fee).toLocaleString("en-IN")}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                ₹{Number(pt.monthly_fee).toLocaleString("en-IN")}/month
-                              </p>
-                            </div>
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
+                        </div>
+                      </div>
+                    </AnimatedItem>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+
+            {/* PT History Tab */}
+            <TabsContent value="pt" className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1" key="pt">
+              <div className="space-y-2.5">
+                {ptSubscriptions.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-muted/60 mx-auto mb-3">
+                      <Dumbbell className="w-6 h-6 text-muted-foreground/40" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">No personal training history</p>
+                  </div>
+                ) : (
+                  ptSubscriptions.map((pt, i) => (
+                    <AnimatedItem key={pt.id} index={i}>
+                      <div className="rounded-xl border border-border/60 bg-card/50 p-3.5 md:p-4 hover:border-border transition-colors duration-200">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <Dumbbell className="w-4 h-4 text-amber-500" />
+                              <span className="font-semibold text-sm">{pt.personal_trainer?.name || "Unknown Trainer"}</span>
+                              {pt.status === "active" && new Date(pt.end_date) >= new Date() ? (
+                                <Badge className="bg-emerald-500/10 text-emerald-600 text-[10px] px-2 py-0.5">Active</Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-muted-foreground text-[10px] px-2 py-0.5">Completed</Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground flex items-center gap-2">
+                              <Calendar className="w-3.5 h-3.5" />
+                              {formatDate(pt.start_date)} — {formatDate(pt.end_date)}
+                            </p>
+                            {pt.personal_trainer?.specialization && (
+                              <p className="text-xs text-muted-foreground/70">
+                                Specialization: {pt.personal_trainer.specialization}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-accent flex items-center gap-0.5 text-sm">
+                              <IndianRupee className="w-3.5 h-3.5" />
+                              {Number(pt.total_fee).toLocaleString("en-IN")}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              ₹{Number(pt.monthly_fee).toLocaleString("en-IN")}/mo
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </AnimatedItem>
+                  ))
+                )}
+              </div>
             </TabsContent>
 
             {/* Payments Tab */}
-            <TabsContent value="payments" className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1">
-                <div className="space-y-3">
-                  {payments.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-12 text-sm">No payments found</p>
-                  ) : (
-                    payments.map((payment) => (
-                      <Card key={payment.id}>
-                        <CardContent className="p-3 md:p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2.5 rounded-lg bg-muted">
-                                {payment.payment_mode === "cash" ? (
-                                  <Banknote className="w-4 h-4 text-success" />
-                                ) : (
-                                  <CreditCard className="w-4 h-4 text-accent" />
-                                )}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium text-sm flex items-center gap-1">
-                                    <IndianRupee className="w-4 h-4" />
-                                    {Number(payment.amount).toLocaleString("en-IN")}
-                                  </p>
-                                  {getPaymentTypeLabel(payment.payment_type)}
-                                </div>
-                                <p className="text-sm text-muted-foreground mt-0.5">
-                                  {formatDate(payment.created_at)} • {payment.payment_mode}
-                                </p>
-                              </div>
+            <TabsContent value="payments" className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1" key="payments">
+              <div className="space-y-2.5">
+                {payments.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-muted/60 mx-auto mb-3">
+                      <Wallet className="w-6 h-6 text-muted-foreground/40" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">No payments found</p>
+                  </div>
+                ) : (
+                  payments.map((payment, i) => (
+                    <AnimatedItem key={payment.id} index={i}>
+                      <div className="rounded-xl border border-border/60 bg-card/50 p-3.5 md:p-4 hover:border-border transition-colors duration-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-muted/80">
+                              {payment.payment_mode === "cash" ? (
+                                <Banknote className="w-4 h-4 text-emerald-500" />
+                              ) : (
+                                <CreditCard className="w-4 h-4 text-accent" />
+                              )}
                             </div>
-                            <div className="flex items-center gap-2">
-                              {getPaymentStatusIcon(payment.status)}
-                              <span className="text-sm capitalize">{payment.status}</span>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-sm flex items-center gap-0.5">
+                                  <IndianRupee className="w-3.5 h-3.5" />
+                                  {Number(payment.amount).toLocaleString("en-IN")}
+                                </p>
+                                {getPaymentTypeLabel(payment.payment_type)}
+                              </div>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                {formatDate(payment.created_at)} • <span className="capitalize">{payment.payment_mode}</span>
+                              </p>
                             </div>
                           </div>
-                          {formatPaymentNotes(payment.notes) && (
-                            <p className="mt-2 text-sm text-muted-foreground">{formatPaymentNotes(payment.notes)}</p>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
+                          <div className="flex items-center gap-1.5">
+                            {getPaymentStatusIcon(payment.status)}
+                            <span className="text-xs capitalize font-medium">{payment.status}</span>
+                          </div>
+                        </div>
+                        {formatPaymentNotes(payment.notes) && (
+                          <p className="mt-2 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-1.5">{formatPaymentNotes(payment.notes)}</p>
+                        )}
+                      </div>
+                    </AnimatedItem>
+                  ))
+                )}
+              </div>
             </TabsContent>
           </Tabs>
         )}
+
+        <style>{`
+          @keyframes memberDialogFadeSlide {
+            0% { opacity: 0; transform: translateY(8px); }
+            100% { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
       </DialogContent>
     </Dialog>
   );
