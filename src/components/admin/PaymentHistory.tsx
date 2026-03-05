@@ -28,6 +28,8 @@ import { useInfinitePaymentsQuery, type PaymentWithDetails } from "@/hooks/queri
 import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
+import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
+import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 
 type PaymentMode = Database["public"]["Enums"]["payment_mode"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
