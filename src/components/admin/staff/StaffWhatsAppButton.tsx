@@ -5,6 +5,8 @@ import { toast } from "@/components/ui/sonner";
 import { Staff } from "@/pages/admin/StaffManagement";
 import { useBranch } from "@/contexts/BranchContext";
 import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
+import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
+import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 
 interface StaffWhatsAppButtonProps {
   staff: Staff;
