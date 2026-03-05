@@ -331,6 +331,7 @@ const AdminLedger = () => {
       setIsAddExpenseOpen(false);
       resetExpenseForm();
       fetchEntries();
+      invalidatePayments(); // Invalidate cross-page caches (dashboard, payments)
     }
   };
 
