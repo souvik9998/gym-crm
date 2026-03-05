@@ -267,6 +267,18 @@ const AdminSettings = () => {
     invalidateSettings().catch(() => {});
   };
 
+  // Mark an item as recently added for highlight animation
+  const markRecentlyAdded = useCallback((id: string) => {
+    setRecentlyAddedIds(prev => new Set(prev).add(id));
+    setTimeout(() => {
+      setRecentlyAddedIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 1500);
+  }, []);
+
   const handleSaveSettings = async () => {
     if (!settings?.id || !currentBranch?.id) return;
     setIsSaving(true);
