@@ -556,7 +556,11 @@ const AdminLedger = () => {
             });
           }
           toast.success("Entry deleted");
-          fetchEntries();
+          // Instant local update via query cache
+          const queryKey = ["ledger-entries", dateRange.start, dateRange.end, currentBranch?.id];
+          queryClient.setQueryData<LedgerEntry[]>(queryKey, (old) => 
+            old ? old.filter(e => e.id !== entry.id) : []
+          );
           invalidatePayments();
         }
       },
