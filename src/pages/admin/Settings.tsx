@@ -669,6 +669,7 @@ const AdminSettings = () => {
       // Instant local state update
       if (inserted) {
         setCustomPackages(prev => [...prev, { id: inserted.id, name: inserted.name, duration_days: inserted.duration_days, price: inserted.price, is_active: inserted.is_active }]);
+        markRecentlyAdded(inserted.id);
       }
       toast.success("Package added");
       setNewPackage({ name: "", duration_days: "", price: "" });
