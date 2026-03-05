@@ -280,6 +280,7 @@ const AdminSettings = () => {
         toast.error("Error", { description: error });
       } else {
         toast.success("Settings saved successfully");
+        fetchData();
       }
       return;
     }
