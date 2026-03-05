@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, XCircle, MessageCircle } from "lucide-react";
+import { createPortal } from "react-dom";
 
 export type WhatsAppOverlayState = "idle" | "sending" | "success" | "error";
 
@@ -21,6 +22,7 @@ export const WhatsAppSendingOverlay = ({
 
   useEffect(() => {
     if (state !== "idle") {
+      // Force visible immediately
       setVisible(true);
     }
   }, [state]);
@@ -38,12 +40,15 @@ export const WhatsAppSendingOverlay = ({
 
   if (state === "idle" && !visible) return null;
 
-  return (
+  const isActive = visible && state !== "idle";
+
+  const overlay = (
     <div
       className={cn(
-        "fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity duration-300",
-        visible && state !== "idle" ? "opacity-100" : "opacity-0 pointer-events-none"
+        "fixed inset-0 flex items-center justify-center transition-opacity duration-300",
+        isActive ? "opacity-100" : "opacity-0 pointer-events-none"
       )}
+      style={{ zIndex: 99999 }}
       onClick={(e) => {
         e.stopPropagation();
         if (state === "success" || state === "error") {
@@ -52,10 +57,14 @@ export const WhatsAppSendingOverlay = ({
         }
       }}
     >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+
+      {/* Card */}
       <div
         className={cn(
           "relative flex flex-col items-center gap-4 rounded-2xl bg-card border border-border shadow-2xl px-8 py-8 min-w-[260px] max-w-[320px] transition-all duration-500",
-          visible ? "scale-100 opacity-100" : "scale-90 opacity-0"
+          isActive ? "scale-100 opacity-100" : "scale-90 opacity-0"
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -63,7 +72,6 @@ export const WhatsAppSendingOverlay = ({
         {state === "sending" && (
           <>
             <div className="relative flex items-center justify-center w-16 h-16">
-              {/* Pulsing ring */}
               <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping" />
               <div className="absolute inset-1 rounded-full bg-emerald-500/10 animate-pulse" />
               <div className="relative z-10 flex items-center justify-center w-14 h-14 rounded-full bg-emerald-500 text-white shadow-lg">
@@ -76,7 +84,6 @@ export const WhatsAppSendingOverlay = ({
                 <p className="text-sm text-muted-foreground">to {recipientName}</p>
               )}
             </div>
-            {/* Animated dots */}
             <div className="flex items-center gap-1.5">
               {[0, 1, 2].map((i) => (
                 <span
@@ -141,4 +148,7 @@ export const WhatsAppSendingOverlay = ({
       `}</style>
     </div>
   );
+
+  // Portal to document.body so it's always on top of everything
+  return createPortal(overlay, document.body);
 };
