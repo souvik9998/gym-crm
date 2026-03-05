@@ -38,6 +38,7 @@ interface SidebarProps {
   onCollapsedChange: (collapsed: boolean) => void;
   isMobile?: boolean;
   isStaffUser?: boolean;
+  onNavigate?: () => void;
 }
 
 interface NavItem {
@@ -166,7 +167,7 @@ const allBottomNavItems: NavItem[] = [
   },
 ];
 
-export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, isStaffUser = false }: SidebarProps) => {
+export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, isStaffUser = false, onNavigate }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentBranch } = useBranch();
@@ -241,6 +242,7 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
     } else {
       navigate(href);
     }
+    onNavigate?.();
   };
 
   const renderNavItem = (item: NavItem, isBottom = false) => {

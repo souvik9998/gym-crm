@@ -158,6 +158,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
           onCollapsedChange={() => {}}
           isMobile={true}
           isStaffUser={isStaffSession}
+          onNavigate={() => setMobileMenuOpen(false)}
         />
       </div>
 
