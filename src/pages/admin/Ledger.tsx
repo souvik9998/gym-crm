@@ -62,8 +62,9 @@ import {
   Legend,
 } from "recharts";
 import LedgerDetailDialog from "@/components/admin/LedgerDetailDialog";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
+import { useInvalidateQueries } from "@/hooks/useQueryCache";
 
 interface LedgerEntry {
   id: string;
@@ -107,6 +108,7 @@ const AdminLedger = () => {
   const { currentBranch } = useBranch();
   const isMobile = useIsMobile();
   const { isStaffLoggedIn, staffUser } = useStaffAuth();
+  const { invalidatePayments } = useInvalidateQueries();
   // Date range state
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("this_month");
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
@@ -329,6 +331,7 @@ const AdminLedger = () => {
       setIsAddExpenseOpen(false);
       resetExpenseForm();
       fetchEntries();
+      invalidatePayments(); // Invalidate cross-page caches (dashboard, payments)
     }
   };
 
@@ -545,6 +548,7 @@ const AdminLedger = () => {
           }
           toast.success("Entry deleted");
           fetchEntries();
+          invalidatePayments();
         }
       },
     });

@@ -53,26 +53,28 @@ export function useInvalidateQueries() {
     [queryClient, branchId]
   );
 
-  const invalidateMembers = useCallback(() => {
-    invalidate([CACHE_KEYS.MEMBERS, CACHE_KEYS.DASHBOARD_STATS, CACHE_KEYS.SUBSCRIPTIONS]);
+  const invalidateMembers = useCallback(async () => {
+    await invalidate([CACHE_KEYS.MEMBERS, CACHE_KEYS.DASHBOARD_STATS, CACHE_KEYS.SUBSCRIPTIONS]);
     // Broadly invalidate all member queries (including infinite scroll variants)
-    queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.MEMBERS] });
+    await queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.MEMBERS] });
   }, [invalidate, queryClient]);
 
-  const invalidatePayments = useCallback(() => {
-    invalidate([CACHE_KEYS.PAYMENTS, CACHE_KEYS.DASHBOARD_STATS, CACHE_KEYS.LEDGER]);
+  const invalidatePayments = useCallback(async () => {
+    await invalidate([CACHE_KEYS.PAYMENTS, CACHE_KEYS.DASHBOARD_STATS, CACHE_KEYS.LEDGER]);
     // Broadly invalidate all payment queries (including infinite scroll variants)
-    queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.PAYMENTS] });
+    await queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.PAYMENTS] });
+    // Also invalidate ledger queries used on the Ledger page
+    await queryClient.invalidateQueries({ queryKey: ["ledger-entries"] });
   }, [invalidate, queryClient]);
 
-  const invalidateDailyPass = useCallback(() => {
-    invalidate([CACHE_KEYS.DAILY_PASS_USERS, CACHE_KEYS.DASHBOARD_STATS]);
+  const invalidateDailyPass = useCallback(async () => {
+    await invalidate([CACHE_KEYS.DAILY_PASS_USERS, CACHE_KEYS.DASHBOARD_STATS]);
     // Broadly invalidate all daily pass queries (including infinite scroll variants)
-    queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.DAILY_PASS_USERS] });
+    await queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.DAILY_PASS_USERS] });
   }, [invalidate, queryClient]);
 
-  const invalidateSettings = useCallback(() => {
-    invalidate([
+  const invalidateSettings = useCallback(async () => {
+    await invalidate([
       CACHE_KEYS.GYM_SETTINGS,
       CACHE_KEYS.PACKAGES,
       CACHE_KEYS.MONTHLY_PACKAGES,
@@ -80,12 +82,12 @@ export function useInvalidateQueries() {
       CACHE_KEYS.TRAINERS,
     ]);
     // Also invalidate the aggregated settings page data query
-    queryClient.invalidateQueries({ queryKey: ["settings-page-data"] });
+    await queryClient.invalidateQueries({ queryKey: ["settings-page-data"] });
   }, [invalidate, queryClient]);
 
-  const invalidateStaff = useCallback(() => {
-    invalidate([CACHE_KEYS.STAFF], true); // Staff is often cross-branch
-    queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.STAFF] });
+  const invalidateStaff = useCallback(async () => {
+    await invalidate([CACHE_KEYS.STAFF], true); // Staff is often cross-branch
+    await queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.STAFF] });
   }, [invalidate, queryClient]);
 
   const invalidateAll = useCallback(() => {

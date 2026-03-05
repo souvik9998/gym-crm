@@ -254,9 +254,9 @@ const AdminSettings = () => {
 
   // Use refetchData instead of fetchData for mutations
   // Also invalidate settings cache so other pages pick up changes
-  const fetchData = () => {
-    invalidateSettings();
-    refetchData();
+  const fetchData = async () => {
+    await invalidateSettings();
+    await refetchData();
   };
 
   const handleSaveSettings = async () => {

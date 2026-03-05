@@ -16,6 +16,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { useInvalidateQueries } from "@/hooks/useQueryCache";
 
 interface Trainer {
   id: string;
@@ -32,6 +33,7 @@ interface Trainer {
 
 const TrainersPage = () => {
   const { currentBranch } = useBranch();
+  const { invalidateSettings } = useInvalidateQueries();
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Trainers
@@ -158,6 +160,7 @@ const TrainersPage = () => {
         session_fee: "",
       });
       fetchTrainers();
+      invalidateSettings();
     }
   };
 
@@ -240,6 +243,7 @@ const TrainersPage = () => {
       toast.success("Trainer updated");
       setEditingTrainerId(null);
       fetchTrainers();
+      invalidateSettings();
     }
   };
 
@@ -258,6 +262,7 @@ const TrainersPage = () => {
       branchId: currentBranch?.id,
     });
     fetchTrainers();
+    invalidateSettings();
   };
 
   const handleDeleteTrainer = (id: string, name: string) => {
@@ -285,6 +290,7 @@ const TrainersPage = () => {
           branchId: currentBranch?.id,
         });
         fetchTrainers();
+        invalidateSettings();
         toast.success("Trainer deleted");
       },
     });
