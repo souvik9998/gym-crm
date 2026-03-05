@@ -413,9 +413,11 @@ const AdminSettings = () => {
       if (error) {
         toast.error("Error", { description: error });
       } else {
+        // Instant local state update
+        setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 } : p));
         toast.success("Package updated");
         setEditingMonthlyId(null);
-        fetchData();
+        backgroundInvalidate();
       }
       return;
     }
