@@ -780,8 +780,10 @@ const AdminSettings = () => {
           oldValue: pkg ? { name: pkg.name, duration_days: pkg.duration_days, price: pkg.price } : null,
           branchId: currentBranch?.id,
         });
-        fetchData();
+        // Instant local state update
+        setCustomPackages(prev => prev.filter(p => p.id !== id));
         toast.success("Package deleted");
+        backgroundInvalidate();
       },
     });
   };
