@@ -275,7 +275,7 @@ const AdminLedger = () => {
       }
     }
 
-    const { error } = await supabase.from("ledger_entries").insert({
+    const { data: inserted, error } = await supabase.from("ledger_entries").insert({
       entry_type: "expense",
       category: expenseCategory,
       description: expenseDescription,
@@ -286,7 +286,7 @@ const AdminLedger = () => {
       created_by: session?.session?.user?.id,
       branch_id: currentBranch?.id,
       trainer_id: trainerId || null,
-    });
+    }).select().single();
 
     setIsSaving(false);
 
