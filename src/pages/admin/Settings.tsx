@@ -314,6 +314,7 @@ const AdminSettings = () => {
         branchId: currentBranch?.id,
       });
       toast.success("Settings saved successfully");
+      fetchData();
     }
   };
 
