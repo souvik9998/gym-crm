@@ -540,8 +540,10 @@ const AdminSettings = () => {
           entityName: `${months} Month Package`,
           branchId: currentBranch?.id,
         });
-        fetchData();
+        // Instant local state update
+        setMonthlyPackages(prev => prev.filter(p => p.id !== id));
         toast.success("Package deleted");
+        backgroundInvalidate();
       },
     });
   };
