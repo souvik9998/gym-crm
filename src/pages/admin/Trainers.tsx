@@ -37,6 +37,20 @@ const TrainersPage = () => {
   const { currentBranch } = useBranch();
   const { invalidateSettings } = useInvalidateQueries();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isAddingTrainer, setIsAddingTrainer] = useState(false);
+  const [savingTrainerId, setSavingTrainerId] = useState<string | null>(null);
+  const [recentlyAddedIds, setRecentlyAddedIds] = useState<Set<string>>(new Set());
+
+  const markRecentlyAdded = useCallback((id: string) => {
+    setRecentlyAddedIds(prev => new Set(prev).add(id));
+    setTimeout(() => {
+      setRecentlyAddedIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 1500);
+  }, []);
 
   // Trainers
   const [trainers, setTrainers] = useState<Trainer[]>([]);
