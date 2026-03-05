@@ -110,6 +110,7 @@ const AdminLedger = () => {
   const isMobile = useIsMobile();
   const { isStaffLoggedIn, staffUser } = useStaffAuth();
   const { invalidatePayments } = useInvalidateQueries();
+  const queryClient = useQueryClient();
   // Date range state
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("this_month");
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
