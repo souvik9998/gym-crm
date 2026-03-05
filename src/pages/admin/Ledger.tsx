@@ -548,6 +548,7 @@ const AdminLedger = () => {
           }
           toast.success("Entry deleted");
           fetchEntries();
+          invalidatePayments();
         }
       },
     });

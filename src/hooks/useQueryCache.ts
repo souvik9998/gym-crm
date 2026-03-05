@@ -71,8 +71,8 @@ export function useInvalidateQueries() {
     queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.DAILY_PASS_USERS] });
   }, [invalidate, queryClient]);
 
-  const invalidateSettings = useCallback(() => {
-    invalidate([
+  const invalidateSettings = useCallback(async () => {
+    await invalidate([
       CACHE_KEYS.GYM_SETTINGS,
       CACHE_KEYS.PACKAGES,
       CACHE_KEYS.MONTHLY_PACKAGES,
@@ -80,7 +80,7 @@ export function useInvalidateQueries() {
       CACHE_KEYS.TRAINERS,
     ]);
     // Also invalidate the aggregated settings page data query
-    queryClient.invalidateQueries({ queryKey: ["settings-page-data"] });
+    await queryClient.invalidateQueries({ queryKey: ["settings-page-data"] });
   }, [invalidate, queryClient]);
 
   const invalidateStaff = useCallback(() => {
