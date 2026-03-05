@@ -203,6 +203,7 @@ const Renew = () => {
           branchId={member.branch_id || undefined}
         />
       </main>
+      <PoweredByBadge />
     </div>
   );
 };

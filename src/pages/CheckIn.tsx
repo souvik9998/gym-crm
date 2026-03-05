@@ -300,6 +300,7 @@ const CheckIn = () => {
           </Card>
         )}
       </div>
+      <PoweredByBadge />
     </div>
   );
 };

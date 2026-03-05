@@ -202,6 +202,7 @@ const Register = () => {
           />
         )}
       </main>
+      <PoweredByBadge />
     </div>
   );
 };

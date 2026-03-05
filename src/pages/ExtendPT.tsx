@@ -515,6 +515,7 @@ const ExtendPT = () => {
           </CardContent>
         </Card>
       </main>
+      <PoweredByBadge />
     </div>
   );
 };

@@ -146,6 +146,7 @@ const Success = () => {
           </p>
         </CardContent>
       </Card>
+      <PoweredByBadge />
     </div>
   );
 };
