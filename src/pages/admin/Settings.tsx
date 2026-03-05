@@ -629,9 +629,10 @@ const AdminSettings = () => {
       if (error) {
         toast.error("Error", { description: error });
       } else {
-        // Instant local state update with temp ID
-        const tempPkg: CustomPackage = { id: crypto.randomUUID(), name: newPackage.name, duration_days: durationDays, price: Number(newPackage.price), is_active: true };
+        const tempId = crypto.randomUUID();
+        const tempPkg: CustomPackage = { id: tempId, name: newPackage.name, duration_days: durationDays, price: Number(newPackage.price), is_active: true };
         setCustomPackages(prev => [...prev, tempPkg]);
+        markRecentlyAdded(tempId);
         toast.success("Package added");
         setNewPackage({ name: "", duration_days: "", price: "" });
         backgroundInvalidate();
