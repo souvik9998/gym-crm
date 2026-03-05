@@ -53,22 +53,24 @@ export function useInvalidateQueries() {
     [queryClient, branchId]
   );
 
-  const invalidateMembers = useCallback(() => {
-    invalidate([CACHE_KEYS.MEMBERS, CACHE_KEYS.DASHBOARD_STATS, CACHE_KEYS.SUBSCRIPTIONS]);
+  const invalidateMembers = useCallback(async () => {
+    await invalidate([CACHE_KEYS.MEMBERS, CACHE_KEYS.DASHBOARD_STATS, CACHE_KEYS.SUBSCRIPTIONS]);
     // Broadly invalidate all member queries (including infinite scroll variants)
-    queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.MEMBERS] });
+    await queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.MEMBERS] });
   }, [invalidate, queryClient]);
 
-  const invalidatePayments = useCallback(() => {
-    invalidate([CACHE_KEYS.PAYMENTS, CACHE_KEYS.DASHBOARD_STATS, CACHE_KEYS.LEDGER]);
+  const invalidatePayments = useCallback(async () => {
+    await invalidate([CACHE_KEYS.PAYMENTS, CACHE_KEYS.DASHBOARD_STATS, CACHE_KEYS.LEDGER]);
     // Broadly invalidate all payment queries (including infinite scroll variants)
-    queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.PAYMENTS] });
+    await queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.PAYMENTS] });
+    // Also invalidate ledger queries used on the Ledger page
+    await queryClient.invalidateQueries({ queryKey: ["ledger-entries"] });
   }, [invalidate, queryClient]);
 
-  const invalidateDailyPass = useCallback(() => {
-    invalidate([CACHE_KEYS.DAILY_PASS_USERS, CACHE_KEYS.DASHBOARD_STATS]);
+  const invalidateDailyPass = useCallback(async () => {
+    await invalidate([CACHE_KEYS.DAILY_PASS_USERS, CACHE_KEYS.DASHBOARD_STATS]);
     // Broadly invalidate all daily pass queries (including infinite scroll variants)
-    queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.DAILY_PASS_USERS] });
+    await queryClient.invalidateQueries({ queryKey: [CACHE_KEYS.DAILY_PASS_USERS] });
   }, [invalidate, queryClient]);
 
   const invalidateSettings = useCallback(async () => {
