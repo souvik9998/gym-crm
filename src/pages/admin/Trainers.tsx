@@ -267,6 +267,8 @@ const TrainersPage = () => {
 
   const handleToggleTrainer = async (id: string, isActive: boolean) => {
     const trainer = trainers.find(t => t.id === id);
+    // Instant local state update
+    setTrainers(prev => prev.map(t => t.id === id ? { ...t, is_active: isActive } : t));
     await supabase.from("personal_trainers").update({ is_active: isActive }).eq("id", id);
     await logAdminActivity({
       category: "trainers",
@@ -279,7 +281,6 @@ const TrainersPage = () => {
       newValue: { is_active: isActive },
       branchId: currentBranch?.id,
     });
-    fetchTrainers();
     invalidateSettings();
   };
 
