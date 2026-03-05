@@ -242,6 +242,7 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
     } else {
       navigate(href);
     }
+    onNavigate?.();
   };
 
   const renderNavItem = (item: NavItem, isBottom = false) => {
