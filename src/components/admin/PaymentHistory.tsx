@@ -580,6 +580,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
           </Table>
         </div>
       )}
+      <WhatsAppSendingOverlay {...waOverlay.overlayProps} />
     </div>
   );
 };

@@ -1336,6 +1336,8 @@ export const MembersTable = ({
         memberId={viewingMemberId}
         memberName={viewingMemberName}
       />
+
+      <WhatsAppSendingOverlay {...waOverlay.overlayProps} />
     </div>
   );
 };

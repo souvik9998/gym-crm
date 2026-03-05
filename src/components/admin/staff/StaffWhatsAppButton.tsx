@@ -83,17 +83,20 @@ export const StaffWhatsAppButton = ({
   const canSend = !!(password || staff.auth_user_id);
 
   return (
-    <Button
-      size={size}
-      variant={variant}
-      onClick={handleSendCredentials}
-      disabled={isSending || !canSend}
-      title={canSend ? "Send credentials via WhatsApp" : "Set password first to send credentials"}
-      className="gap-1"
-    >
-      <ChatBubbleLeftRightIcon className="w-4 h-4" />
-      {showLabel && (isSending ? "Sending..." : "WhatsApp")}
-    </Button>
+    <>
+      <Button
+        size={size}
+        variant={variant}
+        onClick={handleSendCredentials}
+        disabled={isSending || !canSend || waOverlay.isBusy}
+        title={canSend ? "Send credentials via WhatsApp" : "Set password first to send credentials"}
+        className="gap-1"
+      >
+        <ChatBubbleLeftRightIcon className="w-4 h-4" />
+        {showLabel && (isSending ? "Sending..." : "WhatsApp")}
+      </Button>
+      <WhatsAppSendingOverlay {...waOverlay.overlayProps} />
+    </>
   );
 };
 
