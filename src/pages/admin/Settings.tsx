@@ -521,8 +521,10 @@ const AdminSettings = () => {
           if (error) {
             toast.error("Error", { description: error });
           } else {
-            fetchData();
+            // Instant local state update
+            setMonthlyPackages(prev => prev.filter(p => p.id !== id));
             toast.success("Package deleted");
+            backgroundInvalidate();
           }
           return;
         }
