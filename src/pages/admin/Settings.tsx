@@ -1061,9 +1061,9 @@ const AdminSettings = () => {
                     />
                   </div>
                 </div>
-                <Button onClick={handleAddPackage} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
-                  <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                  Add Daily Pass
+                <Button onClick={handleAddPackage} disabled={isAddingCustom} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
+                  {isAddingCustom ? <ButtonSpinner /> : <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
+                  {isAddingCustom ? "Adding..." : "Add Daily Pass"}
                 </Button>
 
                 {customPackages.length > 0 && (
