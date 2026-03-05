@@ -432,6 +432,15 @@ const AdminSettings = () => {
   };
 
   const handleSaveMonthlyPackage = async (id: string) => {
+    setSavingMonthlyId(id);
+    try {
+    await _handleSaveMonthlyPackage(id);
+    } finally {
+      setSavingMonthlyId(null);
+    }
+  };
+
+  const _handleSaveMonthlyPackage = async (id: string) => {
     const pkg = monthlyPackages.find(p => p.id === id);
     const oldValue = pkg ? { price: pkg.price, joining_fee: pkg.joining_fee } : null;
     
