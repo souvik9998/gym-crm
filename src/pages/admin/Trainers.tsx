@@ -308,7 +308,8 @@ const TrainersPage = () => {
           } : null,
           branchId: currentBranch?.id,
         });
-        fetchTrainers();
+        // Instant local state update
+        setTrainers(prev => prev.filter(t => t.id !== id));
         invalidateSettings();
         toast.success("Trainer deleted");
       },
