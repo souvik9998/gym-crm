@@ -123,14 +123,8 @@ const BranchAnalytics = () => {
   const branchMetrics = analyticsData?.branchMetrics || [];
   const insights = analyticsData?.insights || [];
   const trainerMetrics = analyticsData?.trainerMetrics || [];
+  const timeSeriesData = analyticsData?.timeSeries || [];
   const isLoadingTrainers = isLoading;
-
-  // Time series still fetched client-side (needs per-payment granularity)
-  const { data: timeSeriesData = [] } = useBranchTimeSeriesQuery(
-    debouncedDateFrom,
-    debouncedDateTo,
-    !!(allBranches && allBranches.length > 0)
-  );
 
   // Memoize expensive calculations
   const bestPerformer = useMemo(() => {
