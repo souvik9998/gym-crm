@@ -70,8 +70,38 @@ export const BranchManagement = () => {
 
   const resetForm = () => {
     setFormData({ name: "", address: "", phone: "", email: "" });
+    setFieldErrors({});
     setLogoFile(null);
     setLogoPreview(null);
+  };
+
+  const validateAllFields = (): boolean => {
+    const errors: Record<string, string | undefined> = {};
+    const nameResult = nameSchema.safeParse(formData.name);
+    if (!nameResult.success) errors.name = nameResult.error.errors[0]?.message;
+
+    if (!editingBranch) {
+      if (!formData.address.trim() || formData.address.trim().length < 3) {
+        errors.address = "Address is required (min 3 characters)";
+      }
+    }
+
+    if (!editingBranch || formData.phone.trim()) {
+      const phoneResult = phoneSchema.safeParse(formData.phone);
+      if (!editingBranch && !formData.phone.trim()) {
+        errors.phone = "Phone number is required";
+      } else if (formData.phone.trim() && !phoneResult.success) {
+        errors.phone = phoneResult.error.errors[0]?.message;
+      }
+    }
+
+    if (formData.email.trim()) {
+      const emailResult = optionalEmailSchema.safeParse(formData.email);
+      if (!emailResult.success) errors.email = emailResult.error.errors[0]?.message;
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleOpenAdd = async () => {
