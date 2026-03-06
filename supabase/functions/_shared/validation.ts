@@ -211,9 +211,13 @@ export const EmailSchema = z
 
 export const NameSchema = z
   .string()
-  .min(2, "Name must be at least 2 characters")
-  .max(100, "Name must be less than 100 characters")
-  .regex(/^[a-zA-Z\s.'\-]+$/, "Name contains invalid characters");
+  .transform(sanitizeText)
+  .pipe(
+    z.string()
+      .min(2, "Name must be at least 2 characters")
+      .max(100, "Name must be less than 100 characters")
+      .regex(/^[a-zA-Z\s.'\-]+$/, "Name contains invalid characters")
+  );
 
 export const AmountSchema = z
   .number()
