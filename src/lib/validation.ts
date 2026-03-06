@@ -6,7 +6,7 @@ import { z } from "zod";
 export function sanitize(value: string): string {
   return value
     .replace(/<[^>]*>/g, "")        // Remove HTML tags
-    .replace(/&lt;|&gt;|&amp;/g, "") // Remove encoded entities
+    .replace(/&lt;|&gt;|&amp;|&quot;|&#x27;/g, "") // Remove encoded entities
     .trim();
 }
 
@@ -14,6 +14,35 @@ export function sanitize(value: string): string {
 export function digitsOnly(value: string): string {
   return value.replace(/\D/g, "");
 }
+
+// ─── Injection Detection ────────────────────────────────────────────────
+
+/** SQL injection patterns */
+const SQL_INJECTION_PATTERNS = [
+  /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|EXEC|EXECUTE|UNION|INTO)\b\s)/i,
+  /(--|\/\*|\*\/|;--)/,
+  /(\bOR\b\s+\d+\s*=\s*\d+)/i,
+  /(\bAND\b\s+\d+\s*=\s*\d+)/i,
+];
+
+/** XSS / Script injection patterns */
+const XSS_PATTERNS = [
+  /<script[\s>]/i,
+  /javascript\s*:/i,
+  /on(error|load|click|mouseover|focus|blur)\s*=/i,
+  /<\s*(iframe|object|embed|form|svg)/i,
+];
+
+/** Returns true if the value contains suspicious injection patterns */
+export function containsInjection(value: string): boolean {
+  if (typeof value !== "string") return false;
+  for (const p of SQL_INJECTION_PATTERNS) { if (p.test(value)) return true; }
+  for (const p of XSS_PATTERNS) { if (p.test(value)) return true; }
+  return false;
+}
+
+/** Zod refinement that rejects injection patterns */
+const noInjection = (v: string) => !containsInjection(v);
 
 // ─── Zod schemas for reusable field validation ──────────────────────────
 
