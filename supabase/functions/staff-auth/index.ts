@@ -15,6 +15,7 @@
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { enforceRateLimit, getClientIP } from "../_shared/rate-limit.ts";
 import {
   LoginSchema,
   SetPasswordSchema,
