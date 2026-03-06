@@ -21,6 +21,8 @@ import {
   RevokeSessionsSchema,
   validateInput,
   validationErrorResponse,
+  parseAndValidateBody,
+  handleSecurityError,
 } from "../_shared/validation.ts";
 
 const corsHeaders = {
