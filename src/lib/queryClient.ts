@@ -1,12 +1,8 @@
 import { QueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 /**
  * Stale times for different data types (in milliseconds)
- * 
- * STATIC: Data that rarely changes (branches, gym plans)
- * SEMI_STATIC: Data that changes occasionally (packages, trainers list)
- * DYNAMIC: Data that changes with user actions (members list, subscriptions)
- * REAL_TIME: Data that must always be fresh (dashboard stats, live payments)
  */
 export const STALE_TIMES = {
   STATIC: 1000 * 60 * 60,       // 1 hour - branches
@@ -18,25 +14,49 @@ export const STALE_TIMES = {
 // Cache time (gcTime) - how long unused data stays in memory
 export const GC_TIME = 1000 * 60 * 30; // 30 minutes
 
+/**
+ * Handle rate limit errors globally.
+ * Returns true if the error was a rate limit error (handled).
+ */
+export function handleRateLimitError(error: unknown): boolean {
+  if (error instanceof Error && error.message.startsWith("RATE_LIMITED:")) {
+    const retryAfter = parseInt(error.message.split(":")[1]) || 30;
+    toast.error("Too many requests", {
+      description: `Please wait ${retryAfter} seconds and try again.`,
+      duration: 5000,
+    });
+    return true;
+  }
+  return false;
+}
+
 // Create QueryClient with optimized defaults
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Default to DYNAMIC stale time (components override per data type)
       staleTime: STALE_TIMES.DYNAMIC,
-      // Keep unused data in memory for 30 minutes
       gcTime: GC_TIME,
-      // Refetch on window focus - ensures fresh data when user returns to tab
       refetchOnWindowFocus: true,
-      // Refetch on reconnect - ensures fresh data after network recovery
       refetchOnReconnect: true,
-      // Retry failed requests once
-      retry: 1,
-      // Retry delay with exponential backoff
+      retry: (failureCount, error) => {
+        // Don't retry rate-limited requests
+        if (error instanceof Error && error.message.startsWith("RATE_LIMITED:")) {
+          return false;
+        }
+        return failureCount < 1;
+      },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     },
     mutations: {
-      retry: 1,
+      retry: (failureCount, error) => {
+        if (error instanceof Error && error.message.startsWith("RATE_LIMITED:")) {
+          return false;
+        }
+        return failureCount < 1;
+      },
+      onError: (error) => {
+        handleRateLimitError(error);
+      },
     },
   },
 });
