@@ -1,93 +1,84 @@
 
 
-# WhatsApp Auto-Send Preferences per Message Type
+# Rate Limiting Plan for Gym SaaS Application
 
-## Overview
-Add a new "Auto-Send Preferences" section to the WhatsApp tab in Settings. This gives the gym admin toggle controls for each WhatsApp message type -- choosing whether messages are sent automatically after the corresponding action, or only manually. Promotional messages are always manual-only (no toggle).
+## Context
+The app serves ~100 gyms with ~200 members each (~20,000 total users). All backend logic flows through 11 Edge Functions. Rate limiting must protect against brute-force attacks, API abuse, and denial-of-service without impacting legitimate usage.
 
-## Current State
-- WhatsApp messages are triggered automatically in several flows: Registration (`Register.tsx`), Renewal (`Renew.tsx`), PT Extension (`ExtendPT.tsx`), Admin Add Member (`AddMemberDialog.tsx`), Admin Add Payment (`AddPaymentDialog.tsx`)
-- The daily cron job (`daily-whatsapp-job`) auto-sends expiring-in-2-days and expiring-today notifications
-- There is no per-message-type auto/manual preference -- all are auto-sent when WhatsApp is enabled
-- Templates exist for: Promotional, Expiry Reminder, Expired Reminder (in WhatsAppTemplates component)
+## Architecture
 
-## Message Types and Auto-Send Toggles
-
-| Message Type | Default | Notes |
-|---|---|---|
-| New Member Registration | ON | Sent after a new member registers |
-| Member Renewal | ON | Sent after membership renewal |
-| Daily Pass | ON | Sent after daily pass purchase |
-| PT Extension | ON | Sent after personal training extension |
-| Expiring Soon (2 days) | ON | Daily cron job |
-| Expiring Today | ON | Daily cron job |
-| Expired Reminder | OFF | Not currently auto-sent, but available for manual |
-| Payment Receipt | OFF | Not currently auto-sent |
-| Admin Add Member | ON | When admin adds a member manually |
-| Promotional | N/A | Always manual only, no toggle shown |
-
-## Database Changes
-
-### Add `whatsapp_auto_send` JSONB column to `gym_settings`
-A new column storing per-type preferences:
+Rate limiting will be implemented as a **shared middleware layer** in the Edge Functions (`_shared/rate-limit.ts`), using an **in-memory Map** per function instance with automatic cleanup. This is the most practical approach for Deno Edge Functions — no external dependencies, no database overhead.
 
 ```text
-{
-  "new_registration": true,
-  "renewal": true,
-  "daily_pass": true,
-  "pt_extension": true,
-  "expiring_2days": true,
-  "expiring_today": true,
-  "expired_reminder": false,
-  "payment_details": false,
-  "admin_add_member": true
-}
+Client Request
+     │
+     ▼
+┌─────────────┐
+│ CORS check  │
+└──────┬──────┘
+       ▼
+┌──────────────────┐
+│  Rate Limiter    │  ← IP + action key
+│  (in-memory Map) │  ← sliding window
+└──────┬───────────┘
+       │ pass / reject (429)
+       ▼
+┌──────────────┐
+│ Auth + Logic │
+└──────────────┘
 ```
 
-Default: all true except `expired_reminder` and `payment_details`.
+## Rate Limit Tiers
 
-## Frontend Changes
+| Endpoint Category | Window | Max Requests | Key |
+|---|---|---|---|
+| **Public** (public-data, check-in) | 1 min | 30 | IP |
+| **Auth** (staff-auth login) | 5 min | 5 | IP + phone |
+| **Auth** (set-password) | 5 min | 3 | IP |
+| **Protected** (protected-data, staff-ops) | 1 min | 60 | IP + userId |
+| **Webhooks** (razorpay verify) | 1 min | 10 | IP |
+| **WhatsApp** (send-whatsapp) | 1 min | 20 | IP + userId |
+| **Tenant ops** (create tenant/branch) | 5 min | 5 | IP + userId |
+| **Invoice generation** | 1 min | 10 | IP + userId |
 
-### 1. New component: `WhatsAppAutoSendSettings.tsx`
-A card with toggle switches for each message type listed above. Each toggle:
-- Shows the message type name and a short description
-- Saves immediately to `gym_settings.whatsapp_auto_send` via database update
-- Promotional is shown as a disabled row with "Manual Only" badge (no toggle)
+## Implementation Details
 
-### 2. Integrate into Settings WhatsApp tab
-Place the new `WhatsAppAutoSendSettings` component between the WhatsApp enable/disable card and the `WhatsAppTemplates` component in `Settings.tsx`.
+### 1. Create `supabase/functions/_shared/rate-limit.ts`
+- **Sliding window counter** using an in-memory `Map<string, { count, windowStart }>`
+- `checkRateLimit(key: string, maxRequests: number, windowSeconds: number)` returns `{ allowed: boolean, remaining: number, retryAfter?: number }`
+- Auto-cleanup of expired entries every 60 seconds to prevent memory leaks
+- Returns standard `429 Too Many Requests` response with `Retry-After` header
 
-### 3. Update auto-send call sites
-In each file that calls `send-whatsapp`, check the preference before sending:
+### 2. Update `supabase/functions/_shared/auth.ts`
+- Add a `rateLimitResponse()` helper that returns a formatted 429 response with CORS headers
 
-- `Register.tsx` -- check `new_registration` (or `daily_pass`) preference before calling send-whatsapp
-- `Renew.tsx` -- check `renewal` preference
-- `ExtendPT.tsx` -- check `pt_extension` preference
-- `AddMemberDialog.tsx` -- check `admin_add_member` preference
-- `AddPaymentDialog.tsx` -- check `payment_details` preference (if applicable)
+### 3. Integrate into each Edge Function
+Add a 2-line rate limit check at the top of each function handler (after CORS, before any logic):
 
-Each call site will fetch the `whatsapp_auto_send` from `gym_settings` for the branch, and skip the WhatsApp call if the relevant type is set to false.
+- **public-data/index.ts** — limit by IP, 30/min
+- **check-in/index.ts** — limit by IP + action, 30/min for reads, 10/min for writes
+- **staff-auth/index.ts** — limit login attempts by IP+phone 5/5min, other actions 10/min
+- **protected-data/index.ts** — limit by IP, 60/min
+- **staff-operations/index.ts** — limit by IP, 60/min
+- **tenant-operations/index.ts** — limit by IP, 5/5min for create actions
+- **send-whatsapp/index.ts** — limit by IP, 20/min
+- **create-razorpay-order/index.ts** — limit by IP, 10/min
+- **verify-razorpay-payment/index.ts** — limit by IP, 10/min
+- **generate-invoice/index.ts** — limit by IP, 10/min
+- **daily-whatsapp-job/index.ts** — no limit (cron-triggered)
 
-### 4. Update `daily-whatsapp-job` edge function
-Before sending expiring-in-2-days and expiring-today messages, read the `whatsapp_auto_send` JSONB from `gym_settings` for each branch. Skip sending if the corresponding type is disabled.
+### 4. Client-side handling
+- Update `src/api/authenticatedFetch.ts` to detect 429 responses and show a user-friendly toast: "Too many requests. Please wait and try again."
 
-## Technical Details
+## Capacity Math
+- 100 gyms x 200 members = 20,000 users
+- Peak concurrent: ~2,000 users (10%)
+- At 60 req/min per user, system handles 120,000 req/min
+- Rate limits are per-IP so shared office IPs get a generous allowance
+- Login brute-force protection: 5 attempts per 5 min is strict enough to block attacks while allowing legitimate retries
 
-### Files to Create
-- `src/components/admin/WhatsAppAutoSendSettings.tsx` -- Toggle switches UI component
-
-### Files to Modify
-- Database migration -- Add `whatsapp_auto_send` JSONB column to `gym_settings`
-- `src/pages/admin/Settings.tsx` -- Insert the new component in WhatsApp tab
-- `src/pages/Register.tsx` -- Check auto-send preference before WhatsApp call
-- `src/pages/Renew.tsx` -- Check auto-send preference before WhatsApp call
-- `src/pages/ExtendPT.tsx` -- Check auto-send preference before WhatsApp call
-- `src/components/admin/AddMemberDialog.tsx` -- Check auto-send preference before WhatsApp call
-- `src/components/admin/AddPaymentDialog.tsx` -- Check auto-send preference before WhatsApp call
-- `supabase/functions/daily-whatsapp-job/index.ts` -- Check per-branch auto-send preferences
-- `src/integrations/supabase/types.ts` -- Will auto-update after migration
-
-### Helper function
-A shared utility `getWhatsAppAutoSendPreference(branchId, type)` that fetches `gym_settings.whatsapp_auto_send` for the branch and returns whether that type is enabled. This avoids duplicating the fetch logic in every call site.
+## Files to Create/Edit
+- **Create**: `supabase/functions/_shared/rate-limit.ts`
+- **Edit**: All 10 Edge Function `index.ts` files (add 2-3 lines each)
+- **Edit**: `src/api/authenticatedFetch.ts` (handle 429 on client)
 
