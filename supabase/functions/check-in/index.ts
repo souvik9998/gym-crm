@@ -1,5 +1,13 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders, errorResponse, successResponse, handleCorsRequest, createAuthClients, validateJWT, validateAuth } from "../_shared/auth.ts";
+import {
+  parseAndValidateBody,
+  handleSecurityError,
+  validateInput,
+  MemberCheckInSchema,
+  StaffDeviceCheckInSchema,
+  UUIDSchema,
+} from "../_shared/validation.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return handleCorsRequest();
