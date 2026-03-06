@@ -112,14 +112,12 @@ Deno.serve(async (req) => {
           );
         }
 
-        const { name, address, phone, email, isDefault } = body;
-
-        if (!name) {
-          return new Response(
-            JSON.stringify({ error: "Missing required field: name" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+        const branchValidation = validateInput(OwnerCreateBranchSchema, body);
+        if (!branchValidation.success) {
+          return validationErrorResponse(branchValidation.error!, corsHeaders, branchValidation.details);
         }
+
+        const { name, address, phone, email, isDefault } = branchValidation.data!;
 
         // Resolve tenant from membership (owner/admin)
         const { data: membership, error: membershipError } = await supabase
