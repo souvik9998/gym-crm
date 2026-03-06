@@ -412,6 +412,123 @@ export const SendWhatsAppSchema = z.object({
 });
 
 // ============================================================================
+// Tenant Operations Schemas
+// ============================================================================
+
+export const CreateTenantSchema = z.object({
+  name: z.string().transform(sanitizeText).pipe(z.string().min(2).max(100)),
+  slug: z.string().regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and hyphens").max(50),
+  email: EmailSchema,
+  phone: z.string().max(20).optional().nullable(),
+  ownerEmail: z.string().email("Invalid owner email").max(255),
+  ownerPassword: z.string().min(6).max(128),
+  limits: z.object({
+    maxBranches: z.number().int().min(1).max(100).optional(),
+    maxStaffPerBranch: z.number().int().min(1).max(100).optional(),
+    maxMembers: z.number().int().min(1).max(100000).optional(),
+    maxTrainers: z.number().int().min(1).max(500).optional(),
+    maxMonthlyWhatsAppMessages: z.number().int().min(0).max(100000).optional(),
+    features: z.record(z.boolean()).optional(),
+  }).optional(),
+});
+
+export const OwnerCreateBranchSchema = z.object({
+  name: z.string().transform(sanitizeText).pipe(z.string().min(2).max(100)),
+  address: z.string().transform(sanitizeText).pipe(z.string().max(500)).optional().nullable(),
+  phone: z.string().max(20).optional().nullable(),
+  email: EmailSchema,
+  isDefault: z.boolean().optional(),
+});
+
+export const UpdateTenantLimitsSchema = z.object({
+  tenantId: UUIDSchema,
+  maxBranches: z.number().int().min(1).max(100).optional(),
+  maxStaffPerBranch: z.number().int().min(1).max(100).optional(),
+  maxMembers: z.number().int().min(1).max(100000).optional(),
+  maxTrainers: z.number().int().min(1).max(500).optional(),
+  maxMonthlyWhatsAppMessages: z.number().int().min(0).max(100000).optional(),
+  features: z.record(z.boolean()).optional(),
+  planExpiryDate: DateSchema.optional().nullable(),
+  maxMonthlyCheckins: z.number().int().min(0).max(1000000).optional(),
+  maxStorageMb: z.number().int().min(0).max(100000).optional(),
+});
+
+export const SuspendTenantSchema = z.object({
+  tenantId: UUIDSchema,
+  suspend: z.boolean(),
+});
+
+// ============================================================================
+// Check-in Schemas
+// ============================================================================
+
+export const MemberCheckInSchema = z.object({
+  phone: CleanedPhoneSchema.optional(),
+  device_fingerprint: z.string().max(200).optional(),
+  branch_id: UUIDSchema.optional(),
+});
+
+export const StaffDeviceCheckInSchema = z.object({
+  device_fingerprint: z.string().min(1).max(200),
+  branch_id: UUIDSchema.optional(),
+});
+
+export const RegisterDeviceSchema = z.object({
+  memberId: UUIDSchema.optional(),
+  staffId: UUIDSchema.optional(),
+  branchId: UUIDSchema,
+  deviceFingerprint: z.string().min(1).max(200),
+  userType: z.enum(["member", "staff"]),
+});
+
+export const ResetDeviceSchema = z.object({
+  deviceId: UUIDSchema.optional(),
+  memberId: UUIDSchema.optional(),
+  staffId: UUIDSchema.optional(),
+  branchId: UUIDSchema,
+  userType: z.enum(["member", "staff"]).optional(),
+});
+
+// ============================================================================
+// Verify Razorpay Payment Schema
+// ============================================================================
+
+export const VerifyRazorpayPaymentSchema = z.object({
+  razorpay_order_id: z.string().min(1).max(100),
+  razorpay_payment_id: z.string().min(1).max(100),
+  razorpay_signature: z.string().min(1).max(200),
+  memberId: UUIDSchema.optional().nullable(),
+  memberName: z.string().transform(sanitizeText).pipe(z.string().min(2).max(100)),
+  memberPhone: z.string().regex(/^[6-9]\d{9}$/, "Invalid phone"),
+  amount: z.number().positive().max(1000000),
+  months: z.number().int().min(1).max(24).optional().nullable(),
+  customDays: z.number().int().min(1).max(365).optional().nullable(),
+  trainerId: UUIDSchema.optional().nullable(),
+  trainerFee: z.number().min(0).max(500000).optional().nullable(),
+  gymFee: z.number().min(0).max(1000000).optional().nullable(),
+  ptStartDate: DateSchema.optional().nullable(),
+  gymStartDate: DateSchema.optional().nullable(),
+  isNewMember: z.boolean().optional(),
+  isDailyPass: z.boolean().optional(),
+  memberDetails: z.object({
+    gender: z.enum(["male", "female", "other"]).optional().nullable(),
+    photo_id_type: z.string().max(50).optional().nullable(),
+    photo_id_number: z.string().max(50).optional().nullable(),
+    address: z.string().transform(sanitizeText).pipe(z.string().max(500)).optional().nullable(),
+    date_of_birth: DateSchema.optional().nullable(),
+    email: z.string().email().max(255).optional().nullable(),
+  }).optional().nullable(),
+  customPackage: z.object({
+    id: UUIDSchema,
+    name: z.string().max(100),
+    duration_days: z.number().int().min(1).max(365),
+    price: z.number().positive().max(1000000),
+  }).optional().nullable(),
+  joiningFee: z.number().min(0).max(100000).optional().nullable(),
+  branchId: UUIDSchema.optional().nullable(),
+});
+
+// ============================================================================
 // Validation Helper
 // ============================================================================
 
