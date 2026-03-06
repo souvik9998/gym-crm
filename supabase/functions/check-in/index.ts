@@ -135,8 +135,15 @@ async function handleCheckIn(req: Request, serviceClient: any, branchId: string 
 
 // ─── Staff device-only check-in (unauthenticated, for Safari session loss) ───
 async function handleStaffDeviceCheckIn(req: Request, serviceClient: any, branchId: string | null) {
-  const body = await req.text().then(t => t ? JSON.parse(t) : {}).catch(() => ({}));
-  const { device_fingerprint } = body;
+  let body: Record<string, unknown> = {};
+  try {
+    body = await parseAndValidateBody(req);
+  } catch (securityError) {
+    const secResponse = handleSecurityError(securityError, corsHeaders);
+    if (secResponse) return secResponse;
+    throw securityError;
+  }
+  const { device_fingerprint } = body as { device_fingerprint?: string };
   const effectiveBranchId = branchId || body.branch_id;
 
   if (!effectiveBranchId) return errorResponse("branch_id is required", 400);
