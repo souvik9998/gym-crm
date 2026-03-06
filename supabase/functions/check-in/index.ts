@@ -50,9 +50,16 @@ Deno.serve(async (req) => {
 // ─── Check-in for authenticated users (admin/staff with Supabase Auth) ───
 async function handleCheckIn(req: Request, serviceClient: any, branchId: string | null) {
   const authHeader = req.headers.get("authorization");
-  const body = await req.text().then(t => t ? JSON.parse(t) : {}).catch(() => ({}));
-  const deviceFingerprint = body.device_fingerprint || null;
-  const effectiveBranchId = branchId || body.branch_id;
+  let body: Record<string, unknown> = {};
+  try {
+    body = await parseAndValidateBody(req);
+  } catch (securityError) {
+    const secResponse = handleSecurityError(securityError, corsHeaders);
+    if (secResponse) return secResponse;
+    throw securityError;
+  }
+  const deviceFingerprint = (body.device_fingerprint as string) || null;
+  const effectiveBranchId = branchId || (body.branch_id as string);
 
   if (!effectiveBranchId) return errorResponse("branch_id is required", 400);
 
