@@ -56,6 +56,7 @@ export const nameSchema = z
       .min(2, "Name must be at least 2 characters")
       .max(100, "Name must be less than 100 characters")
       .regex(/^[a-zA-Z\s.']+$/, "Name can only contain letters, spaces, dots, and apostrophes")
+      .refine(noInjection, "Input contains invalid content")
   );
 
 /** Indian 10-digit mobile: starts with 6-9 */
