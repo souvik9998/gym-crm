@@ -1,4 +1,15 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  parseAndValidateBody,
+  handleSecurityError,
+  validateInput,
+  validationErrorResponse,
+  CreateTenantSchema,
+  OwnerCreateBranchSchema,
+  UpdateTenantLimitsSchema,
+  SuspendTenantSchema,
+  UUIDSchema,
+} from "../_shared/validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,9 +57,15 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Parse request body
-    const bodyText = await req.text();
-    const body = bodyText ? JSON.parse(bodyText) : {};
+    // Parse request body with size limit and injection scanning
+    let body: Record<string, unknown> = {};
+    try {
+      body = await parseAndValidateBody(req);
+    } catch (securityError) {
+      const secResponse = handleSecurityError(securityError, corsHeaders);
+      if (secResponse) return secResponse;
+      throw securityError;
+    }
 
     // Get auth token for user verification
     const authHeader = req.headers.get("Authorization");
