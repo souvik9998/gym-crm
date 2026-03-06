@@ -159,6 +159,21 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Parse and validate request body
+    let rawBody: Record<string, unknown>;
+    try {
+      rawBody = await parseAndValidateBody(req);
+    } catch (securityError) {
+      const secResponse = handleSecurityError(securityError, corsHeaders);
+      if (secResponse) return secResponse;
+      throw securityError;
+    }
+
+    const validation = validateInput(VerifyRazorpayPaymentSchema, rawBody);
+    if (!validation.success) {
+      return validationErrorResponse(validation.error!, corsHeaders, validation.details);
+    }
+
     const {
       razorpay_order_id,
       razorpay_payment_id,
@@ -173,55 +188,14 @@ Deno.serve(async (req) => {
       trainerFee,
       gymFee,
       ptStartDate,
-      gymStartDate, // For renewals: the day after existing membership ends
+      gymStartDate,
       isNewMember,
-      isDailyPass, // New flag to indicate daily pass purchase
-      memberDetails, // Contains gender, photo_id_type, photo_id_number, address
-      customPackage, // Contains id, name, duration_days, price
-      joiningFee, // Joining fee amount if applicable
-      branchId, // Branch ID for multi-branch support
-    } = await req.json();
-
-    // === SERVER-SIDE INPUT VALIDATION ===
-    // Validate member name
-    if (!memberName || typeof memberName !== 'string' || memberName.length < 2 || memberName.length > 100) {
-      throw new Error('Invalid member name: must be 2-100 characters');
-    }
-    if (!/^[a-zA-Z\s.'\-]+$/.test(memberName)) {
-      throw new Error('Invalid member name: only letters, spaces, dots, hyphens, and apostrophes allowed');
-    }
-
-    // Validate phone number (Indian format)
-    if (!memberPhone || !/^[6-9]\d{9}$/.test(memberPhone)) {
-      throw new Error('Invalid phone number: must be valid 10-digit Indian mobile number');
-    }
-
-    // Validate amount
-    if (typeof amount !== 'number' || amount <= 0 || amount > 1000000) {
-      throw new Error('Invalid amount: must be positive and ≤₹1,000,000');
-    }
-
-    // Validate months if provided
-    if (months !== undefined && months !== null) {
-      if (typeof months !== 'number' || months < 1 || months > 24) {
-        throw new Error('Invalid months: must be between 1 and 24');
-      }
-    }
-
-    // Validate customDays if provided
-    if (customDays !== undefined && customDays !== null) {
-      if (typeof customDays !== 'number' || customDays < 1 || customDays > 365) {
-        throw new Error('Invalid custom days: must be between 1 and 365');
-      }
-    }
-
-    // Validate trainer fee if provided
-    if (trainerFee !== undefined && trainerFee !== null) {
-      if (typeof trainerFee !== 'number' || trainerFee < 0 || trainerFee > 500000) {
-        throw new Error('Invalid trainer fee: must be ≥0 and ≤₹500,000');
-      }
-    }
-    // === END VALIDATION ===
+      isDailyPass,
+      memberDetails,
+      customPackage,
+      joiningFee,
+      branchId,
+    } = validation.data!;
 
     console.log("Verifying payment:", { razorpay_order_id, razorpay_payment_id, memberId, isNewMember, isDailyPass, trainerId, months, customDays, ptStartDate, gymStartDate, branchId });
 
