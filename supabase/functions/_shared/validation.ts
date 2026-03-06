@@ -230,14 +230,19 @@ export const DateSchema = z
 
 export const NotesSchema = z
   .string()
-  .max(1000, "Notes too long")
+  .transform(sanitizeText)
+  .pipe(z.string().max(1000, "Notes too long"))
   .optional()
   .nullable();
 
 export const DescriptionSchema = z
   .string()
-  .min(1, "Description required")
-  .max(500, "Description too long");
+  .transform(sanitizeText)
+  .pipe(
+    z.string()
+      .min(1, "Description required")
+      .max(500, "Description too long")
+  );
 
 export const PasswordSchema = z
   .string()
