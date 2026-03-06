@@ -21,6 +21,8 @@ import {
   RevokeSessionsSchema,
   validateInput,
   validationErrorResponse,
+  parseAndValidateBody,
+  handleSecurityError,
 } from "../_shared/validation.ts";
 
 const corsHeaders = {
@@ -66,23 +68,12 @@ Deno.serve(async (req) => {
     // WORKAROUND: req.json() silently returns null in some edge runtime versions.
     // Always read as text first, then JSON.parse for reliability.
     let body: Record<string, unknown> = {};
-    const contentType = req.headers.get("content-type") || "";
     try {
-      const rawText = await req.text();
-      console.log("staff-auth: raw body text length:", rawText?.length || 0);
-      if (rawText && rawText.trim()) {
-        const parsed = JSON.parse(rawText);
-        if (parsed && typeof parsed === "object") {
-          body = parsed as Record<string, unknown>;
-        }
-      }
-    } catch (e) {
-      console.warn("staff-auth: failed to parse request body", {
-        method: req.method,
-        contentType,
-        error: e instanceof Error ? e.message : String(e),
-      });
-      // continue with empty body
+      body = await parseAndValidateBody(req);
+    } catch (securityError) {
+      const secResponse = handleSecurityError(securityError, corsHeaders);
+      if (secResponse) return secResponse;
+      throw securityError;
     }
     console.log("staff-auth: parsed body keys:", Object.keys(body));
 

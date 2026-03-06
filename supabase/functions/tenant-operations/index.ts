@@ -1,4 +1,15 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  parseAndValidateBody,
+  handleSecurityError,
+  validateInput,
+  validationErrorResponse,
+  CreateTenantSchema,
+  OwnerCreateBranchSchema,
+  UpdateTenantLimitsSchema,
+  SuspendTenantSchema,
+  UUIDSchema,
+} from "../_shared/validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,9 +57,15 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Parse request body
-    const bodyText = await req.text();
-    const body = bodyText ? JSON.parse(bodyText) : {};
+    // Parse request body with size limit and injection scanning
+    let body: Record<string, unknown> = {};
+    try {
+      body = await parseAndValidateBody(req);
+    } catch (securityError) {
+      const secResponse = handleSecurityError(securityError, corsHeaders);
+      if (secResponse) return secResponse;
+      throw securityError;
+    }
 
     // Get auth token for user verification
     const authHeader = req.headers.get("Authorization");
@@ -95,14 +112,12 @@ Deno.serve(async (req) => {
           );
         }
 
-        const { name, address, phone, email, isDefault } = body;
-
-        if (!name) {
-          return new Response(
-            JSON.stringify({ error: "Missing required field: name" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+        const branchValidation = validateInput(OwnerCreateBranchSchema, body);
+        if (!branchValidation.success) {
+          return validationErrorResponse(branchValidation.error!, corsHeaders, branchValidation.details);
         }
+
+        const { name, address, phone, email, isDefault } = branchValidation.data!;
 
         // Resolve tenant from membership (owner/admin)
         const { data: membership, error: membershipError } = await supabase
@@ -206,25 +221,12 @@ Deno.serve(async (req) => {
           );
         }
 
-        const { name, slug, email, phone, ownerEmail, ownerPassword, limits } = body;
-
-        // Validate required fields
-        if (!name || !slug) {
-          return new Response(
-            JSON.stringify({ error: "Missing required fields: name, slug" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+        const tenantValidation = validateInput(CreateTenantSchema, body);
+        if (!tenantValidation.success) {
+          return validationErrorResponse(tenantValidation.error!, corsHeaders, tenantValidation.details);
         }
 
-        // Owner credentials required for new tenant
-        if (!ownerEmail || !ownerPassword) {
-          return new Response(
-            JSON.stringify({ error: "Owner email and password are required" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        // Validate slug format
+        const { name, slug, email, phone, ownerEmail, ownerPassword, limits } = tenantValidation.data!;
         if (!/^[a-z0-9-]+$/.test(slug)) {
           return new Response(
             JSON.stringify({ error: "Invalid slug format: only lowercase letters, numbers, and hyphens allowed" }),
