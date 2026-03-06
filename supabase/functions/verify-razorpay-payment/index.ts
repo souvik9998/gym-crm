@@ -1,5 +1,12 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getGymRazorpayCredentials } from "../_shared/encryption.ts";
+import {
+  parseAndValidateBody,
+  handleSecurityError,
+  validateInput,
+  validationErrorResponse,
+  VerifyRazorpayPaymentSchema,
+} from "../_shared/validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
