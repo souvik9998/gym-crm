@@ -221,25 +221,12 @@ Deno.serve(async (req) => {
           );
         }
 
-        const { name, slug, email, phone, ownerEmail, ownerPassword, limits } = body;
-
-        // Validate required fields
-        if (!name || !slug) {
-          return new Response(
-            JSON.stringify({ error: "Missing required fields: name, slug" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+        const tenantValidation = validateInput(CreateTenantSchema, body);
+        if (!tenantValidation.success) {
+          return validationErrorResponse(tenantValidation.error!, corsHeaders, tenantValidation.details);
         }
 
-        // Owner credentials required for new tenant
-        if (!ownerEmail || !ownerPassword) {
-          return new Response(
-            JSON.stringify({ error: "Owner email and password are required" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        // Validate slug format
+        const { name, slug, email, phone, ownerEmail, ownerPassword, limits } = tenantValidation.data!;
         if (!/^[a-z0-9-]+$/.test(slug)) {
           return new Response(
             JSON.stringify({ error: "Invalid slug format: only lowercase letters, numbers, and hyphens allowed" }),
