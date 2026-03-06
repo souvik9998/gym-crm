@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 import { SendWhatsAppSchema, validateInput } from "../_shared/validation.ts";
 
 const corsHeaders = {
@@ -10,6 +11,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Rate limit: 20 requests per minute per IP
+  const rateLimited = enforceRateLimit(req, "send-whatsapp", 20, 60, corsHeaders);
+  if (rateLimited) return rateLimited;
 
   try {
     const PERISKOPE_API_KEY = Deno.env.get("PERISKOPE_API_KEY");

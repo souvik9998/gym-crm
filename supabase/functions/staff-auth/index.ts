@@ -15,6 +15,7 @@
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { enforceRateLimit, getClientIP } from "../_shared/rate-limit.ts";
 import {
   LoginSchema,
   SetPasswordSchema,
@@ -45,6 +46,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  // Rate limit: 10 requests per minute per IP (tighter limits applied per-action below)
+  const rateLimited = enforceRateLimit(req, "staff-auth", 10, 60, corsHeaders);
+  if (rateLimited) return rateLimited;
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -99,7 +104,14 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case "login": {
-        
+        // Extra-tight rate limit for login: 5 attempts per 5 minutes per IP+phone
+        const { phone: loginPhone } = body as { phone?: string };
+        if (loginPhone) {
+          const ip = getClientIP(req);
+          const loginRl = enforceRateLimit(req, `login:${ip}:${loginPhone}`, 5, 300, corsHeaders);
+          if (loginRl) return loginRl;
+        }
+
         const validation = validateInput(LoginSchema, body);
         if (!validation.success) {
           return validationErrorResponse(validation.error!, corsHeaders, validation.details);

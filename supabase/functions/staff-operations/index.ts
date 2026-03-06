@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 import {
   UpdateGymSettingsSchema,
   ToggleWhatsAppSchema,
@@ -1027,6 +1028,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Rate limit: 60 requests per minute per IP
+  const rateLimited = enforceRateLimit(req, "staff-ops", 60, 60, corsHeaders);
+  if (rateLimited) return rateLimited;
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");

@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getGymRazorpayCredentials } from "../_shared/encryption.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Rate limit: 10 requests per minute per IP
+  const rateLimited = enforceRateLimit(req, "create-razorpay-order", 10, 60, corsHeaders);
+  if (rateLimited) return rateLimited;
 
   try {
     const {

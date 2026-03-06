@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders, errorResponse, successResponse, handleCorsRequest, createAuthClients, validateJWT, validateAuth } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 import {
   parseAndValidateBody,
   handleSecurityError,
@@ -11,6 +12,10 @@ import {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return handleCorsRequest();
+
+  // Rate limit: 30 requests per minute per IP
+  const rateLimited = enforceRateLimit(req, "check-in", 30, 60, corsHeaders);
+  if (rateLimited) return rateLimited;
 
   try {
     const url = new URL(req.url);

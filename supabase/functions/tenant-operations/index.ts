@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 import {
   parseAndValidateBody,
   handleSecurityError,
@@ -44,10 +45,14 @@ interface UsageUpdateRequest {
   count?: number;
 }
 
-Deno.serve(async (req) => {
+  Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Rate limit: 5 requests per 5 minutes per IP (tenant ops are high-cost)
+  const rateLimited = enforceRateLimit(req, "tenant-ops", 5, 300, corsHeaders);
+  if (rateLimited) return rateLimited;
 
   try {
     const url = new URL(req.url);

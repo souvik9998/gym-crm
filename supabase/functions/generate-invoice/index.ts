@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -216,6 +217,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Rate limit: 10 requests per minute per IP
+  const rateLimited = enforceRateLimit(req, "generate-invoice", 10, 60, corsHeaders);
+  if (rateLimited) return rateLimited;
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");

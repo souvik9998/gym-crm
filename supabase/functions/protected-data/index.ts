@@ -21,6 +21,7 @@
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -183,6 +184,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Rate limit: 60 requests per minute per IP
+  const rateLimited = enforceRateLimit(req, "protected-data", 60, 60, corsHeaders);
+  if (rateLimited) return rateLimited;
 
   if (req.method !== "GET") {
     return errorResponse("Method not allowed", 405);
