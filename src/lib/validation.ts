@@ -156,14 +156,19 @@ export const addressSchema = z
       .string()
       .min(3, "Address must be at least 3 characters")
       .max(500, "Address must be less than 500 characters")
+      .refine(noInjection, "Input contains invalid content")
   );
 
-/** Generic text: sanitized, max length */
+/** Generic text: sanitized, max length, injection-safe */
 export const safeTextSchema = (maxLength = 500) =>
   z
     .string()
     .transform(sanitize)
-    .pipe(z.string().max(maxLength, `Must be less than ${maxLength} characters`));
+    .pipe(
+      z.string()
+        .max(maxLength, `Must be less than ${maxLength} characters`)
+        .refine(noInjection, "Input contains invalid content")
+    );
 
 // ─── Photo ID validation (dynamic based on type) ───────────────────────
 
