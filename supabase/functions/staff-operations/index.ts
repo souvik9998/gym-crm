@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 import {
   UpdateGymSettingsSchema,
   ToggleWhatsAppSchema,

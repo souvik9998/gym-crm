@@ -13,6 +13,10 @@ import {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return handleCorsRequest();
 
+  // Rate limit: 30 requests per minute per IP
+  const rateLimited = enforceRateLimit(req, "check-in", 30, 60, corsHeaders);
+  if (rateLimited) return rateLimited;
+
   try {
     const url = new URL(req.url);
     const action = url.searchParams.get("action") || "check-in";

@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getGymRazorpayCredentials } from "../_shared/encryption.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 import {
   parseAndValidateBody,
   handleSecurityError,

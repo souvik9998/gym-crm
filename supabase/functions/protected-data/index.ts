@@ -185,6 +185,10 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Rate limit: 60 requests per minute per IP
+  const rateLimited = enforceRateLimit(req, "protected-data", 60, 60, corsHeaders);
+  if (rateLimited) return rateLimited;
+
   if (req.method !== "GET") {
     return errorResponse("Method not allowed", 405);
   }
