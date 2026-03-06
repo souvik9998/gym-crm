@@ -1029,6 +1029,10 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Rate limit: 60 requests per minute per IP
+  const rateLimited = enforceRateLimit(req, "staff-ops", 60, 60, corsHeaders);
+  if (rateLimited) return rateLimited;
+
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");

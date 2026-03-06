@@ -104,7 +104,14 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case "login": {
-        
+        // Extra-tight rate limit for login: 5 attempts per 5 minutes per IP+phone
+        const { phone: loginPhone } = body as { phone?: string };
+        if (loginPhone) {
+          const ip = getClientIP(req);
+          const loginRl = enforceRateLimit(req, `login:${ip}:${loginPhone}`, 5, 300, corsHeaders);
+          if (loginRl) return loginRl;
+        }
+
         const validation = validateInput(LoginSchema, body);
         if (!validation.success) {
           return validationErrorResponse(validation.error!, corsHeaders, validation.details);

@@ -64,10 +64,15 @@ export async function protectedFetch<T>(options: FetchOptions): Promise<T> {
   let response = await makeRequest(token);
 
   if (!response.ok) {
+    // Handle rate limiting (429)
+    if (response.status === 429) {
+      const retryAfter = response.headers.get("Retry-After") || "30";
+      throw new Error(`RATE_LIMITED:${retryAfter}`);
+    }
+
     const parsed = await response.json().catch(() => ({ error: "Request failed" }));
 
     // If the gateway reports an invalid/expired token, refresh and retry once.
-    // NOTE: Some backends return { code: 401, message: "Invalid JWT" }.
     const maybeInvalidJwt =
       response.status === 401 &&
       (parsed?.message === "Invalid JWT" || parsed?.error === "Invalid JWT" || parsed?.code === 401);
@@ -78,6 +83,10 @@ export async function protectedFetch<T>(options: FetchOptions): Promise<T> {
         token = refreshed.session.access_token;
         response = await makeRequest(token);
         if (response.ok) return response.json();
+        if (response.status === 429) {
+          const retryAfter = response.headers.get("Retry-After") || "30";
+          throw new Error(`RATE_LIMITED:${retryAfter}`);
+        }
       }
     }
 

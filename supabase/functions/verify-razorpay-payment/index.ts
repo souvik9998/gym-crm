@@ -159,6 +159,10 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Rate limit: 10 requests per minute per IP
+  const rateLimited = enforceRateLimit(req, "verify-razorpay", 10, 60, corsHeaders);
+  if (rateLimited) return rateLimited;
+
   try {
     // Parse and validate request body
     let rawBody: Record<string, unknown>;
