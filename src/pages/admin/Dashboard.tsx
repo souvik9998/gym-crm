@@ -506,10 +506,10 @@ const AdminDashboard = () => {
                 {(activeTab === "members" || activeTab === "daily_pass") && (
                   <div className="flex items-center gap-1.5 lg:hidden">
                     <div className="relative flex-1 group">
-                      <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 md:w-4 h-3.5 md:h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
+                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
                       <Input
                         placeholder="Search by name or phone..."
-                        className="pl-8 md:pl-9 h-8 md:h-9 text-xs md:text-sm bg-muted/30 border-transparent hover:bg-muted/50 hover:border-border focus:bg-background focus:border-border transition-all duration-200"
+                        className="pl-9 h-9 md:h-10 text-sm bg-muted/30 border-transparent rounded-xl hover:bg-muted/50 hover:border-border focus:bg-background focus:border-border focus:ring-2 focus:ring-ring/20 transition-all duration-200"
                         value={activeTab === "members" ? searchInput : dailyPassSearchInput}
                         onChange={(e) => activeTab === "members" ? setSearchInput(e.target.value) : setDailyPassSearchInput(e.target.value)}
                       />
