@@ -730,9 +730,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     </div>
                   </div>
 
-                  {/* PT Toggle */}
-                  <div className="space-y-3 pt-1 border-t border-border/60">
-                    <div className="flex items-center justify-between pt-2">
+                  {/* PT Section */}
+                  <div className="rounded-xl border border-border/50 bg-muted/20 p-3.5 space-y-3">
+                    <div className="flex items-center justify-between">
                       <span className="text-sm font-medium flex items-center gap-2">
                         <Dumbbell className="w-4 h-4 text-muted-foreground" />
                         Personal Training
@@ -789,24 +789,26 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   </div>
 
                   {/* Price Summary */}
-                  <div className="bg-muted/50 rounded-xl p-4 space-y-2 border border-border/40">
+                  <div className="bg-muted/40 rounded-xl p-4 space-y-2.5 border border-border/40">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Membership ({selectedPackage?.months || 0}mo)</span>
-                      <span className="font-medium">₹{monthlyFee.toLocaleString("en-IN")}</span>
+                      <span className="font-semibold tabular-nums">₹{monthlyFee.toLocaleString("en-IN")}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Joining Fee</span>
-                      <span className="font-medium">₹{joiningFee.toLocaleString("en-IN")}</span>
-                    </div>
+                    {joiningFee > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Joining Fee</span>
+                        <span className="font-semibold tabular-nums">₹{joiningFee.toLocaleString("en-IN")}</span>
+                      </div>
+                    )}
                     {wantsPT && (
                       <div className="flex justify-between text-sm animate-fade-in">
                         <span className="text-muted-foreground">PT ({ptMonths}mo)</span>
-                        <span className="font-medium">₹{ptFee.toLocaleString("en-IN")}</span>
+                        <span className="font-semibold tabular-nums">₹{ptFee.toLocaleString("en-IN")}</span>
                       </div>
                     )}
-                    <div className="flex justify-between font-bold pt-2 border-t border-border/60 text-base">
+                    <div className="flex justify-between font-bold pt-2.5 border-t border-border/60 text-base">
                       <span>Total (Cash)</span>
-                      <span className="text-foreground">₹{totalAmount.toLocaleString("en-IN")}</span>
+                      <span className="text-foreground tabular-nums">₹{totalAmount.toLocaleString("en-IN")}</span>
                     </div>
                   </div>
                 </div>
