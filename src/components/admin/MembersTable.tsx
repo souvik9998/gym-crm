@@ -668,10 +668,9 @@ export const MembersTable = ({
 
   const getStatusCircle = (subscription?: { status: string; end_date: string }) => {
     if (!subscription) {
-      return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></div>;
+      return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500 transition-colors duration-300"></div>;
     }
 
-    // Calculate actual status based on end_date
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const endDate = new Date(subscription.end_date);
@@ -680,27 +679,25 @@ export const MembersTable = ({
     const isActuallyExpired = diffDays < 0;
     const isActuallyExpiringSoon = !isActuallyExpired && diffDays >= 0 && diffDays <= 7;
 
-    // If status is inactive, show inactive
     if (subscription.status === "inactive") {
-      return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></div>;
+      return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500 transition-colors duration-300"></div>;
     }
 
-    // Use actual calculated status for display
     if (isActuallyExpired) {
-      return <div className="w-2.5 h-2.5 rounded-full bg-red-500 dark:bg-red-400"></div>;
+      return <div className="w-2.5 h-2.5 rounded-full bg-red-500 dark:bg-red-400 shadow-[0_0_6px_rgba(239,68,68,0.4)] transition-all duration-300"></div>;
     }
     
     if (isActuallyExpiringSoon) {
-      return <div className="w-2.5 h-2.5 rounded-full bg-amber-500 dark:bg-amber-400"></div>;
+      return <div className="w-2.5 h-2.5 rounded-full bg-amber-500 dark:bg-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.4)] animate-pulse transition-all duration-300"></div>;
     }
 
     switch (subscription.status) {
       case "active":
-        return <div className="w-2.5 h-2.5 rounded-full bg-green-500 dark:bg-green-400"></div>;
+        return <div className="w-2.5 h-2.5 rounded-full bg-green-500 dark:bg-green-400 shadow-[0_0_6px_rgba(34,197,94,0.4)] transition-all duration-300"></div>;
       case "paused":
-        return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></div>;
+        return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500 transition-colors duration-300"></div>;
       default:
-        return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></div>;
+        return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500 transition-colors duration-300"></div>;
     }
   };
 
@@ -873,13 +870,12 @@ export const MembersTable = ({
         </Button>
       </div>
 
-      {/* Mobile Table Layout - matches desktop table style */}
       {isCompact ? (
-        <div className="rounded-lg border overflow-hidden bg-card">
+        <div className="rounded-xl border overflow-hidden bg-card shadow-sm">
           {/* Table Header */}
-          <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/20">
             <button 
-              className="flex items-center gap-1 text-xs font-medium text-foreground"
+              className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
               onClick={() => handleSort("name")}
             >
               Member
@@ -889,7 +885,7 @@ export const MembersTable = ({
             </button>
             <div className="flex items-center gap-2">
               <button
-                className="p-1.5"
+                className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"
                 onClick={() => handleSort("expiry")}
               >
                 {sortField === "expiry" && sortOrder === "desc" ? (
@@ -908,42 +904,44 @@ export const MembersTable = ({
           </div>
           
           {/* Table Rows */}
-          <div className="divide-y">
-            {sortedMembers.map((member) => (
+          <div className="divide-y divide-border/60">
+            {sortedMembers.map((member, index) => (
               <div 
                 key={member.id}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors hover:bg-muted/50",
+                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-all duration-200 active:scale-[0.99] active:bg-muted/60",
+                  "hover:bg-muted/40",
                   selectedMembers.has(member.id) && "bg-primary/5"
                 )}
+                style={{ animationDelay: `${index * 40}ms` }}
                 onClick={() => handleMemberClick(member)}
               >
                 {/* Avatar */}
-                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-medium text-muted-foreground">
+                <div className="w-10 h-10 rounded-full bg-muted/80 flex items-center justify-center flex-shrink-0 ring-1 ring-border/50 transition-transform duration-200 active:scale-95">
+                  <span className="text-sm font-semibold text-muted-foreground">
                     {member.name.charAt(0).toUpperCase()}
                   </span>
                 </div>
                 
                 {/* Member Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{member.name}</p>
-                  <p className="text-xs text-muted-foreground">+91 {member.phone}</p>
+                  <p className="font-semibold text-sm truncate text-foreground">{member.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">+91 {member.phone}</p>
                 </div>
                 
                 {/* Status Dot */}
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 pr-1">
                   {getStatusCircle(member.subscription)}
                 </div>
                 
                 {/* Actions */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0">
-                      <MoreVertical className="w-4 h-4" />
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0 rounded-lg hover:bg-muted/60 transition-colors">
+                      <MoreVertical className="w-4 h-4 text-muted-foreground" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-lg border-border/60">
                     {canManageMembers && (
                       <>
                         <DropdownMenuItem 
@@ -1010,13 +1008,13 @@ export const MembersTable = ({
           
           {/* Infinite scroll loading */}
           {isFetchingNextPage && (
-            <div className="divide-y">
+            <div className="divide-y divide-border/60">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-3 px-3 py-2.5 animate-pulse">
-                  <div className="w-9 h-9 rounded-full bg-muted" />
-                  <div className="flex-1 space-y-1.5">
-                    <div className="h-4 bg-muted rounded w-28" />
-                    <div className="h-3 bg-muted rounded w-24" />
+                <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
+                  <div className="w-10 h-10 rounded-full bg-muted" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-muted rounded-md w-28" />
+                    <div className="h-3 bg-muted rounded-md w-24" />
                   </div>
                   <div className="w-2.5 h-2.5 rounded-full bg-muted" />
                 </div>

@@ -47,7 +47,8 @@ const StatCard = memo(({
   icon: Icon, 
   colorClass = "text-foreground",
   bgClass = "bg-primary/10",
-  iconClass = "text-primary"
+  iconClass = "text-primary",
+  index = 0,
 }: { 
   value: number | string; 
   label: string; 
@@ -55,20 +56,21 @@ const StatCard = memo(({
   colorClass?: string;
   bgClass?: string;
   iconClass?: string;
+  index?: number;
 }) => (
-  <Card className="hover-lift border-0 shadow-sm h-full">
+  <Card className="hover-lift border-0 shadow-sm h-full lg:animate-none" style={{ animationDelay: `${index * 80}ms` }}>
     {/* Mobile/Tablet layout - icon on right, text and number on left */}
-    <CardContent className="p-2 md:p-3 lg:hidden flex items-center justify-between">
+    <CardContent className="p-3 md:p-4 lg:hidden flex items-center justify-between">
       <div className="flex-1 min-w-0 pr-2">
-        <p className={`text-base md:text-lg font-bold ${colorClass} leading-tight break-words`}>
+        <p className={`text-lg md:text-xl font-bold ${colorClass} leading-tight break-words tracking-tight`}>
           {value}
         </p>
-        <p className="text-[10px] md:text-xs text-muted-foreground leading-tight mt-0.5">
+        <p className="text-[10px] md:text-xs text-muted-foreground leading-tight mt-1 font-medium">
           {label}
         </p>
       </div>
-      <div className={`w-8 h-8 md:w-10 md:h-10 ${bgClass} rounded-lg flex items-center justify-center flex-shrink-0`}>
-        <Icon className={`w-4 h-4 md:w-5 md:h-5 ${iconClass}`} />
+      <div className={`w-10 h-10 md:w-11 md:h-11 ${bgClass} rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 active:scale-90`}>
+        <Icon className={`w-5 h-5 md:w-5.5 md:h-5.5 ${iconClass}`} />
       </div>
     </CardContent>
 
@@ -293,11 +295,12 @@ const AdminDashboard = () => {
         {statsLoading && !stats ? (
           <DashboardStatsSkeleton />
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3 lg:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
             <StatCard 
               value={displayStats.totalMembers} 
               label="Total Members" 
               icon={UsersIcon}
+              index={0}
             />
             <StatCard 
               value={displayStats.activeMembers} 
@@ -306,6 +309,7 @@ const AdminDashboard = () => {
               colorClass="text-success"
               bgClass="bg-success/10"
               iconClass="text-success"
+              index={1}
             />
             <StatCard 
               value={displayStats.expiringSoon} 
@@ -314,6 +318,7 @@ const AdminDashboard = () => {
               colorClass="text-warning"
               bgClass="bg-warning/10"
               iconClass="text-warning"
+              index={2}
             />
             <StatCard 
               value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
@@ -322,6 +327,7 @@ const AdminDashboard = () => {
               colorClass="text-accent"
               bgClass="bg-accent/10"
               iconClass="text-accent"
+              index={3}
             />
           </div>
         )}
@@ -471,24 +477,24 @@ const AdminDashboard = () => {
 
                 {/* Mobile/Tablet: Text-only Tabs */}
                 <div className="lg:hidden">
-                  <TabsList className="bg-muted/50 p-0.5 h-8 md:h-9 w-full">
+                  <TabsList className="bg-muted/40 p-0.5 h-9 md:h-10 w-full rounded-xl">
                     <TabsTrigger 
                       value="members" 
-                      className="flex-1 text-[10px] md:text-xs leading-tight px-1.5 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1"
+                      className="flex-1 text-xs md:text-sm leading-tight px-2 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all duration-200 gap-1.5"
                     >
                       <UsersIcon className="w-3.5 h-3.5 hidden md:inline" />
                       Members
                     </TabsTrigger>
                     <TabsTrigger 
                       value="daily_pass" 
-                      className="flex-1 text-[10px] md:text-xs leading-tight px-1.5 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1"
+                      className="flex-1 text-xs md:text-sm leading-tight px-2 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all duration-200 gap-1.5"
                     >
                       <ClockIcon className="w-3.5 h-3.5 hidden md:inline" />
                       Daily Passes
                     </TabsTrigger>
                     <TabsTrigger 
                       value="payments" 
-                      className="flex-1 text-[10px] md:text-xs leading-tight px-1.5 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1"
+                      className="flex-1 text-xs md:text-sm leading-tight px-2 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all duration-200 gap-1.5"
                     >
                       <CreditCardIcon className="w-3.5 h-3.5 hidden md:inline" />
                       Payments
@@ -500,10 +506,10 @@ const AdminDashboard = () => {
                 {(activeTab === "members" || activeTab === "daily_pass") && (
                   <div className="flex items-center gap-1.5 lg:hidden">
                     <div className="relative flex-1 group">
-                      <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 md:w-4 h-3.5 md:h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
+                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
                       <Input
                         placeholder="Search by name or phone..."
-                        className="pl-8 md:pl-9 h-8 md:h-9 text-xs md:text-sm bg-muted/30 border-transparent hover:bg-muted/50 hover:border-border focus:bg-background focus:border-border transition-all duration-200"
+                        className="pl-9 h-9 md:h-10 text-sm bg-muted/30 border-transparent rounded-xl hover:bg-muted/50 hover:border-border focus:bg-background focus:border-border focus:ring-2 focus:ring-ring/20 transition-all duration-200"
                         value={activeTab === "members" ? searchInput : dailyPassSearchInput}
                         onChange={(e) => activeTab === "members" ? setSearchInput(e.target.value) : setDailyPassSearchInput(e.target.value)}
                       />
