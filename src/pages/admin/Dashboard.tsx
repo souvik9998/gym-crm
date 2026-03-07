@@ -607,11 +607,11 @@ const AdminDashboard = () => {
                 )}
               </div>
             </CardHeader>
-            <CardContent className="p-2 sm:p-4 lg:pt-2 lg:px-6 lg:pb-6">
-              <TabsContent value="members" className="mt-0 space-y-1.5 lg:space-y-4">
+            <CardContent className="p-3 sm:p-4 lg:pt-2 lg:px-6 lg:pb-6">
+              <TabsContent value="members" className="mt-0 space-y-2 lg:space-y-4">
                 {/* Mobile/Tablet: Filter Dropdown and Action Buttons Row */}
-                <div className="md:hidden flex flex-col gap-1.5">
-                  <div className="flex items-center gap-1.5 md:gap-2">
+                <div className="md:hidden flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
                     {/* Member Filter Dropdown (Mobile/Tablet) */}
                     <div className="flex-1">
                       <MemberFilter 
@@ -625,41 +625,41 @@ const AdminDashboard = () => {
                     </div>
                     
                      {/* Action Buttons - Mobile/Tablet */}
-                    <div className="flex items-center gap-1 md:gap-1.5">
+                    <div className="flex items-center gap-1.5">
                       {/* Sort Button */}
                       <Popover open={sortOpen} onOpenChange={setSortOpen}>
                         <PopoverTrigger asChild>
                           <Button 
                             variant="outline" 
                             size="icon"
-                            className="h-6 w-6 md:h-8 md:w-8 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                            className="h-8 w-8 rounded-xl border-border/60 bg-card text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95 transition-all duration-200"
                             title="Sort"
                           >
                             {sortOrder === "asc" ? (
-                              <BarsArrowUpIcon className="w-3 h-3 md:w-4 md:h-4" />
+                              <BarsArrowUpIcon className="w-3.5 h-3.5" />
                             ) : (
-                              <BarsArrowDownIcon className="w-3 h-3 md:w-4 md:h-4" />
+                              <BarsArrowDownIcon className="w-3.5 h-3.5" />
                             )}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-56 p-0" align="end">
-                          <div className="p-3 border-b border-border">
-                            <p className="text-sm font-medium text-foreground">Sort by</p>
+                        <PopoverContent className="w-56 p-0 rounded-xl shadow-lg border-border/60" align="end">
+                          <div className="p-3 border-b border-border/60">
+                            <p className="text-sm font-semibold text-foreground">Sort by</p>
                           </div>
                           <RadioGroup 
                             value={sortBy} 
                             onValueChange={(value) => setSortBy(value as typeof sortBy)}
                             className="p-2"
                           >
-                            <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                            <div className="flex items-center space-x-2 px-2 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
                               <RadioGroupItem value="name" id="sort-name-mobile" />
                               <Label htmlFor="sort-name-mobile" className="cursor-pointer flex-1 text-sm">Name</Label>
                             </div>
-                            <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                            <div className="flex items-center space-x-2 px-2 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
                               <RadioGroupItem value="join_date" id="sort-join-mobile" />
                               <Label htmlFor="sort-join-mobile" className="cursor-pointer flex-1 text-sm">Join Date</Label>
                             </div>
-                            <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                            <div className="flex items-center space-x-2 px-2 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
                               <RadioGroupItem value="end_date" id="sort-expiry-mobile" />
                               <Label htmlFor="sort-expiry-mobile" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
                             </div>
@@ -668,14 +668,14 @@ const AdminDashboard = () => {
                           <div className="p-2 space-y-1">
                             <button
                               onClick={() => setSortOrder("asc")}
-                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "asc" ? "bg-muted font-medium" : ""}`}
+                              className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm hover:bg-muted transition-colors ${sortOrder === "asc" ? "bg-muted font-medium" : ""}`}
                             >
                               <BarsArrowUpIcon className="w-4 h-4" />
                               Oldest first
                             </button>
                             <button
                               onClick={() => setSortOrder("desc")}
-                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "desc" ? "bg-muted font-medium" : ""}`}
+                              className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm hover:bg-muted transition-colors ${sortOrder === "desc" ? "bg-muted font-medium" : ""}`}
                             >
                               <BarsArrowDownIcon className="w-4 h-4" />
                               Newest first
@@ -685,14 +685,14 @@ const AdminDashboard = () => {
                       </Popover>
                       
                       {/* Export Button */}
-                        <Button 
-                          variant="outline" 
-                          size="icon"
-                          className="h-6 w-6 md:h-8 md:w-8 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
-                          title="Export Data"
-                          onClick={handleExport}
-                        >
-                          <ArrowDownTrayIcon className="w-3 h-3 md:w-4 md:h-4" />
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        className="h-8 w-8 rounded-xl border-border/60 bg-card text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95 transition-all duration-200"
+                        title="Export Data"
+                        onClick={handleExport}
+                      >
+                        <ArrowDownTrayIcon className="w-3.5 h-3.5" />
                       </Button>
                       
                       {/* Cash Payment Button */}
@@ -701,10 +701,10 @@ const AdminDashboard = () => {
                           variant="outline" 
                           size="icon"
                           onClick={() => setIsAddPaymentOpen(true)} 
-                          className="h-6 w-6 md:h-8 md:w-8 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                          className="h-8 w-8 rounded-xl border-border/60 bg-card text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95 transition-all duration-200"
                           title="Cash Payment"
                         >
-                          <CreditCardIcon className="w-3 h-3 md:w-4 md:h-4" />
+                          <CreditCardIcon className="w-3.5 h-3.5" />
                         </Button>
                       )}
                       
@@ -713,10 +713,10 @@ const AdminDashboard = () => {
                         <Button 
                           size="sm"
                           onClick={() => setIsAddMemberOpen(true)} 
-                          className="gap-0.5 md:gap-1 h-6 md:h-8 bg-foreground text-background hover:bg-foreground/90 text-[10px] md:text-xs px-1.5 md:px-2.5"
+                          className="gap-1 h-8 bg-foreground text-background hover:bg-foreground/90 text-xs px-3 rounded-xl active:scale-95 transition-all duration-200 shadow-sm"
                         >
-                          <PlusIcon className="w-2.5 h-2.5 md:w-3.5 md:h-3.5" />
-                          <span>Add Member</span>
+                          <PlusIcon className="w-3.5 h-3.5" />
+                          <span className="font-medium">Add Member</span>
                         </Button>
                       )}
                     </div>
