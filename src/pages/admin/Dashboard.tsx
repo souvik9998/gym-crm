@@ -722,10 +722,6 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
 
                 {/* Desktop/Tablet: Inline Member Filter Chips */}
                 <div className="hidden md:block">
