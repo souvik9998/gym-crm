@@ -668,10 +668,9 @@ export const MembersTable = ({
 
   const getStatusCircle = (subscription?: { status: string; end_date: string }) => {
     if (!subscription) {
-      return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></div>;
+      return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500 transition-colors duration-300"></div>;
     }
 
-    // Calculate actual status based on end_date
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const endDate = new Date(subscription.end_date);
@@ -680,27 +679,25 @@ export const MembersTable = ({
     const isActuallyExpired = diffDays < 0;
     const isActuallyExpiringSoon = !isActuallyExpired && diffDays >= 0 && diffDays <= 7;
 
-    // If status is inactive, show inactive
     if (subscription.status === "inactive") {
-      return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></div>;
+      return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500 transition-colors duration-300"></div>;
     }
 
-    // Use actual calculated status for display
     if (isActuallyExpired) {
-      return <div className="w-2.5 h-2.5 rounded-full bg-red-500 dark:bg-red-400"></div>;
+      return <div className="w-2.5 h-2.5 rounded-full bg-red-500 dark:bg-red-400 shadow-[0_0_6px_rgba(239,68,68,0.4)] transition-all duration-300"></div>;
     }
     
     if (isActuallyExpiringSoon) {
-      return <div className="w-2.5 h-2.5 rounded-full bg-amber-500 dark:bg-amber-400"></div>;
+      return <div className="w-2.5 h-2.5 rounded-full bg-amber-500 dark:bg-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.4)] animate-pulse transition-all duration-300"></div>;
     }
 
     switch (subscription.status) {
       case "active":
-        return <div className="w-2.5 h-2.5 rounded-full bg-green-500 dark:bg-green-400"></div>;
+        return <div className="w-2.5 h-2.5 rounded-full bg-green-500 dark:bg-green-400 shadow-[0_0_6px_rgba(34,197,94,0.4)] transition-all duration-300"></div>;
       case "paused":
-        return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></div>;
+        return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500 transition-colors duration-300"></div>;
       default:
-        return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></div>;
+        return <div className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500 transition-colors duration-300"></div>;
     }
   };
 
