@@ -295,11 +295,12 @@ const AdminDashboard = () => {
         {statsLoading && !stats ? (
           <DashboardStatsSkeleton />
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3 lg:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
             <StatCard 
               value={displayStats.totalMembers} 
               label="Total Members" 
               icon={UsersIcon}
+              index={0}
             />
             <StatCard 
               value={displayStats.activeMembers} 
@@ -308,6 +309,7 @@ const AdminDashboard = () => {
               colorClass="text-success"
               bgClass="bg-success/10"
               iconClass="text-success"
+              index={1}
             />
             <StatCard 
               value={displayStats.expiringSoon} 
@@ -316,6 +318,7 @@ const AdminDashboard = () => {
               colorClass="text-warning"
               bgClass="bg-warning/10"
               iconClass="text-warning"
+              index={2}
             />
             <StatCard 
               value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
@@ -324,6 +327,7 @@ const AdminDashboard = () => {
               colorClass="text-accent"
               bgClass="bg-accent/10"
               iconClass="text-accent"
+              index={3}
             />
           </div>
         )}
