@@ -445,7 +445,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[90vh] flex flex-col p-0 rounded-2xl overflow-hidden gap-0">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[90vh] flex flex-col p-0 rounded-2xl gap-0">
         {/* Header */}
         <DialogHeader className="px-5 pt-5 pb-3 flex-shrink-0">
           <DialogTitle className="text-base sm:text-lg font-bold text-center">Add New Member</DialogTitle>
