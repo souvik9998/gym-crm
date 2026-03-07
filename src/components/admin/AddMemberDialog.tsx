@@ -816,7 +816,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
             </div>
 
             {/* Navigation Buttons */}
-            <div className="flex gap-3 py-4 mt-auto flex-shrink-0">
+            <div className="flex gap-3 py-4 mt-auto flex-shrink-0 sticky bottom-0 bg-background">
               {currentStep > 1 ? (
                 <Button
                   type="button"
