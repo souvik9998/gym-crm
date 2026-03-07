@@ -181,58 +181,66 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
 
   // Mobile Mode: Single Dropdown
   if (mobileMode) {
+    const currentCount = ptFilterActive 
+      ? (counts?.with_pt || 0)
+      : currentCategory === "all" ? counts?.all
+      : currentCategory === "active" ? counts?.active
+      : currentCategory === "expiring_soon" ? counts?.expiring_soon
+      : currentCategory === "expired" ? counts?.expired
+      : currentCategory === "inactive" ? counts?.inactive
+      : 0;
+
     return (
       <DropdownMenu open={mobileDropdownOpen} onOpenChange={setMobileDropdownOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className="w-full justify-between h-7 text-[10px] px-2"
+            className="w-full justify-between h-9 text-xs px-3 rounded-xl border-border/50 bg-card hover:bg-muted/60 transition-all duration-200 active:scale-[0.98]"
           >
-            <span className="flex items-center gap-1">
-              {ptFilterActive ? (
-                <Dumbbell className="w-3 h-3" />
-              ) : (
-                filterCategories.find((c) => c.category === currentCategory)?.icon || <Users className="w-3 h-3" />
-              )}
-              <span className="truncate">{getCurrentLabel()}</span>
-              {counts && (
-                <span className="text-[9px] font-semibold px-1 py-0.5 rounded-md bg-muted">
-                  {ptFilterActive 
-                    ? (counts.with_pt || 0)
-                    : currentCategory === "all" && counts.all !== undefined ? counts.all
-                    : currentCategory === "active" && counts.active !== undefined ? counts.active
-                    : currentCategory === "expiring_soon" && counts.expiring_soon !== undefined ? counts.expiring_soon
-                    : currentCategory === "expired" && counts.expired !== undefined ? counts.expired
-                    : currentCategory === "inactive" && counts.inactive !== undefined ? counts.inactive
-                    : 0}
+            <span className="flex items-center gap-1.5">
+              <span className="[&>svg]:w-4 [&>svg]:h-4 text-muted-foreground">
+                {ptFilterActive ? (
+                  <Dumbbell className="w-4 h-4" />
+                ) : (
+                  filterCategories.find((c) => c.category === currentCategory)?.icon || <Users className="w-4 h-4" />
+                )}
+              </span>
+              <span className="font-medium truncate">{getCurrentLabel()}</span>
+              {currentCount !== undefined && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground">
+                  {currentCount}
                 </span>
               )}
             </span>
-            <ChevronDown className="w-3 h-3 flex-shrink-0" />
+            <ChevronDown className={cn(
+              "w-3.5 h-3.5 flex-shrink-0 text-muted-foreground transition-transform duration-200",
+              mobileDropdownOpen && "rotate-180"
+            )} />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56 max-h-[60vh] overflow-y-auto">
+        <DropdownMenuContent 
+          align="start" 
+          className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[200px] rounded-xl border-border/50 shadow-lg p-1.5 animate-in fade-in-0 zoom-in-95 duration-150"
+        >
           {/* All Members */}
           <DropdownMenuItem
             onClick={() => {
               onChange("all");
-              if (ptFilterActive && onPtFilterChange) {
-                onPtFilterChange(false);
-              }
+              if (ptFilterActive && onPtFilterChange) onPtFilterChange(false);
               setMobileDropdownOpen(false);
             }}
             className={cn(
-              "cursor-pointer",
+              "cursor-pointer rounded-lg px-3 py-2.5 transition-colors duration-150",
               value === "all" && !ptFilterActive && "bg-muted"
             )}
           >
             <div className="flex items-center justify-between w-full">
-              <span className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                All Members
+              <span className="flex items-center gap-2.5">
+                <Users className="w-4 h-4 text-blue-500" />
+                <span className="text-sm font-medium">All Members</span>
               </span>
               {counts?.all !== undefined && (
-                <span className="text-xs text-muted-foreground">{counts.all}</span>
+                <span className="text-xs font-semibold text-muted-foreground tabular-nums">{counts.all}</span>
               )}
             </div>
           </DropdownMenuItem>
@@ -241,20 +249,21 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
           <DropdownMenuItem
             onClick={() => {
               onChange("active");
+              if (ptFilterActive && onPtFilterChange) onPtFilterChange(false);
               setMobileDropdownOpen(false);
             }}
             className={cn(
-              "cursor-pointer",
+              "cursor-pointer rounded-lg px-3 py-2.5 transition-colors duration-150",
               value === "active" && !ptFilterActive && "bg-green-50 dark:bg-green-950/20"
             )}
           >
             <div className="flex items-center justify-between w-full">
-              <span className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-600" />
-                Active
+              <span className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                <span className="text-sm font-medium">Active</span>
               </span>
               {counts?.active !== undefined && (
-                <span className="text-xs text-muted-foreground">{counts.active}</span>
+                <span className="text-xs font-semibold text-muted-foreground tabular-nums">{counts.active}</span>
               )}
             </div>
           </DropdownMenuItem>
@@ -263,20 +272,21 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
           <DropdownMenuItem
             onClick={() => {
               onChange("expiring_soon");
+              if (ptFilterActive && onPtFilterChange) onPtFilterChange(false);
               setMobileDropdownOpen(false);
             }}
             className={cn(
-              "cursor-pointer",
-              value === "expiring_soon" && !ptFilterActive && "bg-amber-50 dark:bg-amber-950/20"
+              "cursor-pointer rounded-lg px-3 py-2.5 transition-colors duration-150",
+              (value === "expiring_soon" || value.startsWith("expiring")) && !ptFilterActive && "bg-amber-50 dark:bg-amber-950/20"
             )}
           >
             <div className="flex items-center justify-between w-full">
-              <span className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-600" />
-                Expiring Soon
+              <span className="flex items-center gap-2.5">
+                <Clock className="w-4 h-4 text-amber-500" />
+                <span className="text-sm font-medium">Expiring Soon</span>
               </span>
               {counts?.expiring_soon !== undefined && (
-                <span className="text-xs text-muted-foreground">{counts.expiring_soon}</span>
+                <span className="text-xs font-semibold text-muted-foreground tabular-nums">{counts.expiring_soon}</span>
               )}
             </div>
           </DropdownMenuItem>
@@ -285,20 +295,21 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
           <DropdownMenuItem
             onClick={() => {
               onChange("expired");
+              if (ptFilterActive && onPtFilterChange) onPtFilterChange(false);
               setMobileDropdownOpen(false);
             }}
             className={cn(
-              "cursor-pointer",
-              value === "expired" && !ptFilterActive && "bg-red-50 dark:bg-red-950/20"
+              "cursor-pointer rounded-lg px-3 py-2.5 transition-colors duration-150",
+              (value === "expired" || value === "expired_recent") && !ptFilterActive && "bg-red-50 dark:bg-red-950/20"
             )}
           >
             <div className="flex items-center justify-between w-full">
-              <span className="flex items-center gap-2">
-                <XCircle className="w-4 h-4 text-red-600" />
-                Expired
+              <span className="flex items-center gap-2.5">
+                <XCircle className="w-4 h-4 text-red-500" />
+                <span className="text-sm font-medium">Expired</span>
               </span>
               {counts?.expired !== undefined && (
-                <span className="text-xs text-muted-foreground">{counts.expired}</span>
+                <span className="text-xs font-semibold text-muted-foreground tabular-nums">{counts.expired}</span>
               )}
             </div>
           </DropdownMenuItem>
@@ -307,44 +318,46 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
           <DropdownMenuItem
             onClick={() => {
               onChange("inactive");
+              if (ptFilterActive && onPtFilterChange) onPtFilterChange(false);
               setMobileDropdownOpen(false);
             }}
             className={cn(
-              "cursor-pointer",
-              value === "inactive" && !ptFilterActive && "bg-slate-50 dark:bg-slate-950/20"
+              "cursor-pointer rounded-lg px-3 py-2.5 transition-colors duration-150",
+              value === "inactive" && !ptFilterActive && "bg-muted"
             )}
           >
             <div className="flex items-center justify-between w-full">
-              <span className="flex items-center gap-2">
-                <UserX className="w-4 h-4 text-slate-600" />
-                Inactive
+              <span className="flex items-center gap-2.5">
+                <UserX className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Inactive</span>
               </span>
               {counts?.inactive !== undefined && (
-                <span className="text-xs text-muted-foreground">{counts.inactive}</span>
+                <span className="text-xs font-semibold text-muted-foreground tabular-nums">{counts.inactive}</span>
               )}
             </div>
           </DropdownMenuItem>
           
+          {/* Separator */}
+          <div className="my-1 h-px bg-border/50" />
+          
           {/* Personal Training */}
           <DropdownMenuItem
             onClick={() => {
-              if (onPtFilterChange) {
-                onPtFilterChange(!ptFilterActive);
-              }
+              if (onPtFilterChange) onPtFilterChange(!ptFilterActive);
               setMobileDropdownOpen(false);
             }}
             className={cn(
-              "cursor-pointer",
+              "cursor-pointer rounded-lg px-3 py-2.5 transition-colors duration-150",
               ptFilterActive && "bg-purple-50 dark:bg-purple-950/20"
             )}
           >
             <div className="flex items-center justify-between w-full">
-              <span className="flex items-center gap-2">
-                <Dumbbell className="w-4 h-4 text-purple-600" />
-                Personal Training
+              <span className="flex items-center gap-2.5">
+                <Dumbbell className="w-4 h-4 text-purple-500" />
+                <span className="text-sm font-medium">Personal Training</span>
               </span>
               {counts?.with_pt !== undefined && (
-                <span className="text-xs text-muted-foreground">{counts.with_pt}</span>
+                <span className="text-xs font-semibold text-muted-foreground tabular-nums">{counts.with_pt}</span>
               )}
             </div>
           </DropdownMenuItem>

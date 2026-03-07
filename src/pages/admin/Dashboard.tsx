@@ -608,118 +608,116 @@ const AdminDashboard = () => {
               </div>
             </CardHeader>
             <CardContent className="p-3 sm:p-4 lg:pt-2 lg:px-6 lg:pb-6">
-              <TabsContent value="members" className="mt-0 space-y-2 lg:space-y-4">
-                {/* Mobile/Tablet: Filter Dropdown and Action Buttons Row */}
-                <div className="md:hidden flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    {/* Member Filter Dropdown (Mobile/Tablet) */}
-                    <div className="flex-1">
-                      <MemberFilter 
-                        value={memberFilter} 
-                        onChange={handleMemberFilterChange}
-                        counts={filterCounts}
-                        ptFilterActive={ptFilterActive}
-                        onPtFilterChange={handlePtFilterChange}
-                        mobileMode={true}
-                      />
-                    </div>
-                    
-                     {/* Action Buttons - Mobile/Tablet */}
-                    <div className="flex items-center gap-1.5">
-                      {/* Sort Button */}
-                      <Popover open={sortOpen} onOpenChange={setSortOpen}>
-                        <PopoverTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="icon"
-                            className="h-8 w-8 rounded-xl border-border/60 bg-card text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95 transition-all duration-200"
-                            title="Sort"
-                          >
-                            {sortOrder === "asc" ? (
-                              <BarsArrowUpIcon className="w-3.5 h-3.5" />
-                            ) : (
-                              <BarsArrowDownIcon className="w-3.5 h-3.5" />
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-56 p-0 rounded-xl shadow-lg border-border/60" align="end">
-                          <div className="p-3 border-b border-border/60">
-                            <p className="text-sm font-semibold text-foreground">Sort by</p>
-                          </div>
-                          <RadioGroup 
-                            value={sortBy} 
-                            onValueChange={(value) => setSortBy(value as typeof sortBy)}
-                            className="p-2"
-                          >
-                            <div className="flex items-center space-x-2 px-2 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
-                              <RadioGroupItem value="name" id="sort-name-mobile" />
-                              <Label htmlFor="sort-name-mobile" className="cursor-pointer flex-1 text-sm">Name</Label>
-                            </div>
-                            <div className="flex items-center space-x-2 px-2 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
-                              <RadioGroupItem value="join_date" id="sort-join-mobile" />
-                              <Label htmlFor="sort-join-mobile" className="cursor-pointer flex-1 text-sm">Join Date</Label>
-                            </div>
-                            <div className="flex items-center space-x-2 px-2 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
-                              <RadioGroupItem value="end_date" id="sort-expiry-mobile" />
-                              <Label htmlFor="sort-expiry-mobile" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
-                            </div>
-                          </RadioGroup>
-                          <Separator />
-                          <div className="p-2 space-y-1">
-                            <button
-                              onClick={() => setSortOrder("asc")}
-                              className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm hover:bg-muted transition-colors ${sortOrder === "asc" ? "bg-muted font-medium" : ""}`}
-                            >
-                              <BarsArrowUpIcon className="w-4 h-4" />
-                              Oldest first
-                            </button>
-                            <button
-                              onClick={() => setSortOrder("desc")}
-                              className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm hover:bg-muted transition-colors ${sortOrder === "desc" ? "bg-muted font-medium" : ""}`}
-                            >
-                              <BarsArrowDownIcon className="w-4 h-4" />
-                              Newest first
-                            </button>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                      
-                      {/* Export Button */}
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        className="h-8 w-8 rounded-xl border-border/60 bg-card text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95 transition-all duration-200"
-                        title="Export Data"
-                        onClick={handleExport}
-                      >
-                        <ArrowDownTrayIcon className="w-3.5 h-3.5" />
-                      </Button>
-                      
-                      {/* Cash Payment Button */}
-                      {canManageMembers && (
+              <TabsContent value="members" className="mt-0 space-y-2.5 lg:space-y-4">
+                {/* Mobile/Tablet: Filter + Action Buttons Row */}
+                <div className="md:hidden flex items-center gap-2">
+                  {/* Member Filter Dropdown */}
+                  <div className="flex-1 min-w-0">
+                    <MemberFilter 
+                      value={memberFilter} 
+                      onChange={handleMemberFilterChange}
+                      counts={filterCounts}
+                      ptFilterActive={ptFilterActive}
+                      onPtFilterChange={handlePtFilterChange}
+                      mobileMode={true}
+                    />
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {/* Sort */}
+                    <Popover open={sortOpen} onOpenChange={setSortOpen}>
+                      <PopoverTrigger asChild>
                         <Button 
                           variant="outline" 
                           size="icon"
-                          onClick={() => setIsAddPaymentOpen(true)} 
-                          className="h-8 w-8 rounded-xl border-border/60 bg-card text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95 transition-all duration-200"
-                          title="Cash Payment"
+                          className="h-9 w-9 rounded-xl border-border/50 bg-card text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95 transition-all duration-200"
+                          title="Sort"
                         >
-                          <CreditCardIcon className="w-3.5 h-3.5" />
+                          {sortOrder === "asc" ? (
+                            <BarsArrowUpIcon className="w-4 h-4" />
+                          ) : (
+                            <BarsArrowDownIcon className="w-4 h-4" />
+                          )}
                         </Button>
-                      )}
-                      
-                      {/* Add Member Button */}
-                      {canManageMembers && (
-                        <Button 
-                          size="sm"
-                          onClick={() => setIsAddMemberOpen(true)} 
-                          className="gap-1 h-8 bg-foreground text-background hover:bg-foreground/90 text-xs px-3 rounded-xl active:scale-95 transition-all duration-200 shadow-sm"
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-0 rounded-xl shadow-lg border-border/50" align="end">
+                        <div className="p-3 border-b border-border/50">
+                          <p className="text-sm font-semibold text-foreground">Sort by</p>
+                        </div>
+                        <RadioGroup 
+                          value={sortBy} 
+                          onValueChange={(value) => setSortBy(value as typeof sortBy)}
+                          className="p-1.5"
                         >
-                          <PlusIcon className="w-3.5 h-3.5" />
-                          <span className="font-medium">Add Member</span>
-                        </Button>
-                      )}
-                    </div>
+                          <div className="flex items-center space-x-2 px-2.5 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
+                            <RadioGroupItem value="name" id="sort-name-mobile" />
+                            <Label htmlFor="sort-name-mobile" className="cursor-pointer flex-1 text-sm">Name</Label>
+                          </div>
+                          <div className="flex items-center space-x-2 px-2.5 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
+                            <RadioGroupItem value="join_date" id="sort-join-mobile" />
+                            <Label htmlFor="sort-join-mobile" className="cursor-pointer flex-1 text-sm">Join Date</Label>
+                          </div>
+                          <div className="flex items-center space-x-2 px-2.5 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
+                            <RadioGroupItem value="end_date" id="sort-expiry-mobile" />
+                            <Label htmlFor="sort-expiry-mobile" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
+                          </div>
+                        </RadioGroup>
+                        <Separator />
+                        <div className="p-1.5 space-y-0.5">
+                          <button
+                            onClick={() => setSortOrder("asc")}
+                            className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm hover:bg-muted transition-colors ${sortOrder === "asc" ? "bg-muted font-medium" : ""}`}
+                          >
+                            <BarsArrowUpIcon className="w-4 h-4" />
+                            Oldest first
+                          </button>
+                          <button
+                            onClick={() => setSortOrder("desc")}
+                            className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm hover:bg-muted transition-colors ${sortOrder === "desc" ? "bg-muted font-medium" : ""}`}
+                          >
+                            <BarsArrowDownIcon className="w-4 h-4" />
+                            Newest first
+                          </button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    
+                    {/* Export */}
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      className="h-9 w-9 rounded-xl border-border/50 bg-card text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95 transition-all duration-200"
+                      title="Export Data"
+                      onClick={handleExport}
+                    >
+                      <ArrowDownTrayIcon className="w-4 h-4" />
+                    </Button>
+                    
+                    {/* Cash Payment */}
+                    {canManageMembers && (
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={() => setIsAddPaymentOpen(true)} 
+                        className="h-9 w-9 rounded-xl border-border/50 bg-card text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95 transition-all duration-200"
+                        title="Cash Payment"
+                      >
+                        <CreditCardIcon className="w-4 h-4" />
+                      </Button>
+                    )}
+                    
+                    {/* Add Member */}
+                    {canManageMembers && (
+                      <Button 
+                        size="sm"
+                        onClick={() => setIsAddMemberOpen(true)} 
+                        className="gap-1 h-9 bg-foreground text-background hover:bg-foreground/90 text-xs px-3 rounded-xl active:scale-95 transition-all duration-200 shadow-sm whitespace-nowrap"
+                      >
+                        <PlusIcon className="w-3.5 h-3.5" />
+                        <span className="font-medium hidden min-[400px]:inline">Add Member</span>
+                      </Button>
+                    )}
                   </div>
                 </div>
 
