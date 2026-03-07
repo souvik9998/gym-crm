@@ -47,7 +47,8 @@ const StatCard = memo(({
   icon: Icon, 
   colorClass = "text-foreground",
   bgClass = "bg-primary/10",
-  iconClass = "text-primary"
+  iconClass = "text-primary",
+  index = 0,
 }: { 
   value: number | string; 
   label: string; 
@@ -55,20 +56,21 @@ const StatCard = memo(({
   colorClass?: string;
   bgClass?: string;
   iconClass?: string;
+  index?: number;
 }) => (
-  <Card className="hover-lift border-0 shadow-sm h-full">
+  <Card className="hover-lift border-0 shadow-sm h-full lg:animate-none" style={{ animationDelay: `${index * 80}ms` }}>
     {/* Mobile/Tablet layout - icon on right, text and number on left */}
-    <CardContent className="p-2 md:p-3 lg:hidden flex items-center justify-between">
+    <CardContent className="p-3 md:p-4 lg:hidden flex items-center justify-between">
       <div className="flex-1 min-w-0 pr-2">
-        <p className={`text-base md:text-lg font-bold ${colorClass} leading-tight break-words`}>
+        <p className={`text-lg md:text-xl font-bold ${colorClass} leading-tight break-words tracking-tight`}>
           {value}
         </p>
-        <p className="text-[10px] md:text-xs text-muted-foreground leading-tight mt-0.5">
+        <p className="text-[10px] md:text-xs text-muted-foreground leading-tight mt-1 font-medium">
           {label}
         </p>
       </div>
-      <div className={`w-8 h-8 md:w-10 md:h-10 ${bgClass} rounded-lg flex items-center justify-center flex-shrink-0`}>
-        <Icon className={`w-4 h-4 md:w-5 md:h-5 ${iconClass}`} />
+      <div className={`w-10 h-10 md:w-11 md:h-11 ${bgClass} rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 active:scale-90`}>
+        <Icon className={`w-5 h-5 md:w-5.5 md:h-5.5 ${iconClass}`} />
       </div>
     </CardContent>
 
