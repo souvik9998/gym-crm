@@ -137,7 +137,7 @@ SettingsGeneralSkeleton.displayName = "SettingsGeneralSkeleton";
 
 const AdminSettings = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn, permissions } = useStaffAuth();
   const staffOps = useStaffOperations();
