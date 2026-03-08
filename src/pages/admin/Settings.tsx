@@ -1333,38 +1333,40 @@ const AdminSettings = () => {
           </TabsContent>
 
           {/* General Settings */}
-          <TabsContent value="general" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
+          <TabsContent value="general" className="space-y-5 lg:space-y-6 mt-5 lg:mt-6 animate-fade-in">
             {isLoadingData ? (
               <SettingsGeneralSkeleton />
             ) : (
               <>
-                <Card className="border-0 shadow-sm">
-                  <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-                    <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
-                      <BuildingStorefrontIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
+                <Card className="border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
+                  <CardHeader className="p-4 lg:p-6 pb-3 lg:pb-4 bg-gradient-to-r from-muted/30 to-transparent">
+                    <CardTitle className="flex items-center gap-2.5 text-base lg:text-xl">
+                      <div className="p-1.5 lg:p-2 rounded-lg bg-primary/10">
+                        <BuildingStorefrontIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
+                      </div>
                       Gym Information
                     </CardTitle>
-                    <CardDescription className="text-xs lg:text-sm">Basic gym details and contact information</CardDescription>
+                    <CardDescription className="text-xs lg:text-sm ml-9 lg:ml-11">Basic gym details and contact information</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
-                    <div className="grid gap-2 lg:gap-4 grid-cols-1 md:grid-cols-2">
-                      <div className="space-y-1 lg:space-y-2">
-                        <Label className="text-xs lg:text-sm">Gym Name</Label>
-                        <Input value={gymName} onChange={(e) => setGymName(e.target.value)} placeholder="Pro Plus Fitness" className="h-9 lg:h-12 text-xs lg:text-base" />
+                  <CardContent className="space-y-4 lg:space-y-5 p-4 lg:p-6 pt-0 lg:pt-0">
+                    <div className="grid gap-3 lg:gap-4 grid-cols-1 md:grid-cols-2">
+                      <div className="space-y-1.5 lg:space-y-2">
+                        <Label className="text-xs lg:text-sm font-medium">Gym Name</Label>
+                        <Input value={gymName} onChange={(e) => setGymName(e.target.value)} placeholder="Pro Plus Fitness" className="h-9 lg:h-10 text-xs lg:text-sm" />
                       </div>
-                      <div className="space-y-1 lg:space-y-2">
-                        <Label className="text-xs lg:text-sm">Phone Number</Label>
-                        <Input value={gymPhone} onChange={(e) => setGymPhone(e.target.value)} placeholder="+91 9876543210" className="h-9 lg:h-12 text-xs lg:text-base" />
+                      <div className="space-y-1.5 lg:space-y-2">
+                        <Label className="text-xs lg:text-sm font-medium">Phone Number</Label>
+                        <Input value={gymPhone} onChange={(e) => setGymPhone(e.target.value)} placeholder="+91 9876543210" className="h-9 lg:h-10 text-xs lg:text-sm" />
                       </div>
                     </div>
-                    <div className="space-y-1 lg:space-y-2">
-                      <Label className="text-xs lg:text-sm">Address</Label>
-                      <Input value={gymAddress} onChange={(e) => setGymAddress(e.target.value)} placeholder="Gym address" className="h-9 lg:h-12 text-xs lg:text-base" />
+                    <div className="space-y-1.5 lg:space-y-2">
+                      <Label className="text-xs lg:text-sm font-medium">Address</Label>
+                      <Input value={gymAddress} onChange={(e) => setGymAddress(e.target.value)} placeholder="Gym address" className="h-9 lg:h-10 text-xs lg:text-sm" />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
+                <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full gap-1.5 lg:gap-2 h-10 lg:h-11 text-xs lg:text-sm rounded-xl shadow-sm">
                   {isSaving ? <ButtonSpinner /> : <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
                   {isSaving ? "Saving..." : "Save Settings"}
                 </Button>
@@ -1372,7 +1374,7 @@ const AdminSettings = () => {
             )}
           </TabsContent>
           {/* Subscription & Plan Tab */}
-          <TabsContent value="subscription" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
+          <TabsContent value="subscription" className="space-y-5 lg:space-y-6 mt-5 lg:mt-6 animate-fade-in">
             <SubscriptionPlanTab />
           </TabsContent>
         </Tabs>
