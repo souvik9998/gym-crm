@@ -6,13 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAttendanceLogs } from "@/hooks/queries/useAttendance";
 import { useBranch } from "@/contexts/BranchContext";
-import { ArrowPathIcon, DevicePhoneMobileIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, DevicePhoneMobileIcon, ClockIcon, CalendarDaysIcon } from "@heroicons/react/24/outline";
 import { resetAttendanceDevice } from "@/api/attendance";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const MembersAttendanceTab = () => {
   const { currentBranch } = useBranch();
+  const isMobile = useIsMobile();
   const today = new Date().toISOString().split("T")[0];
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
@@ -43,21 +45,21 @@ export const MembersAttendanceTab = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "checked_in": return <Badge className="bg-green-500/10 text-green-600 border-green-200">Checked In</Badge>;
-      case "checked_out": return <Badge className="bg-blue-500/10 text-blue-600 border-blue-200">Checked Out</Badge>;
-      case "expired": return <Badge className="bg-orange-500/10 text-orange-600 border-orange-200">Expired</Badge>;
-      default: return <Badge variant="secondary">{status}</Badge>;
+      case "checked_in": return <Badge className="bg-green-500/10 text-green-600 border-green-200 text-[10px] lg:text-xs">Checked In</Badge>;
+      case "checked_out": return <Badge className="bg-blue-500/10 text-blue-600 border-blue-200 text-[10px] lg:text-xs">Checked Out</Badge>;
+      case "expired": return <Badge className="bg-orange-500/10 text-orange-600 border-orange-200 text-[10px] lg:text-xs">Expired</Badge>;
+      default: return <Badge variant="secondary" className="text-[10px] lg:text-xs">{status}</Badge>;
     }
   };
 
   const getSubStatusBadge = (status: string | null) => {
     if (!status) return "—";
     switch (status) {
-      case "active": return <Badge className="bg-green-500/10 text-green-600 border-green-200">Active</Badge>;
-      case "expired": return <Badge className="bg-red-500/10 text-red-600 border-red-200">Expired</Badge>;
-      case "expiring_soon": return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-200">Expiring</Badge>;
-      case "no_subscription": return <Badge className="bg-gray-500/10 text-gray-600 border-gray-200">None</Badge>;
-      default: return <Badge variant="secondary">{status}</Badge>;
+      case "active": return <Badge className="bg-green-500/10 text-green-600 border-green-200 text-[10px] lg:text-xs">Active</Badge>;
+      case "expired": return <Badge className="bg-red-500/10 text-red-600 border-red-200 text-[10px] lg:text-xs">Expired</Badge>;
+      case "expiring_soon": return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-200 text-[10px] lg:text-xs">Expiring</Badge>;
+      case "no_subscription": return <Badge className="bg-muted text-muted-foreground text-[10px] lg:text-xs">None</Badge>;
+      default: return <Badge variant="secondary" className="text-[10px] lg:text-xs">{status}</Badge>;
     }
   };
 
@@ -76,96 +78,163 @@ export const MembersAttendanceTab = () => {
     }
   };
 
-  // Deduplicate members for device reset (show reset only once per member)
   const seenMembers = new Set<string>();
+
+  // Mobile card view for each log
+  const MobileLogCard = ({ log }: { log: any }) => {
+    const memberId = log.member_id;
+    const showReset = memberId && !seenMembers.has(memberId);
+    if (memberId) seenMembers.add(memberId);
+
+    return (
+      <div className="bg-card border border-border/50 rounded-xl p-3 space-y-2">
+        <div className="flex items-start justify-between">
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-sm truncate">{log.members?.name || "—"}</p>
+            <p className="text-[11px] text-muted-foreground">{log.members?.phone || "—"}</p>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {getStatusBadge(log.status)}
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-[11px]">
+          <div>
+            <span className="text-muted-foreground block">Date</span>
+            <span className="font-medium">{formatDate(log.date)}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground block">In</span>
+            <span className="font-medium">{formatTime(log.check_in_at)}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground block">Out</span>
+            <span className="font-medium">{formatTime(log.check_out_at)}</span>
+          </div>
+        </div>
+        <div className="flex items-center justify-between pt-1 border-t border-border/30">
+          <div className="flex items-center gap-3 text-[11px]">
+            {log.total_hours && (
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <ClockIcon className="w-3 h-3" /> {log.total_hours}h
+              </span>
+            )}
+            {getSubStatusBadge(log.subscription_status)}
+          </div>
+          {showReset && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 text-[10px] h-7 px-2"
+              onClick={() => setResetTarget({ memberId, name: log.members?.name || "Member" })}
+            >
+              <DevicePhoneMobileIcon className="w-3 h-3" /> Reset
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Card className="border-0 shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between pb-4">
-        <CardTitle className="text-lg">Members Attendance</CardTitle>
-        <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-1">
-          <ArrowPathIcon className="w-4 h-4" /> Refresh
+      <CardHeader className="flex flex-row items-center justify-between pb-3 lg:pb-4 px-3 lg:px-6 pt-3 lg:pt-6">
+        <CardTitle className="text-base lg:text-lg">Members Attendance</CardTitle>
+        <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-1 h-8 text-xs lg:text-sm">
+          <ArrowPathIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" /> Refresh
         </Button>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex gap-3 flex-wrap">
-          <div>
-            <label className="text-xs text-muted-foreground">From</label>
-            <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className="w-40" />
+      <CardContent className="space-y-3 lg:space-y-4 px-3 lg:px-6 pb-3 lg:pb-6">
+        <div className="flex gap-2 lg:gap-3 flex-wrap">
+          <div className="flex-1 min-w-[130px] max-w-[180px]">
+            <label className="text-[10px] lg:text-xs text-muted-foreground font-medium">From</label>
+            <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className="h-8 lg:h-9 text-xs lg:text-sm" />
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground">To</label>
-            <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="w-40" />
+          <div className="flex-1 min-w-[130px] max-w-[180px]">
+            <label className="text-[10px] lg:text-xs text-muted-foreground font-medium">To</label>
+            <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="h-8 lg:h-9 text-xs lg:text-sm" />
           </div>
         </div>
 
         {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground">Loading...</div>
+          <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div>
         ) : logs.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">No attendance records found for this period.</div>
+          <div className="text-center py-10 lg:py-12 space-y-2">
+            <CalendarDaysIcon className="w-10 h-10 lg:w-12 lg:h-12 mx-auto text-muted-foreground/30" />
+            <p className="text-xs lg:text-sm text-muted-foreground">No attendance records found for this period.</p>
+          </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Check In</TableHead>
-                    <TableHead>Check Out</TableHead>
-                    <TableHead>Hours</TableHead>
-                    <TableHead>Subscription</TableHead>
-                    <TableHead>Device</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {logs.map((log: any) => {
-                    const memberId = log.member_id;
-                    const showReset = memberId && !seenMembers.has(memberId);
-                    if (memberId) seenMembers.add(memberId);
+            {/* Mobile card layout */}
+            {isMobile ? (
+              <div className="space-y-2">
+                {logs.map((log: any) => (
+                  <MobileLogCard key={log.id} log={log} />
+                ))}
+              </div>
+            ) : (
+              /* Desktop table */
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Date</TableHead>
+                      <TableHead className="text-xs">Name</TableHead>
+                      <TableHead className="text-xs">Phone</TableHead>
+                      <TableHead className="text-xs hidden xl:table-cell">Email</TableHead>
+                      <TableHead className="text-xs">Check In</TableHead>
+                      <TableHead className="text-xs">Check Out</TableHead>
+                      <TableHead className="text-xs">Hours</TableHead>
+                      <TableHead className="text-xs">Subscription</TableHead>
+                      <TableHead className="text-xs hidden lg:table-cell">Device</TableHead>
+                      <TableHead className="text-xs">Status</TableHead>
+                      <TableHead className="text-xs">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {logs.map((log: any) => {
+                      const memberId = log.member_id;
+                      const showReset = memberId && !seenMembers.has(memberId);
+                      if (memberId) seenMembers.add(memberId);
 
-                    return (
-                      <TableRow key={log.id}>
-                        <TableCell className="whitespace-nowrap">{formatDate(log.date)}</TableCell>
-                        <TableCell className="font-medium">{log.members?.name || "—"}</TableCell>
-                        <TableCell>{log.members?.phone || "—"}</TableCell>
-                        <TableCell className="text-xs">{log.members?.email || "—"}</TableCell>
-                        <TableCell>{formatTime(log.check_in_at)}</TableCell>
-                        <TableCell>{formatTime(log.check_out_at)}</TableCell>
-                        <TableCell>{log.total_hours ? `${log.total_hours}h` : "—"}</TableCell>
-                        <TableCell>{getSubStatusBadge(log.subscription_status)}</TableCell>
-                        <TableCell className="text-xs font-mono" title={log.device_fingerprint || ""}>
-                          {log.device_fingerprint ? log.device_fingerprint.substring(0, 8) + "…" : "—"}
-                        </TableCell>
-                        <TableCell>{getStatusBadge(log.status)}</TableCell>
-                        <TableCell>
-                          {showReset && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="gap-1 text-xs"
-                              onClick={() => setResetTarget({ memberId, name: log.members?.name || "Member" })}
-                            >
-                              <DevicePhoneMobileIcon className="w-3.5 h-3.5" />
-                              Reset
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      return (
+                        <TableRow key={log.id}>
+                          <TableCell className="whitespace-nowrap text-xs">{formatDate(log.date)}</TableCell>
+                          <TableCell className="font-medium text-xs">{log.members?.name || "—"}</TableCell>
+                          <TableCell className="text-xs">{log.members?.phone || "—"}</TableCell>
+                          <TableCell className="text-[11px] hidden xl:table-cell">{log.members?.email || "—"}</TableCell>
+                          <TableCell className="text-xs">{formatTime(log.check_in_at)}</TableCell>
+                          <TableCell className="text-xs">{formatTime(log.check_out_at)}</TableCell>
+                          <TableCell className="text-xs">{log.total_hours ? `${log.total_hours}h` : "—"}</TableCell>
+                          <TableCell>{getSubStatusBadge(log.subscription_status)}</TableCell>
+                          <TableCell className="text-[11px] font-mono hidden lg:table-cell" title={log.device_fingerprint || ""}>
+                            {log.device_fingerprint ? log.device_fingerprint.substring(0, 8) + "…" : "—"}
+                          </TableCell>
+                          <TableCell>{getStatusBadge(log.status)}</TableCell>
+                          <TableCell>
+                            {showReset && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="gap-1 text-[11px] h-7"
+                                onClick={() => setResetTarget({ memberId, name: log.members?.name || "Member" })}
+                              >
+                                <DevicePhoneMobileIcon className="w-3.5 h-3.5" />
+                                Reset
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+            <div className="flex items-center justify-between text-[11px] lg:text-sm text-muted-foreground pt-1">
               <span>Showing {logs.length} of {total}</span>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
-                <Button variant="outline" size="sm" disabled={logs.length < 50} onClick={() => setPage(p => p + 1)}>Next</Button>
+              <div className="flex gap-1.5 lg:gap-2">
+                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="h-7 lg:h-8 text-[11px] lg:text-xs px-2 lg:px-3">Previous</Button>
+                <Button variant="outline" size="sm" disabled={logs.length < 50} onClick={() => setPage(p => p + 1)} className="h-7 lg:h-8 text-[11px] lg:text-xs px-2 lg:px-3">Next</Button>
               </div>
             </div>
           </>
