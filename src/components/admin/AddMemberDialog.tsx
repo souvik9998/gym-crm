@@ -534,6 +534,167 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     }
   };
 
+  // Handle existing member actions (renewal/PT)
+  const handleExistingMemberSubmit = async () => {
+    if (!existingMember || !currentBranch) return;
+    setIsLoading(true);
+
+    try {
+      const gymStartDate = new Date(startDate);
+      gymStartDate.setHours(0, 0, 0, 0);
+
+      // Renew Gym Membership
+      if (selectedAction === "renew_gym" || selectedAction === "renew_gym_pt") {
+        const gymEndDate = addMonths(gymStartDate, selectedPackage?.months || 1);
+        
+        const { data: subscription, error: subError } = await supabase
+          .from("subscriptions")
+          .insert({
+            member_id: existingMember.id,
+            start_date: gymStartDate.toISOString().split("T")[0],
+            end_date: gymEndDate.toISOString().split("T")[0],
+            plan_months: selectedPackage?.months || 1,
+            status: "active",
+            personal_trainer_id: (selectedAction === "renew_gym_pt" && selectedTrainerId) ? selectedTrainerId : null,
+            trainer_fee: (selectedAction === "renew_gym_pt") ? ptFee : null,
+            branch_id: currentBranch.id,
+          })
+          .select()
+          .single();
+        if (subError) throw subError;
+
+        // Create payment record
+        const paymentType = selectedAction === "renew_gym_pt" ? "gym_and_pt" : "gym_renewal";
+        const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
+          member_id: existingMember.id,
+          subscription_id: subscription.id,
+          amount: totalAmount,
+          payment_mode: "cash",
+          status: "success",
+          payment_type: paymentType,
+          notes: "Renewed via admin dashboard",
+          branch_id: currentBranch.id,
+        }).select().single();
+        if (paymentError) throw paymentError;
+
+        // Ledger entries
+        await createMembershipIncomeEntry(
+          monthlyFee, "gym_renewal",
+          `Renewal - ${existingMember.name} (${selectedPackage?.months || 1} months)`,
+          existingMember.id, undefined, paymentRecord.id, currentBranch.id
+        );
+
+        if (joiningFee > 0) {
+          await createMembershipIncomeEntry(
+            joiningFee, "joining_fee", `Joining fee - ${existingMember.name}`,
+            existingMember.id, undefined, paymentRecord.id, currentBranch.id
+          );
+        }
+
+        // If also adding PT
+        if (selectedAction === "renew_gym_pt" && selectedTrainerId) {
+          const ptEndDate = addMonths(gymStartDate, ptMonths);
+          await supabase.from("pt_subscriptions").insert({
+            member_id: existingMember.id,
+            personal_trainer_id: selectedTrainerId,
+            start_date: gymStartDate.toISOString().split("T")[0],
+            end_date: ptEndDate.toISOString().split("T")[0],
+            monthly_fee: selectedTrainer?.monthly_fee || 0,
+            total_fee: ptFee,
+            status: "active",
+            branch_id: currentBranch.id,
+          });
+
+          await createMembershipIncomeEntry(
+            ptFee, "pt_subscription",
+            `PT subscription - ${existingMember.name} with ${selectedTrainer?.name}`,
+            existingMember.id, undefined, paymentRecord.id, currentBranch.id
+          );
+          if (selectedTrainer) {
+            await calculateTrainerPercentageExpense(
+              selectedTrainerId, ptFee, existingMember.id, undefined, undefined, existingMember.name, currentBranch.id
+            );
+          }
+        }
+
+        toast.success(selectedAction === "renew_gym_pt" ? "Membership renewed with PT" : "Membership renewed successfully");
+      }
+
+      // Add PT Only
+      if (selectedAction === "add_pt") {
+        if (!selectedTrainerId) {
+          toast.error("Please select a trainer");
+          setIsLoading(false);
+          return;
+        }
+
+        const ptEndDate = addMonths(gymStartDate, ptMonths);
+        await supabase.from("pt_subscriptions").insert({
+          member_id: existingMember.id,
+          personal_trainer_id: selectedTrainerId,
+          start_date: gymStartDate.toISOString().split("T")[0],
+          end_date: ptEndDate.toISOString().split("T")[0],
+          monthly_fee: selectedTrainer?.monthly_fee || 0,
+          total_fee: ptFee,
+          status: "active",
+          branch_id: currentBranch.id,
+        });
+
+        const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
+          member_id: existingMember.id,
+          amount: ptFee,
+          payment_mode: "cash",
+          status: "success",
+          payment_type: "pt_subscription",
+          notes: "PT added via admin dashboard",
+          branch_id: currentBranch.id,
+        }).select().single();
+        if (paymentError) throw paymentError;
+
+        await createMembershipIncomeEntry(
+          ptFee, "pt_subscription",
+          `PT subscription - ${existingMember.name} with ${selectedTrainer?.name}`,
+          existingMember.id, undefined, paymentRecord.id, currentBranch.id
+        );
+        if (selectedTrainer) {
+          await calculateTrainerPercentageExpense(
+            selectedTrainerId, ptFee, existingMember.id, undefined, undefined, existingMember.name, currentBranch.id
+          );
+        }
+
+        toast.success("Personal training added successfully");
+      }
+
+      // Log activity
+      if (isStaffLoggedIn && staffUser) {
+        await logStaffActivity({
+          category: "members", type: selectedAction === "add_pt" ? "pt_added" : "member_renewed",
+          description: `Staff "${staffUser.fullName}" ${selectedAction === "add_pt" ? "added PT for" : "renewed"} "${existingMember.name}"`,
+          entityType: "members", entityId: existingMember.id, entityName: existingMember.name,
+          newValue: { action: selectedAction, total_amount: totalAmount },
+          branchId: currentBranch.id, staffId: staffUser.id, staffName: staffUser.fullName,
+          staffPhone: staffUser.phone, metadata: { staff_role: staffUser.role },
+        });
+      } else {
+        await logAdminActivity({
+          category: "members", type: selectedAction === "add_pt" ? "pt_added" : "member_renewed",
+          description: `${selectedAction === "add_pt" ? "Added PT for" : "Renewed"} "${existingMember.name}"`,
+          entityType: "members", entityId: existingMember.id, entityName: existingMember.name,
+          newValue: { action: selectedAction, total_amount: totalAmount },
+          branchId: currentBranch.id,
+        });
+      }
+
+      onSuccess();
+      onOpenChange(false);
+      resetForm();
+    } catch (error: any) {
+      toast.error("Error", { description: error.message });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   const resetForm = () => {
     setName(""); setPhone(""); setFieldErrors({}); setTouched({});
     setGender(""); setAddress(""); setPhotoIdType(""); setPhotoIdNumber("");
