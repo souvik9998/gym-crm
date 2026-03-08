@@ -16,7 +16,7 @@ const PoweredByBadge = () => {
               Powered by <span className="font-bold text-foreground">GymKloud</span>
             </p>
           </div>
-        </div>
+        </a>
       </div>
 
       {/* Mobile - centered bottom */}
