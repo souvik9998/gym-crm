@@ -178,7 +178,11 @@ export default function TenantList() {
               </TableHeader>
               <TableBody>
                 {filteredTenants.map((tenant) => (
-                  <TableRow key={tenant.id}>
+                  <TableRow
+                    key={tenant.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/superadmin/tenants/${tenant.id}`)}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -217,20 +221,21 @@ export default function TenantList() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => navigate(`/superadmin/tenants/${tenant.id}`)}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/superadmin/tenants/${tenant.id}`); }}
                           >
                             <EyeIcon className="w-4 h-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => navigate(`/superadmin/tenants/${tenant.id}/edit`)}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/superadmin/tenants/${tenant.id}`); }}
                           >
                             <PencilIcon className="w-4 h-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-destructive"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setTenantToDelete(tenant);
                               setDeleteDialogOpen(true);
                             }}
