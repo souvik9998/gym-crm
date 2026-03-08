@@ -242,8 +242,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setCurrentStep(step);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
 
     const sanitizedName = sanitize(name);
     const result = validateForm(addMemberSchema, { name: sanitizedName, phone });
@@ -505,7 +504,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
         {/* Step Content */}
         <div className="flex-1 min-h-0 overflow-y-auto px-5">
-          <form onSubmit={handleSubmit} className="flex flex-col min-h-full">
+          <div className="flex flex-col min-h-full">
             <div 
               key={currentStep}
               className={cn(
@@ -850,7 +849,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                 </Button>
               ) : (
                 <Button
-                  type="submit"
+                  type="button"
+                  onClick={handleSubmit}
                   className="flex-1 h-11 rounded-xl text-sm font-medium bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98] transition-all duration-200 shadow-sm"
                   disabled={isLoading || !isStep3Valid}
                 >
@@ -868,7 +868,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                 </Button>
               )}
             </div>
-          </form>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
