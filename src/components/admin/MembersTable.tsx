@@ -1010,6 +1010,16 @@ export const MembersTable = ({
                           <Receipt className="w-4 h-4 mr-2" />
                           Send Payment Details
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEnrollMember(member);
+                          }}
+                        >
+                          <Fingerprint className="w-4 h-4 mr-2" />
+                          Enroll Biometric
+                        </DropdownMenuItem>
                       </>
                     )}
                     {!canManageMembers && (
