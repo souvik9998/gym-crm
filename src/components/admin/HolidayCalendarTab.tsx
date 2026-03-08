@@ -541,7 +541,7 @@ const HolidayCalendarTab = () => {
                             ) : (
                               <>
                                 <ClockIcon className="w-3 h-3" />
-                                {holiday.half_day_start_time?.slice(0, 5)} – {holiday.half_day_end_time?.slice(0, 5)}
+                                {formatTime12h(holiday.half_day_start_time)} – {formatTime12h(holiday.half_day_end_time)}
                               </>
                             )}
                           </span>
