@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAttendanceLogs } from "@/hooks/queries/useAttendance";
 import { useBranch } from "@/contexts/BranchContext";
 import { ArrowPathIcon, CalendarDaysIcon, ClockIcon } from "@heroicons/react/24/outline";
+import { AttendanceDatePicker } from "./AttendanceDatePicker";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const StaffAttendanceTab = () => {
@@ -99,14 +99,8 @@ export const StaffAttendanceTab = () => {
       </CardHeader>
       <CardContent className="space-y-3 lg:space-y-4 px-3 lg:px-6 pb-3 lg:pb-6">
         <div className="flex gap-2 lg:gap-3 flex-wrap">
-          <div className="flex-1 min-w-[130px] max-w-[180px]">
-            <label className="text-[10px] lg:text-xs text-muted-foreground font-medium">From</label>
-            <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className="h-8 lg:h-9 text-xs lg:text-sm" />
-          </div>
-          <div className="flex-1 min-w-[130px] max-w-[180px]">
-            <label className="text-[10px] lg:text-xs text-muted-foreground font-medium">To</label>
-            <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="h-8 lg:h-9 text-xs lg:text-sm" />
-          </div>
+          <AttendanceDatePicker label="From" value={dateFrom} onChange={(v) => { setDateFrom(v); setPage(1); }} className="min-w-[140px] max-w-[180px]" />
+          <AttendanceDatePicker label="To" value={dateTo} onChange={(v) => { setDateTo(v); setPage(1); }} className="min-w-[140px] max-w-[180px]" />
         </div>
 
         {isLoading ? (
