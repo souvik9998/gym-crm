@@ -664,16 +664,16 @@ const HolidayCalendarTab = () => {
               </Select>
             </div>
 
-            {/* Timings based on type */}
-            {formType === "half_day" && (
-              <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-3">
-                <p className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
-                  <ClockIcon className="w-3.5 h-3.5" />
-                  Half Day Timings
-                </p>
+            {/* Closure Timings */}
+            <div className="p-3 bg-muted/30 border border-border/40 rounded-xl space-y-3">
+              <p className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                <ClockIcon className="w-3.5 h-3.5" />
+                {formType === "full_day" ? "Closed From – To" : formType === "half_day" ? "Open Timings (Half Day)" : formType === "late_opening" ? "Late Opening Time" : "Early Closing Time"}
+              </p>
+              {(formType === "full_day" || formType === "half_day") && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Open From</Label>
+                    <Label className="text-xs font-medium">{formType === "full_day" ? "Closed From" : "Open From"}</Label>
                     <Input
                       type="time"
                       value={formStartTime}
@@ -682,7 +682,7 @@ const HolidayCalendarTab = () => {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Close At</Label>
+                    <Label className="text-xs font-medium">{formType === "full_day" ? "Closed Till" : "Close At"}</Label>
                     <Input
                       type="time"
                       value={formEndTime}
@@ -691,15 +691,8 @@ const HolidayCalendarTab = () => {
                     />
                   </div>
                 </div>
-              </div>
-            )}
-
-            {formType === "late_opening" && (
-              <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl space-y-3">
-                <p className="text-xs font-medium text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
-                  <ClockIcon className="w-3.5 h-3.5" />
-                  Late Opening Time
-                </p>
+              )}
+              {formType === "late_opening" && (
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Opens At</Label>
                   <Input
@@ -709,15 +702,8 @@ const HolidayCalendarTab = () => {
                     className="h-10 rounded-lg"
                   />
                 </div>
-              </div>
-            )}
-
-            {formType === "early_closing" && (
-              <div className="p-3 bg-purple-500/5 border border-purple-500/20 rounded-xl space-y-3">
-                <p className="text-xs font-medium text-purple-700 dark:text-purple-400 flex items-center gap-1.5">
-                  <ClockIcon className="w-3.5 h-3.5" />
-                  Early Closing Time
-                </p>
+              )}
+              {formType === "early_closing" && (
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Closes At</Label>
                   <Input
@@ -727,9 +713,11 @@ const HolidayCalendarTab = () => {
                     className="h-10 rounded-lg"
                   />
                 </div>
-              </div>
-            )}
-
+              )}
+              <p className="text-[9px] text-muted-foreground">
+                {formType === "full_day" ? "Specify when the gym will be closed (e.g. entire day 6 AM to 10 PM)" : formType === "half_day" ? "Specify the hours the gym will remain open" : formType === "late_opening" ? "Gym will open later than usual" : "Gym will close earlier than usual"}
+              </p>
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="holiday-desc" className="text-xs lg:text-sm font-medium">Description (optional)</Label>
               <Textarea
