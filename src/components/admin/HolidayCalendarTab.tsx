@@ -173,19 +173,19 @@ const HolidayCalendarTab = () => {
     if (type === "full_day") {
       msg += `*closed* on *${dateStr}*`;
       msg += ` for *${name}*.`;
-      msg += `\n\n⏰ *Closed:* ${startTime} – ${endTime}`;
+      msg += `\n\n⏰ *Closed:* ${formatTime12h(startTime)} – ${formatTime12h(endTime)}`;
     } else if (type === "half_day") {
       msg += `open for *half day* on *${dateStr}*`;
       msg += ` for *${name}*.\n\n`;
-      msg += `⏰ *Timings:* ${startTime} – ${endTime}`;
+      msg += `⏰ *Timings:* ${formatTime12h(startTime)} – ${formatTime12h(endTime)}`;
     } else if (type === "late_opening") {
       msg += `opening *late* on *${dateStr}*`;
       msg += ` for *${name}*.\n\n`;
-      msg += `⏰ *Opens at:* ${openTime}`;
+      msg += `⏰ *Opens at:* ${formatTime12h(openTime)}`;
     } else if (type === "early_closing") {
       msg += `closing *early* on *${dateStr}*`;
       msg += ` for *${name}*.\n\n`;
-      msg += `⏰ *Closes at:* ${closeTime}`;
+      msg += `⏰ *Closes at:* ${formatTime12h(closeTime)}`;
     }
     
     if (desc.trim()) {
