@@ -153,6 +153,69 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
 
+  // Check for existing member when phone changes
+  useEffect(() => {
+    if (debouncedPhone.length === 10 && currentBranch?.id) {
+      checkExistingMember(debouncedPhone);
+    } else {
+      setExistingMember(null);
+      setSelectedAction(null);
+    }
+  }, [debouncedPhone, currentBranch?.id]);
+
+  const checkExistingMember = async (phoneNum: string) => {
+    if (!currentBranch?.id) return;
+    setIsCheckingPhone(true);
+    try {
+      const { data: member } = await supabase
+        .from("members")
+        .select("id, name, phone")
+        .eq("phone", phoneNum)
+        .eq("branch_id", currentBranch.id)
+        .maybeSingle();
+
+      if (member) {
+        // Fetch latest subscription
+        const { data: sub } = await supabase
+          .from("subscriptions")
+          .select("status, end_date")
+          .eq("member_id", member.id)
+          .order("end_date", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        // Fetch active PT
+        const { data: pt } = await supabase
+          .from("pt_subscriptions")
+          .select("end_date, personal_trainers(name)")
+          .eq("member_id", member.id)
+          .eq("status", "active")
+          .order("end_date", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        setExistingMember({
+          id: member.id,
+          name: member.name,
+          phone: member.phone,
+          subscription: sub ? { status: sub.status || "expired", end_date: sub.end_date } : null,
+          activePT: pt ? { 
+            trainer_name: (pt.personal_trainers as any)?.name || "Trainer", 
+            end_date: pt.end_date 
+          } : null,
+        });
+        setName(member.name);
+      } else {
+        setExistingMember(null);
+        setSelectedAction(null);
+      }
+    } catch (err) {
+      console.error("Phone check error:", err);
+    } finally {
+      setIsCheckingPhone(false);
+    }
+  };
+
   useEffect(() => {
     if (open && currentBranch) {
       fetchPackages();
