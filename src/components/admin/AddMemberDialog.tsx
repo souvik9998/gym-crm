@@ -668,7 +668,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       // Log activity
       if (isStaffLoggedIn && staffUser) {
         await logStaffActivity({
-          category: "members", type: selectedAction === "add_pt" ? "pt_added" : "member_renewed",
+          category: "members", type: "member_updated",
           description: `Staff "${staffUser.fullName}" ${selectedAction === "add_pt" ? "added PT for" : "renewed"} "${existingMember.name}"`,
           entityType: "members", entityId: existingMember.id, entityName: existingMember.name,
           newValue: { action: selectedAction, total_amount: totalAmount },
@@ -677,7 +677,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         });
       } else {
         await logAdminActivity({
-          category: "members", type: selectedAction === "add_pt" ? "pt_added" : "member_renewed",
+          category: "members", type: "member_updated",
           description: `${selectedAction === "add_pt" ? "Added PT for" : "Renewed"} "${existingMember.name}"`,
           entityType: "members", entityId: existingMember.id, entityName: existingMember.name,
           newValue: { action: selectedAction, total_amount: totalAmount },
