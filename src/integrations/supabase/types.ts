@@ -1168,6 +1168,51 @@ export type Database = {
           },
         ]
       }
+      platform_settings: {
+        Row: {
+          allow_new_signups: boolean
+          created_at: string
+          default_branch_limit: number
+          default_member_limit: number
+          default_monthly_checkins: number
+          default_staff_per_branch: number
+          default_storage_mb: number
+          default_trainers_limit: number
+          default_whatsapp_limit: number
+          id: string
+          maintenance_mode: boolean
+          updated_at: string
+        }
+        Insert: {
+          allow_new_signups?: boolean
+          created_at?: string
+          default_branch_limit?: number
+          default_member_limit?: number
+          default_monthly_checkins?: number
+          default_staff_per_branch?: number
+          default_storage_mb?: number
+          default_trainers_limit?: number
+          default_whatsapp_limit?: number
+          id?: string
+          maintenance_mode?: boolean
+          updated_at?: string
+        }
+        Update: {
+          allow_new_signups?: boolean
+          created_at?: string
+          default_branch_limit?: number
+          default_member_limit?: number
+          default_monthly_checkins?: number
+          default_staff_per_branch?: number
+          default_storage_mb?: number
+          default_trainers_limit?: number
+          default_whatsapp_limit?: number
+          id?: string
+          maintenance_mode?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pt_subscriptions: {
         Row: {
           branch_id: string | null
