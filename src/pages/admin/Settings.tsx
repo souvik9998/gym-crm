@@ -885,119 +885,140 @@ const AdminSettings = () => {
             ) : (
             <>
             {/* Monthly Packages */}
-            <Card className="border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
-              <CardHeader className="p-4 lg:p-6 pb-3 lg:pb-4 bg-gradient-to-r from-muted/30 to-transparent">
-                <CardTitle className="flex items-center gap-2.5 text-base lg:text-xl">
-                  <div className="p-1.5 lg:p-2 rounded-lg bg-primary/10">
-                    <CurrencyRupeeIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
+            <Card className="border-0 shadow-lg rounded-2xl overflow-hidden bg-card">
+              <CardHeader className="p-5 lg:p-7 pb-4 lg:pb-5 border-b border-border/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-primary/10 ring-1 ring-primary/20">
+                      <CurrencyRupeeIcon className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg lg:text-xl font-bold">Monthly Packages</CardTitle>
+                      <CardDescription className="text-xs lg:text-sm mt-0.5">Configure subscription plans & pricing</CardDescription>
+                    </div>
                   </div>
-                  Monthly Packages
-                </CardTitle>
-                <CardDescription className="text-xs lg:text-sm ml-9 lg:ml-11">Configure monthly subscription plans with custom pricing</CardDescription>
+                  <span className="text-xs font-medium text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-full">
+                    {monthlyPackages.length} {monthlyPackages.length === 1 ? "plan" : "plans"}
+                  </span>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4 lg:space-y-5 p-4 lg:p-6 pt-0 lg:pt-0">
-                <div className="p-3 lg:p-4 rounded-xl bg-muted/20 border border-dashed border-border/60">
-                  <p className="text-[10px] lg:text-xs font-medium text-muted-foreground mb-2.5 lg:mb-3 uppercase tracking-wider">Add New Package</p>
-                  <div className="grid gap-2.5 lg:gap-4 grid-cols-3">
+              <CardContent className="p-5 lg:p-7 space-y-5 lg:space-y-6">
+                {/* Add form */}
+                <div className="p-4 lg:p-5 rounded-xl bg-muted/30 border border-border/40">
+                  <div className="flex items-center gap-2 mb-3.5">
+                    <PlusIcon className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">New Package</p>
+                  </div>
+                  <div className="grid gap-3 lg:gap-4 grid-cols-1 sm:grid-cols-3">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] lg:text-xs text-muted-foreground">Duration (months) *</Label>
+                      <Label className="text-xs text-muted-foreground font-medium">Duration (months) *</Label>
                       <Input
                         type="number"
                         min="1"
                         value={newMonthlyPackage.months}
                         onChange={(e) => setNewMonthlyPackage({ ...newMonthlyPackage, months: e.target.value })}
-                        placeholder="1, 3, 6"
-                        className="h-9 lg:h-10 text-xs lg:text-sm bg-background"
+                        placeholder="e.g. 1, 3, 6"
+                        className="h-10 text-sm bg-background"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] lg:text-xs text-muted-foreground">Price (₹) *</Label>
+                      <Label className="text-xs text-muted-foreground font-medium">Price (₹) *</Label>
                       <Input
                         type="number"
                         value={newMonthlyPackage.price}
                         onChange={(e) => setNewMonthlyPackage({ ...newMonthlyPackage, price: e.target.value })}
-                        placeholder="1000"
-                        className="h-9 lg:h-10 text-xs lg:text-sm bg-background"
+                        placeholder="e.g. 1000"
+                        className="h-10 text-sm bg-background"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] lg:text-xs text-muted-foreground">Joining Fee</Label>
+                      <Label className="text-xs text-muted-foreground font-medium">Joining Fee</Label>
                       <Input
                         type="number"
                         value={newMonthlyPackage.joining_fee}
                         onChange={(e) => setNewMonthlyPackage({ ...newMonthlyPackage, joining_fee: e.target.value })}
-                        placeholder="200"
-                        className="h-9 lg:h-10 text-xs lg:text-sm bg-background"
+                        placeholder="e.g. 200"
+                        className="h-10 text-sm bg-background"
                       />
                     </div>
                   </div>
-                  <Button onClick={handleAddMonthlyPackage} disabled={isAddingMonthly} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm mt-3 lg:mt-4">
-                    {isAddingMonthly ? <ButtonSpinner /> : <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
+                  <Button onClick={handleAddMonthlyPackage} disabled={isAddingMonthly} className="gap-2 h-10 text-sm mt-4 rounded-xl shadow-sm">
+                    {isAddingMonthly ? <ButtonSpinner /> : <PlusIcon className="w-4 h-4" />}
                     {isAddingMonthly ? "Adding..." : "Add Package"}
                   </Button>
                 </div>
 
+                {/* Package list */}
                 {monthlyPackages.length > 0 ? (
-                  <div className="space-y-2 lg:space-y-2.5">
+                  <div className="grid gap-3">
                     {monthlyPackages.map((pkg) => (
                       <div key={pkg.id} className={cn(
-                        "group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/60 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border",
+                        "group relative flex items-center gap-3 lg:gap-4 p-4 lg:p-5 bg-background border border-border/50 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border/80",
+                        !pkg.is_active && "opacity-60",
                         recentlyAddedIds.has(pkg.id) && "animate-fade-in ring-2 ring-primary/30"
                       )}>
                         {editingMonthlyId === pkg.id ? (
                           <>
-                            <div className="flex-1 grid grid-cols-2 gap-2 lg:gap-3">
-                              <div className="space-y-1">
-                                <Label className="text-[10px] lg:text-xs text-muted-foreground">Price (₹)</Label>
+                            <div className="flex-1 grid grid-cols-2 gap-3">
+                              <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">Price (₹)</Label>
                                 <Input
                                   type="number"
                                   value={editMonthlyData.price}
                                   onChange={(e) => setEditMonthlyData({ ...editMonthlyData, price: e.target.value })}
-                                  className="h-8 lg:h-9 text-xs lg:text-sm"
+                                  className="h-9 text-sm"
                                 />
                               </div>
-                              <div className="space-y-1">
-                                <Label className="text-[10px] lg:text-xs text-muted-foreground">Joining Fee (₹)</Label>
+                              <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">Joining Fee (₹)</Label>
                                 <Input
                                   type="number"
                                   value={editMonthlyData.joining_fee}
                                   onChange={(e) => setEditMonthlyData({ ...editMonthlyData, joining_fee: e.target.value })}
-                                  className="h-8 lg:h-9 text-xs lg:text-sm"
+                                  className="h-9 text-sm"
                                 />
                               </div>
                             </div>
-                            <div className="flex items-center gap-1.5 lg:gap-2 pt-5 lg:pt-6">
+                            <div className="flex items-center gap-1.5 shrink-0">
                               <Button 
                                 size="icon" 
                                 variant="outline"
                                 onClick={() => handleSaveMonthlyPackage(pkg.id)}
                                 disabled={savingMonthlyId === pkg.id}
-                                className="h-8 w-8 lg:h-9 lg:w-9 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200"
+                                className="h-9 w-9 rounded-lg border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
                               >
-                                {savingMonthlyId === pkg.id ? <ButtonSpinner /> : <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
+                                {savingMonthlyId === pkg.id ? <ButtonSpinner /> : <CheckIcon className="w-4 h-4" />}
                               </Button>
                               <Button 
                                 size="icon" 
                                 variant="outline"
                                 onClick={() => setEditingMonthlyId(null)}
-                                className="h-8 w-8 lg:h-9 lg:w-9 transition-all duration-200"
+                                className="h-9 w-9 rounded-lg"
                               >
-                                <XMarkIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                <XMarkIcon className="w-4 h-4" />
                               </Button>
                             </div>
                           </>
                         ) : (
                           <>
+                            {/* Duration badge */}
+                            <div className="w-14 h-14 lg:w-16 lg:h-16 rounded-xl bg-primary/8 border border-primary/15 flex flex-col items-center justify-center shrink-0">
+                              <span className="text-lg lg:text-xl font-bold text-primary leading-none">{pkg.months}</span>
+                              <span className="text-[9px] lg:text-[10px] font-medium text-primary/70 uppercase mt-0.5">{pkg.months === 1 ? "Month" : "Months"}</span>
+                            </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <p className="font-semibold text-sm lg:text-base">{pkg.months} {pkg.months === 1 ? "Month" : "Months"}</p>
+                                <p className="font-semibold text-sm lg:text-base">{pkg.months} {pkg.months === 1 ? "Month" : "Months"} Plan</p>
                                 {!pkg.is_active && (
-                                  <span className="text-[10px] lg:text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Inactive</span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Inactive</span>
                                 )}
                               </div>
-                              <p className="text-xs lg:text-sm text-muted-foreground mt-0.5">
-                                ₹{pkg.price.toLocaleString()} + ₹{pkg.joining_fee.toLocaleString()} joining fee
-                              </p>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <span className="text-sm lg:text-base font-bold tabular-nums">₹{pkg.price.toLocaleString()}</span>
+                                {pkg.joining_fee > 0 && (
+                                  <span className="text-xs text-muted-foreground">+ ₹{pkg.joining_fee.toLocaleString()} joining</span>
+                                )}
+                              </div>
                             </div>
                             <div className="flex items-center gap-2 lg:gap-3 shrink-0">
                               <Switch
@@ -1008,16 +1029,16 @@ const AdminSettings = () => {
                                 onCheckedChange={(checked) => handleToggleMonthlyPackage(pkg.id, checked)}
                               />
                               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                <Button variant="ghost" size="icon" onClick={() => handleEditMonthlyPackage(pkg)} className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-foreground">
-                                  <PencilIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                <Button variant="ghost" size="icon" onClick={() => handleEditMonthlyPackage(pkg)} className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground">
+                                  <PencilIcon className="w-4 h-4" />
                                 </Button>
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
                                   onClick={() => handleDeleteMonthlyPackage(pkg.id, pkg.months)}
-                                  className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-destructive"
+                                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive"
                                 >
-                                  <TrashIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                  <TrashIcon className="w-4 h-4" />
                                 </Button>
                               </div>
                             </div>
@@ -1027,127 +1048,145 @@ const AdminSettings = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <CubeIcon className="w-8 h-8 text-muted-foreground/40 mb-2" />
-                    <p className="text-sm text-muted-foreground">No monthly packages yet</p>
-                    <p className="text-xs text-muted-foreground/60">Add your first package above</p>
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="p-3 rounded-2xl bg-muted/40 mb-3">
+                      <CurrencyRupeeIcon className="w-8 h-8 text-muted-foreground/40" />
+                    </div>
+                    <p className="text-sm font-medium text-muted-foreground">No monthly packages yet</p>
+                    <p className="text-xs text-muted-foreground/60 mt-0.5">Create your first subscription plan above</p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
             {/* Daily/Custom Packages */}
-            <Card className="border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
-              <CardHeader className="p-4 lg:p-6 pb-3 lg:pb-4 bg-gradient-to-r from-muted/30 to-transparent">
-                <CardTitle className="flex items-center gap-2.5 text-base lg:text-xl">
-                  <div className="p-1.5 lg:p-2 rounded-lg bg-accent/50">
-                    <CubeIcon className="w-4 h-4 lg:w-5 lg:h-5 text-foreground" />
+            <Card className="border-0 shadow-lg rounded-2xl overflow-hidden bg-card">
+              <CardHeader className="p-5 lg:p-7 pb-4 lg:pb-5 border-b border-border/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-accent/60 ring-1 ring-border/30">
+                      <CubeIcon className="w-5 h-5 text-foreground" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg lg:text-xl font-bold">Daily Passes</CardTitle>
+                      <CardDescription className="text-xs lg:text-sm mt-0.5">Short-term memberships without joining fee</CardDescription>
+                    </div>
                   </div>
-                  Daily Passes
-                </CardTitle>
-                <CardDescription className="text-xs lg:text-sm ml-9 lg:ml-11">Create packages for daily or short-term memberships (no joining fee)</CardDescription>
+                  <span className="text-xs font-medium text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-full">
+                    {customPackages.length} {customPackages.length === 1 ? "pass" : "passes"}
+                  </span>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4 lg:space-y-5 p-4 lg:p-6 pt-0 lg:pt-0">
-                <div className="p-3 lg:p-4 rounded-xl bg-muted/20 border border-dashed border-border/60">
-                  <p className="text-[10px] lg:text-xs font-medium text-muted-foreground mb-2.5 lg:mb-3 uppercase tracking-wider">Add New Pass</p>
-                  <div className="grid gap-2.5 lg:gap-4 grid-cols-3">
+              <CardContent className="p-5 lg:p-7 space-y-5 lg:space-y-6">
+                {/* Add form */}
+                <div className="p-4 lg:p-5 rounded-xl bg-muted/30 border border-border/40">
+                  <div className="flex items-center gap-2 mb-3.5">
+                    <PlusIcon className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">New Pass</p>
+                  </div>
+                  <div className="grid gap-3 lg:gap-4 grid-cols-1 sm:grid-cols-3">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] lg:text-xs text-muted-foreground">Name *</Label>
+                      <Label className="text-xs text-muted-foreground font-medium">Name *</Label>
                       <Input
                         value={newPackage.name}
                         onChange={(e) => setNewPackage({ ...newPackage, name: e.target.value })}
-                        placeholder="1 Week"
-                        className="h-9 lg:h-10 text-xs lg:text-sm bg-background"
+                        placeholder="e.g. 1 Week"
+                        className="h-10 text-sm bg-background"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] lg:text-xs text-muted-foreground">Days *</Label>
+                      <Label className="text-xs text-muted-foreground font-medium">Days *</Label>
                       <Input
                         type="number"
                         min="1"
                         value={newPackage.duration_days}
                         onChange={(e) => setNewPackage({ ...newPackage, duration_days: e.target.value })}
-                        placeholder="7"
-                        className="h-9 lg:h-10 text-xs lg:text-sm bg-background"
+                        placeholder="e.g. 7"
+                        className="h-10 text-sm bg-background"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] lg:text-xs text-muted-foreground">Price (₹) *</Label>
+                      <Label className="text-xs text-muted-foreground font-medium">Price (₹) *</Label>
                       <Input
                         type="number"
                         value={newPackage.price}
                         onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })}
-                        placeholder="300"
-                        className="h-9 lg:h-10 text-xs lg:text-sm bg-background"
+                        placeholder="e.g. 300"
+                        className="h-10 text-sm bg-background"
                       />
                     </div>
                   </div>
-                  <Button onClick={handleAddPackage} disabled={isAddingCustom} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm mt-3 lg:mt-4">
-                    {isAddingCustom ? <ButtonSpinner /> : <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
+                  <Button onClick={handleAddPackage} disabled={isAddingCustom} className="gap-2 h-10 text-sm mt-4 rounded-xl shadow-sm">
+                    {isAddingCustom ? <ButtonSpinner /> : <PlusIcon className="w-4 h-4" />}
                     {isAddingCustom ? "Adding..." : "Add Daily Pass"}
                   </Button>
                 </div>
 
+                {/* Pass list */}
                 {customPackages.length > 0 ? (
-                  <div className="space-y-2 lg:space-y-2.5">
+                  <div className="grid gap-3">
                     {customPackages.map((pkg) => (
                       <div key={pkg.id} className={cn(
-                        "group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/60 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border",
+                        "group relative flex items-center gap-3 lg:gap-4 p-4 lg:p-5 bg-background border border-border/50 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border/80",
+                        !pkg.is_active && "opacity-60",
                         recentlyAddedIds.has(pkg.id) && "animate-fade-in ring-2 ring-primary/30"
                       )}>
                         {editingPackageId === pkg.id ? (
                           <>
-                            <div className="flex-1 grid grid-cols-2 gap-2 lg:gap-3">
-                              <div className="space-y-1">
-                                <Label className="text-[10px] lg:text-xs text-muted-foreground">Name</Label>
+                            <div className="flex-1 grid grid-cols-2 gap-3">
+                              <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">Name</Label>
                                 <Input
                                   value={editPackageData.name}
                                   onChange={(e) => setEditPackageData({ ...editPackageData, name: e.target.value })}
-                                  className="h-8 lg:h-9 text-xs lg:text-sm"
+                                  className="h-9 text-sm"
                                 />
                               </div>
-                              <div className="space-y-1">
-                                <Label className="text-[10px] lg:text-xs text-muted-foreground">Price (₹)</Label>
+                              <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">Price (₹)</Label>
                                 <Input
                                   type="number"
                                   value={editPackageData.price}
                                   onChange={(e) => setEditPackageData({ ...editPackageData, price: e.target.value })}
-                                  className="h-8 lg:h-9 text-xs lg:text-sm"
+                                  className="h-9 text-sm"
                                 />
                               </div>
                             </div>
-                            <div className="flex items-center gap-1.5 lg:gap-2 pt-5 lg:pt-6">
+                            <div className="flex items-center gap-1.5 shrink-0">
                               <Button 
                                 size="icon" 
                                 variant="outline"
                                 onClick={() => handleSavePackage(pkg.id)}
                                 disabled={savingCustomId === pkg.id}
-                                className="h-8 w-8 lg:h-9 lg:w-9 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200"
+                                className="h-9 w-9 rounded-lg border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
                               >
-                                {savingCustomId === pkg.id ? <ButtonSpinner /> : <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
+                                {savingCustomId === pkg.id ? <ButtonSpinner /> : <CheckIcon className="w-4 h-4" />}
                               </Button>
                               <Button 
                                 size="icon" 
                                 variant="outline"
                                 onClick={() => setEditingPackageId(null)}
-                                className="h-8 w-8 lg:h-9 lg:w-9 transition-all duration-200"
+                                className="h-9 w-9 rounded-lg"
                               >
-                                <XMarkIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                <XMarkIcon className="w-4 h-4" />
                               </Button>
                             </div>
                           </>
                         ) : (
                           <>
+                            {/* Duration badge */}
+                            <div className="w-14 h-14 lg:w-16 lg:h-16 rounded-xl bg-accent/40 border border-border/30 flex flex-col items-center justify-center shrink-0">
+                              <span className="text-lg lg:text-xl font-bold text-foreground leading-none">{pkg.duration_days}</span>
+                              <span className="text-[9px] lg:text-[10px] font-medium text-muted-foreground uppercase mt-0.5">{pkg.duration_days === 1 ? "Day" : "Days"}</span>
+                            </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <p className="font-semibold text-sm lg:text-base">{pkg.name}</p>
                                 {!pkg.is_active && (
-                                  <span className="text-[10px] lg:text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Inactive</span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Inactive</span>
                                 )}
                               </div>
-                              <p className="text-xs lg:text-sm text-muted-foreground mt-0.5">
-                                {pkg.duration_days} {pkg.duration_days === 1 ? "Day" : "Days"} • ₹{pkg.price.toLocaleString()}
-                              </p>
+                              <p className="text-sm lg:text-base font-bold tabular-nums mt-0.5">₹{pkg.price.toLocaleString()}</p>
                             </div>
                             <div className="flex items-center gap-2 lg:gap-3 shrink-0">
                               <Switch
@@ -1158,16 +1197,16 @@ const AdminSettings = () => {
                                 onCheckedChange={(checked) => handleTogglePackage(pkg.id, checked)}
                               />
                               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                <Button variant="ghost" size="icon" onClick={() => handleEditPackage(pkg)} className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-foreground">
-                                  <PencilIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                <Button variant="ghost" size="icon" onClick={() => handleEditPackage(pkg)} className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground">
+                                  <PencilIcon className="w-4 h-4" />
                                 </Button>
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
                                   onClick={() => handleDeletePackage(pkg.id, pkg.name)}
-                                  className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-destructive"
+                                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive"
                                 >
-                                  <TrashIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                  <TrashIcon className="w-4 h-4" />
                                 </Button>
                               </div>
                             </div>
@@ -1177,10 +1216,12 @@ const AdminSettings = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <CubeIcon className="w-8 h-8 text-muted-foreground/40 mb-2" />
-                    <p className="text-sm text-muted-foreground">No daily passes yet</p>
-                    <p className="text-xs text-muted-foreground/60">Add your first pass above</p>
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="p-3 rounded-2xl bg-muted/40 mb-3">
+                      <CubeIcon className="w-8 h-8 text-muted-foreground/40" />
+                    </div>
+                    <p className="text-sm font-medium text-muted-foreground">No daily passes yet</p>
+                    <p className="text-xs text-muted-foreground/60 mt-0.5">Create your first short-term pass above</p>
                   </div>
                 )}
               </CardContent>
