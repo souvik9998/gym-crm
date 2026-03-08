@@ -937,7 +937,12 @@ export const MembersTable = ({
                 
                 {/* Member Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate text-foreground">{member.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-semibold text-sm truncate text-foreground">{member.name}</p>
+                    {enrolledMemberIds.has(member.id) && (
+                      <Fingerprint className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground mt-0.5">+91 {member.phone}</p>
                 </div>
                 
