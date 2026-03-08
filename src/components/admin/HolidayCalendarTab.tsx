@@ -150,6 +150,51 @@ const HolidayCalendarTab = () => {
     return holidays.filter(h => !isBefore(parseISO(h.holiday_date), today)).slice(0, 10);
   }, [holidays]);
 
+  // Generate WhatsApp message based on form state
+  const generateWhatsAppMessage = useCallback((name: string, date: Date | null, type: string, desc: string, openTime: string, closeTime: string, startTime: string, endTime: string) => {
+    if (!date || !name.trim()) return "";
+    const dateStr = format(date, "EEEE, dd MMMM yyyy");
+    const gymName = currentBranch?.name || "our gym";
+    
+    let msg = `🏋️ *Gym Holiday Notice*\n\n`;
+    msg += `Dear Member,\n\n`;
+    msg += `We would like to inform you that *${gymName}* will be `;
+    
+    if (type === "full_day") {
+      msg += `*closed* on *${dateStr}*`;
+      msg += ` for *${name}*.`;
+    } else if (type === "half_day") {
+      msg += `open for *half day* on *${dateStr}*`;
+      msg += ` for *${name}*.\n\n`;
+      msg += `⏰ *Timings:* ${startTime} – ${endTime}`;
+    } else if (type === "late_opening") {
+      msg += `opening *late* on *${dateStr}*`;
+      msg += ` for *${name}*.\n\n`;
+      msg += `⏰ *Opens at:* ${openTime}`;
+    } else if (type === "early_closing") {
+      msg += `closing *early* on *${dateStr}*`;
+      msg += ` for *${name}*.\n\n`;
+      msg += `⏰ *Closes at:* ${closeTime}`;
+    }
+    
+    if (desc.trim()) {
+      msg += `\n\n📝 ${desc.trim()}`;
+    }
+    
+    msg += `\n\nRegular hours will resume the next working day.`;
+    msg += `\n\nThank you for your understanding! 💪`;
+    
+    return msg;
+  }, [currentBranch]);
+
+  // Auto-update message when form changes
+  useEffect(() => {
+    if (formNotify) {
+      const msg = generateWhatsAppMessage(formName, selectedDate, formType, formDescription, formOpenTime, formCloseTime, formStartTime, formEndTime);
+      setFormWhatsAppMessage(msg);
+    }
+  }, [formName, selectedDate, formType, formDescription, formOpenTime, formCloseTime, formStartTime, formEndTime, formNotify, generateWhatsAppMessage]);
+
   const openAddDialog = (date: Date, prefillName?: string) => {
     setEditingHoliday(null);
     setSelectedDate(date);
@@ -158,7 +203,10 @@ const HolidayCalendarTab = () => {
     setFormType("full_day");
     setFormStartTime("09:00");
     setFormEndTime("13:00");
+    setFormOpenTime("06:00");
+    setFormCloseTime("22:00");
     setFormNotify(false);
+    setFormWhatsAppMessage("");
     setIsDialogOpen(true);
   };
 
