@@ -50,6 +50,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
 import RazorpayCredentialsTab from "@/components/superadmin/RazorpayCredentialsTab";
+import { BiometricDevicesSection } from "@/components/superadmin/BiometricDevicesSection";
 
 interface Branch {
   id: string;
