@@ -560,13 +560,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
               const isCompleted = currentStep > step.id;
               const isActive = currentStep === step.id;
               return (
-                <button
+                <div
                   key={step.id}
-                  type="button"
-                  onClick={() => {
-                    if (step.id < currentStep) goToStep(step.id);
-                    else if (step.id === currentStep + 1 && (currentStep === 1 ? isStep1Valid : true)) goToStep(step.id);
-                  }}
                   className="flex flex-col items-center gap-1.5 relative z-10"
                 >
                   <div className={cn(
