@@ -1044,20 +1044,21 @@ const AdminSettings = () => {
               </CardContent>
             </Card>
             {/* Daily/Custom Packages */}
-            <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
-              <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+            <Card className="border border-border/40 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden relative">
+              <div className="absolute top-0 left-0 w-1 h-full bg-warning rounded-l-lg" />
+              <CardHeader className="p-4 lg:p-6 pb-3 lg:pb-4 pl-5 lg:pl-7">
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-warning/10 text-warning">
-                    <CubeIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+                  <div className="flex items-center justify-center w-10 h-10 lg:w-11 lg:h-11 rounded-xl bg-warning/10 text-warning shadow-sm">
+                    <CubeIcon className="w-5 h-5 lg:w-5.5 lg:h-5.5" />
                   </div>
                   <div>
-                    <CardTitle className="text-base lg:text-xl">Daily Passes</CardTitle>
+                    <CardTitle className="text-base lg:text-xl font-bold tracking-tight">Daily Passes</CardTitle>
                     <CardDescription className="text-xs lg:text-sm">Create packages for daily or short-term memberships (no joining fee)</CardDescription>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
-                <div className="grid gap-2 lg:gap-4 grid-cols-3 p-3 lg:p-4 bg-muted/30 rounded-xl border border-border/30">
+              <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0 pl-5 lg:pl-7">
+                <div className="grid gap-2 lg:gap-4 grid-cols-3 p-3 lg:p-4 bg-muted/30 rounded-xl border border-dashed border-border/50">
                   <div className="space-y-1 lg:space-y-2">
                     <Label className="text-xs lg:text-sm font-medium">Name *</Label>
                     <Input
@@ -1089,21 +1090,22 @@ const AdminSettings = () => {
                     />
                   </div>
                 </div>
-                <Button onClick={handleAddPackage} disabled={isAddingCustom} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm rounded-xl active:scale-[0.97] transition-all duration-200">
+                <Button onClick={handleAddPackage} disabled={isAddingCustom} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm rounded-xl active:scale-[0.97] transition-all duration-200 shadow-sm">
                   {isAddingCustom ? <ButtonSpinner /> : <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
                   {isAddingCustom ? "Adding..." : "Add Daily Pass"}
                 </Button>
 
                 {customPackages.length > 0 && (
-                  <div className="space-y-2 lg:space-y-2.5 pt-3 lg:pt-4 border-t border-border/40">
+                  <div className="space-y-2 lg:space-y-2.5 pt-4 lg:pt-5 border-t border-border/40">
+                    <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Active Passes ({customPackages.filter(p => p.is_active).length} of {customPackages.length})</p>
                     {customPackages.map((pkg, index) => (
                       <div 
                         key={pkg.id} 
-                        style={{ animationDelay: `${index * 50}ms` }}
+                        style={{ animationDelay: `${index * 60}ms` }}
                         className={cn(
-                          "group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/40 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border/70 hover:-translate-y-0.5 animate-fade-in",
+                          "group relative flex items-center gap-3 lg:gap-4 p-3.5 lg:p-4 bg-card border border-border/50 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-border/80 hover:-translate-y-0.5 animate-fade-in",
                           recentlyAddedIds.has(pkg.id) && "ring-2 ring-primary/30",
-                          !pkg.is_active && "opacity-60"
+                          !pkg.is_active && "opacity-50 hover:opacity-70"
                         )}
                       >
                         {editingPackageId === pkg.id ? (
@@ -1149,22 +1151,19 @@ const AdminSettings = () => {
                           </>
                         ) : (
                           <>
+                            <div className="flex items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-warning/10 text-warning text-base lg:text-lg font-black tabular-nums shrink-0 shadow-sm">
+                              {pkg.duration_days}
+                            </div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <div className="flex items-center justify-center w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-warning/10 text-warning text-xs lg:text-sm font-bold tabular-nums">
-                                  {pkg.duration_days}
-                                </div>
-                                <div>
-                                  <p className="font-semibold text-sm lg:text-base">{pkg.name}</p>
-                                  <p className="text-xs lg:text-sm text-muted-foreground">
-                                    {pkg.duration_days} {pkg.duration_days === 1 ? "Day" : "Days"} • ₹{pkg.price.toLocaleString()}
-                                  </p>
-                                </div>
-                                {!pkg.is_active && (
-                                  <span className="text-[10px] lg:text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Inactive</span>
-                                )}
+                              <p className="font-bold text-sm lg:text-base tracking-tight">{pkg.name}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-sm lg:text-base font-semibold tabular-nums">₹{pkg.price.toLocaleString()}</span>
+                                <span className="text-xs text-muted-foreground">• {pkg.duration_days} {pkg.duration_days === 1 ? "day" : "days"}</span>
                               </div>
                             </div>
+                            {!pkg.is_active && (
+                              <span className="text-[10px] lg:text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold">Inactive</span>
+                            )}
                             <div className="flex items-center gap-2 lg:gap-3 shrink-0">
                               <Switch
                                 id={`custom-${pkg.id}`}
@@ -1174,14 +1173,14 @@ const AdminSettings = () => {
                                 onCheckedChange={(checked) => handleTogglePackage(pkg.id, checked)}
                               />
                               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                                <Button variant="ghost" size="icon" onClick={() => handleEditPackage(pkg)} className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-foreground active:scale-90 transition-all">
+                                <Button variant="ghost" size="icon" onClick={() => handleEditPackage(pkg)} className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted active:scale-90 transition-all">
                                   <PencilIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                                 </Button>
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
                                   onClick={() => handleDeletePackage(pkg.id, pkg.name)}
-                                  className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-destructive active:scale-90 transition-all"
+                                  className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-90 transition-all"
                                 >
                                   <TrashIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                                 </Button>
