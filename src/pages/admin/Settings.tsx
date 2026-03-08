@@ -1208,6 +1208,13 @@ const AdminSettings = () => {
             <BranchManagement />
           </TabsContent>
 
+          {/* Holiday Calendar Tab */}
+          <TabsContent value="holidays" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6 animate-fade-in">
+            <Suspense fallback={<div className="space-y-4"><div className="h-64 bg-muted/30 rounded-xl animate-pulse" /><div className="h-48 bg-muted/30 rounded-xl animate-pulse" /></div>}>
+              <HolidayCalendarTab />
+            </Suspense>
+          </TabsContent>
+
           {/* WhatsApp Templates */}
           <TabsContent value="whatsapp" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6 animate-fade-in">
             {/* WhatsApp Enable/Disable Toggle */}
