@@ -1037,47 +1037,56 @@ const AdminSettings = () => {
             </Card>
 
             {/* Daily/Custom Packages */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-                <CardTitle className="text-base lg:text-xl">Daily Passes</CardTitle>
-                <CardDescription className="text-xs lg:text-sm">Create packages for daily or short-term memberships (no joining fee)</CardDescription>
+            <Card className="border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
+              <CardHeader className="p-4 lg:p-6 pb-3 lg:pb-4 bg-gradient-to-r from-muted/30 to-transparent">
+                <CardTitle className="flex items-center gap-2.5 text-base lg:text-xl">
+                  <div className="p-1.5 lg:p-2 rounded-lg bg-accent/50">
+                    <CubeIcon className="w-4 h-4 lg:w-5 lg:h-5 text-foreground" />
+                  </div>
+                  Daily Passes
+                </CardTitle>
+                <CardDescription className="text-xs lg:text-sm ml-9 lg:ml-11">Create packages for daily or short-term memberships (no joining fee)</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
-                <div className="grid gap-2 lg:gap-4 grid-cols-3">
-                  <div className="space-y-1 lg:space-y-2">
-                    <Label className="text-xs lg:text-sm">Name *</Label>
-                    <Input
-                      value={newPackage.name}
-                      onChange={(e) => setNewPackage({ ...newPackage, name: e.target.value })}
-                      placeholder="1 Week"
-                      className="h-9 lg:h-12 text-xs lg:text-base"
-                    />
+              <CardContent className="space-y-4 lg:space-y-5 p-4 lg:p-6 pt-0 lg:pt-0">
+                <div className="p-3 lg:p-4 rounded-xl bg-muted/20 border border-dashed border-border/60">
+                  <p className="text-[10px] lg:text-xs font-medium text-muted-foreground mb-2.5 lg:mb-3 uppercase tracking-wider">Add New Pass</p>
+                  <div className="grid gap-2.5 lg:gap-4 grid-cols-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] lg:text-xs text-muted-foreground">Name *</Label>
+                      <Input
+                        value={newPackage.name}
+                        onChange={(e) => setNewPackage({ ...newPackage, name: e.target.value })}
+                        placeholder="1 Week"
+                        className="h-9 lg:h-10 text-xs lg:text-sm bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] lg:text-xs text-muted-foreground">Days *</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={newPackage.duration_days}
+                        onChange={(e) => setNewPackage({ ...newPackage, duration_days: e.target.value })}
+                        placeholder="7"
+                        className="h-9 lg:h-10 text-xs lg:text-sm bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] lg:text-xs text-muted-foreground">Price (₹) *</Label>
+                      <Input
+                        type="number"
+                        value={newPackage.price}
+                        onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })}
+                        placeholder="300"
+                        className="h-9 lg:h-10 text-xs lg:text-sm bg-background"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1 lg:space-y-2">
-                    <Label className="text-xs lg:text-sm">Days *</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={newPackage.duration_days}
-                      onChange={(e) => setNewPackage({ ...newPackage, duration_days: e.target.value })}
-                      placeholder="7"
-                      className="h-9 lg:h-12 text-xs lg:text-base"
-                    />
-                  </div>
-                  <div className="space-y-1 lg:space-y-2">
-                    <Label className="text-xs lg:text-sm">Price (₹) *</Label>
-                    <Input
-                      type="number"
-                      value={newPackage.price}
-                      onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })}
-                      placeholder="300"
-                      className="h-9 lg:h-12 text-xs lg:text-base"
-                    />
-                  </div>
+                  <Button onClick={handleAddPackage} disabled={isAddingCustom} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm mt-3 lg:mt-4">
+                    {isAddingCustom ? <ButtonSpinner /> : <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
+                    {isAddingCustom ? "Adding..." : "Add Daily Pass"}
+                  </Button>
                 </div>
-                <Button onClick={handleAddPackage} disabled={isAddingCustom} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
-                  {isAddingCustom ? <ButtonSpinner /> : <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
-                  {isAddingCustom ? "Adding..." : "Add Daily Pass"}
                 </Button>
 
                 {customPackages.length > 0 && (
