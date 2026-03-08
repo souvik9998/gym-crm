@@ -307,7 +307,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
   // Step validation - if existing member found or still checking, block progress
   const isStep1Valid = name.trim().length >= 2 && phone.length === 10 && !existingMember && !isCheckingPhone;
-  const isStep2Valid = !!gender; // Gender is required
+  // Match registration portal: gender, photo ID, and address are all required
+  const isStep2Valid = !!gender && !!photoIdType && photoIdNumber.trim().length > 0 && address.trim().length >= 3;
   const isStep3Valid = !!selectedPackageId;
 
   const goToStep = (step: number) => {
@@ -334,8 +335,13 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         }
       }
       if (currentStep === 2 && !isStep2Valid) {
-        toast.error("Please select gender", {
-          description: "Gender is required to proceed",
+        const missing: string[] = [];
+        if (!gender) missing.push("Gender");
+        if (!photoIdType) missing.push("Photo ID Type");
+        if (photoIdType && !photoIdNumber.trim()) missing.push("Photo ID Number");
+        if (address.trim().length < 3) missing.push("Address");
+        toast.error("Please fill all required fields", {
+          description: missing.join(", "),
         });
         return;
       }
@@ -755,7 +761,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
               {currentStep === 2 && (
                 <div className="space-y-4">
                   <div className="space-y-2.5">
-                    <Label className="text-sm font-medium">Gender</Label>
+                    <Label className="text-sm font-medium">Gender <span className="text-destructive">*</span></Label>
                     <div className="flex gap-2">
                       {[
                         { value: "male", label: "Male" },
@@ -790,7 +796,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-sm font-medium">
                       <IdCard className="w-4 h-4 text-accent" />
-                      Photo ID Type
+                      Photo ID Type <span className="text-destructive">*</span>
                     </Label>
                     <Select value={photoIdType} onValueChange={(val) => { setPhotoIdType(val); setPhotoIdNumber(""); }}>
                       <SelectTrigger className="h-11 text-sm rounded-xl">
@@ -808,7 +814,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   {photoIdType && (
                     <div className="space-y-2 animate-fade-in">
                       <Label className="text-sm font-medium">
-                        {photoIdType === "aadhaar" ? "Aadhaar" : photoIdType === "pan" ? "PAN" : photoIdType === "voter" ? "Voter ID" : "DL"} Number
+                        {photoIdType === "aadhaar" ? "Aadhaar" : photoIdType === "pan" ? "PAN" : photoIdType === "voter" ? "Voter ID" : "DL"} Number <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         placeholder={photoIdType === "aadhaar" ? "XXXX XXXX XXXX" : photoIdType === "pan" ? "ABCDE1234F" : "ID Number"}
@@ -823,7 +829,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-sm font-medium">
                       <MapPin className="w-4 h-4 text-accent" />
-                      Address
+                      Address <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       placeholder="Enter address"
