@@ -198,8 +198,8 @@ const AdminSettings = () => {
     variant: "default",
   });
 
-  // Get initial tab from URL
-  const initialTab = searchParams.get("tab") || "packages";
+  // Controlled tab from URL
+  const activeTab = searchParams.get("tab") || "packages";
 
   useEffect(() => {
     // For admin: watch auth state
