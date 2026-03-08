@@ -829,7 +829,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-sm font-medium">
                       <MapPin className="w-4 h-4 text-accent" />
-                      Address
+                      Address <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       placeholder="Enter address"
