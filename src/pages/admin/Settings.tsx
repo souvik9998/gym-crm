@@ -20,7 +20,7 @@ import {
   BuildingStorefrontIcon,
   Cog6ToothIcon,
   CalendarDaysIcon,
-} from "@heroicons/react/24/outline";
+ShieldCheckIcon,
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
