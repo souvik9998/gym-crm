@@ -686,6 +686,59 @@ export type Database = {
           },
         ]
       }
+      gym_holidays: {
+        Row: {
+          branch_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          half_day_end_time: string | null
+          half_day_start_time: string | null
+          holiday_date: string
+          holiday_name: string
+          holiday_type: string
+          id: string
+          notify_members: boolean
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          half_day_end_time?: string | null
+          half_day_start_time?: string | null
+          holiday_date: string
+          holiday_name: string
+          holiday_type?: string
+          id?: string
+          notify_members?: boolean
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          half_day_end_time?: string | null
+          half_day_start_time?: string | null
+          holiday_date?: string
+          holiday_name?: string
+          holiday_type?: string
+          id?: string
+          notify_members?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gym_holidays_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gym_settings: {
         Row: {
           branch_id: string | null

@@ -40,6 +40,9 @@ export type ActivityType =
   | "gym_info_updated"
   | "whatsapp_toggled"
   | "whatsapp_template_saved"
+  | "holiday_added"
+  | "holiday_updated"
+  | "holiday_deleted"
   // Subscriptions
   | "subscription_created"
   | "subscription_renewed"
