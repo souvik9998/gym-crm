@@ -25,6 +25,7 @@ import {
   BellAlertIcon,
   ClockIcon,
   SparklesIcon,
+  ChatBubbleLeftEllipsisIcon,
 } from "@heroicons/react/24/outline";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 
@@ -59,7 +60,7 @@ const getNationalHolidays = (year: number) => [
   { date: `${year}-08-16`, name: "Janmashtami" },
   { date: `${year}-09-05`, name: "Milad-un-Nabi" },
   { date: `${year}-10-02`, name: "Gandhi Jayanti" },
-  { date: `${year}-10-02`, name: "Dussehra" },
+  { date: `${year}-10-02`, name: "Gandhi Jayanti / Dussehra" },
   { date: `${year}-10-20`, name: "Diwali" },
   { date: `${year}-10-21`, name: "Diwali (Day 2)" },
   { date: `${year}-11-05`, name: "Guru Nanak Jayanti" },
@@ -85,7 +86,10 @@ const HolidayCalendarTab = () => {
   const [formType, setFormType] = useState<string>("full_day");
   const [formStartTime, setFormStartTime] = useState("09:00");
   const [formEndTime, setFormEndTime] = useState("13:00");
+  const [formOpenTime, setFormOpenTime] = useState("06:00");
+  const [formCloseTime, setFormCloseTime] = useState("22:00");
   const [formNotify, setFormNotify] = useState(false);
+  const [formWhatsAppMessage, setFormWhatsAppMessage] = useState("");
 
   // Confirm dialog
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -147,6 +151,51 @@ const HolidayCalendarTab = () => {
     return holidays.filter(h => !isBefore(parseISO(h.holiday_date), today)).slice(0, 10);
   }, [holidays]);
 
+  // Generate WhatsApp message based on form state
+  const generateWhatsAppMessage = useCallback((name: string, date: Date | null, type: string, desc: string, openTime: string, closeTime: string, startTime: string, endTime: string) => {
+    if (!date || !name.trim()) return "";
+    const dateStr = format(date, "EEEE, dd MMMM yyyy");
+    const gymName = currentBranch?.name || "our gym";
+    
+    let msg = `🏋️ *Gym Holiday Notice*\n\n`;
+    msg += `Dear Member,\n\n`;
+    msg += `We would like to inform you that *${gymName}* will be `;
+    
+    if (type === "full_day") {
+      msg += `*closed* on *${dateStr}*`;
+      msg += ` for *${name}*.`;
+    } else if (type === "half_day") {
+      msg += `open for *half day* on *${dateStr}*`;
+      msg += ` for *${name}*.\n\n`;
+      msg += `⏰ *Timings:* ${startTime} – ${endTime}`;
+    } else if (type === "late_opening") {
+      msg += `opening *late* on *${dateStr}*`;
+      msg += ` for *${name}*.\n\n`;
+      msg += `⏰ *Opens at:* ${openTime}`;
+    } else if (type === "early_closing") {
+      msg += `closing *early* on *${dateStr}*`;
+      msg += ` for *${name}*.\n\n`;
+      msg += `⏰ *Closes at:* ${closeTime}`;
+    }
+    
+    if (desc.trim()) {
+      msg += `\n\n📝 ${desc.trim()}`;
+    }
+    
+    msg += `\n\nRegular hours will resume the next working day.`;
+    msg += `\n\nThank you for your understanding! 💪`;
+    
+    return msg;
+  }, [currentBranch]);
+
+  // Auto-update message when form changes
+  useEffect(() => {
+    if (formNotify) {
+      const msg = generateWhatsAppMessage(formName, selectedDate, formType, formDescription, formOpenTime, formCloseTime, formStartTime, formEndTime);
+      setFormWhatsAppMessage(msg);
+    }
+  }, [formName, selectedDate, formType, formDescription, formOpenTime, formCloseTime, formStartTime, formEndTime, formNotify, generateWhatsAppMessage]);
+
   const openAddDialog = (date: Date, prefillName?: string) => {
     setEditingHoliday(null);
     setSelectedDate(date);
@@ -155,7 +204,10 @@ const HolidayCalendarTab = () => {
     setFormType("full_day");
     setFormStartTime("09:00");
     setFormEndTime("13:00");
+    setFormOpenTime("06:00");
+    setFormCloseTime("22:00");
     setFormNotify(false);
+    setFormWhatsAppMessage("");
     setIsDialogOpen(true);
   };
 
@@ -167,7 +219,10 @@ const HolidayCalendarTab = () => {
     setFormType(holiday.holiday_type);
     setFormStartTime(holiday.half_day_start_time || "09:00");
     setFormEndTime(holiday.half_day_end_time || "13:00");
+    setFormOpenTime("06:00");
+    setFormCloseTime("22:00");
     setFormNotify(holiday.notify_members);
+    setFormWhatsAppMessage("");
     setIsDialogOpen(true);
   };
 
@@ -563,7 +618,7 @@ const HolidayCalendarTab = () => {
 
       {/* Add/Edit Holiday Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingHoliday ? "Edit Holiday" : "Add Holiday"}</DialogTitle>
             <DialogDescription>
@@ -602,28 +657,73 @@ const HolidayCalendarTab = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="full_day">🏖️ Full Day Closed</SelectItem>
-                  <SelectItem value="half_day">⏰ Half Day</SelectItem>
+                  <SelectItem value="half_day">⏰ Half Day (Custom Timings)</SelectItem>
+                  <SelectItem value="late_opening">🌅 Late Opening</SelectItem>
+                  <SelectItem value="early_closing">🌆 Early Closing</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
+            {/* Timings based on type */}
             {formType === "half_day" && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-3">
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                  <ClockIcon className="w-3.5 h-3.5" />
+                  Half Day Timings
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Open From</Label>
+                    <Input
+                      type="time"
+                      value={formStartTime}
+                      onChange={e => setFormStartTime(e.target.value)}
+                      className="h-10 rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Close At</Label>
+                    <Input
+                      type="time"
+                      value={formEndTime}
+                      onChange={e => setFormEndTime(e.target.value)}
+                      className="h-10 rounded-lg"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {formType === "late_opening" && (
+              <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl space-y-3">
+                <p className="text-xs font-medium text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                  <ClockIcon className="w-3.5 h-3.5" />
+                  Late Opening Time
+                </p>
                 <div className="space-y-1.5">
-                  <Label className="text-xs lg:text-sm font-medium">Open From</Label>
+                  <Label className="text-xs font-medium">Opens At</Label>
                   <Input
                     type="time"
-                    value={formStartTime}
-                    onChange={e => setFormStartTime(e.target.value)}
+                    value={formOpenTime}
+                    onChange={e => setFormOpenTime(e.target.value)}
                     className="h-10 rounded-lg"
                   />
                 </div>
+              </div>
+            )}
+
+            {formType === "early_closing" && (
+              <div className="p-3 bg-purple-500/5 border border-purple-500/20 rounded-xl space-y-3">
+                <p className="text-xs font-medium text-purple-700 dark:text-purple-400 flex items-center gap-1.5">
+                  <ClockIcon className="w-3.5 h-3.5" />
+                  Early Closing Time
+                </p>
                 <div className="space-y-1.5">
-                  <Label className="text-xs lg:text-sm font-medium">Close At</Label>
+                  <Label className="text-xs font-medium">Closes At</Label>
                   <Input
                     type="time"
-                    value={formEndTime}
-                    onChange={e => setFormEndTime(e.target.value)}
+                    value={formCloseTime}
+                    onChange={e => setFormCloseTime(e.target.value)}
                     className="h-10 rounded-lg"
                   />
                 </div>
@@ -641,12 +741,36 @@ const HolidayCalendarTab = () => {
               />
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-muted/20 border border-border/40 rounded-xl">
-              <div className="space-y-0.5">
-                <p className="font-medium text-sm">Notify Members via WhatsApp</p>
-                <p className="text-[10px] lg:text-xs text-muted-foreground">Send holiday notice to all active members</p>
+            {/* Notify Members Toggle */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-muted/20 border border-border/40 rounded-xl">
+                <div className="space-y-0.5">
+                  <p className="font-medium text-sm">Notify Members via WhatsApp</p>
+                  <p className="text-[10px] lg:text-xs text-muted-foreground">Send holiday notice to all active members</p>
+                </div>
+                <Switch checked={formNotify} onCheckedChange={setFormNotify} />
               </div>
-              <Switch checked={formNotify} onCheckedChange={setFormNotify} />
+
+              {/* WhatsApp Message Preview */}
+              {formNotify && formWhatsAppMessage && (
+                <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                      <ChatBubbleLeftEllipsisIcon className="w-3.5 h-3.5" />
+                      Message Preview
+                    </p>
+                    <span className="text-[9px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">Editable</span>
+                  </div>
+                  <Textarea
+                    value={formWhatsAppMessage}
+                    onChange={e => setFormWhatsAppMessage(e.target.value)}
+                    className="min-h-[120px] rounded-lg text-xs bg-background/80 font-mono leading-relaxed resize-y"
+                  />
+                  <p className="text-[9px] text-muted-foreground">
+                    This message will be sent to all active members via WhatsApp. You can customize it above.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
