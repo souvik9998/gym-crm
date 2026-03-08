@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, memo, useEffect, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 import { supabase } from "@/integrations/supabase/client";
 import { SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Phone, Calendar, MoreVertical, User, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserCheck, Clock, AlertTriangle, Download } from "lucide-react";
+import { Phone, Calendar, MoreVertical, User, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserCheck, Clock, AlertTriangle, Download, Fingerprint } from "lucide-react";
 import { useIsMobile, useIsTabletOrBelow } from "@/hooks/use-mobile";
 import {
   DropdownMenu,
@@ -40,6 +40,8 @@ import { useInfiniteMembersQuery } from "@/hooks/queries";
 import type { MemberWithSubscription } from "@/api/members";
 import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
 import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
+import { BiometricEnrollDialog } from "./BiometricEnrollDialog";
+import { checkMemberBiometricStatus } from "@/api/biometric";
 
 // Use MemberWithSubscription from the API
 type Member = MemberWithSubscription;
@@ -138,6 +140,16 @@ export const MembersTable = ({
   const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
+  const [enrollMember, setEnrollMember] = useState<Member | null>(null);
+
+  // Check which members have biometric enrollment
+  const memberIds = useMemo(() => members.map(m => m.id), [members]);
+  const { data: enrolledMemberIds = new Set<string>() } = useQuery({
+    queryKey: ["biometric-enrolled", currentBranch?.id, memberIds.join(",")],
+    queryFn: () => checkMemberBiometricStatus(memberIds, currentBranch?.id || ""),
+    enabled: !!currentBranch?.id && memberIds.length > 0,
+    staleTime: 60000,
+  });
 
   // Refetch when refreshKey changes (manual refresh button)
   useEffect(() => {
@@ -925,7 +937,12 @@ export const MembersTable = ({
                 
                 {/* Member Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate text-foreground">{member.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-semibold text-sm truncate text-foreground">{member.name}</p>
+                    {enrolledMemberIds.has(member.id) && (
+                      <Fingerprint className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground mt-0.5">+91 {member.phone}</p>
                 </div>
                 
@@ -992,6 +1009,16 @@ export const MembersTable = ({
                         >
                           <Receipt className="w-4 h-4 mr-2" />
                           Send Payment Details
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEnrollMember(member);
+                          }}
+                        >
+                          <Fingerprint className="w-4 h-4 mr-2" />
+                          Enroll Biometric
                         </DropdownMenuItem>
                       </>
                     )}
@@ -1151,8 +1178,11 @@ export const MembersTable = ({
                             {member.name.charAt(0).toUpperCase()}
                           </span>
                         </div>
-                        <div>
+                        <div className="flex items-center gap-1.5">
                           <p className="font-medium text-sm">{member.name}</p>
+                          {enrolledMemberIds.has(member.id) && (
+                            <Fingerprint className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                          )}
                         </div>
                       </div>
                     </TableCell>
@@ -1253,6 +1283,16 @@ export const MembersTable = ({
                                 <Receipt className="w-4 h-4 mr-2" />
                                 Send Payment Details
                               </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEnrollMember(member);
+                                }}
+                              >
+                                <Fingerprint className="w-4 h-4 mr-2" />
+                                Enroll Biometric
+                              </DropdownMenuItem>
                             </>
                           )}
                           {!canManageMembers && (
@@ -1303,6 +1343,17 @@ export const MembersTable = ({
       />
 
       <WhatsAppSendingOverlay {...waOverlay.overlayProps} />
+
+      {enrollMember && (
+        <BiometricEnrollDialog
+          open={!!enrollMember}
+          onOpenChange={(open) => !open && setEnrollMember(null)}
+          memberId={enrollMember.id}
+          memberName={enrollMember.name}
+          memberPhone={enrollMember.phone}
+          branchId={currentBranch?.id || ""}
+        />
+      )}
     </div>
   );
 };

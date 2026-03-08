@@ -1,77 +1,93 @@
 
 
-## Plan: Biometric Enrollment Feature
+# WhatsApp Auto-Send Preferences per Message Type
 
-### Overview
-Add a biometric enrollment flow that lets admins initiate fingerprint/RFID/face enrollment for members directly from the dashboard. The local sync agent polls for pending enrollment requests, triggers the device, and sends back the captured biometric ID which gets mapped to the member.
+## Overview
+Add a new "Auto-Send Preferences" section to the WhatsApp tab in Settings. This gives the gym admin toggle controls for each WhatsApp message type -- choosing whether messages are sent automatically after the corresponding action, or only manually. Promotional messages are always manual-only (no toggle).
 
-### Architecture
+## Current State
+- WhatsApp messages are triggered automatically in several flows: Registration (`Register.tsx`), Renewal (`Renew.tsx`), PT Extension (`ExtendPT.tsx`), Admin Add Member (`AddMemberDialog.tsx`), Admin Add Payment (`AddPaymentDialog.tsx`)
+- The daily cron job (`daily-whatsapp-job`) auto-sends expiring-in-2-days and expiring-today notifications
+- There is no per-message-type auto/manual preference -- all are auto-sent when WhatsApp is enabled
+- Templates exist for: Promotional, Expiry Reminder, Expired Reminder (in WhatsAppTemplates component)
+
+## Message Types and Auto-Send Toggles
+
+| Message Type | Default | Notes |
+|---|---|---|
+| New Member Registration | ON | Sent after a new member registers |
+| Member Renewal | ON | Sent after membership renewal |
+| Daily Pass | ON | Sent after daily pass purchase |
+| PT Extension | ON | Sent after personal training extension |
+| Expiring Soon (2 days) | ON | Daily cron job |
+| Expiring Today | ON | Daily cron job |
+| Expired Reminder | OFF | Not currently auto-sent, but available for manual |
+| Payment Receipt | OFF | Not currently auto-sent |
+| Admin Add Member | ON | When admin adds a member manually |
+| Promotional | N/A | Always manual only, no toggle shown |
+
+## Database Changes
+
+### Add `whatsapp_auto_send` JSONB column to `gym_settings`
+A new column storing per-type preferences:
 
 ```text
-Admin Dashboard                    Cloud API                     Local Agent
-─────────────────                  ─────────────────              ──────────────
-1. Click "Enroll Biometric"   →   2. Create enrollment_request   
-                                     (status: pending)
-3. Modal polls for status     ←   
-                                  4. Agent polls pending reqs  ←  5. Agent fetches
-                                  6. Agent puts device in       →  7. Device captures
-                                     enroll mode                     fingerprint/RFID
-                                  8. Agent sends biometric_id   →  9. API updates request
-                                     back to cloud                   status: completed
-                                  10. Maps biometric_id to member
-11. Modal shows success       ←   
+{
+  "new_registration": true,
+  "renewal": true,
+  "daily_pass": true,
+  "pt_extension": true,
+  "expiring_2days": true,
+  "expiring_today": true,
+  "expired_reminder": false,
+  "payment_details": false,
+  "admin_add_member": true
+}
 ```
 
-### Database Changes (1 migration)
+Default: all true except `expired_reminder` and `payment_details`.
 
-**New table: `biometric_enrollment_requests`**
-- `id` (uuid, PK)
-- `branch_id` (uuid, NOT NULL)
-- `member_id` (uuid, NOT NULL)  
-- `device_id` (uuid, NOT NULL) — references `biometric_devices.id`
-- `enrollment_type` (text: 'fingerprint' | 'rfid' | 'face')
-- `status` (text: 'pending' | 'in_progress' | 'completed' | 'failed' | 'timeout')
-- `biometric_user_id` (text, nullable) — set on completion
-- `error_message` (text, nullable)
-- `requested_by` (uuid) — admin user
-- `created_at`, `updated_at`, `expires_at` (timestamp)
+## Frontend Changes
 
-RLS: service_role full access, super_admin full access, tenant_members manage via branch join (same pattern as other biometric tables).
+### 1. New component: `WhatsAppAutoSendSettings.tsx`
+A card with toggle switches for each message type listed above. Each toggle:
+- Shows the message type name and a short description
+- Saves immediately to `gym_settings.whatsapp_auto_send` via database update
+- Promotional is shown as a disabled row with "Manual Only" badge (no toggle)
 
-Enable realtime on this table for live status updates.
+### 2. Integrate into Settings WhatsApp tab
+Place the new `WhatsAppAutoSendSettings` component between the WhatsApp enable/disable card and the `WhatsAppTemplates` component in `Settings.tsx`.
 
-### Edge Function Changes (`biometric-sync/index.ts`)
+### 3. Update auto-send call sites
+In each file that calls `send-whatsapp`, check the preference before sending:
 
-Add 3 new actions:
-1. **`enroll`** (POST, authenticated) — Creates a pending enrollment request. Validates member belongs to branch, device exists.
-2. **`poll-enrollments`** (GET, agent auth via api_key) — Returns pending enrollment requests for a device.
-3. **`complete-enrollment`** (POST, agent auth via api_key) — Marks request as completed/failed, creates/updates `biometric_member_mappings` entry.
+- `Register.tsx` -- check `new_registration` (or `daily_pass`) preference before calling send-whatsapp
+- `Renew.tsx` -- check `renewal` preference
+- `ExtendPT.tsx` -- check `pt_extension` preference
+- `AddMemberDialog.tsx` -- check `admin_add_member` preference
+- `AddPaymentDialog.tsx` -- check `payment_details` preference (if applicable)
 
-### Frontend Changes
+Each call site will fetch the `whatsapp_auto_send` from `gym_settings` for the branch, and skip the WhatsApp call if the relevant type is set to false.
 
-**1. New Component: `BiometricEnrollDialog.tsx`**
-- Modal with member name/phone display
-- Enrollment type selector (Fingerprint/RFID/Face pills)
-- Device selector dropdown (fetches active devices for branch)
-- "Start Enrollment" button
-- Real-time status display using Supabase Realtime subscription on `biometric_enrollment_requests`
-- Status states: Waiting → In Progress → Fingerprint Detected → Success / Error
-- Timeout handling (auto-fail after 60s)
-- Micro-animations for status transitions
+### 4. Update `daily-whatsapp-job` edge function
+Before sending expiring-in-2-days and expiring-today messages, read the `whatsapp_auto_send` JSONB from `gym_settings` for each branch. Skip sending if the corresponding type is disabled.
 
-**2. MembersTable.tsx** (2 locations: mobile cards + desktop rows)
-- Add "Enroll Biometric" `DropdownMenuItem` with fingerprint icon after "Send Payment Details" 
-- Add biometric enrolled indicator (small fingerprint icon badge) next to member name when they have a mapping in `biometric_member_mappings`
-- New state: `enrollMember` to track which member's enrollment dialog is open
+## Technical Details
 
-**3. API additions (`src/api/biometric.ts`)**
-- `createEnrollmentRequest(branchId, memberId, deviceId, enrollmentType)`
-- `checkMemberBiometricStatus(memberId)` — returns whether member has a mapping
+### Files to Create
+- `src/components/admin/WhatsAppAutoSendSettings.tsx` -- Toggle switches UI component
 
-### Files to Create/Edit
-- **Create**: `src/components/admin/BiometricEnrollDialog.tsx`
-- **Edit**: `src/components/admin/MembersTable.tsx` — add menu item + enrolled indicator
-- **Edit**: `src/api/biometric.ts` — add enrollment API functions
-- **Edit**: `supabase/functions/biometric-sync/index.ts` — add enroll/poll/complete actions
-- **Migration**: Create `biometric_enrollment_requests` table with RLS + realtime
+### Files to Modify
+- Database migration -- Add `whatsapp_auto_send` JSONB column to `gym_settings`
+- `src/pages/admin/Settings.tsx` -- Insert the new component in WhatsApp tab
+- `src/pages/Register.tsx` -- Check auto-send preference before WhatsApp call
+- `src/pages/Renew.tsx` -- Check auto-send preference before WhatsApp call
+- `src/pages/ExtendPT.tsx` -- Check auto-send preference before WhatsApp call
+- `src/components/admin/AddMemberDialog.tsx` -- Check auto-send preference before WhatsApp call
+- `src/components/admin/AddPaymentDialog.tsx` -- Check auto-send preference before WhatsApp call
+- `supabase/functions/daily-whatsapp-job/index.ts` -- Check per-branch auto-send preferences
+- `src/integrations/supabase/types.ts` -- Will auto-update after migration
+
+### Helper function
+A shared utility `getWhatsAppAutoSendPreference(branchId, type)` that fetches `gym_settings.whatsapp_auto_send` for the branch and returns whether that type is enabled. This avoids duplicating the fetch logic in every call site.
 

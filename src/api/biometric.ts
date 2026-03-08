@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
 
 // ─── Types ───
 
@@ -43,6 +44,21 @@ export interface BiometricSyncLog {
   error_message: string | null;
   synced_at: string;
   biometric_devices?: { device_name: string; device_serial: string } | null;
+}
+
+export interface BiometricEnrollmentRequest {
+  id: string;
+  branch_id: string;
+  member_id: string;
+  device_id: string;
+  enrollment_type: string;
+  status: string;
+  biometric_user_id: string | null;
+  error_message: string | null;
+  requested_by: string | null;
+  created_at: string;
+  updated_at: string;
+  expires_at: string;
 }
 
 // ─── Devices CRUD ───
@@ -127,4 +143,56 @@ export async function fetchBiometricSyncLogs(branchId?: string, limit = 50): Pro
   const { data, error } = await query;
   if (error) throw new Error(error.message);
   return (data || []) as unknown as BiometricSyncLog[];
+}
+
+// ─── Enrollment ───
+
+export async function createEnrollmentRequest(
+  branchId: string,
+  memberId: string,
+  deviceId: string,
+  enrollmentType: string = "fingerprint"
+): Promise<{ enrollment_id: string }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const accessToken = session?.access_token || null;
+
+  const response = await fetch(
+    getEdgeFunctionUrl("biometric-sync") + "?action=enroll",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": accessToken ? `Bearer ${accessToken}` : `Bearer ${SUPABASE_ANON_KEY}`,
+        "apikey": SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        branch_id: branchId,
+        member_id: memberId,
+        device_id: deviceId,
+        enrollment_type: enrollmentType,
+      }),
+    }
+  );
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.error || "Failed to create enrollment request");
+  }
+  return result;
+}
+
+export async function checkMemberBiometricStatus(memberIds: string[], branchId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("biometric_member_mappings" as any)
+    .select("member_id")
+    .eq("branch_id", branchId)
+    .eq("is_mapped", true)
+    .in("member_id", memberIds);
+
+  if (error) {
+    console.error("Error checking biometric status:", error);
+    return new Set();
+  }
+
+  return new Set((data || []).map((d: any) => d.member_id));
 }
