@@ -855,87 +855,100 @@ const AdminSettings = () => {
     <Fragment>
       <div className="max-w-4xl mx-auto space-y-4 lg:space-y-6">
         <Tabs defaultValue={initialTab}>
-          <TabsList className="grid w-full grid-cols-5 bg-muted/50 h-auto">
-            <TabsTrigger value="packages" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
+          {/* Modern pill-style tabs with subtle glow on active */}
+          <TabsList className="grid w-full grid-cols-5 bg-muted/40 backdrop-blur-sm h-auto p-1 rounded-2xl border border-border/40">
+            <TabsTrigger value="packages" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
               <CubeIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               <span className="hidden lg:inline">Packages</span>
             </TabsTrigger>
-            <TabsTrigger value="branches" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
+            <TabsTrigger value="branches" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
               <BuildingStorefrontIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               <span className="hidden lg:inline">Branches</span>
             </TabsTrigger>
-            <TabsTrigger value="whatsapp" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
+            <TabsTrigger value="whatsapp" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
               <ChatBubbleLeftEllipsisIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               <span className="hidden lg:inline">WhatsApp</span>
             </TabsTrigger>
-            <TabsTrigger value="general" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
+            <TabsTrigger value="general" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
               <Cog6ToothIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               <span className="hidden lg:inline">General</span>
             </TabsTrigger>
-            <TabsTrigger value="subscription" className="gap-1 lg:gap-2 data-[state=active]:bg-background text-[10px] lg:text-sm px-1 lg:px-3 py-2">
+            <TabsTrigger value="subscription" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
               <ShieldCheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               <span className="hidden lg:inline">Plan</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Packages Tab */}
-          <TabsContent value="packages" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
+          <TabsContent value="packages" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6 animate-fade-in">
             {isLoadingData ? (
               <SettingsPackagesSkeleton />
             ) : (
             <>
             {/* Monthly Packages */}
-            <Card className="border-0 shadow-sm">
+            <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
               <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-                <CardTitle className="text-base lg:text-xl">Monthly Packages</CardTitle>
-                <CardDescription className="text-xs lg:text-sm">Configure monthly subscription plans with custom pricing</CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-primary/10 text-primary">
+                    <CurrencyRupeeIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base lg:text-xl">Monthly Packages</CardTitle>
+                    <CardDescription className="text-xs lg:text-sm">Configure monthly subscription plans with custom pricing</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
-                <div className="grid gap-2 lg:gap-4 grid-cols-3">
+                <div className="grid gap-2 lg:gap-4 grid-cols-3 p-3 lg:p-4 bg-muted/30 rounded-xl border border-border/30">
                   <div className="space-y-1 lg:space-y-2">
-                    <Label className="text-xs lg:text-sm">Duration *</Label>
+                    <Label className="text-xs lg:text-sm font-medium">Duration *</Label>
                     <Input
                       type="number"
                       min="1"
                       value={newMonthlyPackage.months}
                       onChange={(e) => setNewMonthlyPackage({ ...newMonthlyPackage, months: e.target.value })}
                       placeholder="1, 3, 6"
-                      className="h-9 lg:h-12 text-xs lg:text-base"
+                      className="h-9 lg:h-11 text-xs lg:text-base rounded-lg border-border/50 focus:border-primary/40 transition-colors"
                     />
                   </div>
                   <div className="space-y-1 lg:space-y-2">
-                    <Label className="text-xs lg:text-sm">Price (₹) *</Label>
+                    <Label className="text-xs lg:text-sm font-medium">Price (₹) *</Label>
                     <Input
                       type="number"
                       value={newMonthlyPackage.price}
                       onChange={(e) => setNewMonthlyPackage({ ...newMonthlyPackage, price: e.target.value })}
                       placeholder="1000"
-                      className="h-9 lg:h-12 text-xs lg:text-base"
+                      className="h-9 lg:h-11 text-xs lg:text-base rounded-lg border-border/50 focus:border-primary/40 transition-colors"
                     />
                   </div>
                   <div className="space-y-1 lg:space-y-2">
-                    <Label className="text-xs lg:text-sm">Joining Fee</Label>
+                    <Label className="text-xs lg:text-sm font-medium">Joining Fee</Label>
                     <Input
                       type="number"
                       value={newMonthlyPackage.joining_fee}
                       onChange={(e) => setNewMonthlyPackage({ ...newMonthlyPackage, joining_fee: e.target.value })}
                       placeholder="200"
-                      className="h-9 lg:h-12 text-xs lg:text-base"
+                      className="h-9 lg:h-11 text-xs lg:text-base rounded-lg border-border/50 focus:border-primary/40 transition-colors"
                     />
                   </div>
                 </div>
-                <Button onClick={handleAddMonthlyPackage} disabled={isAddingMonthly} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
+                <Button onClick={handleAddMonthlyPackage} disabled={isAddingMonthly} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm rounded-xl active:scale-[0.97] transition-all duration-200">
                   {isAddingMonthly ? <ButtonSpinner /> : <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
                   {isAddingMonthly ? "Adding..." : "Add Package"}
                 </Button>
 
                 {monthlyPackages.length > 0 && (
-                  <div className="space-y-2 lg:space-y-3 pt-3 lg:pt-4 border-t">
-                    {monthlyPackages.map((pkg) => (
-                      <div key={pkg.id} className={cn(
-                        "group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/60 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border",
-                        recentlyAddedIds.has(pkg.id) && "animate-fade-in ring-2 ring-primary/30"
-                      )}>
+                  <div className="space-y-2 lg:space-y-2.5 pt-3 lg:pt-4 border-t border-border/40">
+                    {monthlyPackages.map((pkg, index) => (
+                      <div 
+                        key={pkg.id} 
+                        style={{ animationDelay: `${index * 50}ms` }}
+                        className={cn(
+                          "group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/40 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border/70 hover:-translate-y-0.5 animate-fade-in",
+                          recentlyAddedIds.has(pkg.id) && "ring-2 ring-primary/30",
+                          !pkg.is_active && "opacity-60"
+                        )}
+                      >
                         {editingMonthlyId === pkg.id ? (
                           <>
                             <div className="flex-1 grid grid-cols-2 gap-2 lg:gap-3">
@@ -945,7 +958,7 @@ const AdminSettings = () => {
                                   type="number"
                                   value={editMonthlyData.price}
                                   onChange={(e) => setEditMonthlyData({ ...editMonthlyData, price: e.target.value })}
-                                  className="h-8 lg:h-9 text-xs lg:text-sm"
+                                  className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg"
                                 />
                               </div>
                               <div className="space-y-1">
@@ -954,7 +967,7 @@ const AdminSettings = () => {
                                   type="number"
                                   value={editMonthlyData.joining_fee}
                                   onChange={(e) => setEditMonthlyData({ ...editMonthlyData, joining_fee: e.target.value })}
-                                  className="h-8 lg:h-9 text-xs lg:text-sm"
+                                  className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg"
                                 />
                               </div>
                             </div>
@@ -964,7 +977,7 @@ const AdminSettings = () => {
                                 variant="outline"
                                 onClick={() => handleSaveMonthlyPackage(pkg.id)}
                                 disabled={savingMonthlyId === pkg.id}
-                                className="h-8 w-8 lg:h-9 lg:w-9 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200"
+                                className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground active:scale-90 transition-all duration-200"
                               >
                                 {savingMonthlyId === pkg.id ? <ButtonSpinner /> : <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
                               </Button>
@@ -972,7 +985,7 @@ const AdminSettings = () => {
                                 size="icon" 
                                 variant="outline"
                                 onClick={() => setEditingMonthlyId(null)}
-                                className="h-8 w-8 lg:h-9 lg:w-9 transition-all duration-200"
+                                className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg active:scale-90 transition-all duration-200"
                               >
                                 <XMarkIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                               </Button>
@@ -982,14 +995,19 @@ const AdminSettings = () => {
                           <>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <p className="font-semibold text-sm lg:text-base">{pkg.months} {pkg.months === 1 ? "Month" : "Months"}</p>
+                                <div className="flex items-center justify-center w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-primary/8 text-primary text-xs lg:text-sm font-bold tabular-nums">
+                                  {pkg.months}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-sm lg:text-base">{pkg.months} {pkg.months === 1 ? "Month" : "Months"}</p>
+                                  <p className="text-xs lg:text-sm text-muted-foreground">
+                                    ₹{pkg.price.toLocaleString()} + ₹{pkg.joining_fee.toLocaleString()} joining fee
+                                  </p>
+                                </div>
                                 {!pkg.is_active && (
-                                  <span className="text-[10px] lg:text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Inactive</span>
+                                  <span className="text-[10px] lg:text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Inactive</span>
                                 )}
                               </div>
-                              <p className="text-xs lg:text-sm text-muted-foreground mt-0.5">
-                                ₹{pkg.price.toLocaleString()} + ₹{pkg.joining_fee.toLocaleString()} joining fee
-                              </p>
                             </div>
                             <div className="flex items-center gap-2 lg:gap-3 shrink-0">
                               <Switch
@@ -999,15 +1017,15 @@ const AdminSettings = () => {
                                 disabled={togglingMonthlyId !== null && togglingMonthlyId !== pkg.id}
                                 onCheckedChange={(checked) => handleToggleMonthlyPackage(pkg.id, checked)}
                               />
-                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                <Button variant="ghost" size="icon" onClick={() => handleEditMonthlyPackage(pkg)} className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-foreground">
+                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                                <Button variant="ghost" size="icon" onClick={() => handleEditMonthlyPackage(pkg)} className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-foreground active:scale-90 transition-all">
                                   <PencilIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                                 </Button>
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
                                   onClick={() => handleDeleteMonthlyPackage(pkg.id, pkg.months)}
-                                  className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-destructive"
+                                  className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-destructive active:scale-90 transition-all"
                                 >
                                   <TrashIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                                 </Button>
@@ -1023,56 +1041,68 @@ const AdminSettings = () => {
             </Card>
 
             {/* Daily/Custom Packages */}
-            <Card className="border-0 shadow-sm">
+            <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
               <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-                <CardTitle className="text-base lg:text-xl">Daily Passes</CardTitle>
-                <CardDescription className="text-xs lg:text-sm">Create packages for daily or short-term memberships (no joining fee)</CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-warning/10 text-warning">
+                    <CubeIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base lg:text-xl">Daily Passes</CardTitle>
+                    <CardDescription className="text-xs lg:text-sm">Create packages for daily or short-term memberships (no joining fee)</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
-                <div className="grid gap-2 lg:gap-4 grid-cols-3">
+                <div className="grid gap-2 lg:gap-4 grid-cols-3 p-3 lg:p-4 bg-muted/30 rounded-xl border border-border/30">
                   <div className="space-y-1 lg:space-y-2">
-                    <Label className="text-xs lg:text-sm">Name *</Label>
+                    <Label className="text-xs lg:text-sm font-medium">Name *</Label>
                     <Input
                       value={newPackage.name}
                       onChange={(e) => setNewPackage({ ...newPackage, name: e.target.value })}
                       placeholder="1 Week"
-                      className="h-9 lg:h-12 text-xs lg:text-base"
+                      className="h-9 lg:h-11 text-xs lg:text-base rounded-lg border-border/50 focus:border-primary/40 transition-colors"
                     />
                   </div>
                   <div className="space-y-1 lg:space-y-2">
-                    <Label className="text-xs lg:text-sm">Days *</Label>
+                    <Label className="text-xs lg:text-sm font-medium">Days *</Label>
                     <Input
                       type="number"
                       min="1"
                       value={newPackage.duration_days}
                       onChange={(e) => setNewPackage({ ...newPackage, duration_days: e.target.value })}
                       placeholder="7"
-                      className="h-9 lg:h-12 text-xs lg:text-base"
+                      className="h-9 lg:h-11 text-xs lg:text-base rounded-lg border-border/50 focus:border-primary/40 transition-colors"
                     />
                   </div>
                   <div className="space-y-1 lg:space-y-2">
-                    <Label className="text-xs lg:text-sm">Price (₹) *</Label>
+                    <Label className="text-xs lg:text-sm font-medium">Price (₹) *</Label>
                     <Input
                       type="number"
                       value={newPackage.price}
                       onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })}
                       placeholder="300"
-                      className="h-9 lg:h-12 text-xs lg:text-base"
+                      className="h-9 lg:h-11 text-xs lg:text-base rounded-lg border-border/50 focus:border-primary/40 transition-colors"
                     />
                   </div>
                 </div>
-                <Button onClick={handleAddPackage} disabled={isAddingCustom} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
+                <Button onClick={handleAddPackage} disabled={isAddingCustom} className="gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm rounded-xl active:scale-[0.97] transition-all duration-200">
                   {isAddingCustom ? <ButtonSpinner /> : <PlusIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
                   {isAddingCustom ? "Adding..." : "Add Daily Pass"}
                 </Button>
 
                 {customPackages.length > 0 && (
-                  <div className="space-y-2 lg:space-y-3 pt-3 lg:pt-4 border-t">
-                    {customPackages.map((pkg) => (
-                      <div key={pkg.id} className={cn(
-                        "group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/60 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border",
-                        recentlyAddedIds.has(pkg.id) && "animate-fade-in ring-2 ring-primary/30"
-                      )}>
+                  <div className="space-y-2 lg:space-y-2.5 pt-3 lg:pt-4 border-t border-border/40">
+                    {customPackages.map((pkg, index) => (
+                      <div 
+                        key={pkg.id} 
+                        style={{ animationDelay: `${index * 50}ms` }}
+                        className={cn(
+                          "group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/40 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border/70 hover:-translate-y-0.5 animate-fade-in",
+                          recentlyAddedIds.has(pkg.id) && "ring-2 ring-primary/30",
+                          !pkg.is_active && "opacity-60"
+                        )}
+                      >
                         {editingPackageId === pkg.id ? (
                           <>
                             <div className="flex-1 grid grid-cols-2 gap-2 lg:gap-3">
@@ -1081,7 +1111,7 @@ const AdminSettings = () => {
                                 <Input
                                   value={editPackageData.name}
                                   onChange={(e) => setEditPackageData({ ...editPackageData, name: e.target.value })}
-                                  className="h-8 lg:h-9 text-xs lg:text-sm"
+                                  className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg"
                                 />
                               </div>
                               <div className="space-y-1">
@@ -1090,7 +1120,7 @@ const AdminSettings = () => {
                                   type="number"
                                   value={editPackageData.price}
                                   onChange={(e) => setEditPackageData({ ...editPackageData, price: e.target.value })}
-                                  className="h-8 lg:h-9 text-xs lg:text-sm"
+                                  className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg"
                                 />
                               </div>
                             </div>
@@ -1100,7 +1130,7 @@ const AdminSettings = () => {
                                 variant="outline"
                                 onClick={() => handleSavePackage(pkg.id)}
                                 disabled={savingCustomId === pkg.id}
-                                className="h-8 w-8 lg:h-9 lg:w-9 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200"
+                                className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground active:scale-90 transition-all duration-200"
                               >
                                 {savingCustomId === pkg.id ? <ButtonSpinner /> : <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
                               </Button>
@@ -1108,7 +1138,7 @@ const AdminSettings = () => {
                                 size="icon" 
                                 variant="outline"
                                 onClick={() => setEditingPackageId(null)}
-                                className="h-8 w-8 lg:h-9 lg:w-9 transition-all duration-200"
+                                className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg active:scale-90 transition-all duration-200"
                               >
                                 <XMarkIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                               </Button>
@@ -1118,14 +1148,19 @@ const AdminSettings = () => {
                           <>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <p className="font-semibold text-sm lg:text-base">{pkg.name}</p>
+                                <div className="flex items-center justify-center w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-warning/10 text-warning text-xs lg:text-sm font-bold tabular-nums">
+                                  {pkg.duration_days}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-sm lg:text-base">{pkg.name}</p>
+                                  <p className="text-xs lg:text-sm text-muted-foreground">
+                                    {pkg.duration_days} {pkg.duration_days === 1 ? "Day" : "Days"} • ₹{pkg.price.toLocaleString()}
+                                  </p>
+                                </div>
                                 {!pkg.is_active && (
-                                  <span className="text-[10px] lg:text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Inactive</span>
+                                  <span className="text-[10px] lg:text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Inactive</span>
                                 )}
                               </div>
-                              <p className="text-xs lg:text-sm text-muted-foreground mt-0.5">
-                                {pkg.duration_days} {pkg.duration_days === 1 ? "Day" : "Days"} • ₹{pkg.price.toLocaleString()}
-                              </p>
                             </div>
                             <div className="flex items-center gap-2 lg:gap-3 shrink-0">
                               <Switch
@@ -1135,15 +1170,15 @@ const AdminSettings = () => {
                                 disabled={togglingCustomId !== null && togglingCustomId !== pkg.id}
                                 onCheckedChange={(checked) => handleTogglePackage(pkg.id, checked)}
                               />
-                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                <Button variant="ghost" size="icon" onClick={() => handleEditPackage(pkg)} className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-foreground">
+                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                                <Button variant="ghost" size="icon" onClick={() => handleEditPackage(pkg)} className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-foreground active:scale-90 transition-all">
                                   <PencilIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                                 </Button>
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
                                   onClick={() => handleDeletePackage(pkg.id, pkg.name)}
-                                  className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-destructive"
+                                  className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-destructive active:scale-90 transition-all"
                                 >
                                   <TrashIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                                 </Button>
@@ -1162,23 +1197,27 @@ const AdminSettings = () => {
           </TabsContent>
 
           {/* Branches Tab */}
-          <TabsContent value="branches" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
+          <TabsContent value="branches" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6 animate-fade-in">
             <BranchManagement />
           </TabsContent>
 
           {/* WhatsApp Templates */}
-          <TabsContent value="whatsapp" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
+          <TabsContent value="whatsapp" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6 animate-fade-in">
             {/* WhatsApp Enable/Disable Toggle */}
-            <Card className="border-0 shadow-sm">
+            <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
               <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-                <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
-                  <ChatBubbleLeftEllipsisIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
-                  WhatsApp Messaging
-                </CardTitle>
-                <CardDescription className="text-xs lg:text-sm">Enable or disable all WhatsApp messaging features</CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <ChatBubbleLeftEllipsisIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base lg:text-xl">WhatsApp Messaging</CardTitle>
+                    <CardDescription className="text-xs lg:text-sm">Enable or disable all WhatsApp messaging features</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
-                <div className="flex items-center justify-between p-3 lg:p-4 bg-card border border-border/60 rounded-xl transition-all duration-200 hover:shadow-md hover:border-border">
+                <div className="flex items-center justify-between p-3 lg:p-4 bg-muted/20 border border-border/40 rounded-xl transition-all duration-300 hover:shadow-sm hover:border-border/60">
                   <div className="space-y-0.5 lg:space-y-1">
                     <p className="font-semibold text-sm lg:text-base">WhatsApp Notifications</p>
                     <p className="text-[10px] lg:text-sm text-muted-foreground">
@@ -1188,7 +1227,10 @@ const AdminSettings = () => {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`text-xs lg:text-sm font-medium transition-colors duration-200 ${isTogglingWhatsApp ? 'text-muted-foreground' : whatsappEnabled ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <span className={cn(
+                      "text-xs lg:text-sm font-medium transition-all duration-300",
+                      isTogglingWhatsApp ? 'text-muted-foreground' : whatsappEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
+                    )}>
                       {isTogglingWhatsApp ? "Updating..." : whatsappEnabled ? "Enabled" : "Disabled"}
                     </span>
                     <Switch
@@ -1303,46 +1345,79 @@ const AdminSettings = () => {
           </TabsContent>
 
           {/* General Settings */}
-          <TabsContent value="general" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
+          <TabsContent value="general" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6 animate-fade-in">
             {isLoadingData ? (
               <SettingsGeneralSkeleton />
             ) : (
               <>
-                <Card className="border-0 shadow-sm">
+                <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
                   <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-                    <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
-                      <BuildingStorefrontIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
-                      Gym Information
-                    </CardTitle>
-                    <CardDescription className="text-xs lg:text-sm">Basic gym details and contact information</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
-                    <div className="grid gap-2 lg:gap-4 grid-cols-1 md:grid-cols-2">
-                      <div className="space-y-1 lg:space-y-2">
-                        <Label className="text-xs lg:text-sm">Gym Name</Label>
-                        <Input value={gymName} onChange={(e) => setGymName(e.target.value)} placeholder="Pro Plus Fitness" className="h-9 lg:h-12 text-xs lg:text-base" />
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-primary/10 text-primary">
+                        <BuildingStorefrontIcon className="w-4 h-4 lg:w-5 lg:h-5" />
                       </div>
-                      <div className="space-y-1 lg:space-y-2">
-                        <Label className="text-xs lg:text-sm">Phone Number</Label>
-                        <Input value={gymPhone} onChange={(e) => setGymPhone(e.target.value)} placeholder="+91 9876543210" className="h-9 lg:h-12 text-xs lg:text-base" />
+                      <div>
+                        <CardTitle className="text-base lg:text-xl">Gym Information</CardTitle>
+                        <CardDescription className="text-xs lg:text-sm">Update your gym details and contact info</CardDescription>
                       </div>
                     </div>
-                    <div className="space-y-1 lg:space-y-2">
-                      <Label className="text-xs lg:text-sm">Address</Label>
-                      <Input value={gymAddress} onChange={(e) => setGymAddress(e.target.value)} placeholder="Gym address" className="h-9 lg:h-12 text-xs lg:text-base" />
+                  </CardHeader>
+                  <CardContent className="space-y-4 lg:space-y-5 p-4 lg:p-6 pt-0 lg:pt-0">
+                    <div className="grid gap-3 lg:gap-4 grid-cols-1 md:grid-cols-2">
+                      <div className="space-y-1.5 lg:space-y-2">
+                        <Label htmlFor="gym-name" className="text-xs lg:text-sm font-medium">Gym Name</Label>
+                        <Input
+                          id="gym-name"
+                          value={gymName}
+                          onChange={(e) => setGymName(e.target.value)}
+                          placeholder="Enter gym name"
+                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
+                        />
+                      </div>
+                      <div className="space-y-1.5 lg:space-y-2">
+                        <Label htmlFor="gym-phone" className="text-xs lg:text-sm font-medium">Phone Number</Label>
+                        <Input
+                          id="gym-phone"
+                          value={gymPhone}
+                          onChange={(e) => setGymPhone(e.target.value)}
+                          placeholder="Enter phone number"
+                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 lg:space-y-2">
+                      <Label htmlFor="gym-address" className="text-xs lg:text-sm font-medium">Address</Label>
+                      <Textarea
+                        id="gym-address"
+                        value={gymAddress}
+                        onChange={(e) => setGymAddress(e.target.value)}
+                        placeholder="Enter gym address"
+                        className="min-h-[80px] lg:min-h-[100px] rounded-lg border-border/50 focus:border-primary/40 transition-colors resize-none"
+                      />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full gap-1.5 lg:gap-2 h-9 lg:h-10 text-xs lg:text-sm">
-                  {isSaving ? <ButtonSpinner /> : <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
-                  {isSaving ? "Saving..." : "Save Settings"}
+                <Button
+                  className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
+                  onClick={handleSaveSettings}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <span className="flex items-center gap-2">
+                      <ButtonSpinner />
+                      Saving...
+                    </span>
+                  ) : (
+                    "Save Settings"
+                  )}
                 </Button>
               </>
             )}
           </TabsContent>
-          {/* Subscription & Plan Tab */}
-          <TabsContent value="subscription" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
+
+          {/* Subscription Plan Tab */}
+          <TabsContent value="subscription" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6 animate-fade-in">
             <SubscriptionPlanTab />
           </TabsContent>
         </Tabs>
@@ -1350,12 +1425,11 @@ const AdminSettings = () => {
 
       <ConfirmDialog
         open={confirmDialog.open}
-        onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}
+        onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}
         title={confirmDialog.title}
         description={confirmDialog.description}
-        confirmText="Delete"
-        variant={confirmDialog.variant}
         onConfirm={confirmDialog.onConfirm}
+        variant={confirmDialog.variant}
       />
     </Fragment>
   );
