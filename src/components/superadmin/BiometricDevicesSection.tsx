@@ -167,7 +167,7 @@ export function BiometricDevicesSection({ branches, tenantId }: BiometricDevices
                       <TableCell className="text-sm">{d.device_ip ? `${d.device_ip}:${d.device_port}` : "—"}</TableCell>
                       <TableCell className="text-sm">
                         <div className="flex items-center gap-1.5">
-                          {d.last_sync_at ? <SignalIcon className="w-3.5 h-3.5 text-green-500" /> : <SignalSlashIcon className="w-3.5 h-3.5 text-muted-foreground" />}
+                          {d.last_sync_at ? <SignalIcon className="w-3.5 h-3.5 text-primary" /> : <SignalSlashIcon className="w-3.5 h-3.5 text-muted-foreground" />}
                           {formatTime(d.last_sync_at)}
                         </div>
                       </TableCell>
