@@ -305,22 +305,39 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     return cleaned;
   };
 
-  // Step validation - if existing member found, they must pick an action
-  const isStep1Valid = name.trim().length >= 2 && phone.length === 10 && !existingMember;
-  const isStep2Valid = true; // Personal details are optional
+  // Step validation - if existing member found or still checking, block progress
+  const isStep1Valid = name.trim().length >= 2 && phone.length === 10 && !existingMember && !isCheckingPhone;
+  const isStep2Valid = !!gender; // Gender is required
   const isStep3Valid = !!selectedPackageId;
 
   const goToStep = (step: number) => {
     if (step > currentStep) {
       // Validate current step before advancing
-      if (currentStep === 1 && !isStep1Valid) {
-        const sanitizedName = sanitize(name);
-        const result = validateForm(addMemberSchema, { name: sanitizedName, phone });
-        if (!result.success) {
-          setFieldErrors(result.errors);
-          setTouched({ name: true, phone: true });
+      if (currentStep === 1) {
+        if (!isStep1Valid) {
+          const sanitizedName = sanitize(name);
+          const result = validateForm(addMemberSchema, { name: sanitizedName, phone });
+          if (!result.success) {
+            setFieldErrors(result.errors);
+            setTouched({ name: true, phone: true });
+          }
+          if (existingMember) {
+            toast.error("Member Already Exists", {
+              description: "Please use one of the options below to renew or add PT",
+            });
+          } else if (isCheckingPhone) {
+            toast.info("Checking phone number...", { description: "Please wait" });
+          } else if (phone.length < 10) {
+            toast.error("Enter a valid 10-digit phone number");
+          }
           return;
         }
+      }
+      if (currentStep === 2 && !isStep2Valid) {
+        toast.error("Please select gender", {
+          description: "Gender is required to proceed",
+        });
+        return;
       }
       setSlideDirection("left");
     } else {
@@ -1020,7 +1037,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   type="button"
                   className="flex-1 h-11 rounded-xl text-sm font-medium bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98] transition-all duration-200 shadow-sm"
                   onClick={() => goToStep(currentStep + 1)}
-                  disabled={currentStep === 1 && !isStep1Valid}
+                  disabled={(currentStep === 1 && !isStep1Valid) || (currentStep === 2 && !isStep2Valid)}
                 >
                   Continue
                   <ArrowRight className="w-4 h-4 ml-1.5" />
