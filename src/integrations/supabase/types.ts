@@ -293,6 +293,73 @@ export type Database = {
           },
         ]
       }
+      biometric_enrollment_requests: {
+        Row: {
+          biometric_user_id: string | null
+          branch_id: string
+          created_at: string
+          device_id: string
+          enrollment_type: string
+          error_message: string | null
+          expires_at: string
+          id: string
+          member_id: string
+          requested_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          biometric_user_id?: string | null
+          branch_id: string
+          created_at?: string
+          device_id: string
+          enrollment_type?: string
+          error_message?: string | null
+          expires_at?: string
+          id?: string
+          member_id: string
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          biometric_user_id?: string | null
+          branch_id?: string
+          created_at?: string
+          device_id?: string
+          enrollment_type?: string
+          error_message?: string | null
+          expires_at?: string
+          id?: string
+          member_id?: string
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "biometric_enrollment_requests_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "biometric_enrollment_requests_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "biometric_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "biometric_enrollment_requests_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       biometric_member_mappings: {
         Row: {
           biometric_user_id: string
