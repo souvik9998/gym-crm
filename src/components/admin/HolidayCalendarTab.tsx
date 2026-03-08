@@ -70,6 +70,15 @@ const getNationalHolidays = (year: number) => [
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+// Convert 24h time string "HH:mm" to 12h format "h:mm AM/PM"
+const formatTime12h = (time: string | null | undefined): string => {
+  if (!time) return "";
+  const [h, m] = time.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 || 12;
+  return `${hour12}:${m.toString().padStart(2, "0")} ${ampm}`;
+};
+
 const HolidayCalendarTab = () => {
   const { currentBranch } = useBranch();
   const [holidays, setHolidays] = useState<Holiday[]>([]);
