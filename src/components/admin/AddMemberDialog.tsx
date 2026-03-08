@@ -868,7 +868,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                 </Button>
               )}
             </div>
-          </form>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
