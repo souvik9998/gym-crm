@@ -521,6 +521,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setDateOfBirth(undefined); setSelectedPackageId(""); setMonthlyFee(0);
     setJoiningFee(0); setWantsPT(false); setSelectedTrainerId("");
     setPtMonths(1); setPtFee(0); setCurrentStep(1);
+    setExistingMember(null); setSelectedAction(null); setIsCheckingPhone(false);
     const today = new Date(); today.setHours(0, 0, 0, 0); setStartDate(today);
   };
 
