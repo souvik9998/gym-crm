@@ -305,22 +305,39 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     return cleaned;
   };
 
-  // Step validation - if existing member found, they must pick an action
-  const isStep1Valid = name.trim().length >= 2 && phone.length === 10 && !existingMember;
-  const isStep2Valid = true; // Personal details are optional
+  // Step validation - if existing member found or still checking, block progress
+  const isStep1Valid = name.trim().length >= 2 && phone.length === 10 && !existingMember && !isCheckingPhone;
+  const isStep2Valid = !!gender; // Gender is required
   const isStep3Valid = !!selectedPackageId;
 
   const goToStep = (step: number) => {
     if (step > currentStep) {
       // Validate current step before advancing
-      if (currentStep === 1 && !isStep1Valid) {
-        const sanitizedName = sanitize(name);
-        const result = validateForm(addMemberSchema, { name: sanitizedName, phone });
-        if (!result.success) {
-          setFieldErrors(result.errors);
-          setTouched({ name: true, phone: true });
+      if (currentStep === 1) {
+        if (!isStep1Valid) {
+          const sanitizedName = sanitize(name);
+          const result = validateForm(addMemberSchema, { name: sanitizedName, phone });
+          if (!result.success) {
+            setFieldErrors(result.errors);
+            setTouched({ name: true, phone: true });
+          }
+          if (existingMember) {
+            toast.error("Member Already Exists", {
+              description: "Please use one of the options below to renew or add PT",
+            });
+          } else if (isCheckingPhone) {
+            toast.info("Checking phone number...", { description: "Please wait" });
+          } else if (phone.length < 10) {
+            toast.error("Enter a valid 10-digit phone number");
+          }
           return;
         }
+      }
+      if (currentStep === 2 && !isStep2Valid) {
+        toast.error("Please select gender", {
+          description: "Gender is required to proceed",
+        });
+        return;
       }
       setSlideDirection("left");
     } else {
