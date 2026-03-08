@@ -252,7 +252,7 @@ export function BiometricDevicesSection({ branches, tenantId }: BiometricDevices
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         title="Remove Device"
         description={`Remove "${deleteTarget?.device_name}"? The device will be deactivated.`}
-        confirmLabel="Remove"
+        confirmText="Remove"
         onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget.id); setDeleteTarget(null); }}
         variant="destructive"
       />
