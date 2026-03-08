@@ -316,7 +316,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const isStep1Valid = name.trim().length >= 2 && phone.length === 10 && !existingMember && !isCheckingPhone;
   // Match registration portal: gender, photo ID, and address are all required
   const isStep2Valid = !!gender && !!photoIdType && photoIdNumber.trim().length > 0 && address.trim().length >= 3;
-  const isStep3Valid = !!selectedPackageId;
+  const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptFee > 0) : !!selectedPackageId;
 
   const goToStep = (step: number) => {
     if (step > currentStep) {
