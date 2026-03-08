@@ -242,8 +242,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setCurrentStep(step);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
 
     const sanitizedName = sanitize(name);
     const result = validateForm(addMemberSchema, { name: sanitizedName, phone });
