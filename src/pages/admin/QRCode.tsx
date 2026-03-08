@@ -170,7 +170,7 @@ const QRCodePage = () => {
               </div>
 
               {/* URL Input */}
-              <div className="w-full max-w-sm space-y-2">
+              <div className="w-full max-w-sm lg:max-w-md space-y-2">
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   {activeTab === "registration" ? "Portal URL" : "Attendance URL"}
                 </label>
