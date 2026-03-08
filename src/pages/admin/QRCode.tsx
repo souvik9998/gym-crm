@@ -5,20 +5,23 @@ import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowDownTrayIcon,
   ClipboardDocumentIcon,
   CheckIcon,
   ArrowTopRightOnSquareIcon,
   BuildingOffice2Icon,
+  QrCodeIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "@/components/ui/sonner";
 import { useBranch } from "@/contexts/BranchContext";
+import { cn } from "@/lib/utils";
 
 const QRCodePage = () => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"registration" | "attendance">("registration");
   const { branches, currentBranch } = useBranch();
 
   const getPortalUrl = () => {
@@ -71,15 +74,19 @@ const QRCodePage = () => {
 
   if (branches.length === 0 || !currentBranch) {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto animate-fade-in">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-8 text-center">
-            <BuildingOffice2Icon className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted/50 flex items-center justify-center">
+              <BuildingOffice2Icon className="w-8 h-8 text-muted-foreground" />
+            </div>
             <h3 className="text-lg font-semibold mb-2">No Branches Configured</h3>
-            <p className="text-muted-foreground mb-4">
-              Please add a branch in Settings first to generate QR codes for member registration.
+            <p className="text-muted-foreground mb-6">
+              Please add a branch in Settings first to generate QR codes.
             </p>
-            <Button onClick={() => navigate("/admin/settings")}>Go to Settings</Button>
+            <Button onClick={() => navigate("/admin/settings")} className="rounded-xl">
+              Go to Settings
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -89,131 +96,169 @@ const QRCodePage = () => {
   const portalUrl = getPortalUrl();
   const attendanceUrl = getAttendanceUrl();
 
+  const tabs = [
+    { id: "registration" as const, label: "Registration", icon: UserGroupIcon, description: "New member signup" },
+    { id: "attendance" as const, label: "Attendance", icon: QrCodeIcon, description: "Daily check-in" },
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <Tabs defaultValue="registration">
-        <TabsList className="mb-4">
-          <TabsTrigger value="registration">Registration QR</TabsTrigger>
-          <TabsTrigger value="attendance">Attendance QR</TabsTrigger>
-        </TabsList>
+    <div className="max-w-3xl mx-auto space-y-6 lg:space-y-8">
+      {/* Tab Switcher */}
+      <div className="flex gap-3 animate-fade-in">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={cn(
+              "flex-1 flex items-center gap-3 p-4 rounded-2xl border transition-all duration-300",
+              activeTab === tab.id
+                ? "bg-primary/5 border-primary/20 shadow-sm"
+                : "bg-card border-border/50 hover:border-border hover:shadow-sm"
+            )}
+          >
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center transition-colors duration-300",
+              activeTab === tab.id ? "bg-primary/10" : "bg-muted/50"
+            )}>
+              <tab.icon className={cn(
+                "w-5 h-5 transition-colors duration-300",
+                activeTab === tab.id ? "text-primary" : "text-muted-foreground"
+              )} />
+            </div>
+            <div className="text-left">
+              <p className={cn(
+                "font-semibold text-sm transition-colors duration-300",
+                activeTab === tab.id ? "text-foreground" : "text-muted-foreground"
+              )}>
+                {tab.label}
+              </p>
+              <p className="text-xs text-muted-foreground hidden sm:block">{tab.description}</p>
+            </div>
+          </button>
+        ))}
+      </div>
 
-        <TabsContent value="registration" className="space-y-6">
-          <Card className="border-0 shadow-sm bg-gradient-to-r from-primary/5 to-accent/5">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <BuildingOffice2Icon className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg">{currentBranch.name}</h3>
-                  {currentBranch.address && <p className="text-sm text-muted-foreground">{currentBranch.address}</p>}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="text-center pb-4">
-              <CardTitle className="text-2xl font-semibold">{currentBranch.name}</CardTitle>
-              <CardDescription>Scan this QR code to register at <strong>{currentBranch.name}</strong></CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center space-y-6">
-              <div className="p-6 bg-card rounded-2xl shadow-lg border">
-                <QRCodeSVG id="qr-code-svg-registration" value={portalUrl} size={256} level="H" includeMargin />
-              </div>
-              <div className="flex items-center gap-2 text-primary">
+      {/* QR Code Display */}
+      <div className="animate-fade-in" style={{ animationDelay: "50ms" }}>
+        <Card className="border-0 shadow-sm overflow-hidden">
+          <div className="bg-gradient-to-br from-primary/[0.03] via-transparent to-accent/[0.03]">
+            <CardHeader className="text-center pb-2 pt-8">
+              <div className="flex items-center justify-center gap-2 mb-3">
                 <BranchLogo logoUrl={currentBranch.logo_url} name={currentBranch.name} size="sm" />
-                <span className="font-semibold text-lg">{currentBranch.name}</span>
+                <span className="font-semibold text-foreground">{currentBranch.name}</span>
               </div>
-              <div className="w-full max-w-md">
-                <label className="text-sm text-muted-foreground mb-2 block">Portal URL</label>
-                <div className="flex gap-2">
-                  <Input value={portalUrl} readOnly className="font-mono text-sm" />
-                  <Button variant="outline" size="icon" onClick={() => handleCopy(portalUrl, "reg")} className="flex-shrink-0">
-                    {copied === "reg" ? <CheckIcon className="w-4 h-4 text-green-500" /> : <ClipboardDocumentIcon className="w-4 h-4" />}
-                  </Button>
-                  <Button variant="outline" size="icon" onClick={() => window.open(portalUrl, "_blank")} className="flex-shrink-0">
-                    <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                  </Button>
+              <CardTitle className="text-xl lg:text-2xl font-bold">
+                {activeTab === "registration" ? "Member Registration" : "Attendance Check-in"}
+              </CardTitle>
+              <CardDescription className="text-sm mt-1">
+                {activeTab === "registration"
+                  ? "Scan to register as a new member"
+                  : "Scan to mark your attendance"}
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="flex flex-col items-center space-y-6 pb-8">
+              {/* QR Code with decorative frame */}
+              <div className="relative group">
+                <div className="absolute -inset-3 rounded-3xl bg-gradient-to-br from-primary/10 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative p-5 bg-white rounded-2xl shadow-lg border border-border/30 transition-transform duration-300 group-hover:scale-[1.02]">
+                  {activeTab === "registration" ? (
+                    <QRCodeSVG id="qr-code-svg-registration" value={portalUrl} size={220} level="H" includeMargin />
+                  ) : (
+                    <QRCodeSVG id="qr-code-svg-attendance" value={attendanceUrl} size={220} level="H" includeMargin />
+                  )}
                 </div>
               </div>
+
+              {/* URL Input */}
+              <div className="w-full max-w-sm space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  {activeTab === "registration" ? "Portal URL" : "Attendance URL"}
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    value={activeTab === "registration" ? portalUrl : attendanceUrl}
+                    readOnly
+                    className="font-mono text-xs h-10 bg-muted/30 border-border/50 rounded-xl"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleCopy(
+                      activeTab === "registration" ? portalUrl : attendanceUrl,
+                      activeTab === "registration" ? "reg" : "att"
+                    )}
+                    className="flex-shrink-0 h-10 w-10 rounded-xl border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all duration-200"
+                  >
+                    {copied === (activeTab === "registration" ? "reg" : "att")
+                      ? <CheckIcon className="w-4 h-4 text-primary" />
+                      : <ClipboardDocumentIcon className="w-4 h-4" />}
+                  </Button>
+                  {activeTab === "registration" && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => window.open(portalUrl, "_blank")}
+                      className="flex-shrink-0 h-10 w-10 rounded-xl border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all duration-200"
+                    >
+                      <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Download Button */}
               <Button
                 size="lg"
-                className="w-full max-w-xs gap-2"
-                onClick={() => handleDownload("qr-code-svg-registration", `qr-${currentBranch.name.toLowerCase().replace(/\s+/g, '-')}.png`)}
+                className="gap-2.5 rounded-xl px-8 shadow-sm hover:shadow-md transition-all duration-300 active:scale-95"
+                onClick={() =>
+                  handleDownload(
+                    activeTab === "registration" ? "qr-code-svg-registration" : "qr-code-svg-attendance",
+                    `${activeTab === "registration" ? "qr" : "attendance-qr"}-${currentBranch.name.toLowerCase().replace(/\s+/g, "-")}.png`
+                  )
+                }
               >
-                <ArrowDownTrayIcon className="w-4 h-4" /> Download QR Code
+                <ArrowDownTrayIcon className="w-4.5 h-4.5" />
+                Download QR Code
               </Button>
             </CardContent>
-          </Card>
-        </TabsContent>
+          </div>
+        </Card>
+      </div>
 
-        <TabsContent value="attendance" className="space-y-6">
-          <Card className="border-0 shadow-sm bg-gradient-to-r from-primary/5 to-accent/5">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <BuildingOffice2Icon className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg">{currentBranch.name} — Attendance</h3>
-                  <p className="text-sm text-muted-foreground">Print and display this QR at the gym entrance</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
+      {/* How it Works — only for attendance */}
+      {activeTab === "attendance" && (
+        <div className="animate-fade-in" style={{ animationDelay: "100ms" }}>
           <Card className="border-0 shadow-sm">
-            <CardHeader className="text-center pb-4">
-              <CardTitle className="text-2xl font-semibold">Attendance Check-in</CardTitle>
-              <CardDescription>Members & staff scan this QR to mark attendance at <strong>{currentBranch.name}</strong></CardDescription>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">How Attendance Works</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col items-center space-y-6">
-              <div className="p-6 bg-card rounded-2xl shadow-lg border">
-                <QRCodeSVG id="qr-code-svg-attendance" value={attendanceUrl} size={256} level="H" includeMargin />
-              </div>
-              <div className="flex items-center gap-2 text-primary">
-                <BranchLogo logoUrl={currentBranch.logo_url} name={currentBranch.name} size="sm" />
-                <span className="font-semibold text-lg">{currentBranch.name}</span>
-              </div>
-              <div className="w-full max-w-md">
-                <label className="text-sm text-muted-foreground mb-2 block">Attendance URL</label>
-                <div className="flex gap-2">
-                  <Input value={attendanceUrl} readOnly className="font-mono text-sm" />
-                  <Button variant="outline" size="icon" onClick={() => handleCopy(attendanceUrl, "att")} className="flex-shrink-0">
-                    {copied === "att" ? <CheckIcon className="w-4 h-4 text-green-500" /> : <ClipboardDocumentIcon className="w-4 h-4" />}
-                  </Button>
-                </div>
-              </div>
-              <Button
-                size="lg"
-                className="w-full max-w-xs gap-2"
-                onClick={() => handleDownload("qr-code-svg-attendance", `attendance-qr-${currentBranch.name.toLowerCase().replace(/\s+/g, '-')}.png`)}
-              >
-                <ArrowDownTrayIcon className="w-4 h-4" /> Download Attendance QR
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm">
-            <CardHeader><CardTitle className="text-lg">How Attendance Works</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-4">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0"><span className="text-primary font-bold text-sm">1</span></div>
-                <div><p className="font-medium">First Visit</p><p className="text-sm text-muted-foreground">Member enters phone number to register their device.</p></div>
-              </div>
-              <div className="flex gap-4">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0"><span className="text-primary font-bold text-sm">2</span></div>
-                <div><p className="font-medium">Daily Scan</p><p className="text-sm text-muted-foreground">Scan QR on arrival — attendance is marked instantly with no login needed.</p></div>
-              </div>
-              <div className="flex gap-4">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0"><span className="text-primary font-bold text-sm">3</span></div>
-                <div><p className="font-medium">Check Out</p><p className="text-sm text-muted-foreground">Scan again when leaving to log check-out time and total hours.</p></div>
+            <CardContent>
+              <div className="space-y-1">
+                {[
+                  { step: "1", title: "First Visit", desc: "Member enters phone number to register their device." },
+                  { step: "2", title: "Daily Scan", desc: "Scan QR on arrival — attendance is marked instantly." },
+                  { step: "3", title: "Check Out", desc: "Scan again when leaving to log total hours." },
+                ].map((item, i) => (
+                  <div
+                    key={item.step}
+                    className="flex items-start gap-4 p-3 rounded-xl hover:bg-muted/30 transition-colors duration-200"
+                    style={{ animationDelay: `${150 + i * 50}ms` }}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary font-bold text-sm">{item.step}</span>
+                    </div>
+                    <div className="pt-0.5">
+                      <p className="font-medium text-sm">{item.title}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   );
 };
