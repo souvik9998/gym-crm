@@ -25,7 +25,8 @@ import {
   BellAlertIcon,
   ClockIcon,
   SparklesIcon,
-ChatBubbleLeftEllipsisIcon,
+  ChatBubbleLeftEllipsisIcon,
+} from "@heroicons/react/24/outline";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 
 interface Holiday {
