@@ -761,7 +761,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
               {currentStep === 2 && (
                 <div className="space-y-4">
                   <div className="space-y-2.5">
-                    <Label className="text-sm font-medium">Gender</Label>
+                    <Label className="text-sm font-medium">Gender <span className="text-destructive">*</span></Label>
                     <div className="flex gap-2">
                       {[
                         { value: "male", label: "Male" },
