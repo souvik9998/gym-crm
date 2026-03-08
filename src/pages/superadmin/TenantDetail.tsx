@@ -424,6 +424,7 @@ export default function TenantDetail() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="branches">Branches ({branches.length})</TabsTrigger>
             <TabsTrigger value="limits">Permissions & Limits</TabsTrigger>
+            <TabsTrigger value="biometric">Biometric Devices</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
           </TabsList>
