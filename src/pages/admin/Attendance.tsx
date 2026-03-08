@@ -2,14 +2,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MembersAttendanceTab } from "@/components/admin/attendance/MembersAttendanceTab";
 import { StaffAttendanceTab } from "@/components/admin/attendance/StaffAttendanceTab";
 import { AttendanceInsightsTab } from "@/components/admin/attendance/AttendanceInsightsTab";
-import { UsersIcon, UserGroupIcon, ChartBarIcon } from "@heroicons/react/24/outline";
+import { BiometricDevicesTab } from "@/components/admin/attendance/BiometricDevicesTab";
+import { UsersIcon, UserGroupIcon, ChartBarIcon, FingerPrintIcon } from "@heroicons/react/24/outline";
 
 const Attendance = () => {
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Attendance</h1>
-        <p className="text-muted-foreground">Track member and staff attendance via QR check-in.</p>
+        <p className="text-muted-foreground">Track member and staff attendance via QR check-in and biometric devices.</p>
       </div>
 
       <Tabs defaultValue="members" className="space-y-4">
@@ -26,6 +27,10 @@ const Attendance = () => {
             <ChartBarIcon className="w-4 h-4" />
             Insights
           </TabsTrigger>
+          <TabsTrigger value="biometric" className="gap-2">
+            <FingerPrintIcon className="w-4 h-4" />
+            Biometric
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="members">
@@ -36,6 +41,9 @@ const Attendance = () => {
         </TabsContent>
         <TabsContent value="insights">
           <AttendanceInsightsTab />
+        </TabsContent>
+        <TabsContent value="biometric">
+          <BiometricDevicesTab />
         </TabsContent>
       </Tabs>
     </div>

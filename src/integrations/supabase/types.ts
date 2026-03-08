@@ -234,6 +234,167 @@ export type Database = {
           },
         ]
       }
+      biometric_devices: {
+        Row: {
+          api_key: string
+          branch_id: string
+          created_at: string
+          device_brand: string
+          device_ip: string | null
+          device_name: string
+          device_port: number | null
+          device_serial: string
+          id: string
+          is_active: boolean
+          is_sync_enabled: boolean
+          last_sync_at: string | null
+          total_logs_received: number
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string
+          branch_id: string
+          created_at?: string
+          device_brand?: string
+          device_ip?: string | null
+          device_name: string
+          device_port?: number | null
+          device_serial: string
+          id?: string
+          is_active?: boolean
+          is_sync_enabled?: boolean
+          last_sync_at?: string | null
+          total_logs_received?: number
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          branch_id?: string
+          created_at?: string
+          device_brand?: string
+          device_ip?: string | null
+          device_name?: string
+          device_port?: number | null
+          device_serial?: string
+          id?: string
+          is_active?: boolean
+          is_sync_enabled?: boolean
+          last_sync_at?: string | null
+          total_logs_received?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "biometric_devices_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      biometric_member_mappings: {
+        Row: {
+          biometric_user_id: string
+          biometric_user_name: string | null
+          branch_id: string
+          created_at: string
+          id: string
+          is_mapped: boolean
+          member_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          biometric_user_id: string
+          biometric_user_name?: string | null
+          branch_id: string
+          created_at?: string
+          id?: string
+          is_mapped?: boolean
+          member_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          biometric_user_id?: string
+          biometric_user_name?: string | null
+          branch_id?: string
+          created_at?: string
+          id?: string
+          is_mapped?: boolean
+          member_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "biometric_member_mappings_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "biometric_member_mappings_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      biometric_sync_logs: {
+        Row: {
+          branch_id: string
+          device_id: string
+          error_message: string | null
+          id: string
+          logs_duplicated: number
+          logs_processed: number
+          logs_received: number
+          logs_unmapped: number
+          sync_status: string
+          synced_at: string
+        }
+        Insert: {
+          branch_id: string
+          device_id: string
+          error_message?: string | null
+          id?: string
+          logs_duplicated?: number
+          logs_processed?: number
+          logs_received?: number
+          logs_unmapped?: number
+          sync_status?: string
+          synced_at?: string
+        }
+        Update: {
+          branch_id?: string
+          device_id?: string
+          error_message?: string | null
+          id?: string
+          logs_duplicated?: number
+          logs_processed?: number
+          logs_received?: number
+          logs_unmapped?: number
+          sync_status?: string
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "biometric_sync_logs_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "biometric_sync_logs_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "biometric_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           address: string | null
