@@ -362,20 +362,6 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setIsLoading(true);
 
     try {
-      const { data: existing } = await supabase
-        .from("members")
-        .select("id")
-        .eq("phone", phone)
-        .eq("branch_id", currentBranch?.id || "")
-        .maybeSingle();
-
-      if (existing) {
-        toast.error("Member Exists", {
-          description: "A member with this phone number already exists in this branch",
-        });
-        setIsLoading(false);
-        return;
-      }
 
       const { data: member, error: memberError } = await supabase
         .from("members")
