@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment, memo, useCallback } from "react";
+import { useState, useEffect, Fragment, memo, useCallback, lazy, Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
