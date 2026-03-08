@@ -70,6 +70,15 @@ const getNationalHolidays = (year: number) => [
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+// Convert 24h time string "HH:mm" to 12h format "h:mm AM/PM"
+const formatTime12h = (time: string | null | undefined): string => {
+  if (!time) return "";
+  const [h, m] = time.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 || 12;
+  return `${hour12}:${m.toString().padStart(2, "0")} ${ampm}`;
+};
+
 const HolidayCalendarTab = () => {
   const { currentBranch } = useBranch();
   const [holidays, setHolidays] = useState<Holiday[]>([]);
@@ -164,19 +173,19 @@ const HolidayCalendarTab = () => {
     if (type === "full_day") {
       msg += `*closed* on *${dateStr}*`;
       msg += ` for *${name}*.`;
-      msg += `\n\n⏰ *Closed:* ${startTime} – ${endTime}`;
+      msg += `\n\n⏰ *Closed:* ${formatTime12h(startTime)} – ${formatTime12h(endTime)}`;
     } else if (type === "half_day") {
       msg += `open for *half day* on *${dateStr}*`;
       msg += ` for *${name}*.\n\n`;
-      msg += `⏰ *Timings:* ${startTime} – ${endTime}`;
+      msg += `⏰ *Timings:* ${formatTime12h(startTime)} – ${formatTime12h(endTime)}`;
     } else if (type === "late_opening") {
       msg += `opening *late* on *${dateStr}*`;
       msg += ` for *${name}*.\n\n`;
-      msg += `⏰ *Opens at:* ${openTime}`;
+      msg += `⏰ *Opens at:* ${formatTime12h(openTime)}`;
     } else if (type === "early_closing") {
       msg += `closing *early* on *${dateStr}*`;
       msg += ` for *${name}*.\n\n`;
-      msg += `⏰ *Closes at:* ${closeTime}`;
+      msg += `⏰ *Closes at:* ${formatTime12h(closeTime)}`;
     }
     
     if (desc.trim()) {
@@ -421,7 +430,7 @@ const HolidayCalendarTab = () => {
                   key={dateStr}
                   onClick={() => handleDayClick(day)}
                   className={cn(
-                    "aspect-square rounded-xl flex flex-col items-center justify-center relative transition-all duration-200 text-xs lg:text-sm group",
+                    "min-h-[48px] lg:min-h-[56px] rounded-xl flex flex-col items-center justify-start pt-1 relative transition-all duration-200 text-xs lg:text-sm group overflow-hidden",
                     "hover:bg-accent/50 hover:scale-105 active:scale-95",
                     isPast && "opacity-50",
                     isCurrentDay && "ring-2 ring-primary/30 bg-primary/5 font-bold",
@@ -430,12 +439,17 @@ const HolidayCalendarTab = () => {
                     isSunday && !gymHoliday && !nationalHoliday && "text-red-400",
                   )}
                 >
-                  <span>{format(day, "d")}</span>
+                  <span className="text-xs lg:text-sm">{format(day, "d")}</span>
+                  {/* Show holiday name below the date */}
                   {gymHoliday && (
-                    <div className="absolute bottom-0.5 lg:bottom-1 w-1.5 h-1.5 rounded-full bg-red-500" />
+                    <span className="text-[6px] lg:text-[8px] leading-tight text-center px-0.5 line-clamp-2 text-red-600 dark:text-red-400 font-medium mt-0.5">
+                      {gymHoliday.holiday_name}
+                    </span>
                   )}
                   {!gymHoliday && nationalHoliday && (
-                    <div className="absolute bottom-0.5 lg:bottom-1 w-1.5 h-1.5 rounded-full bg-orange-400" />
+                    <span className="text-[6px] lg:text-[8px] leading-tight text-center px-0.5 line-clamp-2 text-orange-600 dark:text-orange-400 font-medium mt-0.5">
+                      {nationalHoliday}
+                    </span>
                   )}
                   {/* Tooltip on hover */}
                   {(gymHoliday || nationalHoliday) && (
@@ -527,7 +541,7 @@ const HolidayCalendarTab = () => {
                             ) : (
                               <>
                                 <ClockIcon className="w-3 h-3" />
-                                {holiday.half_day_start_time?.slice(0, 5)} – {holiday.half_day_end_time?.slice(0, 5)}
+                                {formatTime12h(holiday.half_day_start_time)} – {formatTime12h(holiday.half_day_end_time)}
                               </>
                             )}
                           </span>
