@@ -288,6 +288,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     if (trainer) setPtFee(Number(trainer.monthly_fee) * months);
   };
 
+  const selectedPackage = monthlyPackages.find((p) => p.id === selectedPackageId);
+  const selectedTrainer = trainers.find((t) => t.id === selectedTrainerId);
+
   // For existing member actions, determine what to show
   const isExistingMemberAction = !!selectedAction && selectedAction !== "new";
   const showGymSection = !selectedAction || selectedAction === "new" || selectedAction === "renew_gym" || selectedAction === "renew_gym_pt";
