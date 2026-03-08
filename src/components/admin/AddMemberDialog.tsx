@@ -106,6 +106,7 @@ const STEPS = [
 export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDialogProps) => {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn, staffUser } = useStaffAuth();
+  const navigate = useNavigate();
   
   const [currentStep, setCurrentStep] = useState(1);
   
