@@ -39,6 +39,7 @@ import { useSettingsPageData } from "@/hooks/queries/useSettingsPageData";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 
+// Lazy load HolidayCalendarTab for code splitting
 const HolidayCalendarTab = lazy(() => import("@/components/admin/HolidayCalendarTab"));
 
 interface CustomPackage {
