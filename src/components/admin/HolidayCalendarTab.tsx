@@ -164,6 +164,7 @@ const HolidayCalendarTab = () => {
     if (type === "full_day") {
       msg += `*closed* on *${dateStr}*`;
       msg += ` for *${name}*.`;
+      msg += `\n\n⏰ *Closed:* ${startTime} – ${endTime}`;
     } else if (type === "half_day") {
       msg += `open for *half day* on *${dateStr}*`;
       msg += ` for *${name}*.\n\n`;
