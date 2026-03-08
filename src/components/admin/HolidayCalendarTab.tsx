@@ -218,7 +218,10 @@ const HolidayCalendarTab = () => {
     setFormType(holiday.holiday_type);
     setFormStartTime(holiday.half_day_start_time || "09:00");
     setFormEndTime(holiday.half_day_end_time || "13:00");
+    setFormOpenTime("06:00");
+    setFormCloseTime("22:00");
     setFormNotify(holiday.notify_members);
+    setFormWhatsAppMessage("");
     setIsDialogOpen(true);
   };
 
