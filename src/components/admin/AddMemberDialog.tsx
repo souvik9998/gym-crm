@@ -796,7 +796,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-sm font-medium">
                       <IdCard className="w-4 h-4 text-accent" />
-                      Photo ID Type
+                      Photo ID Type <span className="text-destructive">*</span>
                     </Label>
                     <Select value={photoIdType} onValueChange={(val) => { setPhotoIdType(val); setPhotoIdNumber(""); }}>
                       <SelectTrigger className="h-11 text-sm rounded-xl">
