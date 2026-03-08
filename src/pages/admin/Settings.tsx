@@ -1026,6 +1026,12 @@ const AdminSettings = () => {
                       </div>
                     ))}
                   </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <CubeIcon className="w-8 h-8 text-muted-foreground/40 mb-2" />
+                    <p className="text-sm text-muted-foreground">No monthly packages yet</p>
+                    <p className="text-xs text-muted-foreground/60">Add your first package above</p>
+                  </div>
                 )}
               </CardContent>
             </Card>
