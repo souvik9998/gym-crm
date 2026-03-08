@@ -944,7 +944,7 @@ const AdminSettings = () => {
                         key={pkg.id} 
                         style={{ animationDelay: `${index * 50}ms` }}
                         className={cn(
-                          "group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/40 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border/70 hover:-translate-y-0.5 animate-fade-in",
+                         "group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/60 rounded-xl shadow-sm transition-all duration-300 hover:shadow-md hover:border-border/80 hover:-translate-y-0.5 animate-fade-in",
                           recentlyAddedIds.has(pkg.id) && "ring-2 ring-primary/30",
                           !pkg.is_active && "opacity-60"
                         )}
