@@ -140,7 +140,7 @@ const QRCodePage = () => {
 
       {/* QR Code Display */}
       <div className="animate-fade-in" style={{ animationDelay: "50ms" }}>
-        <Card className="border-0 shadow-sm overflow-hidden">
+        <Card className="border border-border/60 shadow-sm overflow-hidden">
           <div className="bg-gradient-to-br from-primary/[0.03] via-transparent to-accent/[0.03]">
             <CardHeader className="text-center pb-2 pt-8">
               <div className="flex items-center justify-center gap-2 mb-3">
