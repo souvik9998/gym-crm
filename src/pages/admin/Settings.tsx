@@ -938,77 +938,100 @@ const AdminSettings = () => {
                 </Button>
 
                 {monthlyPackages.length > 0 && (
-                  <div className="space-y-2 lg:space-y-2.5 pt-3 lg:pt-4 border-t border-border/40">
+                  <div className="grid gap-3 lg:gap-4 pt-4 lg:pt-5 border-t border-border/40">
                     {monthlyPackages.map((pkg, index) => (
                       <div 
                         key={pkg.id} 
-                        style={{ animationDelay: `${index * 50}ms` }}
+                        style={{ animationDelay: `${index * 70}ms` }}
                         className={cn(
-                          "group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/40 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border/70 hover:-translate-y-0.5 animate-fade-in",
-                          recentlyAddedIds.has(pkg.id) && "ring-2 ring-primary/30",
-                          !pkg.is_active && "opacity-60"
+                          "group relative rounded-2xl border-2 transition-all duration-300 animate-fade-in overflow-hidden",
+                          pkg.is_active 
+                            ? "border-primary/20 bg-gradient-to-br from-primary/[0.04] to-transparent hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5" 
+                            : "border-border/30 bg-muted/20 opacity-60",
+                          recentlyAddedIds.has(pkg.id) && "ring-2 ring-primary/40 ring-offset-2 ring-offset-background",
                         )}
                       >
+                        {/* Active indicator bar */}
+                        {pkg.is_active && (
+                          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/60 via-primary to-primary/60" />
+                        )}
+                        
+                        <div className="p-4 lg:p-5">
                         {editingMonthlyId === pkg.id ? (
-                          <>
-                            <div className="flex-1 grid grid-cols-2 gap-2 lg:gap-3">
-                              <div className="space-y-1">
-                                <Label className="text-[10px] lg:text-xs text-muted-foreground">Price (₹)</Label>
+                          <div className="flex items-end gap-3">
+                            <div className="flex-1 grid grid-cols-2 gap-3">
+                              <div className="space-y-1.5">
+                                <Label className="text-[10px] lg:text-xs text-muted-foreground font-medium uppercase tracking-wider">Price (₹)</Label>
                                 <Input
                                   type="number"
                                   value={editMonthlyData.price}
                                   onChange={(e) => setEditMonthlyData({ ...editMonthlyData, price: e.target.value })}
-                                  className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg"
+                                  className="h-9 lg:h-10 text-sm lg:text-base rounded-xl font-semibold"
                                 />
                               </div>
-                              <div className="space-y-1">
-                                <Label className="text-[10px] lg:text-xs text-muted-foreground">Joining Fee (₹)</Label>
+                              <div className="space-y-1.5">
+                                <Label className="text-[10px] lg:text-xs text-muted-foreground font-medium uppercase tracking-wider">Joining Fee (₹)</Label>
                                 <Input
                                   type="number"
                                   value={editMonthlyData.joining_fee}
                                   onChange={(e) => setEditMonthlyData({ ...editMonthlyData, joining_fee: e.target.value })}
-                                  className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg"
+                                  className="h-9 lg:h-10 text-sm lg:text-base rounded-xl font-semibold"
                                 />
                               </div>
                             </div>
-                            <div className="flex items-center gap-1.5 lg:gap-2 pt-5 lg:pt-6">
+                            <div className="flex items-center gap-2 pb-0.5">
                               <Button 
                                 size="icon" 
-                                variant="outline"
                                 onClick={() => handleSaveMonthlyPackage(pkg.id)}
                                 disabled={savingMonthlyId === pkg.id}
-                                className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground active:scale-90 transition-all duration-200"
+                                className="h-9 w-9 lg:h-10 lg:w-10 rounded-xl active:scale-90 transition-all duration-200"
                               >
-                                {savingMonthlyId === pkg.id ? <ButtonSpinner /> : <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
+                                {savingMonthlyId === pkg.id ? <ButtonSpinner /> : <CheckIcon className="w-4 h-4" />}
                               </Button>
                               <Button 
                                 size="icon" 
                                 variant="outline"
                                 onClick={() => setEditingMonthlyId(null)}
-                                className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg active:scale-90 transition-all duration-200"
+                                className="h-9 w-9 lg:h-10 lg:w-10 rounded-xl active:scale-90 transition-all duration-200"
                               >
-                                <XMarkIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                <XMarkIcon className="w-4 h-4" />
                               </Button>
                             </div>
-                          </>
+                          </div>
                         ) : (
-                          <>
+                          <div className="flex items-center gap-3 lg:gap-4">
+                            {/* Duration badge */}
+                            <div className={cn(
+                              "flex flex-col items-center justify-center w-14 h-14 lg:w-16 lg:h-16 rounded-2xl shrink-0 transition-colors duration-300",
+                              pkg.is_active 
+                                ? "bg-primary/10 text-primary" 
+                                : "bg-muted text-muted-foreground"
+                            )}>
+                              <span className="text-xl lg:text-2xl font-black leading-none tabular-nums">{pkg.months}</span>
+                              <span className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-wider mt-0.5 opacity-70">
+                                {pkg.months === 1 ? "Month" : "Months"}
+                              </span>
+                            </div>
+                            
+                            {/* Price info */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <div className="flex items-center justify-center w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-primary/8 text-primary text-xs lg:text-sm font-bold tabular-nums">
-                                  {pkg.months}
-                                </div>
-                                <div>
-                                  <p className="font-semibold text-sm lg:text-base">{pkg.months} {pkg.months === 1 ? "Month" : "Months"}</p>
-                                  <p className="text-xs lg:text-sm text-muted-foreground">
-                                    ₹{pkg.price.toLocaleString()} + ₹{pkg.joining_fee.toLocaleString()} joining fee
-                                  </p>
-                                </div>
+                                <p className="font-bold text-base lg:text-lg">{pkg.months} {pkg.months === 1 ? "Month" : "Months"}</p>
                                 {!pkg.is_active && (
-                                  <span className="text-[10px] lg:text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Inactive</span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold">Inactive</span>
+                                )}
+                              </div>
+                              <div className="flex items-baseline gap-1 mt-0.5">
+                                <span className="text-lg lg:text-xl font-black tabular-nums text-foreground">₹{pkg.price.toLocaleString()}</span>
+                                {pkg.joining_fee > 0 && (
+                                  <span className="text-xs lg:text-sm text-muted-foreground font-medium">
+                                    + ₹{pkg.joining_fee.toLocaleString()} joining
+                                  </span>
                                 )}
                               </div>
                             </div>
+
+                            {/* Actions */}
                             <div className="flex items-center gap-2 lg:gap-3 shrink-0">
                               <Switch
                                 id={`monthly-${pkg.id}`}
@@ -1018,21 +1041,22 @@ const AdminSettings = () => {
                                 onCheckedChange={(checked) => handleToggleMonthlyPackage(pkg.id, checked)}
                               />
                               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                                <Button variant="ghost" size="icon" onClick={() => handleEditMonthlyPackage(pkg)} className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-foreground active:scale-90 transition-all">
+                                <Button variant="ghost" size="icon" onClick={() => handleEditMonthlyPackage(pkg)} className="h-8 w-8 lg:h-9 lg:w-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted active:scale-90 transition-all">
                                   <PencilIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                                 </Button>
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
                                   onClick={() => handleDeleteMonthlyPackage(pkg.id, pkg.months)}
-                                  className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-destructive active:scale-90 transition-all"
+                                  className="h-8 w-8 lg:h-9 lg:w-9 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-90 transition-all"
                                 >
                                   <TrashIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                                 </Button>
                               </div>
                             </div>
-                          </>
+                          </div>
                         )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1092,76 +1116,97 @@ const AdminSettings = () => {
                 </Button>
 
                 {customPackages.length > 0 && (
-                  <div className="space-y-2 lg:space-y-2.5 pt-3 lg:pt-4 border-t border-border/40">
+                  <div className="grid gap-3 lg:gap-4 pt-4 lg:pt-5 border-t border-border/40">
                     {customPackages.map((pkg, index) => (
                       <div 
                         key={pkg.id} 
-                        style={{ animationDelay: `${index * 50}ms` }}
+                        style={{ animationDelay: `${index * 70}ms` }}
                         className={cn(
-                          "group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/40 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border/70 hover:-translate-y-0.5 animate-fade-in",
-                          recentlyAddedIds.has(pkg.id) && "ring-2 ring-primary/30",
-                          !pkg.is_active && "opacity-60"
+                          "group relative rounded-2xl border-2 transition-all duration-300 animate-fade-in overflow-hidden",
+                          pkg.is_active 
+                            ? "border-warning/20 bg-gradient-to-br from-warning/[0.04] to-transparent hover:border-warning/40 hover:shadow-lg hover:shadow-warning/5" 
+                            : "border-border/30 bg-muted/20 opacity-60",
+                          recentlyAddedIds.has(pkg.id) && "ring-2 ring-warning/40 ring-offset-2 ring-offset-background",
                         )}
                       >
+                        {/* Active indicator bar */}
+                        {pkg.is_active && (
+                          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-warning/60 via-warning to-warning/60" />
+                        )}
+
+                        <div className="p-4 lg:p-5">
                         {editingPackageId === pkg.id ? (
-                          <>
-                            <div className="flex-1 grid grid-cols-2 gap-2 lg:gap-3">
-                              <div className="space-y-1">
-                                <Label className="text-[10px] lg:text-xs text-muted-foreground">Name</Label>
+                          <div className="flex items-end gap-3">
+                            <div className="flex-1 grid grid-cols-2 gap-3">
+                              <div className="space-y-1.5">
+                                <Label className="text-[10px] lg:text-xs text-muted-foreground font-medium uppercase tracking-wider">Name</Label>
                                 <Input
                                   value={editPackageData.name}
                                   onChange={(e) => setEditPackageData({ ...editPackageData, name: e.target.value })}
-                                  className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg"
+                                  className="h-9 lg:h-10 text-sm lg:text-base rounded-xl font-semibold"
                                 />
                               </div>
-                              <div className="space-y-1">
-                                <Label className="text-[10px] lg:text-xs text-muted-foreground">Price (₹)</Label>
+                              <div className="space-y-1.5">
+                                <Label className="text-[10px] lg:text-xs text-muted-foreground font-medium uppercase tracking-wider">Price (₹)</Label>
                                 <Input
                                   type="number"
                                   value={editPackageData.price}
                                   onChange={(e) => setEditPackageData({ ...editPackageData, price: e.target.value })}
-                                  className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg"
+                                  className="h-9 lg:h-10 text-sm lg:text-base rounded-xl font-semibold"
                                 />
                               </div>
                             </div>
-                            <div className="flex items-center gap-1.5 lg:gap-2 pt-5 lg:pt-6">
+                            <div className="flex items-center gap-2 pb-0.5">
                               <Button 
                                 size="icon" 
-                                variant="outline"
                                 onClick={() => handleSavePackage(pkg.id)}
                                 disabled={savingCustomId === pkg.id}
-                                className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground active:scale-90 transition-all duration-200"
+                                className="h-9 w-9 lg:h-10 lg:w-10 rounded-xl active:scale-90 transition-all duration-200"
                               >
-                                {savingCustomId === pkg.id ? <ButtonSpinner /> : <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
+                                {savingCustomId === pkg.id ? <ButtonSpinner /> : <CheckIcon className="w-4 h-4" />}
                               </Button>
                               <Button 
                                 size="icon" 
                                 variant="outline"
                                 onClick={() => setEditingPackageId(null)}
-                                className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg active:scale-90 transition-all duration-200"
+                                className="h-9 w-9 lg:h-10 lg:w-10 rounded-xl active:scale-90 transition-all duration-200"
                               >
-                                <XMarkIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                <XMarkIcon className="w-4 h-4" />
                               </Button>
                             </div>
-                          </>
+                          </div>
                         ) : (
-                          <>
+                          <div className="flex items-center gap-3 lg:gap-4">
+                            {/* Duration badge */}
+                            <div className={cn(
+                              "flex flex-col items-center justify-center w-14 h-14 lg:w-16 lg:h-16 rounded-2xl shrink-0 transition-colors duration-300",
+                              pkg.is_active 
+                                ? "bg-warning/10 text-warning" 
+                                : "bg-muted text-muted-foreground"
+                            )}>
+                              <span className="text-xl lg:text-2xl font-black leading-none tabular-nums">{pkg.duration_days}</span>
+                              <span className="text-[9px] lg:text-[10px] font-semibold uppercase tracking-wider mt-0.5 opacity-70">
+                                {pkg.duration_days === 1 ? "Day" : "Days"}
+                              </span>
+                            </div>
+                            
+                            {/* Info */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <div className="flex items-center justify-center w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-warning/10 text-warning text-xs lg:text-sm font-bold tabular-nums">
-                                  {pkg.duration_days}
-                                </div>
-                                <div>
-                                  <p className="font-semibold text-sm lg:text-base">{pkg.name}</p>
-                                  <p className="text-xs lg:text-sm text-muted-foreground">
-                                    {pkg.duration_days} {pkg.duration_days === 1 ? "Day" : "Days"} • ₹{pkg.price.toLocaleString()}
-                                  </p>
-                                </div>
+                                <p className="font-bold text-base lg:text-lg">{pkg.name}</p>
                                 {!pkg.is_active && (
-                                  <span className="text-[10px] lg:text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Inactive</span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold">Inactive</span>
                                 )}
                               </div>
+                              <div className="flex items-baseline gap-1 mt-0.5">
+                                <span className="text-lg lg:text-xl font-black tabular-nums text-foreground">₹{pkg.price.toLocaleString()}</span>
+                                <span className="text-xs lg:text-sm text-muted-foreground font-medium">
+                                  / {pkg.duration_days} {pkg.duration_days === 1 ? "day" : "days"}
+                                </span>
+                              </div>
                             </div>
+
+                            {/* Actions */}
                             <div className="flex items-center gap-2 lg:gap-3 shrink-0">
                               <Switch
                                 id={`custom-${pkg.id}`}
@@ -1171,21 +1216,22 @@ const AdminSettings = () => {
                                 onCheckedChange={(checked) => handleTogglePackage(pkg.id, checked)}
                               />
                               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                                <Button variant="ghost" size="icon" onClick={() => handleEditPackage(pkg)} className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-foreground active:scale-90 transition-all">
+                                <Button variant="ghost" size="icon" onClick={() => handleEditPackage(pkg)} className="h-8 w-8 lg:h-9 lg:w-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted active:scale-90 transition-all">
                                   <PencilIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                                 </Button>
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
                                   onClick={() => handleDeletePackage(pkg.id, pkg.name)}
-                                  className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg text-muted-foreground hover:text-destructive active:scale-90 transition-all"
+                                  className="h-8 w-8 lg:h-9 lg:w-9 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-90 transition-all"
                                 >
                                   <TrashIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                                 </Button>
                               </div>
                             </div>
-                          </>
+                          </div>
                         )}
+                        </div>
                       </div>
                     ))}
                   </div>
