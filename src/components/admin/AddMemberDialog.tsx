@@ -582,7 +582,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   )}>
                     {step.title}
                   </span>
-                </button>
+                </div>
               );
             })}
           </div>
