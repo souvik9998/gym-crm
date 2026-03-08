@@ -209,7 +209,7 @@ const QRCodePage = () => {
               {/* Download Button */}
               <Button
                 size="lg"
-                className="gap-2.5 rounded-xl px-8 shadow-sm hover:shadow-md transition-all duration-300 active:scale-95"
+                className="gap-2.5 rounded-xl px-8 lg:px-10 lg:h-12 lg:text-base transition-all duration-300 active:scale-95"
                 onClick={() =>
                   handleDownload(
                     activeTab === "registration" ? "qr-code-svg-registration" : "qr-code-svg-attendance",
