@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, memo, useEffect, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 import { supabase } from "@/integrations/supabase/client";
 import { SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
