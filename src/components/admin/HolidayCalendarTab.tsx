@@ -430,7 +430,7 @@ const HolidayCalendarTab = () => {
                   key={dateStr}
                   onClick={() => handleDayClick(day)}
                   className={cn(
-                    "aspect-square rounded-xl flex flex-col items-center justify-center relative transition-all duration-200 text-xs lg:text-sm group",
+                    "min-h-[48px] lg:min-h-[56px] rounded-xl flex flex-col items-center justify-start pt-1 relative transition-all duration-200 text-xs lg:text-sm group overflow-hidden",
                     "hover:bg-accent/50 hover:scale-105 active:scale-95",
                     isPast && "opacity-50",
                     isCurrentDay && "ring-2 ring-primary/30 bg-primary/5 font-bold",
@@ -439,12 +439,17 @@ const HolidayCalendarTab = () => {
                     isSunday && !gymHoliday && !nationalHoliday && "text-red-400",
                   )}
                 >
-                  <span>{format(day, "d")}</span>
+                  <span className="text-xs lg:text-sm">{format(day, "d")}</span>
+                  {/* Show holiday name below the date */}
                   {gymHoliday && (
-                    <div className="absolute bottom-0.5 lg:bottom-1 w-1.5 h-1.5 rounded-full bg-red-500" />
+                    <span className="text-[6px] lg:text-[8px] leading-tight text-center px-0.5 line-clamp-2 text-red-600 dark:text-red-400 font-medium mt-0.5">
+                      {gymHoliday.holiday_name}
+                    </span>
                   )}
                   {!gymHoliday && nationalHoliday && (
-                    <div className="absolute bottom-0.5 lg:bottom-1 w-1.5 h-1.5 rounded-full bg-orange-400" />
+                    <span className="text-[6px] lg:text-[8px] leading-tight text-center px-0.5 line-clamp-2 text-orange-600 dark:text-orange-400 font-medium mt-0.5">
+                      {nationalHoliday}
+                    </span>
                   )}
                   {/* Tooltip on hover */}
                   {(gymHoliday || nationalHoliday) && (
