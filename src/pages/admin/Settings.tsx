@@ -858,7 +858,7 @@ const AdminSettings = () => {
   return (
     <Fragment>
       <div className="max-w-4xl mx-auto space-y-4 lg:space-y-6">
-        <Tabs defaultValue={initialTab}>
+        <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val })}>
           {/* Modern pill-style tabs with subtle glow on active */}
           <TabsList className="grid w-full grid-cols-6 bg-muted/40 backdrop-blur-sm h-auto p-1 rounded-2xl border border-border/40">
             <TabsTrigger value="packages" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
