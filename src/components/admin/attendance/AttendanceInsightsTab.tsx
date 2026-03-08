@@ -29,14 +29,8 @@ export const AttendanceInsightsTab = () => {
   return (
     <div className="space-y-3 lg:space-y-6">
       <div className="flex gap-2 lg:gap-3 flex-wrap">
-        <div className="flex-1 min-w-[130px] max-w-[180px]">
-          <label className="text-[10px] lg:text-xs text-muted-foreground font-medium">From</label>
-          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 lg:h-9 text-xs lg:text-sm" />
-        </div>
-        <div className="flex-1 min-w-[130px] max-w-[180px]">
-          <label className="text-[10px] lg:text-xs text-muted-foreground font-medium">To</label>
-          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 lg:h-9 text-xs lg:text-sm" />
-        </div>
+        <AttendanceDatePicker label="From" value={dateFrom} onChange={setDateFrom} className="min-w-[140px] max-w-[180px]" />
+        <AttendanceDatePicker label="To" value={dateTo} onChange={setDateTo} className="min-w-[140px] max-w-[180px]" />
       </div>
 
       {isLoading ? (
