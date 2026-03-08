@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAttendanceLogs } from "@/hooks/queries/useAttendance";
 import { useBranch } from "@/contexts/BranchContext";
 import { ArrowPathIcon, CalendarDaysIcon, ClockIcon } from "@heroicons/react/24/outline";
+import { AttendanceDatePicker } from "./AttendanceDatePicker";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const StaffAttendanceTab = () => {
