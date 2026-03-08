@@ -1176,6 +1176,12 @@ const AdminSettings = () => {
                       </div>
                     ))}
                   </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <CubeIcon className="w-8 h-8 text-muted-foreground/40 mb-2" />
+                    <p className="text-sm text-muted-foreground">No daily passes yet</p>
+                    <p className="text-xs text-muted-foreground/60">Add your first pass above</p>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -1184,23 +1190,25 @@ const AdminSettings = () => {
           </TabsContent>
 
           {/* Branches Tab */}
-          <TabsContent value="branches" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
+          <TabsContent value="branches" className="space-y-5 lg:space-y-6 mt-5 lg:mt-6 animate-fade-in">
             <BranchManagement />
           </TabsContent>
 
           {/* WhatsApp Templates */}
-          <TabsContent value="whatsapp" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6">
+          <TabsContent value="whatsapp" className="space-y-5 lg:space-y-6 mt-5 lg:mt-6 animate-fade-in">
             {/* WhatsApp Enable/Disable Toggle */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-                <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
-                  <ChatBubbleLeftEllipsisIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
+            <Card className="border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
+              <CardHeader className="p-4 lg:p-6 pb-3 lg:pb-4 bg-gradient-to-r from-muted/30 to-transparent">
+                <CardTitle className="flex items-center gap-2.5 text-base lg:text-xl">
+                  <div className="p-1.5 lg:p-2 rounded-lg bg-emerald-500/10">
+                    <ChatBubbleLeftEllipsisIcon className="w-4 h-4 lg:w-5 lg:h-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
                   WhatsApp Messaging
                 </CardTitle>
-                <CardDescription className="text-xs lg:text-sm">Enable or disable all WhatsApp messaging features</CardDescription>
+                <CardDescription className="text-xs lg:text-sm ml-9 lg:ml-11">Enable or disable all WhatsApp messaging features</CardDescription>
               </CardHeader>
               <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
-                <div className="flex items-center justify-between p-3 lg:p-4 bg-card border border-border/60 rounded-xl transition-all duration-200 hover:shadow-md hover:border-border">
+                <div className="flex items-center justify-between p-3 lg:p-4 bg-muted/20 border border-border/50 rounded-xl transition-all duration-200 hover:border-border">
                   <div className="space-y-0.5 lg:space-y-1">
                     <p className="font-semibold text-sm lg:text-base">WhatsApp Notifications</p>
                     <p className="text-[10px] lg:text-sm text-muted-foreground">
