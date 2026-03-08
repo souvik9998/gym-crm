@@ -221,20 +221,21 @@ export default function TenantList() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => navigate(`/superadmin/tenants/${tenant.id}`)}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/superadmin/tenants/${tenant.id}`); }}
                           >
                             <EyeIcon className="w-4 h-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => navigate(`/superadmin/tenants/${tenant.id}/edit`)}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/superadmin/tenants/${tenant.id}`); }}
                           >
                             <PencilIcon className="w-4 h-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-destructive"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setTenantToDelete(tenant);
                               setDeleteDialogOpen(true);
                             }}
