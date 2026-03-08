@@ -107,7 +107,7 @@ export function LimitReachedDialog({
             className="flex flex-col items-center gap-2 h-auto py-4"
             onClick={() => {
               onOpenChange(false);
-              navigate("/admin/settings?tab=plan");
+              navigate("/admin/settings?tab=subscription");
             }}
           >
             <CreditCard className="h-5 w-5" />
