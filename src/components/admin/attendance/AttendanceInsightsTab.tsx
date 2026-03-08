@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { useAttendanceInsights } from "@/hooks/queries/useAttendance";
+import { AttendanceDatePicker } from "./AttendanceDatePicker";
 import { useBranch } from "@/contexts/BranchContext";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import { UsersIcon, ClockIcon, ChartBarIcon, UserGroupIcon } from "@heroicons/react/24/outline";
