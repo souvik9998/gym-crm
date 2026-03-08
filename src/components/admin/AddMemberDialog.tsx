@@ -554,9 +554,17 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[90vh] flex flex-col p-0 rounded-2xl gap-0">
         {/* Header */}
         <DialogHeader className="px-5 pt-5 pb-3 flex-shrink-0">
-          <DialogTitle className="text-base sm:text-lg font-bold text-center">Add New Member</DialogTitle>
+          <DialogTitle className="text-base sm:text-lg font-bold text-center">
+            {isExistingMemberAction 
+              ? selectedAction === "renew_gym" ? "Renew Membership" 
+                : selectedAction === "add_pt" ? "Add Personal Training"
+                : "Renew Gym + PT"
+              : "Add New Member"}
+          </DialogTitle>
           <DialogDescription className="text-xs sm:text-sm text-center text-muted-foreground">
-            Step {currentStep} of 3 — {STEPS[currentStep - 1].title} Details
+            {isExistingMemberAction && existingMember
+              ? `For ${existingMember.name} · ${existingMember.phone}`
+              : `Step ${currentStep} of 3 — ${STEPS[currentStep - 1].title} Details`}
           </DialogDescription>
         </DialogHeader>
 
