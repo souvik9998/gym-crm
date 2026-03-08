@@ -1037,7 +1037,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   type="button"
                   className="flex-1 h-11 rounded-xl text-sm font-medium bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98] transition-all duration-200 shadow-sm"
                   onClick={() => goToStep(currentStep + 1)}
-                  disabled={currentStep === 1 && !isStep1Valid}
+                  disabled={(currentStep === 1 && !isStep1Valid) || (currentStep === 2 && !isStep2Valid)}
                 >
                   Continue
                   <ArrowRight className="w-4 h-4 ml-1.5" />
