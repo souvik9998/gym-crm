@@ -1178,8 +1178,11 @@ export const MembersTable = ({
                             {member.name.charAt(0).toUpperCase()}
                           </span>
                         </div>
-                        <div>
+                        <div className="flex items-center gap-1.5">
                           <p className="font-medium text-sm">{member.name}</p>
+                          {enrolledMemberIds.has(member.id) && (
+                            <Fingerprint className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                          )}
                         </div>
                       </div>
                     </TableCell>
