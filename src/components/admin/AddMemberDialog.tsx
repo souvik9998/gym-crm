@@ -505,7 +505,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
         {/* Step Content */}
         <div className="flex-1 min-h-0 overflow-y-auto px-5">
-          <form onSubmit={handleSubmit} className="flex flex-col min-h-full">
+          <div className="flex flex-col min-h-full">
             <div 
               key={currentStep}
               className={cn(
