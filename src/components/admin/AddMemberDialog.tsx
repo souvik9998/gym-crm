@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,9 @@ import {
   ArrowLeft,
   Check,
   ChevronRight,
+  RefreshCw,
+  UserCheck,
+  Loader2,
 } from "lucide-react";
 import { DobInput } from "@/components/ui/dob-input";
 import { cn } from "@/lib/utils";
@@ -49,13 +52,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { format, addMonths } from "date-fns";
+import { format, addMonths, addDays, isAfter, isBefore } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface MonthlyPackage {
   id: string;
@@ -70,6 +74,20 @@ interface PersonalTrainer {
   name: string;
   monthly_fee: number;
   specialization: string | null;
+}
+
+interface ExistingMember {
+  id: string;
+  name: string;
+  phone: string;
+  subscription?: {
+    status: string;
+    end_date: string;
+  } | null;
+  activePT?: {
+    trainer_name: string;
+    end_date: string;
+  } | null;
 }
 
 interface AddMemberDialogProps {
@@ -93,6 +111,12 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   // Basic info
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  
+  // Existing member check
+  const [existingMember, setExistingMember] = useState<ExistingMember | null>(null);
+  const [isCheckingPhone, setIsCheckingPhone] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<"new" | "renew_gym" | "add_pt" | "renew_gym_pt" | null>(null);
+  const debouncedPhone = useDebounce(phone, 400);
   
   // Personal details
   const [gender, setGender] = useState("");
