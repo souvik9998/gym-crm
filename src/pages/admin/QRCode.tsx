@@ -160,7 +160,7 @@ const QRCodePage = () => {
             <CardContent className="flex flex-col items-center space-y-6 pb-8">
               {/* QR Code with decorative frame */}
               <div className="relative">
-                <div className="p-6 lg:p-8 bg-white rounded-2xl border border-border/30">
+                <div className="p-6 lg:p-8 bg-white rounded-2xl border border-border/60 shadow-sm">
                   {activeTab === "registration" ? (
                     <QRCodeSVG id="qr-code-svg-registration" value={portalUrl} size={220} level="H" includeMargin className="w-[200px] h-[200px] lg:w-[280px] lg:h-[280px]" />
                   ) : (
