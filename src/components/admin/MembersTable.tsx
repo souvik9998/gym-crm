@@ -40,6 +40,8 @@ import { useInfiniteMembersQuery } from "@/hooks/queries";
 import type { MemberWithSubscription } from "@/api/members";
 import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
 import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
+import { BiometricEnrollDialog } from "./BiometricEnrollDialog";
+import { checkMemberBiometricStatus } from "@/api/biometric";
 
 // Use MemberWithSubscription from the API
 type Member = MemberWithSubscription;
