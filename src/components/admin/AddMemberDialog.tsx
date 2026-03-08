@@ -307,7 +307,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
   // Step validation - if existing member found or still checking, block progress
   const isStep1Valid = name.trim().length >= 2 && phone.length === 10 && !existingMember && !isCheckingPhone;
-  const isStep2Valid = !!gender; // Gender is required
+  // Match registration portal: gender, photo ID, and address are all required
+  const isStep2Valid = !!gender && !!photoIdType && photoIdNumber.trim().length > 0 && address.trim().length >= 3;
   const isStep3Valid = !!selectedPackageId;
 
   const goToStep = (step: number) => {
