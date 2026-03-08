@@ -140,6 +140,16 @@ export const MembersTable = ({
   const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
+  const [enrollMember, setEnrollMember] = useState<Member | null>(null);
+
+  // Check which members have biometric enrollment
+  const memberIds = useMemo(() => members.map(m => m.id), [members]);
+  const { data: enrolledMemberIds = new Set<string>() } = useQuery({
+    queryKey: ["biometric-enrolled", currentBranch?.id, memberIds.join(",")],
+    queryFn: () => checkMemberBiometricStatus(memberIds, currentBranch?.id || ""),
+    enabled: !!currentBranch?.id && memberIds.length > 0,
+    staleTime: 60000,
+  });
 
   // Refetch when refreshKey changes (manual refresh button)
   useEffect(() => {
