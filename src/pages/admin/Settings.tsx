@@ -19,7 +19,7 @@ import {
   ChatBubbleLeftEllipsisIcon,
   BuildingStorefrontIcon,
   Cog6ToothIcon,
-  ShieldCheckIcon,
+  CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
