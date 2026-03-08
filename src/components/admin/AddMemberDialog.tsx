@@ -866,7 +866,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-sm font-medium">
                       <CalendarDays className="w-4 h-4 text-accent" />
-                      Membership Start Date
+                      {isPTOnly ? "PT Start Date" : "Membership Start Date"}
                     </Label>
                     <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
                       <PopoverTrigger asChild>
@@ -895,125 +895,138 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     </Popover>
                   </div>
                   
-                  {/* Duration */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-sm font-medium">
-                      <Calendar className="w-4 h-4 text-accent" />
-                      Duration <span className="text-destructive">*</span>
-                    </Label>
-                    <Select value={selectedPackageId} onValueChange={handlePackageChange}>
-                      <SelectTrigger className="h-11 text-sm rounded-xl">
-                        <SelectValue placeholder="Select package" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        {monthlyPackages.map((pkg) => (
-                          <SelectItem key={pkg.id} value={pkg.id}>
-                            {pkg.months} {pkg.months === 1 ? "Month" : "Months"} - ₹{pkg.price} + ₹{pkg.joining_fee} joining
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Editable Fees */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                        <IndianRupee className="w-3 h-3" />
-                        Monthly Fee
-                      </Label>
-                      <Input
-                        type="number"
-                        value={monthlyFee}
-                        onChange={(e) => setMonthlyFee(Number(e.target.value) || 0)}
-                        className="h-10 text-sm rounded-xl"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                        <IndianRupee className="w-3 h-3" />
-                        Joining Fee
-                      </Label>
-                      <Input
-                        type="number"
-                        value={joiningFee}
-                        onChange={(e) => setJoiningFee(Number(e.target.value) || 0)}
-                        className="h-10 text-sm rounded-xl"
-                      />
-                    </div>
-                  </div>
-
-                  {/* PT Section */}
-                  <div className="rounded-xl border border-border/50 bg-muted/20 p-3.5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium flex items-center gap-2">
-                        <Dumbbell className="w-4 h-4 text-muted-foreground" />
-                        Personal Training
-                      </span>
-                      <Switch checked={wantsPT} onCheckedChange={setWantsPT} />
-                    </div>
-
-                    {wantsPT && trainers.length > 0 && (
-                      <div className="space-y-3 animate-fade-in">
-                        <Select value={selectedTrainerId} onValueChange={handleTrainerChange}>
-                          <SelectTrigger className="h-10 text-sm rounded-xl">
-                            <SelectValue placeholder="Choose trainer" />
+                  {/* Duration - only for gym actions */}
+                  {showGymSection && (
+                    <>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-sm font-medium">
+                          <Calendar className="w-4 h-4 text-accent" />
+                          Duration <span className="text-destructive">*</span>
+                        </Label>
+                        <Select value={selectedPackageId} onValueChange={handlePackageChange}>
+                          <SelectTrigger className="h-11 text-sm rounded-xl">
+                            <SelectValue placeholder="Select package" />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl">
-                            {trainers.map((trainer) => (
-                              <SelectItem key={trainer.id} value={trainer.id}>
-                                {trainer.name} - ₹{trainer.monthly_fee}/mo
+                            {monthlyPackages.map((pkg) => (
+                              <SelectItem key={pkg.id} value={pkg.id}>
+                                {pkg.months} {pkg.months === 1 ? "Month" : "Months"} - ₹{pkg.price} + ₹{pkg.joining_fee} joining
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">PT Duration</Label>
-                            <Select value={String(ptMonths)} onValueChange={(v) => handlePtMonthsChange(Number(v))}>
-                              <SelectTrigger className="h-10 text-sm rounded-xl">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="rounded-xl">
-                                {ptMonthOptions.map((m) => (
-                                  <SelectItem key={m} value={String(m)}>
-                                    {m} {m === 1 ? "Month" : "Months"}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">PT Fee (₹)</Label>
-                            <Input
-                              type="number"
-                              value={ptFee}
-                              onChange={(e) => setPtFee(Number(e.target.value) || 0)}
-                              className="h-10 text-sm rounded-xl"
-                            />
-                          </div>
+                      {/* Editable Fees */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                            <IndianRupee className="w-3 h-3" />
+                            Monthly Fee
+                          </Label>
+                          <Input
+                            type="number"
+                            value={monthlyFee}
+                            onChange={(e) => setMonthlyFee(Number(e.target.value) || 0)}
+                            className="h-10 text-sm rounded-xl"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                            <IndianRupee className="w-3 h-3" />
+                            Joining Fee
+                          </Label>
+                          <Input
+                            type="number"
+                            value={joiningFee}
+                            onChange={(e) => setJoiningFee(Number(e.target.value) || 0)}
+                            className="h-10 text-sm rounded-xl"
+                          />
                         </div>
                       </div>
-                    )}
-                    {wantsPT && trainers.length === 0 && (
-                      <p className="text-xs text-muted-foreground">No active trainers. Add them in settings.</p>
-                    )}
-                  </div>
+                    </>
+                  )}
+
+                  {/* PT Section */}
+                  {showPTSection && (
+                    <div className="rounded-xl border border-border/50 bg-muted/20 p-3.5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium flex items-center gap-2">
+                          <Dumbbell className="w-4 h-4 text-muted-foreground" />
+                          Personal Training
+                        </span>
+                        {!isPTOnly && (
+                          <Switch checked={wantsPT} onCheckedChange={setWantsPT} />
+                        )}
+                        {isPTOnly && (
+                          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Required</span>
+                        )}
+                      </div>
+
+                      {(wantsPT || isPTOnly) && trainers.length > 0 && (
+                        <div className="space-y-3 animate-fade-in">
+                          <Select value={selectedTrainerId} onValueChange={handleTrainerChange}>
+                            <SelectTrigger className="h-10 text-sm rounded-xl">
+                              <SelectValue placeholder="Choose trainer" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              {trainers.map((trainer) => (
+                                <SelectItem key={trainer.id} value={trainer.id}>
+                                  {trainer.name} - ₹{trainer.monthly_fee}/mo
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">PT Duration</Label>
+                              <Select value={String(ptMonths)} onValueChange={(v) => handlePtMonthsChange(Number(v))}>
+                                <SelectTrigger className="h-10 text-sm rounded-xl">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                  {ptMonthOptions.map((m) => (
+                                    <SelectItem key={m} value={String(m)}>
+                                      {m} {m === 1 ? "Month" : "Months"}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">PT Fee (₹)</Label>
+                              <Input
+                                type="number"
+                                value={ptFee}
+                                onChange={(e) => setPtFee(Number(e.target.value) || 0)}
+                                className="h-10 text-sm rounded-xl"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {(wantsPT || isPTOnly) && trainers.length === 0 && (
+                        <p className="text-xs text-muted-foreground">No active trainers. Add them in settings.</p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Price Summary */}
                   <div className="bg-muted/40 rounded-xl p-4 space-y-2.5 border border-border/40">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Membership ({selectedPackage?.months || 0}mo)</span>
-                      <span className="font-semibold tabular-nums">₹{monthlyFee.toLocaleString("en-IN")}</span>
-                    </div>
-                    {joiningFee > 0 && (
+                    {showGymSection && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Membership ({selectedPackage?.months || 0}mo)</span>
+                        <span className="font-semibold tabular-nums">₹{monthlyFee.toLocaleString("en-IN")}</span>
+                      </div>
+                    )}
+                    {showGymSection && joiningFee > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Joining Fee</span>
                         <span className="font-semibold tabular-nums">₹{joiningFee.toLocaleString("en-IN")}</span>
                       </div>
                     )}
-                    {wantsPT && (
+                    {(wantsPT || isPTOnly) && (
                       <div className="flex justify-between text-sm animate-fade-in">
                         <span className="text-muted-foreground">PT ({ptMonths}mo)</span>
                         <span className="font-semibold tabular-nums">₹{ptFee.toLocaleString("en-IN")}</span>
