@@ -731,11 +731,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                               onClick={() => {
                                 onOpenChange(false);
                                 resetForm();
-                                // Navigate to the renewal/extend page with member context
-                                window.open(
-                                  `/b/${currentBranch?.id}${action.path}`,
-                                  "_blank"
-                                );
+                                navigate(`/b/${currentBranch?.id}${action.path}`);
                               }}
                               className={cn(
                                 "flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all duration-200",
