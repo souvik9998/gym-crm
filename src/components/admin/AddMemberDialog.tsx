@@ -288,13 +288,18 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     if (trainer) setPtFee(Number(trainer.monthly_fee) * months);
   };
 
-  const selectedPackage = monthlyPackages.find((p) => p.id === selectedPackageId);
-  const selectedTrainer = trainers.find((t) => t.id === selectedTrainerId);
-  const gymTotal = monthlyFee + joiningFee;
-  const totalAmount = gymTotal + (wantsPT ? ptFee : 0);
+  // For existing member actions, determine what to show
+  const isExistingMemberAction = !!selectedAction && selectedAction !== "new";
+  const showGymSection = !selectedAction || selectedAction === "new" || selectedAction === "renew_gym" || selectedAction === "renew_gym_pt";
+  const showPTSection = !selectedAction || selectedAction === "new" || selectedAction === "add_pt" || selectedAction === "renew_gym_pt";
+  const isPTOnly = selectedAction === "add_pt";
 
-  const ptMonthOptions = [];
-  const maxPtMonths = selectedPackage?.months || 1;
+  const gymTotal = showGymSection ? monthlyFee + joiningFee : 0;
+  const ptTotal = (wantsPT || isPTOnly) ? ptFee : 0;
+  const totalAmount = gymTotal + ptTotal;
+
+  const ptMonthOptions: number[] = [];
+  const maxPtMonths = isPTOnly ? 12 : (selectedPackage?.months || 1);
   for (let i = 1; i <= maxPtMonths; i++) {
     ptMonthOptions.push(i);
   }
