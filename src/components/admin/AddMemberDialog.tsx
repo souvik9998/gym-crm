@@ -708,30 +708,34 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                               label: "Renew Gym Membership", 
                               icon: RefreshCw,
                               desc: "Extend gym subscription",
-                              path: `/renew?memberId=${existingMember.id}`,
                             },
                             { 
                               key: "add_pt" as const, 
                               label: "Add Personal Training", 
                               icon: Dumbbell,
                               desc: "Add or extend PT subscription",
-                              path: `/extend-pt?memberId=${existingMember.id}`,
                             },
                             { 
                               key: "renew_gym_pt" as const, 
                               label: "Renew Gym + PT", 
                               icon: Calendar,
                               desc: "Renew gym and add PT together",
-                              path: `/renew?memberId=${existingMember.id}&withPT=true`,
                             },
                           ].map((action) => (
                             <button
                               key={action.key}
                               type="button"
                               onClick={() => {
-                                onOpenChange(false);
-                                resetForm();
-                                navigate(`/b/${currentBranch?.id}${action.path}`);
+                                setSelectedAction(action.key);
+                                if (action.key === "add_pt") {
+                                  setWantsPT(true);
+                                } else if (action.key === "renew_gym_pt") {
+                                  setWantsPT(true);
+                                } else {
+                                  setWantsPT(false);
+                                }
+                                setSlideDirection("left");
+                                setCurrentStep(3);
                               }}
                               className={cn(
                                 "flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all duration-200",
