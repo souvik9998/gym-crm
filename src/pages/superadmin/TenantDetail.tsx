@@ -737,6 +737,10 @@ export default function TenantDetail() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="biometric" className="space-y-4">
+            <BiometricDevicesSection branches={branches} tenantId={tenant.id} />
+          </TabsContent>
+
           <TabsContent value="payments" className="space-y-4">
             <RazorpayCredentialsTab tenantId={tenant.id} />
           </TabsContent>
