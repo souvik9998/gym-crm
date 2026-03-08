@@ -85,7 +85,10 @@ const HolidayCalendarTab = () => {
   const [formType, setFormType] = useState<string>("full_day");
   const [formStartTime, setFormStartTime] = useState("09:00");
   const [formEndTime, setFormEndTime] = useState("13:00");
+  const [formOpenTime, setFormOpenTime] = useState("06:00");
+  const [formCloseTime, setFormCloseTime] = useState("22:00");
   const [formNotify, setFormNotify] = useState(false);
+  const [formWhatsAppMessage, setFormWhatsAppMessage] = useState("");
 
   // Confirm dialog
   const [confirmDialog, setConfirmDialog] = useState<{
