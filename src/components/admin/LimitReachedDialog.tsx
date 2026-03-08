@@ -65,13 +65,7 @@ export function LimitReachedDialog({
   };
 
   const handleContactAdmin = () => {
-    if (adminContact?.phone) {
-      window.open(`https://wa.me/91${adminContact.phone}`, "_blank");
-    } else if (adminContact?.email) {
-      window.open(`mailto:${adminContact.email}`, "_blank");
-    } else {
-      window.open(`mailto:support@example.com`, "_blank");
-    }
+    window.open("https://gymkloud.in/#contact", "_blank");
   };
 
   return (
