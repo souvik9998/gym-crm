@@ -60,7 +60,7 @@ const getNationalHolidays = (year: number) => [
   { date: `${year}-08-16`, name: "Janmashtami" },
   { date: `${year}-09-05`, name: "Milad-un-Nabi" },
   { date: `${year}-10-02`, name: "Gandhi Jayanti" },
-  { date: `${year}-10-02`, name: "Dussehra" },
+  { date: `${year}-10-02`, name: "Gandhi Jayanti / Dussehra" },
   { date: `${year}-10-20`, name: "Diwali" },
   { date: `${year}-10-21`, name: "Diwali (Day 2)" },
   { date: `${year}-11-05`, name: "Guru Nanak Jayanti" },
