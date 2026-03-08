@@ -411,10 +411,10 @@ const HolidayCalendarTab = () => {
           </div>
 
           {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-1.5 lg:gap-2">
+          <div className="grid grid-cols-7 gap-1 lg:gap-1.5">
             {/* Empty cells for padding */}
             {Array.from({ length: calendarDays.startPadding }).map((_, i) => (
-              <div key={`pad-${i}`} className="min-h-[52px] lg:min-h-[64px]" />
+              <div key={`pad-${i}`} className="min-h-[50px] lg:min-h-[62px]" />
             ))}
 
             {calendarDays.days.map(day => {
@@ -427,57 +427,68 @@ const HolidayCalendarTab = () => {
               const hasHoliday = !!(gymHoliday || nationalHoliday);
 
               return (
-                <button
-                  key={dateStr}
-                  onClick={() => handleDayClick(day)}
-                  className={cn(
-                    "min-h-[52px] lg:min-h-[64px] rounded-xl flex flex-col items-center justify-start pt-1.5 lg:pt-2 relative transition-all duration-200 text-xs lg:text-sm group overflow-hidden border border-transparent",
-                    // Default hover
-                    !hasHoliday && !isCurrentDay && "hover:bg-accent/40 hover:border-border/40 hover:shadow-sm",
-                    isPast && "opacity-40",
-                    // Today
-                    isCurrentDay && !gymHoliday && "ring-2 ring-primary/40 bg-primary/5 font-bold hover:bg-primary/10",
-                    // Gym holiday
-                    gymHoliday && "bg-destructive/8 border-destructive/20 hover:bg-destructive/15 hover:border-destructive/30 hover:shadow-md hover:shadow-destructive/5",
-                    // National holiday (not gym)
-                    !gymHoliday && nationalHoliday && "bg-orange-50 dark:bg-orange-500/8 border-orange-200/50 dark:border-orange-500/15 hover:bg-orange-100 dark:hover:bg-orange-500/15 hover:border-orange-300/60 dark:hover:border-orange-500/25 hover:shadow-md hover:shadow-orange-500/5",
-                    // Sunday
-                    isSunday && !gymHoliday && !nationalHoliday && "text-destructive/70",
-                  )}
-                >
-                  <span className={cn(
-                    "text-xs lg:text-sm font-medium z-[1]",
-                    isCurrentDay && !gymHoliday && "text-primary",
-                    gymHoliday && "text-destructive font-semibold",
-                    !gymHoliday && nationalHoliday && "text-orange-600 dark:text-orange-400 font-semibold",
-                  )}>
-                    {format(day, "d")}
-                  </span>
-                  
-                  {/* Holiday name label */}
-                  {gymHoliday && (
-                    <span className="text-[6px] lg:text-[7px] leading-tight text-center px-0.5 line-clamp-2 text-destructive/80 font-medium mt-0.5 z-[1]">
-                      {gymHoliday.holiday_name}
+                <div key={dateStr} className="relative group">
+                  <button
+                    onClick={() => handleDayClick(day)}
+                    className={cn(
+                      "w-full min-h-[50px] lg:min-h-[62px] rounded-lg flex flex-col items-center justify-start pt-1.5 lg:pt-2 relative text-xs lg:text-sm",
+                      "transition-colors duration-150",
+                      isPast && "opacity-40",
+                      // Normal day
+                      !hasHoliday && !isCurrentDay && "hover:bg-muted/60",
+                      // Today
+                      isCurrentDay && !gymHoliday && "bg-primary/8 font-bold hover:bg-primary/12",
+                      // Gym holiday
+                      gymHoliday && "bg-destructive/6 hover:bg-destructive/12",
+                      // National holiday
+                      !gymHoliday && nationalHoliday && "bg-orange-500/6 hover:bg-orange-500/12",
+                      // Sunday text
+                      isSunday && !gymHoliday && !nationalHoliday && "text-destructive/60",
+                    )}
+                  >
+                    {/* Date number */}
+                    <span className={cn(
+                      "text-xs lg:text-sm leading-none",
+                      isCurrentDay && !gymHoliday && "text-primary font-bold",
+                      gymHoliday && "text-destructive font-semibold",
+                      !gymHoliday && nationalHoliday && "text-orange-600 dark:text-orange-400 font-semibold",
+                      !hasHoliday && !isCurrentDay && "font-medium",
+                    )}>
+                      {format(day, "d")}
                     </span>
-                  )}
-                  {!gymHoliday && nationalHoliday && (
-                    <span className="text-[6px] lg:text-[7px] leading-tight text-center px-0.5 line-clamp-2 text-orange-500 dark:text-orange-400/80 font-medium mt-0.5 z-[1]">
-                      {nationalHoliday}
-                    </span>
-                  )}
 
-                  {/* Hover tooltip - positioned better */}
+                    {/* Today indicator dot */}
+                    {isCurrentDay && !gymHoliday && (
+                      <div className="w-1 h-1 rounded-full bg-primary mt-0.5" />
+                    )}
+
+                    {/* Holiday name */}
+                    {gymHoliday && (
+                      <span className="text-[6px] lg:text-[7px] leading-tight text-center px-0.5 line-clamp-2 text-destructive/70 font-medium mt-0.5">
+                        {gymHoliday.holiday_name}
+                      </span>
+                    )}
+                    {!gymHoliday && nationalHoliday && (
+                      <span className="text-[6px] lg:text-[7px] leading-tight text-center px-0.5 line-clamp-2 text-orange-500/80 dark:text-orange-400/70 font-medium mt-0.5">
+                        {nationalHoliday}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Tooltip - render outside button for clean positioning */}
                   {hasHoliday && (
-                    <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-popover text-popover-foreground text-[10px] px-2.5 py-1 rounded-lg shadow-lg border border-border whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-20 scale-90 group-hover:scale-100">
-                      {gymHoliday?.holiday_name || nationalHoliday}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-foreground text-background text-[10px] rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-30 shadow-lg">
+                      <span className="font-medium">{gymHoliday?.holiday_name || nationalHoliday}</span>
                       {gymHoliday && (
-                        <span className="ml-1.5 text-[9px] text-muted-foreground">
-                          • {gymHoliday.holiday_type === "full_day" ? "Closed" : "Half Day"}
+                        <span className="ml-1 opacity-70 text-[9px]">
+                          · {gymHoliday.holiday_type === "full_day" ? "Closed" : "Half Day"}
                         </span>
                       )}
+                      {/* Arrow */}
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-foreground" />
                     </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
