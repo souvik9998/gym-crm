@@ -290,11 +290,19 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
   const selectedPackage = monthlyPackages.find((p) => p.id === selectedPackageId);
   const selectedTrainer = trainers.find((t) => t.id === selectedTrainerId);
-  const gymTotal = monthlyFee + joiningFee;
-  const totalAmount = gymTotal + (wantsPT ? ptFee : 0);
 
-  const ptMonthOptions = [];
-  const maxPtMonths = selectedPackage?.months || 1;
+  // For existing member actions, determine what to show
+  const isExistingMemberAction = !!selectedAction && selectedAction !== "new";
+  const showGymSection = !selectedAction || selectedAction === "new" || selectedAction === "renew_gym" || selectedAction === "renew_gym_pt";
+  const showPTSection = !selectedAction || selectedAction === "new" || selectedAction === "add_pt" || selectedAction === "renew_gym_pt";
+  const isPTOnly = selectedAction === "add_pt";
+
+  const gymTotal = showGymSection ? monthlyFee + joiningFee : 0;
+  const ptTotal = (wantsPT || isPTOnly) ? ptFee : 0;
+  const totalAmount = gymTotal + ptTotal;
+
+  const ptMonthOptions: number[] = [];
+  const maxPtMonths = isPTOnly ? 12 : (selectedPackage?.months || 1);
   for (let i = 1; i <= maxPtMonths; i++) {
     ptMonthOptions.push(i);
   }
@@ -311,7 +319,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const isStep1Valid = name.trim().length >= 2 && phone.length === 10 && !existingMember && !isCheckingPhone;
   // Match registration portal: gender, photo ID, and address are all required
   const isStep2Valid = !!gender && !!photoIdType && photoIdNumber.trim().length > 0 && address.trim().length >= 3;
-  const isStep3Valid = !!selectedPackageId;
+  const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptFee > 0) : !!selectedPackageId;
 
   const goToStep = (step: number) => {
     if (step > currentStep) {
@@ -526,6 +534,167 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     }
   };
 
+  // Handle existing member actions (renewal/PT)
+  const handleExistingMemberSubmit = async () => {
+    if (!existingMember || !currentBranch) return;
+    setIsLoading(true);
+
+    try {
+      const gymStartDate = new Date(startDate);
+      gymStartDate.setHours(0, 0, 0, 0);
+
+      // Renew Gym Membership
+      if (selectedAction === "renew_gym" || selectedAction === "renew_gym_pt") {
+        const gymEndDate = addMonths(gymStartDate, selectedPackage?.months || 1);
+        
+        const { data: subscription, error: subError } = await supabase
+          .from("subscriptions")
+          .insert({
+            member_id: existingMember.id,
+            start_date: gymStartDate.toISOString().split("T")[0],
+            end_date: gymEndDate.toISOString().split("T")[0],
+            plan_months: selectedPackage?.months || 1,
+            status: "active",
+            personal_trainer_id: (selectedAction === "renew_gym_pt" && selectedTrainerId) ? selectedTrainerId : null,
+            trainer_fee: (selectedAction === "renew_gym_pt") ? ptFee : null,
+            branch_id: currentBranch.id,
+          })
+          .select()
+          .single();
+        if (subError) throw subError;
+
+        // Create payment record
+        const paymentType = selectedAction === "renew_gym_pt" ? "gym_and_pt" : "gym_renewal";
+        const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
+          member_id: existingMember.id,
+          subscription_id: subscription.id,
+          amount: totalAmount,
+          payment_mode: "cash",
+          status: "success",
+          payment_type: paymentType,
+          notes: "Renewed via admin dashboard",
+          branch_id: currentBranch.id,
+        }).select().single();
+        if (paymentError) throw paymentError;
+
+        // Ledger entries
+        await createMembershipIncomeEntry(
+          monthlyFee, "gym_renewal",
+          `Renewal - ${existingMember.name} (${selectedPackage?.months || 1} months)`,
+          existingMember.id, undefined, paymentRecord.id, currentBranch.id
+        );
+
+        if (joiningFee > 0) {
+          await createMembershipIncomeEntry(
+            joiningFee, "joining_fee", `Joining fee - ${existingMember.name}`,
+            existingMember.id, undefined, paymentRecord.id, currentBranch.id
+          );
+        }
+
+        // If also adding PT
+        if (selectedAction === "renew_gym_pt" && selectedTrainerId) {
+          const ptEndDate = addMonths(gymStartDate, ptMonths);
+          await supabase.from("pt_subscriptions").insert({
+            member_id: existingMember.id,
+            personal_trainer_id: selectedTrainerId,
+            start_date: gymStartDate.toISOString().split("T")[0],
+            end_date: ptEndDate.toISOString().split("T")[0],
+            monthly_fee: selectedTrainer?.monthly_fee || 0,
+            total_fee: ptFee,
+            status: "active",
+            branch_id: currentBranch.id,
+          });
+
+          await createMembershipIncomeEntry(
+            ptFee, "pt_subscription",
+            `PT subscription - ${existingMember.name} with ${selectedTrainer?.name}`,
+            existingMember.id, undefined, paymentRecord.id, currentBranch.id
+          );
+          if (selectedTrainer) {
+            await calculateTrainerPercentageExpense(
+              selectedTrainerId, ptFee, existingMember.id, undefined, undefined, existingMember.name, currentBranch.id
+            );
+          }
+        }
+
+        toast.success(selectedAction === "renew_gym_pt" ? "Membership renewed with PT" : "Membership renewed successfully");
+      }
+
+      // Add PT Only
+      if (selectedAction === "add_pt") {
+        if (!selectedTrainerId) {
+          toast.error("Please select a trainer");
+          setIsLoading(false);
+          return;
+        }
+
+        const ptEndDate = addMonths(gymStartDate, ptMonths);
+        await supabase.from("pt_subscriptions").insert({
+          member_id: existingMember.id,
+          personal_trainer_id: selectedTrainerId,
+          start_date: gymStartDate.toISOString().split("T")[0],
+          end_date: ptEndDate.toISOString().split("T")[0],
+          monthly_fee: selectedTrainer?.monthly_fee || 0,
+          total_fee: ptFee,
+          status: "active",
+          branch_id: currentBranch.id,
+        });
+
+        const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
+          member_id: existingMember.id,
+          amount: ptFee,
+          payment_mode: "cash",
+          status: "success",
+          payment_type: "pt_subscription",
+          notes: "PT added via admin dashboard",
+          branch_id: currentBranch.id,
+        }).select().single();
+        if (paymentError) throw paymentError;
+
+        await createMembershipIncomeEntry(
+          ptFee, "pt_subscription",
+          `PT subscription - ${existingMember.name} with ${selectedTrainer?.name}`,
+          existingMember.id, undefined, paymentRecord.id, currentBranch.id
+        );
+        if (selectedTrainer) {
+          await calculateTrainerPercentageExpense(
+            selectedTrainerId, ptFee, existingMember.id, undefined, undefined, existingMember.name, currentBranch.id
+          );
+        }
+
+        toast.success("Personal training added successfully");
+      }
+
+      // Log activity
+      if (isStaffLoggedIn && staffUser) {
+        await logStaffActivity({
+          category: "members", type: "member_updated",
+          description: `Staff "${staffUser.fullName}" ${selectedAction === "add_pt" ? "added PT for" : "renewed"} "${existingMember.name}"`,
+          entityType: "members", entityId: existingMember.id, entityName: existingMember.name,
+          newValue: { action: selectedAction, total_amount: totalAmount },
+          branchId: currentBranch.id, staffId: staffUser.id, staffName: staffUser.fullName,
+          staffPhone: staffUser.phone, metadata: { staff_role: staffUser.role },
+        });
+      } else {
+        await logAdminActivity({
+          category: "members", type: "member_updated",
+          description: `${selectedAction === "add_pt" ? "Added PT for" : "Renewed"} "${existingMember.name}"`,
+          entityType: "members", entityId: existingMember.id, entityName: existingMember.name,
+          newValue: { action: selectedAction, total_amount: totalAmount },
+          branchId: currentBranch.id,
+        });
+      }
+
+      onSuccess();
+      onOpenChange(false);
+      resetForm();
+    } catch (error: any) {
+      toast.error("Error", { description: error.message });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   const resetForm = () => {
     setName(""); setPhone(""); setFieldErrors({}); setTouched({});
     setGender(""); setAddress(""); setPhotoIdType(""); setPhotoIdNumber("");
@@ -546,9 +715,17 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[90vh] flex flex-col p-0 rounded-2xl gap-0">
         {/* Header */}
         <DialogHeader className="px-5 pt-5 pb-3 flex-shrink-0">
-          <DialogTitle className="text-base sm:text-lg font-bold text-center">Add New Member</DialogTitle>
+          <DialogTitle className="text-base sm:text-lg font-bold text-center">
+            {isExistingMemberAction 
+              ? selectedAction === "renew_gym" ? "Renew Membership" 
+                : selectedAction === "add_pt" ? "Add Personal Training"
+                : "Renew Gym + PT"
+              : "Add New Member"}
+          </DialogTitle>
           <DialogDescription className="text-xs sm:text-sm text-center text-muted-foreground">
-            Step {currentStep} of 3 — {STEPS[currentStep - 1].title} Details
+            {isExistingMemberAction && existingMember
+              ? `For ${existingMember.name} · ${existingMember.phone}`
+              : `Step ${currentStep} of 3 — ${STEPS[currentStep - 1].title} Details`}
           </DialogDescription>
         </DialogHeader>
 
@@ -708,30 +885,34 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                               label: "Renew Gym Membership", 
                               icon: RefreshCw,
                               desc: "Extend gym subscription",
-                              path: `/renew?memberId=${existingMember.id}`,
                             },
                             { 
                               key: "add_pt" as const, 
                               label: "Add Personal Training", 
                               icon: Dumbbell,
                               desc: "Add or extend PT subscription",
-                              path: `/extend-pt?memberId=${existingMember.id}`,
                             },
                             { 
                               key: "renew_gym_pt" as const, 
                               label: "Renew Gym + PT", 
                               icon: Calendar,
                               desc: "Renew gym and add PT together",
-                              path: `/renew?memberId=${existingMember.id}&withPT=true`,
                             },
                           ].map((action) => (
                             <button
                               key={action.key}
                               type="button"
                               onClick={() => {
-                                onOpenChange(false);
-                                resetForm();
-                                navigate(`/b/${currentBranch?.id}${action.path}`);
+                                setSelectedAction(action.key);
+                                if (action.key === "add_pt") {
+                                  setWantsPT(true);
+                                } else if (action.key === "renew_gym_pt") {
+                                  setWantsPT(true);
+                                } else {
+                                  setWantsPT(false);
+                                }
+                                setSlideDirection("left");
+                                setCurrentStep(3);
                               }}
                               className={cn(
                                 "flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all duration-200",
@@ -846,7 +1027,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-sm font-medium">
                       <CalendarDays className="w-4 h-4 text-accent" />
-                      Membership Start Date
+                      {isPTOnly ? "PT Start Date" : "Membership Start Date"}
                     </Label>
                     <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
                       <PopoverTrigger asChild>
@@ -875,125 +1056,138 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     </Popover>
                   </div>
                   
-                  {/* Duration */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-sm font-medium">
-                      <Calendar className="w-4 h-4 text-accent" />
-                      Duration <span className="text-destructive">*</span>
-                    </Label>
-                    <Select value={selectedPackageId} onValueChange={handlePackageChange}>
-                      <SelectTrigger className="h-11 text-sm rounded-xl">
-                        <SelectValue placeholder="Select package" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        {monthlyPackages.map((pkg) => (
-                          <SelectItem key={pkg.id} value={pkg.id}>
-                            {pkg.months} {pkg.months === 1 ? "Month" : "Months"} - ₹{pkg.price} + ₹{pkg.joining_fee} joining
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Editable Fees */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                        <IndianRupee className="w-3 h-3" />
-                        Monthly Fee
-                      </Label>
-                      <Input
-                        type="number"
-                        value={monthlyFee}
-                        onChange={(e) => setMonthlyFee(Number(e.target.value) || 0)}
-                        className="h-10 text-sm rounded-xl"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                        <IndianRupee className="w-3 h-3" />
-                        Joining Fee
-                      </Label>
-                      <Input
-                        type="number"
-                        value={joiningFee}
-                        onChange={(e) => setJoiningFee(Number(e.target.value) || 0)}
-                        className="h-10 text-sm rounded-xl"
-                      />
-                    </div>
-                  </div>
-
-                  {/* PT Section */}
-                  <div className="rounded-xl border border-border/50 bg-muted/20 p-3.5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium flex items-center gap-2">
-                        <Dumbbell className="w-4 h-4 text-muted-foreground" />
-                        Personal Training
-                      </span>
-                      <Switch checked={wantsPT} onCheckedChange={setWantsPT} />
-                    </div>
-
-                    {wantsPT && trainers.length > 0 && (
-                      <div className="space-y-3 animate-fade-in">
-                        <Select value={selectedTrainerId} onValueChange={handleTrainerChange}>
-                          <SelectTrigger className="h-10 text-sm rounded-xl">
-                            <SelectValue placeholder="Choose trainer" />
+                  {/* Duration - only for gym actions */}
+                  {showGymSection && (
+                    <>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-sm font-medium">
+                          <Calendar className="w-4 h-4 text-accent" />
+                          Duration <span className="text-destructive">*</span>
+                        </Label>
+                        <Select value={selectedPackageId} onValueChange={handlePackageChange}>
+                          <SelectTrigger className="h-11 text-sm rounded-xl">
+                            <SelectValue placeholder="Select package" />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl">
-                            {trainers.map((trainer) => (
-                              <SelectItem key={trainer.id} value={trainer.id}>
-                                {trainer.name} - ₹{trainer.monthly_fee}/mo
+                            {monthlyPackages.map((pkg) => (
+                              <SelectItem key={pkg.id} value={pkg.id}>
+                                {pkg.months} {pkg.months === 1 ? "Month" : "Months"} - ₹{pkg.price} + ₹{pkg.joining_fee} joining
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">PT Duration</Label>
-                            <Select value={String(ptMonths)} onValueChange={(v) => handlePtMonthsChange(Number(v))}>
-                              <SelectTrigger className="h-10 text-sm rounded-xl">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="rounded-xl">
-                                {ptMonthOptions.map((m) => (
-                                  <SelectItem key={m} value={String(m)}>
-                                    {m} {m === 1 ? "Month" : "Months"}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">PT Fee (₹)</Label>
-                            <Input
-                              type="number"
-                              value={ptFee}
-                              onChange={(e) => setPtFee(Number(e.target.value) || 0)}
-                              className="h-10 text-sm rounded-xl"
-                            />
-                          </div>
+                      {/* Editable Fees */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                            <IndianRupee className="w-3 h-3" />
+                            Monthly Fee
+                          </Label>
+                          <Input
+                            type="number"
+                            value={monthlyFee}
+                            onChange={(e) => setMonthlyFee(Number(e.target.value) || 0)}
+                            className="h-10 text-sm rounded-xl"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                            <IndianRupee className="w-3 h-3" />
+                            Joining Fee
+                          </Label>
+                          <Input
+                            type="number"
+                            value={joiningFee}
+                            onChange={(e) => setJoiningFee(Number(e.target.value) || 0)}
+                            className="h-10 text-sm rounded-xl"
+                          />
                         </div>
                       </div>
-                    )}
-                    {wantsPT && trainers.length === 0 && (
-                      <p className="text-xs text-muted-foreground">No active trainers. Add them in settings.</p>
-                    )}
-                  </div>
+                    </>
+                  )}
+
+                  {/* PT Section */}
+                  {showPTSection && (
+                    <div className="rounded-xl border border-border/50 bg-muted/20 p-3.5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium flex items-center gap-2">
+                          <Dumbbell className="w-4 h-4 text-muted-foreground" />
+                          Personal Training
+                        </span>
+                        {!isPTOnly && (
+                          <Switch checked={wantsPT} onCheckedChange={setWantsPT} />
+                        )}
+                        {isPTOnly && (
+                          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Required</span>
+                        )}
+                      </div>
+
+                      {(wantsPT || isPTOnly) && trainers.length > 0 && (
+                        <div className="space-y-3 animate-fade-in">
+                          <Select value={selectedTrainerId} onValueChange={handleTrainerChange}>
+                            <SelectTrigger className="h-10 text-sm rounded-xl">
+                              <SelectValue placeholder="Choose trainer" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              {trainers.map((trainer) => (
+                                <SelectItem key={trainer.id} value={trainer.id}>
+                                  {trainer.name} - ₹{trainer.monthly_fee}/mo
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">PT Duration</Label>
+                              <Select value={String(ptMonths)} onValueChange={(v) => handlePtMonthsChange(Number(v))}>
+                                <SelectTrigger className="h-10 text-sm rounded-xl">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                  {ptMonthOptions.map((m) => (
+                                    <SelectItem key={m} value={String(m)}>
+                                      {m} {m === 1 ? "Month" : "Months"}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">PT Fee (₹)</Label>
+                              <Input
+                                type="number"
+                                value={ptFee}
+                                onChange={(e) => setPtFee(Number(e.target.value) || 0)}
+                                className="h-10 text-sm rounded-xl"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {(wantsPT || isPTOnly) && trainers.length === 0 && (
+                        <p className="text-xs text-muted-foreground">No active trainers. Add them in settings.</p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Price Summary */}
                   <div className="bg-muted/40 rounded-xl p-4 space-y-2.5 border border-border/40">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Membership ({selectedPackage?.months || 0}mo)</span>
-                      <span className="font-semibold tabular-nums">₹{monthlyFee.toLocaleString("en-IN")}</span>
-                    </div>
-                    {joiningFee > 0 && (
+                    {showGymSection && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Membership ({selectedPackage?.months || 0}mo)</span>
+                        <span className="font-semibold tabular-nums">₹{monthlyFee.toLocaleString("en-IN")}</span>
+                      </div>
+                    )}
+                    {showGymSection && joiningFee > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Joining Fee</span>
                         <span className="font-semibold tabular-nums">₹{joiningFee.toLocaleString("en-IN")}</span>
                       </div>
                     )}
-                    {wantsPT && (
+                    {(wantsPT || isPTOnly) && (
                       <div className="flex justify-between text-sm animate-fade-in">
                         <span className="text-muted-foreground">PT ({ptMonths}mo)</span>
                         <span className="font-semibold tabular-nums">₹{ptFee.toLocaleString("en-IN")}</span>
@@ -1015,7 +1209,16 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   type="button"
                   variant="outline"
                   className="flex-1 h-11 rounded-xl text-sm font-medium active:scale-[0.98] transition-all duration-200"
-                  onClick={() => goToStep(currentStep - 1)}
+                  onClick={() => {
+                    if (isExistingMemberAction) {
+                      setSelectedAction(null);
+                      setWantsPT(false);
+                      setSlideDirection("right");
+                      setCurrentStep(1);
+                    } else {
+                      goToStep(currentStep - 1);
+                    }
+                  }}
                 >
                   <ArrowLeft className="w-4 h-4 mr-1.5" />
                   Back
@@ -1044,19 +1247,22 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
               ) : (
                 <Button
                   type="button"
-                  onClick={handleSubmit}
+                  onClick={isExistingMemberAction ? handleExistingMemberSubmit : handleSubmit}
                   className="flex-1 h-11 rounded-xl text-sm font-medium bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98] transition-all duration-200 shadow-sm"
                   disabled={isLoading || !isStep3Valid}
                 >
                   {isLoading ? (
                     <>
                       <ButtonSpinner className="mr-2" />
-                      Adding...
+                      {isExistingMemberAction ? "Processing..." : "Adding..."}
                     </>
                   ) : (
                     <>
                       <Check className="w-4 h-4 mr-1.5" />
-                      Add Member
+                      {selectedAction === "renew_gym" ? "Renew Membership" 
+                        : selectedAction === "add_pt" ? "Add PT"
+                        : selectedAction === "renew_gym_pt" ? "Renew + Add PT"
+                        : "Add Member"}
                     </>
                   )}
                 </Button>
