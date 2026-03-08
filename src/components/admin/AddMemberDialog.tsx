@@ -1048,7 +1048,16 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   type="button"
                   variant="outline"
                   className="flex-1 h-11 rounded-xl text-sm font-medium active:scale-[0.98] transition-all duration-200"
-                  onClick={() => goToStep(currentStep - 1)}
+                  onClick={() => {
+                    if (isExistingMemberAction) {
+                      setSelectedAction(null);
+                      setWantsPT(false);
+                      setSlideDirection("right");
+                      setCurrentStep(1);
+                    } else {
+                      goToStep(currentStep - 1);
+                    }
+                  }}
                 >
                   <ArrowLeft className="w-4 h-4 mr-1.5" />
                   Back
@@ -1077,19 +1086,22 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
               ) : (
                 <Button
                   type="button"
-                  onClick={handleSubmit}
+                  onClick={isExistingMemberAction ? handleExistingMemberSubmit : handleSubmit}
                   className="flex-1 h-11 rounded-xl text-sm font-medium bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98] transition-all duration-200 shadow-sm"
                   disabled={isLoading || !isStep3Valid}
                 >
                   {isLoading ? (
                     <>
                       <ButtonSpinner className="mr-2" />
-                      Adding...
+                      {isExistingMemberAction ? "Processing..." : "Adding..."}
                     </>
                   ) : (
                     <>
                       <Check className="w-4 h-4 mr-1.5" />
-                      Add Member
+                      {selectedAction === "renew_gym" ? "Renew Membership" 
+                        : selectedAction === "add_pt" ? "Add PT"
+                        : selectedAction === "renew_gym_pt" ? "Renew + Add PT"
+                        : "Add Member"}
                     </>
                   )}
                 </Button>
