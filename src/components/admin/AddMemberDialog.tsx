@@ -305,8 +305,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     return cleaned;
   };
 
-  // Step validation
-  const isStep1Valid = name.trim().length >= 2 && phone.length === 10;
+  // Step validation - if existing member found, they must pick an action
+  const isStep1Valid = name.trim().length >= 2 && phone.length === 10 && !existingMember;
   const isStep2Valid = true; // Personal details are optional
   const isStep3Valid = !!selectedPackageId;
 
