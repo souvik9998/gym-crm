@@ -623,6 +623,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                       }}
                       error={touched.name ? fieldErrors.name : undefined}
                       className="h-11 text-sm rounded-xl"
+                      disabled={!!existingMember}
                     />
                   </div>
 
@@ -631,7 +632,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                       <Phone className="w-4 h-4 text-accent" />
                       Phone Number <span className="text-destructive">*</span>
                     </Label>
-                    <div className="flex">
+                    <div className="flex relative">
                       <span className="inline-flex items-center px-3 rounded-l-xl border-2 border-r-0 border-input bg-muted text-muted-foreground text-sm font-medium">
                         +91
                       </span>
@@ -641,11 +642,114 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                         placeholder="9876543210"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                        className="rounded-l-none rounded-r-xl h-11 text-sm"
+                        className="rounded-l-none rounded-r-xl h-11 text-sm pr-10"
                         required
                       />
+                      {isCheckingPhone && (
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2" />
+                      )}
                     </div>
                   </div>
+
+                  {/* Existing Member Found Card */}
+                  {existingMember && (
+                    <div className="animate-fade-in rounded-xl border-2 border-primary/20 bg-primary/5 p-4 space-y-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <UserCheck className="w-4.5 h-4.5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{existingMember.name}</p>
+                          <p className="text-xs text-muted-foreground">Member already exists in this branch</p>
+                        </div>
+                      </div>
+
+                      {/* Current status */}
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        {existingMember.subscription ? (
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full font-medium",
+                            existingMember.subscription.status === "active" 
+                              ? "bg-green-500/10 text-green-700 dark:text-green-400"
+                              : "bg-orange-500/10 text-orange-700 dark:text-orange-400"
+                          )}>
+                            Gym: {existingMember.subscription.status === "active" ? "Active" : "Expired"} 
+                            {" · "}Ends {format(new Date(existingMember.subscription.end_date), "dd MMM yyyy")}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                            No Subscription
+                          </span>
+                        )}
+                        {existingMember.activePT ? (
+                          <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium">
+                            PT: {existingMember.activePT.trainer_name} · Ends {format(new Date(existingMember.activePT.end_date), "dd MMM yyyy")}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                            No PT
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Action Options */}
+                      <div className="space-y-2 pt-1">
+                        <p className="text-xs font-medium text-muted-foreground">What would you like to do?</p>
+                        <div className="grid grid-cols-1 gap-2">
+                          {[
+                            { 
+                              key: "renew_gym" as const, 
+                              label: "Renew Gym Membership", 
+                              icon: RefreshCw,
+                              desc: "Extend gym subscription",
+                              path: `/renew?memberId=${existingMember.id}`,
+                            },
+                            { 
+                              key: "add_pt" as const, 
+                              label: "Add Personal Training", 
+                              icon: Dumbbell,
+                              desc: "Add or extend PT subscription",
+                              path: `/extend-pt?memberId=${existingMember.id}`,
+                            },
+                            { 
+                              key: "renew_gym_pt" as const, 
+                              label: "Renew Gym + PT", 
+                              icon: Calendar,
+                              desc: "Renew gym and add PT together",
+                              path: `/renew?memberId=${existingMember.id}&withPT=true`,
+                            },
+                          ].map((action) => (
+                            <button
+                              key={action.key}
+                              type="button"
+                              onClick={() => {
+                                onOpenChange(false);
+                                resetForm();
+                                // Navigate to the renewal/extend page with member context
+                                window.open(
+                                  `/b/${currentBranch?.id}${action.path}`,
+                                  "_blank"
+                                );
+                              }}
+                              className={cn(
+                                "flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all duration-200",
+                                "border-border bg-background hover:border-primary/40 hover:bg-primary/5 active:scale-[0.98]"
+                              )}
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                                <action.icon className="w-4 h-4 text-foreground" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground">{action.label}</p>
+                                <p className="text-[11px] text-muted-foreground">{action.desc}</p>
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
