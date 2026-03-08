@@ -335,8 +335,13 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         }
       }
       if (currentStep === 2 && !isStep2Valid) {
-        toast.error("Please select gender", {
-          description: "Gender is required to proceed",
+        const missing: string[] = [];
+        if (!gender) missing.push("Gender");
+        if (!photoIdType) missing.push("Photo ID Type");
+        if (photoIdType && !photoIdNumber.trim()) missing.push("Photo ID Number");
+        if (address.trim().length < 3) missing.push("Address");
+        toast.error("Please fill all required fields", {
+          description: missing.join(", "),
         });
         return;
       }
