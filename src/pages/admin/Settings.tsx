@@ -1087,10 +1087,9 @@ const AdminSettings = () => {
                     {isAddingCustom ? "Adding..." : "Add Daily Pass"}
                   </Button>
                 </div>
-                </Button>
 
-                {customPackages.length > 0 && (
-                  <div className="space-y-2 lg:space-y-3 pt-3 lg:pt-4 border-t">
+                {customPackages.length > 0 ? (
+                  <div className="space-y-2 lg:space-y-2.5">
                     {customPackages.map((pkg) => (
                       <div key={pkg.id} className={cn(
                         "group flex items-start gap-2 lg:gap-4 p-3 lg:p-4 bg-card border border-border/60 rounded-xl transition-all duration-300 hover:shadow-md hover:border-border",
