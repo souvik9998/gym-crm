@@ -1343,6 +1343,17 @@ export const MembersTable = ({
       />
 
       <WhatsAppSendingOverlay {...waOverlay.overlayProps} />
+
+      {enrollMember && (
+        <BiometricEnrollDialog
+          open={!!enrollMember}
+          onOpenChange={(open) => !open && setEnrollMember(null)}
+          memberId={enrollMember.id}
+          memberName={enrollMember.name}
+          memberPhone={enrollMember.phone}
+          branchId={currentBranch?.id || ""}
+        />
+      )}
     </div>
   );
 };
