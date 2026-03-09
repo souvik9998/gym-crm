@@ -575,9 +575,14 @@ export default function TenantDetail() {
                   </TableHeader>
                   <TableBody>
                     {branches.map((branch) => (
-                      <TableRow key={branch.id}>
+                      <TableRow 
+                        key={branch.id} 
+                        className="cursor-pointer hover:bg-accent/50 transition-colors duration-150"
+                        onClick={() => handleOpenBranchDetail(branch)}
+                      >
                         <TableCell>
                           <div className="flex items-center gap-2">
+                            <BuildingOffice2Icon className="w-4 h-4 text-primary shrink-0" />
                             {branch.name}
                             {branch.is_default && (
                               <Badge variant="secondary" className="text-xs">Default</Badge>
@@ -600,7 +605,7 @@ export default function TenantDetail() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleToggleBranchStatus(branch)}
+                              onClick={(e) => { e.stopPropagation(); handleToggleBranchStatus(branch); }}
                               title={branch.is_active ? "Suspend" : "Activate"}
                             >
                               {branch.is_active ? (
@@ -612,11 +617,12 @@ export default function TenantDetail() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleDeleteBranch(branch)}
+                              onClick={(e) => { e.stopPropagation(); handleDeleteBranch(branch); }}
                               className="text-destructive"
                             >
                               <TrashIcon className="w-4 h-4" />
                             </Button>
+                            <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />
                           </div>
                         </TableCell>
                       </TableRow>
