@@ -129,6 +129,11 @@ export default function TenantDetail() {
   const [newBranchAddress, setNewBranchAddress] = useState("");
   const [newBranchPhone, setNewBranchPhone] = useState("");
 
+  // Branch detail
+  const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
+  const [branchDetails, setBranchDetails] = useState<BranchDetails | null>(null);
+  const [branchDetailLoading, setBranchDetailLoading] = useState(false);
+
   useEffect(() => {
     if (!roleLoading && !isSuperAdmin) {
       navigate("/admin/login");
