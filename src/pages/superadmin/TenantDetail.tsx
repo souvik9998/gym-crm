@@ -354,9 +354,36 @@ export default function TenantDetail() {
 
   const handleViewAsTenant = () => {
     if (!tenant) return;
-    // Store the tenant context and navigate to admin dashboard
     localStorage.setItem("superadmin-impersonated-tenant", tenant.id);
     navigate("/admin/dashboard");
+  };
+
+  const handleOpenBranchDetail = async (branch: Branch) => {
+    setSelectedBranch(branch);
+    setBranchDetails(null);
+    setBranchDetailLoading(true);
+    try {
+      const [membersRes, staffRes, devicesRes, trainersRes, paymentsRes, settingsRes] = await Promise.all([
+        supabase.from("members").select("id", { count: "exact", head: true }).eq("branch_id", branch.id),
+        supabase.from("staff_branch_assignments").select("id", { count: "exact", head: true }).eq("branch_id", branch.id),
+        supabase.from("biometric_devices" as any).select("id", { count: "exact", head: true }).eq("branch_id", branch.id).eq("is_active", true),
+        supabase.from("personal_trainers").select("id", { count: "exact", head: true }).eq("branch_id", branch.id).eq("is_active", true),
+        supabase.from("payments").select("amount").eq("branch_id", branch.id).eq("status", "success").gte("created_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
+        supabase.from("gym_settings").select("gym_name, gym_phone, gym_address").eq("branch_id", branch.id).maybeSingle(),
+      ]);
+      setBranchDetails({
+        membersCount: membersRes.count || 0,
+        staffCount: staffRes.count || 0,
+        devicesCount: devicesRes.count || 0,
+        trainersCount: trainersRes.count || 0,
+        monthlyRevenue: (paymentsRes.data || []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0),
+        gymSettings: settingsRes.data || null,
+      });
+    } catch (err) {
+      console.error("Error loading branch details:", err);
+    } finally {
+      setBranchDetailLoading(false);
+    }
   };
 
   if (roleLoading || isLoading) {
