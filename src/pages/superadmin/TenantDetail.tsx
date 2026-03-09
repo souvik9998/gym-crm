@@ -45,6 +45,14 @@ import {
   PlayIcon,
   PauseIcon,
   EyeIcon,
+  ChevronRightIcon,
+  MapPinIcon,
+  PhoneIcon,
+  EnvelopeIcon,
+  CalendarIcon,
+  FingerPrintIcon,
+  UserGroupIcon,
+  CurrencyRupeeIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import { format } from "date-fns";
