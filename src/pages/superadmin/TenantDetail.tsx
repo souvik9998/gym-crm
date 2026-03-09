@@ -921,6 +921,123 @@ export default function TenantDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Branch Detail Dialog */}
+      <Dialog open={!!selectedBranch} onOpenChange={(open) => !open && setSelectedBranch(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BuildingOffice2Icon className="w-5 h-5 text-primary" />
+              {selectedBranch?.name}
+              {selectedBranch?.is_default && (
+                <Badge variant="secondary" className="text-xs">Default</Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {branchDetailLoading ? (
+            <div className="space-y-3 py-4">
+              {[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
+            </div>
+          ) : (
+            <div className="space-y-5 py-2">
+              {/* Branch Info */}
+              <div className="space-y-2">
+                {selectedBranch?.address && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <MapPinIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span>{selectedBranch.address}</span>
+                  </div>
+                )}
+                {selectedBranch?.phone && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <PhoneIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span>{selectedBranch.phone}</span>
+                  </div>
+                )}
+                {selectedBranch?.email && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <EnvelopeIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span>{selectedBranch.email}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-sm">
+                  <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span>Created {selectedBranch ? format(new Date(selectedBranch.created_at), "MMM d, yyyy") : ""}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Badge variant={selectedBranch?.is_active ? "default" : "secondary"}>
+                    {selectedBranch?.is_active ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted/40 rounded-lg p-3 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <UsersIcon className="w-4.5 h-4.5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">{branchDetails?.membersCount ?? 0}</p>
+                    <p className="text-xs text-muted-foreground">Members</p>
+                  </div>
+                </div>
+                <div className="bg-muted/40 rounded-lg p-3 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <UserGroupIcon className="w-4.5 h-4.5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">{branchDetails?.staffCount ?? 0}</p>
+                    <p className="text-xs text-muted-foreground">Staff</p>
+                  </div>
+                </div>
+                <div className="bg-muted/40 rounded-lg p-3 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <FingerPrintIcon className="w-4.5 h-4.5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">{branchDetails?.devicesCount ?? 0}</p>
+                    <p className="text-xs text-muted-foreground">Bio Devices</p>
+                  </div>
+                </div>
+                <div className="bg-muted/40 rounded-lg p-3 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <CurrencyRupeeIcon className="w-4.5 h-4.5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">₹{(branchDetails?.monthlyRevenue ?? 0).toLocaleString("en-IN")}</p>
+                    <p className="text-xs text-muted-foreground">This Month</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Gym Settings */}
+              {branchDetails?.gymSettings && (
+                <>
+                  <Separator />
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium text-muted-foreground">Gym Settings</p>
+                    <div className="text-sm space-y-1">
+                      {branchDetails.gymSettings.gym_name && (
+                        <p><span className="text-muted-foreground">Name:</span> {branchDetails.gymSettings.gym_name}</p>
+                      )}
+                      {branchDetails.gymSettings.gym_phone && (
+                        <p><span className="text-muted-foreground">Phone:</span> {branchDetails.gymSettings.gym_phone}</p>
+                      )}
+                      {branchDetails.gymSettings.gym_address && (
+                        <p><span className="text-muted-foreground">Address:</span> {branchDetails.gymSettings.gym_address}</p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
