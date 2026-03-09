@@ -71,6 +71,15 @@ interface Branch {
   created_at: string;
 }
 
+interface BranchDetails {
+  membersCount: number;
+  staffCount: number;
+  devicesCount: number;
+  trainersCount: number;
+  monthlyRevenue: number;
+  gymSettings: { gym_name: string | null; gym_phone: string | null; gym_address: string | null } | null;
+}
+
 export default function TenantDetail() {
   const { tenantId } = useParams<{ tenantId: string }>();
   const navigate = useNavigate();
