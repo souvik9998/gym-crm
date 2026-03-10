@@ -124,7 +124,7 @@ const filterCategories: {
 export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilterChange, mobileMode = false }: MemberFilterProps) => {
   const [openDropdown, setOpenDropdown] = React.useState<string | null>(null);
   const [mobileDropdownOpen, setMobileDropdownOpen] = React.useState(false);
-  const hoverTimeoutRef = React.useRef<Record<string, NodeJS.Timeout | null>>({});
+  const hoverTimeoutRef = React.useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
 
   const getCategoryFromValue = (val: MemberFilterValue): MemberFilterCategory | null => {
     if (val === "all") return "all";
