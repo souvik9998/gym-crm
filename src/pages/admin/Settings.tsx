@@ -984,7 +984,10 @@ const AdminSettings = () => {
                                 size="icon" 
                                 variant="outline"
                                 onClick={() => handleSaveMonthlyPackage(pkg.id)}
-                                disabled={savingMonthlyId === pkg.id}
+                                disabled={savingMonthlyId === pkg.id || (
+                                  editMonthlyData.price === String(pkg.price) &&
+                                  editMonthlyData.joining_fee === String(pkg.joining_fee)
+                                )}
                                 className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground active:scale-90 transition-all duration-200"
                               >
                                 {savingMonthlyId === pkg.id ? <ButtonSpinner /> : <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
@@ -1137,7 +1140,10 @@ const AdminSettings = () => {
                                 size="icon" 
                                 variant="outline"
                                 onClick={() => handleSavePackage(pkg.id)}
-                                disabled={savingCustomId === pkg.id}
+                                disabled={savingCustomId === pkg.id || (
+                                  editPackageData.name === pkg.name &&
+                                  editPackageData.price === String(pkg.price)
+                                )}
                                 className="h-8 w-8 lg:h-9 lg:w-9 rounded-lg border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground active:scale-90 transition-all duration-200"
                               >
                                 {savingCustomId === pkg.id ? <ButtonSpinner /> : <CheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />}
@@ -1416,7 +1422,11 @@ const AdminSettings = () => {
                 <Button
                   className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
                   onClick={handleSaveSettings}
-                  disabled={isSaving}
+                  disabled={isSaving || (
+                    gymName === (settings?.gym_name || "") &&
+                    gymPhone === (settings?.gym_phone || "") &&
+                    gymAddress === (settings?.gym_address || "")
+                  )}
                 >
                   {isSaving ? (
                     <span className="flex items-center gap-2">
