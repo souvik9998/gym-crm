@@ -812,7 +812,16 @@ const HolidayCalendarTab = () => {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-xl">
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={isSaving || !formName.trim()} className="gap-2 rounded-xl">
+            <Button onClick={handleSave} disabled={isSaving || !formName.trim() || (
+              editingHoliday &&
+              formName === editingHoliday.holiday_name &&
+              formDescription === (editingHoliday.description || "") &&
+              formType === editingHoliday.holiday_type &&
+              formStartTime === (editingHoliday.half_day_start_time || "09:00") &&
+              formEndTime === (editingHoliday.half_day_end_time || "13:00") &&
+              formNotify === editingHoliday.notify_members &&
+              (selectedDate ? format(selectedDate, "yyyy-MM-dd") : "") === editingHoliday.holiday_date
+            )} className="gap-2 rounded-xl">
               {isSaving ? (
                 <>
                   <ButtonSpinner />

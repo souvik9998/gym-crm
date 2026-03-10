@@ -489,7 +489,7 @@ export const WhatsAppTemplates = () => {
               )}
               
               <div className="flex gap-2">
-                <Button onClick={handleSaveCustomMessage} disabled={!currentMessage.trim()}>
+                <Button onClick={handleSaveCustomMessage} disabled={!currentMessage.trim() || currentMessage === (localStorage.getItem(getBranchTemplateKey(activeTab)) || "")}>
                   <Save className="w-4 h-4 mr-2" />
                   Save for {currentBranch?.name || "this branch"}
                 </Button>

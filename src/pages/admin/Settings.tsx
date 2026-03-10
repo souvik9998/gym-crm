@@ -1416,7 +1416,11 @@ const AdminSettings = () => {
                 <Button
                   className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
                   onClick={handleSaveSettings}
-                  disabled={isSaving}
+                  disabled={isSaving || (
+                    gymName === (settings?.gym_name || "") &&
+                    gymPhone === (settings?.gym_phone || "") &&
+                    gymAddress === (settings?.gym_address || "")
+                  )}
                 >
                   {isSaving ? (
                     <span className="flex items-center gap-2">

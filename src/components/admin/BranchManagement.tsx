@@ -746,7 +746,13 @@ export const BranchManagement = () => {
             >
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={isLoading || isUploadingLogo}>
+            <Button onClick={handleSave} disabled={isLoading || isUploadingLogo || (
+              editingBranch && !logoFile &&
+              formData.name === editingBranch.name &&
+              formData.address === (editingBranch.address || "") &&
+              formData.phone === (editingBranch.phone || "") &&
+              formData.email === (editingBranch.email || "")
+            )}>
               {isLoading || isUploadingLogo ? "Saving..." : editingBranch ? "Save Changes" : "Add Branch"}
             </Button>
           </div>

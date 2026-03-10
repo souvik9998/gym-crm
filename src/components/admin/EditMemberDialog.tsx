@@ -455,7 +455,14 @@ export const EditMemberDialog = ({
           <div className="pt-1 pb-1 animate-fade-in" style={{ animationDelay: "250ms" }}>
             <Button
               onClick={handleSaveMember}
-              disabled={isLoading || !name || phone.length !== 10}
+              disabled={isLoading || !name || phone.length !== 10 || !originalValues || (
+                name === originalValues.name &&
+                phone === originalValues.phone &&
+                gender === originalValues.gender &&
+                photoIdType === originalValues.photoIdType &&
+                photoIdNumber === originalValues.photoIdNumber &&
+                address === originalValues.address
+              )}
               className="w-full h-10 text-sm transition-all duration-200"
               variant="accent"
             >
