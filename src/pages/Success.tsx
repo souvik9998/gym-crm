@@ -128,18 +128,6 @@ const Success = () => {
               <Home className="w-4 h-4 mr-2" />
               Back to Home
             </Button>
-
-            <Button
-              variant="outline"
-              size="lg"
-              className="w-full border-success text-success hover:bg-success hover:text-success-foreground"
-              onClick={() =>
-                window.open(`https://wa.me/91${state.phone}?text=${whatsappMessage}`, "_blank")
-              }
-            >
-              <MessageCircle className="w-4 h-4 mr-2" />
-              Share on WhatsApp
-            </Button>
           </div>
 
           <p className="text-xs text-center text-muted-foreground mt-6">
