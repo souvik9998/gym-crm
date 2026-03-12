@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Calendar, Phone, User, IndianRupee, Home, MessageCircle, Building2 } from "lucide-react";
+import { CheckCircle2, Calendar, Phone, User, IndianRupee, Home, Building2 } from "lucide-react";
 import PoweredByBadge from "@/components/PoweredByBadge";
 
 interface SuccessState {
@@ -127,18 +127,6 @@ const Success = () => {
             >
               <Home className="w-4 h-4 mr-2" />
               Back to Home
-            </Button>
-
-            <Button
-              variant="outline"
-              size="lg"
-              className="w-full border-success text-success hover:bg-success hover:text-success-foreground"
-              onClick={() =>
-                window.open(`https://wa.me/91${state.phone}?text=${whatsappMessage}`, "_blank")
-              }
-            >
-              <MessageCircle className="w-4 h-4 mr-2" />
-              Share on WhatsApp
             </Button>
           </div>
 
