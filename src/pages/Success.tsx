@@ -124,8 +124,11 @@ const Success = () => {
 
           {/* Actions */}
           <div className="space-y-3">
+            {state.paymentId && (
+              <DownloadInvoiceButton paymentId={state.paymentId} branchId={state.branchId} />
+            )}
             <Button
-              variant="accent"
+              variant="outline"
               size="lg"
               className="w-full"
               onClick={() => {
