@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Generate PDF invoice as bytes using raw PDF construction
+// Generate PDF invoice matching the web invoice view design
 function generateInvoicePDF(data: {
   invoiceNumber: string;
   gymName: string;
@@ -16,6 +16,7 @@ function generateInvoicePDF(data: {
   gymGst: string;
   memberName: string;
   memberPhone: string;
+  memberId: string;
   paymentDate: string;
   amount: number;
   paymentMode: string;
@@ -27,136 +28,223 @@ function generateInvoicePDF(data: {
   joiningFee: number;
   trainerFee: number;
   gymFee: number;
+  subtotal: number;
+  discount: number;
+  tax: number;
   branchName: string;
   footerMessage: string;
 }): Uint8Array {
   const content: string[] = [];
-  let yPos = 750;
+  const pageW = 612;
+  const pageH = 842;
   const leftMargin = 50;
-  const rightMargin = 545;
+  const rightMargin = 562;
+  const contentWidth = rightMargin - leftMargin;
 
   const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 
-  const addText = (x: number, y: number, text: string, fontSize: number = 10, bold: boolean = false) => {
+  const addText = (x: number, y: number, text: string, fontSize: number = 10, bold = false) => {
     const font = bold ? "/F2" : "/F1";
     content.push(`BT ${font} ${fontSize} Tf ${x} ${y} Td (${esc(text)}) Tj ET`);
   };
 
-  const addLine = (x1: number, y1: number, x2: number, y2: number) => {
-    content.push(`${x1} ${y1} m ${x2} ${y2} l S`);
+  const addColorText = (x: number, y: number, text: string, fontSize: number, bold: boolean, r: number, g: number, b: number) => {
+    const font = bold ? "/F2" : "/F1";
+    content.push(`BT ${r} ${g} ${b} rg ${font} ${fontSize} Tf ${x} ${y} Td (${esc(text)}) Tj ET`);
+    content.push(`0 0 0 rg`);
+  };
+
+  const addLine = (x1: number, y1: number, x2: number, y2: number, r = 0.85, g = 0.85, b = 0.85) => {
+    content.push(`${r} ${g} ${b} RG 0.5 w ${x1} ${y1} m ${x2} ${y2} l S 0 0 0 RG`);
   };
 
   const addRect = (x: number, y: number, w: number, h: number, r: number, g: number, b: number) => {
     content.push(`${r} ${g} ${b} rg ${x} ${y} ${w} ${h} re f 0 0 0 rg`);
   };
 
-  // Header background
-  addRect(0, 770, 612, 72, 0.15, 0.15, 0.15);
-  
-  // Header - white text
-  content.push(`1 1 1 rg`);
-  addText(leftMargin, 810, data.gymName, 18, true);
-  content.push(`0 0 0 rg`);
+  const addRoundBadge = (x: number, y: number, text: string, r: number, g: number, b: number) => {
+    // Simple rect badge (rounded corners not available in basic PDF)
+    const badgeW = 60;
+    const badgeH = 18;
+    addRect(x, y - 4, badgeW, badgeH, r, g, b);
+    addColorText(x + 12, y, text, 9, true, 1, 1, 1);
+  };
 
-  yPos = 790;
-  addText(leftMargin, yPos, data.gymName, 16, true);
-  yPos -= 16;
+  let yPos = pageH;
+
+  // ===== PRIMARY COLOR HEADER =====
+  const headerH = 100;
+  const headerY = pageH - headerH;
+  // Primary color (hsl 142 76% 36% ≈ rgb 0.22, 0.64, 0.32)
+  addRect(0, headerY, pageW, headerH, 0.22, 0.64, 0.32);
+
+  // Gym name - white, large
+  let hy = pageH - 30;
+  addColorText(leftMargin, hy, data.gymName, 20, true, 1, 1, 1);
+  hy -= 16;
   if (data.gymAddress) {
-    addText(leftMargin, yPos, data.gymAddress, 9, false);
-    yPos -= 14;
+    addColorText(leftMargin, hy, data.gymAddress, 9, false, 1, 1, 0.85);
+    hy -= 13;
   }
-  if (data.gymPhone) {
-    addText(leftMargin, yPos, `Phone: ${data.gymPhone}`, 9, false);
-    yPos -= 14;
-  }
-  if (data.gymEmail) {
-    addText(leftMargin, yPos, `Email: ${data.gymEmail}`, 9, false);
-    yPos -= 14;
-  }
-  if (data.gymGst) {
-    addText(leftMargin, yPos, `GST: ${data.gymGst}`, 9, false);
-    yPos -= 14;
+  const contactParts: string[] = [];
+  if (data.gymPhone) contactParts.push(`Phone: ${data.gymPhone}`);
+  if (data.gymEmail) contactParts.push(`Email: ${data.gymEmail}`);
+  if (data.gymGst) contactParts.push(`GST: ${data.gymGst}`);
+  if (contactParts.length > 0) {
+    addColorText(leftMargin, hy, contactParts.join("  |  "), 8, false, 1, 1, 0.75);
   }
 
-  // Invoice title - right side
-  addText(400, 790, "INVOICE", 20, true);
-  addText(400, 774, `#${data.invoiceNumber}`, 10, false);
-  addText(400, 760, `Date: ${data.paymentDate}`, 9, false);
+  // INVOICE title - right side, white
+  addColorText(430, pageH - 30, "INVOICE", 22, true, 1, 1, 1);
+  addColorText(430, pageH - 48, data.invoiceNumber, 10, false, 1, 1, 0.85);
+  addColorText(430, pageH - 62, data.paymentDate, 9, false, 1, 1, 0.75);
 
-  yPos -= 10;
+  // ===== BODY SECTION =====
+  yPos = headerY - 25;
+
+  // PAID badge + payment mode
+  addRoundBadge(leftMargin, yPos, "PAID", 0.13, 0.62, 0.33);
+  addColorText(leftMargin + 70, yPos, `via ${data.paymentMode}`, 9, false, 0.5, 0.5, 0.5);
+  yPos -= 15;
+
+  // Separator
   addLine(leftMargin, yPos, rightMargin, yPos);
   yPos -= 25;
 
-  // Bill To section
-  addText(leftMargin, yPos, "BILL TO:", 10, true);
+  // ===== BILL TO + INVOICE INFO (two columns) =====
+  const col2X = 350;
+
+  // Left column: Bill To
+  addColorText(leftMargin, yPos, "BILL TO", 8, true, 0.5, 0.5, 0.5);
   yPos -= 16;
-  addText(leftMargin, yPos, data.memberName, 11, true);
-  yPos -= 14;
-  addText(leftMargin, yPos, `Phone: ${data.memberPhone}`, 9, false);
-  yPos -= 14;
-  addText(leftMargin, yPos, `Branch: ${data.branchName}`, 9, false);
-  yPos -= 30;
-
-  // Table header
-  addRect(leftMargin, yPos - 4, rightMargin - leftMargin, 20, 0.93, 0.93, 0.93);
-  addText(leftMargin + 5, yPos, "Description", 10, true);
-  addText(350, yPos, "Details", 10, true);
-  addText(480, yPos, "Amount", 10, true);
-  yPos -= 22;
-
-  // Package row
-  const packageLabel = data.packageName || data.paymentType || "Gym Membership";
-  addText(leftMargin + 5, yPos, packageLabel, 9, false);
-  addText(350, yPos, `${data.startDate} - ${data.endDate}`, 9, false);
-  
-  if (data.gymFee > 0) {
-    addText(480, yPos, `Rs.${data.gymFee.toLocaleString("en-IN")}`, 9, false);
+  addText(leftMargin, yPos, data.memberName, 12, true);
+  yPos -= 15;
+  if (data.memberPhone) {
+    addColorText(leftMargin, yPos, `Phone: ${data.memberPhone}`, 9, false, 0.4, 0.4, 0.4);
+    yPos -= 13;
   }
+  if (data.memberId) {
+    addColorText(leftMargin, yPos, `ID: ${data.memberId.slice(0, 8).toUpperCase()}`, 8, false, 0.5, 0.5, 0.5);
+    yPos -= 13;
+  }
+
+  // Right column: Invoice Info (at same vertical start)
+  const infoY = yPos + 44 + 16; // align with BILL TO
+  addColorText(col2X, infoY, "INVOICE INFO", 8, true, 0.5, 0.5, 0.5);
+  addColorText(col2X, infoY - 16, `Date: ${data.paymentDate}`, 9, false, 0.3, 0.3, 0.3);
+  if (data.razorpayPaymentId) {
+    addColorText(col2X, infoY - 30, `Txn: ${data.razorpayPaymentId}`, 8, false, 0.3, 0.3, 0.3);
+  }
+  if (data.branchName) {
+    addColorText(col2X, infoY - 44, `Branch: ${data.branchName}`, 9, false, 0.3, 0.3, 0.3);
+  }
+
+  yPos -= 15;
+  // Separator
+  addLine(leftMargin, yPos, rightMargin, yPos);
+  yPos -= 25;
+
+  // ===== MEMBERSHIP DETAILS TABLE =====
+  addColorText(leftMargin, yPos, "MEMBERSHIP DETAILS", 8, true, 0.5, 0.5, 0.5);
   yPos -= 18;
 
+  // Table header row
+  const tableX = leftMargin;
+  addRect(tableX, yPos - 5, contentWidth, 22, 0.96, 0.96, 0.96);
+  addColorText(tableX + 8, yPos, "DESCRIPTION", 8, true, 0.5, 0.5, 0.5);
+  addColorText(tableX + 250, yPos, "DURATION", 8, true, 0.5, 0.5, 0.5);
+  addColorText(tableX + 430, yPos, "AMOUNT", 8, true, 0.5, 0.5, 0.5);
+  yPos -= 24;
+
+  // Table separator
+  addLine(tableX, yPos + 2, tableX + contentWidth, yPos + 2);
+
+  // Gym Fee row
+  if (data.gymFee > 0) {
+    const packageLabel = data.packageName || "Gym Membership";
+    addText(tableX + 8, yPos - 8, packageLabel, 9, true);
+    if (data.startDate && data.endDate) {
+      addColorText(tableX + 250, yPos - 8, `${data.startDate} - ${data.endDate}`, 8, false, 0.5, 0.5, 0.5);
+    }
+    addText(tableX + 430, yPos - 8, `Rs.${data.gymFee.toLocaleString("en-IN")}`, 9, true);
+    yPos -= 24;
+    addLine(tableX, yPos + 2, tableX + contentWidth, yPos + 2);
+  }
+
+  // Joining Fee row
   if (data.joiningFee > 0) {
-    addText(leftMargin + 5, yPos, "Joining Fee", 9, false);
-    addText(480, yPos, `Rs.${data.joiningFee.toLocaleString("en-IN")}`, 9, false);
-    yPos -= 18;
+    addText(tableX + 8, yPos - 8, "Joining Fee", 9, false);
+    addColorText(tableX + 250, yPos - 8, "-", 8, false, 0.5, 0.5, 0.5);
+    addText(tableX + 430, yPos - 8, `Rs.${data.joiningFee.toLocaleString("en-IN")}`, 9, true);
+    yPos -= 24;
+    addLine(tableX, yPos + 2, tableX + contentWidth, yPos + 2);
   }
 
+  // Trainer Fee row
   if (data.trainerFee > 0) {
-    addText(leftMargin + 5, yPos, "Personal Training Fee", 9, false);
-    addText(480, yPos, `Rs.${data.trainerFee.toLocaleString("en-IN")}`, 9, false);
+    addText(tableX + 8, yPos - 8, "Personal Training Fee", 9, false);
+    if (data.startDate && data.endDate) {
+      addColorText(tableX + 250, yPos - 8, `${data.startDate} - ${data.endDate}`, 8, false, 0.5, 0.5, 0.5);
+    }
+    addText(tableX + 430, yPos - 8, `Rs.${data.trainerFee.toLocaleString("en-IN")}`, 9, true);
+    yPos -= 24;
+    addLine(tableX, yPos + 2, tableX + contentWidth, yPos + 2);
+  }
+
+  // If no breakdown, show single line
+  if (data.gymFee === 0 && data.joiningFee === 0 && data.trainerFee === 0) {
+    const label = data.packageName || "Payment";
+    addText(tableX + 8, yPos - 8, label, 9, true);
+    addColorText(tableX + 250, yPos - 8, "-", 8, false, 0.5, 0.5, 0.5);
+    addText(tableX + 430, yPos - 8, `Rs.${data.amount.toLocaleString("en-IN")}`, 9, true);
+    yPos -= 24;
+    addLine(tableX, yPos + 2, tableX + contentWidth, yPos + 2);
+  }
+
+  yPos -= 10;
+
+  // ===== TOTALS (right-aligned) =====
+  const totalsX = 380;
+
+  if (data.subtotal > 0 && data.subtotal !== data.amount) {
+    addColorText(totalsX, yPos, "Subtotal", 9, false, 0.5, 0.5, 0.5);
+    addText(totalsX + 110, yPos, `Rs.${data.subtotal.toLocaleString("en-IN")}`, 9, false);
+    yPos -= 16;
+  }
+
+  if (data.discount > 0) {
+    addColorText(totalsX, yPos, "Discount", 9, false, 0.5, 0.5, 0.5);
+    addColorText(totalsX + 110, yPos, `-Rs.${data.discount.toLocaleString("en-IN")}`, 9, false, 0.13, 0.62, 0.33);
+    yPos -= 16;
+  }
+
+  if (data.tax > 0) {
+    addColorText(totalsX, yPos, "Tax", 9, false, 0.5, 0.5, 0.5);
+    addText(totalsX + 110, yPos, `Rs.${data.tax.toLocaleString("en-IN")}`, 9, false);
+    yPos -= 16;
+  }
+
+  // Total separator
+  addLine(totalsX, yPos + 4, rightMargin, yPos + 4);
+  yPos -= 8;
+
+  addText(totalsX, yPos, "Total Paid", 11, true);
+  addText(totalsX + 100, yPos, `Rs.${data.amount.toLocaleString("en-IN")}`, 14, true);
+  yPos -= 30;
+
+  // ===== FOOTER =====
+  // Footer separator
+  addLine(leftMargin, yPos, rightMargin, yPos);
+  yPos -= 18;
+
+  if (data.footerMessage) {
+    addColorText(leftMargin + (contentWidth / 2 - 80), yPos, `"${data.footerMessage}"`, 9, false, 0.5, 0.5, 0.5);
     yPos -= 18;
   }
 
-  addLine(leftMargin, yPos, rightMargin, yPos);
-  yPos -= 20;
+  addColorText(leftMargin + (contentWidth / 2 - 100), yPos, "This is a computer-generated invoice. No signature required.", 7, false, 0.7, 0.7, 0.7);
 
-  addText(380, yPos, "TOTAL:", 12, true);
-  addText(480, yPos, `Rs.${data.amount.toLocaleString("en-IN")}`, 12, true);
-  yPos -= 25;
-
-  // Payment info
-  addLine(leftMargin, yPos, rightMargin, yPos);
-  yPos -= 20;
-  addText(leftMargin, yPos, "PAYMENT INFORMATION", 10, true);
-  yPos -= 16;
-  addText(leftMargin, yPos, `Payment Mode: ${data.paymentMode}`, 9, false);
-  yPos -= 14;
-  addText(leftMargin, yPos, `Status: Paid`, 9, false);
-  yPos -= 14;
-  if (data.razorpayPaymentId) {
-    addText(leftMargin, yPos, `Transaction ID: ${data.razorpayPaymentId}`, 9, false);
-    yPos -= 14;
-  }
-
-  // Footer
-  yPos = 60;
-  addLine(leftMargin, yPos + 15, rightMargin, yPos + 15);
-  if (data.footerMessage) {
-    addText(leftMargin, yPos, data.footerMessage, 8, false);
-    yPos -= 12;
-  }
-  addText(leftMargin, yPos, "This is a computer-generated invoice. No signature required.", 8, false);
-  addText(leftMargin, yPos - 12, `Generated by ${data.gymName}`, 8, false);
-
+  // ===== BUILD PDF =====
   const contentStream = content.join("\n");
   const contentBytes = new TextEncoder().encode(contentStream);
   const objects: string[] = [];
@@ -170,7 +258,7 @@ function generateInvoicePDF(data: {
 
   addObj(`1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj`);
   addObj(`2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj`);
-  addObj(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>\nendobj`);
+  addObj(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>\nendobj`);
   addObj(`4 0 obj\n<< /Length ${contentBytes.length} >>\nstream\n${contentStream}\nendstream\nendobj`);
   addObj(`5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj`);
   addObj(`6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\nendobj`);
@@ -349,9 +437,10 @@ Deno.serve(async (req) => {
       gymGst,
       memberName: customerName,
       memberPhone: customerPhone,
+      memberId: member?.id || dailyPassUser?.id || "",
       paymentDate,
       amount: Number(payment.amount),
-      paymentMode: payment.payment_mode === "online" ? "Online (Razorpay)" : "Cash",
+      paymentMode: payment.payment_mode === "online" ? "Online (Razorpay)" : payment.payment_mode === "upi" ? "UPI" : payment.payment_mode === "card" ? "Card" : payment.payment_mode === "bank_transfer" ? "Bank Transfer" : "Cash",
       paymentType: payment.payment_type || "gym_membership",
       razorpayPaymentId: payment.razorpay_payment_id,
       packageName,
@@ -360,6 +449,9 @@ Deno.serve(async (req) => {
       joiningFee: 0,
       trainerFee,
       gymFee,
+      subtotal: Number(payment.amount),
+      discount: 0,
+      tax: 0,
       branchName: branchName || gymName,
       footerMessage,
     });
