@@ -111,7 +111,14 @@ async function sendEmailWithResend(to: string, subject: string, html: string, at
     return { success: false, error: "Email not configured" };
   }
 
-  const base64Content = btoa(attachment.content);
+  // Use TextEncoder to handle non-Latin1 characters (e.g. ₹)
+  const encoder = new TextEncoder();
+  const uint8 = encoder.encode(attachment.content);
+  let binary = '';
+  for (let i = 0; i < uint8.length; i++) {
+    binary += String.fromCharCode(uint8[i]);
+  }
+  const base64Content = btoa(binary);
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
