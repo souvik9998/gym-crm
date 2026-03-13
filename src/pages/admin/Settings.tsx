@@ -1431,6 +1431,70 @@ const AdminSettings = () => {
                         className="min-h-[80px] lg:min-h-[100px] rounded-lg border-border/50 focus:border-primary/40 transition-colors resize-none"
                       />
                     </div>
+                    <div className="grid gap-3 lg:gap-4 grid-cols-1 md:grid-cols-2">
+                      <div className="space-y-1.5 lg:space-y-2">
+                        <Label htmlFor="gym-email" className="text-xs lg:text-sm font-medium">Email</Label>
+                        <Input
+                          id="gym-email"
+                          value={gymEmail}
+                          onChange={(e) => setGymEmail(e.target.value)}
+                          placeholder="gym@example.com"
+                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
+                        />
+                      </div>
+                      <div className="space-y-1.5 lg:space-y-2">
+                        <Label htmlFor="gym-gst" className="text-xs lg:text-sm font-medium">GST Number (Optional)</Label>
+                        <Input
+                          id="gym-gst"
+                          value={gymGst}
+                          onChange={(e) => setGymGst(e.target.value)}
+                          placeholder="22AAAAA0000A1Z5"
+                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Invoice Settings Card */}
+                <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
+                  <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-primary/10 text-primary">
+                        <CurrencyRupeeIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base lg:text-xl">Invoice Settings</CardTitle>
+                        <CardDescription className="text-xs lg:text-sm">Configure invoice numbering and branding</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4 lg:space-y-5 p-4 lg:p-6 pt-0 lg:pt-0">
+                    <div className="grid gap-3 lg:gap-4 grid-cols-1 md:grid-cols-2">
+                      <div className="space-y-1.5 lg:space-y-2">
+                        <Label htmlFor="invoice-prefix" className="text-xs lg:text-sm font-medium">Invoice Prefix</Label>
+                        <Input
+                          id="invoice-prefix"
+                          value={invoicePrefix}
+                          onChange={(e) => setInvoicePrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                          placeholder="INV"
+                          maxLength={10}
+                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors font-mono"
+                        />
+                        <p className="text-[10px] text-muted-foreground">Preview: {invoicePrefix || "INV"}-00001</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 lg:space-y-2">
+                      <Label htmlFor="invoice-footer" className="text-xs lg:text-sm font-medium">Invoice Footer Message</Label>
+                      <Textarea
+                        id="invoice-footer"
+                        value={invoiceFooter}
+                        onChange={(e) => setInvoiceFooter(e.target.value)}
+                        placeholder="Thank you for choosing our gym!"
+                        className="min-h-[60px] lg:min-h-[80px] rounded-lg border-border/50 focus:border-primary/40 transition-colors resize-none"
+                        maxLength={200}
+                      />
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -1440,7 +1504,11 @@ const AdminSettings = () => {
                   disabled={isSaving || (
                     gymName === (settings?.gym_name || "") &&
                     gymPhone === (settings?.gym_phone || "") &&
-                    gymAddress === (settings?.gym_address || "")
+                    gymAddress === (settings?.gym_address || "") &&
+                    gymEmail === (settings?.gym_email || "") &&
+                    gymGst === (settings?.gym_gst || "") &&
+                    invoicePrefix === (settings?.invoice_prefix || "INV") &&
+                    invoiceFooter === (settings?.invoice_footer_message || "Thank you for choosing our gym!")
                   )}
                 >
                   {isSaving ? (
