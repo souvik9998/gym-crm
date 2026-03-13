@@ -36,6 +36,7 @@ interface InvoiceData {
   footer_message: string | null;
   created_at: string;
   member_id: string | null;
+  payment_id: string | null;
 }
 
 export default function Invoice() {
