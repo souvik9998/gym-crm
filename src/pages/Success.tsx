@@ -125,10 +125,12 @@ const Success = () => {
               variant="accent"
               size="lg"
               className="w-full"
-              onClick={() => navigate("/")}
+              onClick={() => {
+                toast.success("Take a screenshot now to save your receipt!");
+              }}
             >
-              <Home className="w-4 h-4 mr-2" />
-              Back to Home
+              <Camera className="w-4 h-4 mr-2" />
+              Take Screenshot
             </Button>
           </div>
 
