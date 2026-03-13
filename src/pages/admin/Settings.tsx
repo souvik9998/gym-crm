@@ -64,6 +64,10 @@ interface GymSettings {
   gym_phone: string | null;
   gym_address: string | null;
   whatsapp_enabled: boolean | null;
+  gym_email: string | null;
+  gym_gst: string | null;
+  invoice_prefix: string | null;
+  invoice_footer_message: string | null;
 }
 
 /** Skeleton for Packages tab */
