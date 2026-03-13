@@ -13,6 +13,9 @@ interface GymSettings {
   gym_gst: string | null;
   invoice_prefix: string | null;
   invoice_footer_message: string | null;
+  invoice_tax_rate: number | null;
+  invoice_terms: string | null;
+  invoice_show_gst: boolean | null;
 }
 
 interface MonthlyPackage {
