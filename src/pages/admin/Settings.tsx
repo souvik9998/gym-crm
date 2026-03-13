@@ -31,6 +31,7 @@ import { WhatsAppTemplates } from "@/components/admin/WhatsAppTemplates";
 import { WhatsAppAutoSendSettings } from "@/components/admin/WhatsAppAutoSendSettings";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { BranchManagement } from "@/components/admin/BranchManagement";
+import { AutomatedReportsSettings } from "@/components/admin/AutomatedReportsSettings";
 import { SubscriptionPlanTab } from "@/components/admin/SubscriptionPlanTab";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
@@ -1545,6 +1546,9 @@ const AdminSettings = () => {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Automated Reports Card */}
+                <AutomatedReportsSettings />
 
                 <Button
                   className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
