@@ -331,6 +331,10 @@ const AdminSettings = () => {
         gym_name: gymName,
         gym_phone: gymPhone,
         gym_address: gymAddress,
+        gym_email: gymEmail || null,
+        gym_gst: gymGst || null,
+        invoice_prefix: invoicePrefix || "INV",
+        invoice_footer_message: invoiceFooter || null,
       })
       .eq("id", settings.id)
       .eq("branch_id", currentBranch.id);
@@ -353,8 +357,7 @@ const AdminSettings = () => {
         newValue: newSettings,
         branchId: currentBranch?.id,
       });
-      // Instant local state update
-      setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress } : prev);
+      setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail, gym_gst: gymGst, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter } : prev);
       toast.success("Settings saved successfully");
       backgroundInvalidate();
     }
