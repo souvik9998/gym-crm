@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Download, Copy, Share2, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { PoweredByBadge } from "@/components/PoweredByBadge";
+import PoweredByBadge from "@/components/PoweredByBadge";
 
 interface InvoiceData {
   id: string;
