@@ -1495,6 +1495,31 @@ const AdminSettings = () => {
                         />
                         <p className="text-[10px] text-muted-foreground">Preview: {invoicePrefix || "INV"}-00001</p>
                       </div>
+                      <div className="space-y-1.5 lg:space-y-2">
+                        <Label htmlFor="invoice-tax-rate" className="text-xs lg:text-sm font-medium">Tax Rate (%)</Label>
+                        <Input
+                          id="invoice-tax-rate"
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                          value={invoiceTaxRate}
+                          onChange={(e) => setInvoiceTaxRate(e.target.value)}
+                          placeholder="0"
+                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
+                        />
+                        <p className="text-[10px] text-muted-foreground">Applied to invoice subtotal (e.g. 18 for GST)</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-3 lg:p-4 bg-muted/20 border border-border/40 rounded-xl">
+                      <div className="space-y-0.5">
+                        <p className="font-medium text-sm lg:text-base">Show GST on Invoice</p>
+                        <p className="text-[10px] lg:text-xs text-muted-foreground">Display GST number on invoices</p>
+                      </div>
+                      <Switch
+                        checked={invoiceShowGst}
+                        onCheckedChange={setInvoiceShowGst}
+                      />
                     </div>
                     <div className="space-y-1.5 lg:space-y-2">
                       <Label htmlFor="invoice-footer" className="text-xs lg:text-sm font-medium">Invoice Footer Message</Label>
@@ -1505,6 +1530,17 @@ const AdminSettings = () => {
                         placeholder="Thank you for choosing our gym!"
                         className="min-h-[60px] lg:min-h-[80px] rounded-lg border-border/50 focus:border-primary/40 transition-colors resize-none"
                         maxLength={200}
+                      />
+                    </div>
+                    <div className="space-y-1.5 lg:space-y-2">
+                      <Label htmlFor="invoice-terms" className="text-xs lg:text-sm font-medium">Terms & Conditions (Optional)</Label>
+                      <Textarea
+                        id="invoice-terms"
+                        value={invoiceTerms}
+                        onChange={(e) => setInvoiceTerms(e.target.value)}
+                        placeholder="e.g. No refunds after 7 days. Membership is non-transferable."
+                        className="min-h-[60px] lg:min-h-[80px] rounded-lg border-border/50 focus:border-primary/40 transition-colors resize-none"
+                        maxLength={500}
                       />
                     </div>
                   </CardContent>
