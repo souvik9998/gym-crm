@@ -174,6 +174,10 @@ const AdminSettings = () => {
   const [gymPhone, setGymPhone] = useState("");
   const [gymAddress, setGymAddress] = useState("");
   const [whatsappEnabled, setWhatsappEnabled] = useState(true);
+  const [gymEmail, setGymEmail] = useState("");
+  const [gymGst, setGymGst] = useState("");
+  const [invoicePrefix, setInvoicePrefix] = useState("INV");
+  const [invoiceFooter, setInvoiceFooter] = useState("Thank you for choosing our gym!");
 
   // Monthly Packages
   const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
