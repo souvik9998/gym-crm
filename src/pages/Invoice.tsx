@@ -201,12 +201,10 @@ export default function Invoice() {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {invoice.pdf_url && (
-              <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-1.5">
-                <Download className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">PDF</span>
-              </Button>
-            )}
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF} className="gap-1.5">
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">PDF</span>
+            </Button>
             <Button variant="outline" size="sm" onClick={handleCopyLink} className="gap-1.5">
               {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
               <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
