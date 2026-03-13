@@ -690,16 +690,40 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                   <TableCell>{getStatusBadge(payment.status)}</TableCell>
                   <TableCell>
                     {payment.status === "success" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        disabled={sendingInvoiceId === payment.id}
-                        onClick={() => handleSendInvoice(payment.id)}
-                        title="Send Invoice via WhatsApp"
-                      >
-                        <FileText className={`w-4 h-4 ${sendingInvoiceId === payment.id ? "animate-pulse" : "text-primary"}`} />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Invoice actions"
+                          >
+                            <FileText className="w-4 h-4 text-primary" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleViewInvoice(payment.id)}>
+                            <Eye className="w-3.5 h-3.5 mr-2" />
+                            View Invoice
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownloadInvoicePDF(payment.id)}>
+                            <Download className="w-3.5 h-3.5 mr-2" />
+                            Download PDF
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleCopyInvoiceLink(payment.id)}>
+                            <Copy className="w-3.5 h-3.5 mr-2" />
+                            Copy Link
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleShareInvoiceWhatsApp(payment.id)}>
+                            <Share2 className="w-3.5 h-3.5 mr-2" />
+                            Share via WhatsApp
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSendInvoice(payment.id)} disabled={sendingInvoiceId === payment.id}>
+                            <FileText className="w-3.5 h-3.5 mr-2" />
+                            {sendingInvoiceId === payment.id ? "Sending..." : "Send Invoice to WhatsApp"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </TableCell>
                 </TableRow>
