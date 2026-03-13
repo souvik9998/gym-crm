@@ -369,7 +369,7 @@ const AdminSettings = () => {
         newValue: newSettings,
         branchId: currentBranch?.id,
       });
-      setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail, gym_gst: gymGst, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter } : prev);
+      setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail, gym_gst: gymGst, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_tax_rate: Number(invoiceTaxRate) || 0, invoice_terms: invoiceTerms, invoice_show_gst: invoiceShowGst } : prev);
       toast.success("Settings saved successfully");
       backgroundInvalidate();
     }
