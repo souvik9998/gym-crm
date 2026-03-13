@@ -181,6 +181,9 @@ const AdminSettings = () => {
   const [gymGst, setGymGst] = useState("");
   const [invoicePrefix, setInvoicePrefix] = useState("INV");
   const [invoiceFooter, setInvoiceFooter] = useState("Thank you for choosing our gym!");
+  const [invoiceTaxRate, setInvoiceTaxRate] = useState("0");
+  const [invoiceTerms, setInvoiceTerms] = useState("");
+  const [invoiceShowGst, setInvoiceShowGst] = useState(true);
 
   // Monthly Packages
   const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
