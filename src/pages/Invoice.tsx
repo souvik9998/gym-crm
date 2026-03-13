@@ -117,7 +117,7 @@ export default function Invoice() {
       toast.info("Generating PDF...");
       try {
         const { data, error } = await supabase.functions.invoke("generate-invoice", {
-          body: { paymentId: invoice?.id, branchId: undefined, sendViaWhatsApp: false },
+          body: { paymentId: invoice?.payment_id, branchId: undefined, sendViaWhatsApp: false },
         });
         if (!error && data?.pdfUrl) {
           downloadPdf(data.pdfUrl, invoice?.invoice_number || "invoice");
