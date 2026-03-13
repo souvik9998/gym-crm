@@ -64,6 +64,10 @@ interface GymSettings {
   gym_phone: string | null;
   gym_address: string | null;
   whatsapp_enabled: boolean | null;
+  gym_email: string | null;
+  gym_gst: string | null;
+  invoice_prefix: string | null;
+  invoice_footer_message: string | null;
 }
 
 /** Skeleton for Packages tab */
@@ -170,6 +174,10 @@ const AdminSettings = () => {
   const [gymPhone, setGymPhone] = useState("");
   const [gymAddress, setGymAddress] = useState("");
   const [whatsappEnabled, setWhatsappEnabled] = useState(true);
+  const [gymEmail, setGymEmail] = useState("");
+  const [gymGst, setGymGst] = useState("");
+  const [invoicePrefix, setInvoicePrefix] = useState("INV");
+  const [invoiceFooter, setInvoiceFooter] = useState("Thank you for choosing our gym!");
 
   // Monthly Packages
   const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
@@ -222,6 +230,10 @@ const AdminSettings = () => {
       setGymPhone(fetchedSettings.gym_phone || "");
       setGymAddress(fetchedSettings.gym_address || "");
       setWhatsappEnabled(fetchedSettings.whatsapp_enabled === true);
+      setGymEmail(fetchedSettings.gym_email || "");
+      setGymGst(fetchedSettings.gym_gst || "");
+      setInvoicePrefix(fetchedSettings.invoice_prefix || "INV");
+      setInvoiceFooter(fetchedSettings.invoice_footer_message || "Thank you for choosing our gym!");
     }
   }, [fetchedSettings]);
 
@@ -319,6 +331,10 @@ const AdminSettings = () => {
         gym_name: gymName,
         gym_phone: gymPhone,
         gym_address: gymAddress,
+        gym_email: gymEmail || null,
+        gym_gst: gymGst || null,
+        invoice_prefix: invoicePrefix || "INV",
+        invoice_footer_message: invoiceFooter || null,
       })
       .eq("id", settings.id)
       .eq("branch_id", currentBranch.id);
@@ -341,8 +357,7 @@ const AdminSettings = () => {
         newValue: newSettings,
         branchId: currentBranch?.id,
       });
-      // Instant local state update
-      setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress } : prev);
+      setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail, gym_gst: gymGst, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter } : prev);
       toast.success("Settings saved successfully");
       backgroundInvalidate();
     }
@@ -1416,6 +1431,70 @@ const AdminSettings = () => {
                         className="min-h-[80px] lg:min-h-[100px] rounded-lg border-border/50 focus:border-primary/40 transition-colors resize-none"
                       />
                     </div>
+                    <div className="grid gap-3 lg:gap-4 grid-cols-1 md:grid-cols-2">
+                      <div className="space-y-1.5 lg:space-y-2">
+                        <Label htmlFor="gym-email" className="text-xs lg:text-sm font-medium">Email</Label>
+                        <Input
+                          id="gym-email"
+                          value={gymEmail}
+                          onChange={(e) => setGymEmail(e.target.value)}
+                          placeholder="gym@example.com"
+                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
+                        />
+                      </div>
+                      <div className="space-y-1.5 lg:space-y-2">
+                        <Label htmlFor="gym-gst" className="text-xs lg:text-sm font-medium">GST Number (Optional)</Label>
+                        <Input
+                          id="gym-gst"
+                          value={gymGst}
+                          onChange={(e) => setGymGst(e.target.value)}
+                          placeholder="22AAAAA0000A1Z5"
+                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Invoice Settings Card */}
+                <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
+                  <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-primary/10 text-primary">
+                        <CurrencyRupeeIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base lg:text-xl">Invoice Settings</CardTitle>
+                        <CardDescription className="text-xs lg:text-sm">Configure invoice numbering and branding</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4 lg:space-y-5 p-4 lg:p-6 pt-0 lg:pt-0">
+                    <div className="grid gap-3 lg:gap-4 grid-cols-1 md:grid-cols-2">
+                      <div className="space-y-1.5 lg:space-y-2">
+                        <Label htmlFor="invoice-prefix" className="text-xs lg:text-sm font-medium">Invoice Prefix</Label>
+                        <Input
+                          id="invoice-prefix"
+                          value={invoicePrefix}
+                          onChange={(e) => setInvoicePrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                          placeholder="INV"
+                          maxLength={10}
+                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors font-mono"
+                        />
+                        <p className="text-[10px] text-muted-foreground">Preview: {invoicePrefix || "INV"}-00001</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 lg:space-y-2">
+                      <Label htmlFor="invoice-footer" className="text-xs lg:text-sm font-medium">Invoice Footer Message</Label>
+                      <Textarea
+                        id="invoice-footer"
+                        value={invoiceFooter}
+                        onChange={(e) => setInvoiceFooter(e.target.value)}
+                        placeholder="Thank you for choosing our gym!"
+                        className="min-h-[60px] lg:min-h-[80px] rounded-lg border-border/50 focus:border-primary/40 transition-colors resize-none"
+                        maxLength={200}
+                      />
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -1425,7 +1504,11 @@ const AdminSettings = () => {
                   disabled={isSaving || (
                     gymName === (settings?.gym_name || "") &&
                     gymPhone === (settings?.gym_phone || "") &&
-                    gymAddress === (settings?.gym_address || "")
+                    gymAddress === (settings?.gym_address || "") &&
+                    gymEmail === (settings?.gym_email || "") &&
+                    gymGst === (settings?.gym_gst || "") &&
+                    invoicePrefix === (settings?.invoice_prefix || "INV") &&
+                    invoiceFooter === (settings?.invoice_footer_message || "Thank you for choosing our gym!")
                   )}
                 >
                   {isSaving ? (

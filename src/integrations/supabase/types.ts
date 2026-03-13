@@ -743,9 +743,13 @@ export type Database = {
         Row: {
           branch_id: string | null
           gym_address: string | null
+          gym_email: string | null
+          gym_gst: string | null
           gym_name: string | null
           gym_phone: string | null
           id: string
+          invoice_footer_message: string | null
+          invoice_prefix: string
           joining_fee: number
           monthly_fee: number
           monthly_packages: number[] | null
@@ -756,9 +760,13 @@ export type Database = {
         Insert: {
           branch_id?: string | null
           gym_address?: string | null
+          gym_email?: string | null
+          gym_gst?: string | null
           gym_name?: string | null
           gym_phone?: string | null
           id?: string
+          invoice_footer_message?: string | null
+          invoice_prefix?: string
           joining_fee?: number
           monthly_fee?: number
           monthly_packages?: number[] | null
@@ -769,9 +777,13 @@ export type Database = {
         Update: {
           branch_id?: string | null
           gym_address?: string | null
+          gym_email?: string | null
+          gym_gst?: string | null
           gym_name?: string | null
           gym_phone?: string | null
           id?: string
+          invoice_footer_message?: string | null
+          invoice_prefix?: string
           joining_fee?: number
           monthly_fee?: number
           monthly_packages?: number[] | null
@@ -785,6 +797,137 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          amount: number
+          branch_id: string | null
+          branch_name: string | null
+          created_at: string
+          customer_name: string
+          customer_phone: string | null
+          daily_pass_user_id: string | null
+          discount: number
+          end_date: string | null
+          footer_message: string | null
+          gym_address: string | null
+          gym_email: string | null
+          gym_fee: number
+          gym_gst: string | null
+          gym_name: string
+          gym_phone: string | null
+          id: string
+          invoice_number: string
+          joining_fee: number
+          member_id: string | null
+          package_name: string | null
+          payment_date: string | null
+          payment_id: string | null
+          payment_mode: string | null
+          pdf_url: string | null
+          start_date: string | null
+          subtotal: number
+          tax: number
+          trainer_fee: number
+          transaction_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          branch_id?: string | null
+          branch_name?: string | null
+          created_at?: string
+          customer_name: string
+          customer_phone?: string | null
+          daily_pass_user_id?: string | null
+          discount?: number
+          end_date?: string | null
+          footer_message?: string | null
+          gym_address?: string | null
+          gym_email?: string | null
+          gym_fee?: number
+          gym_gst?: string | null
+          gym_name: string
+          gym_phone?: string | null
+          id?: string
+          invoice_number: string
+          joining_fee?: number
+          member_id?: string | null
+          package_name?: string | null
+          payment_date?: string | null
+          payment_id?: string | null
+          payment_mode?: string | null
+          pdf_url?: string | null
+          start_date?: string | null
+          subtotal?: number
+          tax?: number
+          trainer_fee?: number
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          branch_id?: string | null
+          branch_name?: string | null
+          created_at?: string
+          customer_name?: string
+          customer_phone?: string | null
+          daily_pass_user_id?: string | null
+          discount?: number
+          end_date?: string | null
+          footer_message?: string | null
+          gym_address?: string | null
+          gym_email?: string | null
+          gym_fee?: number
+          gym_gst?: string | null
+          gym_name?: string
+          gym_phone?: string | null
+          id?: string
+          invoice_number?: string
+          joining_fee?: number
+          member_id?: string | null
+          package_name?: string | null
+          payment_date?: string | null
+          payment_id?: string | null
+          payment_mode?: string | null
+          pdf_url?: string | null
+          start_date?: string | null
+          subtotal?: number
+          tax?: number
+          trainer_fee?: number
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_daily_pass_user_id_fkey"
+            columns: ["daily_pass_user_id"]
+            isOneToOne: false
+            referencedRelation: "daily_pass_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
             referencedColumns: ["id"]
           },
         ]
@@ -2162,6 +2305,7 @@ export type Database = {
           member_phone: string
         }[]
       }
+      generate_invoice_number: { Args: { _branch_id: string }; Returns: string }
       get_dashboard_stats: {
         Args: { _branch_id?: string }
         Returns: {

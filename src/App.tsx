@@ -20,6 +20,7 @@ import MemberProfile from "./pages/MemberProfile";
 import AdminLogin from "./pages/admin/Login";
 import CheckIn from "./pages/CheckIn";
 import NotFound from "./pages/NotFound";
+const InvoicePage = lazy(() => import("./pages/Invoice"));
 
 // Lazy load admin pages for better initial load time
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -66,6 +67,11 @@ const App = () => (
               <Route path="/extend-pt" element={<Navigate to="/admin/login" replace />} />
               <Route path="/success" element={<Success />} />
               <Route path="/profile" element={<MemberProfile />} />
+              <Route path="/invoice/:invoiceId" element={
+                <Suspense fallback={<PageLoader />}>
+                  <InvoicePage />
+                </Suspense>
+              } />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/check-in" element={<CheckIn />} />
               

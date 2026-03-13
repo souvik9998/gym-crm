@@ -692,7 +692,7 @@ Deno.serve(async (req) => {
 
         const [settingsRes, monthlyRes, customRes] = await Promise.all([
           supabase.from("gym_settings")
-            .select("id, gym_name, gym_phone, gym_address, whatsapp_enabled, whatsapp_auto_send")
+            .select("id, gym_name, gym_phone, gym_address, whatsapp_enabled, whatsapp_auto_send, gym_email, gym_gst, invoice_prefix, invoice_footer_message")
             .eq("branch_id", branchId).limit(1).maybeSingle(),
           supabase.from("monthly_packages").select("*").eq("branch_id", branchId).order("months"),
           supabase.from("custom_packages").select("*").eq("branch_id", branchId).order("duration_days"),
