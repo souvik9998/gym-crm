@@ -98,11 +98,46 @@ export default function Invoice() {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
+    const downloadPdf = (url: string, filename: string) => {
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${filename}.pdf`;
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
     if (invoice?.pdf_url) {
-      window.open(invoice.pdf_url, "_blank");
+      downloadPdf(invoice.pdf_url, invoice.invoice_number || "invoice");
     } else {
-      toast.info("PDF not available for this invoice");
+      // Try to generate the PDF
+      toast.info("Generating PDF...");
+      try {
+        const { data, error } = await supabase.functions.invoke("generate-invoice", {
+          body: { paymentId: invoice?.id, branchId: undefined, sendViaWhatsApp: false },
+        });
+        if (!error && data?.pdfUrl) {
+          downloadPdf(data.pdfUrl, invoice?.invoice_number || "invoice");
+          // Refresh invoice data to get the pdf_url
+          fetchInvoice();
+        } else {
+          // Try fetching fresh data
+          const { data: freshInvoice } = await supabase
+            .from("invoices")
+            .select("pdf_url")
+            .eq("invoice_number", invoiceId)
+            .maybeSingle();
+          if (freshInvoice?.pdf_url) {
+            downloadPdf(freshInvoice.pdf_url, invoice?.invoice_number || "invoice");
+          } else {
+            toast.error("PDF not available for this invoice");
+          }
+        }
+      } catch {
+        toast.error("Failed to generate PDF");
+      }
     }
   };
 

@@ -493,6 +493,7 @@ Deno.serve(async (req) => {
         success: true,
         invoiceNumber,
         invoiceUrl: invoiceLink,
+        pdfUrl: pdfUrl,
         whatsappSent,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
