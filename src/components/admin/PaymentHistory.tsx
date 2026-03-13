@@ -577,16 +577,42 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                     )}
                   </div>
                   {payment.status === "success" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full mt-3 gap-2"
-                      disabled={sendingInvoiceId === payment.id}
-                      onClick={() => handleSendInvoice(payment.id)}
-                    >
-                      <FileText className={`w-4 h-4 ${sendingInvoiceId === payment.id ? "animate-pulse" : ""}`} />
-                      {sendingInvoiceId === payment.id ? "Sending..." : "Send Invoice via WhatsApp"}
-                    </Button>
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 gap-1.5"
+                        onClick={() => handleViewInvoice(payment.id)}
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        View Invoice
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="px-2">
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleDownloadInvoicePDF(payment.id)}>
+                            <Download className="w-3.5 h-3.5 mr-2" />
+                            Download PDF
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleCopyInvoiceLink(payment.id)}>
+                            <Copy className="w-3.5 h-3.5 mr-2" />
+                            Copy Link
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleShareInvoiceWhatsApp(payment.id)}>
+                            <Share2 className="w-3.5 h-3.5 mr-2" />
+                            Share via WhatsApp
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSendInvoice(payment.id)} disabled={sendingInvoiceId === payment.id}>
+                            <FileText className="w-3.5 h-3.5 mr-2" />
+                            {sendingInvoiceId === payment.id ? "Sending..." : "Send via WhatsApp"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   )}
                 </div>
               }
