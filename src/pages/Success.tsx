@@ -1,7 +1,9 @@
 import { useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Calendar, Phone, User, IndianRupee, Home, Building2 } from "lucide-react";
+import { CheckCircle2, Calendar, Phone, User, IndianRupee, Camera, Building2 } from "lucide-react";
+import { toast } from "sonner";
 import PoweredByBadge from "@/components/PoweredByBadge";
 
 interface SuccessState {
@@ -123,10 +125,12 @@ const Success = () => {
               variant="accent"
               size="lg"
               className="w-full"
-              onClick={() => navigate("/")}
+              onClick={() => {
+                toast.success("Take a screenshot now to save your receipt!");
+              }}
             >
-              <Home className="w-4 h-4 mr-2" />
-              Back to Home
+              <Camera className="w-4 h-4 mr-2" />
+              Take Screenshot
             </Button>
           </div>
 
