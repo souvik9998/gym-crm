@@ -1547,6 +1547,9 @@ const AdminSettings = () => {
                   </CardContent>
                 </Card>
 
+                {/* Automated Reports Card */}
+                <AutomatedReportsSettings />
+
                 <Button
                   className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
                   onClick={handleSaveSettings}
