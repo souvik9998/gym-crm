@@ -67,6 +67,11 @@ const App = () => (
               <Route path="/extend-pt" element={<Navigate to="/admin/login" replace />} />
               <Route path="/success" element={<Success />} />
               <Route path="/profile" element={<MemberProfile />} />
+              <Route path="/invoice/:invoiceId" element={
+                <Suspense fallback={<PageLoader />}>
+                  <InvoicePage />
+                </Suspense>
+              } />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/check-in" element={<CheckIn />} />
               
