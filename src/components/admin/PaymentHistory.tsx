@@ -270,7 +270,112 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     }
   };
 
-  // Check if data is confirmed empty
+  const handleViewInvoice = async (paymentId: string) => {
+    try {
+      const { data } = await supabase
+        .from("invoices")
+        .select("invoice_number")
+        .eq("payment_id", paymentId)
+        .maybeSingle();
+      
+      if (data?.invoice_number) {
+        window.open(`/invoice/${data.invoice_number}`, "_blank");
+      } else {
+        // Generate invoice first, then open
+        toast.info("Generating invoice...");
+        const { data: genData, error } = await supabase.functions.invoke("generate-invoice", {
+          body: { paymentId, branchId: currentBranch?.id, sendViaWhatsApp: false },
+        });
+        if (error || !genData?.success) {
+          toast.error("Failed to generate invoice");
+          return;
+        }
+        if (genData.invoiceNumber) {
+          window.open(`/invoice/${genData.invoiceNumber}`, "_blank");
+        }
+      }
+    } catch {
+      toast.error("Failed to load invoice");
+    }
+  };
+
+  const handleCopyInvoiceLink = async (paymentId: string) => {
+    try {
+      const { data } = await supabase
+        .from("invoices")
+        .select("invoice_number")
+        .eq("payment_id", paymentId)
+        .maybeSingle();
+      
+      if (data?.invoice_number) {
+        const url = `${window.location.origin}/invoice/${data.invoice_number}`;
+        await navigator.clipboard.writeText(url);
+        toast.success("Invoice link copied!");
+      } else {
+        toast.info("Generating invoice first...");
+        const { data: genData, error } = await supabase.functions.invoke("generate-invoice", {
+          body: { paymentId, branchId: currentBranch?.id, sendViaWhatsApp: false },
+        });
+        if (!error && genData?.invoiceNumber) {
+          const url = `${window.location.origin}/invoice/${genData.invoiceNumber}`;
+          await navigator.clipboard.writeText(url);
+          toast.success("Invoice link copied!");
+        } else {
+          toast.error("Failed to generate invoice");
+        }
+      }
+    } catch {
+      toast.error("Failed to copy link");
+    }
+  };
+
+  const handleDownloadInvoicePDF = async (paymentId: string) => {
+    try {
+      const { data } = await supabase
+        .from("invoices")
+        .select("pdf_url, invoice_number")
+        .eq("payment_id", paymentId)
+        .maybeSingle();
+      
+      if (data?.pdf_url) {
+        window.open(data.pdf_url, "_blank");
+      } else {
+        toast.info("Generating PDF...");
+        const { data: genData, error } = await supabase.functions.invoke("generate-invoice", {
+          body: { paymentId, branchId: currentBranch?.id, sendViaWhatsApp: false },
+        });
+        if (!error && genData?.pdfUrl) {
+          window.open(genData.pdfUrl, "_blank");
+        } else {
+          toast.error("Failed to generate PDF");
+        }
+      }
+    } catch {
+      toast.error("Failed to download PDF");
+    }
+  };
+
+  const handleShareInvoiceWhatsApp = async (paymentId: string) => {
+    try {
+      const { data } = await supabase
+        .from("invoices")
+        .select("invoice_number, amount, customer_name")
+        .eq("payment_id", paymentId)
+        .maybeSingle();
+      
+      if (data?.invoice_number) {
+        const url = `${window.location.origin}/invoice/${data.invoice_number}`;
+        const text = `Invoice ${data.invoice_number} - ₹${Number(data.amount).toLocaleString("en-IN")}\n${data.customer_name}\n\n${url}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+      } else {
+        // Fallback: generate and send via backend
+        handleSendInvoice(paymentId);
+      }
+    } catch {
+      handleSendInvoice(paymentId);
+    }
+  };
+
   const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && filteredPayments.length === 0;
 
   if (showLoading) {
