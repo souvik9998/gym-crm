@@ -230,6 +230,10 @@ const AdminSettings = () => {
       setGymPhone(fetchedSettings.gym_phone || "");
       setGymAddress(fetchedSettings.gym_address || "");
       setWhatsappEnabled(fetchedSettings.whatsapp_enabled === true);
+      setGymEmail(fetchedSettings.gym_email || "");
+      setGymGst(fetchedSettings.gym_gst || "");
+      setInvoicePrefix(fetchedSettings.invoice_prefix || "INV");
+      setInvoiceFooter(fetchedSettings.invoice_footer_message || "Thank you for choosing our gym!");
     }
   }, [fetchedSettings]);
 
