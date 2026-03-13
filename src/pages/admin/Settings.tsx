@@ -31,6 +31,7 @@ import { WhatsAppTemplates } from "@/components/admin/WhatsAppTemplates";
 import { WhatsAppAutoSendSettings } from "@/components/admin/WhatsAppAutoSendSettings";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { BranchManagement } from "@/components/admin/BranchManagement";
+import { AutomatedReportsSettings } from "@/components/admin/AutomatedReportsSettings";
 import { SubscriptionPlanTab } from "@/components/admin/SubscriptionPlanTab";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
