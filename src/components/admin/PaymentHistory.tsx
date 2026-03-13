@@ -337,15 +337,39 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
         .eq("payment_id", paymentId)
         .maybeSingle();
       
+      const downloadPdf = (url: string, filename: string) => {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${filename}.pdf`;
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
       if (data?.pdf_url) {
-        window.open(data.pdf_url, "_blank");
+        downloadPdf(data.pdf_url, data.invoice_number || "invoice");
       } else {
         toast.info("Generating PDF...");
         const { data: genData, error } = await supabase.functions.invoke("generate-invoice", {
           body: { paymentId, branchId: currentBranch?.id, sendViaWhatsApp: false },
         });
-        if (!error && genData?.pdfUrl) {
-          window.open(genData.pdfUrl, "_blank");
+        if (!error && genData?.success) {
+          if (genData.pdfUrl) {
+            downloadPdf(genData.pdfUrl, genData.invoiceNumber || "invoice");
+          } else if (genData.invoiceNumber) {
+            // Fetch the pdf_url from the newly created invoice
+            const { data: newInvoice } = await supabase
+              .from("invoices")
+              .select("pdf_url")
+              .eq("invoice_number", genData.invoiceNumber)
+              .maybeSingle();
+            if (newInvoice?.pdf_url) {
+              downloadPdf(newInvoice.pdf_url, genData.invoiceNumber);
+            } else {
+              toast.error("PDF not available");
+            }
+          }
         } else {
           toast.error("Failed to generate PDF");
         }
