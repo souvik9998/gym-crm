@@ -750,6 +750,9 @@ export type Database = {
           id: string
           invoice_footer_message: string | null
           invoice_prefix: string
+          invoice_show_gst: boolean
+          invoice_tax_rate: number
+          invoice_terms: string | null
           joining_fee: number
           monthly_fee: number
           monthly_packages: number[] | null
@@ -767,6 +770,9 @@ export type Database = {
           id?: string
           invoice_footer_message?: string | null
           invoice_prefix?: string
+          invoice_show_gst?: boolean
+          invoice_tax_rate?: number
+          invoice_terms?: string | null
           joining_fee?: number
           monthly_fee?: number
           monthly_packages?: number[] | null
@@ -784,6 +790,9 @@ export type Database = {
           id?: string
           invoice_footer_message?: string | null
           invoice_prefix?: string
+          invoice_show_gst?: boolean
+          invoice_tax_rate?: number
+          invoice_terms?: string | null
           joining_fee?: number
           monthly_fee?: number
           monthly_packages?: number[] | null

@@ -2,9 +2,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Calendar, Phone, User, IndianRupee, Camera, Building2 } from "lucide-react";
+import { CheckCircle2, Calendar, Phone, User, IndianRupee, Camera, Building2, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import PoweredByBadge from "@/components/PoweredByBadge";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SuccessState {
   memberName: string;
@@ -13,7 +14,61 @@ interface SuccessState {
   endDate: string;
   isNewMember: boolean;
   branchName?: string;
+  paymentId?: string;
+  branchId?: string;
 }
+
+const DownloadInvoiceButton = ({ paymentId, branchId }: { paymentId: string; branchId?: string }) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleDownload = async () => {
+    setLoading(true);
+    try {
+      // Check if invoice already exists
+      const { data: existing } = await supabase
+        .from("invoices")
+        .select("invoice_number, pdf_url")
+        .eq("payment_id", paymentId)
+        .maybeSingle();
+
+      if (existing?.invoice_number) {
+        window.open(`/invoice/${existing.invoice_number}`, "_blank");
+        return;
+      }
+
+      // Generate invoice
+      const { data, error } = await supabase.functions.invoke("generate-invoice", {
+        body: { paymentId, branchId, sendViaWhatsApp: false },
+      });
+
+      if (error || !data?.success) {
+        toast.error("Failed to generate invoice");
+        return;
+      }
+
+      if (data.invoiceNumber) {
+        window.open(`/invoice/${data.invoiceNumber}`, "_blank");
+      }
+    } catch {
+      toast.error("Failed to load invoice");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button
+      variant="accent"
+      size="lg"
+      className="w-full gap-2"
+      onClick={handleDownload}
+      disabled={loading}
+    >
+      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+      {loading ? "Generating Invoice..." : "View Invoice"}
+    </Button>
+  );
+};
 
 const Success = () => {
   const location = useLocation();
@@ -121,8 +176,11 @@ const Success = () => {
 
           {/* Actions */}
           <div className="space-y-3">
+            {state.paymentId && (
+              <DownloadInvoiceButton paymentId={state.paymentId} branchId={state.branchId} />
+            )}
             <Button
-              variant="accent"
+              variant="outline"
               size="lg"
               className="w-full"
               onClick={() => {

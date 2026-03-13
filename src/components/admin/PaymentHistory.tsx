@@ -18,7 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download, User, Clock, FileText } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download, User, Clock, FileText, Eye, Copy, Share2, MoreVertical } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
@@ -264,7 +270,112 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     }
   };
 
-  // Check if data is confirmed empty
+  const handleViewInvoice = async (paymentId: string) => {
+    try {
+      const { data } = await supabase
+        .from("invoices")
+        .select("invoice_number")
+        .eq("payment_id", paymentId)
+        .maybeSingle();
+      
+      if (data?.invoice_number) {
+        window.open(`/invoice/${data.invoice_number}`, "_blank");
+      } else {
+        // Generate invoice first, then open
+        toast.info("Generating invoice...");
+        const { data: genData, error } = await supabase.functions.invoke("generate-invoice", {
+          body: { paymentId, branchId: currentBranch?.id, sendViaWhatsApp: false },
+        });
+        if (error || !genData?.success) {
+          toast.error("Failed to generate invoice");
+          return;
+        }
+        if (genData.invoiceNumber) {
+          window.open(`/invoice/${genData.invoiceNumber}`, "_blank");
+        }
+      }
+    } catch {
+      toast.error("Failed to load invoice");
+    }
+  };
+
+  const handleCopyInvoiceLink = async (paymentId: string) => {
+    try {
+      const { data } = await supabase
+        .from("invoices")
+        .select("invoice_number")
+        .eq("payment_id", paymentId)
+        .maybeSingle();
+      
+      if (data?.invoice_number) {
+        const url = `${window.location.origin}/invoice/${data.invoice_number}`;
+        await navigator.clipboard.writeText(url);
+        toast.success("Invoice link copied!");
+      } else {
+        toast.info("Generating invoice first...");
+        const { data: genData, error } = await supabase.functions.invoke("generate-invoice", {
+          body: { paymentId, branchId: currentBranch?.id, sendViaWhatsApp: false },
+        });
+        if (!error && genData?.invoiceNumber) {
+          const url = `${window.location.origin}/invoice/${genData.invoiceNumber}`;
+          await navigator.clipboard.writeText(url);
+          toast.success("Invoice link copied!");
+        } else {
+          toast.error("Failed to generate invoice");
+        }
+      }
+    } catch {
+      toast.error("Failed to copy link");
+    }
+  };
+
+  const handleDownloadInvoicePDF = async (paymentId: string) => {
+    try {
+      const { data } = await supabase
+        .from("invoices")
+        .select("pdf_url, invoice_number")
+        .eq("payment_id", paymentId)
+        .maybeSingle();
+      
+      if (data?.pdf_url) {
+        window.open(data.pdf_url, "_blank");
+      } else {
+        toast.info("Generating PDF...");
+        const { data: genData, error } = await supabase.functions.invoke("generate-invoice", {
+          body: { paymentId, branchId: currentBranch?.id, sendViaWhatsApp: false },
+        });
+        if (!error && genData?.pdfUrl) {
+          window.open(genData.pdfUrl, "_blank");
+        } else {
+          toast.error("Failed to generate PDF");
+        }
+      }
+    } catch {
+      toast.error("Failed to download PDF");
+    }
+  };
+
+  const handleShareInvoiceWhatsApp = async (paymentId: string) => {
+    try {
+      const { data } = await supabase
+        .from("invoices")
+        .select("invoice_number, amount, customer_name")
+        .eq("payment_id", paymentId)
+        .maybeSingle();
+      
+      if (data?.invoice_number) {
+        const url = `${window.location.origin}/invoice/${data.invoice_number}`;
+        const text = `Invoice ${data.invoice_number} - ₹${Number(data.amount).toLocaleString("en-IN")}\n${data.customer_name}\n\n${url}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+      } else {
+        // Fallback: generate and send via backend
+        handleSendInvoice(paymentId);
+      }
+    } catch {
+      handleSendInvoice(paymentId);
+    }
+  };
+
   const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && filteredPayments.length === 0;
 
   if (showLoading) {
@@ -466,16 +577,42 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                     )}
                   </div>
                   {payment.status === "success" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full mt-3 gap-2"
-                      disabled={sendingInvoiceId === payment.id}
-                      onClick={() => handleSendInvoice(payment.id)}
-                    >
-                      <FileText className={`w-4 h-4 ${sendingInvoiceId === payment.id ? "animate-pulse" : ""}`} />
-                      {sendingInvoiceId === payment.id ? "Sending..." : "Send Invoice via WhatsApp"}
-                    </Button>
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 gap-1.5"
+                        onClick={() => handleViewInvoice(payment.id)}
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        View Invoice
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="px-2">
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleDownloadInvoicePDF(payment.id)}>
+                            <Download className="w-3.5 h-3.5 mr-2" />
+                            Download PDF
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleCopyInvoiceLink(payment.id)}>
+                            <Copy className="w-3.5 h-3.5 mr-2" />
+                            Copy Link
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleShareInvoiceWhatsApp(payment.id)}>
+                            <Share2 className="w-3.5 h-3.5 mr-2" />
+                            Share via WhatsApp
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSendInvoice(payment.id)} disabled={sendingInvoiceId === payment.id}>
+                            <FileText className="w-3.5 h-3.5 mr-2" />
+                            {sendingInvoiceId === payment.id ? "Sending..." : "Send via WhatsApp"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   )}
                 </div>
               }
@@ -553,16 +690,40 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                   <TableCell>{getStatusBadge(payment.status)}</TableCell>
                   <TableCell>
                     {payment.status === "success" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        disabled={sendingInvoiceId === payment.id}
-                        onClick={() => handleSendInvoice(payment.id)}
-                        title="Send Invoice via WhatsApp"
-                      >
-                        <FileText className={`w-4 h-4 ${sendingInvoiceId === payment.id ? "animate-pulse" : "text-primary"}`} />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Invoice actions"
+                          >
+                            <FileText className="w-4 h-4 text-primary" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleViewInvoice(payment.id)}>
+                            <Eye className="w-3.5 h-3.5 mr-2" />
+                            View Invoice
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownloadInvoicePDF(payment.id)}>
+                            <Download className="w-3.5 h-3.5 mr-2" />
+                            Download PDF
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleCopyInvoiceLink(payment.id)}>
+                            <Copy className="w-3.5 h-3.5 mr-2" />
+                            Copy Link
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleShareInvoiceWhatsApp(payment.id)}>
+                            <Share2 className="w-3.5 h-3.5 mr-2" />
+                            Share via WhatsApp
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSendInvoice(payment.id)} disabled={sendingInvoiceId === payment.id}>
+                            <FileText className="w-3.5 h-3.5 mr-2" />
+                            {sendingInvoiceId === payment.id ? "Sending..." : "Send Invoice to WhatsApp"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </TableCell>
                 </TableRow>

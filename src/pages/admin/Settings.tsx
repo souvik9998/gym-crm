@@ -68,6 +68,9 @@ interface GymSettings {
   gym_gst: string | null;
   invoice_prefix: string | null;
   invoice_footer_message: string | null;
+  invoice_tax_rate: number | null;
+  invoice_terms: string | null;
+  invoice_show_gst: boolean | null;
 }
 
 /** Skeleton for Packages tab */
@@ -178,6 +181,9 @@ const AdminSettings = () => {
   const [gymGst, setGymGst] = useState("");
   const [invoicePrefix, setInvoicePrefix] = useState("INV");
   const [invoiceFooter, setInvoiceFooter] = useState("Thank you for choosing our gym!");
+  const [invoiceTaxRate, setInvoiceTaxRate] = useState("0");
+  const [invoiceTerms, setInvoiceTerms] = useState("");
+  const [invoiceShowGst, setInvoiceShowGst] = useState(true);
 
   // Monthly Packages
   const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
@@ -234,6 +240,9 @@ const AdminSettings = () => {
       setGymGst(fetchedSettings.gym_gst || "");
       setInvoicePrefix(fetchedSettings.invoice_prefix || "INV");
       setInvoiceFooter(fetchedSettings.invoice_footer_message || "Thank you for choosing our gym!");
+      setInvoiceTaxRate(String(fetchedSettings.invoice_tax_rate || 0));
+      setInvoiceTerms(fetchedSettings.invoice_terms || "");
+      setInvoiceShowGst(fetchedSettings.invoice_show_gst !== false);
     }
   }, [fetchedSettings]);
 
@@ -335,6 +344,9 @@ const AdminSettings = () => {
         gym_gst: gymGst || null,
         invoice_prefix: invoicePrefix || "INV",
         invoice_footer_message: invoiceFooter || null,
+        invoice_tax_rate: Number(invoiceTaxRate) || 0,
+        invoice_terms: invoiceTerms || null,
+        invoice_show_gst: invoiceShowGst,
       })
       .eq("id", settings.id)
       .eq("branch_id", currentBranch.id);
@@ -357,7 +369,7 @@ const AdminSettings = () => {
         newValue: newSettings,
         branchId: currentBranch?.id,
       });
-      setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail, gym_gst: gymGst, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter } : prev);
+      setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail, gym_gst: gymGst, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_tax_rate: Number(invoiceTaxRate) || 0, invoice_terms: invoiceTerms, invoice_show_gst: invoiceShowGst } : prev);
       toast.success("Settings saved successfully");
       backgroundInvalidate();
     }
@@ -1483,6 +1495,31 @@ const AdminSettings = () => {
                         />
                         <p className="text-[10px] text-muted-foreground">Preview: {invoicePrefix || "INV"}-00001</p>
                       </div>
+                      <div className="space-y-1.5 lg:space-y-2">
+                        <Label htmlFor="invoice-tax-rate" className="text-xs lg:text-sm font-medium">Tax Rate (%)</Label>
+                        <Input
+                          id="invoice-tax-rate"
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                          value={invoiceTaxRate}
+                          onChange={(e) => setInvoiceTaxRate(e.target.value)}
+                          placeholder="0"
+                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
+                        />
+                        <p className="text-[10px] text-muted-foreground">Applied to invoice subtotal (e.g. 18 for GST)</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-3 lg:p-4 bg-muted/20 border border-border/40 rounded-xl">
+                      <div className="space-y-0.5">
+                        <p className="font-medium text-sm lg:text-base">Show GST on Invoice</p>
+                        <p className="text-[10px] lg:text-xs text-muted-foreground">Display GST number on invoices</p>
+                      </div>
+                      <Switch
+                        checked={invoiceShowGst}
+                        onCheckedChange={setInvoiceShowGst}
+                      />
                     </div>
                     <div className="space-y-1.5 lg:space-y-2">
                       <Label htmlFor="invoice-footer" className="text-xs lg:text-sm font-medium">Invoice Footer Message</Label>
@@ -1493,6 +1530,17 @@ const AdminSettings = () => {
                         placeholder="Thank you for choosing our gym!"
                         className="min-h-[60px] lg:min-h-[80px] rounded-lg border-border/50 focus:border-primary/40 transition-colors resize-none"
                         maxLength={200}
+                      />
+                    </div>
+                    <div className="space-y-1.5 lg:space-y-2">
+                      <Label htmlFor="invoice-terms" className="text-xs lg:text-sm font-medium">Terms & Conditions (Optional)</Label>
+                      <Textarea
+                        id="invoice-terms"
+                        value={invoiceTerms}
+                        onChange={(e) => setInvoiceTerms(e.target.value)}
+                        placeholder="e.g. No refunds after 7 days. Membership is non-transferable."
+                        className="min-h-[60px] lg:min-h-[80px] rounded-lg border-border/50 focus:border-primary/40 transition-colors resize-none"
+                        maxLength={500}
                       />
                     </div>
                   </CardContent>
@@ -1508,7 +1556,10 @@ const AdminSettings = () => {
                     gymEmail === (settings?.gym_email || "") &&
                     gymGst === (settings?.gym_gst || "") &&
                     invoicePrefix === (settings?.invoice_prefix || "INV") &&
-                    invoiceFooter === (settings?.invoice_footer_message || "Thank you for choosing our gym!")
+                    invoiceFooter === (settings?.invoice_footer_message || "Thank you for choosing our gym!") &&
+                    invoiceTaxRate === String(settings?.invoice_tax_rate || 0) &&
+                    invoiceTerms === (settings?.invoice_terms || "") &&
+                    invoiceShowGst === (settings?.invoice_show_gst !== false)
                   )}
                 >
                   {isSaving ? (
