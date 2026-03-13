@@ -1556,7 +1556,10 @@ const AdminSettings = () => {
                     gymEmail === (settings?.gym_email || "") &&
                     gymGst === (settings?.gym_gst || "") &&
                     invoicePrefix === (settings?.invoice_prefix || "INV") &&
-                    invoiceFooter === (settings?.invoice_footer_message || "Thank you for choosing our gym!")
+                    invoiceFooter === (settings?.invoice_footer_message || "Thank you for choosing our gym!") &&
+                    invoiceTaxRate === String(settings?.invoice_tax_rate || 0) &&
+                    invoiceTerms === (settings?.invoice_terms || "") &&
+                    invoiceShowGst === (settings?.invoice_show_gst !== false)
                   )}
                 >
                   {isSaving ? (
