@@ -344,6 +344,9 @@ const AdminSettings = () => {
         gym_gst: gymGst || null,
         invoice_prefix: invoicePrefix || "INV",
         invoice_footer_message: invoiceFooter || null,
+        invoice_tax_rate: Number(invoiceTaxRate) || 0,
+        invoice_terms: invoiceTerms || null,
+        invoice_show_gst: invoiceShowGst,
       })
       .eq("id", settings.id)
       .eq("branch_id", currentBranch.id);
