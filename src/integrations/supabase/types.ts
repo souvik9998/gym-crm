@@ -1529,6 +1529,71 @@ export type Database = {
           },
         ]
       }
+      report_schedules: {
+        Row: {
+          branch_id: string
+          created_at: string
+          frequency: string
+          id: string
+          include_attendance: boolean
+          include_branch_analysis: boolean
+          include_memberships: boolean
+          include_payments: boolean
+          include_trainers: boolean
+          is_enabled: boolean
+          last_sent_at: string | null
+          next_run_at: string | null
+          report_email: string | null
+          send_whatsapp: boolean
+          updated_at: string
+          whatsapp_phone: string | null
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          frequency?: string
+          id?: string
+          include_attendance?: boolean
+          include_branch_analysis?: boolean
+          include_memberships?: boolean
+          include_payments?: boolean
+          include_trainers?: boolean
+          is_enabled?: boolean
+          last_sent_at?: string | null
+          next_run_at?: string | null
+          report_email?: string | null
+          send_whatsapp?: boolean
+          updated_at?: string
+          whatsapp_phone?: string | null
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          frequency?: string
+          id?: string
+          include_attendance?: boolean
+          include_branch_analysis?: boolean
+          include_memberships?: boolean
+          include_payments?: boolean
+          include_trainers?: boolean
+          is_enabled?: boolean
+          last_sent_at?: string | null
+          next_run_at?: string | null
+          report_email?: string | null
+          send_whatsapp?: boolean
+          updated_at?: string
+          whatsapp_phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_schedules_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: true
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff: {
         Row: {
           auth_user_id: string | null
