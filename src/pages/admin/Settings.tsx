@@ -240,6 +240,9 @@ const AdminSettings = () => {
       setGymGst(fetchedSettings.gym_gst || "");
       setInvoicePrefix(fetchedSettings.invoice_prefix || "INV");
       setInvoiceFooter(fetchedSettings.invoice_footer_message || "Thank you for choosing our gym!");
+      setInvoiceTaxRate(String(fetchedSettings.invoice_tax_rate || 0));
+      setInvoiceTerms(fetchedSettings.invoice_terms || "");
+      setInvoiceShowGst(fetchedSettings.invoice_show_gst !== false);
     }
   }, [fetchedSettings]);
 
