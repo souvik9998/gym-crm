@@ -64,15 +64,22 @@ function setCache<T>(key: string, data: T): void {
   } catch { /* storage full, ignore */ }
 }
 
+export interface PublicTaxSettings {
+  taxRate: number;
+  taxEnabled: boolean;
+  gymGst: string;
+}
+
 /**
  * Fetch packages for public registration (minimal data only)
  */
 export async function fetchPublicPackages(branchId?: string): Promise<{
   monthlyPackages: PublicMonthlyPackage[];
   customPackages: PublicCustomPackage[];
+  taxSettings?: PublicTaxSettings;
 }> {
   const cacheKey = `public-packages-${branchId || "all"}`;
-  const cached = getCached<{ monthlyPackages: PublicMonthlyPackage[]; customPackages: PublicCustomPackage[] }>(cacheKey);
+  const cached = getCached<{ monthlyPackages: PublicMonthlyPackage[]; customPackages: PublicCustomPackage[]; taxSettings?: PublicTaxSettings }>(cacheKey);
   if (cached) return cached;
 
   try {
@@ -100,6 +107,7 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
     const result = {
       monthlyPackages: data.monthlyPackages || [],
       customPackages: data.customPackages || [],
+      taxSettings: data.taxSettings || undefined,
     };
     setCache(cacheKey, result);
     return result;
