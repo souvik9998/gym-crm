@@ -15,7 +15,8 @@ import {
   fetchPublicTrainers, 
   type PublicMonthlyPackage,
   type PublicCustomPackage,
-  type PublicTrainer 
+  type PublicTrainer,
+  type PublicTaxSettings,
 } from "@/api/publicData";
 
 interface Trainer {
