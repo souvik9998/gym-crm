@@ -311,32 +311,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if invoice already exists for this payment
+    // Check if invoice already exists for this payment (we refresh data even when it exists)
     const { data: existingInvoice } = await supabase
       .from("invoices")
-      .select("id, invoice_number")
+      .select("id, invoice_number, transaction_id")
       .eq("payment_id", paymentId)
       .maybeSingle();
-
-    if (existingInvoice) {
-      // Return existing invoice
-      const invoiceLink = `https://gym-qr-pro.lovable.app/invoice/${existingInvoice.invoice_number}`;
-      
-      // Still send WhatsApp if requested
-      if (sendViaWhatsApp) {
-        await sendWhatsAppInvoice(supabase, paymentId, existingInvoice.invoice_number, invoiceLink, PERISKOPE_API_KEY, PERISKOPE_PHONE, branchId);
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          invoiceNumber: existingInvoice.invoice_number,
-          invoiceUrl: invoiceLink,
-          whatsappSent: sendViaWhatsApp,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
     // Fetch payment with related data
     const { data: payment, error: paymentError } = await supabase
@@ -344,8 +324,8 @@ Deno.serve(async (req) => {
       .select(`
         *,
         members:member_id (id, name, phone, branch_id),
-        daily_pass_users:daily_pass_user_id (id, name, phone),
-        subscriptions:subscription_id (start_date, end_date, plan_months, trainer_fee, personal_trainer_id, is_custom_package, custom_days)
+        daily_pass_users:daily_pass_user_id (id, name, phone, branch_id),
+        subscriptions:subscription_id (start_date, end_date, plan_months, trainer_fee, personal_trainer_id, is_custom_package, custom_days, branch_id)
       `)
       .eq("id", paymentId)
       .single();
@@ -360,7 +340,32 @@ Deno.serve(async (req) => {
     const member = payment.members as any;
     const dailyPassUser = payment.daily_pass_users as any;
     const subscription = payment.subscriptions as any;
-    const effectiveBranchId = branchId || payment.branch_id || member?.branch_id;
+
+    let effectiveBranchId = branchId || payment.branch_id || member?.branch_id || dailyPassUser?.branch_id || subscription?.branch_id;
+
+    // Fallback branch for old records that don't have branch_id
+    if (!effectiveBranchId) {
+      const { data: fallbackBranch } = await supabase
+        .from("branches")
+        .select("id")
+        .eq("is_default", true)
+        .maybeSingle();
+
+      if (fallbackBranch?.id) {
+        effectiveBranchId = fallbackBranch.id;
+      } else {
+        const { data: anyActiveBranch } = await supabase
+          .from("branches")
+          .select("id")
+          .eq("is_active", true)
+          .limit(1)
+          .maybeSingle();
+
+        if (anyActiveBranch?.id) {
+          effectiveBranchId = anyActiveBranch.id;
+        }
+      }
+    }
 
     // Fetch gym settings for branding
     let gymName = "Pro Plus Fitness";
