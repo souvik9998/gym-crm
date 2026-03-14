@@ -125,6 +125,7 @@ export function AutomatedReportsSettings() {
         include_attendance: includeAttendance,
         include_trainers: includeTrainers,
         include_branch_analysis: includeBranchAnalysis,
+        report_format: reportFormat,
         next_run_at: isEnabled ? calculateNextRun(frequency) : null,
         updated_at: new Date().toISOString(),
       };
