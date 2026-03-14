@@ -306,14 +306,13 @@ const AdminSettings = () => {
     }, 1500);
   }, []);
 
-  const handleSaveSettings = async () => {
+  const handleSaveGymInfo = async () => {
     if (!settings?.id || !currentBranch?.id) return;
-    setIsSaving(true);
+    setIsSavingGymInfo(true);
 
-    const oldSettings = { gym_name: settings.gym_name, gym_phone: settings.gym_phone, gym_address: settings.gym_address };
-    const newSettings = { gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress };
+    const oldSettings = { gym_name: settings.gym_name, gym_phone: settings.gym_phone, gym_address: settings.gym_address, gym_email: settings.gym_email };
+    const newSettings = { gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail };
 
-    // Use staff operations if staff is logged in
     if (isStaffLoggedIn) {
       const { error } = await staffOps.updateGymSettings({
         settingsId: settings.id,
@@ -322,56 +321,100 @@ const AdminSettings = () => {
         gymPhone,
         gymAddress,
       });
-      setIsSaving(false);
+      setIsSavingGymInfo(false);
       if (error) {
         toast.error("Error", { description: error });
       } else {
-        // Instant local state update
-        setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress } : prev);
-        toast.success("Settings saved successfully");
+        setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail } : prev);
+        toast.success("Gym info saved");
         backgroundInvalidate();
       }
       return;
     }
 
-    // Admin flow
+    const { error } = await supabase
+      .from("gym_settings")
+      .update({ gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail || null })
+      .eq("id", settings.id)
+      .eq("branch_id", currentBranch.id);
+
+    setIsSavingGymInfo(false);
+    if (error) {
+      toast.error("Error", { description: error.message });
+    } else {
+      await logAdminActivity({
+        category: "settings", type: "gym_info_updated",
+        description: `Updated gym information for ${currentBranch?.name || "branch"}`,
+        entityType: "gym_settings", entityId: settings.id,
+        entityName: currentBranch?.name || "Gym Settings",
+        oldValue: oldSettings, newValue: newSettings, branchId: currentBranch?.id,
+      });
+      setSettings(prev => prev ? { ...prev, ...newSettings } : prev);
+      toast.success("Gym info saved");
+      backgroundInvalidate();
+    }
+  };
+
+  const handleSaveGst = async () => {
+    if (!settings?.id || !currentBranch?.id) return;
+    setIsSavingGst(true);
+
     const { error } = await supabase
       .from("gym_settings")
       .update({
-        gym_name: gymName,
-        gym_phone: gymPhone,
-        gym_address: gymAddress,
-        gym_email: gymEmail || null,
-        gym_gst: gymGst || null,
-        invoice_prefix: invoicePrefix || "INV",
-        invoice_footer_message: invoiceFooter || null,
-        invoice_tax_rate: Number(invoiceTaxRate) || 0,
-        invoice_terms: invoiceTerms || null,
         invoice_show_gst: invoiceShowGst,
+        invoice_tax_rate: Number(invoiceTaxRate) || 0,
+        gym_gst: gymGst || null,
       })
       .eq("id", settings.id)
       .eq("branch_id", currentBranch.id);
 
-    setIsSaving(false);
-
+    setIsSavingGst(false);
     if (error) {
-      toast.error("Error", {
-        description: error.message,
-      });
+      toast.error("Error", { description: error.message });
     } else {
       await logAdminActivity({
-        category: "settings",
-        type: "gym_info_updated",
-        description: `Updated gym information for ${currentBranch?.name || "branch"}`,
-        entityType: "gym_settings",
-        entityId: settings.id,
+        category: "settings", type: "gst_settings_updated",
+        description: `Updated GST settings for ${currentBranch?.name || "branch"}`,
+        entityType: "gym_settings", entityId: settings.id,
         entityName: currentBranch?.name || "Gym Settings",
-        oldValue: oldSettings,
-        newValue: newSettings,
+        newValue: { invoice_show_gst: invoiceShowGst, invoice_tax_rate: Number(invoiceTaxRate), gym_gst: gymGst },
         branchId: currentBranch?.id,
       });
-      setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail, gym_gst: gymGst, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_tax_rate: Number(invoiceTaxRate) || 0, invoice_terms: invoiceTerms, invoice_show_gst: invoiceShowGst } : prev);
-      toast.success("Settings saved successfully");
+      setSettings(prev => prev ? { ...prev, invoice_show_gst: invoiceShowGst, invoice_tax_rate: Number(invoiceTaxRate) || 0, gym_gst: gymGst } : prev);
+      toast.success("GST settings saved");
+      backgroundInvalidate();
+    }
+  };
+
+  const handleSaveInvoice = async () => {
+    if (!settings?.id || !currentBranch?.id) return;
+    setIsSavingInvoice(true);
+
+    const { error } = await supabase
+      .from("gym_settings")
+      .update({
+        invoice_prefix: invoicePrefix || "INV",
+        invoice_footer_message: invoiceFooter || null,
+        invoice_terms: invoiceTerms || null,
+      })
+      .eq("id", settings.id)
+      .eq("branch_id", currentBranch.id);
+
+    setIsSavingInvoice(false);
+    if (error) {
+      toast.error("Error", { description: error.message });
+    } else {
+      await logAdminActivity({
+        category: "settings", type: "invoice_settings_updated",
+        description: `Updated invoice settings for ${currentBranch?.name || "branch"}`,
+        entityType: "gym_settings", entityId: settings.id,
+        entityName: currentBranch?.name || "Gym Settings",
+        newValue: { invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_terms: invoiceTerms },
+        branchId: currentBranch?.id,
+      });
+      setSettings(prev => prev ? { ...prev, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_terms: invoiceTerms } : prev);
+      toast.success("Invoice settings saved");
       backgroundInvalidate();
     }
   };
