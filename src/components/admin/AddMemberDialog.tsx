@@ -322,7 +322,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
   const gymTotal = showGymSection ? monthlyFee + joiningFee : 0;
   const ptTotal = (wantsPT || isPTOnly) ? ptFee : 0;
-  const totalAmount = gymTotal + ptTotal;
+  const subtotalAmount = gymTotal + ptTotal;
+  const taxAmount = taxEnabled && taxRate > 0 ? Math.round((subtotalAmount * taxRate) / 100) : 0;
+  const totalAmount = subtotalAmount + taxAmount;
 
   const ptMonthOptions: number[] = [];
   const maxPtMonths = isPTOnly ? 12 : (selectedPackage?.months || 1);
