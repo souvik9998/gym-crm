@@ -297,18 +297,11 @@ export function AutomatedReportsSettings() {
             />
           </div>
 
-          {/* WhatsApp Phone */}
-          <div className="space-y-1.5 lg:space-y-2">
-            <Label className="text-xs lg:text-sm font-medium flex items-center gap-1.5">
-              💬 WhatsApp Number
-            </Label>
-            <Input
-              value={whatsappPhone}
-              onChange={(e) => setWhatsappPhone(e.target.value.replace(/\D/g, ""))}
-              placeholder="10-digit phone number"
-              maxLength={10}
-              className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
-            />
+          {/* WhatsApp info note */}
+          <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+            <p className="text-xs text-green-700 dark:text-green-400">
+              💬 WhatsApp reports will be sent to your gym phone number configured above in General settings.
+            </p>
           </div>
 
           {/* Report Format */}
