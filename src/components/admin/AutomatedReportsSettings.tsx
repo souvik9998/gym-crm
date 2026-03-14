@@ -55,6 +55,7 @@ export function AutomatedReportsSettings() {
   const [includeAttendance, setIncludeAttendance] = useState(true);
   const [includeTrainers, setIncludeTrainers] = useState(true);
   const [includeBranchAnalysis, setIncludeBranchAnalysis] = useState(true);
+  const [reportFormat, setReportFormat] = useState("excel");
 
   const fetchSchedule = useCallback(async () => {
     if (!currentBranch?.id) return;
