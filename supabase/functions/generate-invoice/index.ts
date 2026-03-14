@@ -219,7 +219,7 @@ function generateInvoicePDF(data: {
   }
 
   if (data.tax > 0) {
-    addColorText(totalsX, yPos, "Tax", 9, false, 0.5, 0.5, 0.5);
+    addColorText(totalsX, yPos, `GST (${data.gymGst ? data.gymGst + " - " : ""}Tax)`, 9, false, 0.5, 0.5, 0.5);
     addText(totalsX + 110, yPos, `Rs.${data.tax.toLocaleString("en-IN")}`, 9, false);
     yPos -= 16;
   }
