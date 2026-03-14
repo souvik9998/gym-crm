@@ -127,7 +127,7 @@ async function sendEmailWithResend(to: string, subject: string, html: string, at
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "GymKloud Reports <onboarding@resend.dev>",
+      from: "GymKloud Reports <hello@gymkloud.in>",
       to: [to],
       subject,
       html,
