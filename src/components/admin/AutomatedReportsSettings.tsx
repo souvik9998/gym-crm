@@ -380,7 +380,7 @@ export function AutomatedReportsSettings() {
             <Button
               variant="outline"
               onClick={() => handleSendReport('whatsapp')}
-              disabled={isSendingWhatsApp || !whatsappPhone || !isEnabled}
+              disabled={isSendingWhatsApp || !isEnabled}
               className="h-10 lg:h-11 text-sm rounded-xl active:scale-[0.98] transition-all duration-200 border-green-500/30 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/20"
             >
               {isSendingWhatsApp ? <><ButtonSpinner /> Sending...</> : "💬 Send via WhatsApp"}
