@@ -83,11 +83,13 @@ const ExtendPT = () => {
     setIsLoadingData(true);
     
     try {
-      // Fetch trainers using secure public API
-      const trainersData = await fetchPublicTrainers(branchId);
+      // Fetch trainers and tax settings in parallel
+      const [trainersData, packagesResult] = await Promise.all([
+        fetchPublicTrainers(branchId),
+        fetchPublicPackages(branchId),
+      ]);
 
       if (trainersData.length > 0) {
-        // Map to expected format with null specialization (not exposed publicly)
         const mappedTrainers = trainersData.map(t => ({
           id: t.id,
           name: t.name,
@@ -98,8 +100,15 @@ const ExtendPT = () => {
         setSelectedTrainer(mappedTrainers[0]);
       }
 
-      // Fetch existing active PT subscription for this member to determine start date
-      // This uses RPC which is allowed
+      // Set tax settings
+      if (packagesResult.taxSettings) {
+        const rate = packagesResult.taxSettings.taxRate || 0;
+        const enabled = packagesResult.taxSettings.taxEnabled && rate > 0;
+        setTaxRate(rate);
+        setTaxEnabled(enabled);
+      }
+
+      // Fetch existing active PT subscription
       const today = new Date().toISOString().split("T")[0];
       const { data: existingPT } = await supabase
         .from("pt_subscriptions")
