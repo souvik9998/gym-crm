@@ -154,6 +154,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
+  
+  // GST settings
+  const [taxRate, setTaxRate] = useState(0);
+  const [taxEnabled, setTaxEnabled] = useState(false);
 
   // Check for existing member when phone changes
   useEffect(() => {
