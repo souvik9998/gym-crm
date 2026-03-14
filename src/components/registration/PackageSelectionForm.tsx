@@ -798,6 +798,19 @@ const PackageSelectionForm = ({
             </>
           )}
 
+          {taxAmount > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground flex items-center gap-2">
+                <IndianRupee className="w-4 h-4" />
+                GST ({taxRate}%)
+              </span>
+              <span className="font-semibold flex items-center">
+                <IndianRupee className="w-4 h-4" />
+                {taxAmount.toLocaleString("en-IN")}
+              </span>
+            </div>
+          )}
+
           <div className="border-t border-border pt-3">
             <div className="flex justify-between items-center">
               <span className="font-bold text-lg">Total</span>
