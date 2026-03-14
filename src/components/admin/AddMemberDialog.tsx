@@ -667,7 +667,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
         const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
           member_id: existingMember.id,
-          amount: ptFee,
+          amount: totalAmount,
           payment_mode: "cash",
           status: "success",
           payment_type: "pt_subscription",
