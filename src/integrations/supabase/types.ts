@@ -1544,6 +1544,7 @@ export type Database = {
           last_sent_at: string | null
           next_run_at: string | null
           report_email: string | null
+          report_format: string
           send_whatsapp: boolean
           updated_at: string
           whatsapp_phone: string | null
@@ -1562,6 +1563,7 @@ export type Database = {
           last_sent_at?: string | null
           next_run_at?: string | null
           report_email?: string | null
+          report_format?: string
           send_whatsapp?: boolean
           updated_at?: string
           whatsapp_phone?: string | null
@@ -1580,6 +1582,7 @@ export type Database = {
           last_sent_at?: string | null
           next_run_at?: string | null
           report_email?: string | null
+          report_format?: string
           send_whatsapp?: boolean
           updated_at?: string
           whatsapp_phone?: string | null

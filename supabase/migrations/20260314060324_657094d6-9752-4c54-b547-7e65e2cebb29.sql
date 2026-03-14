@@ -1,0 +1,1 @@
+ALTER TABLE public.report_schedules ADD COLUMN IF NOT EXISTS report_format text NOT NULL DEFAULT 'excel';
