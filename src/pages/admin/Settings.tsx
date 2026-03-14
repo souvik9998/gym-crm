@@ -150,7 +150,9 @@ const AdminSettings = () => {
   const { isStaffLoggedIn, permissions } = useStaffAuth();
   const staffOps = useStaffOperations();
   const [user, setUser] = useState<User | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSavingGymInfo, setIsSavingGymInfo] = useState(false);
+  const [isSavingGst, setIsSavingGst] = useState(false);
+  const [isSavingInvoice, setIsSavingInvoice] = useState(false);
   
   // Use aggregated settings page data hook (single API call)
   const { settings: fetchedSettings, monthlyPackages: fetchedMonthlyPackages, customPackages: fetchedCustomPackages, isLoading: isLoadingData, refetch: refetchData } = useSettingsPageData();
