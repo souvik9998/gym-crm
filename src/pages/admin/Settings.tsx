@@ -1455,17 +1455,96 @@ const AdminSettings = () => {
                           className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
                         />
                       </div>
-                      <div className="space-y-1.5 lg:space-y-2">
-                        <Label htmlFor="gym-gst" className="text-xs lg:text-sm font-medium">GST Number (Optional)</Label>
-                        <Input
-                          id="gym-gst"
-                          value={gymGst}
-                          onChange={(e) => setGymGst(e.target.value)}
-                          placeholder="22AAAAA0000A1Z5"
-                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* GST Configuration Card */}
+                <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
+                  <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                        <ShieldCheckIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base lg:text-xl">GST Configuration</CardTitle>
+                        <CardDescription className="text-xs lg:text-sm">Enable GST to automatically apply tax on all member payments</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4 lg:space-y-5 p-4 lg:p-6 pt-0 lg:pt-0">
+                    {/* GST Enable/Disable Toggle */}
+                    <div className="flex items-center justify-between p-3 lg:p-4 bg-muted/20 border border-border/40 rounded-xl transition-all duration-300 hover:shadow-sm hover:border-border/60">
+                      <div className="space-y-0.5 lg:space-y-1">
+                        <p className="font-semibold text-sm lg:text-base">Enable GST</p>
+                        <p className="text-[10px] lg:text-xs text-muted-foreground">
+                          {invoiceShowGst
+                            ? "GST is applied to all membership payments, renewals, and services"
+                            : "No GST is charged on payments"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={cn(
+                          "text-xs lg:text-sm font-medium transition-all duration-300",
+                          invoiceShowGst ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+                        )}>
+                          {invoiceShowGst ? "Active" : "Off"}
+                        </span>
+                        <Switch
+                          checked={invoiceShowGst}
+                          onCheckedChange={(checked) => {
+                            setInvoiceShowGst(checked);
+                            if (!checked) {
+                              setInvoiceTaxRate("0");
+                            }
+                          }}
                         />
                       </div>
                     </div>
+
+                    {/* GST Details - only shown when enabled */}
+                    {invoiceShowGst && (
+                      <div className="space-y-4 animate-fade-in">
+                        <div className="grid gap-3 lg:gap-4 grid-cols-1 md:grid-cols-2">
+                          <div className="space-y-1.5 lg:space-y-2">
+                            <Label htmlFor="invoice-tax-rate" className="text-xs lg:text-sm font-medium">GST Rate (%)</Label>
+                            <Input
+                              id="invoice-tax-rate"
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.1"
+                              value={invoiceTaxRate}
+                              onChange={(e) => setInvoiceTaxRate(e.target.value)}
+                              placeholder="18"
+                              className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
+                            />
+                            <p className="text-[10px] text-muted-foreground">
+                              This percentage will be added to all payment totals (e.g. 18 for 18% GST)
+                            </p>
+                          </div>
+                          <div className="space-y-1.5 lg:space-y-2">
+                            <Label htmlFor="gym-gst-number" className="text-xs lg:text-sm font-medium">GST Number</Label>
+                            <Input
+                              id="gym-gst-number"
+                              value={gymGst}
+                              onChange={(e) => setGymGst(e.target.value.toUpperCase())}
+                              placeholder="22AAAAA0000A1Z5"
+                              className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors font-mono"
+                            />
+                            <p className="text-[10px] text-muted-foreground">Displayed on invoices for compliance</p>
+                          </div>
+                        </div>
+
+                        {Number(invoiceTaxRate) > 0 && (
+                          <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl">
+                            <p className="text-xs lg:text-sm text-amber-700 dark:text-amber-300">
+                              <strong>Preview:</strong> A ₹1,000 membership will be charged as ₹1,000 + ₹{Math.round(1000 * Number(invoiceTaxRate) / 100)} GST = <strong>₹{1000 + Math.round(1000 * Number(invoiceTaxRate) / 100)}</strong>
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -1483,44 +1562,17 @@ const AdminSettings = () => {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4 lg:space-y-5 p-4 lg:p-6 pt-0 lg:pt-0">
-                    <div className="grid gap-3 lg:gap-4 grid-cols-1 md:grid-cols-2">
-                      <div className="space-y-1.5 lg:space-y-2">
-                        <Label htmlFor="invoice-prefix" className="text-xs lg:text-sm font-medium">Invoice Prefix</Label>
-                        <Input
-                          id="invoice-prefix"
-                          value={invoicePrefix}
-                          onChange={(e) => setInvoicePrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-                          placeholder="INV"
-                          maxLength={10}
-                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors font-mono"
-                        />
-                        <p className="text-[10px] text-muted-foreground">Preview: {invoicePrefix || "INV"}-00001</p>
-                      </div>
-                      <div className="space-y-1.5 lg:space-y-2">
-                        <Label htmlFor="invoice-tax-rate" className="text-xs lg:text-sm font-medium">Tax Rate (%)</Label>
-                        <Input
-                          id="invoice-tax-rate"
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.1"
-                          value={invoiceTaxRate}
-                          onChange={(e) => setInvoiceTaxRate(e.target.value)}
-                          placeholder="0"
-                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
-                        />
-                        <p className="text-[10px] text-muted-foreground">Applied to invoice subtotal (e.g. 18 for GST)</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-3 lg:p-4 bg-muted/20 border border-border/40 rounded-xl">
-                      <div className="space-y-0.5">
-                        <p className="font-medium text-sm lg:text-base">Show GST on Invoice</p>
-                        <p className="text-[10px] lg:text-xs text-muted-foreground">Display GST number on invoices</p>
-                      </div>
-                      <Switch
-                        checked={invoiceShowGst}
-                        onCheckedChange={setInvoiceShowGst}
+                    <div className="space-y-1.5 lg:space-y-2">
+                      <Label htmlFor="invoice-prefix" className="text-xs lg:text-sm font-medium">Invoice Prefix</Label>
+                      <Input
+                        id="invoice-prefix"
+                        value={invoicePrefix}
+                        onChange={(e) => setInvoicePrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                        placeholder="INV"
+                        maxLength={10}
+                        className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors font-mono"
                       />
+                      <p className="text-[10px] text-muted-foreground">Preview: {invoicePrefix || "INV"}-00001</p>
                     </div>
                     <div className="space-y-1.5 lg:space-y-2">
                       <Label htmlFor="invoice-footer" className="text-xs lg:text-sm font-medium">Invoice Footer Message</Label>
