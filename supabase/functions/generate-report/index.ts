@@ -59,10 +59,10 @@ function escapeHtml(s: string): string {
 }
 
 function formatCurrency(n: number): string {
-  return '₹' + n.toLocaleString('en-IN');
+  return 'Rs.' + n.toLocaleString('en-IN');
 }
 
-// ─── Excel XML Generation (improved styling) ───
+// ─── Excel XML Generation ───
 
 function generateExcelXml(sheets: { name: string; headers: string[]; rows: (string | number)[][] }[]): string {
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -101,7 +101,7 @@ function generateExcelXml(sheets: { name: string; headers: string[]; rows: (stri
   </Style>
   <Style ss:ID="Currency">
     <Font ss:Size="10" ss:Color="#1B5E20"/>
-    <NumberFormat ss:Format="₹#,##0.00"/>
+    <NumberFormat ss:Format="Rs.#,##0.00"/>
     <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
   </Style>
   <Style ss:ID="MetricLabel">
@@ -119,40 +119,30 @@ function generateExcelXml(sheets: { name: string; headers: string[]; rows: (stri
   for (const sheet of sheets) {
     xml += `<Worksheet ss:Name="${escapeXml(sheet.name)}">
 <Table ss:DefaultColumnWidth="120">`;
-
-    // Set column widths
     for (let i = 0; i < sheet.headers.length; i++) {
       const width = sheet.name === "Summary" ? (i === 0 ? 200 : 150) : 140;
       xml += `<Column ss:Width="${width}"/>`;
     }
-
-    // Headers
     xml += `<Row ss:Height="32">`;
     for (const h of sheet.headers) {
       xml += `<Cell ss:StyleID="Header"><Data ss:Type="String">${escapeXml(h)}</Data></Cell>`;
     }
     xml += `</Row>`;
-
-    // Data rows with alternating styles
     for (let r = 0; r < sheet.rows.length; r++) {
       const row = sheet.rows[r];
       const isSummary = sheet.name === "Summary";
       const isEmpty = row[0] === "" && row[1] === "";
-      
       if (isEmpty) {
         xml += `<Row ss:Height="8"><Cell><Data ss:Type="String"></Data></Cell></Row>`;
         continue;
       }
-
       xml += `<Row ss:Height="24">`;
       for (let c = 0; c < row.length; c++) {
         const cell = row[c];
         let styleId = r % 2 === 0 ? "DataEven" : "DataOdd";
-        
         if (isSummary) {
           styleId = c === 0 ? "MetricLabel" : "MetricValue";
         }
-
         if (typeof cell === "number") {
           xml += `<Cell ss:StyleID="${styleId}"><Data ss:Type="Number">${cell}</Data></Cell>`;
         } else {
@@ -168,10 +158,9 @@ function generateExcelXml(sheets: { name: string; headers: string[]; rows: (stri
   return xml;
 }
 
-// ─── Visual Dashboard HTML (rendered as inline email) ───
+// ─── Visual Dashboard HTML ───
 
 function generateVisualDashboardHtml(branchName: string, label: string, summaryRows: (string | number)[][], sheets: { name: string; headers: string[]; rows: (string | number)[][] }[]): string {
-  // Extract key metrics
   const metrics: Record<string, number> = {};
   for (const row of summaryRows) {
     if (row[0] && row[1] !== '' && typeof row[1] === 'number') {
@@ -194,7 +183,6 @@ function generateVisualDashboardHtml(branchName: string, label: string, summaryR
   const newMembers = metrics['New Members (Period)'] || 0;
   const dailyPassUsers = metrics['Daily Pass Users'] || 0;
 
-  // Calculate percentages for visual bars
   const activePercent = totalMembers > 0 ? Math.round((activeMembers / totalMembers) * 100) : 0;
   const expiredPercent = totalMembers > 0 ? Math.round((expiredMembers / totalMembers) * 100) : 0;
   const expiringPercent = totalMembers > 0 ? Math.round((expiringSoon / totalMembers) * 100) : 0;
@@ -204,11 +192,8 @@ function generateVisualDashboardHtml(branchName: string, label: string, summaryR
   const metricLabel = `font-size: 12px; color: #6b7280; margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;`;
   const barBg = `background: #f3f4f6; border-radius: 6px; height: 8px; width: 100%; overflow: hidden;`;
 
-  // Recent payments table
   const paymentsSheet = sheets.find(s => s.name === 'Payments');
   const recentPayments = paymentsSheet?.rows.slice(0, 5) || [];
-
-  // Trainer data
   const trainersSheet = sheets.find(s => s.name === 'Trainers');
   const trainerRows = trainersSheet?.rows.slice(0, 5) || [];
 
@@ -221,155 +206,89 @@ function generateVisualDashboardHtml(branchName: string, label: string, summaryR
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 0; color: #1a1a2e;">
   <div style="max-width: 640px; margin: 0 auto; padding: 24px 16px;">
-    
-    <!-- Header -->
     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 32px 24px; color: white; text-align: center; margin-bottom: 20px;">
-      <h1 style="margin: 0 0 6px 0; font-size: 24px; font-weight: 700;">📊 ${escapeHtml(branchName)}</h1>
+      <h1 style="margin: 0 0 6px 0; font-size: 24px; font-weight: 700;">${escapeHtml(branchName)}</h1>
       <p style="margin: 0; opacity: 0.9; font-size: 14px;">${escapeHtml(label)}</p>
       <p style="margin: 8px 0 0 0; opacity: 0.7; font-size: 11px;">Generated on ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
     </div>
-
-    <!-- Revenue Card -->
     <div style="${cardStyle} margin-bottom: 12px; background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border-color: #bbf7d0;">
-      <p style="${metricLabel} color: #15803d;">💰 TOTAL REVENUE</p>
+      <p style="${metricLabel} color: #15803d;">TOTAL REVENUE</p>
       <p style="${metricBig} color: #15803d;">${formatCurrency(totalRevenue)}</p>
       <div style="display: flex; gap: 24px; margin-top: 12px;">
-        <div>
-          <p style="font-size: 18px; font-weight: 600; margin: 0; color: #333;">${totalTransactions}</p>
-          <p style="font-size: 11px; color: #6b7280; margin: 2px 0 0 0;">Transactions</p>
-        </div>
-        <div>
-          <p style="font-size: 18px; font-weight: 600; margin: 0; color: #333;">${cashPayments}</p>
-          <p style="font-size: 11px; color: #6b7280; margin: 2px 0 0 0;">Cash</p>
-        </div>
-        <div>
-          <p style="font-size: 18px; font-weight: 600; margin: 0; color: #333;">${onlinePayments}</p>
-          <p style="font-size: 11px; color: #6b7280; margin: 2px 0 0 0;">Online</p>
-        </div>
+        <div><p style="font-size: 18px; font-weight: 600; margin: 0; color: #333;">${totalTransactions}</p><p style="font-size: 11px; color: #6b7280; margin: 2px 0 0 0;">Transactions</p></div>
+        <div><p style="font-size: 18px; font-weight: 600; margin: 0; color: #333;">${cashPayments}</p><p style="font-size: 11px; color: #6b7280; margin: 2px 0 0 0;">Cash</p></div>
+        <div><p style="font-size: 18px; font-weight: 600; margin: 0; color: #333;">${onlinePayments}</p><p style="font-size: 11px; color: #6b7280; margin: 2px 0 0 0;">Online</p></div>
       </div>
     </div>
-
-    <!-- Members Grid -->
     <div style="display: flex; gap: 12px; margin-bottom: 12px;">
-      <div style="${cardStyle} flex: 1; text-align: center;">
-        <p style="${metricBig} color: #3b82f6;">${totalMembers}</p>
-        <p style="${metricLabel}">👥 Total Members</p>
-      </div>
-      <div style="${cardStyle} flex: 1; text-align: center;">
-        <p style="${metricBig} color: #22c55e;">${activeMembers}</p>
-        <p style="${metricLabel}">✅ Active</p>
-      </div>
-      <div style="${cardStyle} flex: 1; text-align: center;">
-        <p style="${metricBig} color: #f59e0b;">${newMembers}</p>
-        <p style="${metricLabel}">🆕 New</p>
-      </div>
+      <div style="${cardStyle} flex: 1; text-align: center;"><p style="${metricBig} color: #3b82f6;">${totalMembers}</p><p style="${metricLabel}">Total Members</p></div>
+      <div style="${cardStyle} flex: 1; text-align: center;"><p style="${metricBig} color: #22c55e;">${activeMembers}</p><p style="${metricLabel}">Active</p></div>
+      <div style="${cardStyle} flex: 1; text-align: center;"><p style="${metricBig} color: #f59e0b;">${newMembers}</p><p style="${metricLabel}">New</p></div>
     </div>
-
-    <!-- Member Status Breakdown -->
     <div style="${cardStyle} margin-bottom: 12px;">
-      <p style="font-size: 14px; font-weight: 600; margin: 0 0 16px 0;">📊 Member Status Breakdown</p>
-      
+      <p style="font-size: 14px; font-weight: 600; margin: 0 0 16px 0;">Member Status Breakdown</p>
       <div style="margin-bottom: 12px;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-          <span style="font-size: 12px; color: #333;">Active Members</span>
-          <span style="font-size: 12px; font-weight: 600; color: #22c55e;">${activeMembers} (${activePercent}%)</span>
-        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="font-size: 12px; color: #333;">Active Members</span><span style="font-size: 12px; font-weight: 600; color: #22c55e;">${activeMembers} (${activePercent}%)</span></div>
         <div style="${barBg}"><div style="background: #22c55e; height: 100%; width: ${activePercent}%; border-radius: 6px;"></div></div>
       </div>
-      
       <div style="margin-bottom: 12px;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-          <span style="font-size: 12px; color: #333;">Expiring Soon</span>
-          <span style="font-size: 12px; font-weight: 600; color: #f59e0b;">${expiringSoon} (${expiringPercent}%)</span>
-        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="font-size: 12px; color: #333;">Expiring Soon</span><span style="font-size: 12px; font-weight: 600; color: #f59e0b;">${expiringSoon} (${expiringPercent}%)</span></div>
         <div style="${barBg}"><div style="background: #f59e0b; height: 100%; width: ${expiringPercent}%; border-radius: 6px;"></div></div>
       </div>
-      
       <div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-          <span style="font-size: 12px; color: #333;">Expired Members</span>
-          <span style="font-size: 12px; font-weight: 600; color: #ef4444;">${expiredMembers} (${expiredPercent}%)</span>
-        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="font-size: 12px; color: #333;">Expired Members</span><span style="font-size: 12px; font-weight: 600; color: #ef4444;">${expiredMembers} (${expiredPercent}%)</span></div>
         <div style="${barBg}"><div style="background: #ef4444; height: 100%; width: ${expiredPercent}%; border-radius: 6px;"></div></div>
       </div>
     </div>
-
-    <!-- Attendance & Trainers Row -->
     <div style="display: flex; gap: 12px; margin-bottom: 12px;">
-      <div style="${cardStyle} flex: 1;">
-        <p style="${metricLabel}">✅ CHECK-INS</p>
-        <p style="${metricBig} color: #8b5cf6;">${totalCheckins}</p>
-      </div>
-      <div style="${cardStyle} flex: 1;">
-        <p style="${metricLabel}">🏋️ TRAINERS</p>
-        <p style="${metricBig} color: #ec4899;">${activeTrainers}/${totalTrainers}</p>
-        <p style="font-size: 11px; color: #6b7280; margin: 2px 0 0 0;">${ptClients} PT clients</p>
-      </div>
-      <div style="${cardStyle} flex: 1;">
-        <p style="${metricLabel}">🎫 DAILY PASS</p>
-        <p style="${metricBig} color: #06b6d4;">${dailyPassUsers}</p>
-      </div>
+      <div style="${cardStyle} flex: 1;"><p style="${metricLabel}">CHECK-INS</p><p style="${metricBig} color: #8b5cf6;">${totalCheckins}</p></div>
+      <div style="${cardStyle} flex: 1;"><p style="${metricLabel}">TRAINERS</p><p style="${metricBig} color: #ec4899;">${activeTrainers}/${totalTrainers}</p><p style="font-size: 11px; color: #6b7280; margin: 2px 0 0 0;">${ptClients} PT clients</p></div>
+      <div style="${cardStyle} flex: 1;"><p style="${metricLabel}">DAILY PASS</p><p style="${metricBig} color: #06b6d4;">${dailyPassUsers}</p></div>
     </div>
-
-    <!-- Recent Payments Table -->
     ${recentPayments.length > 0 ? `
     <div style="${cardStyle} margin-bottom: 12px;">
-      <p style="font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">💳 Recent Payments</p>
+      <p style="font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">Recent Payments</p>
       <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-        <thead>
-          <tr style="border-bottom: 2px solid #e5e7eb;">
-            <th style="padding: 8px 6px; text-align: left; color: #6b7280; font-weight: 600;">Date</th>
-            <th style="padding: 8px 6px; text-align: right; color: #6b7280; font-weight: 600;">Amount</th>
-            <th style="padding: 8px 6px; text-align: center; color: #6b7280; font-weight: 600;">Mode</th>
-            <th style="padding: 8px 6px; text-align: center; color: #6b7280; font-weight: 600;">Status</th>
-          </tr>
-        </thead>
+        <thead><tr style="border-bottom: 2px solid #e5e7eb;">
+          <th style="padding: 8px 6px; text-align: left; color: #6b7280; font-weight: 600;">Date</th>
+          <th style="padding: 8px 6px; text-align: right; color: #6b7280; font-weight: 600;">Amount</th>
+          <th style="padding: 8px 6px; text-align: center; color: #6b7280; font-weight: 600;">Mode</th>
+          <th style="padding: 8px 6px; text-align: center; color: #6b7280; font-weight: 600;">Status</th>
+        </tr></thead>
         <tbody>
           ${recentPayments.map((row, i) => `
             <tr style="border-bottom: 1px solid #f3f4f6; ${i % 2 === 1 ? 'background: #f9fafb;' : ''}">
               <td style="padding: 8px 6px;">${escapeHtml(String(row[0]))}</td>
               <td style="padding: 8px 6px; text-align: right; font-weight: 600; color: #15803d;">${typeof row[1] === 'number' ? formatCurrency(row[1]) : escapeHtml(String(row[1]))}</td>
-              <td style="padding: 8px 6px; text-align: center;">
-                <span style="background: ${String(row[2]) === 'cash' ? '#fef3c7' : '#dbeafe'}; color: ${String(row[2]) === 'cash' ? '#92400e' : '#1e40af'}; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;">${escapeHtml(String(row[2]))}</span>
-              </td>
-              <td style="padding: 8px 6px; text-align: center;">
-                <span style="background: ${String(row[3]) === 'success' ? '#dcfce7' : '#fee2e2'}; color: ${String(row[3]) === 'success' ? '#15803d' : '#991b1b'}; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;">${escapeHtml(String(row[3]))}</span>
-              </td>
+              <td style="padding: 8px 6px; text-align: center;"><span style="background: ${String(row[2]) === 'cash' ? '#fef3c7' : '#dbeafe'}; color: ${String(row[2]) === 'cash' ? '#92400e' : '#1e40af'}; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;">${escapeHtml(String(row[2]))}</span></td>
+              <td style="padding: 8px 6px; text-align: center;"><span style="background: ${String(row[3]) === 'success' ? '#dcfce7' : '#fee2e2'}; color: ${String(row[3]) === 'success' ? '#15803d' : '#991b1b'}; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;">${escapeHtml(String(row[3]))}</span></td>
             </tr>
           `).join('')}
         </tbody>
       </table>
     </div>` : ''}
-
-    <!-- Trainers Table -->
     ${trainerRows.length > 0 ? `
     <div style="${cardStyle} margin-bottom: 12px;">
-      <p style="font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">🏋️ Trainer Overview</p>
+      <p style="font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">Trainer Overview</p>
       <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-        <thead>
-          <tr style="border-bottom: 2px solid #e5e7eb;">
-            <th style="padding: 8px 6px; text-align: left; color: #6b7280; font-weight: 600;">Name</th>
-            <th style="padding: 8px 6px; text-align: center; color: #6b7280; font-weight: 600;">Specialization</th>
-            <th style="padding: 8px 6px; text-align: center; color: #6b7280; font-weight: 600;">Clients</th>
-            <th style="padding: 8px 6px; text-align: center; color: #6b7280; font-weight: 600;">Status</th>
-          </tr>
-        </thead>
+        <thead><tr style="border-bottom: 2px solid #e5e7eb;">
+          <th style="padding: 8px 6px; text-align: left; color: #6b7280; font-weight: 600;">Name</th>
+          <th style="padding: 8px 6px; text-align: center; color: #6b7280; font-weight: 600;">Specialization</th>
+          <th style="padding: 8px 6px; text-align: center; color: #6b7280; font-weight: 600;">Clients</th>
+          <th style="padding: 8px 6px; text-align: center; color: #6b7280; font-weight: 600;">Status</th>
+        </tr></thead>
         <tbody>
           ${trainerRows.map((row, i) => `
             <tr style="border-bottom: 1px solid #f3f4f6; ${i % 2 === 1 ? 'background: #f9fafb;' : ''}">
               <td style="padding: 8px 6px; font-weight: 500;">${escapeHtml(String(row[0]))}</td>
               <td style="padding: 8px 6px; text-align: center;">${escapeHtml(String(row[2]))}</td>
               <td style="padding: 8px 6px; text-align: center; font-weight: 600; color: #7c3aed;">${row[4]}</td>
-              <td style="padding: 8px 6px; text-align: center;">
-                <span style="background: ${String(row[5]) === 'Active' ? '#dcfce7' : '#fee2e2'}; color: ${String(row[5]) === 'Active' ? '#15803d' : '#991b1b'}; padding: 2px 8px; border-radius: 4px; font-size: 11px;">${escapeHtml(String(row[5]))}</span>
-              </td>
+              <td style="padding: 8px 6px; text-align: center;"><span style="background: ${String(row[5]) === 'Active' ? '#dcfce7' : '#fee2e2'}; color: ${String(row[5]) === 'Active' ? '#15803d' : '#991b1b'}; padding: 2px 8px; border-radius: 4px; font-size: 11px;">${escapeHtml(String(row[5]))}</span></td>
             </tr>
           `).join('')}
         </tbody>
       </table>
     </div>` : ''}
-
-    <!-- Footer -->
     <div style="text-align: center; padding: 16px 0; color: #9ca3af; font-size: 11px;">
       <p style="margin: 0;">This report was automatically generated by <strong>GymKloud</strong></p>
     </div>
@@ -378,97 +297,166 @@ function generateVisualDashboardHtml(branchName: string, label: string, summaryR
 </html>`;
 }
 
-// ─── PDF HTML Generation ───
+// ─── PDF Generation (actual binary PDF) ───
 
-function generatePdfReportHtml(branchName: string, label: string, summaryRows: (string | number)[][], sheets: { name: string; headers: string[]; rows: (string | number)[][] }[]): string {
-  let sectionsHtml = '';
-  
-  for (const sheet of sheets) {
-    if (sheet.name === 'Summary') continue;
-    sectionsHtml += `
-    <div style="margin-bottom: 28px; page-break-inside: avoid;">
-      <h3 style="color: #3F51B5; font-size: 16px; margin: 0 0 12px 0; padding-bottom: 8px; border-bottom: 2px solid #3F51B5;">${escapeHtml(sheet.name)}</h3>
-      <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-        <thead>
-          <tr>
-            ${sheet.headers.map(h => `<th style="background: #3F51B5; color: white; padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 600;">${escapeHtml(h)}</th>`).join('')}
-          </tr>
-        </thead>
-        <tbody>
-          ${sheet.rows.slice(0, 100).map((row, i) => `
-            <tr style="background: ${i % 2 === 0 ? '#ffffff' : '#f8f9fa'};">
-              ${row.map((cell, ci) => {
-                const val = typeof cell === 'number' && (sheet.headers[ci]?.includes('₹') || sheet.headers[ci]?.includes('Amount') || sheet.headers[ci]?.includes('Fee')) 
-                  ? formatCurrency(cell) 
-                  : escapeHtml(String(cell ?? ''));
-                return `<td style="padding: 8px 12px; border-bottom: 1px solid #e9ecef; font-size: 11px;">${val}</td>`;
-              }).join('')}
-            </tr>
-          `).join('')}
-          ${sheet.rows.length > 100 ? `<tr><td colspan="${sheet.headers.length}" style="padding: 10px; text-align: center; color: #9ca3af; font-style: italic; font-size: 11px;">... and ${sheet.rows.length - 100} more rows</td></tr>` : ''}
-        </tbody>
-      </table>
-    </div>`;
+function escPdf(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+}
+
+function generatePdfReport(branchName: string, label: string, summaryRows: (string | number)[][], sheets: { name: string; headers: string[]; rows: (string | number)[][] }[]): Uint8Array {
+  const content: string[] = [];
+  const pageW = 612;
+  const pageH = 842;
+  const leftMargin = 40;
+  const rightMargin = 572;
+  const contentWidth = rightMargin - leftMargin;
+
+  const addText = (x: number, y: number, text: string, fontSize: number = 10, bold = false) => {
+    const font = bold ? "/F2" : "/F1";
+    content.push(`BT ${font} ${fontSize} Tf ${x} ${y} Td (${escPdf(text)}) Tj ET`);
+  };
+
+  const addColorText = (x: number, y: number, text: string, fontSize: number, bold: boolean, r: number, g: number, b: number) => {
+    const font = bold ? "/F2" : "/F1";
+    content.push(`BT ${r} ${g} ${b} rg ${font} ${fontSize} Tf ${x} ${y} Td (${escPdf(text)}) Tj ET`);
+    content.push(`0 0 0 rg`);
+  };
+
+  const addLine = (x1: number, y1: number, x2: number, y2: number, r = 0.85, g = 0.85, b = 0.85) => {
+    content.push(`${r} ${g} ${b} RG 0.5 w ${x1} ${y1} m ${x2} ${y2} l S 0 0 0 RG`);
+  };
+
+  const addRect = (x: number, y: number, w: number, h: number, r: number, g: number, b: number) => {
+    content.push(`${r} ${g} ${b} rg ${x} ${y} ${w} ${h} re f 0 0 0 rg`);
+  };
+
+  let yPos = pageH;
+
+  // Header banner
+  const headerH = 80;
+  const headerY = pageH - headerH;
+  addRect(0, headerY, pageW, headerH, 0.40, 0.49, 0.92); // #667eea
+
+  addColorText(leftMargin, pageH - 30, branchName, 20, true, 1, 1, 1);
+  addColorText(leftMargin, pageH - 48, label, 11, false, 1, 1, 0.9);
+  addColorText(leftMargin, pageH - 62, `Generated: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`, 8, false, 1, 1, 0.8);
+  addColorText(rightMargin - 100, pageH - 30, "REPORT", 18, true, 1, 1, 1);
+
+  yPos = headerY - 20;
+
+  // Key Metrics section
+  addColorText(leftMargin, yPos, "KEY METRICS", 10, true, 0.25, 0.32, 0.71);
+  yPos -= 5;
+  addLine(leftMargin, yPos, rightMargin, yPos, 0.25, 0.32, 0.71);
+  yPos -= 18;
+
+  for (const row of summaryRows) {
+    if (row[0] === '' && row[1] === '') {
+      yPos -= 6;
+      continue;
+    }
+    const metric = String(row[0]);
+    const value = typeof row[1] === 'number'
+      ? (metric.includes('Revenue') || metric.includes('Amount') ? `Rs.${row[1].toLocaleString('en-IN')}` : row[1].toLocaleString('en-IN'))
+      : String(row[1]);
+
+    addText(leftMargin + 8, yPos, metric, 9, false);
+    addColorText(rightMargin - 8 - value.length * 5, yPos, value, 9, true, 0.25, 0.32, 0.71);
+    addLine(leftMargin, yPos - 4, rightMargin, yPos - 4);
+    yPos -= 16;
+
+    if (yPos < 60) break;
   }
 
-  const metricsHtml = summaryRows
-    .filter(r => r[0] !== '' && r[1] !== '')
-    .map(r => {
-      const val = typeof r[1] === 'number' 
-        ? (String(r[0]).includes('Revenue') || String(r[0]).includes('Amount') ? formatCurrency(r[1]) : r[1].toLocaleString('en-IN'))
-        : escapeHtml(String(r[1]));
-      return `<tr>
-        <td style="padding: 8px 16px; font-weight: 500; color: #333; border-bottom: 1px solid #f3f4f6;">${escapeHtml(String(r[0]))}</td>
-        <td style="padding: 8px 16px; text-align: right; font-weight: 700; color: #3F51B5; border-bottom: 1px solid #f3f4f6;">${val}</td>
-      </tr>`;
-    })
-    .join('');
+  yPos -= 10;
 
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>${escapeHtml(branchName)} - ${escapeHtml(label)}</title>
-  <style>
-    @media print {
-      body { margin: 0; }
-      .page-break { page-break-before: always; }
+  // Data sections (only first few rows of each sheet)
+  for (const sheet of sheets) {
+    if (sheet.name === 'Summary') continue;
+    if (yPos < 120) break;
+
+    addColorText(leftMargin, yPos, sheet.name.toUpperCase(), 10, true, 0.25, 0.32, 0.71);
+    yPos -= 5;
+    addLine(leftMargin, yPos, rightMargin, yPos, 0.25, 0.32, 0.71);
+    yPos -= 16;
+
+    // Table header
+    const colCount = Math.min(sheet.headers.length, 5);
+    const colW = contentWidth / colCount;
+    addRect(leftMargin, yPos - 4, contentWidth, 18, 0.25, 0.32, 0.71);
+    for (let c = 0; c < colCount; c++) {
+      const hdr = sheet.headers[c].substring(0, 18);
+      addColorText(leftMargin + c * colW + 4, yPos, hdr, 8, true, 1, 1, 1);
     }
-  </style>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 32px; color: #333; background: white;">
-  
-  <!-- Header -->
-  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 32px; color: white; text-align: center; margin-bottom: 32px;">
-    <h1 style="margin: 0 0 8px 0; font-size: 28px; font-weight: 700;">📊 ${escapeHtml(branchName)}</h1>
-    <p style="margin: 0; opacity: 0.9; font-size: 15px;">${escapeHtml(label)}</p>
-    <p style="margin: 8px 0 0 0; opacity: 0.7; font-size: 12px;">Generated on ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
-  </div>
+    yPos -= 20;
 
-  <!-- Key Metrics -->
-  <div style="background: #f8f9fa; border-radius: 12px; padding: 24px; margin-bottom: 32px; border: 1px solid #e5e7eb;">
-    <h2 style="margin: 0 0 16px 0; font-size: 18px; color: #333; font-weight: 600;">📋 Key Metrics</h2>
-    <table style="width: 100%; border-collapse: collapse;">
-      ${metricsHtml}
-    </table>
-  </div>
+    // Data rows (max 8)
+    const maxRows = Math.min(sheet.rows.length, 8);
+    for (let r = 0; r < maxRows; r++) {
+      if (yPos < 60) break;
+      const row = sheet.rows[r];
+      if (r % 2 === 0) {
+        addRect(leftMargin, yPos - 4, contentWidth, 16, 0.96, 0.96, 0.96);
+      }
+      for (let c = 0; c < colCount; c++) {
+        const cellVal = String(row[c] ?? '').substring(0, 20);
+        addText(leftMargin + c * colW + 4, yPos, cellVal, 8, false);
+      }
+      yPos -= 16;
+    }
+    if (sheet.rows.length > maxRows) {
+      addColorText(leftMargin + 4, yPos, `... and ${sheet.rows.length - maxRows} more rows`, 7, false, 0.6, 0.6, 0.6);
+      yPos -= 14;
+    }
+    yPos -= 10;
+  }
 
-  <!-- Data Sections -->
-  ${sectionsHtml}
+  // Footer
+  addLine(leftMargin, 50, rightMargin, 50);
+  addColorText(pageW / 2 - 80, 38, "Generated by GymKloud", 8, false, 0.6, 0.6, 0.6);
 
-  <!-- Footer -->
-  <div style="text-align: center; color: #9ca3af; font-size: 11px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-    <p style="margin: 0;">This report was automatically generated by <strong>GymKloud</strong></p>
-    <p style="margin: 4px 0 0 0;">© ${new Date().getFullYear()} GymKloud. All rights reserved.</p>
-  </div>
-</body>
-</html>`;
+  // Build PDF binary
+  const contentStream = content.join("\n");
+  const contentBytes = new TextEncoder().encode(contentStream);
+  const objects: string[] = [];
+  let objCount = 0;
+
+  const addObj = (obj: string): number => {
+    objCount++;
+    objects.push(obj);
+    return objCount;
+  };
+
+  addObj(`1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj`);
+  addObj(`2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj`);
+  addObj(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>\nendobj`);
+  addObj(`4 0 obj\n<< /Length ${contentBytes.length} >>\nstream\n${contentStream}\nendstream\nendobj`);
+  addObj(`5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj`);
+  addObj(`6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\nendobj`);
+
+  let pdf = `%PDF-1.4\n`;
+  const objOffsets: number[] = [];
+
+  for (let i = 0; i < objects.length; i++) {
+    objOffsets.push(pdf.length);
+    pdf += objects[i] + "\n";
+  }
+
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objCount + 1}\n`;
+  pdf += `0000000000 65535 f \n`;
+  for (const offset of objOffsets) {
+    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  }
+
+  pdf += `trailer\n<< /Size ${objCount + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return new TextEncoder().encode(pdf);
 }
 
 // ─── WhatsApp text summary ───
 
 function generateWhatsAppSummary(branchName: string, label: string, summaryRows: (string | number)[][]): string {
-  let text = `📊 *${branchName}*\n📅 ${label}\n\n`;
+  let text = `*${branchName}*\n${label}\n\n`;
   
   for (const row of summaryRows) {
     if (row[0] === '' && row[1] === '') {
@@ -478,30 +466,22 @@ function generateWhatsAppSummary(branchName: string, label: string, summaryRows:
     const metric = String(row[0]);
     const value = typeof row[1] === 'number' ? row[1].toLocaleString('en-IN') : String(row[1]);
     
-    if (metric.includes('Revenue')) {
-      text += `💰 ${metric}: ₹${value}\n`;
-    } else if (metric.includes('Members') || metric.includes('Member')) {
-      text += `👥 ${metric}: ${value}\n`;
-    } else if (metric.includes('Check-in')) {
-      text += `✅ ${metric}: ${value}\n`;
-    } else if (metric.includes('Trainer') || metric.includes('PT')) {
-      text += `🏋️ ${metric}: ${value}\n`;
-    } else if (metric.includes('Transaction') || metric.includes('Payment')) {
-      text += `💳 ${metric}: ${value}\n`;
-    } else if (metric.includes('Daily Pass')) {
-      text += `🎫 ${metric}: ${value}\n`;
-    } else {
-      text += `▪️ ${metric}: ${value}\n`;
-    }
+    if (metric.includes('Revenue')) text += `Total Revenue: Rs.${value}\n`;
+    else if (metric.includes('Members') || metric.includes('Member')) text += `${metric}: ${value}\n`;
+    else if (metric.includes('Check-in')) text += `${metric}: ${value}\n`;
+    else if (metric.includes('Trainer') || metric.includes('PT')) text += `${metric}: ${value}\n`;
+    else if (metric.includes('Transaction') || metric.includes('Payment')) text += `${metric}: ${value}\n`;
+    else if (metric.includes('Daily Pass')) text += `${metric}: ${value}\n`;
+    else text += `${metric}: ${value}\n`;
   }
   
-  text += `\n📅 ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}\n_Powered by GymKloud_`;
+  text += `\n${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}\n_Powered by GymKloud_`;
   return text;
 }
 
 // ─── Email sender ───
 
-async function sendEmailWithResend(to: string, subject: string, html: string, attachment?: { filename: string; content: string; contentType?: string }) {
+async function sendEmailWithResend(to: string, subject: string, html: string, attachment?: { filename: string; content: Uint8Array | string; contentType?: string }) {
   const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
   if (!RESEND_API_KEY) {
     console.warn("RESEND_API_KEY not configured");
@@ -516,15 +496,27 @@ async function sendEmailWithResend(to: string, subject: string, html: string, at
   };
 
   if (attachment) {
-    const encoder = new TextEncoder();
-    const uint8 = encoder.encode(attachment.content);
-    let binary = '';
-    for (let i = 0; i < uint8.length; i++) {
-      binary += String.fromCharCode(uint8[i]);
+    let base64Content: string;
+    if (attachment.content instanceof Uint8Array) {
+      // Binary content - convert to base64
+      let binary = '';
+      for (let i = 0; i < attachment.content.length; i++) {
+        binary += String.fromCharCode(attachment.content[i]);
+      }
+      base64Content = btoa(binary);
+    } else {
+      // String content - encode to base64
+      const encoder = new TextEncoder();
+      const uint8 = encoder.encode(attachment.content);
+      let binary = '';
+      for (let i = 0; i < uint8.length; i++) {
+        binary += String.fromCharCode(uint8[i]);
+      }
+      base64Content = btoa(binary);
     }
     emailPayload.attachments = [{
       filename: attachment.filename,
-      content: btoa(binary),
+      content: base64Content,
       ...(attachment.contentType ? { content_type: attachment.contentType } : {}),
     }];
   }
@@ -616,11 +608,22 @@ Deno.serve(async (req) => {
         const results = [];
         for (const schedule of dueReports) {
           try {
+            // For scheduled reports, get the admin phone from gym_settings
+            let adminPhone = schedule.whatsapp_phone;
+            if (!adminPhone) {
+              const { data: gymSettings } = await supabase
+                .from("gym_settings")
+                .select("gym_phone")
+                .eq("branch_id", schedule.branch_id)
+                .maybeSingle();
+              adminPhone = gymSettings?.gym_phone || null;
+            }
+
             const result = await generateAndSendReport(supabase, {
               branchId: schedule.branch_id,
               frequency: schedule.frequency,
               reportEmail: schedule.report_email,
-              whatsappPhone: schedule.whatsapp_phone,
+              whatsappPhone: adminPhone,
               includePayments: schedule.include_payments,
               includeMemberships: schedule.include_memberships,
               includeAttendance: schedule.include_attendance,
@@ -666,6 +669,16 @@ Deno.serve(async (req) => {
       }
 
       config = parsed as ReportConfig;
+
+      // For WhatsApp channel - if no phone provided, get from gym_settings
+      if (config.deliveryChannel === 'whatsapp' && !config.whatsappPhone && config.branchId) {
+        const { data: gymSettings } = await supabase
+          .from("gym_settings")
+          .select("gym_phone")
+          .eq("branch_id", config.branchId)
+          .maybeSingle();
+        config.whatsappPhone = gymSettings?.gym_phone || undefined;
+      }
     } else {
       return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -734,7 +747,7 @@ async function collectReportData(supabase: any, config: ReportConfig) {
 
     sheets.push({
       name: "Payments",
-      headers: ["Date", "Amount (₹)", "Mode", "Status", "Type", "Notes"],
+      headers: ["Date", "Amount (Rs.)", "Mode", "Status", "Type", "Notes"],
       rows: (payments || []).map((p: any) => [
         new Date(p.created_at).toLocaleDateString("en-IN"),
         p.amount, p.payment_mode || "N/A", p.status || "N/A",
@@ -856,7 +869,7 @@ async function collectReportData(supabase: any, config: ReportConfig) {
 
     sheets.push({
       name: "Trainers",
-      headers: ["Name", "Phone", "Specialization", "Monthly Fee (₹)", "Active Clients", "Status"],
+      headers: ["Name", "Phone", "Specialization", "Monthly Fee (Rs.)", "Active Clients", "Status"],
       rows: (trainers || []).map((t: any) => [
         t.name, t.phone || "N/A", t.specialization || "General",
         t.monthly_fee, trainerClientCount.get(t.id) || 0,
@@ -911,31 +924,39 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
   let emailResult = { success: false, error: "Not sent" };
   let whatsappSent = false;
 
-  // Generate content based on format
   let emailSubject = `${branchName} - ${label}`;
   let emailHtml = '';
-  let attachment: { filename: string; content: string; contentType?: string } | undefined;
-  let whatsappMessage = '';
+  let attachment: { filename: string; content: Uint8Array | string; contentType?: string } | undefined;
+  let whatsappMessage = generateWhatsAppSummary(branchName, label, summaryRows);
 
   switch (format) {
     case 'pdf': {
-      const pdfContent = generatePdfReportHtml(branchName, label, summaryRows, sheets);
-      emailHtml = pdfContent; // Send the full styled report as the email body itself
+      // Generate actual PDF binary
+      const pdfBytes = generatePdfReport(branchName, label, summaryRows, sheets);
+      emailHtml = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 32px; color: white; text-align: center; margin-bottom: 24px;">
+            <h1 style="margin: 0 0 8px 0; font-size: 24px;">${escapeHtml(branchName)}</h1>
+            <p style="margin: 0; opacity: 0.9; font-size: 14px;">${escapeHtml(label)}</p>
+          </div>
+          <div style="background: #f8f9fa; border-radius: 12px; padding: 24px;">
+            <p style="margin: 0 0 12px 0; color: #333;">Hi,</p>
+            <p style="margin: 0 0 12px 0; color: #555;">Your ${config.frequency} gym report is ready. Please find the PDF report attached.</p>
+            <p style="margin: 0; color: #9ca3af; font-size: 12px;">This is an automated report from GymKloud.</p>
+          </div>
+        </div>`;
       attachment = {
-        filename: `${safeBranchName}_Report_${dateStr}.html`,
-        content: pdfContent,
-        contentType: 'text/html',
+        filename: `${safeBranchName}_Report_${dateStr}.pdf`,
+        content: pdfBytes,
+        contentType: 'application/pdf',
       };
-      emailSubject = `📄 ${branchName} - ${label}`;
-      whatsappMessage = generateWhatsAppSummary(branchName, label, summaryRows);
+      emailSubject = `${branchName} - ${label}`;
       break;
     }
 
     case 'visual_dashboard': {
-      // Send the visual dashboard as the email body (renders as rich HTML in email clients)
       emailHtml = generateVisualDashboardHtml(branchName, label, summaryRows, sheets);
-      emailSubject = `📈 ${branchName} - ${label}`;
-      whatsappMessage = generateWhatsAppSummary(branchName, label, summaryRows);
+      emailSubject = `${branchName} - ${label}`;
       break;
     }
 
@@ -945,7 +966,7 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
       emailHtml = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 32px; color: white; text-align: center; margin-bottom: 24px;">
-            <h1 style="margin: 0 0 8px 0; font-size: 24px;">📊 ${escapeHtml(branchName)}</h1>
+            <h1 style="margin: 0 0 8px 0; font-size: 24px;">${escapeHtml(branchName)}</h1>
             <p style="margin: 0; opacity: 0.9; font-size: 14px;">${escapeHtml(label)}</p>
           </div>
           <div style="background: #f8f9fa; border-radius: 12px; padding: 24px;">
@@ -958,8 +979,7 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
         filename: `${safeBranchName}_Report_${config.frequency}_${dateStr}.xls`,
         content: excelContent,
       };
-      emailSubject = `📊 ${branchName} - ${label}`;
-      whatsappMessage = generateWhatsAppSummary(branchName, label, summaryRows);
+      emailSubject = `${branchName} - ${label}`;
       break;
     }
   }
@@ -968,9 +988,10 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
   if (channel === 'whatsapp') {
     if (config.whatsappPhone) {
       whatsappSent = await sendWhatsAppMessage(config.whatsappPhone, whatsappMessage);
+    } else {
+      console.warn("No WhatsApp phone number available for report delivery");
     }
   } else {
-    // Email delivery
     if (config.reportEmail) {
       emailResult = await sendEmailWithResend(config.reportEmail, emailSubject, emailHtml, attachment);
     }

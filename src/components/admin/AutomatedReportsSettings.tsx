@@ -157,10 +157,7 @@ export function AutomatedReportsSettings() {
       toast.error("Please save settings with a valid email first");
       return;
     }
-    if (channel === 'whatsapp' && !whatsappPhone) {
-      toast.error("Please enter a WhatsApp phone number first");
-      return;
-    }
+    // For WhatsApp, use gym phone from settings - no separate phone field needed
 
     if (channel === 'email') setIsSendingEmail(true);
     else setIsSendingWhatsApp(true);
@@ -300,18 +297,11 @@ export function AutomatedReportsSettings() {
             />
           </div>
 
-          {/* WhatsApp Phone */}
-          <div className="space-y-1.5 lg:space-y-2">
-            <Label className="text-xs lg:text-sm font-medium flex items-center gap-1.5">
-              💬 WhatsApp Number
-            </Label>
-            <Input
-              value={whatsappPhone}
-              onChange={(e) => setWhatsappPhone(e.target.value.replace(/\D/g, ""))}
-              placeholder="10-digit phone number"
-              maxLength={10}
-              className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
-            />
+          {/* WhatsApp info note */}
+          <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+            <p className="text-xs text-green-700 dark:text-green-400">
+              💬 WhatsApp reports will be sent to your gym phone number configured above in General settings.
+            </p>
           </div>
 
           {/* Report Format */}
@@ -390,7 +380,7 @@ export function AutomatedReportsSettings() {
             <Button
               variant="outline"
               onClick={() => handleSendReport('whatsapp')}
-              disabled={isSendingWhatsApp || !whatsappPhone || !isEnabled}
+              disabled={isSendingWhatsApp || !isEnabled}
               className="h-10 lg:h-11 text-sm rounded-xl active:scale-[0.98] transition-all duration-200 border-green-500/30 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/20"
             >
               {isSendingWhatsApp ? <><ButtonSpinner /> Sending...</> : "💬 Send via WhatsApp"}

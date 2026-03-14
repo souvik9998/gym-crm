@@ -466,7 +466,7 @@ Deno.serve(async (req) => {
       amount: totalPaid,
       paymentMode: payment.payment_mode === "online" ? "Online (Razorpay)" : payment.payment_mode === "upi" ? "UPI" : payment.payment_mode === "card" ? "Card" : payment.payment_mode === "bank_transfer" ? "Bank Transfer" : "Cash",
       paymentType: payment.payment_type || "gym_membership",
-      razorpayPaymentId: payment.razorpay_payment_id,
+      razorpayPaymentId: payment.razorpay_payment_id || `CASH-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
       packageName,
       startDate,
       endDate,
@@ -527,7 +527,7 @@ Deno.serve(async (req) => {
         end_date: subscription?.end_date || null,
         payment_mode: payment.payment_mode,
         payment_date: payment.created_at,
-        transaction_id: payment.razorpay_payment_id || null,
+        transaction_id: payment.razorpay_payment_id || `CASH-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
         pdf_url: pdfUrl,
         footer_message: footerMessage,
       });
