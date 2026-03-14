@@ -205,7 +205,8 @@ export function AutomatedReportsSettings() {
       includeMemberships !== schedule.include_memberships ||
       includeAttendance !== schedule.include_attendance ||
       includeTrainers !== schedule.include_trainers ||
-      includeBranchAnalysis !== schedule.include_branch_analysis
+      includeBranchAnalysis !== schedule.include_branch_analysis ||
+      reportFormat !== (schedule.report_format || "excel")
     : isEnabled || reportEmail;
 
   if (isLoading) {
