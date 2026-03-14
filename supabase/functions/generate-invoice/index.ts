@@ -388,7 +388,6 @@ Deno.serve(async (req) => {
         .eq("branch_id", effectiveBranchId)
         .maybeSingle();
 
-      let invoiceTaxRate = 0;
 
       if (settings) {
         gymName = settings.gym_name || gymName;
