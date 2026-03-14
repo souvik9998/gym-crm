@@ -1501,6 +1501,22 @@ const AdminSettings = () => {
                         />
                       </div>
                     </div>
+                    <div className="pt-2">
+                      <Button
+                        className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
+                        onClick={handleSaveGymInfo}
+                        disabled={isSavingGymInfo || (
+                          gymName === (settings?.gym_name || "") &&
+                          gymPhone === (settings?.gym_phone || "") &&
+                          gymAddress === (settings?.gym_address || "") &&
+                          gymEmail === (settings?.gym_email || "")
+                        )}
+                      >
+                        {isSavingGymInfo ? (
+                          <span className="flex items-center gap-2"><ButtonSpinner />Saving...</span>
+                        ) : "Save Gym Info"}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
 
