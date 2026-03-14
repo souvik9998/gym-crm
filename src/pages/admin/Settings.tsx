@@ -1606,6 +1606,21 @@ const AdminSettings = () => {
                         )}
                       </div>
                     )}
+                    <div className="pt-2">
+                      <Button
+                        className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
+                        onClick={handleSaveGst}
+                        disabled={isSavingGst || (
+                          gymGst === (settings?.gym_gst || "") &&
+                          invoiceTaxRate === String(settings?.invoice_tax_rate || 0) &&
+                          invoiceShowGst === (settings?.invoice_show_gst !== false)
+                        )}
+                      >
+                        {isSavingGst ? (
+                          <span className="flex items-center gap-2"><ButtonSpinner />Saving...</span>
+                        ) : "Save GST Settings"}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
 
