@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { addDays, addMonths, differenceInDays, format, isBefore, isAfter, parseISO } from "date-fns";
-import { fetchPublicBranch, fetchPublicTrainers } from "@/api/publicData";
+import { fetchPublicBranch, fetchPublicTrainers, fetchPublicPackages } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 import PoweredByBadge from "@/components/PoweredByBadge";
 
