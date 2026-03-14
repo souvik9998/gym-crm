@@ -418,7 +418,25 @@ Deno.serve(async (req) => {
 
     // Calculate fee breakdown
     const trainerFee = subscription?.trainer_fee ? Number(subscription.trainer_fee) : 0;
-    const gymFee = Number(payment.amount) - trainerFee;
+    const totalPaid = Number(payment.amount);
+    
+    // If GST is enabled, reverse-calculate: subtotal + tax = totalPaid
+    // tax = subtotal * taxRate / 100
+    // subtotal + subtotal * taxRate / 100 = totalPaid
+    // subtotal * (1 + taxRate/100) = totalPaid
+    // subtotal = totalPaid / (1 + taxRate/100)
+    let subtotalBeforeTax: number;
+    let taxOnInvoice: number;
+    
+    if (invoiceTaxRate > 0) {
+      subtotalBeforeTax = Math.round(totalPaid / (1 + invoiceTaxRate / 100));
+      taxOnInvoice = totalPaid - subtotalBeforeTax;
+    } else {
+      subtotalBeforeTax = totalPaid;
+      taxOnInvoice = 0;
+    }
+    
+    const gymFee = subtotalBeforeTax - trainerFee;
 
     const startDate = subscription?.start_date
       ? new Date(subscription.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
@@ -445,7 +463,7 @@ Deno.serve(async (req) => {
       memberPhone: customerPhone,
       memberId: member?.id || dailyPassUser?.id || "",
       paymentDate,
-      amount: Number(payment.amount),
+      amount: totalPaid,
       paymentMode: payment.payment_mode === "online" ? "Online (Razorpay)" : payment.payment_mode === "upi" ? "UPI" : payment.payment_mode === "card" ? "Card" : payment.payment_mode === "bank_transfer" ? "Bank Transfer" : "Cash",
       paymentType: payment.payment_type || "gym_membership",
       razorpayPaymentId: payment.razorpay_payment_id,
@@ -454,10 +472,10 @@ Deno.serve(async (req) => {
       endDate,
       joiningFee: 0,
       trainerFee,
-      gymFee,
-      subtotal: Number(payment.amount),
+      gymFee: gymFee > 0 ? gymFee : 0,
+      subtotal: subtotalBeforeTax,
       discount: 0,
-      tax: 0,
+      tax: taxOnInvoice,
       branchName: branchName || gymName,
       footerMessage,
     });
@@ -498,11 +516,12 @@ Deno.serve(async (req) => {
         gym_email: gymEmail || null,
         gym_gst: gymGst || null,
         branch_name: branchName || null,
-        amount: Number(payment.amount),
-        subtotal: Number(payment.amount),
-        gym_fee: gymFee,
+        amount: totalPaid,
+        subtotal: subtotalBeforeTax,
+        gym_fee: gymFee > 0 ? gymFee : 0,
         joining_fee: 0,
         trainer_fee: trainerFee,
+        tax: taxOnInvoice,
         package_name: packageName,
         start_date: subscription?.start_date || null,
         end_date: subscription?.end_date || null,
