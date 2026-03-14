@@ -110,6 +110,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
     if (open && currentBranch) {
       fetchPackages();
       fetchTrainers();
+      fetchTaxSettings();
       setMember(null);
       setPhone("");
       setPaymentType("gym_only");
