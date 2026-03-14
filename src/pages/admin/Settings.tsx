@@ -150,7 +150,9 @@ const AdminSettings = () => {
   const { isStaffLoggedIn, permissions } = useStaffAuth();
   const staffOps = useStaffOperations();
   const [user, setUser] = useState<User | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSavingGymInfo, setIsSavingGymInfo] = useState(false);
+  const [isSavingGst, setIsSavingGst] = useState(false);
+  const [isSavingInvoice, setIsSavingInvoice] = useState(false);
   
   // Use aggregated settings page data hook (single API call)
   const { settings: fetchedSettings, monthlyPackages: fetchedMonthlyPackages, customPackages: fetchedCustomPackages, isLoading: isLoadingData, refetch: refetchData } = useSettingsPageData();
@@ -306,14 +308,13 @@ const AdminSettings = () => {
     }, 1500);
   }, []);
 
-  const handleSaveSettings = async () => {
+  const handleSaveGymInfo = async () => {
     if (!settings?.id || !currentBranch?.id) return;
-    setIsSaving(true);
+    setIsSavingGymInfo(true);
 
-    const oldSettings = { gym_name: settings.gym_name, gym_phone: settings.gym_phone, gym_address: settings.gym_address };
-    const newSettings = { gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress };
+    const oldSettings = { gym_name: settings.gym_name, gym_phone: settings.gym_phone, gym_address: settings.gym_address, gym_email: settings.gym_email };
+    const newSettings = { gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail };
 
-    // Use staff operations if staff is logged in
     if (isStaffLoggedIn) {
       const { error } = await staffOps.updateGymSettings({
         settingsId: settings.id,
@@ -322,56 +323,100 @@ const AdminSettings = () => {
         gymPhone,
         gymAddress,
       });
-      setIsSaving(false);
+      setIsSavingGymInfo(false);
       if (error) {
         toast.error("Error", { description: error });
       } else {
-        // Instant local state update
-        setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress } : prev);
-        toast.success("Settings saved successfully");
+        setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail } : prev);
+        toast.success("Gym info saved");
         backgroundInvalidate();
       }
       return;
     }
 
-    // Admin flow
+    const { error } = await supabase
+      .from("gym_settings")
+      .update({ gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail || null })
+      .eq("id", settings.id)
+      .eq("branch_id", currentBranch.id);
+
+    setIsSavingGymInfo(false);
+    if (error) {
+      toast.error("Error", { description: error.message });
+    } else {
+      await logAdminActivity({
+        category: "settings", type: "gym_info_updated",
+        description: `Updated gym information for ${currentBranch?.name || "branch"}`,
+        entityType: "gym_settings", entityId: settings.id,
+        entityName: currentBranch?.name || "Gym Settings",
+        oldValue: oldSettings, newValue: newSettings, branchId: currentBranch?.id,
+      });
+      setSettings(prev => prev ? { ...prev, ...newSettings } : prev);
+      toast.success("Gym info saved");
+      backgroundInvalidate();
+    }
+  };
+
+  const handleSaveGst = async () => {
+    if (!settings?.id || !currentBranch?.id) return;
+    setIsSavingGst(true);
+
     const { error } = await supabase
       .from("gym_settings")
       .update({
-        gym_name: gymName,
-        gym_phone: gymPhone,
-        gym_address: gymAddress,
-        gym_email: gymEmail || null,
-        gym_gst: gymGst || null,
-        invoice_prefix: invoicePrefix || "INV",
-        invoice_footer_message: invoiceFooter || null,
-        invoice_tax_rate: Number(invoiceTaxRate) || 0,
-        invoice_terms: invoiceTerms || null,
         invoice_show_gst: invoiceShowGst,
+        invoice_tax_rate: Number(invoiceTaxRate) || 0,
+        gym_gst: gymGst || null,
       })
       .eq("id", settings.id)
       .eq("branch_id", currentBranch.id);
 
-    setIsSaving(false);
-
+    setIsSavingGst(false);
     if (error) {
-      toast.error("Error", {
-        description: error.message,
-      });
+      toast.error("Error", { description: error.message });
     } else {
       await logAdminActivity({
-        category: "settings",
-        type: "gym_info_updated",
-        description: `Updated gym information for ${currentBranch?.name || "branch"}`,
-        entityType: "gym_settings",
-        entityId: settings.id,
+        category: "settings", type: "gym_info_updated",
+        description: `Updated GST settings for ${currentBranch?.name || "branch"}`,
+        entityType: "gym_settings", entityId: settings.id,
         entityName: currentBranch?.name || "Gym Settings",
-        oldValue: oldSettings,
-        newValue: newSettings,
+        newValue: { invoice_show_gst: invoiceShowGst, invoice_tax_rate: Number(invoiceTaxRate), gym_gst: gymGst },
         branchId: currentBranch?.id,
       });
-      setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail, gym_gst: gymGst, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_tax_rate: Number(invoiceTaxRate) || 0, invoice_terms: invoiceTerms, invoice_show_gst: invoiceShowGst } : prev);
-      toast.success("Settings saved successfully");
+      setSettings(prev => prev ? { ...prev, invoice_show_gst: invoiceShowGst, invoice_tax_rate: Number(invoiceTaxRate) || 0, gym_gst: gymGst } : prev);
+      toast.success("GST settings saved");
+      backgroundInvalidate();
+    }
+  };
+
+  const handleSaveInvoice = async () => {
+    if (!settings?.id || !currentBranch?.id) return;
+    setIsSavingInvoice(true);
+
+    const { error } = await supabase
+      .from("gym_settings")
+      .update({
+        invoice_prefix: invoicePrefix || "INV",
+        invoice_footer_message: invoiceFooter || null,
+        invoice_terms: invoiceTerms || null,
+      })
+      .eq("id", settings.id)
+      .eq("branch_id", currentBranch.id);
+
+    setIsSavingInvoice(false);
+    if (error) {
+      toast.error("Error", { description: error.message });
+    } else {
+      await logAdminActivity({
+        category: "settings", type: "gym_info_updated",
+        description: `Updated invoice settings for ${currentBranch?.name || "branch"}`,
+        entityType: "gym_settings", entityId: settings.id,
+        entityName: currentBranch?.name || "Gym Settings",
+        newValue: { invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_terms: invoiceTerms },
+        branchId: currentBranch?.id,
+      });
+      setSettings(prev => prev ? { ...prev, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_terms: invoiceTerms } : prev);
+      toast.success("Invoice settings saved");
       backgroundInvalidate();
     }
   };
@@ -1456,6 +1501,22 @@ const AdminSettings = () => {
                         />
                       </div>
                     </div>
+                    <div className="pt-2">
+                      <Button
+                        className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
+                        onClick={handleSaveGymInfo}
+                        disabled={isSavingGymInfo || (
+                          gymName === (settings?.gym_name || "") &&
+                          gymPhone === (settings?.gym_phone || "") &&
+                          gymAddress === (settings?.gym_address || "") &&
+                          gymEmail === (settings?.gym_email || "")
+                        )}
+                      >
+                        {isSavingGymInfo ? (
+                          <span className="flex items-center gap-2"><ButtonSpinner />Saving...</span>
+                        ) : "Save Gym Info"}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -1545,6 +1606,21 @@ const AdminSettings = () => {
                         )}
                       </div>
                     )}
+                    <div className="pt-2">
+                      <Button
+                        className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
+                        onClick={handleSaveGst}
+                        disabled={isSavingGst || (
+                          gymGst === (settings?.gym_gst || "") &&
+                          invoiceTaxRate === String(settings?.invoice_tax_rate || 0) &&
+                          invoiceShowGst === (settings?.invoice_show_gst !== false)
+                        )}
+                      >
+                        {isSavingGst ? (
+                          <span className="flex items-center gap-2"><ButtonSpinner />Saving...</span>
+                        ) : "Save GST Settings"}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -1596,37 +1672,26 @@ const AdminSettings = () => {
                         maxLength={500}
                       />
                     </div>
+                    <div className="pt-2">
+                      <Button
+                        className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
+                        onClick={handleSaveInvoice}
+                        disabled={isSavingInvoice || (
+                          invoicePrefix === (settings?.invoice_prefix || "INV") &&
+                          invoiceFooter === (settings?.invoice_footer_message || "Thank you for choosing our gym!") &&
+                          invoiceTerms === (settings?.invoice_terms || "")
+                        )}
+                      >
+                        {isSavingInvoice ? (
+                          <span className="flex items-center gap-2"><ButtonSpinner />Saving...</span>
+                        ) : "Save Invoice Settings"}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
 
                 {/* Automated Reports Card */}
                 <AutomatedReportsSettings />
-
-                <Button
-                  className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
-                  onClick={handleSaveSettings}
-                  disabled={isSaving || (
-                    gymName === (settings?.gym_name || "") &&
-                    gymPhone === (settings?.gym_phone || "") &&
-                    gymAddress === (settings?.gym_address || "") &&
-                    gymEmail === (settings?.gym_email || "") &&
-                    gymGst === (settings?.gym_gst || "") &&
-                    invoicePrefix === (settings?.invoice_prefix || "INV") &&
-                    invoiceFooter === (settings?.invoice_footer_message || "Thank you for choosing our gym!") &&
-                    invoiceTaxRate === String(settings?.invoice_tax_rate || 0) &&
-                    invoiceTerms === (settings?.invoice_terms || "") &&
-                    invoiceShowGst === (settings?.invoice_show_gst !== false)
-                  )}
-                >
-                  {isSaving ? (
-                    <span className="flex items-center gap-2">
-                      <ButtonSpinner />
-                      Saving...
-                    </span>
-                  ) : (
-                    "Save Settings"
-                  )}
-                </Button>
               </>
             )}
           </TabsContent>

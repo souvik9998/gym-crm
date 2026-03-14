@@ -154,6 +154,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("left");
+  
+  // GST settings
+  const [taxRate, setTaxRate] = useState(0);
+  const [taxEnabled, setTaxEnabled] = useState(false);
 
   // Check for existing member when phone changes
   useEffect(() => {
@@ -222,9 +226,28 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     if (open && currentBranch) {
       fetchPackages();
       fetchTrainers();
+      fetchTaxSettings();
       setCurrentStep(1);
     }
   }, [open, currentBranch]);
+
+  const fetchTaxSettings = async () => {
+    if (!currentBranch) return;
+    const { data } = await supabase
+      .from("gym_settings")
+      .select("invoice_tax_rate, invoice_show_gst")
+      .eq("branch_id", currentBranch.id)
+      .maybeSingle();
+    if (data) {
+      const rate = data.invoice_tax_rate || 0;
+      const enabled = data.invoice_show_gst === true && rate > 0;
+      setTaxRate(rate);
+      setTaxEnabled(enabled);
+    } else {
+      setTaxRate(0);
+      setTaxEnabled(false);
+    }
+  };
 
   const fetchPackages = async () => {
     if (!currentBranch) return;
@@ -299,7 +322,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
   const gymTotal = showGymSection ? monthlyFee + joiningFee : 0;
   const ptTotal = (wantsPT || isPTOnly) ? ptFee : 0;
-  const totalAmount = gymTotal + ptTotal;
+  const subtotalAmount = gymTotal + ptTotal;
+  const taxAmount = taxEnabled && taxRate > 0 ? Math.round((subtotalAmount * taxRate) / 100) : 0;
+  const totalAmount = subtotalAmount + taxAmount;
 
   const ptMonthOptions: number[] = [];
   const maxPtMonths = isPTOnly ? 12 : (selectedPackage?.months || 1);
@@ -642,7 +667,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
         const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
           member_id: existingMember.id,
-          amount: ptFee,
+          amount: totalAmount,
           payment_mode: "cash",
           status: "success",
           payment_type: "pt_subscription",
@@ -1191,6 +1216,12 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                       <div className="flex justify-between text-sm animate-fade-in">
                         <span className="text-muted-foreground">PT ({ptMonths}mo)</span>
                         <span className="font-semibold tabular-nums">₹{ptFee.toLocaleString("en-IN")}</span>
+                      </div>
+                    )}
+                    {taxEnabled && taxAmount > 0 && (
+                      <div className="flex justify-between text-sm animate-fade-in">
+                        <span className="text-muted-foreground">GST ({taxRate}%)</span>
+                        <span className="font-semibold tabular-nums">₹{taxAmount.toLocaleString("en-IN")}</span>
                       </div>
                     )}
                     <div className="flex justify-between font-bold pt-2.5 border-t border-border/60 text-base">

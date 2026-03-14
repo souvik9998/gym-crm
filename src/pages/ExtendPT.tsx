@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { addDays, addMonths, differenceInDays, format, isBefore, isAfter, parseISO } from "date-fns";
-import { fetchPublicBranch, fetchPublicTrainers } from "@/api/publicData";
+import { fetchPublicBranch, fetchPublicTrainers, fetchPublicPackages } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 import PoweredByBadge from "@/components/PoweredByBadge";
 
@@ -44,6 +44,8 @@ const ExtendPT = () => {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [existingPTEndDate, setExistingPTEndDate] = useState<Date | null>(null);
   const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(null);
+  const [taxRate, setTaxRate] = useState(0);
+  const [taxEnabled, setTaxEnabled] = useState(false);
 
   useEffect(() => {
     const fallback = branchId ? `/b/${branchId}` : "/admin/login";
@@ -81,11 +83,13 @@ const ExtendPT = () => {
     setIsLoadingData(true);
     
     try {
-      // Fetch trainers using secure public API
-      const trainersData = await fetchPublicTrainers(branchId);
+      // Fetch trainers and tax settings in parallel
+      const [trainersData, packagesResult] = await Promise.all([
+        fetchPublicTrainers(branchId),
+        fetchPublicPackages(branchId),
+      ]);
 
       if (trainersData.length > 0) {
-        // Map to expected format with null specialization (not exposed publicly)
         const mappedTrainers = trainersData.map(t => ({
           id: t.id,
           name: t.name,
@@ -96,8 +100,15 @@ const ExtendPT = () => {
         setSelectedTrainer(mappedTrainers[0]);
       }
 
-      // Fetch existing active PT subscription for this member to determine start date
-      // This uses RPC which is allowed
+      // Set tax settings
+      if (packagesResult.taxSettings) {
+        const rate = packagesResult.taxSettings.taxRate || 0;
+        const enabled = packagesResult.taxSettings.taxEnabled && rate > 0;
+        setTaxRate(rate);
+        setTaxEnabled(enabled);
+      }
+
+      // Fetch existing active PT subscription
       const today = new Date().toISOString().split("T")[0];
       const { data: existingPT } = await supabase
         .from("pt_subscriptions")
@@ -216,11 +227,16 @@ const ExtendPT = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTrainer?.id]);
 
+  // Calculate total with GST
+  const ptSubtotal = selectedOption?.fee || 0;
+  const taxAmount = taxEnabled && taxRate > 0 ? Math.round((ptSubtotal * taxRate) / 100) : 0;
+  const totalWithGst = ptSubtotal + taxAmount;
+
   const handleSubmit = async () => {
     if (!selectedTrainer || !selectedOption || !member) return;
 
     initiatePayment({
-      amount: selectedOption.fee,
+      amount: totalWithGst,
       memberId: member.id,
       memberName: member.name,
       memberPhone: member.phone,
@@ -232,7 +248,6 @@ const ExtendPT = () => {
       ptStartDate: format(ptStartDate, "yyyy-MM-dd"),
       branchId: branchId || undefined,
       onSuccess: async (data) => {
-        // Send WhatsApp notification for PT extension (if auto-send enabled)
         try {
           const shouldAutoSend = await getWhatsAppAutoSendPreference(branchId, "pt_extension");
           if (shouldAutoSend) {
@@ -257,7 +272,7 @@ const ExtendPT = () => {
           state: {
             memberName: member.name,
             phone: member.phone,
-            amount: selectedOption.fee,
+            amount: totalWithGst,
             endDate: format(selectedOption.endDate, "d MMMM yyyy"),
             isNewMember: false,
             hasTrainer: true,
@@ -473,12 +488,21 @@ const ExtendPT = () => {
                         Starts: {format(ptStartDate, "d MMM yyyy")} → Ends: {format(selectedOption.endDate, "d MMM yyyy")}
                       </div>
                     )}
+                    {taxEnabled && taxAmount > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground text-sm">GST ({taxRate}%)</span>
+                        <span className="font-semibold flex items-center">
+                          <IndianRupee className="w-4 h-4" />
+                          {taxAmount.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    )}
                     <div className="border-t border-border pt-3">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-lg">Total</span>
                         <span className="text-2xl font-semibold text-accent flex items-center">
                           <IndianRupee className="w-5 h-5" />
-                          {selectedOption.fee.toLocaleString("en-IN")}
+                          {totalWithGst.toLocaleString("en-IN")}
                         </span>
                       </div>
                     </div>
@@ -503,7 +527,7 @@ const ExtendPT = () => {
                         Processing...
                       </div>
                     ) : (
-                      <>Pay ₹{selectedOption?.fee.toLocaleString("en-IN") || 0}</>
+                      <>Pay ₹{totalWithGst.toLocaleString("en-IN")}</>
                     )}
                   </Button>
                 </div>
