@@ -25,9 +25,17 @@ interface ReportSchedule {
   include_attendance: boolean;
   include_trainers: boolean;
   include_branch_analysis: boolean;
+  report_format: string;
   last_sent_at: string | null;
   next_run_at: string | null;
 }
+
+const REPORT_FORMATS = [
+  { value: "excel", label: "Excel Report", icon: "📊", description: "Detailed spreadsheet with all data" },
+  { value: "pdf", label: "PDF Report", icon: "📄", description: "Professional formatted PDF summary" },
+  { value: "dashboard_link", label: "Dashboard Link", icon: "🔗", description: "Link to visual analytics dashboard" },
+  { value: "whatsapp_summary", label: "WhatsApp Summary", icon: "💬", description: "Quick summary with report link via WhatsApp" },
+];
 
 export function AutomatedReportsSettings() {
   const { currentBranch } = useBranch();
