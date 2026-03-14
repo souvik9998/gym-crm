@@ -304,6 +304,31 @@ export function AutomatedReportsSettings() {
             )}
           </div>
 
+          {/* Report Format */}
+          <div className="space-y-2">
+            <Label className="text-xs lg:text-sm font-medium">Report Format</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {REPORT_FORMATS.map((fmt) => (
+                <button
+                  key={fmt.value}
+                  type="button"
+                  onClick={() => setReportFormat(fmt.value)}
+                  className={`flex items-start gap-2.5 p-3 rounded-lg border text-left transition-all duration-200 ${
+                    reportFormat === fmt.value
+                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                      : "border-border/40 bg-card hover:border-border/60"
+                  }`}
+                >
+                  <span className="text-lg leading-none mt-0.5">{fmt.icon}</span>
+                  <div className="min-w-0">
+                    <p className={`text-xs lg:text-sm font-medium ${reportFormat === fmt.value ? "text-primary" : ""}`}>{fmt.label}</p>
+                    <p className="text-[10px] lg:text-xs text-muted-foreground leading-snug">{fmt.description}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Report sections */}
           <div className="space-y-2">
             <Label className="text-xs lg:text-sm font-medium">Report Sections</Label>
