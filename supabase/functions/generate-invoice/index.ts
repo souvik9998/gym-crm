@@ -698,7 +698,7 @@ async function sendWhatsAppInvoice(
 
   const { data: payment } = await supabase
     .from("payments")
-    .select(`*, members:member_id (id, name, phone, branch_id), daily_pass_users:daily_pass_user_id (id, name, phone)`)
+    .select(`*, members:member_id (id, name, phone, branch_id), daily_pass_users:daily_pass_user_id (id, name, phone, branch_id)`)
     .eq("id", paymentId)
     .single();
 
@@ -708,7 +708,7 @@ async function sendWhatsAppInvoice(
   const dailyPassUser = payment.daily_pass_users as any;
   const customerName = member?.name || dailyPassUser?.name || "Unknown";
   const customerPhone = member?.phone || dailyPassUser?.phone || "";
-  const effectiveBranchId = branchId || payment.branch_id || member?.branch_id;
+  const effectiveBranchId = branchId || payment.branch_id || member?.branch_id || dailyPassUser?.branch_id;
 
   if (!customerPhone) return;
 
