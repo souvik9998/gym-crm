@@ -226,9 +226,28 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     if (open && currentBranch) {
       fetchPackages();
       fetchTrainers();
+      fetchTaxSettings();
       setCurrentStep(1);
     }
   }, [open, currentBranch]);
+
+  const fetchTaxSettings = async () => {
+    if (!currentBranch) return;
+    const { data } = await supabase
+      .from("gym_settings")
+      .select("invoice_tax_rate, invoice_show_gst")
+      .eq("branch_id", currentBranch.id)
+      .maybeSingle();
+    if (data) {
+      const rate = data.invoice_tax_rate || 0;
+      const enabled = data.invoice_show_gst === true && rate > 0;
+      setTaxRate(rate);
+      setTaxEnabled(enabled);
+    } else {
+      setTaxRate(0);
+      setTaxEnabled(false);
+    }
+  };
 
   const fetchPackages = async () => {
     if (!currentBranch) return;
