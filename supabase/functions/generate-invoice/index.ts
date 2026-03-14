@@ -383,9 +383,11 @@ Deno.serve(async (req) => {
 
       const { data: settings } = await supabase
         .from("gym_settings")
-        .select("gym_name, gym_address, gym_phone, gym_email, gym_gst, invoice_prefix, invoice_footer_message")
+        .select("gym_name, gym_address, gym_phone, gym_email, gym_gst, invoice_prefix, invoice_footer_message, invoice_tax_rate, invoice_show_gst")
         .eq("branch_id", effectiveBranchId)
         .maybeSingle();
+
+      let invoiceTaxRate = 0;
 
       if (settings) {
         gymName = settings.gym_name || gymName;
@@ -395,6 +397,10 @@ Deno.serve(async (req) => {
         gymGst = settings.gym_gst || "";
         invoicePrefix = settings.invoice_prefix || "INV";
         footerMessage = settings.invoice_footer_message || footerMessage;
+        // GST: only apply if both show_gst is enabled AND tax_rate > 0
+        if (settings.invoice_show_gst === true && (settings.invoice_tax_rate || 0) > 0) {
+          invoiceTaxRate = settings.invoice_tax_rate;
+        }
       }
     }
 
