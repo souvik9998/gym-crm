@@ -157,10 +157,7 @@ export function AutomatedReportsSettings() {
       toast.error("Please save settings with a valid email first");
       return;
     }
-    if (channel === 'whatsapp' && !whatsappPhone) {
-      toast.error("Please enter a WhatsApp phone number first");
-      return;
-    }
+    // For WhatsApp, use gym phone from settings - no separate phone field needed
 
     if (channel === 'email') setIsSendingEmail(true);
     else setIsSendingWhatsApp(true);
