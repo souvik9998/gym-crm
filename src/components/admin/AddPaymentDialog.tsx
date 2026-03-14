@@ -914,6 +914,12 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                       <span>₹{ptAmount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
+                  {taxAmount > 0 && (
+                    <div className="flex justify-between text-[10px] md:text-sm">
+                      <span className="text-muted-foreground">GST ({taxRate}%)</span>
+                      <span>₹{taxAmount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between font-bold pt-1 md:pt-2 border-t border-border text-xs md:text-base">
                     <span>Total (Cash)</span>
                     <span className="text-accent">₹{totalAmount.toLocaleString("en-IN")}</span>
