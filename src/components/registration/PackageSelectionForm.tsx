@@ -344,6 +344,8 @@ const PackageSelectionForm = ({
       subscriptionAmount,
       joiningFee,
       trainerFee,
+      taxAmount,
+      taxRate,
       ptDays: wantsTrainer && selectedPTOption ? selectedPTOption.days : undefined,
       ptEndDate: wantsTrainer && selectedPTOption ? format(selectedPTOption.endDate, "yyyy-MM-dd") : undefined,
       startDate: format(selectedStartDate, "yyyy-MM-dd"),
