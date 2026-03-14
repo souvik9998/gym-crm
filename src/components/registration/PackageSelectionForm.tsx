@@ -135,6 +135,7 @@ const PackageSelectionForm = ({
   const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [customPackages, setCustomPackages] = useState<CustomPackage[]>([]);
+  const [taxSettings, setTaxSettings] = useState<PublicTaxSettings | null>(null);
   
   const isExpiredMembership = useMemo(() => {
     if (!existingMembershipEndDate) return false;
