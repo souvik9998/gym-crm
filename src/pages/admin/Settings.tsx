@@ -1672,37 +1672,26 @@ const AdminSettings = () => {
                         maxLength={500}
                       />
                     </div>
+                    <div className="pt-2">
+                      <Button
+                        className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
+                        onClick={handleSaveInvoice}
+                        disabled={isSavingInvoice || (
+                          invoicePrefix === (settings?.invoice_prefix || "INV") &&
+                          invoiceFooter === (settings?.invoice_footer_message || "Thank you for choosing our gym!") &&
+                          invoiceTerms === (settings?.invoice_terms || "")
+                        )}
+                      >
+                        {isSavingInvoice ? (
+                          <span className="flex items-center gap-2"><ButtonSpinner />Saving...</span>
+                        ) : "Save Invoice Settings"}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
 
                 {/* Automated Reports Card */}
                 <AutomatedReportsSettings />
-
-                <Button
-                  className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
-                  onClick={handleSaveSettings}
-                  disabled={isSaving || (
-                    gymName === (settings?.gym_name || "") &&
-                    gymPhone === (settings?.gym_phone || "") &&
-                    gymAddress === (settings?.gym_address || "") &&
-                    gymEmail === (settings?.gym_email || "") &&
-                    gymGst === (settings?.gym_gst || "") &&
-                    invoicePrefix === (settings?.invoice_prefix || "INV") &&
-                    invoiceFooter === (settings?.invoice_footer_message || "Thank you for choosing our gym!") &&
-                    invoiceTaxRate === String(settings?.invoice_tax_rate || 0) &&
-                    invoiceTerms === (settings?.invoice_terms || "") &&
-                    invoiceShowGst === (settings?.invoice_show_gst !== false)
-                  )}
-                >
-                  {isSaving ? (
-                    <span className="flex items-center gap-2">
-                      <ButtonSpinner />
-                      Saving...
-                    </span>
-                  ) : (
-                    "Save Settings"
-                  )}
-                </Button>
               </>
             )}
           </TabsContent>
