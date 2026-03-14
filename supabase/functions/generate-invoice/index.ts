@@ -371,6 +371,7 @@ Deno.serve(async (req) => {
     let branchName = "";
     let footerMessage = "Thank you for choosing our gym!";
     let invoicePrefix = "INV";
+    let invoiceTaxRate = 0;
 
     if (effectiveBranchId) {
       const { data: branch } = await supabase
@@ -387,7 +388,6 @@ Deno.serve(async (req) => {
         .eq("branch_id", effectiveBranchId)
         .maybeSingle();
 
-      let invoiceTaxRate = 0;
 
       if (settings) {
         gymName = settings.gym_name || gymName;
