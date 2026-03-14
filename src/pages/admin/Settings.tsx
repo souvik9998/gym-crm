@@ -1455,16 +1455,6 @@ const AdminSettings = () => {
                           className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
                         />
                       </div>
-                      <div className="space-y-1.5 lg:space-y-2">
-                        <Label htmlFor="gym-gst" className="text-xs lg:text-sm font-medium">GST Number (Optional)</Label>
-                        <Input
-                          id="gym-gst"
-                          value={gymGst}
-                          onChange={(e) => setGymGst(e.target.value)}
-                          placeholder="22AAAAA0000A1Z5"
-                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
-                        />
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
