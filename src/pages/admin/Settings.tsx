@@ -408,7 +408,7 @@ const AdminSettings = () => {
       toast.error("Error", { description: error.message });
     } else {
       await logAdminActivity({
-        category: "settings", type: "invoice_settings_updated",
+        category: "settings", type: "gym_info_updated",
         description: `Updated invoice settings for ${currentBranch?.name || "branch"}`,
         entityType: "gym_settings", entityId: settings.id,
         entityName: currentBranch?.name || "Gym Settings",
