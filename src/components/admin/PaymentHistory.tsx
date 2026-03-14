@@ -272,28 +272,17 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
 
   const handleViewInvoice = async (paymentId: string) => {
     try {
-      const { data } = await supabase
-        .from("invoices")
-        .select("invoice_number")
-        .eq("payment_id", paymentId)
-        .maybeSingle();
-      
-      if (data?.invoice_number) {
-        window.open(`/invoice/${data.invoice_number}`, "_blank");
-      } else {
-        // Generate invoice first, then open
-        toast.info("Generating invoice...");
-        const { data: genData, error } = await supabase.functions.invoke("generate-invoice", {
-          body: { paymentId, branchId: currentBranch?.id, sendViaWhatsApp: false },
-        });
-        if (error || !genData?.success) {
-          toast.error("Failed to generate invoice");
-          return;
-        }
-        if (genData.invoiceNumber) {
-          window.open(`/invoice/${genData.invoiceNumber}`, "_blank");
-        }
+      toast.info("Preparing invoice...");
+      const { data: genData, error } = await supabase.functions.invoke("generate-invoice", {
+        body: { paymentId, branchId: currentBranch?.id, sendViaWhatsApp: false },
+      });
+
+      if (error || !genData?.success || !genData.invoiceNumber) {
+        toast.error("Failed to generate invoice");
+        return;
       }
+
+      window.open(`/invoice/${genData.invoiceNumber}`, "_blank");
     } catch {
       toast.error("Failed to load invoice");
     }

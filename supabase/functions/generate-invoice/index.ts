@@ -311,32 +311,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if invoice already exists for this payment
+    // Check if invoice already exists for this payment (we refresh data even when it exists)
     const { data: existingInvoice } = await supabase
       .from("invoices")
-      .select("id, invoice_number")
+      .select("id, invoice_number, transaction_id")
       .eq("payment_id", paymentId)
       .maybeSingle();
-
-    if (existingInvoice) {
-      // Return existing invoice
-      const invoiceLink = `https://gym-qr-pro.lovable.app/invoice/${existingInvoice.invoice_number}`;
-      
-      // Still send WhatsApp if requested
-      if (sendViaWhatsApp) {
-        await sendWhatsAppInvoice(supabase, paymentId, existingInvoice.invoice_number, invoiceLink, PERISKOPE_API_KEY, PERISKOPE_PHONE, branchId);
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          invoiceNumber: existingInvoice.invoice_number,
-          invoiceUrl: invoiceLink,
-          whatsappSent: sendViaWhatsApp,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
     // Fetch payment with related data
     const { data: payment, error: paymentError } = await supabase
@@ -344,8 +324,8 @@ Deno.serve(async (req) => {
       .select(`
         *,
         members:member_id (id, name, phone, branch_id),
-        daily_pass_users:daily_pass_user_id (id, name, phone),
-        subscriptions:subscription_id (start_date, end_date, plan_months, trainer_fee, personal_trainer_id, is_custom_package, custom_days)
+        daily_pass_users:daily_pass_user_id (id, name, phone, branch_id),
+        subscriptions:subscription_id (start_date, end_date, plan_months, trainer_fee, personal_trainer_id, is_custom_package, custom_days, branch_id)
       `)
       .eq("id", paymentId)
       .single();
@@ -360,7 +340,32 @@ Deno.serve(async (req) => {
     const member = payment.members as any;
     const dailyPassUser = payment.daily_pass_users as any;
     const subscription = payment.subscriptions as any;
-    const effectiveBranchId = branchId || payment.branch_id || member?.branch_id;
+
+    let effectiveBranchId = branchId || payment.branch_id || member?.branch_id || dailyPassUser?.branch_id || subscription?.branch_id;
+
+    // Fallback branch for old records that don't have branch_id
+    if (!effectiveBranchId) {
+      const { data: fallbackBranch } = await supabase
+        .from("branches")
+        .select("id")
+        .eq("is_default", true)
+        .maybeSingle();
+
+      if (fallbackBranch?.id) {
+        effectiveBranchId = fallbackBranch.id;
+      } else {
+        const { data: anyActiveBranch } = await supabase
+          .from("branches")
+          .select("id")
+          .eq("is_active", true)
+          .limit(1)
+          .maybeSingle();
+
+        if (anyActiveBranch?.id) {
+          effectiveBranchId = anyActiveBranch.id;
+        }
+      }
+    }
 
     // Fetch gym settings for branding
     let gymName = "Pro Plus Fitness";
@@ -410,16 +415,57 @@ Deno.serve(async (req) => {
       day: "numeric", month: "long", year: "numeric",
     });
 
-    // Generate sequential invoice number using DB function
-    const { data: invoiceNumData } = await supabase.rpc("generate_invoice_number", {
-      _branch_id: effectiveBranchId,
-    });
-    const invoiceNumber = invoiceNumData || `${invoicePrefix}-${Date.now()}`;
+    let invoiceNumber = existingInvoice?.invoice_number || "";
+
+    // Generate invoice number only for first-time invoice creation
+    if (!invoiceNumber) {
+      let baseInvoiceNumber = "";
+
+      if (effectiveBranchId) {
+        const { data: invoiceNumData } = await supabase.rpc("generate_invoice_number", {
+          _branch_id: effectiveBranchId,
+        });
+        if (invoiceNumData) {
+          baseInvoiceNumber = invoiceNumData;
+        }
+      }
+
+      if (!baseInvoiceNumber) {
+        baseInvoiceNumber = `${invoicePrefix}-${Date.now()}`;
+      }
+
+      invoiceNumber = baseInvoiceNumber;
+      let collisionSuffix = 1;
+
+      // Guard against unique invoice_number collisions across branches
+      while (true) {
+        const { data: conflictingInvoice } = await supabase
+          .from("invoices")
+          .select("id")
+          .eq("invoice_number", invoiceNumber)
+          .maybeSingle();
+
+        if (!conflictingInvoice) break;
+
+        invoiceNumber = `${baseInvoiceNumber}-${collisionSuffix}`;
+        collisionSuffix += 1;
+
+        if (collisionSuffix > 50) {
+          invoiceNumber = `${invoicePrefix}-${Date.now()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+          break;
+        }
+      }
+    }
+
+    const transactionId =
+      payment.razorpay_payment_id ||
+      existingInvoice?.transaction_id ||
+      `CASH-${payment.id.slice(0, 8).toUpperCase()}`;
 
     // Calculate fee breakdown
     const trainerFee = subscription?.trainer_fee ? Number(subscription.trainer_fee) : 0;
     const totalPaid = Number(payment.amount);
-    
+
     // If GST is enabled, reverse-calculate: subtotal + tax = totalPaid
     // tax = subtotal * taxRate / 100
     // subtotal + subtotal * taxRate / 100 = totalPaid
@@ -427,7 +473,7 @@ Deno.serve(async (req) => {
     // subtotal = totalPaid / (1 + taxRate/100)
     let subtotalBeforeTax: number;
     let taxOnInvoice: number;
-    
+
     if (invoiceTaxRate > 0) {
       subtotalBeforeTax = Math.round(totalPaid / (1 + invoiceTaxRate / 100));
       taxOnInvoice = totalPaid - subtotalBeforeTax;
@@ -435,7 +481,7 @@ Deno.serve(async (req) => {
       subtotalBeforeTax = totalPaid;
       taxOnInvoice = 0;
     }
-    
+
     const gymFee = subtotalBeforeTax - trainerFee;
 
     const startDate = subscription?.start_date
@@ -466,7 +512,7 @@ Deno.serve(async (req) => {
       amount: totalPaid,
       paymentMode: payment.payment_mode === "online" ? "Online (Razorpay)" : payment.payment_mode === "upi" ? "UPI" : payment.payment_mode === "card" ? "Card" : payment.payment_mode === "bank_transfer" ? "Bank Transfer" : "Cash",
       paymentType: payment.payment_type || "gym_membership",
-      razorpayPaymentId: payment.razorpay_payment_id || `CASH-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+      razorpayPaymentId: transactionId,
       packageName,
       startDate,
       endDate,
@@ -499,41 +545,55 @@ Deno.serve(async (req) => {
     const { data: urlData } = supabase.storage.from("invoices").getPublicUrl(filePath);
     const pdfUrl = urlData?.publicUrl || null;
 
-    // Save invoice record to database
-    const { error: insertError } = await supabase
-      .from("invoices")
-      .insert({
-        invoice_number: invoiceNumber,
-        payment_id: paymentId,
-        branch_id: effectiveBranchId,
-        member_id: member?.id || null,
-        daily_pass_user_id: dailyPassUser?.id || null,
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        gym_name: gymName,
-        gym_address: gymAddress || null,
-        gym_phone: gymPhone || null,
-        gym_email: gymEmail || null,
-        gym_gst: gymGst || null,
-        branch_name: branchName || null,
-        amount: totalPaid,
-        subtotal: subtotalBeforeTax,
-        gym_fee: gymFee > 0 ? gymFee : 0,
-        joining_fee: 0,
-        trainer_fee: trainerFee,
-        tax: taxOnInvoice,
-        package_name: packageName,
-        start_date: subscription?.start_date || null,
-        end_date: subscription?.end_date || null,
-        payment_mode: payment.payment_mode,
-        payment_date: payment.created_at,
-        transaction_id: payment.razorpay_payment_id || `CASH-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
-        pdf_url: pdfUrl,
-        footer_message: footerMessage,
-      });
+    const invoicePayload = {
+      branch_id: effectiveBranchId,
+      member_id: member?.id || null,
+      daily_pass_user_id: dailyPassUser?.id || null,
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      gym_name: gymName,
+      gym_address: gymAddress || null,
+      gym_phone: gymPhone || null,
+      gym_email: gymEmail || null,
+      gym_gst: gymGst || null,
+      branch_name: branchName || null,
+      amount: totalPaid,
+      subtotal: subtotalBeforeTax,
+      gym_fee: gymFee > 0 ? gymFee : 0,
+      joining_fee: 0,
+      trainer_fee: trainerFee,
+      tax: taxOnInvoice,
+      package_name: packageName,
+      start_date: subscription?.start_date || null,
+      end_date: subscription?.end_date || null,
+      payment_mode: payment.payment_mode,
+      payment_date: payment.created_at,
+      transaction_id: transactionId,
+      pdf_url: pdfUrl,
+      footer_message: footerMessage,
+    };
 
-    if (insertError) {
-      console.error("Invoice insert error:", insertError);
+    if (existingInvoice?.id) {
+      const { error: updateError } = await supabase
+        .from("invoices")
+        .update(invoicePayload)
+        .eq("id", existingInvoice.id);
+
+      if (updateError) {
+        console.error("Invoice update error:", updateError);
+      }
+    } else {
+      const { error: insertError } = await supabase
+        .from("invoices")
+        .insert({
+          invoice_number: invoiceNumber,
+          payment_id: paymentId,
+          ...invoicePayload,
+        });
+
+      if (insertError) {
+        console.error("Invoice insert error:", insertError);
+      }
     }
 
     // Branded invoice link
@@ -638,7 +698,7 @@ async function sendWhatsAppInvoice(
 
   const { data: payment } = await supabase
     .from("payments")
-    .select(`*, members:member_id (id, name, phone, branch_id), daily_pass_users:daily_pass_user_id (id, name, phone)`)
+    .select(`*, members:member_id (id, name, phone, branch_id), daily_pass_users:daily_pass_user_id (id, name, phone, branch_id)`)
     .eq("id", paymentId)
     .single();
 
@@ -648,7 +708,7 @@ async function sendWhatsAppInvoice(
   const dailyPassUser = payment.daily_pass_users as any;
   const customerName = member?.name || dailyPassUser?.name || "Unknown";
   const customerPhone = member?.phone || dailyPassUser?.phone || "";
-  const effectiveBranchId = branchId || payment.branch_id || member?.branch_id;
+  const effectiveBranchId = branchId || payment.branch_id || member?.branch_id || dailyPassUser?.branch_id;
 
   if (!customerPhone) return;
 
