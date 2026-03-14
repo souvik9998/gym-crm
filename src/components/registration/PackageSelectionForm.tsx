@@ -71,6 +71,8 @@ export interface PackageSelectionData {
   subscriptionAmount: number;
   joiningFee: number;
   trainerFee: number;
+  taxAmount: number;
+  taxRate: number;
   ptDays?: number;
   ptEndDate?: string;
   startDate?: string;
