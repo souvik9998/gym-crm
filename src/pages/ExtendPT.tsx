@@ -44,6 +44,8 @@ const ExtendPT = () => {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [existingPTEndDate, setExistingPTEndDate] = useState<Date | null>(null);
   const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(null);
+  const [taxRate, setTaxRate] = useState(0);
+  const [taxEnabled, setTaxEnabled] = useState(false);
 
   useEffect(() => {
     const fallback = branchId ? `/b/${branchId}` : "/admin/login";
