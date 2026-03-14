@@ -527,7 +527,7 @@ const ExtendPT = () => {
                         Processing...
                       </div>
                     ) : (
-                      <>Pay ₹{selectedOption?.fee.toLocaleString("en-IN") || 0}</>
+                      <>Pay ₹{totalWithGst.toLocaleString("en-IN")}</>
                     )}
                   </Button>
                 </div>
