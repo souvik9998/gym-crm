@@ -25,9 +25,17 @@ interface ReportSchedule {
   include_attendance: boolean;
   include_trainers: boolean;
   include_branch_analysis: boolean;
+  report_format: string;
   last_sent_at: string | null;
   next_run_at: string | null;
 }
+
+const REPORT_FORMATS = [
+  { value: "excel", label: "Excel Report", icon: "📊", description: "Detailed spreadsheet with all data" },
+  { value: "pdf", label: "PDF Report", icon: "📄", description: "Professional formatted PDF summary" },
+  { value: "dashboard_link", label: "Dashboard Link", icon: "🔗", description: "Link to visual analytics dashboard" },
+  { value: "whatsapp_summary", label: "WhatsApp Summary", icon: "💬", description: "Quick summary with report link via WhatsApp" },
+];
 
 export function AutomatedReportsSettings() {
   const { currentBranch } = useBranch();
@@ -47,6 +55,7 @@ export function AutomatedReportsSettings() {
   const [includeAttendance, setIncludeAttendance] = useState(true);
   const [includeTrainers, setIncludeTrainers] = useState(true);
   const [includeBranchAnalysis, setIncludeBranchAnalysis] = useState(true);
+  const [reportFormat, setReportFormat] = useState("excel");
 
   const fetchSchedule = useCallback(async () => {
     if (!currentBranch?.id) return;
@@ -71,6 +80,7 @@ export function AutomatedReportsSettings() {
         setIncludeAttendance(data.include_attendance);
         setIncludeTrainers(data.include_trainers);
         setIncludeBranchAnalysis(data.include_branch_analysis);
+        setReportFormat(data.report_format || "excel");
       }
     } catch (e) {
       console.error("Error fetching report schedule:", e);
@@ -115,6 +125,7 @@ export function AutomatedReportsSettings() {
         include_attendance: includeAttendance,
         include_trainers: includeTrainers,
         include_branch_analysis: includeBranchAnalysis,
+        report_format: reportFormat,
         next_run_at: isEnabled ? calculateNextRun(frequency) : null,
         updated_at: new Date().toISOString(),
       };
@@ -165,6 +176,7 @@ export function AutomatedReportsSettings() {
           includeAttendance,
           includeTrainers,
           includeBranchAnalysis,
+          reportFormat,
         }),
       });
 
@@ -193,7 +205,8 @@ export function AutomatedReportsSettings() {
       includeMemberships !== schedule.include_memberships ||
       includeAttendance !== schedule.include_attendance ||
       includeTrainers !== schedule.include_trainers ||
-      includeBranchAnalysis !== schedule.include_branch_analysis
+      includeBranchAnalysis !== schedule.include_branch_analysis ||
+      reportFormat !== (schedule.report_format || "excel")
     : isEnabled || reportEmail;
 
   if (isLoading) {
@@ -289,6 +302,31 @@ export function AutomatedReportsSettings() {
                 className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
               />
             )}
+          </div>
+
+          {/* Report Format */}
+          <div className="space-y-2">
+            <Label className="text-xs lg:text-sm font-medium">Report Format</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {REPORT_FORMATS.map((fmt) => (
+                <button
+                  key={fmt.value}
+                  type="button"
+                  onClick={() => setReportFormat(fmt.value)}
+                  className={`flex items-start gap-2.5 p-3 rounded-lg border text-left transition-all duration-200 ${
+                    reportFormat === fmt.value
+                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                      : "border-border/40 bg-card hover:border-border/60"
+                  }`}
+                >
+                  <span className="text-lg leading-none mt-0.5">{fmt.icon}</span>
+                  <div className="min-w-0">
+                    <p className={`text-xs lg:text-sm font-medium ${reportFormat === fmt.value ? "text-primary" : ""}`}>{fmt.label}</p>
+                    <p className="text-[10px] lg:text-xs text-muted-foreground leading-snug">{fmt.description}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Report sections */}

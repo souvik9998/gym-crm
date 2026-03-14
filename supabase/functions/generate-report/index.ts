@@ -1,10 +1,8 @@
 /**
  * Generate Report Edge Function
  * 
- * Generates an Excel report with gym performance data and sends it via email.
- * Optionally sends a WhatsApp message with a download link.
- * 
- * Triggered by the scheduled-reports cron function or manually by admin.
+ * Generates reports in multiple formats (Excel, PDF, Dashboard Link, WhatsApp Summary)
+ * and sends them via email/WhatsApp.
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -26,6 +24,7 @@ interface ReportConfig {
   includeAttendance?: boolean;
   includeTrainers?: boolean;
   includeBranchAnalysis?: boolean;
+  reportFormat?: string;
 }
 
 function getDateRange(frequency: string): { start: Date; end: Date; label: string } {
@@ -50,7 +49,6 @@ function getDateRange(frequency: string): { start: Date; end: Date; label: strin
   }
 }
 
-// Simple CSV-style Excel generation using XML Spreadsheet format
 function generateExcelXml(sheets: { name: string; headers: string[]; rows: (string | number)[][] }[]): string {
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <?mso-application progid="Excel.Sheet"?>
@@ -73,15 +71,11 @@ function generateExcelXml(sheets: { name: string; headers: string[]; rows: (stri
   for (const sheet of sheets) {
     xml += `<Worksheet ss:Name="${escapeXml(sheet.name)}">
 <Table>`;
-    
-    // Headers
     xml += `<Row>`;
     for (const h of sheet.headers) {
       xml += `<Cell ss:StyleID="Header"><Data ss:Type="String">${escapeXml(h)}</Data></Cell>`;
     }
     xml += `</Row>`;
-
-    // Data rows
     for (const row of sheet.rows) {
       xml += `<Row>`;
       for (const cell of row) {
@@ -104,21 +98,126 @@ function escapeXml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-async function sendEmailWithResend(to: string, subject: string, html: string, attachment: { filename: string; content: string }) {
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Generate a styled PDF-like HTML report
+function generatePdfHtml(branchName: string, label: string, summaryRows: (string | number)[][], sheets: { name: string; headers: string[]; rows: (string | number)[][] }[]): string {
+  let sectionsHtml = '';
+  
+  for (const sheet of sheets) {
+    if (sheet.name === 'Summary') continue;
+    sectionsHtml += `
+    <div style="margin-bottom: 24px;">
+      <h3 style="color: #4472C4; font-size: 16px; margin: 0 0 12px 0; border-bottom: 2px solid #4472C4; padding-bottom: 6px;">${escapeHtml(sheet.name)}</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+        <thead>
+          <tr>${sheet.headers.map(h => `<th style="background: #4472C4; color: white; padding: 8px 12px; text-align: left; font-size: 11px;">${escapeHtml(h)}</th>`).join('')}</tr>
+        </thead>
+        <tbody>
+          ${sheet.rows.slice(0, 50).map((row, i) => `
+            <tr style="background: ${i % 2 === 0 ? '#f8f9fa' : '#ffffff'};">
+              ${row.map(cell => `<td style="padding: 6px 12px; border-bottom: 1px solid #e9ecef; font-size: 11px;">${escapeHtml(String(cell ?? ''))}</td>`).join('')}
+            </tr>
+          `).join('')}
+          ${sheet.rows.length > 50 ? `<tr><td colspan="${sheet.headers.length}" style="padding: 8px; text-align: center; color: #888; font-style: italic;">... and ${sheet.rows.length - 50} more rows</td></tr>` : ''}
+        </tbody>
+      </table>
+    </div>`;
+  }
+
+  // Summary metrics
+  const metricsHtml = summaryRows
+    .filter(r => r[0] !== '' && r[1] !== '')
+    .map(r => `<tr><td style="padding: 6px 12px; font-weight: 500; color: #333;">${escapeHtml(String(r[0]))}</td><td style="padding: 6px 12px; text-align: right; font-weight: 600; color: #4472C4;">${typeof r[1] === 'number' ? r[1].toLocaleString('en-IN') : escapeHtml(String(r[1]))}</td></tr>`)
+    .join('');
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>${escapeHtml(branchName)} - ${escapeHtml(label)}</title></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 32px; color: #333;">
+  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 32px; color: white; text-align: center; margin-bottom: 24px;">
+    <h1 style="margin: 0 0 8px 0; font-size: 28px;">📊 ${escapeHtml(branchName)}</h1>
+    <p style="margin: 0; opacity: 0.9; font-size: 14px;">${escapeHtml(label)}</p>
+    <p style="margin: 8px 0 0 0; opacity: 0.7; font-size: 12px;">Generated on ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
+  </div>
+
+  <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+    <h2 style="margin: 0 0 12px 0; font-size: 18px; color: #333;">📋 Key Metrics</h2>
+    <table style="width: 100%; border-collapse: collapse;">
+      ${metricsHtml}
+    </table>
+  </div>
+
+  ${sectionsHtml}
+
+  <div style="text-align: center; color: #888; font-size: 11px; margin-top: 32px; padding-top: 16px; border-top: 1px solid #e9ecef;">
+    <p>This report was automatically generated by GymKloud</p>
+  </div>
+</body>
+</html>`;
+}
+
+// Generate a WhatsApp-friendly text summary
+function generateWhatsAppSummary(branchName: string, label: string, summaryRows: (string | number)[][]): string {
+  let text = `📊 *${branchName}*\n${label}\n\n`;
+  
+  let currentSection = '';
+  for (const row of summaryRows) {
+    if (row[0] === '' && row[1] === '') {
+      text += '\n';
+      continue;
+    }
+    const metric = String(row[0]);
+    const value = typeof row[1] === 'number' ? row[1].toLocaleString('en-IN') : String(row[1]);
+    
+    if (metric.includes('Revenue') || metric.includes('Amount')) {
+      text += `💰 ${metric}: ₹${value}\n`;
+    } else if (metric.includes('Members') || metric.includes('Member')) {
+      text += `👥 ${metric}: ${value}\n`;
+    } else if (metric.includes('Check-in') || metric.includes('Attendance')) {
+      text += `✅ ${metric}: ${value}\n`;
+    } else if (metric.includes('Trainer')) {
+      text += `🏋️ ${metric}: ${value}\n`;
+    } else {
+      text += `▪️ ${metric}: ${value}\n`;
+    }
+  }
+  
+  text += `\n📅 Generated: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}\n_Powered by GymKloud_`;
+  return text;
+}
+
+async function sendEmailWithResend(to: string, subject: string, html: string, attachment?: { filename: string; content: string; contentType?: string }) {
   const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
   if (!RESEND_API_KEY) {
     console.warn("RESEND_API_KEY not configured, skipping email");
     return { success: false, error: "Email not configured" };
   }
 
-  // Use TextEncoder to handle non-Latin1 characters (e.g. ₹)
-  const encoder = new TextEncoder();
-  const uint8 = encoder.encode(attachment.content);
-  let binary = '';
-  for (let i = 0; i < uint8.length; i++) {
-    binary += String.fromCharCode(uint8[i]);
+  const emailPayload: Record<string, unknown> = {
+    from: "GymKloud Reports <hello@gymkloud.in>",
+    to: [to],
+    subject,
+    html,
+  };
+
+  if (attachment) {
+    const encoder = new TextEncoder();
+    const uint8 = encoder.encode(attachment.content);
+    let binary = '';
+    for (let i = 0; i < uint8.length; i++) {
+      binary += String.fromCharCode(uint8[i]);
+    }
+    const base64Content = btoa(binary);
+
+    emailPayload.attachments = [{
+      filename: attachment.filename,
+      content: base64Content,
+      ...(attachment.contentType ? { content_type: attachment.contentType } : {}),
+    }];
   }
-  const base64Content = btoa(binary);
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -126,16 +225,7 @@ async function sendEmailWithResend(to: string, subject: string, html: string, at
       "Authorization": `Bearer ${RESEND_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      from: "GymKloud Reports <hello@gymkloud.in>",
-      to: [to],
-      subject,
-      html,
-      attachments: [{
-        filename: attachment.filename,
-        content: base64Content,
-      }],
-    }),
+    body: JSON.stringify(emailPayload),
   });
 
   if (!res.ok) {
@@ -170,7 +260,6 @@ Deno.serve(async (req) => {
       const parsed = JSON.parse(body);
       
       if (parsed.scheduled) {
-        // Called by cron - process all due reports
         isScheduled = true;
         const now = new Date().toISOString();
         const { data: dueReports } = await supabase
@@ -199,9 +288,9 @@ Deno.serve(async (req) => {
               includeAttendance: schedule.include_attendance,
               includeTrainers: schedule.include_trainers,
               includeBranchAnalysis: schedule.include_branch_analysis,
+              reportFormat: schedule.report_format || 'excel',
             });
 
-            // Update next_run_at
             const nextRun = calculateNextRun(schedule.frequency);
             await supabase
               .from("report_schedules")
@@ -220,7 +309,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Manual trigger - validate auth
+      // Manual trigger
       const authHeader = req.headers.get("Authorization");
       if (!authHeader) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -263,27 +352,18 @@ Deno.serve(async (req) => {
 
 function calculateNextRun(frequency: string): Date {
   const next = new Date();
-  // Set to 9 AM IST (3:30 UTC)
   next.setUTCHours(3, 30, 0, 0);
-  
   switch (frequency) {
-    case "daily":
-      next.setDate(next.getDate() + 1);
-      break;
-    case "weekly":
-      next.setDate(next.getDate() + 7);
-      break;
-    case "monthly":
-      next.setMonth(next.getMonth() + 1);
-      break;
-    default:
-      next.setDate(next.getDate() + 7);
+    case "daily": next.setDate(next.getDate() + 1); break;
+    case "weekly": next.setDate(next.getDate() + 7); break;
+    case "monthly": next.setMonth(next.getMonth() + 1); break;
+    default: next.setDate(next.getDate() + 7);
   }
   return next;
 }
 
 // deno-lint-ignore no-explicit-any
-async function generateAndSendReport(supabase: any, config: ReportConfig) {
+async function collectReportData(supabase: any, config: ReportConfig) {
   const { branchId } = config;
   const { start, end, label } = getDateRange(config.frequency);
   const startStr = start.toISOString();
@@ -291,7 +371,6 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
   const startDate = start.toISOString().split("T")[0];
   const endDate = end.toISOString().split("T")[0];
 
-  // Fetch branch info
   const { data: branch } = await supabase
     .from("branches")
     .select("name, address, phone")
@@ -300,11 +379,9 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
 
   const branchName = branch?.name || "Gym";
   const sheets: { name: string; headers: string[]; rows: (string | number)[][] }[] = [];
-
-  // Summary sheet
   const summaryRows: (string | number)[][] = [];
 
-  // 1. Payments data
+  // 1. Payments
   if (config.includePayments !== false) {
     const { data: payments } = await supabase
       .from("payments")
@@ -314,24 +391,17 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
       .lte("created_at", endStr)
       .order("created_at", { ascending: false });
 
-    const paymentRows = (payments || []).map((p: any) => [
-      new Date(p.created_at).toLocaleDateString("en-IN"),
-      p.amount,
-      p.payment_mode || "N/A",
-      p.status || "N/A",
-      p.payment_type || "gym_membership",
-      p.notes || "",
-    ]);
-
     sheets.push({
       name: "Payments",
       headers: ["Date", "Amount (₹)", "Mode", "Status", "Type", "Notes"],
-      rows: paymentRows,
+      rows: (payments || []).map((p: any) => [
+        new Date(p.created_at).toLocaleDateString("en-IN"),
+        p.amount, p.payment_mode || "N/A", p.status || "N/A",
+        p.payment_type || "gym_membership", p.notes || "",
+      ]),
     });
 
-    const totalRevenue = (payments || [])
-      .filter((p: any) => p.status === "success")
-      .reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+    const totalRevenue = (payments || []).filter((p: any) => p.status === "success").reduce((sum: number, p: any) => sum + Number(p.amount), 0);
     const cashPayments = (payments || []).filter((p: any) => p.payment_mode === "cash" && p.status === "success").length;
     const onlinePayments = (payments || []).filter((p: any) => p.payment_mode === "online" && p.status === "success").length;
 
@@ -344,7 +414,7 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
     );
   }
 
-  // 2. Memberships data
+  // 2. Memberships
   if (config.includeMemberships !== false) {
     const { data: members } = await supabase
       .from("members")
@@ -352,7 +422,6 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
       .eq("branch_id", branchId);
 
     const memberIds = (members || []).map((m: any) => m.id);
-    
     let subscriptions: any[] = [];
     if (memberIds.length > 0) {
       const { data: subs } = await supabase
@@ -363,38 +432,23 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
       subscriptions = subs || [];
     }
 
-    // Latest sub per member
     const latestSubs = new Map();
     for (const sub of subscriptions) {
-      if (!latestSubs.has(sub.member_id)) {
-        latestSubs.set(sub.member_id, sub);
-      }
+      if (!latestSubs.has(sub.member_id)) latestSubs.set(sub.member_id, sub);
     }
-
-    const memberRows = (members || []).map((m: any) => {
-      const sub = latestSubs.get(m.id);
-      return [
-        m.name,
-        m.phone,
-        m.email || "N/A",
-        sub?.status || "No Subscription",
-        sub?.start_date || "N/A",
-        sub?.end_date || "N/A",
-        sub?.plan_months || 0,
-      ];
-    });
 
     sheets.push({
       name: "Members",
       headers: ["Name", "Phone", "Email", "Status", "Start Date", "End Date", "Plan Months"],
-      rows: memberRows,
+      rows: (members || []).map((m: any) => {
+        const sub = latestSubs.get(m.id);
+        return [m.name, m.phone, m.email || "N/A", sub?.status || "No Subscription", sub?.start_date || "N/A", sub?.end_date || "N/A", sub?.plan_months || 0];
+      }),
     });
 
     const activeCount = [...latestSubs.values()].filter((s: any) => s.status === "active").length;
     const expiredCount = [...latestSubs.values()].filter((s: any) => s.status === "expired").length;
     const expiringSoon = [...latestSubs.values()].filter((s: any) => s.status === "expiring_soon").length;
-
-    // New members in period
     const newMembers = (members || []).filter((m: any) => new Date(m.created_at) >= start).length;
 
     summaryRows.push(
@@ -407,7 +461,7 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
     );
   }
 
-  // 3. Attendance data
+  // 3. Attendance
   if (config.includeAttendance !== false) {
     const { data: attendance } = await supabase
       .from("attendance_logs")
@@ -418,18 +472,15 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
       .order("date", { ascending: false })
       .limit(500);
 
-    const attendanceRows = (attendance || []).map((a: any) => [
-      a.date,
-      a.user_type || "member",
-      new Date(a.check_in_at).toLocaleTimeString("en-IN"),
-      a.check_out_at ? new Date(a.check_out_at).toLocaleTimeString("en-IN") : "N/A",
-      a.total_hours || 0,
-    ]);
-
     sheets.push({
       name: "Attendance",
       headers: ["Date", "User Type", "Check In", "Check Out", "Hours"],
-      rows: attendanceRows,
+      rows: (attendance || []).map((a: any) => [
+        a.date, a.user_type || "member",
+        new Date(a.check_in_at).toLocaleTimeString("en-IN"),
+        a.check_out_at ? new Date(a.check_out_at).toLocaleTimeString("en-IN") : "N/A",
+        a.total_hours || 0,
+      ]),
     });
 
     const memberCheckins = (attendance || []).filter((a: any) => a.user_type === "member").length;
@@ -443,7 +494,7 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
     );
   }
 
-  // 4. Trainer data
+  // 4. Trainers
   if (config.includeTrainers !== false) {
     const { data: trainers } = await supabase
       .from("personal_trainers")
@@ -466,19 +517,14 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
       trainerClientCount.set(pt.personal_trainer_id, (trainerClientCount.get(pt.personal_trainer_id) || 0) + 1);
     }
 
-    const trainerRows = (trainers || []).map((t: any) => [
-      t.name,
-      t.phone || "N/A",
-      t.specialization || "General",
-      t.monthly_fee,
-      trainerClientCount.get(t.id) || 0,
-      t.is_active ? "Active" : "Inactive",
-    ]);
-
     sheets.push({
       name: "Trainers",
       headers: ["Name", "Phone", "Specialization", "Monthly Fee (₹)", "Active Clients", "Status"],
-      rows: trainerRows,
+      rows: (trainers || []).map((t: any) => [
+        t.name, t.phone || "N/A", t.specialization || "General",
+        t.monthly_fee, trainerClientCount.get(t.id) || 0,
+        t.is_active ? "Active" : "Inactive",
+      ]),
     });
 
     summaryRows.push(
@@ -491,15 +537,12 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
 
   // 5. Branch analysis
   if (config.includeBranchAnalysis !== false) {
-    // Daily pass data
     const { data: dailyPasses } = await supabase
       .from("daily_pass_users")
       .select("id")
       .eq("branch_id", branchId);
 
-    summaryRows.push(
-      ["Daily Pass Users", dailyPasses?.length || 0],
-    );
+    summaryRows.push(["Daily Pass Users", dailyPasses?.length || 0]);
   }
 
   // Add summary as first sheet
@@ -515,36 +558,159 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
     ],
   });
 
-  // Generate Excel
-  const excelContent = generateExcelXml(sheets);
-  const filename = `${branchName.replace(/[^a-zA-Z0-9]/g, "_")}_Report_${config.frequency}_${new Date().toISOString().split("T")[0]}.xls`;
+  return { sheets, summaryRows, branchName, label };
+}
 
-  // Send email
+// deno-lint-ignore no-explicit-any
+async function generateAndSendReport(supabase: any, config: ReportConfig) {
+  const { sheets, summaryRows, branchName, label } = await collectReportData(supabase, config);
+  const format = config.reportFormat || 'excel';
+  const dateStr = new Date().toISOString().split("T")[0];
+  const safeBranchName = branchName.replace(/[^a-zA-Z0-9]/g, "_");
+
   let emailResult = { success: false, error: "No email configured" };
-  if (config.reportEmail) {
-    emailResult = await sendEmailWithResend(
-      config.reportEmail,
-      `${branchName} - ${label}`,
-      `
-      <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 32px; color: white; text-align: center; margin-bottom: 24px;">
-          <h1 style="margin: 0 0 8px 0; font-size: 24px;">📊 ${branchName}</h1>
-          <p style="margin: 0; opacity: 0.9; font-size: 14px;">${label}</p>
-        </div>
-        <div style="background: #f8f9fa; border-radius: 12px; padding: 24px; margin-bottom: 16px;">
-          <p style="margin: 0 0 12px 0; color: #333;">Hi,</p>
-          <p style="margin: 0 0 12px 0; color: #555;">Your ${config.frequency} gym report is ready. Please find the Excel report attached.</p>
-          <p style="margin: 0; color: #888; font-size: 12px;">This is an automated report from GymKloud.</p>
-        </div>
+  let whatsappResult = { success: false };
+
+  const emailWrapperHtml = (innerContent: string) => `
+    <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 32px; color: white; text-align: center; margin-bottom: 24px;">
+        <h1 style="margin: 0 0 8px 0; font-size: 24px;">📊 ${escapeHtml(branchName)}</h1>
+        <p style="margin: 0; opacity: 0.9; font-size: 14px;">${escapeHtml(label)}</p>
       </div>
-      `,
-      { filename, content: excelContent }
-    );
+      ${innerContent}
+    </div>`;
+
+  switch (format) {
+    case 'pdf': {
+      // Send the PDF-style HTML report as attachment
+      const pdfHtml = generatePdfHtml(branchName, label, summaryRows, sheets);
+      if (config.reportEmail) {
+        emailResult = await sendEmailWithResend(
+          config.reportEmail,
+          `${branchName} - ${label}`,
+          emailWrapperHtml(`
+            <div style="background: #f8f9fa; border-radius: 12px; padding: 24px; margin-bottom: 16px;">
+              <p style="margin: 0 0 12px 0; color: #333;">Hi,</p>
+              <p style="margin: 0 0 12px 0; color: #555;">Your ${config.frequency} gym report is ready. Please find the PDF report attached.</p>
+              <p style="margin: 0; color: #888; font-size: 12px;">This is an automated report from GymKloud.</p>
+            </div>
+          `),
+          { filename: `${safeBranchName}_Report_${config.frequency}_${dateStr}.html`, content: pdfHtml, contentType: 'text/html' }
+        );
+      }
+      break;
+    }
+
+    case 'dashboard_link': {
+      // Send email with a link to the admin analytics dashboard
+      const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || '';
+      // Use the published app URL for dashboard link
+      const dashboardUrl = `https://gym-qr-pro.lovable.app/admin/analytics`;
+      
+      if (config.reportEmail) {
+        const metricsPreview = summaryRows
+          .filter(r => r[0] !== '' && r[1] !== '')
+          .slice(0, 6)
+          .map(r => `<tr><td style="padding: 4px 8px; color: #555;">${escapeHtml(String(r[0]))}</td><td style="padding: 4px 8px; text-align: right; font-weight: 600; color: #4472C4;">${typeof r[1] === 'number' ? r[1].toLocaleString('en-IN') : escapeHtml(String(r[1]))}</td></tr>`)
+          .join('');
+
+        emailResult = await sendEmailWithResend(
+          config.reportEmail,
+          `${branchName} - ${label}`,
+          emailWrapperHtml(`
+            <div style="background: #f8f9fa; border-radius: 12px; padding: 24px; margin-bottom: 16px;">
+              <p style="margin: 0 0 12px 0; color: #333;">Hi,</p>
+              <p style="margin: 0 0 12px 0; color: #555;">Your ${config.frequency} report summary is ready. View detailed analytics on your dashboard.</p>
+              <table style="width: 100%; margin: 16px 0;">${metricsPreview}</table>
+              <div style="text-align: center; margin-top: 20px;">
+                <a href="${dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">📊 Open Dashboard</a>
+              </div>
+              <p style="margin: 16px 0 0 0; color: #888; font-size: 12px;">This is an automated report from GymKloud.</p>
+            </div>
+          `)
+        );
+      }
+      break;
+    }
+
+    case 'whatsapp_summary': {
+      // Send WhatsApp message with summary + optional email
+      const summaryText = generateWhatsAppSummary(branchName, label, summaryRows);
+      
+      // Also send email with summary
+      if (config.reportEmail) {
+        const metricsHtml = summaryRows
+          .filter(r => r[0] !== '' && r[1] !== '')
+          .map(r => `<tr><td style="padding: 6px 12px; color: #555;">${escapeHtml(String(r[0]))}</td><td style="padding: 6px 12px; text-align: right; font-weight: 600; color: #4472C4;">${typeof r[1] === 'number' ? '₹' + r[1].toLocaleString('en-IN') : escapeHtml(String(r[1]))}</td></tr>`)
+          .join('');
+        
+        emailResult = await sendEmailWithResend(
+          config.reportEmail,
+          `${branchName} - ${label}`,
+          emailWrapperHtml(`
+            <div style="background: #f8f9fa; border-radius: 12px; padding: 24px; margin-bottom: 16px;">
+              <p style="margin: 0 0 12px 0; color: #333;">Hi,</p>
+              <p style="margin: 0 0 12px 0; color: #555;">Here's your ${config.frequency} report summary. A WhatsApp summary has also been sent.</p>
+              <table style="width: 100%; margin: 16px 0;">${metricsHtml}</table>
+              <p style="margin: 0; color: #888; font-size: 12px;">This is an automated report from GymKloud.</p>
+            </div>
+          `)
+        );
+      }
+
+      // Force send WhatsApp summary regardless of sendWhatsapp toggle
+      if (config.whatsappPhone) {
+        try {
+          const PERISKOPE_API_KEY = Deno.env.get("PERISKOPE_API_KEY");
+          const PERISKOPE_PHONE = Deno.env.get("PERISKOPE_PHONE");
+          if (PERISKOPE_API_KEY && PERISKOPE_PHONE) {
+            const waRes = await fetch("https://api.periskope.app/v1/message/sendMessage", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${PERISKOPE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                phoneNumber: PERISKOPE_PHONE,
+                receiverPhoneNumber: config.whatsappPhone.startsWith("91") ? config.whatsappPhone : `91${config.whatsappPhone}`,
+                message: summaryText,
+              }),
+            });
+            whatsappResult = { success: waRes.ok };
+          }
+        } catch (e) {
+          console.error("WhatsApp send error:", e);
+        }
+      }
+      break;
+    }
+
+    case 'excel':
+    default: {
+      // Original Excel format
+      const excelContent = generateExcelXml(sheets);
+      const filename = `${safeBranchName}_Report_${config.frequency}_${dateStr}.xls`;
+
+      if (config.reportEmail) {
+        emailResult = await sendEmailWithResend(
+          config.reportEmail,
+          `${branchName} - ${label}`,
+          emailWrapperHtml(`
+            <div style="background: #f8f9fa; border-radius: 12px; padding: 24px; margin-bottom: 16px;">
+              <p style="margin: 0 0 12px 0; color: #333;">Hi,</p>
+              <p style="margin: 0 0 12px 0; color: #555;">Your ${config.frequency} gym report is ready. Please find the Excel report attached.</p>
+              <p style="margin: 0; color: #888; font-size: 12px;">This is an automated report from GymKloud.</p>
+            </div>
+          `),
+          { filename, content: excelContent }
+        );
+      }
+      break;
+    }
   }
 
-  // Send WhatsApp notification (optional)
-  let whatsappResult = { success: false };
-  if (config.sendWhatsapp && config.whatsappPhone) {
+  // Send WhatsApp notification for non-whatsapp_summary formats
+  if (format !== 'whatsapp_summary' && config.sendWhatsapp && config.whatsappPhone) {
     try {
       const PERISKOPE_API_KEY = Deno.env.get("PERISKOPE_API_KEY");
       const PERISKOPE_PHONE = Deno.env.get("PERISKOPE_PHONE");
@@ -575,5 +741,6 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
     emailSent: emailResult.success,
     whatsappSent: whatsappResult.success,
     sheetsGenerated: sheets.length,
+    format,
   };
 }
