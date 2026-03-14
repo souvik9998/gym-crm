@@ -102,11 +102,15 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
   const [gymEndDate, setGymEndDate] = useState<Date | null>(null);
   // Existing PT end date for calculating PT start date
   const [existingPTEndDate, setExistingPTEndDate] = useState<Date | null>(null);
+  // GST settings
+  const [taxRate, setTaxRate] = useState(0);
+  const [taxEnabled, setTaxEnabled] = useState(false);
 
   useEffect(() => {
     if (open && currentBranch) {
       fetchPackages();
       fetchTrainers();
+      fetchTaxSettings();
       setMember(null);
       setPhone("");
       setPaymentType("gym_only");
@@ -156,6 +160,26 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
     } else {
       setTrainers([]);
       setSelectedTrainerId("");
+    }
+  };
+
+  const fetchTaxSettings = async () => {
+    if (!currentBranch) return;
+    
+    const { data } = await supabase
+      .from("gym_settings")
+      .select("invoice_tax_rate, invoice_show_gst")
+      .eq("branch_id", currentBranch.id)
+      .maybeSingle();
+
+    if (data) {
+      const rate = data.invoice_tax_rate || 0;
+      const enabled = data.invoice_show_gst === true && rate > 0;
+      setTaxRate(rate);
+      setTaxEnabled(enabled);
+    } else {
+      setTaxRate(0);
+      setTaxEnabled(false);
     }
   };
 
@@ -387,7 +411,9 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
   
   const ptAmount = ptCustomAmount ? Number(ptCustomAmount) : ptDefaultAmount;
   
-  const totalAmount = gymAmount + ptAmount;
+  const subtotalAmount = gymAmount + ptAmount;
+  const taxAmount = taxEnabled && taxRate > 0 ? Math.round((subtotalAmount * taxRate) / 100) : 0;
+  const totalAmount = subtotalAmount + taxAmount;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -886,6 +912,12 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                         Personal Training ({selectedPTOption.days} days)
                       </span>
                       <span>₹{ptAmount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+                  {taxAmount > 0 && (
+                    <div className="flex justify-between text-[10px] md:text-sm">
+                      <span className="text-muted-foreground">GST ({taxRate}%)</span>
+                      <span>₹{taxAmount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold pt-1 md:pt-2 border-t border-border text-xs md:text-base">

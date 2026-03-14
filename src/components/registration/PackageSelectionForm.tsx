@@ -15,7 +15,8 @@ import {
   fetchPublicTrainers, 
   type PublicMonthlyPackage,
   type PublicCustomPackage,
-  type PublicTrainer 
+  type PublicTrainer,
+  type PublicTaxSettings,
 } from "@/api/publicData";
 
 interface Trainer {
@@ -70,6 +71,8 @@ export interface PackageSelectionData {
   subscriptionAmount: number;
   joiningFee: number;
   trainerFee: number;
+  taxAmount: number;
+  taxRate: number;
   ptDays?: number;
   ptEndDate?: string;
   startDate?: string;
@@ -132,6 +135,7 @@ const PackageSelectionForm = ({
   const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [customPackages, setCustomPackages] = useState<CustomPackage[]>([]);
+  const [taxSettings, setTaxSettings] = useState<PublicTaxSettings | null>(null);
   
   const isExpiredMembership = useMemo(() => {
     if (!existingMembershipEndDate) return false;
@@ -187,6 +191,11 @@ const PackageSelectionForm = ({
         // Auto-select most popular (3 months) or first
         const defaultPkg = packagesResult.monthlyPackages.find((p) => p.months === 3) || packagesResult.monthlyPackages[0];
         setSelectedMonthlyPackage(defaultPkg);
+      }
+
+      // Set tax settings from packages response
+      if (packagesResult.taxSettings) {
+        setTaxSettings(packagesResult.taxSettings);
       }
 
       if (trainersResult.length > 0) {
@@ -301,7 +310,10 @@ const PackageSelectionForm = ({
   const joiningFee = isCustom ? 0 : (isNewMember && selectedMonthlyPackage ? Number(selectedMonthlyPackage.joining_fee) : 0);
   const subscriptionAmount = isCustom ? selectedCustomPackage!.price : (selectedMonthlyPackage?.price || 0);
   const trainerFee = wantsTrainer && selectedTrainer && selectedPTOption ? selectedPTOption.fee : 0;
-  const totalAmount = subscriptionAmount + joiningFee + trainerFee;
+  const subtotal = subscriptionAmount + joiningFee + trainerFee;
+  const taxRate = taxSettings?.taxEnabled ? taxSettings.taxRate : 0;
+  const taxAmount = taxRate > 0 ? Math.round((subtotal * taxRate) / 100) : 0;
+  const totalAmount = subtotal + taxAmount;
 
   const parsedExistingMembershipEndDate = existingMembershipEndDate ? new Date(existingMembershipEndDate) : null;
   const parsedExistingPTEndDate = existingPTEndDate ? new Date(existingPTEndDate) : null;
@@ -332,6 +344,8 @@ const PackageSelectionForm = ({
       subscriptionAmount,
       joiningFee,
       trainerFee,
+      taxAmount,
+      taxRate,
       ptDays: wantsTrainer && selectedPTOption ? selectedPTOption.days : undefined,
       ptEndDate: wantsTrainer && selectedPTOption ? format(selectedPTOption.endDate, "yyyy-MM-dd") : undefined,
       startDate: format(selectedStartDate, "yyyy-MM-dd"),
@@ -782,6 +796,19 @@ const PackageSelectionForm = ({
                 </div>
               )}
             </>
+          )}
+
+          {taxAmount > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground flex items-center gap-2">
+                <IndianRupee className="w-4 h-4" />
+                GST ({taxRate}%)
+              </span>
+              <span className="font-semibold flex items-center">
+                <IndianRupee className="w-4 h-4" />
+                {taxAmount.toLocaleString("en-IN")}
+              </span>
+            </div>
           )}
 
           <div className="border-t border-border pt-3">

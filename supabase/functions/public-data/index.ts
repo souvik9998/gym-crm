@@ -94,10 +94,56 @@ Deno.serve(async (req) => {
           throw new Error("Failed to fetch packages");
         }
 
+        // Also fetch tax settings for this branch
+        let taxRate = 0;
+        let taxEnabled = false;
+        let gymGst = "";
+
+        if (branchId) {
+          const { data: taxSettings } = await supabase
+            .from("gym_settings")
+            .select("invoice_tax_rate, invoice_show_gst, gym_gst")
+            .eq("branch_id", branchId)
+            .maybeSingle();
+
+          if (taxSettings) {
+            taxRate = taxSettings.invoice_tax_rate || 0;
+            taxEnabled = taxSettings.invoice_show_gst === true && taxRate > 0;
+            gymGst = taxSettings.gym_gst || "";
+          }
+        }
+
         return new Response(
           JSON.stringify({
             monthlyPackages: monthlyPackages || [],
             customPackages: customPackages || [],
+            taxSettings: { taxRate, taxEnabled, gymGst },
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "tax-settings": {
+        if (!branchId) {
+          return new Response(
+            JSON.stringify({ taxSettings: { taxRate: 0, taxEnabled: false, gymGst: "" } }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: taxData } = await supabase
+          .from("gym_settings")
+          .select("invoice_tax_rate, invoice_show_gst, gym_gst")
+          .eq("branch_id", branchId)
+          .maybeSingle();
+
+        return new Response(
+          JSON.stringify({
+            taxSettings: {
+              taxRate: taxData?.invoice_tax_rate || 0,
+              taxEnabled: (taxData?.invoice_show_gst === true) && (taxData?.invoice_tax_rate || 0) > 0,
+              gymGst: taxData?.gym_gst || "",
+            },
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
