@@ -80,6 +80,7 @@ export function AutomatedReportsSettings() {
         setIncludeAttendance(data.include_attendance);
         setIncludeTrainers(data.include_trainers);
         setIncludeBranchAnalysis(data.include_branch_analysis);
+        setReportFormat(data.report_format || "excel");
       }
     } catch (e) {
       console.error("Error fetching report schedule:", e);
