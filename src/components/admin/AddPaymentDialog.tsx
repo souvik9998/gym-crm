@@ -163,6 +163,26 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
     }
   };
 
+  const fetchTaxSettings = async () => {
+    if (!currentBranch) return;
+    
+    const { data } = await supabase
+      .from("gym_settings")
+      .select("invoice_tax_rate, invoice_show_gst")
+      .eq("branch_id", currentBranch.id)
+      .maybeSingle();
+
+    if (data) {
+      const rate = data.invoice_tax_rate || 0;
+      const enabled = data.invoice_show_gst === true && rate > 0;
+      setTaxRate(rate);
+      setTaxEnabled(enabled);
+    } else {
+      setTaxRate(0);
+      setTaxEnabled(false);
+    }
+  };
+
   const handleSearch = async () => {
     if (phone.length !== 10) {
       toast.error("Invalid Phone", {
