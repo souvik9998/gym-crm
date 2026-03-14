@@ -411,7 +411,9 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
   
   const ptAmount = ptCustomAmount ? Number(ptCustomAmount) : ptDefaultAmount;
   
-  const totalAmount = gymAmount + ptAmount;
+  const subtotalAmount = gymAmount + ptAmount;
+  const taxAmount = taxEnabled && taxRate > 0 ? Math.round((subtotalAmount * taxRate) / 100) : 0;
+  const totalAmount = subtotalAmount + taxAmount;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
