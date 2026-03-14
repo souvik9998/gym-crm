@@ -227,11 +227,16 @@ const ExtendPT = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTrainer?.id]);
 
+  // Calculate total with GST
+  const ptSubtotal = selectedOption?.fee || 0;
+  const taxAmount = taxEnabled && taxRate > 0 ? Math.round((ptSubtotal * taxRate) / 100) : 0;
+  const totalWithGst = ptSubtotal + taxAmount;
+
   const handleSubmit = async () => {
     if (!selectedTrainer || !selectedOption || !member) return;
 
     initiatePayment({
-      amount: selectedOption.fee,
+      amount: totalWithGst,
       memberId: member.id,
       memberName: member.name,
       memberPhone: member.phone,
@@ -243,7 +248,6 @@ const ExtendPT = () => {
       ptStartDate: format(ptStartDate, "yyyy-MM-dd"),
       branchId: branchId || undefined,
       onSuccess: async (data) => {
-        // Send WhatsApp notification for PT extension (if auto-send enabled)
         try {
           const shouldAutoSend = await getWhatsAppAutoSendPreference(branchId, "pt_extension");
           if (shouldAutoSend) {
@@ -268,7 +272,7 @@ const ExtendPT = () => {
           state: {
             memberName: member.name,
             phone: member.phone,
-            amount: selectedOption.fee,
+            amount: totalWithGst,
             endDate: format(selectedOption.endDate, "d MMMM yyyy"),
             isNewMember: false,
             hasTrainer: true,
