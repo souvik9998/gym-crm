@@ -310,7 +310,10 @@ const PackageSelectionForm = ({
   const joiningFee = isCustom ? 0 : (isNewMember && selectedMonthlyPackage ? Number(selectedMonthlyPackage.joining_fee) : 0);
   const subscriptionAmount = isCustom ? selectedCustomPackage!.price : (selectedMonthlyPackage?.price || 0);
   const trainerFee = wantsTrainer && selectedTrainer && selectedPTOption ? selectedPTOption.fee : 0;
-  const totalAmount = subscriptionAmount + joiningFee + trainerFee;
+  const subtotal = subscriptionAmount + joiningFee + trainerFee;
+  const taxRate = taxSettings?.taxEnabled ? taxSettings.taxRate : 0;
+  const taxAmount = taxRate > 0 ? Math.round((subtotal * taxRate) / 100) : 0;
+  const totalAmount = subtotal + taxAmount;
 
   const parsedExistingMembershipEndDate = existingMembershipEndDate ? new Date(existingMembershipEndDate) : null;
   const parsedExistingPTEndDate = existingPTEndDate ? new Date(existingPTEndDate) : null;
