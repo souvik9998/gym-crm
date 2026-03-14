@@ -193,6 +193,11 @@ const PackageSelectionForm = ({
         setSelectedMonthlyPackage(defaultPkg);
       }
 
+      // Set tax settings from packages response
+      if (packagesResult.taxSettings) {
+        setTaxSettings(packagesResult.taxSettings);
+      }
+
       if (trainersResult.length > 0) {
         const mapped = trainersResult.map(t => ({
           id: t.id,
