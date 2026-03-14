@@ -176,6 +176,7 @@ export function AutomatedReportsSettings() {
           includeAttendance,
           includeTrainers,
           includeBranchAnalysis,
+          reportFormat,
         }),
       });
 
