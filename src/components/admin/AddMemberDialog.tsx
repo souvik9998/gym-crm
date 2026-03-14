@@ -1218,6 +1218,12 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                         <span className="font-semibold tabular-nums">₹{ptFee.toLocaleString("en-IN")}</span>
                       </div>
                     )}
+                    {taxEnabled && taxAmount > 0 && (
+                      <div className="flex justify-between text-sm animate-fade-in">
+                        <span className="text-muted-foreground">GST ({taxRate}%)</span>
+                        <span className="font-semibold tabular-nums">₹{taxAmount.toLocaleString("en-IN")}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between font-bold pt-2.5 border-t border-border/60 text-base">
                       <span>Total (Cash)</span>
                       <span className="text-foreground tabular-nums">₹{totalAmount.toLocaleString("en-IN")}</span>
