@@ -415,16 +415,57 @@ Deno.serve(async (req) => {
       day: "numeric", month: "long", year: "numeric",
     });
 
-    // Generate sequential invoice number using DB function
-    const { data: invoiceNumData } = await supabase.rpc("generate_invoice_number", {
-      _branch_id: effectiveBranchId,
-    });
-    const invoiceNumber = invoiceNumData || `${invoicePrefix}-${Date.now()}`;
+    let invoiceNumber = existingInvoice?.invoice_number || "";
+
+    // Generate invoice number only for first-time invoice creation
+    if (!invoiceNumber) {
+      let baseInvoiceNumber = "";
+
+      if (effectiveBranchId) {
+        const { data: invoiceNumData } = await supabase.rpc("generate_invoice_number", {
+          _branch_id: effectiveBranchId,
+        });
+        if (invoiceNumData) {
+          baseInvoiceNumber = invoiceNumData;
+        }
+      }
+
+      if (!baseInvoiceNumber) {
+        baseInvoiceNumber = `${invoicePrefix}-${Date.now()}`;
+      }
+
+      invoiceNumber = baseInvoiceNumber;
+      let collisionSuffix = 1;
+
+      // Guard against unique invoice_number collisions across branches
+      while (true) {
+        const { data: conflictingInvoice } = await supabase
+          .from("invoices")
+          .select("id")
+          .eq("invoice_number", invoiceNumber)
+          .maybeSingle();
+
+        if (!conflictingInvoice) break;
+
+        invoiceNumber = `${baseInvoiceNumber}-${collisionSuffix}`;
+        collisionSuffix += 1;
+
+        if (collisionSuffix > 50) {
+          invoiceNumber = `${invoicePrefix}-${Date.now()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+          break;
+        }
+      }
+    }
+
+    const transactionId =
+      payment.razorpay_payment_id ||
+      existingInvoice?.transaction_id ||
+      `CASH-${payment.id.slice(0, 8).toUpperCase()}`;
 
     // Calculate fee breakdown
     const trainerFee = subscription?.trainer_fee ? Number(subscription.trainer_fee) : 0;
     const totalPaid = Number(payment.amount);
-    
+
     // If GST is enabled, reverse-calculate: subtotal + tax = totalPaid
     // tax = subtotal * taxRate / 100
     // subtotal + subtotal * taxRate / 100 = totalPaid
@@ -432,7 +473,7 @@ Deno.serve(async (req) => {
     // subtotal = totalPaid / (1 + taxRate/100)
     let subtotalBeforeTax: number;
     let taxOnInvoice: number;
-    
+
     if (invoiceTaxRate > 0) {
       subtotalBeforeTax = Math.round(totalPaid / (1 + invoiceTaxRate / 100));
       taxOnInvoice = totalPaid - subtotalBeforeTax;
@@ -440,7 +481,7 @@ Deno.serve(async (req) => {
       subtotalBeforeTax = totalPaid;
       taxOnInvoice = 0;
     }
-    
+
     const gymFee = subtotalBeforeTax - trainerFee;
 
     const startDate = subscription?.start_date
@@ -471,7 +512,7 @@ Deno.serve(async (req) => {
       amount: totalPaid,
       paymentMode: payment.payment_mode === "online" ? "Online (Razorpay)" : payment.payment_mode === "upi" ? "UPI" : payment.payment_mode === "card" ? "Card" : payment.payment_mode === "bank_transfer" ? "Bank Transfer" : "Cash",
       paymentType: payment.payment_type || "gym_membership",
-      razorpayPaymentId: payment.razorpay_payment_id || `CASH-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+      razorpayPaymentId: transactionId,
       packageName,
       startDate,
       endDate,
@@ -504,41 +545,55 @@ Deno.serve(async (req) => {
     const { data: urlData } = supabase.storage.from("invoices").getPublicUrl(filePath);
     const pdfUrl = urlData?.publicUrl || null;
 
-    // Save invoice record to database
-    const { error: insertError } = await supabase
-      .from("invoices")
-      .insert({
-        invoice_number: invoiceNumber,
-        payment_id: paymentId,
-        branch_id: effectiveBranchId,
-        member_id: member?.id || null,
-        daily_pass_user_id: dailyPassUser?.id || null,
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        gym_name: gymName,
-        gym_address: gymAddress || null,
-        gym_phone: gymPhone || null,
-        gym_email: gymEmail || null,
-        gym_gst: gymGst || null,
-        branch_name: branchName || null,
-        amount: totalPaid,
-        subtotal: subtotalBeforeTax,
-        gym_fee: gymFee > 0 ? gymFee : 0,
-        joining_fee: 0,
-        trainer_fee: trainerFee,
-        tax: taxOnInvoice,
-        package_name: packageName,
-        start_date: subscription?.start_date || null,
-        end_date: subscription?.end_date || null,
-        payment_mode: payment.payment_mode,
-        payment_date: payment.created_at,
-        transaction_id: payment.razorpay_payment_id || `CASH-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
-        pdf_url: pdfUrl,
-        footer_message: footerMessage,
-      });
+    const invoicePayload = {
+      branch_id: effectiveBranchId,
+      member_id: member?.id || null,
+      daily_pass_user_id: dailyPassUser?.id || null,
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      gym_name: gymName,
+      gym_address: gymAddress || null,
+      gym_phone: gymPhone || null,
+      gym_email: gymEmail || null,
+      gym_gst: gymGst || null,
+      branch_name: branchName || null,
+      amount: totalPaid,
+      subtotal: subtotalBeforeTax,
+      gym_fee: gymFee > 0 ? gymFee : 0,
+      joining_fee: 0,
+      trainer_fee: trainerFee,
+      tax: taxOnInvoice,
+      package_name: packageName,
+      start_date: subscription?.start_date || null,
+      end_date: subscription?.end_date || null,
+      payment_mode: payment.payment_mode,
+      payment_date: payment.created_at,
+      transaction_id: transactionId,
+      pdf_url: pdfUrl,
+      footer_message: footerMessage,
+    };
 
-    if (insertError) {
-      console.error("Invoice insert error:", insertError);
+    if (existingInvoice?.id) {
+      const { error: updateError } = await supabase
+        .from("invoices")
+        .update(invoicePayload)
+        .eq("id", existingInvoice.id);
+
+      if (updateError) {
+        console.error("Invoice update error:", updateError);
+      }
+    } else {
+      const { error: insertError } = await supabase
+        .from("invoices")
+        .insert({
+          invoice_number: invoiceNumber,
+          payment_id: paymentId,
+          ...invoicePayload,
+        });
+
+      if (insertError) {
+        console.error("Invoice insert error:", insertError);
+      }
     }
 
     // Branded invoice link
