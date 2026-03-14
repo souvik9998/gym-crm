@@ -527,7 +527,7 @@ Deno.serve(async (req) => {
         end_date: subscription?.end_date || null,
         payment_mode: payment.payment_mode,
         payment_date: payment.created_at,
-        transaction_id: payment.razorpay_payment_id || null,
+        transaction_id: payment.razorpay_payment_id || `CASH-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
         pdf_url: pdfUrl,
         footer_message: footerMessage,
       });

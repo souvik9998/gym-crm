@@ -310,6 +310,17 @@ const AdminSettings = () => {
 
   const handleSaveGymInfo = async () => {
     if (!settings?.id || !currentBranch?.id) return;
+    
+    // Validate required fields
+    if (!gymPhone || gymPhone.trim().length < 10) {
+      toast.error("Gym phone number is required (10 digits)");
+      return;
+    }
+    if (!gymEmail || !gymEmail.includes("@")) {
+      toast.error("A valid gym email is required");
+      return;
+    }
+    
     setIsSavingGymInfo(true);
 
     const oldSettings = { gym_name: settings.gym_name, gym_phone: settings.gym_phone, gym_address: settings.gym_address, gym_email: settings.gym_email };
