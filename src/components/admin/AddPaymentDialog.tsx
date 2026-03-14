@@ -102,6 +102,9 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
   const [gymEndDate, setGymEndDate] = useState<Date | null>(null);
   // Existing PT end date for calculating PT start date
   const [existingPTEndDate, setExistingPTEndDate] = useState<Date | null>(null);
+  // GST settings
+  const [taxRate, setTaxRate] = useState(0);
+  const [taxEnabled, setTaxEnabled] = useState(false);
 
   useEffect(() => {
     if (open && currentBranch) {
