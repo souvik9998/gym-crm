@@ -179,17 +179,9 @@ const Success = () => {
             {state.paymentId && (
               <DownloadInvoiceButton paymentId={state.paymentId} branchId={state.branchId} />
             )}
-            <Button
-              variant="outline"
-              size="lg"
-              className="w-full"
-              onClick={() => {
-                toast.success("Take a screenshot now to save your receipt!");
-              }}
-            >
-              <Camera className="w-4 h-4 mr-2" />
-              Take Screenshot
-            </Button>
+            {state.paymentId && (
+              <GetInvoiceOnWhatsAppButton paymentId={state.paymentId} branchId={state.branchId} />
+            )}
           </div>
 
           <p className="text-xs text-center text-muted-foreground mt-6">
