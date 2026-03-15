@@ -70,6 +70,43 @@ const DownloadInvoiceButton = ({ paymentId, branchId }: { paymentId: string; bra
   );
 };
 
+const GetInvoiceOnWhatsAppButton = ({ paymentId, branchId }: { paymentId: string; branchId?: string }) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleSend = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-invoice", {
+        body: { paymentId, branchId, sendViaWhatsApp: true },
+      });
+
+      if (error || !data?.success) {
+        toast.error("Failed to send invoice");
+        return;
+      }
+
+      toast.success("Invoice sent to your WhatsApp!");
+    } catch {
+      toast.error("Failed to send invoice");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="lg"
+      className="w-full gap-2"
+      onClick={handleSend}
+      disabled={loading}
+    >
+      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+      {loading ? "Sending Invoice..." : "Get Invoice on WhatsApp"}
+    </Button>
+  );
+};
+
 const Success = () => {
   const location = useLocation();
   const navigate = useNavigate();
