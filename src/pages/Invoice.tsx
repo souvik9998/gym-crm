@@ -94,10 +94,32 @@ export default function Invoice() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleShareWhatsApp = () => {
-    const url = window.location.href;
-    const text = `Invoice ${invoice?.invoice_number} - ₹${Number(invoice?.amount).toLocaleString("en-IN")}\n\n${url}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  const handleShareWhatsApp = async () => {
+    if (!invoice?.payment_id) {
+      toast.error("Payment reference missing for this invoice");
+      return;
+    }
+
+    setSendingWhatsApp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-invoice", {
+        body: { paymentId: invoice.payment_id, sendViaWhatsApp: true },
+      });
+
+      if (error || !data?.success) {
+        throw new Error(data?.error || "Failed to send invoice on WhatsApp");
+      }
+
+      if (data.whatsappSent) {
+        toast.success("Invoice PDF sent to user on WhatsApp");
+      } else {
+        toast.error("WhatsApp delivery failed");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send invoice on WhatsApp");
+    } finally {
+      setSendingWhatsApp(false);
+    }
   };
 
   const handleDownloadPDF = async () => {
