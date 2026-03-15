@@ -302,10 +302,18 @@ export function AutomatedReportsSettings() {
             />
           </div>
 
+          <div className="flex items-center justify-between p-3 bg-muted/20 border border-border/40 rounded-lg">
+            <div>
+              <p className="text-xs lg:text-sm font-medium">Auto-send on WhatsApp</p>
+              <p className="text-[10px] lg:text-xs text-muted-foreground">Also deliver scheduled reports to the admin WhatsApp number.</p>
+            </div>
+            <Switch checked={autoSendWhatsApp} onCheckedChange={setAutoSendWhatsApp} />
+          </div>
+
           {/* WhatsApp info note */}
-          <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-            <p className="text-xs text-green-700 dark:text-green-400">
-              💬 WhatsApp reports will be sent to your gym phone number configured above in General settings.
+          <div className="p-3 bg-muted/30 border border-border/40 rounded-lg">
+            <p className="text-xs text-muted-foreground">
+              💬 WhatsApp reports use your gym phone number from General settings.
             </p>
           </div>
 
