@@ -989,15 +989,24 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
   }
 
   // Deliver based on channel
-  if (channel === 'whatsapp') {
+  const shouldSendEmail = channel === 'email' || channel === 'both';
+  const shouldSendWhatsApp = channel === 'whatsapp' || channel === 'both';
+
+  if (shouldSendEmail && config.reportEmail) {
+    emailResult = await sendEmailWithResend(config.reportEmail, emailSubject, emailHtml, attachment);
+  }
+
+  if (shouldSendWhatsApp) {
     if (config.whatsappPhone) {
       whatsappSent = await sendWhatsAppMessage(config.whatsappPhone, whatsappMessage);
+      if (whatsappSent && config.branchId) {
+        const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: config.branchId });
+        if (tenantId) {
+          await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tenantId, _count: 1 });
+        }
+      }
     } else {
       console.warn("No WhatsApp phone number available for report delivery");
-    }
-  } else {
-    if (config.reportEmail) {
-      emailResult = await sendEmailWithResend(config.reportEmail, emailSubject, emailHtml, attachment);
     }
   }
 
