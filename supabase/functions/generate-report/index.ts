@@ -547,15 +547,19 @@ async function sendWhatsAppMessage(phone: string, message: string): Promise<bool
     const PERISKOPE_PHONE = Deno.env.get("PERISKOPE_PHONE");
     if (!PERISKOPE_API_KEY || !PERISKOPE_PHONE) return false;
 
-    const waRes = await fetch("https://api.periskope.app/v1/message/sendMessage", {
+    let cleaned = String(phone || "").replace(/\D/g, "");
+    if (cleaned.startsWith("0")) cleaned = cleaned.substring(1);
+    if (cleaned.length === 10) cleaned = `91${cleaned}`;
+
+    const waRes = await fetch("https://api.periskope.app/v1/message/send", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${PERISKOPE_API_KEY}`,
+        "x-phone": PERISKOPE_PHONE,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        phoneNumber: PERISKOPE_PHONE,
-        receiverPhoneNumber: phone.startsWith("91") ? phone : `91${phone}`,
+        chat_id: `${cleaned}@c.us`,
         message,
       }),
     });
