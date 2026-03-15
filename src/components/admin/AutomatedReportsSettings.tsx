@@ -106,8 +106,10 @@ export function AutomatedReportsSettings() {
 
   const handleSave = async () => {
     if (!currentBranch?.id) return;
-    if (isEnabled && !reportEmail) {
-      toast.error("Please enter an email address to receive reports");
+    if (isEnabled && !reportEmail && !autoSendWhatsApp) {
+      toast.error("Enable at least one delivery channel", {
+        description: "Add a report email or turn on auto-send via WhatsApp.",
+      });
       return;
     }
 
@@ -118,7 +120,7 @@ export function AutomatedReportsSettings() {
         is_enabled: isEnabled,
         frequency,
         report_email: reportEmail || null,
-        send_whatsapp: false,
+        send_whatsapp: autoSendWhatsApp,
         whatsapp_phone: whatsappPhone || null,
         include_payments: includePayments,
         include_memberships: includeMemberships,
