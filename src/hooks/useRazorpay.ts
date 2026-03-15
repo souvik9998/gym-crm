@@ -153,8 +153,6 @@ export const useRazorpay = () => {
             setPaymentStage("verifying");
 
             try {
-              // Small delay for visual feedback
-              await new Promise((resolve) => setTimeout(resolve, 500));
               setPaymentStage("processing");
 
               // Verify payment
