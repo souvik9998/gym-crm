@@ -49,6 +49,7 @@ export function AutomatedReportsSettings() {
   const [frequency, setFrequency] = useState("weekly");
   const [reportEmail, setReportEmail] = useState("");
   const [whatsappPhone, setWhatsappPhone] = useState("");
+  const [autoSendWhatsApp, setAutoSendWhatsApp] = useState(false);
   const [includePayments, setIncludePayments] = useState(true);
   const [includeMemberships, setIncludeMemberships] = useState(true);
   const [includeAttendance, setIncludeAttendance] = useState(true);
