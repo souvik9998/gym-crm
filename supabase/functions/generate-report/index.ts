@@ -634,7 +634,7 @@ Deno.serve(async (req) => {
               includeTrainers: schedule.include_trainers,
               includeBranchAnalysis: schedule.include_branch_analysis,
               reportFormat: schedule.report_format || 'excel',
-              deliveryChannel: 'email',
+              deliveryChannel: schedule.send_whatsapp ? 'both' : 'email',
             });
 
             const nextRun = calculateNextRun(schedule.frequency);
