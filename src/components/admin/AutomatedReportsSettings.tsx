@@ -74,6 +74,7 @@ export function AutomatedReportsSettings() {
         setFrequency(data.frequency);
         setReportEmail(data.report_email || "");
         setWhatsappPhone(data.whatsapp_phone || "");
+        setAutoSendWhatsApp(data.send_whatsapp ?? false);
         setIncludePayments(data.include_payments);
         setIncludeMemberships(data.include_memberships);
         setIncludeAttendance(data.include_attendance);
