@@ -233,9 +233,9 @@ export default function Invoice() {
               {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
               <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
             </Button>
-            <Button variant="default" size="sm" onClick={handleShareWhatsApp} className="gap-1.5 bg-[#25D366] hover:bg-[#20BD5A] text-white">
-              <Share2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">WhatsApp</span>
+            <Button variant="default" size="sm" onClick={handleShareWhatsApp} disabled={sendingWhatsApp || !invoice.payment_id} className="gap-1.5">
+              {sendingWhatsApp ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{sendingWhatsApp ? "Sending..." : "WhatsApp"}</span>
             </Button>
           </div>
         </div>
