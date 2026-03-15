@@ -641,10 +641,18 @@ Deno.serve(async (req) => {
             body: JSON.stringify({
               chat_id: `${cleaned}@c.us`,
               message,
+              ...(pdfUrl ? { media: { type: "document", url: pdfUrl } } : {}),
             }),
           });
 
           whatsappSent = response.ok;
+
+          if (whatsappSent && effectiveBranchId) {
+            const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: effectiveBranchId });
+            if (tenantId) {
+              await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tenantId, _count: 1 });
+            }
+          }
 
           const logData: any = {
             recipient_phone: customerPhone,
