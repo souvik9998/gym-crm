@@ -621,14 +621,13 @@ Deno.serve(async (req) => {
 
         const message = `🧾 *Invoice ${invoiceNumber}*\n\n` +
           `Hi ${customerName}, 👋\n\n` +
-          `Here is your payment invoice:\n\n` +
+          `Here is your payment invoice.\n\n` +
           `💰 *Amount:* ₹${Number(payment.amount).toLocaleString("en-IN")}\n` +
           `📅 *Date:* ${paymentDate}\n` +
           `💳 *Mode:* ${payment.payment_mode === "online" ? "Online" : "Cash"}\n` +
           `📦 *Package:* ${packageName}\n` +
           (subscription?.end_date ? `📅 *Valid Till:* ${endDate}\n` : "") +
-          `\n📄 *View Invoice:*\n${invoiceLink}\n\n` +
-          `Thank you for being with us! 🙏\n— ${teamName}`;
+          `\nThank you for being with us! 🙏\n— ${teamName}`;
 
         try {
           const response = await fetch("https://api.periskope.app/v1/message/send", {
