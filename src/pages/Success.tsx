@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Calendar, Phone, User, IndianRupee, Camera, Building2, FileText, Loader2 } from "lucide-react";
+import { CheckCircle2, Calendar, Phone, User, IndianRupee, Building2, FileText, Loader2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import { supabase } from "@/integrations/supabase/client";
@@ -66,6 +66,43 @@ const DownloadInvoiceButton = ({ paymentId, branchId }: { paymentId: string; bra
     >
       {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
       {loading ? "Generating Invoice..." : "View Invoice"}
+    </Button>
+  );
+};
+
+const GetInvoiceOnWhatsAppButton = ({ paymentId, branchId }: { paymentId: string; branchId?: string }) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleSend = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-invoice", {
+        body: { paymentId, branchId, sendViaWhatsApp: true },
+      });
+
+      if (error || !data?.success) {
+        toast.error("Failed to send invoice");
+        return;
+      }
+
+      toast.success("Invoice sent to your WhatsApp!");
+    } catch {
+      toast.error("Failed to send invoice");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="lg"
+      className="w-full gap-2"
+      onClick={handleSend}
+      disabled={loading}
+    >
+      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+      {loading ? "Sending Invoice..." : "Get Invoice on WhatsApp"}
     </Button>
   );
 };
@@ -179,17 +216,9 @@ const Success = () => {
             {state.paymentId && (
               <DownloadInvoiceButton paymentId={state.paymentId} branchId={state.branchId} />
             )}
-            <Button
-              variant="outline"
-              size="lg"
-              className="w-full"
-              onClick={() => {
-                toast.success("Take a screenshot now to save your receipt!");
-              }}
-            >
-              <Camera className="w-4 h-4 mr-2" />
-              Take Screenshot
-            </Button>
+            {state.paymentId && (
+              <GetInvoiceOnWhatsAppButton paymentId={state.paymentId} branchId={state.branchId} />
+            )}
           </div>
 
           <p className="text-xs text-center text-muted-foreground mt-6">

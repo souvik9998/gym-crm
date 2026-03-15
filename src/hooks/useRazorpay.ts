@@ -153,8 +153,6 @@ export const useRazorpay = () => {
             setPaymentStage("verifying");
 
             try {
-              // Small delay for visual feedback
-              await new Promise((resolve) => setTimeout(resolve, 500));
               setPaymentStage("processing");
 
               // Verify payment
@@ -193,8 +191,7 @@ export const useRazorpay = () => {
               setPaymentStage("success");
               setIsLoading(false);
               
-              // Brief delay to show success state, then navigate (overlay stays visible)
-              await new Promise((resolve) => setTimeout(resolve, 800));
+              await new Promise((resolve) => setTimeout(resolve, 400));
 
               // Call onSuccess which triggers navigation - overlay will unmount with component
               onSuccess({
