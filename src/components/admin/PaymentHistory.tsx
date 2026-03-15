@@ -24,7 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download, User, Clock, FileText, Eye, Copy, Share2, MoreVertical } from "lucide-react";
+import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download, User, Clock, FileText, Eye, Copy, MoreVertical } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
