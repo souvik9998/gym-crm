@@ -368,26 +368,6 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     }
   };
 
-  const handleShareInvoiceWhatsApp = async (paymentId: string) => {
-    try {
-      const { data } = await supabase
-        .from("invoices")
-        .select("invoice_number, amount, customer_name")
-        .eq("payment_id", paymentId)
-        .maybeSingle();
-      
-      if (data?.invoice_number) {
-        const url = `${window.location.origin}/invoice/${data.invoice_number}`;
-        const text = `Invoice ${data.invoice_number} - ₹${Number(data.amount).toLocaleString("en-IN")}\n${data.customer_name}\n\n${url}`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-      } else {
-        // Fallback: generate and send via backend
-        handleSendInvoice(paymentId);
-      }
-    } catch {
-      handleSendInvoice(paymentId);
-    }
-  };
 
   const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && filteredPayments.length === 0;
 
