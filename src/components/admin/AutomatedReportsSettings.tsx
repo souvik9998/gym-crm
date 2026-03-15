@@ -218,13 +218,14 @@ export function AutomatedReportsSettings() {
       frequency !== schedule.frequency ||
       reportEmail !== (schedule.report_email || "") ||
       whatsappPhone !== (schedule.whatsapp_phone || "") ||
+      autoSendWhatsApp !== (schedule.send_whatsapp ?? false) ||
       includePayments !== schedule.include_payments ||
       includeMemberships !== schedule.include_memberships ||
       includeAttendance !== schedule.include_attendance ||
       includeTrainers !== schedule.include_trainers ||
       includeBranchAnalysis !== schedule.include_branch_analysis ||
       reportFormat !== (schedule.report_format || "excel")
-    : isEnabled || reportEmail;
+    : isEnabled || !!reportEmail || autoSendWhatsApp;
 
   if (isLoading) {
     return (
