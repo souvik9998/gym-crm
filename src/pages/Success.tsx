@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Calendar, Phone, User, IndianRupee, Camera, Building2, FileText, Loader2 } from "lucide-react";
+import { CheckCircle2, Calendar, Phone, User, IndianRupee, Building2, FileText, Loader2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import { supabase } from "@/integrations/supabase/client";
