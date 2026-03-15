@@ -25,7 +25,7 @@ interface ReportConfig {
   includeTrainers?: boolean;
   includeBranchAnalysis?: boolean;
   reportFormat?: string;
-  deliveryChannel?: 'email' | 'whatsapp';
+  deliveryChannel?: 'email' | 'whatsapp' | 'both';
 }
 
 function getDateRange(frequency: string): { start: Date; end: Date; label: string } {
@@ -547,15 +547,19 @@ async function sendWhatsAppMessage(phone: string, message: string): Promise<bool
     const PERISKOPE_PHONE = Deno.env.get("PERISKOPE_PHONE");
     if (!PERISKOPE_API_KEY || !PERISKOPE_PHONE) return false;
 
-    const waRes = await fetch("https://api.periskope.app/v1/message/sendMessage", {
+    let cleaned = String(phone || "").replace(/\D/g, "");
+    if (cleaned.startsWith("0")) cleaned = cleaned.substring(1);
+    if (cleaned.length === 10) cleaned = `91${cleaned}`;
+
+    const waRes = await fetch("https://api.periskope.app/v1/message/send", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${PERISKOPE_API_KEY}`,
+        "x-phone": PERISKOPE_PHONE,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        phoneNumber: PERISKOPE_PHONE,
-        receiverPhoneNumber: phone.startsWith("91") ? phone : `91${phone}`,
+        chat_id: `${cleaned}@c.us`,
         message,
       }),
     });
@@ -630,7 +634,7 @@ Deno.serve(async (req) => {
               includeTrainers: schedule.include_trainers,
               includeBranchAnalysis: schedule.include_branch_analysis,
               reportFormat: schedule.report_format || 'excel',
-              deliveryChannel: 'email',
+              deliveryChannel: schedule.send_whatsapp ? 'both' : 'email',
             });
 
             const nextRun = calculateNextRun(schedule.frequency);
@@ -985,15 +989,24 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
   }
 
   // Deliver based on channel
-  if (channel === 'whatsapp') {
+  const shouldSendEmail = channel === 'email' || channel === 'both';
+  const shouldSendWhatsApp = channel === 'whatsapp' || channel === 'both';
+
+  if (shouldSendEmail && config.reportEmail) {
+    emailResult = await sendEmailWithResend(config.reportEmail, emailSubject, emailHtml, attachment);
+  }
+
+  if (shouldSendWhatsApp) {
     if (config.whatsappPhone) {
       whatsappSent = await sendWhatsAppMessage(config.whatsappPhone, whatsappMessage);
+      if (whatsappSent && config.branchId) {
+        const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: config.branchId });
+        if (tenantId) {
+          await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tenantId, _count: 1 });
+        }
+      }
     } else {
       console.warn("No WhatsApp phone number available for report delivery");
-    }
-  } else {
-    if (config.reportEmail) {
-      emailResult = await sendEmailWithResend(config.reportEmail, emailSubject, emailHtml, attachment);
     }
   }
 

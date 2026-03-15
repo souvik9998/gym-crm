@@ -24,7 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download, User, Clock, FileText, Eye, Copy, Share2, MoreVertical } from "lucide-react";
+import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download, User, Clock, FileText, Eye, Copy, MoreVertical } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
@@ -368,26 +368,6 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     }
   };
 
-  const handleShareInvoiceWhatsApp = async (paymentId: string) => {
-    try {
-      const { data } = await supabase
-        .from("invoices")
-        .select("invoice_number, amount, customer_name")
-        .eq("payment_id", paymentId)
-        .maybeSingle();
-      
-      if (data?.invoice_number) {
-        const url = `${window.location.origin}/invoice/${data.invoice_number}`;
-        const text = `Invoice ${data.invoice_number} - ₹${Number(data.amount).toLocaleString("en-IN")}\n${data.customer_name}\n\n${url}`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-      } else {
-        // Fallback: generate and send via backend
-        handleSendInvoice(paymentId);
-      }
-    } catch {
-      handleSendInvoice(paymentId);
-    }
-  };
 
   const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && filteredPayments.length === 0;
 
@@ -615,10 +595,6 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                             <Copy className="w-3.5 h-3.5 mr-2" />
                             Copy Link
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleShareInvoiceWhatsApp(payment.id)}>
-                            <Share2 className="w-3.5 h-3.5 mr-2" />
-                            Share via WhatsApp
-                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleSendInvoice(payment.id)} disabled={sendingInvoiceId === payment.id}>
                             <FileText className="w-3.5 h-3.5 mr-2" />
                             {sendingInvoiceId === payment.id ? "Sending..." : "Send via WhatsApp"}
@@ -726,10 +702,6 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                           <DropdownMenuItem onClick={() => handleCopyInvoiceLink(payment.id)}>
                             <Copy className="w-3.5 h-3.5 mr-2" />
                             Copy Link
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleShareInvoiceWhatsApp(payment.id)}>
-                            <Share2 className="w-3.5 h-3.5 mr-2" />
-                            Share via WhatsApp
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleSendInvoice(payment.id)} disabled={sendingInvoiceId === payment.id}>
                             <FileText className="w-3.5 h-3.5 mr-2" />

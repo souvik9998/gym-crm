@@ -49,6 +49,7 @@ export function AutomatedReportsSettings() {
   const [frequency, setFrequency] = useState("weekly");
   const [reportEmail, setReportEmail] = useState("");
   const [whatsappPhone, setWhatsappPhone] = useState("");
+  const [autoSendWhatsApp, setAutoSendWhatsApp] = useState(false);
   const [includePayments, setIncludePayments] = useState(true);
   const [includeMemberships, setIncludeMemberships] = useState(true);
   const [includeAttendance, setIncludeAttendance] = useState(true);
@@ -73,6 +74,7 @@ export function AutomatedReportsSettings() {
         setFrequency(data.frequency);
         setReportEmail(data.report_email || "");
         setWhatsappPhone(data.whatsapp_phone || "");
+        setAutoSendWhatsApp(data.send_whatsapp ?? false);
         setIncludePayments(data.include_payments);
         setIncludeMemberships(data.include_memberships);
         setIncludeAttendance(data.include_attendance);
@@ -104,8 +106,10 @@ export function AutomatedReportsSettings() {
 
   const handleSave = async () => {
     if (!currentBranch?.id) return;
-    if (isEnabled && !reportEmail) {
-      toast.error("Please enter an email address to receive reports");
+    if (isEnabled && !reportEmail && !autoSendWhatsApp) {
+      toast.error("Enable at least one delivery channel", {
+        description: "Add a report email or turn on auto-send via WhatsApp.",
+      });
       return;
     }
 
@@ -116,7 +120,7 @@ export function AutomatedReportsSettings() {
         is_enabled: isEnabled,
         frequency,
         report_email: reportEmail || null,
-        send_whatsapp: false,
+        send_whatsapp: autoSendWhatsApp,
         whatsapp_phone: whatsappPhone || null,
         include_payments: includePayments,
         include_memberships: includeMemberships,
@@ -214,13 +218,14 @@ export function AutomatedReportsSettings() {
       frequency !== schedule.frequency ||
       reportEmail !== (schedule.report_email || "") ||
       whatsappPhone !== (schedule.whatsapp_phone || "") ||
+      autoSendWhatsApp !== (schedule.send_whatsapp ?? false) ||
       includePayments !== schedule.include_payments ||
       includeMemberships !== schedule.include_memberships ||
       includeAttendance !== schedule.include_attendance ||
       includeTrainers !== schedule.include_trainers ||
       includeBranchAnalysis !== schedule.include_branch_analysis ||
       reportFormat !== (schedule.report_format || "excel")
-    : isEnabled || reportEmail;
+    : isEnabled || !!reportEmail || autoSendWhatsApp;
 
   if (isLoading) {
     return (
@@ -297,10 +302,18 @@ export function AutomatedReportsSettings() {
             />
           </div>
 
+          <div className="flex items-center justify-between p-3 bg-muted/20 border border-border/40 rounded-lg">
+            <div>
+              <p className="text-xs lg:text-sm font-medium">Auto-send on WhatsApp</p>
+              <p className="text-[10px] lg:text-xs text-muted-foreground">Also deliver scheduled reports to the admin WhatsApp number.</p>
+            </div>
+            <Switch checked={autoSendWhatsApp} onCheckedChange={setAutoSendWhatsApp} />
+          </div>
+
           {/* WhatsApp info note */}
-          <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-            <p className="text-xs text-green-700 dark:text-green-400">
-              💬 WhatsApp reports will be sent to your gym phone number configured above in General settings.
+          <div className="p-3 bg-muted/30 border border-border/40 rounded-lg">
+            <p className="text-xs text-muted-foreground">
+              💬 WhatsApp reports use your gym phone number from General settings.
             </p>
           </div>
 
