@@ -25,7 +25,7 @@ interface ReportConfig {
   includeTrainers?: boolean;
   includeBranchAnalysis?: boolean;
   reportFormat?: string;
-  deliveryChannel?: 'email' | 'whatsapp';
+  deliveryChannel?: 'email' | 'whatsapp' | 'both';
 }
 
 function getDateRange(frequency: string): { start: Date; end: Date; label: string } {
