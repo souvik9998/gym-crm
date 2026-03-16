@@ -368,6 +368,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       }
       if (currentStep === 2 && !isStep2Valid) {
         const missing: string[] = [];
+        if (name.trim().length < 2) missing.push("Full Name");
         if (!gender) missing.push("Gender");
         if (!photoIdType) missing.push("Photo ID Type");
         if (photoIdType && !photoIdNumber.trim()) missing.push("Photo ID Number");
