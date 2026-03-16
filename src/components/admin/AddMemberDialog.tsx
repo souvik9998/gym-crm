@@ -726,7 +726,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setGender(""); setAddress(""); setPhotoIdType(""); setPhotoIdNumber("");
     setDateOfBirth(undefined); setSelectedPackageId(""); setMonthlyFee(0);
     setJoiningFee(0); setWantsPT(false); setSelectedTrainerId("");
-    setPtMonths(1); setPtFee(0); setCurrentStep(1);
+    setPtMonths(1); setPtFee(0); setCurrentStep(1); setPaymentMode("cash");
     setExistingMember(null); setSelectedAction(null); setIsCheckingPhone(false);
     const today = new Date(); today.setHours(0, 0, 0, 0); setStartDate(today);
   };
