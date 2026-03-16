@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStaffAuth, StaffPermissions } from "@/contexts/StaffAuthContext";
 import { TenantFeaturePermissions } from "@/contexts/AuthContext";
