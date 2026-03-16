@@ -809,34 +809,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                 slideDirection === "left" ? "motion-safe:animate-fade-in" : "motion-safe:animate-fade-in"
               )}
             >
-              {/* Step 1: Contact Details */}
+              {/* Step 1: Contact Details - Phone Only */}
               {currentStep === 1 && (
                 <div className="space-y-4">
                   <div className="space-y-2" style={{ animationDelay: "50ms" }}>
-                    <Label htmlFor="add-name" className="flex items-center gap-2 text-sm font-medium">
-                      <User className="w-4 h-4 text-accent" />
-                      Full Name <span className="text-destructive">*</span>
-                    </Label>
-                    <ValidatedInput
-                      id="add-name"
-                      placeholder="Enter member name"
-                      value={name}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^a-zA-Z\s.']/g, "");
-                        setName(val);
-                        if (touched.name) setFieldErrors((prev) => ({ ...prev, name: validateField(nameSchema, val) }));
-                      }}
-                      onValidate={(v) => {
-                        setTouched((prev) => ({ ...prev, name: true }));
-                        setFieldErrors((prev) => ({ ...prev, name: validateField(nameSchema, v) }));
-                      }}
-                      error={touched.name ? fieldErrors.name : undefined}
-                      className="h-11 text-sm rounded-xl"
-                      disabled={!!existingMember}
-                    />
-                  </div>
-
-                  <div className="space-y-2" style={{ animationDelay: "100ms" }}>
                     <Label htmlFor="add-phone" className="flex items-center gap-2 text-sm font-medium">
                       <Phone className="w-4 h-4 text-accent" />
                       Phone Number <span className="text-destructive">*</span>
@@ -853,6 +829,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                         className="rounded-l-none rounded-r-xl h-11 text-sm pr-10"
                         required
+                        autoFocus
                       />
                       {isCheckingPhone && (
                         <Loader2 className="w-4 h-4 animate-spin text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2" />
@@ -879,8 +856,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                           <span className={cn(
                             "px-2 py-0.5 rounded-full font-medium",
                             existingMember.subscription.status === "active" 
-                              ? "bg-green-500/10 text-green-700 dark:text-green-400"
-                              : "bg-orange-500/10 text-orange-700 dark:text-orange-400"
+                              ? "bg-primary/10 text-primary"
+                              : "bg-destructive/10 text-destructive"
                           )}>
                             Gym: {existingMember.subscription.status === "active" ? "Active" : "Expired"} 
                             {" · "}Ends {format(new Date(existingMember.subscription.end_date), "dd MMM yyyy")}
@@ -891,7 +868,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                           </span>
                         )}
                         {existingMember.activePT ? (
-                          <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium">
+                          <span className="px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
                             PT: {existingMember.activePT.trainer_name} · Ends {format(new Date(existingMember.activePT.end_date), "dd MMM yyyy")}
                           </span>
                         ) : (
