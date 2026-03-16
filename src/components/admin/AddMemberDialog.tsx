@@ -513,9 +513,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       if (isStaffLoggedIn && staffUser) {
         await logStaffActivity({
           category: "members", type: "member_added",
-          description: `Staff "${staffUser.fullName}" added new member "${name}" with ${selectedPackage?.months || 1} month package`,
+          description: `Staff "${staffUser.fullName}" added new member "${name}" with ${selectedPackage?.months || 1} month package (${paymentMode.toUpperCase()})`,
           entityType: "members", entityId: member.id, entityName: name,
-          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT },
+          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT, payment_mode: paymentMode },
           branchId: currentBranch?.id, staffId: staffUser.id, staffName: staffUser.fullName,
           staffPhone: staffUser.phone, metadata: { staff_role: staffUser.role },
         });
