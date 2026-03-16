@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Mail, Lock, Phone, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
+import { useAuth } from "@/contexts/AuthContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import { queryClient } from "@/lib/queryClient";
