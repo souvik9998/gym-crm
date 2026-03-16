@@ -354,12 +354,6 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       // Validate current step before advancing
       if (currentStep === 1) {
         if (!isStep1Valid) {
-          const sanitizedName = sanitize(name);
-          const result = validateForm(addMemberSchema, { name: sanitizedName, phone });
-          if (!result.success) {
-            setFieldErrors(result.errors);
-            setTouched({ name: true, phone: true });
-          }
           if (existingMember) {
             toast.error("Member Already Exists", {
               description: "Please use one of the options below to renew or add PT",
