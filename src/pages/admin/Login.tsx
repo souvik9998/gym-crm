@@ -24,7 +24,8 @@ import {
 
 const AdminLogin = () => {
   const navigate = useNavigate();
-  const { login: staffLogin, clearStaffState } = useStaffAuth();
+  const { login: staffLogin, clearStaffState, isStaffLoggedIn } = useStaffAuth();
+  const { isAuthenticated, isLoading: authLoading, isAdmin, isSuperAdmin } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   // Admin state
@@ -40,6 +41,22 @@ const AdminLogin = () => {
   const [isStaffLoading, setIsStaffLoading] = useState(false);
   const [staffErrors, setStaffErrors] = useState<FieldErrors>({});
   const [staffTouched, setStaffTouched] = useState<Record<string, boolean>>({});
+
+  // Redirect already-authenticated users to their dashboard
+  useEffect(() => {
+    if (authLoading) return;
+    if (isStaffLoggedIn) {
+      navigate("/staff/dashboard", { replace: true });
+      return;
+    }
+    if (isAuthenticated) {
+      if (isSuperAdmin) {
+        navigate("/superadmin/dashboard", { replace: true });
+      } else if (isAdmin) {
+        navigate("/admin/dashboard", { replace: true });
+      }
+    }
+  }, [authLoading, isAuthenticated, isStaffLoggedIn, isAdmin, isSuperAdmin, navigate]);
 
   useEffect(() => {
     queryClient.clear();
