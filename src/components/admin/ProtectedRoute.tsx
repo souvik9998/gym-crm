@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStaffAuth, StaffPermissions } from "@/contexts/StaffAuthContext";
 import { TenantFeaturePermissions } from "@/contexts/AuthContext";
@@ -51,8 +51,7 @@ export const ProtectedRoute = ({
 
   // Not authenticated - redirect to login
   if (!auth.isAuthenticated || !auth.user) {
-    navigate("/admin/login");
-    return null;
+    return <Navigate to="/admin/login" replace />;
   }
 
   const isStaffSession = isStaffEmail(auth.user?.email);
@@ -71,8 +70,7 @@ export const ProtectedRoute = ({
 
   // Staff-only route but admin is trying to access
   if (staffOnly && isAdminSession) {
-    navigate("/admin/dashboard");
-    return null;
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   // Super admin only route
