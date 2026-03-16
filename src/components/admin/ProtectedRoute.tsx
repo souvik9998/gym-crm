@@ -51,7 +51,7 @@ export const ProtectedRoute = ({
 
   // Not authenticated - redirect to login
   if (!auth.isAuthenticated || !auth.user) {
-    return <NavigateToLogin />;
+    return <Navigate to="/admin/login" replace />;
   }
 
   const isStaffSession = isStaffEmail(auth.user?.email);
