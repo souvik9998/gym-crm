@@ -673,18 +673,7 @@ const AdminDashboard = () => {
                       <ArrowDownTrayIcon className="w-4 h-4" />
                     </Button>
                     
-                    {/* Cash Payment */}
-                    {canManageMembers && (
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        onClick={() => setIsAddPaymentOpen(true)} 
-                        className="h-9 w-9 rounded-xl border-border/50 bg-card text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95 transition-all duration-200"
-                        title="Cash Payment"
-                      >
-                        <CreditCardIcon className="w-4 h-4" />
-                      </Button>
-                    )}
+                    
                     
                     {/* Add Member */}
                     {canManageMembers && (
