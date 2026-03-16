@@ -92,7 +92,7 @@ const StaffDashboard = () => {
   
   const [dailyPassFilter, setDailyPassFilter] = useState("all");
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
+  
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState("members");
   const [memberFilter, setMemberFilter] = useState<MemberFilterValue>("all");

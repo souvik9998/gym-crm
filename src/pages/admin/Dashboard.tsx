@@ -182,7 +182,7 @@ const AdminDashboard = () => {
   const dailyPassSearchQuery = useDebounce(dailyPassSearchInput, 300);
   
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
+  
   const [refreshKey, setRefreshKey] = useState(0);
   const [sortOpen, setSortOpen] = useState(false);
 
