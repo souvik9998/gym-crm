@@ -522,9 +522,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       } else {
         await logAdminActivity({
           category: "members", type: "member_added",
-          description: `Added new member "${name}" with ${selectedPackage?.months || 1} month package`,
+          description: `Added new member "${name}" with ${selectedPackage?.months || 1} month package (${paymentMode.toUpperCase()})`,
           entityType: "members", entityId: member.id, entityName: name,
-          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT },
+          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT, payment_mode: paymentMode },
           branchId: currentBranch?.id,
         });
       }
