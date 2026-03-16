@@ -20,7 +20,7 @@ import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
 import DailyPassTable from "@/components/admin/DailyPassTable";
 import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
-import { AddPaymentDialog } from "@/components/admin/AddPaymentDialog";
+// AddPaymentDialog removed - payment mode now selected in AddMemberDialog
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { toast } from "@/components/ui/sonner";
