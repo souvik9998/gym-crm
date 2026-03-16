@@ -70,8 +70,7 @@ export const ProtectedRoute = ({
 
   // Staff-only route but admin is trying to access
   if (staffOnly && isAdminSession) {
-    navigate("/admin/dashboard");
-    return null;
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   // Super admin only route
