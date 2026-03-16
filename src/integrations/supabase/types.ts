@@ -2302,7 +2302,7 @@ export type Database = {
           error_message: string | null
           id: string
           is_manual: boolean | null
-          member_id: string
+          member_id: string | null
           message_content: string | null
           notification_type: string
           recipient_name: string | null
@@ -2318,7 +2318,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           is_manual?: boolean | null
-          member_id: string
+          member_id?: string | null
           message_content?: string | null
           notification_type: string
           recipient_name?: string | null
@@ -2334,7 +2334,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           is_manual?: boolean | null
-          member_id?: string
+          member_id?: string | null
           message_content?: string | null
           notification_type?: string
           recipient_name?: string | null
