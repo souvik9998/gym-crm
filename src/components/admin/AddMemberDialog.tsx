@@ -1201,6 +1201,34 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     </div>
                   )}
 
+                  {/* Payment Mode Selection */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-sm font-medium">
+                      <IndianRupee className="w-4 h-4 text-accent" />
+                      Payment Method <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="flex gap-2">
+                      {[
+                        { value: "cash" as const, label: "Cash" },
+                        { value: "upi" as const, label: "UPI" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setPaymentMode(opt.value)}
+                          className={cn(
+                            "flex-1 py-2.5 px-4 rounded-xl border-2 text-sm font-medium transition-all duration-200 active:scale-95",
+                            paymentMode === opt.value
+                              ? "border-foreground bg-foreground/5 text-foreground shadow-sm"
+                              : "border-border bg-card text-muted-foreground hover:border-foreground/30"
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Price Summary */}
                   <div className="bg-muted/40 rounded-xl p-4 space-y-2.5 border border-border/40">
                     {showGymSection && (
@@ -1228,7 +1256,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                       </div>
                     )}
                     <div className="flex justify-between font-bold pt-2.5 border-t border-border/60 text-base">
-                      <span>Total (Cash)</span>
+                      <span>Total ({paymentMode === "upi" ? "UPI" : "Cash"})</span>
                       <span className="text-foreground tabular-nums">₹{totalAmount.toLocaleString("en-IN")}</span>
                     </div>
                   </div>
