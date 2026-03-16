@@ -114,6 +114,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   
+  // Payment mode
+  const [paymentMode, setPaymentMode] = useState<"cash" | "upi">("cash");
+  
   // Existing member check
   const [existingMember, setExistingMember] = useState<ExistingMember | null>(null);
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
