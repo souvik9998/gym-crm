@@ -689,21 +689,24 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       }
 
       // Log activity
+      const actionDesc = selectedAction === "add_pt" ? "added PT for" : "renewed";
       if (isStaffLoggedIn && staffUser) {
         await logStaffActivity({
-          category: "members", type: "member_updated",
-          description: `Staff "${staffUser.fullName}" ${selectedAction === "add_pt" ? "added PT for" : "renewed"} "${existingMember.name}"`,
+          category: selectedAction === "add_pt" ? "subscriptions" : "members",
+          type: selectedAction === "add_pt" ? "pt_subscription_added" : "subscription_renewed",
+          description: `Staff "${staffUser.fullName}" ${actionDesc} "${existingMember.name}" (${paymentMode.toUpperCase()})`,
           entityType: "members", entityId: existingMember.id, entityName: existingMember.name,
-          newValue: { action: selectedAction, total_amount: totalAmount },
+          newValue: { action: selectedAction, total_amount: totalAmount, payment_mode: paymentMode },
           branchId: currentBranch.id, staffId: staffUser.id, staffName: staffUser.fullName,
           staffPhone: staffUser.phone, metadata: { staff_role: staffUser.role },
         });
       } else {
         await logAdminActivity({
-          category: "members", type: "member_updated",
-          description: `${selectedAction === "add_pt" ? "Added PT for" : "Renewed"} "${existingMember.name}"`,
+          category: selectedAction === "add_pt" ? "subscriptions" : "members",
+          type: selectedAction === "add_pt" ? "pt_subscription_added" : "subscription_renewed",
+          description: `${selectedAction === "add_pt" ? "Added PT for" : "Renewed"} "${existingMember.name}" (${paymentMode.toUpperCase()})`,
           entityType: "members", entityId: existingMember.id, entityName: existingMember.name,
-          newValue: { action: selectedAction, total_amount: totalAmount },
+          newValue: { action: selectedAction, total_amount: totalAmount, payment_mode: paymentMode },
           branchId: currentBranch.id,
         });
       }
