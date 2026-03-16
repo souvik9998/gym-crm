@@ -939,9 +939,34 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                 </div>
               )}
 
-              {/* Step 2: Personal Details */}
+              {/* Step 2: Personal Details (now includes Name) */}
               {currentStep === 2 && (
                 <div className="space-y-4">
+                  {/* Full Name - moved from Step 1 */}
+                  <div className="space-y-2" style={{ animationDelay: "50ms" }}>
+                    <Label htmlFor="add-name" className="flex items-center gap-2 text-sm font-medium">
+                      <User className="w-4 h-4 text-accent" />
+                      Full Name <span className="text-destructive">*</span>
+                    </Label>
+                    <ValidatedInput
+                      id="add-name"
+                      placeholder="Enter member name"
+                      value={name}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^a-zA-Z\s.']/g, "");
+                        setName(val);
+                        if (touched.name) setFieldErrors((prev) => ({ ...prev, name: validateField(nameSchema, val) }));
+                      }}
+                      onValidate={(v) => {
+                        setTouched((prev) => ({ ...prev, name: true }));
+                        setFieldErrors((prev) => ({ ...prev, name: validateField(nameSchema, v) }));
+                      }}
+                      error={touched.name ? fieldErrors.name : undefined}
+                      className="h-11 text-sm rounded-xl"
+                      autoFocus
+                    />
+                  </div>
+
                   <div className="space-y-2.5">
                     <Label className="text-sm font-medium">Gender <span className="text-destructive">*</span></Label>
                     <div className="flex gap-2">
