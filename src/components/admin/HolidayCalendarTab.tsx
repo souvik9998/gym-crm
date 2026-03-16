@@ -28,6 +28,8 @@ import {
   ChatBubbleLeftEllipsisIcon,
 } from "@heroicons/react/24/outline";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
+import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
 
 interface Holiday {
   id: string;
