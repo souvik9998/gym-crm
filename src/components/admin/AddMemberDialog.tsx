@@ -98,7 +98,7 @@ interface AddMemberDialogProps {
 }
 
 const STEPS = [
-  { id: 1, title: "Contact", icon: User },
+  { id: 1, title: "Contact", icon: Phone },
   { id: 2, title: "Personal", icon: IdCard },
   { id: 3, title: "Package", icon: Calendar },
 ] as const;
