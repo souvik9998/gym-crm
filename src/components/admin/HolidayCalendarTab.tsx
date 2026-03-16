@@ -922,6 +922,8 @@ const HolidayCalendarTab = () => {
         onConfirm={confirmDialog.onConfirm}
         variant={confirmDialog.variant}
       />
+
+      <WhatsAppSendingOverlay {...whatsAppOverlay.overlayProps} />
     </div>
   );
 };
