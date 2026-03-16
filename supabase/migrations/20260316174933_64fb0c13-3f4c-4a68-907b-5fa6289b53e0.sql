@@ -1,0 +1,1 @@
+ALTER TYPE public.payment_mode ADD VALUE IF NOT EXISTS 'upi';
