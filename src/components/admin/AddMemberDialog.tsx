@@ -478,10 +478,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         member_id: member.id,
         subscription_id: subscription.id,
         amount: totalAmount,
-        payment_mode: "cash",
+        payment_mode: paymentMode,
         status: "success",
         payment_type: paymentType,
-        notes: "Added via admin dashboard",
+        notes: `Added via admin dashboard (${paymentMode.toUpperCase()})`,
         branch_id: currentBranch?.id,
       }).select().single();
       if (paymentError) throw paymentError;
