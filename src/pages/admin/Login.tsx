@@ -59,9 +59,21 @@ const AdminLogin = () => {
   }, [authLoading, isAuthenticated, isStaffLoggedIn, isAdmin, isSuperAdmin, navigate]);
 
   useEffect(() => {
-    queryClient.clear();
-    setTimeout(() => setMounted(true), 50);
-  }, []);
+    // Only clear cache and show UI once we know user is NOT authenticated
+    if (!authLoading && !isAuthenticated && !isStaffLoggedIn) {
+      queryClient.clear();
+      setTimeout(() => setMounted(true), 50);
+    }
+  }, [authLoading, isAuthenticated, isStaffLoggedIn]);
+
+  // While auth is loading or user is authenticated (about to redirect), show a minimal spinner
+  if (authLoading || isAuthenticated || isStaffLoggedIn) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
