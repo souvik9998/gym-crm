@@ -666,10 +666,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
           member_id: existingMember.id,
           amount: totalAmount,
-          payment_mode: "cash",
+          payment_mode: paymentMode,
           status: "success",
           payment_type: "pt_subscription",
-          notes: "PT added via admin dashboard",
+          notes: `PT added via admin dashboard (${paymentMode.toUpperCase()})`,
           branch_id: currentBranch.id,
         }).select().single();
         if (paymentError) throw paymentError;
