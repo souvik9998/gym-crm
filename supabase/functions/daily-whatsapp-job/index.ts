@@ -236,6 +236,11 @@ Deno.serve(async (req) => {
       if (success) {
         successCount++;
         sentMemberIds.push(member.id);
+        // Track WhatsApp usage per tenant
+        const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: branchId });
+        if (tenantId) {
+          await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tenantId });
+        }
       } else {
         failCount++;
       }
@@ -266,6 +271,10 @@ Deno.serve(async (req) => {
       if (success) {
         successCount++;
         sentMemberIds.push(member.id);
+        const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: branchId });
+        if (tenantId) {
+          await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tenantId });
+        }
       } else {
         failCount++;
       }
@@ -309,6 +318,10 @@ Deno.serve(async (req) => {
       if (success) {
         successCount++;
         sentMemberIds.push(member.id);
+        const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: branchId });
+        if (tenantId) {
+          await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tenantId });
+        }
       } else {
         failCount++;
       }

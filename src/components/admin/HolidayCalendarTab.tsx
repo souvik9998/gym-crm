@@ -28,6 +28,8 @@ import {
   ChatBubbleLeftEllipsisIcon,
 } from "@heroicons/react/24/outline";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
+import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
 
 interface Holiday {
   id: string;
@@ -88,6 +90,7 @@ const HolidayCalendarTab = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const whatsAppOverlay = useWhatsAppOverlay();
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -311,10 +314,84 @@ const HolidayCalendarTab = () => {
         toast.success("Holiday added");
       }
 
-      setIsDialogOpen(false);
+      // Send WhatsApp notifications to all active members if notify is enabled
+      if (formNotify && formWhatsAppMessage.trim()) {
+        setIsDialogOpen(false);
+        await sendHolidayNotifications();
+      } else {
+        setIsDialogOpen(false);
+      }
+
       fetchHolidays();
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Send holiday WhatsApp notification to all active members
+  const sendHolidayNotifications = async () => {
+    if (!currentBranch?.id || !formWhatsAppMessage.trim()) return;
+
+    const started = whatsAppOverlay.startSending("all active members");
+    if (!started) return;
+
+    try {
+      // Fetch all active members for this branch
+      const { data: members, error: membersError } = await supabase
+        .from("members")
+        .select("id, name, phone, subscriptions(status)")
+        .eq("branch_id", currentBranch.id);
+
+      if (membersError || !members?.length) {
+        whatsAppOverlay.markError("No members found to notify");
+        return;
+      }
+
+      // Filter to members with active/expiring_soon subscriptions
+      const activeMembers = members.filter((m: any) => {
+        const subs = m.subscriptions || [];
+        return subs.some((s: any) => s.status === "active" || s.status === "expiring_soon");
+      });
+
+      if (activeMembers.length === 0) {
+        whatsAppOverlay.markError("No active members found to notify");
+        return;
+      }
+
+      const memberIds = activeMembers.map((m: any) => m.id);
+
+      // Send via send-whatsapp edge function with custom message
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data, error } = await supabase.functions.invoke("send-whatsapp", {
+        body: {
+          memberIds,
+          type: "custom",
+          customMessage: formWhatsAppMessage,
+          isManual: false,
+          adminUserId: session?.user?.id || null,
+          branchId: currentBranch.id,
+          branchName: currentBranch.name,
+        },
+      });
+
+      if (error) {
+        whatsAppOverlay.markError("Failed to send notifications");
+        console.error("Holiday WhatsApp error:", error);
+      } else {
+        const successCount = data?.results?.filter((r: any) => r.success).length || 0;
+        const failCount = data?.results?.filter((r: any) => !r.success).length || 0;
+        
+        if (failCount > 0) {
+          whatsAppOverlay.markSuccess();
+          toast.info(`Sent to ${successCount} members, ${failCount} failed`);
+        } else {
+          whatsAppOverlay.markSuccess();
+          toast.success(`Holiday notice sent to ${successCount} active members`);
+        }
+      }
+    } catch (err: any) {
+      console.error("Holiday notification error:", err);
+      whatsAppOverlay.markError(err.message || "Failed to send notifications");
     }
   };
 
@@ -845,6 +922,8 @@ const HolidayCalendarTab = () => {
         onConfirm={confirmDialog.onConfirm}
         variant={confirmDialog.variant}
       />
+
+      <WhatsAppSendingOverlay {...whatsAppOverlay.overlayProps} />
     </div>
   );
 };
