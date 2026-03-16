@@ -1,0 +1,1 @@
+ALTER TABLE public.whatsapp_notifications ALTER COLUMN member_id DROP NOT NULL;
