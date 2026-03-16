@@ -98,7 +98,7 @@ interface AddMemberDialogProps {
 }
 
 const STEPS = [
-  { id: 1, title: "Contact", icon: User },
+  { id: 1, title: "Contact", icon: Phone },
   { id: 2, title: "Personal", icon: IdCard },
   { id: 3, title: "Package", icon: Calendar },
 ] as const;
@@ -113,6 +113,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   // Basic info
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  
+  // Payment mode
+  const [paymentMode, setPaymentMode] = useState<"cash" | "upi">("cash");
   
   // Existing member check
   const [existingMember, setExistingMember] = useState<ExistingMember | null>(null);
@@ -340,10 +343,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     return cleaned;
   };
 
-  // Step validation - if existing member found or still checking, block progress
-  const isStep1Valid = name.trim().length >= 2 && phone.length === 10 && !existingMember && !isCheckingPhone;
-  // Match registration portal: gender, photo ID, and address are all required
-  const isStep2Valid = !!gender && !!photoIdType && photoIdNumber.trim().length > 0 && address.trim().length >= 3;
+  // Step validation - Step 1 only has phone
+  const isStep1Valid = phone.length === 10 && !existingMember && !isCheckingPhone;
+  // Step 2 has name + personal details
+  const isStep2Valid = name.trim().length >= 2 && !!gender && !!photoIdType && photoIdNumber.trim().length > 0 && address.trim().length >= 3;
   const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptFee > 0) : !!selectedPackageId;
 
   const goToStep = (step: number) => {
@@ -351,12 +354,6 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       // Validate current step before advancing
       if (currentStep === 1) {
         if (!isStep1Valid) {
-          const sanitizedName = sanitize(name);
-          const result = validateForm(addMemberSchema, { name: sanitizedName, phone });
-          if (!result.success) {
-            setFieldErrors(result.errors);
-            setTouched({ name: true, phone: true });
-          }
           if (existingMember) {
             toast.error("Member Already Exists", {
               description: "Please use one of the options below to renew or add PT",
@@ -371,6 +368,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       }
       if (currentStep === 2 && !isStep2Valid) {
         const missing: string[] = [];
+        if (name.trim().length < 2) missing.push("Full Name");
         if (!gender) missing.push("Gender");
         if (!photoIdType) missing.push("Photo ID Type");
         if (photoIdType && !photoIdNumber.trim()) missing.push("Photo ID Number");
@@ -480,10 +478,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         member_id: member.id,
         subscription_id: subscription.id,
         amount: totalAmount,
-        payment_mode: "cash",
+        payment_mode: paymentMode,
         status: "success",
         payment_type: paymentType,
-        notes: "Added via admin dashboard",
+        notes: `Added via admin dashboard (${paymentMode.toUpperCase()})`,
         branch_id: currentBranch?.id,
       }).select().single();
       if (paymentError) throw paymentError;
@@ -515,18 +513,18 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       if (isStaffLoggedIn && staffUser) {
         await logStaffActivity({
           category: "members", type: "member_added",
-          description: `Staff "${staffUser.fullName}" added new member "${name}" with ${selectedPackage?.months || 1} month package`,
+          description: `Staff "${staffUser.fullName}" added new member "${name}" with ${selectedPackage?.months || 1} month package (${paymentMode.toUpperCase()})`,
           entityType: "members", entityId: member.id, entityName: name,
-          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT },
+          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT, payment_mode: paymentMode },
           branchId: currentBranch?.id, staffId: staffUser.id, staffName: staffUser.fullName,
           staffPhone: staffUser.phone, metadata: { staff_role: staffUser.role },
         });
       } else {
         await logAdminActivity({
           category: "members", type: "member_added",
-          description: `Added new member "${name}" with ${selectedPackage?.months || 1} month package`,
+          description: `Added new member "${name}" with ${selectedPackage?.months || 1} month package (${paymentMode.toUpperCase()})`,
           entityType: "members", entityId: member.id, entityName: name,
-          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT },
+          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT, payment_mode: paymentMode },
           branchId: currentBranch?.id,
         });
       }
@@ -594,10 +592,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           member_id: existingMember.id,
           subscription_id: subscription.id,
           amount: totalAmount,
-          payment_mode: "cash",
+          payment_mode: paymentMode,
           status: "success",
           payment_type: paymentType,
-          notes: "Renewed via admin dashboard",
+          notes: `Renewed via admin dashboard (${paymentMode.toUpperCase()})`,
           branch_id: currentBranch.id,
         }).select().single();
         if (paymentError) throw paymentError;
@@ -668,10 +666,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
           member_id: existingMember.id,
           amount: totalAmount,
-          payment_mode: "cash",
+          payment_mode: paymentMode,
           status: "success",
           payment_type: "pt_subscription",
-          notes: "PT added via admin dashboard",
+          notes: `PT added via admin dashboard (${paymentMode.toUpperCase()})`,
           branch_id: currentBranch.id,
         }).select().single();
         if (paymentError) throw paymentError;
@@ -691,21 +689,24 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       }
 
       // Log activity
+      const actionDesc = selectedAction === "add_pt" ? "added PT for" : "renewed";
       if (isStaffLoggedIn && staffUser) {
         await logStaffActivity({
-          category: "members", type: "member_updated",
-          description: `Staff "${staffUser.fullName}" ${selectedAction === "add_pt" ? "added PT for" : "renewed"} "${existingMember.name}"`,
+          category: selectedAction === "add_pt" ? "subscriptions" : "members",
+          type: selectedAction === "add_pt" ? "pt_subscription_added" : "subscription_renewed",
+          description: `Staff "${staffUser.fullName}" ${actionDesc} "${existingMember.name}" (${paymentMode.toUpperCase()})`,
           entityType: "members", entityId: existingMember.id, entityName: existingMember.name,
-          newValue: { action: selectedAction, total_amount: totalAmount },
+          newValue: { action: selectedAction, total_amount: totalAmount, payment_mode: paymentMode },
           branchId: currentBranch.id, staffId: staffUser.id, staffName: staffUser.fullName,
           staffPhone: staffUser.phone, metadata: { staff_role: staffUser.role },
         });
       } else {
         await logAdminActivity({
-          category: "members", type: "member_updated",
-          description: `${selectedAction === "add_pt" ? "Added PT for" : "Renewed"} "${existingMember.name}"`,
+          category: selectedAction === "add_pt" ? "subscriptions" : "members",
+          type: selectedAction === "add_pt" ? "pt_subscription_added" : "subscription_renewed",
+          description: `${selectedAction === "add_pt" ? "Added PT for" : "Renewed"} "${existingMember.name}" (${paymentMode.toUpperCase()})`,
           entityType: "members", entityId: existingMember.id, entityName: existingMember.name,
-          newValue: { action: selectedAction, total_amount: totalAmount },
+          newValue: { action: selectedAction, total_amount: totalAmount, payment_mode: paymentMode },
           branchId: currentBranch.id,
         });
       }
@@ -725,7 +726,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setGender(""); setAddress(""); setPhotoIdType(""); setPhotoIdNumber("");
     setDateOfBirth(undefined); setSelectedPackageId(""); setMonthlyFee(0);
     setJoiningFee(0); setWantsPT(false); setSelectedTrainerId("");
-    setPtMonths(1); setPtFee(0); setCurrentStep(1);
+    setPtMonths(1); setPtFee(0); setCurrentStep(1); setPaymentMode("cash");
     setExistingMember(null); setSelectedAction(null); setIsCheckingPhone(false);
     const today = new Date(); today.setHours(0, 0, 0, 0); setStartDate(today);
   };
@@ -808,34 +809,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                 slideDirection === "left" ? "motion-safe:animate-fade-in" : "motion-safe:animate-fade-in"
               )}
             >
-              {/* Step 1: Contact Details */}
+              {/* Step 1: Contact Details - Phone Only */}
               {currentStep === 1 && (
                 <div className="space-y-4">
                   <div className="space-y-2" style={{ animationDelay: "50ms" }}>
-                    <Label htmlFor="add-name" className="flex items-center gap-2 text-sm font-medium">
-                      <User className="w-4 h-4 text-accent" />
-                      Full Name <span className="text-destructive">*</span>
-                    </Label>
-                    <ValidatedInput
-                      id="add-name"
-                      placeholder="Enter member name"
-                      value={name}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^a-zA-Z\s.']/g, "");
-                        setName(val);
-                        if (touched.name) setFieldErrors((prev) => ({ ...prev, name: validateField(nameSchema, val) }));
-                      }}
-                      onValidate={(v) => {
-                        setTouched((prev) => ({ ...prev, name: true }));
-                        setFieldErrors((prev) => ({ ...prev, name: validateField(nameSchema, v) }));
-                      }}
-                      error={touched.name ? fieldErrors.name : undefined}
-                      className="h-11 text-sm rounded-xl"
-                      disabled={!!existingMember}
-                    />
-                  </div>
-
-                  <div className="space-y-2" style={{ animationDelay: "100ms" }}>
                     <Label htmlFor="add-phone" className="flex items-center gap-2 text-sm font-medium">
                       <Phone className="w-4 h-4 text-accent" />
                       Phone Number <span className="text-destructive">*</span>
@@ -852,6 +829,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                         className="rounded-l-none rounded-r-xl h-11 text-sm pr-10"
                         required
+                        autoFocus
                       />
                       {isCheckingPhone && (
                         <Loader2 className="w-4 h-4 animate-spin text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2" />
@@ -878,8 +856,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                           <span className={cn(
                             "px-2 py-0.5 rounded-full font-medium",
                             existingMember.subscription.status === "active" 
-                              ? "bg-green-500/10 text-green-700 dark:text-green-400"
-                              : "bg-orange-500/10 text-orange-700 dark:text-orange-400"
+                              ? "bg-primary/10 text-primary"
+                              : "bg-destructive/10 text-destructive"
                           )}>
                             Gym: {existingMember.subscription.status === "active" ? "Active" : "Expired"} 
                             {" · "}Ends {format(new Date(existingMember.subscription.end_date), "dd MMM yyyy")}
@@ -890,7 +868,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                           </span>
                         )}
                         {existingMember.activePT ? (
-                          <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium">
+                          <span className="px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
                             PT: {existingMember.activePT.trainer_name} · Ends {format(new Date(existingMember.activePT.end_date), "dd MMM yyyy")}
                           </span>
                         ) : (
@@ -961,9 +939,34 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                 </div>
               )}
 
-              {/* Step 2: Personal Details */}
+              {/* Step 2: Personal Details (now includes Name) */}
               {currentStep === 2 && (
                 <div className="space-y-4">
+                  {/* Full Name - moved from Step 1 */}
+                  <div className="space-y-2" style={{ animationDelay: "50ms" }}>
+                    <Label htmlFor="add-name" className="flex items-center gap-2 text-sm font-medium">
+                      <User className="w-4 h-4 text-accent" />
+                      Full Name <span className="text-destructive">*</span>
+                    </Label>
+                    <ValidatedInput
+                      id="add-name"
+                      placeholder="Enter member name"
+                      value={name}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^a-zA-Z\s.']/g, "");
+                        setName(val);
+                        if (touched.name) setFieldErrors((prev) => ({ ...prev, name: validateField(nameSchema, val) }));
+                      }}
+                      onValidate={(v) => {
+                        setTouched((prev) => ({ ...prev, name: true }));
+                        setFieldErrors((prev) => ({ ...prev, name: validateField(nameSchema, v) }));
+                      }}
+                      error={touched.name ? fieldErrors.name : undefined}
+                      className="h-11 text-sm rounded-xl"
+                      autoFocus
+                    />
+                  </div>
+
                   <div className="space-y-2.5">
                     <Label className="text-sm font-medium">Gender <span className="text-destructive">*</span></Label>
                     <div className="flex gap-2">
@@ -1198,6 +1201,34 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     </div>
                   )}
 
+                  {/* Payment Mode Selection */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-sm font-medium">
+                      <IndianRupee className="w-4 h-4 text-accent" />
+                      Payment Method <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="flex gap-2">
+                      {[
+                        { value: "cash" as const, label: "Cash" },
+                        { value: "upi" as const, label: "UPI" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setPaymentMode(opt.value)}
+                          className={cn(
+                            "flex-1 py-2.5 px-4 rounded-xl border-2 text-sm font-medium transition-all duration-200 active:scale-95",
+                            paymentMode === opt.value
+                              ? "border-foreground bg-foreground/5 text-foreground shadow-sm"
+                              : "border-border bg-card text-muted-foreground hover:border-foreground/30"
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Price Summary */}
                   <div className="bg-muted/40 rounded-xl p-4 space-y-2.5 border border-border/40">
                     {showGymSection && (
@@ -1225,7 +1256,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                       </div>
                     )}
                     <div className="flex justify-between font-bold pt-2.5 border-t border-border/60 text-base">
-                      <span>Total (Cash)</span>
+                      <span>Total ({paymentMode === "upi" ? "UPI" : "Cash"})</span>
                       <span className="text-foreground tabular-nums">₹{totalAmount.toLocaleString("en-IN")}</span>
                     </div>
                   </div>

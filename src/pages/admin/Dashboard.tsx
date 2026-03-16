@@ -20,7 +20,7 @@ import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
 import DailyPassTable from "@/components/admin/DailyPassTable";
 import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
-import { AddPaymentDialog } from "@/components/admin/AddPaymentDialog";
+// AddPaymentDialog removed - payment mode now selected in AddMemberDialog
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { toast } from "@/components/ui/sonner";
@@ -182,7 +182,7 @@ const AdminDashboard = () => {
   const dailyPassSearchQuery = useDebounce(dailyPassSearchInput, 300);
   
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
+  
   const [refreshKey, setRefreshKey] = useState(0);
   const [sortOpen, setSortOpen] = useState(false);
 
@@ -448,18 +448,7 @@ const AdminDashboard = () => {
                       <ArrowDownTrayIcon className="w-4 h-4" />
                     </Button>
                     
-                    {/* Cash Payment Button - Only for admins or staff with can_manage_members */}
-                    {canManageMembers && (
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        onClick={() => setIsAddPaymentOpen(true)} 
-                        className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
-                        title="Cash Payment"
-                      >
-                        <CreditCardIcon className="w-4 h-4" />
-                      </Button>
-                    )}
+                    
                     
                     {/* Add Member Button - Only for admins or staff with can_manage_members */}
                     {canManageMembers && (
@@ -581,17 +570,7 @@ const AdminDashboard = () => {
                       >
                         <ArrowDownTrayIcon className="w-4 h-4" />
                       </Button>
-                      {canManageMembers && (
-                        <Button 
-                          variant="outline" 
-                          size="icon"
-                          onClick={() => setIsAddPaymentOpen(true)} 
-                          className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
-                          title="Cash Payment"
-                        >
-                          <CreditCardIcon className="w-4 h-4" />
-                        </Button>
-                      )}
+                      
                       {canManageMembers && (
                         <Button 
                           size="sm"
@@ -694,18 +673,7 @@ const AdminDashboard = () => {
                       <ArrowDownTrayIcon className="w-4 h-4" />
                     </Button>
                     
-                    {/* Cash Payment */}
-                    {canManageMembers && (
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        onClick={() => setIsAddPaymentOpen(true)} 
-                        className="h-9 w-9 rounded-xl border-border/50 bg-card text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95 transition-all duration-200"
-                        title="Cash Payment"
-                      >
-                        <CreditCardIcon className="w-4 h-4" />
-                      </Button>
-                    )}
+                    
                     
                     {/* Add Member */}
                     {canManageMembers && (
@@ -766,11 +734,6 @@ const AdminDashboard = () => {
         onSuccess={handleMemberSuccess}
       />
 
-      <AddPaymentDialog
-        open={isAddPaymentOpen}
-        onOpenChange={setIsAddPaymentOpen}
-        onSuccess={handlePaymentSuccess}
-      />
     </Fragment>
   );
 };

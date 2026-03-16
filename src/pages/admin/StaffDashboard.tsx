@@ -20,7 +20,7 @@ import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
 import DailyPassTable from "@/components/admin/DailyPassTable";
 import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
-import { AddPaymentDialog } from "@/components/admin/AddPaymentDialog";
+// AddPaymentDialog removed - payment mode now selected in AddMemberDialog
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
 import { toast } from "@/components/ui/sonner";
 import {
@@ -92,7 +92,7 @@ const StaffDashboard = () => {
   
   const [dailyPassFilter, setDailyPassFilter] = useState("all");
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
+  
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState("members");
   const [memberFilter, setMemberFilter] = useState<MemberFilterValue>("all");
@@ -314,18 +314,8 @@ const StaffDashboard = () => {
                         </PopoverContent>
                       </Popover>
 
-                      {/* Cash Payment Button - Only for staff with can_manage_members */}
-                      {canRecordPayments && (
-                        <Button 
-                          variant="outline" 
-                          size="icon"
-                          onClick={() => setIsAddPaymentOpen(true)} 
-                          className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
-                          title="Record Cash Payment"
-                        >
-                          <CreditCardIcon className="w-4 h-4" />
-                        </Button>
-                      )}
+
+
 
                       {/* Add Member Button */}
                       {canManageMembers && (
@@ -441,14 +431,6 @@ const StaffDashboard = () => {
           open={isAddMemberOpen}
           onOpenChange={setIsAddMemberOpen}
           onSuccess={handleMemberSuccess}
-        />
-      )}
-      {/* Only canRecordPayments (= canManageMembers) can record cash payments */}
-      {canRecordPayments && (
-        <AddPaymentDialog
-          open={isAddPaymentOpen}
-          onOpenChange={setIsAddPaymentOpen}
-          onSuccess={handlePaymentSuccess}
         />
       )}
     </Fragment>
