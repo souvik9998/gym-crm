@@ -433,14 +433,6 @@ const StaffDashboard = () => {
           onSuccess={handleMemberSuccess}
         />
       )}
-      {/* Only canRecordPayments (= canManageMembers) can record cash payments */}
-      {canRecordPayments && (
-        <AddPaymentDialog
-          open={isAddPaymentOpen}
-          onOpenChange={setIsAddPaymentOpen}
-          onSuccess={handlePaymentSuccess}
-        />
-      )}
     </Fragment>
   );
 };

@@ -734,11 +734,6 @@ const AdminDashboard = () => {
         onSuccess={handleMemberSuccess}
       />
 
-      <AddPaymentDialog
-        open={isAddPaymentOpen}
-        onOpenChange={setIsAddPaymentOpen}
-        onSuccess={handlePaymentSuccess}
-      />
     </Fragment>
   );
 };
