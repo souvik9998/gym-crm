@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Phone, Calendar, MoreVertical, User, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserCheck, Clock, AlertTriangle, Download, Fingerprint } from "lucide-react";
+import { Phone, Calendar, MoreVertical, User, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserCheck, UserX, Clock, AlertTriangle, Download, Fingerprint } from "lucide-react";
 import { useIsMobile, useIsTabletOrBelow } from "@/hooks/use-mobile";
 import {
   DropdownMenu,
@@ -338,6 +338,63 @@ export const MembersTable = ({
       toast.success(`${member.name} moved to active`);
     } catch (error: any) {
       toast.error("Error moving to active", {
+        description: error.message,
+      });
+    }
+  };
+
+  const handleMoveToInactive = async (member: Member, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      if (!member.subscription?.id) {
+        toast.error("No subscription found", {
+          description: "Cannot deactivate member without a subscription",
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from("subscriptions")
+        .update({ status: "inactive" as any })
+        .eq("id", member.subscription.id);
+      
+      if (error) throw error;
+      
+      invalidateMembers();
+
+      if (isStaffLoggedIn && staffUser) {
+        await logStaffActivity({
+          category: "members",
+          type: "member_moved_to_inactive",
+          description: `Staff "${staffUser.fullName}" moved "${member.name}" to inactive status`,
+          entityType: "members",
+          entityId: member.id,
+          entityName: member.name,
+          oldValue: { status: member.subscription.status },
+          newValue: { status: "inactive" },
+          branchId: currentBranch?.id,
+          staffId: staffUser.id,
+          staffName: staffUser.fullName,
+          staffPhone: staffUser.phone,
+          metadata: { staff_role: staffUser.role },
+        });
+      } else {
+        await logAdminActivity({
+          category: "members",
+          type: "member_moved_to_inactive",
+          description: `Moved "${member.name}" to inactive status`,
+          entityType: "members",
+          entityId: member.id,
+          entityName: member.name,
+          oldValue: { status: member.subscription.status },
+          newValue: { status: "inactive" },
+          branchId: currentBranch?.id,
+        });
+      }
+      
+      toast.success(`${member.name} moved to inactive`);
+    } catch (error: any) {
+      toast.error("Error moving to inactive", {
         description: error.message,
       });
     }
@@ -976,6 +1033,12 @@ export const MembersTable = ({
                             Move to Active
                           </DropdownMenuItem>
                         )}
+                        {!isInactive(member) && member.subscription && (
+                          <DropdownMenuItem onClick={(e) => handleMoveToInactive(member, e)}>
+                            <UserX className="w-4 h-4 mr-2" />
+                            Move to Inactive
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={(e) => handleSendPromotional(member, e)}
@@ -1247,6 +1310,12 @@ export const MembersTable = ({
                                 <DropdownMenuItem onClick={(e) => handleMoveToActive(member, e)}>
                                   <UserCheck className="w-4 h-4 mr-2" />
                                   Move to Active
+                                </DropdownMenuItem>
+                              )}
+                              {!isInactive(member) && member.subscription && (
+                                <DropdownMenuItem onClick={(e) => handleMoveToInactive(member, e)}>
+                                  <UserX className="w-4 h-4 mr-2" />
+                                  Move to Inactive
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
