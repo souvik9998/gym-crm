@@ -344,7 +344,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   };
 
   // Step validation - Step 1 only has phone
-  const isStep1Valid = phone.length === 10 && !existingMember && !isCheckingPhone;
+  // Ensure debounce has settled and phone check is complete before allowing Continue
+  const isPhoneSettled = phone.length === 10 && debouncedPhone === phone && !isCheckingPhone;
+  const isStep1Valid = isPhoneSettled && !existingMember;
   // Step 2 has name + personal details
   const isStep2Valid = name.trim().length >= 2 && !!gender && !!photoIdType && photoIdNumber.trim().length > 0 && address.trim().length >= 3;
   const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptFee > 0) : !!selectedPackageId;
@@ -888,20 +890,23 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                               label: "Renew Gym Membership", 
                               icon: RefreshCw,
                               desc: "Extend gym subscription",
+                              requiresTrainers: false,
                             },
                             { 
                               key: "add_pt" as const, 
                               label: "Add Personal Training", 
                               icon: Dumbbell,
                               desc: "Add or extend PT subscription",
+                              requiresTrainers: true,
                             },
                             { 
                               key: "renew_gym_pt" as const, 
                               label: "Renew Gym + PT", 
                               icon: Calendar,
                               desc: "Renew gym and add PT together",
+                              requiresTrainers: true,
                             },
-                          ].map((action) => (
+                          ].filter((action) => !action.requiresTrainers || trainers.length > 0).map((action) => (
                             <button
                               key={action.key}
                               type="button"
@@ -1136,8 +1141,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     </>
                   )}
 
-                  {/* PT Section */}
-                  {showPTSection && (
+                  {/* PT Section - only show if trainers exist */}
+                  {showPTSection && trainers.length > 0 && (
                     <div className="rounded-xl border border-border/50 bg-muted/20 p-3.5 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium flex items-center gap-2">
