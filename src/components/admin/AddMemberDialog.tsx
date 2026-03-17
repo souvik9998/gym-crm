@@ -890,20 +890,23 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                               label: "Renew Gym Membership", 
                               icon: RefreshCw,
                               desc: "Extend gym subscription",
+                              requiresTrainers: false,
                             },
                             { 
                               key: "add_pt" as const, 
                               label: "Add Personal Training", 
                               icon: Dumbbell,
                               desc: "Add or extend PT subscription",
+                              requiresTrainers: true,
                             },
                             { 
                               key: "renew_gym_pt" as const, 
                               label: "Renew Gym + PT", 
                               icon: Calendar,
                               desc: "Renew gym and add PT together",
+                              requiresTrainers: true,
                             },
-                          ].map((action) => (
+                          ].filter((action) => !action.requiresTrainers || trainers.length > 0).map((action) => (
                             <button
                               key={action.key}
                               type="button"
