@@ -343,6 +343,63 @@ export const MembersTable = ({
     }
   };
 
+  const handleMoveToInactive = async (member: Member, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      if (!member.subscription?.id) {
+        toast.error("No subscription found", {
+          description: "Cannot deactivate member without a subscription",
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from("subscriptions")
+        .update({ status: "inactive" as any })
+        .eq("id", member.subscription.id);
+      
+      if (error) throw error;
+      
+      invalidateMembers();
+
+      if (isStaffLoggedIn && staffUser) {
+        await logStaffActivity({
+          category: "members",
+          type: "member_moved_to_inactive",
+          description: `Staff "${staffUser.fullName}" moved "${member.name}" to inactive status`,
+          entityType: "members",
+          entityId: member.id,
+          entityName: member.name,
+          oldValue: { status: member.subscription.status },
+          newValue: { status: "inactive" },
+          branchId: currentBranch?.id,
+          staffId: staffUser.id,
+          staffName: staffUser.fullName,
+          staffPhone: staffUser.phone,
+          metadata: { staff_role: staffUser.role },
+        });
+      } else {
+        await logAdminActivity({
+          category: "members",
+          type: "member_moved_to_inactive",
+          description: `Moved "${member.name}" to inactive status`,
+          entityType: "members",
+          entityId: member.id,
+          entityName: member.name,
+          oldValue: { status: member.subscription.status },
+          newValue: { status: "inactive" },
+          branchId: currentBranch?.id,
+        });
+      }
+      
+      toast.success(`${member.name} moved to inactive`);
+    } catch (error: any) {
+      toast.error("Error moving to inactive", {
+        description: error.message,
+      });
+    }
+  };
+
   // Auto-mark members expired > 30 days as inactive
   const autoMarkLongExpiredAsInactive = async () => {
     const today = new Date();
