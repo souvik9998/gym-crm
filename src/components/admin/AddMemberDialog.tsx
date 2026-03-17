@@ -344,7 +344,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   };
 
   // Step validation - Step 1 only has phone
-  const isStep1Valid = phone.length === 10 && !existingMember && !isCheckingPhone;
+  // Ensure debounce has settled and phone check is complete before allowing Continue
+  const isPhoneSettled = phone.length === 10 && debouncedPhone === phone && !isCheckingPhone;
+  const isStep1Valid = isPhoneSettled && !existingMember;
   // Step 2 has name + personal details
   const isStep2Valid = name.trim().length >= 2 && !!gender && !!photoIdType && photoIdNumber.trim().length > 0 && address.trim().length >= 3;
   const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptFee > 0) : !!selectedPackageId;
