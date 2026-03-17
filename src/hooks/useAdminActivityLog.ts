@@ -18,6 +18,8 @@ export type ActivityType =
   | "member_updated"
   | "member_deleted"
   | "member_status_changed"
+  | "member_moved_to_active"
+  | "member_moved_to_inactive"
   // Payments
   | "cash_payment_added"
   | "online_payment_received"
