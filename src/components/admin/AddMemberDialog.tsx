@@ -329,10 +329,44 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const taxAmount = taxEnabled && taxRate > 0 ? Math.round((subtotalAmount * taxRate) / 100) : 0;
   const totalAmount = subtotalAmount + taxAmount;
 
+  // Calculate the gym membership end date for PT capping
+  const gymMembershipEndDate = (() => {
+    if (isPTOnly && existingMember?.subscription?.end_date) {
+      // For PT-only on existing member, cap to their gym membership end date
+      return new Date(existingMember.subscription.end_date);
+    }
+    if (selectedAction === "renew_gym_pt" && selectedPackage) {
+      // For renew + PT, cap to the new gym end date
+      const gymStart = new Date(startDate);
+      gymStart.setHours(0, 0, 0, 0);
+      return addMonths(gymStart, selectedPackage.months);
+    }
+    if (selectedPackage) {
+      // For new members, cap to the selected package end date
+      const gymStart = new Date(startDate);
+      gymStart.setHours(0, 0, 0, 0);
+      return addMonths(gymStart, selectedPackage.months);
+    }
+    return null;
+  })();
+
   const ptMonthOptions: number[] = [];
-  const maxPtMonths = isPTOnly ? 12 : (selectedPackage?.months || 1);
-  for (let i = 1; i <= maxPtMonths; i++) {
-    ptMonthOptions.push(i);
+  if (gymMembershipEndDate) {
+    const ptStart = new Date(startDate);
+    ptStart.setHours(0, 0, 0, 0);
+    for (let m = 1; m <= 12; m++) {
+      const ptEnd = addMonths(ptStart, m);
+      if (isAfter(ptEnd, gymMembershipEndDate)) break;
+      ptMonthOptions.push(m);
+    }
+    // Ensure at least showing that no months are available
+    if (ptMonthOptions.length === 0 && isPTOnly) {
+      // No valid PT months - membership too short
+    }
+  } else {
+    for (let i = 1; i <= (selectedPackage?.months || 1); i++) {
+      ptMonthOptions.push(i);
+    }
   }
 
   const formatIdNumber = (value: string, type: string) => {
