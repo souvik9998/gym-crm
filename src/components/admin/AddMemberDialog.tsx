@@ -379,6 +379,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     }
   }, [ptMonthOptions, ptMonths]);
 
+  const formatIdNumber = (value: string, type: string) => {
     const cleaned = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
     if (type === "aadhaar") {
       return cleaned.replace(/(.{4})/g, "$1 ").trim().slice(0, 14);
