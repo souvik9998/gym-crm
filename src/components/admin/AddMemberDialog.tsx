@@ -1002,7 +1002,6 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                             });
                           })()}
                         </div>
-                        </div>
                       </div>
                     </div>
                   )}
