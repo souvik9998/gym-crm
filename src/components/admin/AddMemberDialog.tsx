@@ -928,59 +928,80 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                       <div className="space-y-2 pt-1">
                         <p className="text-xs font-medium text-muted-foreground">What would you like to do?</p>
                         <div className="grid grid-cols-1 gap-2">
-                          {[
-                            { 
-                              key: "renew_gym" as const, 
-                              label: "Renew Gym Membership", 
-                              icon: RefreshCw,
-                              desc: "Extend gym subscription",
-                              requiresTrainers: false,
-                            },
-                            { 
-                              key: "add_pt" as const, 
-                              label: "Add Personal Training", 
-                              icon: Dumbbell,
-                              desc: "Add or extend PT subscription",
-                              requiresTrainers: true,
-                            },
-                            { 
-                              key: "renew_gym_pt" as const, 
-                              label: "Renew Gym + PT", 
-                              icon: Calendar,
-                              desc: "Renew gym and add PT together",
-                              requiresTrainers: true,
-                            },
-                          ].filter((action) => !action.requiresTrainers || trainers.length > 0).map((action) => (
-                            <button
-                              key={action.key}
-                              type="button"
-                              onClick={() => {
-                                setSelectedAction(action.key);
-                                if (action.key === "add_pt") {
-                                  setWantsPT(true);
-                                } else if (action.key === "renew_gym_pt") {
-                                  setWantsPT(true);
-                                } else {
-                                  setWantsPT(false);
-                                }
-                                setSlideDirection("left");
-                                setCurrentStep(3);
-                              }}
-                              className={cn(
-                                "flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all duration-200",
-                                "border-border bg-background hover:border-primary/40 hover:bg-primary/5 active:scale-[0.98]"
-                              )}
-                            >
-                              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                                <action.icon className="w-4 h-4 text-foreground" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-foreground">{action.label}</p>
-                                <p className="text-[11px] text-muted-foreground">{action.desc}</p>
-                              </div>
-                              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                            </button>
-                          ))}
+                          {(() => {
+                            const memberHasActiveMembership = existingMember.subscription && 
+                              existingMember.subscription.status === "active" && 
+                              isAfter(new Date(existingMember.subscription.end_date), new Date());
+                            
+                            return [
+                              { 
+                                key: "renew_gym" as const, 
+                                label: "Renew Gym Membership", 
+                                icon: RefreshCw,
+                                desc: "Extend gym subscription",
+                                requiresTrainers: false,
+                                requiresActiveMembership: false,
+                              },
+                              { 
+                                key: "add_pt" as const, 
+                                label: "Add Personal Training", 
+                                icon: Dumbbell,
+                                desc: memberHasActiveMembership 
+                                  ? `PT can be added till ${format(new Date(existingMember.subscription!.end_date), "d MMM yyyy")}`
+                                  : "Requires active gym membership",
+                                requiresTrainers: true,
+                                requiresActiveMembership: true,
+                              },
+                              { 
+                                key: "renew_gym_pt" as const, 
+                                label: "Renew Gym + PT", 
+                                icon: Calendar,
+                                desc: "Renew gym and add PT together",
+                                requiresTrainers: true,
+                                requiresActiveMembership: false,
+                              },
+                            ]
+                            .filter((action) => !action.requiresTrainers || trainers.length > 0)
+                            .map((action) => {
+                              const isDisabled = action.requiresActiveMembership && !memberHasActiveMembership;
+                              return (
+                                <button
+                                  key={action.key}
+                                  type="button"
+                                  disabled={isDisabled}
+                                  onClick={() => {
+                                    if (isDisabled) return;
+                                    setSelectedAction(action.key);
+                                    if (action.key === "add_pt") {
+                                      setWantsPT(true);
+                                    } else if (action.key === "renew_gym_pt") {
+                                      setWantsPT(true);
+                                    } else {
+                                      setWantsPT(false);
+                                    }
+                                    setSlideDirection("left");
+                                    setCurrentStep(3);
+                                  }}
+                                  className={cn(
+                                    "flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all duration-200",
+                                    isDisabled
+                                      ? "border-border bg-muted/50 opacity-50 cursor-not-allowed"
+                                      : "border-border bg-background hover:border-primary/40 hover:bg-primary/5 active:scale-[0.98]"
+                                  )}
+                                >
+                                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                                    <action.icon className="w-4 h-4 text-foreground" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground">{action.label}</p>
+                                    <p className="text-[11px] text-muted-foreground">{action.desc}</p>
+                                  </div>
+                                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                                </button>
+                              );
+                            });
+                          })()}
+                        </div>
                         </div>
                       </div>
                     </div>
