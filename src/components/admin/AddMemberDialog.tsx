@@ -369,7 +369,16 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     }
   }
 
-  const formatIdNumber = (value: string, type: string) => {
+  // Reset ptMonths if current selection exceeds available options
+  useEffect(() => {
+    if (ptMonthOptions.length > 0 && !ptMonthOptions.includes(ptMonths)) {
+      const maxAvailable = ptMonthOptions[ptMonthOptions.length - 1];
+      setPtMonths(maxAvailable);
+      const trainer = trainers.find((t) => t.id === selectedTrainerId);
+      if (trainer) setPtFee(Number(trainer.monthly_fee) * maxAvailable);
+    }
+  }, [ptMonthOptions, ptMonths]);
+
     const cleaned = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
     if (type === "aadhaar") {
       return cleaned.replace(/(.{4})/g, "$1 ").trim().slice(0, 14);
