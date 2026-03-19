@@ -383,7 +383,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const isStep1Valid = isPhoneSettled && !existingMember;
   // Step 2 has name + personal details
   const isStep2Valid = name.trim().length >= 2 && !!gender && !!photoIdType && photoIdNumber.trim().length > 0 && address.trim().length >= 3;
-  const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptFee > 0) : !!selectedPackageId;
+  const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptFee > 0 && ptMonthOptions.length > 0) : !!selectedPackageId;
 
   const goToStep = (step: number) => {
     if (step > currentStep) {
