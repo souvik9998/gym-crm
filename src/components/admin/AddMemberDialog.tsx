@@ -329,11 +329,55 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const taxAmount = taxEnabled && taxRate > 0 ? Math.round((subtotalAmount * taxRate) / 100) : 0;
   const totalAmount = subtotalAmount + taxAmount;
 
+  // Calculate the gym membership end date for PT capping
+  const gymMembershipEndDate = (() => {
+    if (isPTOnly && existingMember?.subscription?.end_date) {
+      // For PT-only on existing member, cap to their gym membership end date
+      return new Date(existingMember.subscription.end_date);
+    }
+    if (selectedAction === "renew_gym_pt" && selectedPackage) {
+      // For renew + PT, cap to the new gym end date
+      const gymStart = new Date(startDate);
+      gymStart.setHours(0, 0, 0, 0);
+      return addMonths(gymStart, selectedPackage.months);
+    }
+    if (selectedPackage) {
+      // For new members, cap to the selected package end date
+      const gymStart = new Date(startDate);
+      gymStart.setHours(0, 0, 0, 0);
+      return addMonths(gymStart, selectedPackage.months);
+    }
+    return null;
+  })();
+
   const ptMonthOptions: number[] = [];
-  const maxPtMonths = isPTOnly ? 12 : (selectedPackage?.months || 1);
-  for (let i = 1; i <= maxPtMonths; i++) {
-    ptMonthOptions.push(i);
+  if (gymMembershipEndDate) {
+    const ptStart = new Date(startDate);
+    ptStart.setHours(0, 0, 0, 0);
+    for (let m = 1; m <= 12; m++) {
+      const ptEnd = addMonths(ptStart, m);
+      if (isAfter(ptEnd, gymMembershipEndDate)) break;
+      ptMonthOptions.push(m);
+    }
+    // Ensure at least showing that no months are available
+    if (ptMonthOptions.length === 0 && isPTOnly) {
+      // No valid PT months - membership too short
+    }
+  } else {
+    for (let i = 1; i <= (selectedPackage?.months || 1); i++) {
+      ptMonthOptions.push(i);
+    }
   }
+
+  // Reset ptMonths if current selection exceeds available options
+  useEffect(() => {
+    if (ptMonthOptions.length > 0 && !ptMonthOptions.includes(ptMonths)) {
+      const maxAvailable = ptMonthOptions[ptMonthOptions.length - 1];
+      setPtMonths(maxAvailable);
+      const trainer = trainers.find((t) => t.id === selectedTrainerId);
+      if (trainer) setPtFee(Number(trainer.monthly_fee) * maxAvailable);
+    }
+  }, [ptMonthOptions, ptMonths]);
 
   const formatIdNumber = (value: string, type: string) => {
     const cleaned = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
@@ -349,7 +393,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const isStep1Valid = isPhoneSettled && !existingMember;
   // Step 2 has name + personal details
   const isStep2Valid = name.trim().length >= 2 && !!gender && !!photoIdType && photoIdNumber.trim().length > 0 && address.trim().length >= 3;
-  const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptFee > 0) : !!selectedPackageId;
+  const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptFee > 0 && ptMonthOptions.length > 0) : !!selectedPackageId;
 
   const goToStep = (step: number) => {
     if (step > currentStep) {
@@ -884,59 +928,79 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                       <div className="space-y-2 pt-1">
                         <p className="text-xs font-medium text-muted-foreground">What would you like to do?</p>
                         <div className="grid grid-cols-1 gap-2">
-                          {[
-                            { 
-                              key: "renew_gym" as const, 
-                              label: "Renew Gym Membership", 
-                              icon: RefreshCw,
-                              desc: "Extend gym subscription",
-                              requiresTrainers: false,
-                            },
-                            { 
-                              key: "add_pt" as const, 
-                              label: "Add Personal Training", 
-                              icon: Dumbbell,
-                              desc: "Add or extend PT subscription",
-                              requiresTrainers: true,
-                            },
-                            { 
-                              key: "renew_gym_pt" as const, 
-                              label: "Renew Gym + PT", 
-                              icon: Calendar,
-                              desc: "Renew gym and add PT together",
-                              requiresTrainers: true,
-                            },
-                          ].filter((action) => !action.requiresTrainers || trainers.length > 0).map((action) => (
-                            <button
-                              key={action.key}
-                              type="button"
-                              onClick={() => {
-                                setSelectedAction(action.key);
-                                if (action.key === "add_pt") {
-                                  setWantsPT(true);
-                                } else if (action.key === "renew_gym_pt") {
-                                  setWantsPT(true);
-                                } else {
-                                  setWantsPT(false);
-                                }
-                                setSlideDirection("left");
-                                setCurrentStep(3);
-                              }}
-                              className={cn(
-                                "flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all duration-200",
-                                "border-border bg-background hover:border-primary/40 hover:bg-primary/5 active:scale-[0.98]"
-                              )}
-                            >
-                              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                                <action.icon className="w-4 h-4 text-foreground" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-foreground">{action.label}</p>
-                                <p className="text-[11px] text-muted-foreground">{action.desc}</p>
-                              </div>
-                              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                            </button>
-                          ))}
+                          {(() => {
+                            const memberHasActiveMembership = existingMember.subscription && 
+                              existingMember.subscription.status === "active" && 
+                              isAfter(new Date(existingMember.subscription.end_date), new Date());
+                            
+                            return [
+                              { 
+                                key: "renew_gym" as const, 
+                                label: "Renew Gym Membership", 
+                                icon: RefreshCw,
+                                desc: "Extend gym subscription",
+                                requiresTrainers: false,
+                                requiresActiveMembership: false,
+                              },
+                              { 
+                                key: "add_pt" as const, 
+                                label: "Add Personal Training", 
+                                icon: Dumbbell,
+                                desc: memberHasActiveMembership 
+                                  ? `PT can be added till ${format(new Date(existingMember.subscription!.end_date), "d MMM yyyy")}`
+                                  : "Requires active gym membership",
+                                requiresTrainers: true,
+                                requiresActiveMembership: true,
+                              },
+                              { 
+                                key: "renew_gym_pt" as const, 
+                                label: "Renew Gym + PT", 
+                                icon: Calendar,
+                                desc: "Renew gym and add PT together",
+                                requiresTrainers: true,
+                                requiresActiveMembership: false,
+                              },
+                            ]
+                            .filter((action) => !action.requiresTrainers || trainers.length > 0)
+                            .map((action) => {
+                              const isDisabled = action.requiresActiveMembership && !memberHasActiveMembership;
+                              return (
+                                <button
+                                  key={action.key}
+                                  type="button"
+                                  disabled={isDisabled}
+                                  onClick={() => {
+                                    if (isDisabled) return;
+                                    setSelectedAction(action.key);
+                                    if (action.key === "add_pt") {
+                                      setWantsPT(true);
+                                    } else if (action.key === "renew_gym_pt") {
+                                      setWantsPT(true);
+                                    } else {
+                                      setWantsPT(false);
+                                    }
+                                    setSlideDirection("left");
+                                    setCurrentStep(3);
+                                  }}
+                                  className={cn(
+                                    "flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all duration-200",
+                                    isDisabled
+                                      ? "border-border bg-muted/50 opacity-50 cursor-not-allowed"
+                                      : "border-border bg-background hover:border-primary/40 hover:bg-primary/5 active:scale-[0.98]"
+                                  )}
+                                >
+                                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                                    <action.icon className="w-4 h-4 text-foreground" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground">{action.label}</p>
+                                    <p className="text-[11px] text-muted-foreground">{action.desc}</p>
+                                  </div>
+                                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                                </button>
+                              );
+                            });
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -1198,6 +1262,18 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                               />
                             </div>
                           </div>
+                          {gymMembershipEndDate && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+                              <Calendar className="w-3 h-3" />
+                              PT can only be added till gym membership end date: {format(gymMembershipEndDate, "d MMM yyyy")}
+                            </p>
+                          )}
+                          {ptMonthOptions.length === 0 && (wantsPT || isPTOnly) && (
+                            <p className="text-xs text-destructive flex items-center gap-1.5 mt-1">
+                              <Calendar className="w-3 h-3" />
+                              Gym membership period is too short for PT. Please extend gym membership first.
+                            </p>
+                          )}
                         </div>
                       )}
                       {(wantsPT || isPTOnly) && trainers.length === 0 && (
