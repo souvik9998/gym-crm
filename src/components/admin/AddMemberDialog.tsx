@@ -1232,6 +1232,18 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                               />
                             </div>
                           </div>
+                          {gymMembershipEndDate && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+                              <Calendar className="w-3 h-3" />
+                              PT can only be added till gym membership end date: {format(gymMembershipEndDate, "d MMM yyyy")}
+                            </p>
+                          )}
+                          {ptMonthOptions.length === 0 && (wantsPT || isPTOnly) && (
+                            <p className="text-xs text-destructive flex items-center gap-1.5 mt-1">
+                              <Calendar className="w-3 h-3" />
+                              Gym membership period is too short for PT. Please extend gym membership first.
+                            </p>
+                          )}
                         </div>
                       )}
                       {(wantsPT || isPTOnly) && trainers.length === 0 && (
