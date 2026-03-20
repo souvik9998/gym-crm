@@ -401,18 +401,66 @@ export async function fetchWhatsAppLogsPaginated(
     }
   }
 
+  // Get unique admin_user_ids for manual messages to resolve sender names
+  const manualAdminIds = [...new Set(
+    data.filter((log) => log.is_manual && log.admin_user_id).map((log) => log.admin_user_id!)
+  )];
+
+  let senderMap: Record<string, { name: string; role: string }> = {};
+  if (manualAdminIds.length > 0) {
+    try {
+      // Check staff table first (staff have auth_user_id)
+      const { data: staffData } = await supabase
+        .from("staff")
+        .select("auth_user_id, full_name, role")
+        .in("auth_user_id", manualAdminIds);
+      if (staffData) {
+        staffData.forEach((s) => {
+          if (s.auth_user_id) {
+            const roleLabel = s.role === "trainer" ? "Trainer" : s.role === "manager" ? "Manager" : "Staff";
+            senderMap[s.auth_user_id] = { name: s.full_name, role: roleLabel };
+          }
+        });
+      }
+
+      // For remaining IDs not found in staff, check tenant_members (admins)
+      const remainingIds = manualAdminIds.filter((id) => !senderMap[id]);
+      if (remainingIds.length > 0) {
+        const { data: tmData } = await supabase
+          .from("tenant_members")
+          .select("user_id, role, is_owner")
+          .in("user_id", remainingIds);
+        if (tmData) {
+          tmData.forEach((tm) => {
+            if (tm.user_id) {
+              const roleLabel = tm.is_owner ? "Owner" : "Admin";
+              senderMap[tm.user_id] = { name: roleLabel, role: roleLabel };
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Error fetching sender info:", e);
+    }
+  }
+
   // Process logs with fetched data
-  const processedLogs = data.map((log) => ({
-    ...log,
-    is_manual: log.is_manual ?? false,
-    daily_pass_user_id: log.daily_pass_user_id ?? null,
-    recipient_phone: log.recipient_phone ?? null,
-    recipient_name: log.recipient_name ?? null,
-    message_content: log.message_content ?? null,
-    admin_user_id: log.admin_user_id ?? null,
-    member: log.member_id ? membersMap[log.member_id] || null : null,
-    daily_pass_user: log.daily_pass_user_id ? dailyPassUsersMap[log.daily_pass_user_id] || null : null,
-  }));
+  const processedLogs = data.map((log) => {
+    const sender = log.is_manual && log.admin_user_id ? senderMap[log.admin_user_id] || null : null;
+    return {
+      ...log,
+      is_manual: log.is_manual ?? false,
+      daily_pass_user_id: log.daily_pass_user_id ?? null,
+      recipient_phone: log.recipient_phone ?? null,
+      recipient_name: log.recipient_name ?? null,
+      message_content: log.message_content ?? null,
+      admin_user_id: log.admin_user_id ?? null,
+      member: log.member_id ? membersMap[log.member_id] || null : null,
+      daily_pass_user: log.daily_pass_user_id ? dailyPassUsersMap[log.daily_pass_user_id] || null : null,
+      sender_name: sender?.name || null,
+      sender_role: sender?.role || null,
+    };
+  });
 
   const totalCount = count || 0;
   const nextCursor = cursor + limit < totalCount ? cursor + limit : null;
