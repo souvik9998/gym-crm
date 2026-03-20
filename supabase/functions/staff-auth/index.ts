@@ -415,7 +415,10 @@ Deno.serve(async (req) => {
                   staff_name: staff.full_name,
                   staff_phone: staff.phone,
                   staff_role: staff.role,
-                  auth_user_id: user.id, // Store auth_user_id in metadata for reference
+                  ip_address: getClientIP(req),
+                  user_agent: req.headers.get("user-agent") || "Unknown",
+                  auth_user_id: user.id,
+                  logout_time: new Date().toISOString(),
                 },
               });
             }
