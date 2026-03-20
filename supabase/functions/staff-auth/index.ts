@@ -245,7 +245,9 @@ Deno.serve(async (req) => {
             staff_phone: staff.phone,
             staff_role: staff.role,
             ip_address: clientIP,
-            auth_user_id: staff.auth_user_id, // Store auth_user_id in metadata for reference
+            user_agent: req.headers.get("user-agent") || "Unknown",
+            auth_user_id: staff.auth_user_id,
+            login_time: new Date().toISOString(),
           },
         });
 
