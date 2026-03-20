@@ -57,6 +57,31 @@ export const AdminHeader = ({
   const gymName = currentBranch?.name || "Pro Plus Fitness";
 
   const handleSignOut = async () => {
+    // Log logout activity before clearing state
+    if (!isStaffUser) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
+        if (user) {
+          await logAdminActivity({
+            category: "auth",
+            type: "admin_logged_out",
+            description: `Admin ${user.email} logged out`,
+            entityType: "user",
+            entityId: user.id,
+            entityName: user.email || "Admin",
+            branchId: currentBranch?.id || undefined,
+            metadata: {
+              email: user.email,
+              logout_time: new Date().toISOString(),
+            },
+          });
+        }
+      } catch (logErr) {
+        console.error("Failed to log admin logout:", logErr);
+      }
+    }
+
     // Clear all app state first (localStorage, React Query cache, etc.)
     clearAllAppState();
     
