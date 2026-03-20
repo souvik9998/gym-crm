@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth, useStaffPermission } from "@/contexts/StaffAuthContext";
 import { performFullLogout, clearAllAppState } from "@/lib/logout";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import {
   ArrowRightOnRectangleIcon,
   ArrowPathIcon,
