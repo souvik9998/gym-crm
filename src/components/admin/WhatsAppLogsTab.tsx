@@ -644,20 +644,34 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
 
               {/* Footer - Message Info (WhatsApp style) */}
               <div className="bg-[#f0f2f5] px-4 py-2 border-t border-[#e4e6eb]">
-                <div className="flex items-center justify-between text-[12px]" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <span className="text-[#667781]">Type: </span>
-                      <span className="text-[#111b21] font-medium">{getTypeLabel(selectedMessage.notification_type)}</span>
+                <div className="flex flex-col gap-1 text-[12px]" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <span className="text-[#667781]">Type: </span>
+                        <span className="text-[#111b21] font-medium">{getTypeLabel(selectedMessage.notification_type)}</span>
+                      </div>
+                      <div>
+                        <span className="text-[#667781]">Source: </span>
+                        <span className="text-[#111b21] font-medium">{selectedMessage.is_manual ? "Manual" : "Automated"}</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-[#667781]">Source: </span>
-                      <span className="text-[#111b21] font-medium">{selectedMessage.is_manual ? "Manual" : "Automated"}</span>
+                    <div className="text-[#667781]">
+                      {formatDateTime(selectedMessage.sent_at)}
                     </div>
                   </div>
-                  <div className="text-[#667781]">
-                    {formatDateTime(selectedMessage.sent_at)}
-                  </div>
+                  {selectedMessage.is_manual && (selectedMessage.sender_name || selectedMessage.sender_role) && (
+                    <div className="flex items-center gap-1 pt-0.5">
+                      <Send className="w-3 h-3 text-[#667781]" />
+                      <span className="text-[#667781]">Sent by: </span>
+                      <span className="text-[#111b21] font-medium">
+                        {selectedMessage.sender_name || "Unknown"}
+                        {selectedMessage.sender_role && selectedMessage.sender_name !== selectedMessage.sender_role && (
+                          <span className="text-[#667781] font-normal"> ({selectedMessage.sender_role})</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </>
