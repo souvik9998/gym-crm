@@ -12,6 +12,7 @@ import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import { queryClient } from "@/lib/queryClient";
 import { ValidatedInput } from "@/components/ui/validated-input";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import {
   adminLoginSchema,
   staffLoginSchema,
@@ -122,6 +123,44 @@ const AdminLogin = () => {
           await supabase.auth.signOut();
           throw new Error("You're not assigned to any organization. Contact the administrator.");
         }
+      }
+
+      // Log admin login activity
+      try {
+        const { data: tenantMember } = await supabase
+          .from("tenant_members")
+          .select("tenant_id")
+          .eq("user_id", data.user.id)
+          .limit(1)
+          .maybeSingle();
+
+        const { data: branches } = tenantMember?.tenant_id
+          ? await supabase
+              .from("branches")
+              .select("id")
+              .eq("tenant_id", tenantMember.tenant_id)
+              .eq("is_default", true)
+              .limit(1)
+          : { data: null };
+
+        const branchId = branches?.[0]?.id || null;
+
+        await logAdminActivity({
+          category: "auth",
+          type: "admin_logged_in",
+          description: `Admin ${data.user.email} logged in`,
+          entityType: "user",
+          entityId: data.user.id,
+          entityName: data.user.email || "Admin",
+          branchId: branchId || undefined,
+          metadata: {
+            email: data.user.email,
+            role: isSuperAdmin ? "super_admin" : "admin",
+            login_time: new Date().toISOString(),
+          },
+        });
+      } catch (logErr) {
+        console.error("Failed to log admin login:", logErr);
       }
 
       if (isSuperAdmin) {

@@ -16,6 +16,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "@/integrations/supabase/client";
 import { clearAllAppState } from "@/lib/logout";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { toast } from "sonner";
 
 export function SuperAdminHeader() {
@@ -25,6 +26,25 @@ export function SuperAdminHeader() {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
+      // Log before clearing state
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (user) {
+        await logAdminActivity({
+          category: "auth",
+          type: "admin_logged_out",
+          description: `Super Admin ${user.email} logged out`,
+          entityType: "user",
+          entityId: user.id,
+          entityName: user.email || "Super Admin",
+          metadata: {
+            email: user.email,
+            role: "super_admin",
+            logout_time: new Date().toISOString(),
+          },
+        });
+      }
+
       clearAllAppState();
       await supabase.auth.signOut();
       toast.success("Logged out successfully");
