@@ -16,6 +16,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "@/integrations/supabase/client";
 import { clearAllAppState } from "@/lib/logout";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { toast } from "sonner";
 
 export function SuperAdminHeader() {
