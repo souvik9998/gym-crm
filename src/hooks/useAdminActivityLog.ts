@@ -10,7 +10,8 @@ export type ActivityCategory =
   | "subscriptions"
   | "ledger"
   | "branch"
-  | "staff";
+  | "staff"
+  | "auth";
 
 export type ActivityType = 
   // Members
