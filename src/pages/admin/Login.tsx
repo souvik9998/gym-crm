@@ -12,6 +12,7 @@ import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import { queryClient } from "@/lib/queryClient";
 import { ValidatedInput } from "@/components/ui/validated-input";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import {
   adminLoginSchema,
   staffLoginSchema,
