@@ -157,6 +157,8 @@ const AdminLogin = () => {
             email: data.user.email,
             role: isSuperAdmin ? "super_admin" : "admin",
             login_time: new Date().toISOString(),
+            user_agent: navigator.userAgent,
+            platform: navigator.platform,
           },
         });
       } catch (logErr) {
