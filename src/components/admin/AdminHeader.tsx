@@ -75,6 +75,8 @@ export const AdminHeader = ({
             metadata: {
               email: user.email,
               logout_time: new Date().toISOString(),
+              user_agent: navigator.userAgent,
+              platform: navigator.platform,
             },
           });
         }
