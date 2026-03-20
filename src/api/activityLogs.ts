@@ -287,6 +287,8 @@ export interface WhatsAppLog {
   sent_at: string;
   member?: { name: string; phone: string } | null;
   daily_pass_user?: { name: string; phone: string } | null;
+  sender_name?: string | null;
+  sender_role?: string | null;
 }
 
 export interface PaginatedWhatsAppLogsResponse {
