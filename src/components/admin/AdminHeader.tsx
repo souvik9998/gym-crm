@@ -4,6 +4,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth, useStaffPermission } from "@/contexts/StaffAuthContext";
 import { performFullLogout, clearAllAppState } from "@/lib/logout";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { supabase } from "@/integrations/supabase/client";
 import {
   ArrowRightOnRectangleIcon,
   ArrowPathIcon,
