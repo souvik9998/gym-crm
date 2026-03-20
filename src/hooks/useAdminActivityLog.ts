@@ -71,7 +71,10 @@ export type ActivityType =
   | "staff_logged_out"
   | "staff_password_set"
   | "staff_password_changed"
-  | "staff_permissions_updated";
+  | "staff_permissions_updated"
+  // Auth
+  | "admin_logged_in"
+  | "admin_logged_out";
 
 interface LogActivityParams {
   category: ActivityCategory;
