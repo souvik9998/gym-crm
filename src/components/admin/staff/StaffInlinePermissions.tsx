@@ -63,6 +63,12 @@ const PERMISSION_OPTIONS = [
     description: "Modify gym settings",
     icon: Cog6ToothIcon,
   },
+  { 
+    key: "can_send_whatsapp" as const, 
+    label: "WhatsApp Access", 
+    description: "Send WhatsApp messages to members",
+    icon: ChatBubbleLeftRightIcon,
+  },
 ];
 
 export const StaffInlinePermissions = ({
