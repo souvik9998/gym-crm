@@ -345,6 +345,35 @@ Deno.serve(async (req) => {
           .select("branch_id, is_primary, branches(id, name)")
           .in("staff_id", allStaffIds);
 
+        // Log login activity if this is a fresh login (source=login)
+        const source = url.searchParams.get("source");
+        if (source === "login") {
+          const primaryBranch = branchAssignments?.find(b => b.is_primary);
+          const logBranchId = primaryBranch?.branch_id || branchAssignments?.[0]?.branch_id;
+          
+          await supabaseAdmin.from("admin_activity_logs").insert({
+            admin_user_id: null,
+            activity_category: "staff",
+            activity_type: "staff_logged_in",
+            description: `Staff "${staff.full_name}" (${staff.role}) logged in successfully`,
+            entity_type: "staff",
+            entity_id: staff.id,
+            entity_name: staff.full_name,
+            branch_id: logBranchId,
+            metadata: {
+              performed_by: "staff",
+              staff_id: staff.id,
+              staff_name: staff.full_name,
+              staff_phone: staff.phone,
+              staff_role: staff.role,
+              ip_address: getClientIP(req),
+              user_agent: req.headers.get("user-agent") || "Unknown",
+              auth_user_id: user.id,
+              login_time: new Date().toISOString(),
+            },
+          });
+        }
+
         return new Response(
           JSON.stringify({
             valid: true,

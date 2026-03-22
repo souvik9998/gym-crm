@@ -87,7 +87,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, []);
 
   // Verify session using the edge function
-  const verifySession = useCallback(async (): Promise<boolean> => {
+  const verifySession = useCallback(async (options?: { source?: string }): Promise<boolean> => {
     try {
       // Get current Supabase session
       const { data: { session } } = await supabase.auth.getSession();
@@ -105,7 +105,8 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
        // `Content-Type` while passing an object body, otherwise the body can be
        // coerced to the string "[object Object]" in some runtimes.
        // Pass action via querystring to avoid body parsing issues entirely.
-       const { data } = await supabase.functions.invoke("staff-auth?action=verify-session", {
+       const queryParams = options?.source === "login" ? "action=verify-session&source=login" : "action=verify-session";
+       const { data } = await supabase.functions.invoke(`staff-auth?${queryParams}`, {
          headers: {
            Authorization: `Bearer ${session.access_token}`,
          },
@@ -228,7 +229,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
 
       console.log("[Staff Login] SignIn successful, verifying session...");
-      const ok = await verifySession();
+      const ok = await verifySession({ source: "login" });
       console.log("[Staff Login] Session verification result:", ok);
       
       if (!ok) {
