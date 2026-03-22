@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Get admin user ID from request body if provided
+    // Get admin user ID from request body or authorization header
     let finalAdminUserId = adminUserId || null;
     
     // For manual messages, try to extract from authorization header if not provided
@@ -117,33 +117,36 @@ Deno.serve(async (req) => {
           if (!userError && user) {
             finalAdminUserId = user.id;
             console.log("Extracted admin user ID from token:", finalAdminUserId);
-
-            // Check if this is a staff user and if they have WhatsApp permission
-            const { data: staffRecord } = await supabase
-              .from("staff")
-              .select("id")
-              .eq("auth_user_id", user.id)
-              .eq("is_active", true)
-              .maybeSingle();
-
-            if (staffRecord) {
-              const { data: perms } = await supabase
-                .from("staff_permissions")
-                .select("can_send_whatsapp")
-                .eq("staff_id", staffRecord.id)
-                .maybeSingle();
-
-              if (perms && !perms.can_send_whatsapp) {
-                return new Response(
-                  JSON.stringify({ success: false, error: "You do not have permission to send WhatsApp messages" }),
-                  { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-                );
-              }
-            }
           }
         }
       } catch (e) {
         console.warn("Could not extract admin user ID from token:", e);
+      }
+    }
+
+    // Always check staff WhatsApp permission for any message type
+    if (finalAdminUserId) {
+      const { data: staffRecord } = await supabase
+        .from("staff")
+        .select("id")
+        .eq("auth_user_id", finalAdminUserId)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (staffRecord) {
+        const { data: perms } = await supabase
+          .from("staff_permissions")
+          .select("can_send_whatsapp")
+          .eq("staff_id", staffRecord.id)
+          .maybeSingle();
+
+        if (perms && !perms.can_send_whatsapp) {
+          console.log("Staff WhatsApp permission denied for staff_id:", staffRecord.id);
+          return new Response(
+            JSON.stringify({ success: false, error: "You do not have permission to send WhatsApp messages" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
     }
     
