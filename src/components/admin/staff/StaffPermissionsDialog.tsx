@@ -106,6 +106,7 @@ export const StaffPermissionsDialog = ({
         can_access_payments: (staff.permissions as any).can_access_payments ?? false,
         can_access_analytics: staff.permissions.can_access_analytics,
         can_change_settings: staff.permissions.can_change_settings,
+        can_send_whatsapp: (staff.permissions as any).can_send_whatsapp ?? false,
       });
     } else {
       // Default permissions based on role
