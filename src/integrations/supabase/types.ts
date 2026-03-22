@@ -1748,6 +1748,7 @@ export type Database = {
           can_access_payments: boolean
           can_change_settings: boolean
           can_manage_members: boolean
+          can_send_whatsapp: boolean
           can_view_members: boolean
           created_at: string
           id: string
@@ -1760,6 +1761,7 @@ export type Database = {
           can_access_payments?: boolean
           can_change_settings?: boolean
           can_manage_members?: boolean
+          can_send_whatsapp?: boolean
           can_view_members?: boolean
           created_at?: string
           id?: string
@@ -1772,6 +1774,7 @@ export type Database = {
           can_access_payments?: boolean
           can_change_settings?: boolean
           can_manage_members?: boolean
+          can_send_whatsapp?: boolean
           can_view_members?: boolean
           created_at?: string
           id?: string

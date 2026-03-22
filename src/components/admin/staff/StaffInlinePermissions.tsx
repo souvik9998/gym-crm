@@ -7,6 +7,7 @@ import {
   CurrencyRupeeIcon,
   ChartBarIcon,
   Cog6ToothIcon,
+  ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 
 export interface InlinePermissions {
@@ -16,6 +17,7 @@ export interface InlinePermissions {
   can_access_payments: boolean;
   can_access_analytics: boolean;
   can_change_settings: boolean;
+  can_send_whatsapp: boolean;
 }
 
 interface StaffInlinePermissionsProps {
@@ -60,6 +62,12 @@ const PERMISSION_OPTIONS = [
     label: "Settings Access", 
     description: "Modify gym settings",
     icon: Cog6ToothIcon,
+  },
+  { 
+    key: "can_send_whatsapp" as const, 
+    label: "WhatsApp Access", 
+    description: "Send WhatsApp messages to members",
+    icon: ChatBubbleLeftRightIcon,
   },
 ];
 
@@ -133,4 +141,5 @@ export const getDefaultPermissions = (role: string): InlinePermissions => ({
   can_access_payments: role === "accountant" || role === "manager",
   can_access_analytics: role === "manager",
   can_change_settings: false,
+  can_send_whatsapp: role === "manager",
 });

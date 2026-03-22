@@ -1,0 +1,1 @@
+ALTER TABLE public.staff_permissions ADD COLUMN can_send_whatsapp boolean NOT NULL DEFAULT false;

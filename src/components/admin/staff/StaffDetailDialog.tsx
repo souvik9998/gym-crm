@@ -327,6 +327,7 @@ export const StaffDetailDialog = ({ staff, open, onOpenChange }: StaffDetailDial
     if ((perms as any).can_access_payments) badges.push("Payments");
     if (perms.can_access_analytics) badges.push("Analytics");
     if (perms.can_change_settings) badges.push("Settings");
+    if ((perms as any).can_send_whatsapp) badges.push("WhatsApp");
 
     return badges;
   };

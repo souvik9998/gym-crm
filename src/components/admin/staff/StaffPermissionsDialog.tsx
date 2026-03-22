@@ -38,6 +38,7 @@ interface Permissions {
   can_access_payments: boolean;
   can_access_analytics: boolean;
   can_change_settings: boolean;
+  can_send_whatsapp: boolean;
 }
 
 const PERMISSION_LABELS: Record<keyof Permissions, { label: string; description: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -71,6 +72,11 @@ const PERMISSION_LABELS: Record<keyof Permissions, { label: string; description:
     description: "Can modify gym settings and configurations",
     icon: Cog6ToothIcon,
   },
+  can_send_whatsapp: {
+    label: "WhatsApp Access",
+    description: "Can send WhatsApp messages to members",
+    icon: Cog6ToothIcon,
+  },
 };
 
 export const StaffPermissionsDialog = ({
@@ -87,6 +93,7 @@ export const StaffPermissionsDialog = ({
     can_access_payments: false,
     can_access_analytics: false,
     can_change_settings: false,
+    can_send_whatsapp: false,
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -99,6 +106,7 @@ export const StaffPermissionsDialog = ({
         can_access_payments: (staff.permissions as any).can_access_payments ?? false,
         can_access_analytics: staff.permissions.can_access_analytics,
         can_change_settings: staff.permissions.can_change_settings,
+        can_send_whatsapp: (staff.permissions as any).can_send_whatsapp ?? false,
       });
     } else {
       // Default permissions based on role
@@ -109,6 +117,7 @@ export const StaffPermissionsDialog = ({
         can_access_payments: staff?.role === "accountant" || staff?.role === "manager",
         can_access_analytics: staff?.role === "manager",
         can_change_settings: false,
+        can_send_whatsapp: staff?.role === "manager",
       };
       setPermissions(defaults);
     }
@@ -154,7 +163,8 @@ export const StaffPermissionsDialog = ({
         'can_access_ledger',
         'can_access_payments',
         'can_access_analytics',
-        'can_change_settings'
+        'can_change_settings',
+        'can_send_whatsapp'
       ];
       
       const oldPermissionsFiltered = staff.permissions 
