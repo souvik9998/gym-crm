@@ -87,7 +87,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, []);
 
   // Verify session using the edge function
-  const verifySession = useCallback(async (): Promise<boolean> => {
+  const verifySession = useCallback(async (options?: { source?: string }): Promise<boolean> => {
     try {
       // Get current Supabase session
       const { data: { session } } = await supabase.auth.getSession();
