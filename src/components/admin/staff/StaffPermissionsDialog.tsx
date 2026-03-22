@@ -163,7 +163,8 @@ export const StaffPermissionsDialog = ({
         'can_access_ledger',
         'can_access_payments',
         'can_access_analytics',
-        'can_change_settings'
+        'can_change_settings',
+        'can_send_whatsapp'
       ];
       
       const oldPermissionsFiltered = staff.permissions 

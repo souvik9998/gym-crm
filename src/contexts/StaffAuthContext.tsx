@@ -17,6 +17,7 @@ export interface StaffPermissions {
   can_access_payments: boolean;
   can_access_analytics: boolean;
   can_change_settings: boolean;
+  can_send_whatsapp: boolean;
 }
 
 export interface StaffBranch {
