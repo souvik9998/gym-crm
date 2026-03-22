@@ -117,6 +117,7 @@ export const StaffPermissionsDialog = ({
         can_access_payments: staff?.role === "accountant" || staff?.role === "manager",
         can_access_analytics: staff?.role === "manager",
         can_change_settings: false,
+        can_send_whatsapp: staff?.role === "manager",
       };
       setPermissions(defaults);
     }
