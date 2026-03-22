@@ -93,6 +93,7 @@ export const StaffPermissionsDialog = ({
     can_access_payments: false,
     can_access_analytics: false,
     can_change_settings: false,
+    can_send_whatsapp: false,
   });
   const [isLoading, setIsLoading] = useState(false);
 
