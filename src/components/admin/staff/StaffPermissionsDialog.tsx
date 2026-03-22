@@ -38,6 +38,7 @@ interface Permissions {
   can_access_payments: boolean;
   can_access_analytics: boolean;
   can_change_settings: boolean;
+  can_send_whatsapp: boolean;
 }
 
 const PERMISSION_LABELS: Record<keyof Permissions, { label: string; description: string; icon: React.ComponentType<{ className?: string }> }> = {
