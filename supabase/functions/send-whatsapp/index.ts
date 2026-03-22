@@ -141,6 +141,7 @@ Deno.serve(async (req) => {
               }
             }
           }
+        }
       } catch (e) {
         console.warn("Could not extract admin user ID from token:", e);
       }
