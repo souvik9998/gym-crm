@@ -7,6 +7,7 @@ import {
   CurrencyRupeeIcon,
   ChartBarIcon,
   Cog6ToothIcon,
+  ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 
 export interface InlinePermissions {
@@ -16,6 +17,7 @@ export interface InlinePermissions {
   can_access_payments: boolean;
   can_access_analytics: boolean;
   can_change_settings: boolean;
+  can_send_whatsapp: boolean;
 }
 
 interface StaffInlinePermissionsProps {
