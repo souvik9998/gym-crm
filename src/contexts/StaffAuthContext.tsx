@@ -105,7 +105,8 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
        // `Content-Type` while passing an object body, otherwise the body can be
        // coerced to the string "[object Object]" in some runtimes.
        // Pass action via querystring to avoid body parsing issues entirely.
-       const { data } = await supabase.functions.invoke("staff-auth?action=verify-session", {
+       const queryParams = options?.source === "login" ? "action=verify-session&source=login" : "action=verify-session";
+       const { data } = await supabase.functions.invoke(`staff-auth?${queryParams}`, {
          headers: {
            Authorization: `Bearer ${session.access_token}`,
          },
