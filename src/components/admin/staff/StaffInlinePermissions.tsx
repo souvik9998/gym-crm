@@ -141,4 +141,5 @@ export const getDefaultPermissions = (role: string): InlinePermissions => ({
   can_access_payments: role === "accountant" || role === "manager",
   can_access_analytics: role === "manager",
   can_change_settings: false,
+  can_send_whatsapp: role === "manager",
 });
