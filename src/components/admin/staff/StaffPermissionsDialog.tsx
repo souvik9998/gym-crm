@@ -72,6 +72,11 @@ const PERMISSION_LABELS: Record<keyof Permissions, { label: string; description:
     description: "Can modify gym settings and configurations",
     icon: Cog6ToothIcon,
   },
+  can_send_whatsapp: {
+    label: "WhatsApp Access",
+    description: "Can send WhatsApp messages to members",
+    icon: Cog6ToothIcon,
+  },
 };
 
 export const StaffPermissionsDialog = ({
