@@ -229,7 +229,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
 
       console.log("[Staff Login] SignIn successful, verifying session...");
-      const ok = await verifySession();
+      const ok = await verifySession({ source: "login" });
       console.log("[Staff Login] Session verification result:", ok);
       
       if (!ok) {
