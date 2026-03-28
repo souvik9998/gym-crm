@@ -85,14 +85,15 @@ export const AdminHeader = ({
       }
     }
 
-    // Clear all app state first (localStorage, React Query cache, etc.)
-    clearAllAppState();
-    
+    // Perform logout FIRST (needs session for logging), then clear state
     if (isStaffUser) {
       await staffLogout();
     } else {
       await performFullLogout();
     }
+    
+    // Clear any remaining app state
+    clearAllAppState();
     navigate("/admin/login");
   };
 
