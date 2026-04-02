@@ -74,11 +74,19 @@ interface Branch {
 
 interface BranchDetails {
   membersCount: number;
+  activeMembers: number;
+  expiredMembers: number;
+  inactiveMembers: number;
   staffCount: number;
   devicesCount: number;
   trainersCount: number;
   monthlyRevenue: number;
-  gymSettings: { gym_name: string | null; gym_phone: string | null; gym_address: string | null } | null;
+  totalRevenue: number;
+  whatsappSentThisMonth: number;
+  attendanceToday: number;
+  attendanceThisMonth: number;
+  lastPaymentDate: string | null;
+  gymSettings: { gym_name: string | null; gym_phone: string | null; gym_address: string | null; whatsapp_enabled: boolean | null } | null;
 }
 
 export default function TenantDetail() {
