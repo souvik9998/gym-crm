@@ -54,6 +54,11 @@ import {
   FingerPrintIcon,
   UserGroupIcon,
   CurrencyRupeeIcon,
+  ChatBubbleLeftRightIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  ExclamationCircleIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import { format } from "date-fns";
