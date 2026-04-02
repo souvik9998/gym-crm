@@ -561,7 +561,7 @@ export default function TenantDetail() {
             </Card>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <Card>
                 <CardContent className="p-4">
                   <p className="text-sm text-muted-foreground">Branches</p>
@@ -584,6 +584,20 @@ export default function TenantDetail() {
                 <CardContent className="p-4">
                   <p className="text-sm text-muted-foreground">Trainers</p>
                   <p className="text-2xl font-bold">{tenant.usage?.trainers_count || 0}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground">WhatsApp Sent</p>
+                  <p className="text-2xl font-bold">{tenant.usage?.whatsapp_this_month || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">This month</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground">Check-ins</p>
+                  <p className="text-2xl font-bold">{tenant.usage?.monthly_checkins || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">This month</p>
                 </CardContent>
               </Card>
             </div>
