@@ -372,20 +372,43 @@ export default function TenantDetail() {
     setBranchDetails(null);
     setBranchDetailLoading(true);
     try {
-      const [membersRes, staffRes, devicesRes, trainersRes, paymentsRes, settingsRes] = await Promise.all([
+      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const today = new Date().toISOString().split("T")[0];
+
+      const [membersRes, staffRes, devicesRes, trainersRes, paymentsRes, totalPaymentsRes, settingsRes, subsRes, attendanceTodayRes, attendanceMonthRes, whatsappRes, lastPaymentRes] = await Promise.all([
         supabase.from("members").select("id", { count: "exact", head: true }).eq("branch_id", branch.id),
         supabase.from("staff_branch_assignments").select("id", { count: "exact", head: true }).eq("branch_id", branch.id),
         supabase.from("biometric_devices" as any).select("id", { count: "exact", head: true }).eq("branch_id", branch.id).eq("is_active", true),
         supabase.from("personal_trainers").select("id", { count: "exact", head: true }).eq("branch_id", branch.id).eq("is_active", true),
-        supabase.from("payments").select("amount").eq("branch_id", branch.id).eq("status", "success").gte("created_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
-        supabase.from("gym_settings").select("gym_name, gym_phone, gym_address").eq("branch_id", branch.id).maybeSingle(),
+        supabase.from("payments").select("amount").eq("branch_id", branch.id).eq("status", "success").gte("created_at", monthStart),
+        supabase.from("payments").select("amount").eq("branch_id", branch.id).eq("status", "success"),
+        supabase.from("gym_settings").select("gym_name, gym_phone, gym_address, whatsapp_enabled").eq("branch_id", branch.id).maybeSingle(),
+        supabase.from("subscriptions").select("status").eq("branch_id", branch.id),
+        supabase.from("attendance_logs").select("id", { count: "exact", head: true }).eq("branch_id", branch.id).eq("date", today),
+        supabase.from("attendance_logs").select("id", { count: "exact", head: true }).eq("branch_id", branch.id).gte("date", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0]),
+        supabase.from("admin_activity_logs").select("id", { count: "exact", head: true }).eq("branch_id", branch.id).eq("activity_type", "whatsapp_sent").gte("created_at", monthStart),
+        supabase.from("payments").select("created_at").eq("branch_id", branch.id).eq("status", "success").order("created_at", { ascending: false }).limit(1),
       ]);
+
+      const allSubs = subsRes.data || [];
+      const activeCount = allSubs.filter((s: any) => s.status === "active" || s.status === "expiring_soon").length;
+      const expiredCount = allSubs.filter((s: any) => s.status === "expired").length;
+      const inactiveCount = allSubs.filter((s: any) => s.status === "inactive").length;
+
       setBranchDetails({
         membersCount: membersRes.count || 0,
+        activeMembers: activeCount,
+        expiredMembers: expiredCount,
+        inactiveMembers: inactiveCount,
         staffCount: staffRes.count || 0,
         devicesCount: devicesRes.count || 0,
         trainersCount: trainersRes.count || 0,
         monthlyRevenue: (paymentsRes.data || []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0),
+        totalRevenue: (totalPaymentsRes.data || []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0),
+        whatsappSentThisMonth: whatsappRes.count || 0,
+        attendanceToday: attendanceTodayRes.count || 0,
+        attendanceThisMonth: attendanceMonthRes.count || 0,
+        lastPaymentDate: lastPaymentRes.data?.[0]?.created_at || null,
         gymSettings: settingsRes.data || null,
       });
     } catch (err) {
