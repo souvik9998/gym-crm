@@ -54,6 +54,11 @@ import {
   FingerPrintIcon,
   UserGroupIcon,
   CurrencyRupeeIcon,
+  ChatBubbleLeftRightIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  ExclamationCircleIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -74,11 +79,19 @@ interface Branch {
 
 interface BranchDetails {
   membersCount: number;
+  activeMembers: number;
+  expiredMembers: number;
+  inactiveMembers: number;
   staffCount: number;
   devicesCount: number;
   trainersCount: number;
   monthlyRevenue: number;
-  gymSettings: { gym_name: string | null; gym_phone: string | null; gym_address: string | null } | null;
+  totalRevenue: number;
+  whatsappSentThisMonth: number;
+  attendanceToday: number;
+  attendanceThisMonth: number;
+  lastPaymentDate: string | null;
+  gymSettings: { gym_name: string | null; gym_phone: string | null; gym_address: string | null; whatsapp_enabled: boolean | null } | null;
 }
 
 export default function TenantDetail() {
@@ -364,20 +377,43 @@ export default function TenantDetail() {
     setBranchDetails(null);
     setBranchDetailLoading(true);
     try {
-      const [membersRes, staffRes, devicesRes, trainersRes, paymentsRes, settingsRes] = await Promise.all([
+      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const today = new Date().toISOString().split("T")[0];
+
+      const [membersRes, staffRes, devicesRes, trainersRes, paymentsRes, totalPaymentsRes, settingsRes, subsRes, attendanceTodayRes, attendanceMonthRes, whatsappRes, lastPaymentRes] = await Promise.all([
         supabase.from("members").select("id", { count: "exact", head: true }).eq("branch_id", branch.id),
         supabase.from("staff_branch_assignments").select("id", { count: "exact", head: true }).eq("branch_id", branch.id),
         supabase.from("biometric_devices" as any).select("id", { count: "exact", head: true }).eq("branch_id", branch.id).eq("is_active", true),
         supabase.from("personal_trainers").select("id", { count: "exact", head: true }).eq("branch_id", branch.id).eq("is_active", true),
-        supabase.from("payments").select("amount").eq("branch_id", branch.id).eq("status", "success").gte("created_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
-        supabase.from("gym_settings").select("gym_name, gym_phone, gym_address").eq("branch_id", branch.id).maybeSingle(),
+        supabase.from("payments").select("amount").eq("branch_id", branch.id).eq("status", "success").gte("created_at", monthStart),
+        supabase.from("payments").select("amount").eq("branch_id", branch.id).eq("status", "success"),
+        supabase.from("gym_settings").select("gym_name, gym_phone, gym_address, whatsapp_enabled").eq("branch_id", branch.id).maybeSingle(),
+        supabase.from("subscriptions").select("status").eq("branch_id", branch.id),
+        supabase.from("attendance_logs").select("id", { count: "exact", head: true }).eq("branch_id", branch.id).eq("date", today),
+        supabase.from("attendance_logs").select("id", { count: "exact", head: true }).eq("branch_id", branch.id).gte("date", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0]),
+        supabase.from("admin_activity_logs").select("id", { count: "exact", head: true }).eq("branch_id", branch.id).eq("activity_type", "whatsapp_sent").gte("created_at", monthStart),
+        supabase.from("payments").select("created_at").eq("branch_id", branch.id).eq("status", "success").order("created_at", { ascending: false }).limit(1),
       ]);
+
+      const allSubs = subsRes.data || [];
+      const activeCount = allSubs.filter((s: any) => s.status === "active" || s.status === "expiring_soon").length;
+      const expiredCount = allSubs.filter((s: any) => s.status === "expired").length;
+      const inactiveCount = allSubs.filter((s: any) => s.status === "inactive").length;
+
       setBranchDetails({
         membersCount: membersRes.count || 0,
+        activeMembers: activeCount,
+        expiredMembers: expiredCount,
+        inactiveMembers: inactiveCount,
         staffCount: staffRes.count || 0,
         devicesCount: devicesRes.count || 0,
         trainersCount: trainersRes.count || 0,
         monthlyRevenue: (paymentsRes.data || []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0),
+        totalRevenue: (totalPaymentsRes.data || []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0),
+        whatsappSentThisMonth: whatsappRes.count || 0,
+        attendanceToday: attendanceTodayRes.count || 0,
+        attendanceThisMonth: attendanceMonthRes.count || 0,
+        lastPaymentDate: lastPaymentRes.data?.[0]?.created_at || null,
         gymSettings: settingsRes.data || null,
       });
     } catch (err) {
@@ -525,7 +561,7 @@ export default function TenantDetail() {
             </Card>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <Card>
                 <CardContent className="p-4">
                   <p className="text-sm text-muted-foreground">Branches</p>
@@ -548,6 +584,20 @@ export default function TenantDetail() {
                 <CardContent className="p-4">
                   <p className="text-sm text-muted-foreground">Trainers</p>
                   <p className="text-2xl font-bold">{tenant.usage?.trainers_count || 0}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground">WhatsApp Sent</p>
+                  <p className="text-2xl font-bold">{tenant.usage?.whatsapp_this_month || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">This month</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground">Check-ins</p>
+                  <p className="text-2xl font-bold">{tenant.usage?.monthly_checkins || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">This month</p>
                 </CardContent>
               </Card>
             </div>
@@ -925,7 +975,7 @@ export default function TenantDetail() {
 
       {/* Branch Detail Dialog */}
       <Dialog open={!!selectedBranch} onOpenChange={(open) => !open && setSelectedBranch(null)}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BuildingOffice2Icon className="w-5 h-5 text-primary" />
@@ -938,7 +988,7 @@ export default function TenantDetail() {
           
           {branchDetailLoading ? (
             <div className="space-y-3 py-4">
-              {[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
+              {[1,2,3,4].map(i => <Skeleton key={i} className="h-12 w-full" />)}
             </div>
           ) : (
             <div className="space-y-5 py-2">
@@ -970,49 +1020,120 @@ export default function TenantDetail() {
                   <Badge variant={selectedBranch?.is_active ? "default" : "secondary"}>
                     {selectedBranch?.is_active ? "Active" : "Inactive"}
                   </Badge>
+                  {branchDetails?.gymSettings?.whatsapp_enabled && (
+                    <Badge variant="outline" className="border-green-500 text-green-600 text-xs">WhatsApp Enabled</Badge>
+                  )}
                 </div>
               </div>
 
               <Separator />
 
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-muted/40 rounded-lg p-3 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <UsersIcon className="w-4.5 h-4.5 text-primary" />
-                  </div>
-                  <div>
+              {/* Members Breakdown */}
+              <div>
+                <p className="text-sm font-semibold mb-2">Members Overview</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="bg-muted/40 rounded-lg p-2.5 text-center">
                     <p className="text-lg font-bold">{branchDetails?.membersCount ?? 0}</p>
-                    <p className="text-xs text-muted-foreground">Members</p>
+                    <p className="text-[10px] text-muted-foreground">Total</p>
+                  </div>
+                  <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-2.5 text-center">
+                    <p className="text-lg font-bold text-green-600">{branchDetails?.activeMembers ?? 0}</p>
+                    <p className="text-[10px] text-green-600/70">Active</p>
+                  </div>
+                  <div className="bg-yellow-50 dark:bg-yellow-950/20 rounded-lg p-2.5 text-center">
+                    <p className="text-lg font-bold text-yellow-600">{branchDetails?.expiredMembers ?? 0}</p>
+                    <p className="text-[10px] text-yellow-600/70">Expired</p>
+                  </div>
+                  <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-2.5 text-center">
+                    <p className="text-lg font-bold text-red-500">{branchDetails?.inactiveMembers ?? 0}</p>
+                    <p className="text-[10px] text-red-500/70">Inactive</p>
                   </div>
                 </div>
-                <div className="bg-muted/40 rounded-lg p-3 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <UserGroupIcon className="w-4.5 h-4.5 text-primary" />
+              </div>
+
+              <Separator />
+
+              {/* Resources & Operations */}
+              <div>
+                <p className="text-sm font-semibold mb-2">Resources & Operations</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div className="bg-muted/40 rounded-lg p-3 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <UserGroupIcon className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-base font-bold">{branchDetails?.staffCount ?? 0}</p>
+                      <p className="text-[10px] text-muted-foreground">Staff</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-lg font-bold">{branchDetails?.staffCount ?? 0}</p>
-                    <p className="text-xs text-muted-foreground">Staff</p>
+                  <div className="bg-muted/40 rounded-lg p-3 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <UsersIcon className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-base font-bold">{branchDetails?.trainersCount ?? 0}</p>
+                      <p className="text-[10px] text-muted-foreground">Trainers</p>
+                    </div>
+                  </div>
+                  <div className="bg-muted/40 rounded-lg p-3 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <FingerPrintIcon className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-base font-bold">{branchDetails?.devicesCount ?? 0}</p>
+                      <p className="text-[10px] text-muted-foreground">Bio Devices</p>
+                    </div>
+                  </div>
+                  <div className="bg-muted/40 rounded-lg p-3 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <ChatBubbleLeftRightIcon className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-base font-bold">{branchDetails?.whatsappSentThisMonth ?? 0}</p>
+                      <p className="text-[10px] text-muted-foreground">WA This Month</p>
+                    </div>
+                  </div>
+                  <div className="bg-muted/40 rounded-lg p-3 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <ClockIcon className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-base font-bold">{branchDetails?.attendanceToday ?? 0}</p>
+                      <p className="text-[10px] text-muted-foreground">Check-ins Today</p>
+                    </div>
+                  </div>
+                  <div className="bg-muted/40 rounded-lg p-3 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <CheckCircleIcon className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-base font-bold">{branchDetails?.attendanceThisMonth ?? 0}</p>
+                      <p className="text-[10px] text-muted-foreground">Check-ins Month</p>
+                    </div>
                   </div>
                 </div>
-                <div className="bg-muted/40 rounded-lg p-3 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <FingerPrintIcon className="w-4.5 h-4.5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold">{branchDetails?.devicesCount ?? 0}</p>
-                    <p className="text-xs text-muted-foreground">Bio Devices</p>
-                  </div>
-                </div>
-                <div className="bg-muted/40 rounded-lg p-3 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <CurrencyRupeeIcon className="w-4.5 h-4.5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold">₹{(branchDetails?.monthlyRevenue ?? 0).toLocaleString("en-IN")}</p>
+              </div>
+
+              <Separator />
+
+              {/* Revenue */}
+              <div>
+                <p className="text-sm font-semibold mb-2">Revenue</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-muted/40 rounded-lg p-3">
                     <p className="text-xs text-muted-foreground">This Month</p>
+                    <p className="text-lg font-bold">₹{(branchDetails?.monthlyRevenue ?? 0).toLocaleString("en-IN")}</p>
+                  </div>
+                  <div className="bg-muted/40 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">All Time</p>
+                    <p className="text-lg font-bold">₹{(branchDetails?.totalRevenue ?? 0).toLocaleString("en-IN")}</p>
                   </div>
                 </div>
+                {branchDetails?.lastPaymentDate && (
+                  <p className="text-[10px] text-muted-foreground mt-1.5">
+                    Last payment: {format(new Date(branchDetails.lastPaymentDate), "MMM d, yyyy 'at' h:mm a")}
+                  </p>
+                )}
               </div>
 
               {/* Gym Settings */}
@@ -1020,7 +1141,7 @@ export default function TenantDetail() {
                 <>
                   <Separator />
                   <div className="space-y-1.5">
-                    <p className="text-sm font-medium text-muted-foreground">Gym Settings</p>
+                    <p className="text-sm font-semibold">Gym Settings</p>
                     <div className="text-sm space-y-1">
                       {branchDetails.gymSettings.gym_name && (
                         <p><span className="text-muted-foreground">Name:</span> {branchDetails.gymSettings.gym_name}</p>
