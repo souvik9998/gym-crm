@@ -45,7 +45,7 @@ import {
   UsersIcon,
   PlayIcon,
   PauseIcon,
-  EyeIcon,
+  
   ChevronRightIcon,
   MapPinIcon,
   PhoneIcon,
