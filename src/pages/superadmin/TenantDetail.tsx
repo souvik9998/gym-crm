@@ -366,11 +366,6 @@ export default function TenantDetail() {
     }
   };
 
-  const handleViewAsTenant = () => {
-    if (!tenant) return;
-    localStorage.setItem("superadmin-impersonated-tenant", tenant.id);
-    navigate("/admin/dashboard");
-  };
 
   const handleOpenBranchDetail = async (branch: Branch) => {
     setSelectedBranch(branch);
