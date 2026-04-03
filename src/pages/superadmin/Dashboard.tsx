@@ -192,24 +192,6 @@ export default function SuperAdminDashboard() {
             <ArrowRightIcon className="w-5 h-5 text-muted-foreground" />
           </CardContent>
         </Card>
-
-        <Card 
-          className="border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => navigate("/admin/dashboard")}
-        >
-          <CardContent className="p-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                <UsersIcon className="w-5 h-5 text-green-500" />
-              </div>
-              <div>
-                <p className="font-medium text-foreground">Admin Dashboard</p>
-                <p className="text-sm text-muted-foreground">Switch to gym admin view</p>
-              </div>
-            </div>
-            <ArrowRightIcon className="w-5 h-5 text-muted-foreground" />
-          </CardContent>
-        </Card>
       </div>
 
       {/* Recent Tenants */}
