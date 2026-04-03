@@ -207,51 +207,78 @@ const AdminDashboard = () => {
 
   const handleExport = useCallback(async () => {
     try {
-      // Fetch all members with their subscriptions for export
-      const { data: members, error } = await supabase
-        .from("members")
-        .select(`
-          id,
-          name,
-          phone,
-          email,
-          join_date,
-          subscriptions (
-            status,
-            start_date,
-            end_date,
-            plan_months
-          )
-        `)
-        .order("name");
+      const branchId = currentBranch?.id;
 
-      if (error) throw error;
+      if (activeTab === "members") {
+        const query = supabase
+          .from("members")
+          .select(`id, name, phone, email, join_date, subscriptions (status, start_date, end_date, plan_months)`)
+          .order("name");
+        if (branchId) query.eq("branch_id", branchId);
+        const { data: members, error } = await query;
+        if (error) throw error;
+        const exportData = (members || []).map((member) => {
+          const latestSub = (member.subscriptions as any)?.[0];
+          return {
+            Name: member.name, Phone: member.phone, Email: member.email || "-",
+            "Join Date": member.join_date || "-", Status: latestSub?.status || "No subscription",
+            "Plan (Months)": latestSub?.plan_months || "-", "Start Date": latestSub?.start_date || "-",
+            "End Date": latestSub?.end_date || "-",
+          };
+        });
+        exportToExcel(exportData, "members_export", "Members");
+        toast.success("Export successful", { description: `Exported ${exportData.length} member(s) to Excel` });
 
-      const exportData = members?.map((member) => {
-        const latestSub = member.subscriptions?.[0];
-        return {
-          Name: member.name,
-          Phone: member.phone,
-          Email: member.email || "-",
-          "Join Date": member.join_date || "-",
-          Status: latestSub?.status || "No subscription",
-          "Plan (Months)": latestSub?.plan_months || "-",
-          "Start Date": latestSub?.start_date || "-",
-          "End Date": latestSub?.end_date || "-",
+      } else if (activeTab === "daily_pass") {
+        const query = supabase
+          .from("daily_pass_users")
+          .select(`id, name, phone, email, gender, created_at, daily_pass_subscriptions (package_name, duration_days, start_date, end_date, price, status, personal_trainer_id)`)
+          .order("created_at", { ascending: false });
+        if (branchId) query.eq("branch_id", branchId);
+        const { data: users, error } = await query;
+        if (error) throw error;
+        const exportData = (users || []).map((user) => {
+          const sub = (user.daily_pass_subscriptions as any)?.[0];
+          return {
+            Name: user.name, Phone: user.phone, Email: user.email || "-",
+            Gender: user.gender || "-", "Package Name": sub?.package_name || "-",
+            "Duration (Days)": sub?.duration_days || "-", "Start Date": sub?.start_date || "-",
+            "End Date": sub?.end_date || "-", Price: sub?.price ? `₹${sub.price}` : "-",
+            Status: sub?.status || "-", "Created At": user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN") : "-",
+          };
+        });
+        exportToExcel(exportData, "daily_pass_users", "Daily Pass");
+        toast.success("Export successful", { description: `Exported ${exportData.length} daily pass user(s) to Excel` });
+
+      } else if (activeTab === "payments") {
+        const query = supabase
+          .from("payments")
+          .select(`id, amount, payment_mode, status, created_at, notes, payment_type, member:members(name, phone), daily_pass_user:daily_pass_users(name, phone)`)
+          .order("created_at", { ascending: false });
+        if (branchId) query.eq("branch_id", branchId);
+        const { data: payments, error } = await query;
+        if (error) throw error;
+        const getTypeText = (t: string | null) => {
+          switch (t) { case "gym_and_pt": return "Gym + PT"; case "pt_only": case "pt": return "PT"; case "gym_membership": return "Gym"; default: return t || "-"; }
         };
-      }) || [];
-
-      exportToExcel(exportData, "members_export", "Members");
-      toast.success("Export successful", {
-        description: "Members data exported to Excel",
-      });
-    } catch (error) {
+        const exportData = (payments || []).map((p: any) => ({
+          Date: p.created_at ? new Date(p.created_at).toLocaleString("en-IN") : "-",
+          "Member Name": p.member?.name || p.daily_pass_user?.name || "-",
+          "Member Phone": p.member?.phone || p.daily_pass_user?.phone || "-",
+          "Payment Type": getTypeText(p.payment_type),
+          "Payment Mode": p.payment_mode === "online" ? "Online" : "Cash",
+          Amount: `₹${Number(p.amount).toLocaleString("en-IN")}`,
+          Status: p.status === "success" ? "Success" : p.status === "pending" ? "Pending" : p.status === "failed" ? "Failed" : "Unknown",
+          Notes: p.notes || "-",
+        }));
+        exportToExcel(exportData, "payments_export", "Payments");
+        toast.success("Export successful", { description: `Exported ${exportData.length} payment(s) to Excel` });
+      }
+    } catch (error: any) {
       console.error("Export error:", error);
-      toast.error("Export failed", {
-        description: "Could not export data",
-      });
+      toast.error("Export failed", { description: error.message || "Could not export data" });
     }
-  }, []);
+  }, [activeTab, currentBranch?.id]);
 
   const handleMemberSuccess = useCallback(() => {
     setRefreshKey((k) => k + 1);

@@ -258,17 +258,6 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
 
   return (
     <>
-      <div className="flex justify-end mb-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExport}
-          className="gap-2 hover:bg-accent/50 transition-colors font-medium"
-        >
-          <Download className="w-4 h-4" />
-          Export Data
-        </Button>
-      </div>
 
       {/* Mobile View */}
       {isCompact ? (
