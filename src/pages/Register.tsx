@@ -107,6 +107,24 @@ const Register = () => {
               },
             });
           }
+          
+          // Send payment receipt if enabled
+          const shouldSendReceipt = await getWhatsAppAutoSendPreference(branchId, "payment_details" as any);
+          if (shouldSendReceipt) {
+            await supabase.functions.invoke("send-whatsapp", {
+              body: {
+                phone: phone,
+                name: memberDetails.fullName,
+                endDate: data.endDate,
+                type: "payment_details",
+                memberIds: data.memberId ? [data.memberId] : [],
+                dailyPassUserId: data.dailyPassUserId,
+                isManual: false,
+                branchId: branchId,
+                branchName: branchInfo?.name,
+              },
+            });
+          }
         } catch (err) {
           console.error("Failed to send WhatsApp notification:", err);
         }

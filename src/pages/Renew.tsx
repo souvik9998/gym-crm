@@ -130,6 +130,23 @@ const Renew = () => {
               },
             });
           }
+          
+          // Send payment receipt if enabled
+          const shouldSendReceipt = await getWhatsAppAutoSendPreference(branchId, "payment_details");
+          if (shouldSendReceipt) {
+            await supabase.functions.invoke("send-whatsapp", {
+              body: {
+                phone: member.phone,
+                name: member.name,
+                endDate: data.endDate,
+                type: "payment_details",
+                memberIds: [member.id],
+                isManual: false,
+                branchId: branchId,
+                branchName: branchInfo?.name,
+              },
+            });
+          }
         } catch (err) {
           console.error("Failed to send WhatsApp notification:", err);
         }
