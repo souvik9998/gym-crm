@@ -500,11 +500,55 @@ Deno.serve(async (req) => {
     if (phone && name) {
       const formattedPhone = formatPhone(phone);
       const memberEndDate = endDate || new Date().toISOString().split("T")[0];
-      const message = generateMessage(name, memberEndDate, type, null, null, branchName);
+      const directMemberId = memberIds?.[0] ?? null;
+      const directDailyPassUserId = dailyPassUserId ?? dailyPassUserIds?.[0] ?? null;
+
+      let paymentInfo: { amount: number; date: string; mode: string } | null = null;
+      if (type === "payment_details") {
+        if (directMemberId) {
+          const { data: latestPayment } = await supabase
+            .from("payments")
+            .select("amount, created_at, payment_mode")
+            .eq("member_id", directMemberId)
+            .eq("status", "success")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (latestPayment) {
+            paymentInfo = {
+              amount: latestPayment.amount,
+              date: latestPayment.created_at,
+              mode: latestPayment.payment_mode,
+            };
+          }
+        } else if (directDailyPassUserId) {
+          const { data: latestPayment } = await supabase
+            .from("payments")
+            .select("amount, created_at, payment_mode")
+            .eq("daily_pass_user_id", directDailyPassUserId)
+            .eq("status", "success")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (latestPayment) {
+            paymentInfo = {
+              amount: latestPayment.amount,
+              date: latestPayment.created_at,
+              mode: latestPayment.payment_mode,
+            };
+          }
+        }
+      }
+
+      const message = generateMessage(name, memberEndDate, type, paymentInfo, null, branchName);
       
       const result = await sendPeriskopeMessage(formattedPhone, message);
 
       await logWhatsAppMessage({
+        member_id: directMemberId,
+        daily_pass_user_id: directDailyPassUserId,
         recipient_phone: phone,
         recipient_name: name,
         notification_type: type,
