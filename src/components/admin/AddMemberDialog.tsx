@@ -576,13 +576,27 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       }
 
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const adminUserId = session?.user?.id || null;
+        
+        // Send welcome/registration message if admin_add_member is enabled
         const shouldAutoSend = await getWhatsAppAutoSendPreference(currentBranch?.id, "admin_add_member");
         if (shouldAutoSend) {
-          const { data: { session } } = await supabase.auth.getSession();
-          const adminUserId = session?.user?.id || null;
           await supabase.functions.invoke("send-whatsapp", {
             body: {
-              phone, name, endDate: endDate.toISOString().split("T")[0], type: "renewal",
+              phone, name, endDate: endDate.toISOString().split("T")[0], type: "new_registration",
+              memberIds: [member.id], isManual: true, adminUserId,
+              branchId: currentBranch?.id, branchName: currentBranch?.name,
+            },
+          });
+        }
+        
+        // Send payment receipt if payment_details is enabled
+        const shouldSendReceipt = await getWhatsAppAutoSendPreference(currentBranch?.id, "payment_details");
+        if (shouldSendReceipt) {
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              phone, name, endDate: endDate.toISOString().split("T")[0], type: "payment_details",
               memberIds: [member.id], isManual: true, adminUserId,
               branchId: currentBranch?.id, branchName: currentBranch?.name,
             },
@@ -755,6 +769,41 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           newValue: { action: selectedAction, total_amount: totalAmount, payment_mode: paymentMode },
           branchId: currentBranch.id,
         });
+      }
+
+      // Send WhatsApp notifications for existing member actions
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const adminUserId = session?.user?.id || null;
+        const endDateStr = selectedAction === "add_pt" 
+          ? addMonths(new Date(startDate), ptMonths).toISOString().split("T")[0]
+          : addMonths(new Date(startDate), selectedPackage?.months || 1).toISOString().split("T")[0];
+        
+        const notificationType = selectedAction === "add_pt" ? "pt_extension" : "renewal";
+        const shouldAutoSend = await getWhatsAppAutoSendPreference(currentBranch?.id, notificationType);
+        if (shouldAutoSend) {
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              phone: existingMember.phone, name: existingMember.name, endDate: endDateStr,
+              type: notificationType, memberIds: [existingMember.id], isManual: true, adminUserId,
+              branchId: currentBranch.id, branchName: currentBranch.name,
+            },
+          });
+        }
+        
+        // Send payment receipt if enabled
+        const shouldSendReceipt = await getWhatsAppAutoSendPreference(currentBranch?.id, "payment_details");
+        if (shouldSendReceipt) {
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              phone: existingMember.phone, name: existingMember.name, endDate: endDateStr,
+              type: "payment_details", memberIds: [existingMember.id], isManual: true, adminUserId,
+              branchId: currentBranch.id, branchName: currentBranch.name,
+            },
+          });
+        }
+      } catch (err) {
+        console.error("Failed to send WhatsApp notification:", err);
       }
 
       onSuccess();
