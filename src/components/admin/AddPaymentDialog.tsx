@@ -585,6 +585,31 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
             },
           });
         }
+        
+        // Send payment receipt if enabled
+        const shouldSendReceipt = await getWhatsAppAutoSendPreference(currentBranch?.id, "payment_details");
+        if (shouldSendReceipt) {
+          const endDateForReceipt = paymentType === "pt_only" 
+            ? selectedPTOption!.endDate.toISOString().split("T")[0]
+            : gymEndDate?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0];
+          
+          const { data: { session } } = await supabase.auth.getSession();
+          const adminUserId = session?.user?.id || null;
+
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              phone: member.phone,
+              name: member.name,
+              endDate: endDateForReceipt,
+              type: "payment_details",
+              memberIds: [member.id],
+              isManual: true,
+              adminUserId: adminUserId,
+              branchId: currentBranch?.id,
+              branchName: currentBranch?.name,
+            },
+          });
+        }
       } catch (err) {
         console.error("Failed to send WhatsApp notification:", err);
       }
