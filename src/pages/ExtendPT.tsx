@@ -235,13 +235,19 @@ const ExtendPT = () => {
   const handleSubmit = async () => {
     if (!selectedTrainer || !selectedOption || !member) return;
 
+    if (totalWithGst <= 0) {
+      toast.error("Invalid PT amount", {
+        description: "Selected trainer does not have a valid PT fee configured.",
+      });
+      return;
+    }
+
     initiatePayment({
       amount: totalWithGst,
       memberId: member.id,
       memberName: member.name,
       memberPhone: member.phone,
       isNewMember: false,
-      months: 0,
       customDays: selectedOption.days,
       trainerId: selectedTrainer.id,
       trainerFee: selectedOption.fee,
@@ -536,7 +542,7 @@ const ExtendPT = () => {
                     size="lg"
                     className="flex-1"
                     onClick={handleSubmit}
-                    disabled={isLoading || !selectedTrainer || !selectedOption || validOptionsCount === 0}
+                    disabled={isLoading || !selectedTrainer || !selectedOption || validOptionsCount === 0 || totalWithGst <= 0}
                   >
                     {isLoading ? (
                       <div className="flex items-center gap-2">
