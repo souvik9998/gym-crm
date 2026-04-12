@@ -8,7 +8,7 @@ interface RazorpayOptions {
   memberName: string;
   memberPhone: string;
   isNewMember: boolean;
-  months: number;
+  months?: number;
   customDays?: number;
   trainerId?: string;
   trainerFee?: number;
@@ -93,6 +93,12 @@ export const useRazorpay = () => {
       isVerifyingRef.current = false;
       setPaymentStage("idle");
       try {
+        if (!Number.isFinite(amount) || amount <= 0 || amount > 1000000) {
+          throw new Error("Invalid payment amount. Please check the package or trainer fee.");
+        }
+
+        const normalizedMonths = typeof months === "number" && months > 0 ? months : undefined;
+
         // Load Razorpay script
         const scriptLoaded = await loadRazorpayScript();
         if (!scriptLoaded) {
@@ -109,7 +115,7 @@ export const useRazorpay = () => {
               memberName,
               memberPhone,
               isNewMember,
-              months,
+              months: normalizedMonths,
               customDays,
               trainerId,
               trainerFee,
@@ -167,7 +173,7 @@ export const useRazorpay = () => {
                     memberName,
                     memberPhone,
                     amount,
-                    months,
+                    months: normalizedMonths,
                     customDays,
                     trainerId,
                     trainerFee,
