@@ -51,6 +51,7 @@ interface MembersTableProps {
   refreshKey: number;
   filterValue: MemberFilterValue;
   ptFilterActive?: boolean;
+  trainerFilter?: string | null;
   timeSlotFilter?: string | null;
   sortBy?: "name" | "join_date" | "end_date";
   sortOrder?: "asc" | "desc";
@@ -64,6 +65,7 @@ export const MembersTable = ({
   refreshKey, 
   filterValue, 
   ptFilterActive = false,
+  trainerFilter = null,
   timeSlotFilter = null,
   sortBy: externalSortBy,
   sortOrder: externalSortOrder
