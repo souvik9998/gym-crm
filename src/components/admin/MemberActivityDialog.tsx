@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { MemberHealthTab } from "./health/MemberHealthTab";
+import { AssignTrainerDialog } from "./AssignTrainerDialog";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Calendar, 
@@ -27,6 +29,8 @@ import {
   Mail,
   TrendingUp,
   Wallet,
+  Plus,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -113,6 +117,8 @@ export const MemberActivityDialog = ({
   const [activePT, setActivePT] = useState<PTSubscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+  const [showAssignTrainer, setShowAssignTrainer] = useState(false);
+  const [assignMode, setAssignMode] = useState<"assign" | "replace">("assign");
 
   useEffect(() => {
     if (open && memberId) {
@@ -454,8 +460,32 @@ export const MemberActivityDialog = ({
             {/* PT History Tab */}
             <TabsContent value="pt" className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1" key="pt">
               <div className="space-y-2.5">
+                {/* Assign / Replace Trainer Button */}
+                <div className="flex justify-end">
+                  {activePT ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 text-xs"
+                      onClick={() => { setAssignMode("replace"); setShowAssignTrainer(true); }}
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Replace Trainer
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="gap-1.5 text-xs"
+                      onClick={() => { setAssignMode("assign"); setShowAssignTrainer(true); }}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Assign Trainer
+                    </Button>
+                  )}
+                </div>
+
                 {ptSubscriptions.length === 0 ? (
-                  <div className="text-center py-16">
+                  <div className="text-center py-12">
                     <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-muted/60 mx-auto mb-3">
                       <Dumbbell className="w-6 h-6 text-muted-foreground/40" />
                     </div>
@@ -501,6 +531,21 @@ export const MemberActivityDialog = ({
                   ))
                 )}
               </div>
+
+              {/* Assign Trainer Dialog */}
+              {member && (
+                <AssignTrainerDialog
+                  open={showAssignTrainer}
+                  onOpenChange={setShowAssignTrainer}
+                  memberId={memberId!}
+                  branchId={member.branch_id}
+                  mode={assignMode}
+                  existingPtId={activePT?.id}
+                  existingTrainerId={activePT?.personal_trainer?.id}
+                  membershipEndDate={subscriptions.find(s => s.status === "active" || s.status === "expiring_soon")?.end_date}
+                  onSuccess={fetchMemberData}
+                />
+              )}
             </TabsContent>
 
             {/* Health Tab */}
