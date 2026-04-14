@@ -1736,6 +1736,7 @@ const AdminSettings = () => {
           <TabsContent value="subscription" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6 animate-fade-in">
             <SubscriptionPlanTab />
           </TabsContent>
+          </div>{/* end content area */}
         </Tabs>
       </div>
 
