@@ -74,7 +74,9 @@ export type ActivityType =
   | "staff_permissions_updated"
   // Auth
   | "admin_logged_in"
-  | "admin_logged_out";
+  | "admin_logged_out"
+  // Registration Fields
+  | "registration_fields_updated";
 
 interface LogActivityParams {
   category: ActivityCategory;

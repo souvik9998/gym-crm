@@ -756,6 +756,7 @@ export type Database = {
           joining_fee: number
           monthly_fee: number
           monthly_packages: number[] | null
+          registration_field_settings: Json
           updated_at: string | null
           whatsapp_auto_send: Json
           whatsapp_enabled: boolean | null
@@ -776,6 +777,7 @@ export type Database = {
           joining_fee?: number
           monthly_fee?: number
           monthly_packages?: number[] | null
+          registration_field_settings?: Json
           updated_at?: string | null
           whatsapp_auto_send?: Json
           whatsapp_enabled?: boolean | null
@@ -796,6 +798,7 @@ export type Database = {
           joining_fee?: number
           monthly_fee?: number
           monthly_packages?: number[] | null
+          registration_field_settings?: Json
           updated_at?: string | null
           whatsapp_auto_send?: Json
           whatsapp_enabled?: boolean | null
@@ -1047,39 +1050,60 @@ export type Database = {
       member_details: {
         Row: {
           address: string | null
+          allergies: string | null
+          blood_group: string | null
           created_at: string
           date_of_birth: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
           gender: string | null
+          height_cm: number | null
           id: string
+          medical_conditions: string | null
           member_id: string
           personal_trainer_id: string | null
           photo_id_number: string | null
           photo_id_type: string | null
           updated_at: string
+          weight_kg: number | null
         }
         Insert: {
           address?: string | null
+          allergies?: string | null
+          blood_group?: string | null
           created_at?: string
           date_of_birth?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           gender?: string | null
+          height_cm?: number | null
           id?: string
+          medical_conditions?: string | null
           member_id: string
           personal_trainer_id?: string | null
           photo_id_number?: string | null
           photo_id_type?: string | null
           updated_at?: string
+          weight_kg?: number | null
         }
         Update: {
           address?: string | null
+          allergies?: string | null
+          blood_group?: string | null
           created_at?: string
           date_of_birth?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           gender?: string | null
+          height_cm?: number | null
           id?: string
+          medical_conditions?: string | null
           member_id?: string
           personal_trainer_id?: string | null
           photo_id_number?: string | null
           photo_id_type?: string | null
           updated_at?: string
+          weight_kg?: number | null
         }
         Relationships: [
           {
@@ -1094,6 +1118,50 @@ export type Database = {
             columns: ["personal_trainer_id"]
             isOneToOne: false
             referencedRelation: "personal_trainers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          file_name: string
+          file_size: number | null
+          file_url: string
+          id: string
+          member_id: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_type: string
+          file_name: string
+          file_size?: number | null
+          file_url: string
+          id?: string
+          member_id: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          file_name?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          member_id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_documents_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
             referencedColumns: ["id"]
           },
         ]
