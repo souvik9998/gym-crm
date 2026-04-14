@@ -180,6 +180,8 @@ export const MemberActivityDialog = ({
         .select("*, personal_trainer:personal_trainers(id, name, specialization), time_slot:trainer_time_slots(id, start_time, end_time)")
         .eq("member_id", memberId)
         .order("created_at", { ascending: false });
+        .eq("member_id", memberId)
+        .order("created_at", { ascending: false });
 
       if (ptData) {
         setPtSubscriptions(ptData as any);
