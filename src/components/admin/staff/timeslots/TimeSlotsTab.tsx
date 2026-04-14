@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,13 +138,35 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
       recurring_days: form.is_recurring ? form.recurring_days : null,
     };
 
+    const trainerName = trainers.find(t => t.id === form.trainer_id)?.full_name || "Unknown";
+
     if (editingSlot) {
       const { error } = await supabase.from("trainer_time_slots").update(payload).eq("id", editingSlot.id);
       if (error) { toast.error("Failed to update", { description: error.message }); return; }
+      await logAdminActivity({
+        category: "time_slots",
+        type: "time_slot_updated",
+        description: `Updated time slot for ${trainerName} (${form.start_time} - ${form.end_time})`,
+        entityType: "time_slot",
+        entityId: editingSlot.id,
+        entityName: trainerName,
+        newValue: payload,
+        branchId: currentBranch.id,
+      });
       toast.success("Time slot updated");
     } else {
-      const { error } = await supabase.from("trainer_time_slots").insert(payload);
+      const { data: inserted, error } = await supabase.from("trainer_time_slots").insert(payload).select("id").single();
       if (error) { toast.error("Failed to create", { description: error.message }); return; }
+      await logAdminActivity({
+        category: "time_slots",
+        type: "time_slot_created",
+        description: `Created time slot for ${trainerName} (${form.start_time} - ${form.end_time}, capacity: ${form.capacity})`,
+        entityType: "time_slot",
+        entityId: inserted?.id,
+        entityName: trainerName,
+        newValue: payload,
+        branchId: currentBranch.id,
+      });
       toast.success("Time slot created");
     }
 
@@ -160,6 +183,15 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
       description: `Delete ${slot.trainer_name}'s slot (${slot.start_time.slice(0, 5)} - ${slot.end_time.slice(0, 5)})? This will also remove all member assignments.`,
       onConfirm: async () => {
         await supabase.from("trainer_time_slots").delete().eq("id", slot.id);
+        await logAdminActivity({
+          category: "time_slots",
+          type: "time_slot_deleted",
+          description: `Deleted time slot for ${slot.trainer_name} (${slot.start_time.slice(0, 5)} - ${slot.end_time.slice(0, 5)})`,
+          entityType: "time_slot",
+          entityId: slot.id,
+          entityName: slot.trainer_name,
+          branchId: currentBranch?.id,
+        });
         toast.success("Time slot deleted");
         fetchSlots();
       },

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import {
   Dialog,
   DialogContent,
@@ -256,6 +257,30 @@ export const AssignTrainerDialog = ({
           toast.error("Trainer assigned but WhatsApp notification failed");
         }
       }
+
+      const selectedTrainer = trainers.find(t => t.id === selectedTrainerId);
+      const trainerName = selectedTrainer?.name || "Unknown";
+
+      // Log activity
+      await logAdminActivity({
+        category: mode === "assign" ? "trainers" : "trainers",
+        type: mode === "assign" ? "pt_assigned" : "pt_replaced",
+        description: mode === "assign"
+          ? `Assigned trainer ${trainerName} to ${memberName || "member"}`
+          : `Replaced trainer for ${memberName || "member"} with ${trainerName}`,
+        entityType: "member",
+        entityId: memberId,
+        entityName: memberName || undefined,
+        newValue: {
+          trainer_id: selectedTrainerId,
+          trainer_name: trainerName,
+          start_date: startDate,
+          end_date: endDate,
+          monthly_fee: Number(monthlyFee),
+          time_slot_id: selectedTimeSlotId || null,
+        },
+        branchId,
+      });
 
       toast.success(
         mode === "assign"
