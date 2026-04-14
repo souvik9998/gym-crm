@@ -617,7 +617,7 @@ const PackageSelectionForm = ({
                 <Skeleton className="h-6 w-11 rounded-full" />
               </div>
             </div>
-          ) : trainers.length > 0 && (
+          ) : trainers.length > 0 && allowSelfSelectTrainer && (
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-muted rounded-xl transition-all duration-200">
                 <div className="flex items-center gap-3">
