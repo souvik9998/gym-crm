@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, Calendar, IndianRupee, Sparkles, User, Dumbbell, Clock, AlertCircle, CalendarDays } from "lucide-react";
+import { Check, Calendar, IndianRupee, Sparkles, User, Dumbbell, Clock, AlertCircle, CalendarDays, TicketPercent } from "lucide-react";
 import CouponInput from "@/components/ui/coupon-input";
 import { useCouponValidation } from "@/hooks/useCouponValidation";
 import { Badge } from "@/components/ui/badge";
