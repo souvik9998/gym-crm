@@ -988,18 +988,18 @@ const AdminSettings = () => {
             {mobileMenuOpen && (
               <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-background border border-border/60 rounded-lg shadow-lg py-1 animate-fade-in">
                 {settingsTabs.map((tab) => (
-                  <TabsTrigger
+                  <button
                     key={tab.value}
-                    value={tab.value}
+                    type="button"
+                    onClick={() => { setSearchParams({ tab: tab.value }); setMobileMenuOpen(false); }}
                     className={cn(
                       "w-full text-left px-4 py-2.5 text-sm font-medium rounded-none",
                       "text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors",
-                      "data-[state=active]:text-primary data-[state=active]:bg-primary/5 data-[state=active]:font-semibold",
-                      "focus-visible:ring-0 focus-visible:ring-offset-0",
+                      activeTab === tab.value && "text-primary bg-primary/5 font-semibold",
                     )}
                   >
                     {tab.label}
-                  </TabsTrigger>
+                  </button>
                 ))}
               </div>
             )}
