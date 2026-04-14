@@ -87,7 +87,6 @@ export const useDashboardStore = create<DashboardUIState>()(
         sortBy: initialState.sortBy,
         sortOrder: initialState.sortOrder,
         dailyPassFilter: initialState.dailyPassFilter,
-      }),
         // Don't reset branch - that should persist
       }),
     }),
@@ -99,6 +98,7 @@ export const useDashboardStore = create<DashboardUIState>()(
         activeTab: state.activeTab,
         memberFilter: state.memberFilter,
         ptFilterActive: state.ptFilterActive,
+        trainerFilter: state.trainerFilter,
         timeSlotFilter: state.timeSlotFilter,
         sortBy: state.sortBy,
         sortOrder: state.sortOrder,
