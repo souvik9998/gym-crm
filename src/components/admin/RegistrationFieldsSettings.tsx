@@ -53,6 +53,7 @@ const FIELD_CONFIG = [
   { key: "identity_proof_upload", label: "Identity Proof Upload", description: "Upload scan/photo of ID document", icon: Upload },
   { key: "health_details", label: "Health Details", description: "Blood group, height, weight, medical conditions, allergies, emergency contact", icon: Heart },
   { key: "medical_records_upload", label: "Medical Records Upload", description: "Upload medical certificates or health reports", icon: FileText },
+  { key: "self_select_trainer", label: "Member Self-Select Trainer", description: "Allow members to choose their own trainer during registration/renewal. If disabled, only admin can assign trainers.", icon: Dumbbell },
 ];
 
 export const RegistrationFieldsSettings = () => {
