@@ -73,6 +73,7 @@ interface PTSubscription {
   total_fee: number;
   status: string;
   personal_trainer: { id: string; name: string; specialization: string | null } | null;
+  time_slot: { id: string; start_time: string; end_time: string } | null;
 }
 
 interface MemberDetails {
