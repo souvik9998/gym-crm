@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { MemberHealthTab } from "./health/MemberHealthTab";
+import { AssignTrainerDialog } from "./AssignTrainerDialog";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Calendar, 
@@ -27,6 +29,8 @@ import {
   Mail,
   TrendingUp,
   Wallet,
+  Plus,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
