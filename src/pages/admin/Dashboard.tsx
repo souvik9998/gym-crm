@@ -743,9 +743,14 @@ const AdminDashboard = () => {
                     onPtFilterChange={handlePtFilterChange}
                     mobileMode={false}
                   />
+                  <TrainerFilterDropdown
+                    value={trainerFilter}
+                    onChange={setTrainerFilter}
+                  />
                   <TimeSlotFilterDropdown
                     value={timeSlotFilter}
                     onChange={setTimeSlotFilter}
+                    trainerFilter={trainerFilter}
                   />
                 </div>
 
