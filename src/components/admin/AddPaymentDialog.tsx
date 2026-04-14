@@ -520,11 +520,26 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
         payment_mode: "cash",
         status: "success",
         payment_type: paymentTypeValue,
-        notes: `Cash payment via admin - ${paymentTypeValue}`,
+        notes: `Cash payment via admin - ${paymentTypeValue}${adminCoupon.appliedCoupon ? ` (Coupon: ${adminCoupon.appliedCoupon.coupon.code}, -₹${couponDiscount})` : ""}`,
         branch_id: currentBranch?.id,
       }).select().single();
 
       if (paymentError) throw paymentError;
+
+      // Record coupon usage if applied
+      if (adminCoupon.appliedCoupon) {
+        await supabase.from("coupon_usage").insert({
+          coupon_id: adminCoupon.appliedCoupon.coupon.id,
+          member_id: member.id,
+          payment_id: paymentRecord.id,
+          discount_applied: couponDiscount,
+          branch_id: currentBranch?.id,
+        });
+        // Increment usage count
+        await supabase.from("coupons").update({
+          usage_count: adminCoupon.appliedCoupon.coupon.usage_count + 1,
+        }).eq("id", adminCoupon.appliedCoupon.coupon.id);
+      }
 
       // Create ledger entries for cash payment
       try {
