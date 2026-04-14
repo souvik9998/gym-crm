@@ -51,6 +51,7 @@ interface MembersTableProps {
   refreshKey: number;
   filterValue: MemberFilterValue;
   ptFilterActive?: boolean;
+  timeSlotFilter?: string | null;
   sortBy?: "name" | "join_date" | "end_date";
   sortOrder?: "asc" | "desc";
 }
@@ -63,6 +64,7 @@ export const MembersTable = ({
   refreshKey, 
   filterValue, 
   ptFilterActive = false,
+  timeSlotFilter = null,
   sortBy: externalSortBy,
   sortOrder: externalSortOrder
 }: MembersTableProps) => {
@@ -679,6 +681,11 @@ export const MembersTable = ({
     }
   });
 
+  // Apply time slot filter
+  const timeSlotFiltered = timeSlotFilter
+    ? filteredMembers.filter((m) => m.activePT?.time_slot_id === timeSlotFilter)
+    : filteredMembers;
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -697,7 +704,7 @@ export const MembersTable = ({
       : <ArrowDown className="w-3.5 h-3.5 ml-1 text-accent" />;
   };
 
-  const sortedMembers = [...filteredMembers].sort((a, b) => {
+  const sortedMembers = [...timeSlotFiltered].sort((a, b) => {
     let comparison = 0;
 
     switch (sortField) {

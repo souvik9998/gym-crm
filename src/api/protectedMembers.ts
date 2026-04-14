@@ -23,6 +23,7 @@ export interface MemberWithSubscription {
   activePT?: {
     trainer_name: string;
     end_date: string;
+    time_slot_id?: string | null;
   } | null;
 }
 
