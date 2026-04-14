@@ -681,6 +681,11 @@ export const MembersTable = ({
     }
   });
 
+  // Apply time slot filter
+  const timeSlotFiltered = timeSlotFilter
+    ? filteredMembers.filter((m) => m.activePT?.time_slot_id === timeSlotFilter)
+    : filteredMembers;
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
