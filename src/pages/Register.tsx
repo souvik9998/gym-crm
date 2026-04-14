@@ -30,6 +30,7 @@ interface RegistrationFieldSettings {
   identity_proof_upload?: FieldSetting;
   health_details?: FieldSetting;
   medical_records_upload?: FieldSetting;
+  self_select_trainer?: FieldSetting;
 }
 
 const Register = () => {
@@ -353,6 +354,7 @@ const Register = () => {
             onBack={() => setStep(needsHealthStep ? "health" : "details")}
             isLoading={isPaymentLoading}
             branchId={branchId}
+            allowSelfSelectTrainer={fieldSettings?.self_select_trainer?.enabled !== false}
           />
         )}
       </main>

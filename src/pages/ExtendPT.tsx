@@ -64,6 +64,27 @@ const ExtendPT = () => {
       return;
     }
 
+    // Check if self-select trainer is allowed
+    if (branchId) {
+      supabase
+        .from("gym_settings")
+        .select("registration_field_settings")
+        .eq("branch_id", branchId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.registration_field_settings) {
+            const parsed = typeof data.registration_field_settings === "string"
+              ? JSON.parse(data.registration_field_settings)
+              : data.registration_field_settings;
+            if (parsed?.self_select_trainer?.enabled === false) {
+              toast.error("Personal training selection is managed by admin");
+              navigate(fallback, { replace: true });
+              return;
+            }
+          }
+        });
+    }
+
     // Set branch info from state or fetch it using secure public API
     if (stateBranchName && branchId) {
       setBranchInfo({ id: branchId, name: stateBranchName });

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
-import { Lock, User, Phone, Calendar, MapPin, IdCard, Upload, Heart, FileText } from "lucide-react";
+import { Lock, User, Phone, Calendar, MapPin, IdCard, Upload, Heart, FileText, Dumbbell } from "lucide-react";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 
 interface FieldSetting {
@@ -27,6 +27,7 @@ interface RegistrationFields {
   identity_proof_upload: FieldSetting;
   health_details: FieldSetting;
   medical_records_upload: FieldSetting;
+  self_select_trainer: FieldSetting;
 }
 
 const DEFAULT_FIELDS: RegistrationFields = {
@@ -39,6 +40,7 @@ const DEFAULT_FIELDS: RegistrationFields = {
   identity_proof_upload: { enabled: false, required: false, locked: false },
   health_details: { enabled: false, required: false, locked: false },
   medical_records_upload: { enabled: false, required: false, locked: false },
+  self_select_trainer: { enabled: true, required: false, locked: false },
 };
 
 const FIELD_CONFIG = [
@@ -51,6 +53,7 @@ const FIELD_CONFIG = [
   { key: "identity_proof_upload", label: "Identity Proof Upload", description: "Upload scan/photo of ID document", icon: Upload },
   { key: "health_details", label: "Health Details", description: "Blood group, height, weight, medical conditions, allergies, emergency contact", icon: Heart },
   { key: "medical_records_upload", label: "Medical Records Upload", description: "Upload medical certificates or health reports", icon: FileText },
+  { key: "self_select_trainer", label: "Member Self-Select Trainer", description: "Allow members to choose their own trainer during registration/renewal. If disabled, only admin can assign trainers.", icon: Dumbbell },
 ];
 
 export const RegistrationFieldsSettings = () => {

@@ -94,22 +94,29 @@ Deno.serve(async (req) => {
           throw new Error("Failed to fetch packages");
         }
 
-        // Also fetch tax settings for this branch
+        // Also fetch tax settings and trainer self-select setting for this branch
         let taxRate = 0;
         let taxEnabled = false;
         let gymGst = "";
+        let allowSelfSelectTrainer = true;
 
         if (branchId) {
-          const { data: taxSettings } = await supabase
+          const { data: gymSettings } = await supabase
             .from("gym_settings")
-            .select("invoice_tax_rate, invoice_show_gst, gym_gst")
+            .select("invoice_tax_rate, invoice_show_gst, gym_gst, registration_field_settings")
             .eq("branch_id", branchId)
             .maybeSingle();
 
-          if (taxSettings) {
-            taxRate = taxSettings.invoice_tax_rate || 0;
-            taxEnabled = taxSettings.invoice_show_gst === true && taxRate > 0;
-            gymGst = taxSettings.gym_gst || "";
+          if (gymSettings) {
+            taxRate = gymSettings.invoice_tax_rate || 0;
+            taxEnabled = gymSettings.invoice_show_gst === true && taxRate > 0;
+            gymGst = gymSettings.gym_gst || "";
+            
+            // Parse self_select_trainer from registration_field_settings
+            const fieldSettings = gymSettings.registration_field_settings;
+            if (fieldSettings && typeof fieldSettings === "object" && fieldSettings.self_select_trainer) {
+              allowSelfSelectTrainer = fieldSettings.self_select_trainer.enabled !== false;
+            }
           }
         }
 
@@ -118,6 +125,7 @@ Deno.serve(async (req) => {
             monthlyPackages: monthlyPackages || [],
             customPackages: customPackages || [],
             taxSettings: { taxRate, taxEnabled, gymGst },
+            allowSelfSelectTrainer,
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );

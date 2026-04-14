@@ -28,6 +28,7 @@ const Renew = () => {
   const [existingMembershipEndDate, setExistingMembershipEndDate] = useState<string | null>(null);
   const [existingPTEndDate, setExistingPTEndDate] = useState<string | null>(null);
   const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(null);
+  const [allowSelfSelectTrainer, setAllowSelfSelectTrainer] = useState(true);
 
   const branchId = stateBranchId || member?.branch_id;
 
@@ -47,6 +48,23 @@ const Renew = () => {
         }
       });
     }
+
+    // Fetch trainer self-select setting
+    supabase
+      .from("gym_settings")
+      .select("registration_field_settings")
+      .eq("branch_id", branchId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.registration_field_settings) {
+          const parsed = typeof data.registration_field_settings === "string"
+            ? JSON.parse(data.registration_field_settings)
+            : data.registration_field_settings;
+          if (parsed?.self_select_trainer?.enabled === false) {
+            setAllowSelfSelectTrainer(false);
+          }
+        }
+      });
 
     const fetchMemberData = async () => {
       const today = new Date().toISOString().split("T")[0];
@@ -219,6 +237,7 @@ const Renew = () => {
           existingMembershipEndDate={existingMembershipEndDate || undefined}
           existingPTEndDate={existingPTEndDate || undefined}
           branchId={member.branch_id || undefined}
+          allowSelfSelectTrainer={allowSelfSelectTrainer}
         />
       </main>
       <PoweredByBadge />

@@ -29,8 +29,8 @@ const Index = () => {
   const [membershipEndDate, setMembershipEndDate] = useState<string | null>(null);
   const [membershipStartDate, setMembershipStartDate] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
+  const [allowSelfSelectTrainer, setAllowSelfSelectTrainer] = useState(true);
   const [branchInfo, setBranchInfo] = useState<{ id: string; name: string; logo_url?: string | null } | null>(() => {
-    // Instantly restore cached branch info to avoid "Loading..."
     if (branchId) {
       const cached = sessionStorage.getItem(`branch-info-${branchId}`);
       if (cached) {
@@ -97,6 +97,23 @@ const Index = () => {
     };
     
     fetchDirect();
+
+    // Fetch trainer self-select setting
+    supabase
+      .from("gym_settings")
+      .select("registration_field_settings")
+      .eq("branch_id", branchId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.registration_field_settings) {
+          const parsed = typeof data.registration_field_settings === "string"
+            ? JSON.parse(data.registration_field_settings)
+            : data.registration_field_settings;
+          if (parsed?.self_select_trainer?.enabled === false) {
+            setAllowSelfSelectTrainer(false);
+          }
+        }
+      });
   }, [branchId]);
 
   // Handle return from Renew/ExtendPT pages
@@ -291,46 +308,48 @@ const Index = () => {
                 </div>
               </button>
 
-              <button
-                onClick={() => handleOptionSelect("extend-pt")}
-                disabled={!membershipEndDate}
-                className={`w-full p-4 rounded-xl border-2 transition-all duration-200 group ${
-                  membershipEndDate
-                    ? "border-border hover:border-accent/50 hover:bg-accent/5"
-                    : "border-border/50 bg-muted/30 opacity-60 cursor-not-allowed"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform ${
-                        membershipEndDate ? "bg-primary/10 group-hover:scale-110" : "bg-muted"
+              {allowSelfSelectTrainer && (
+                <button
+                  onClick={() => handleOptionSelect("extend-pt")}
+                  disabled={!membershipEndDate}
+                  className={`w-full p-4 rounded-xl border-2 transition-all duration-200 group ${
+                    membershipEndDate
+                      ? "border-border hover:border-accent/50 hover:bg-accent/5"
+                      : "border-border/50 bg-muted/30 opacity-60 cursor-not-allowed"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform ${
+                          membershipEndDate ? "bg-primary/10 group-hover:scale-110" : "bg-muted"
+                        }`}
+                      >
+                        <UserPlus
+                          className={`w-6 h-6 ${membershipEndDate ? "text-primary" : "text-muted-foreground"}`}
+                        />
+                      </div>
+                      <div className="text-left">
+                        <p className={`font-semibold ${membershipEndDate ? "text-foreground" : "text-muted-foreground"}`}>
+                          {membershipEndDate ? "Add / Extend Personal Training" : "Personal Training"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {membershipEndDate ? "Get personalized coaching" : "Renew gym membership first"}
+                        </p>
+                      </div>
+                    </div>
+                    <ArrowRight
+                      className={`w-5 h-5 transition-transform ${
+                        membershipEndDate
+                          ? "text-muted-foreground group-hover:translate-x-1"
+                          : "text-muted-foreground/50"
                       }`}
-                    >
-                      <UserPlus
-                        className={`w-6 h-6 ${membershipEndDate ? "text-primary" : "text-muted-foreground"}`}
-                      />
-                    </div>
-                    <div className="text-left">
-                      <p className={`font-semibold ${membershipEndDate ? "text-foreground" : "text-muted-foreground"}`}>
-                        {membershipEndDate ? "Add / Extend Personal Training" : "Personal Training"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {membershipEndDate ? "Get personalized coaching" : "Renew gym membership first"}
-                      </p>
-                    </div>
+                    />
                   </div>
-                  <ArrowRight
-                    className={`w-5 h-5 transition-transform ${
-                      membershipEndDate
-                        ? "text-muted-foreground group-hover:translate-x-1"
-                        : "text-muted-foreground/50"
-                    }`}
-                  />
-                </div>
-              </button>
+                </button>
+              )}
 
-              {!membershipEndDate && (
+              {allowSelfSelectTrainer && !membershipEndDate && (
                 <p className="text-xs text-center text-muted-foreground bg-muted/50 p-2 rounded-lg">
                   You need an active gym membership to add personal training
                 </p>
