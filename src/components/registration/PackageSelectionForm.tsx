@@ -61,6 +61,7 @@ interface PackageSelectionFormProps {
   existingPTEndDate?: string;
   minStartDate?: Date;
   branchId?: string;
+  allowSelfSelectTrainer?: boolean;
 }
 
 export interface PackageSelectionData {
