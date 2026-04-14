@@ -48,6 +48,7 @@ const initialState = {
   activeTab: "members",
   memberFilter: "all" as MemberFilterValue,
   ptFilterActive: false,
+  trainerFilter: null as string | null,
   timeSlotFilter: null as string | null,
   sortBy: "name" as SortByValue,
   sortOrder: "asc" as SortOrderValue,
