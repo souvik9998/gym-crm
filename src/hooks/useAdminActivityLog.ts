@@ -11,7 +11,8 @@ export type ActivityCategory =
   | "ledger"
   | "branch"
   | "staff"
-  | "auth";
+  | "auth"
+  | "time_slots";
 
 export type ActivityType = 
   // Members
@@ -80,7 +81,17 @@ export type ActivityType =
   // Coupons
   | "coupon_created"
   | "coupon_updated"
-  | "coupon_deleted";
+  | "coupon_deleted"
+  // Time Slots
+  | "time_slot_created"
+  | "time_slot_updated"
+  | "time_slot_deleted"
+  | "time_slot_member_added"
+  | "time_slot_member_removed"
+  // PT Assignment
+  | "pt_assigned"
+  | "pt_replaced"
+  | "pt_whatsapp_sent";
 
 interface LogActivityParams {
   category: ActivityCategory;
