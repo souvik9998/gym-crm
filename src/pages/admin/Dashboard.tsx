@@ -636,6 +636,12 @@ const AdminDashboard = () => {
                     <TimeSlotFilterDropdown
                       value={timeSlotFilter}
                       onChange={setTimeSlotFilter}
+                      trainerFilter={trainerFilter}
+                      compact={true}
+                    />
+                    <TrainerFilterDropdown
+                      value={trainerFilter}
+                      onChange={setTrainerFilter}
                       compact={true}
                     />
                   </div>
