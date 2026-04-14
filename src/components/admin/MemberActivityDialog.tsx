@@ -502,6 +502,13 @@ export const MemberActivityDialog = ({
               </div>
             </TabsContent>
 
+            {/* Health Tab */}
+            <TabsContent value="health" className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1" key="health">
+              {member && (
+                <MemberHealthTab memberId={memberId!} branchId={member.branch_id || ""} />
+              )}
+            </TabsContent>
+
             {/* Payments Tab */}
             <TabsContent value="payments" className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1" key="payments">
               <div className="space-y-2.5">
