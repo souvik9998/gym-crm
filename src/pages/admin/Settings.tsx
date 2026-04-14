@@ -956,35 +956,37 @@ const AdminSettings = () => {
 
   return (
     <Fragment>
-      <div className="max-w-5xl mx-auto">
-        <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val })} className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-          {/* Sidebar Navigation - horizontal scroll on mobile, vertical on desktop */}
-          <div className="lg:w-56 flex-shrink-0">
-            <TabsList className="flex lg:flex-col w-full h-auto bg-transparent p-0 gap-0.5 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 scrollbar-hide">
-              {settingsTabs.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <TabsTrigger
-                    key={tab.value}
-                    value={tab.value}
-                    className={cn(
-                      "flex items-center gap-2.5 justify-start w-auto lg:w-full px-3 py-2.5 rounded-lg text-xs lg:text-sm font-medium whitespace-nowrap",
-                      "text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200",
-                      "data-[state=active]:bg-accent/10 data-[state=active]:text-accent data-[state=active]:font-semibold",
-                      "data-[state=active]:shadow-none border-0 ring-0 shadow-none",
-                      "flex-shrink-0 lg:flex-shrink",
-                    )}
-                  >
-                    <Icon className="w-4 h-4 flex-shrink-0" />
-                    <span>{tab.label}</span>
-                  </TabsTrigger>
-                );
-              })}
+      <div className="max-w-4xl mx-auto">
+        {/* Page Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val })}>
+          {/* Horizontal Tab Navigation */}
+          <div className="border-b border-border/60 mb-6">
+            <TabsList className="flex w-full h-auto bg-transparent p-0 gap-0 overflow-x-auto scrollbar-hide -mb-px">
+              {settingsTabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className={cn(
+                    "px-4 py-2.5 text-sm font-medium whitespace-nowrap rounded-none border-b-2 border-transparent",
+                    "text-muted-foreground hover:text-foreground transition-colors duration-200",
+                    "data-[state=active]:text-foreground data-[state=active]:border-primary",
+                    "data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                    "focus-visible:ring-0 focus-visible:ring-offset-0",
+                    "flex-shrink-0",
+                  )}
+                >
+                  {tab.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
           </div>
 
           {/* Content Area */}
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0">
 
           {/* Registration Fields Tab */}
           <TabsContent value="registration" className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in">
