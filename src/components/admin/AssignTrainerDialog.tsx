@@ -55,6 +55,8 @@ export const AssignTrainerDialog = ({
   open,
   onOpenChange,
   memberId,
+  memberName,
+  memberPhone,
   branchId,
   mode,
   existingPtId,
@@ -70,6 +72,7 @@ export const AssignTrainerDialog = ({
   const [endDate, setEndDate] = useState("");
   const [monthlyFee, setMonthlyFee] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [notifyWhatsApp, setNotifyWhatsApp] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
 
   useEffect(() => {
