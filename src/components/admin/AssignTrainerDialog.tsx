@@ -25,6 +25,7 @@ interface Trainer {
   name: string;
   monthly_fee: number;
   specialization: string | null;
+  phone: string | null;
 }
 
 interface TimeSlot {
@@ -85,7 +86,7 @@ export const AssignTrainerDialog = ({
     setIsFetching(true);
     const { data } = await supabase
       .from("personal_trainers")
-      .select("id, name, monthly_fee, specialization")
+      .select("id, name, monthly_fee, specialization, phone")
       .eq("branch_id", branchId)
       .eq("is_active", true)
       .order("name");
@@ -100,14 +101,34 @@ export const AssignTrainerDialog = ({
   };
 
   const fetchTimeSlots = async (trainerId: string) => {
+    // trainer_time_slots.trainer_id references staff.id, not personal_trainers.id
+    // Look up the staff ID via phone number match
+    const trainer = trainers.find((t) => t.id === trainerId);
+    if (!trainer?.phone) {
+      setTimeSlots([]);
+      return;
+    }
+
+    const { data: staffData } = await supabase
+      .from("staff")
+      .select("id")
+      .eq("phone", trainer.phone)
+      .eq("role", "trainer")
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!staffData) {
+      setTimeSlots([]);
+      return;
+    }
+
     const { data: slots } = await supabase
       .from("trainer_time_slots")
       .select("id, start_time, end_time, capacity")
-      .eq("trainer_id", trainerId)
+      .eq("trainer_id", staffData.id)
       .eq("branch_id", branchId);
 
     if (slots) {
-      // Get member counts for each slot
       const slotsWithCounts: TimeSlot[] = await Promise.all(
         slots.map(async (slot) => {
           const { count } = await supabase
