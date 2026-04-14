@@ -17,8 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Dumbbell, Loader2, Clock } from "lucide-react";
+import { Dumbbell, Loader2, Clock, MessageCircle } from "lucide-react";
 
 interface Trainer {
   id: string;
@@ -40,6 +41,8 @@ interface AssignTrainerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   memberId: string;
+  memberName?: string;
+  memberPhone?: string;
   branchId: string;
   mode: "assign" | "replace";
   existingPtId?: string;
