@@ -1724,6 +1724,11 @@ const AdminSettings = () => {
             )}
           </TabsContent>
 
+          {/* Coupons Tab */}
+          <TabsContent value="coupons" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6 animate-fade-in">
+            <CouponsDiscountsTab />
+          </TabsContent>
+
           {/* Subscription Plan Tab */}
           <TabsContent value="subscription" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6 animate-fade-in">
             <SubscriptionPlanTab />
