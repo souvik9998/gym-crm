@@ -515,6 +515,170 @@ export type Database = {
           },
         ]
       }
+      coupon_usage: {
+        Row: {
+          branch_id: string | null
+          coupon_id: string
+          discount_applied: number
+          id: string
+          member_id: string | null
+          payment_id: string | null
+          used_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          coupon_id: string
+          discount_applied?: number
+          id?: string
+          member_id?: string | null
+          payment_id?: string | null
+          used_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          coupon_id?: string
+          discount_applied?: number
+          id?: string
+          member_id?: string | null
+          payment_id?: string | null
+          used_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_usage_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_usage_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_usage_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_usage_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          applicable_branch_ids: string[] | null
+          applicable_on: Json
+          applicable_plan_ids: string[] | null
+          auto_apply: boolean
+          branch_id: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          discount_type: string
+          discount_value: number
+          end_date: string | null
+          existing_members_only: boolean
+          expired_members_only: boolean
+          first_time_only: boolean
+          id: string
+          is_active: boolean
+          max_discount_cap: number | null
+          min_order_value: number | null
+          notes: string | null
+          per_user_limit: number
+          specific_member_ids: string[] | null
+          stackable: boolean
+          start_date: string
+          tenant_id: string | null
+          total_usage_limit: number | null
+          updated_at: string
+          usage_count: number
+        }
+        Insert: {
+          applicable_branch_ids?: string[] | null
+          applicable_on?: Json
+          applicable_plan_ids?: string[] | null
+          auto_apply?: boolean
+          branch_id?: string | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          discount_type?: string
+          discount_value?: number
+          end_date?: string | null
+          existing_members_only?: boolean
+          expired_members_only?: boolean
+          first_time_only?: boolean
+          id?: string
+          is_active?: boolean
+          max_discount_cap?: number | null
+          min_order_value?: number | null
+          notes?: string | null
+          per_user_limit?: number
+          specific_member_ids?: string[] | null
+          stackable?: boolean
+          start_date?: string
+          tenant_id?: string | null
+          total_usage_limit?: number | null
+          updated_at?: string
+          usage_count?: number
+        }
+        Update: {
+          applicable_branch_ids?: string[] | null
+          applicable_on?: Json
+          applicable_plan_ids?: string[] | null
+          auto_apply?: boolean
+          branch_id?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          discount_type?: string
+          discount_value?: number
+          end_date?: string | null
+          existing_members_only?: boolean
+          expired_members_only?: boolean
+          first_time_only?: boolean
+          id?: string
+          is_active?: boolean
+          max_discount_cap?: number | null
+          min_order_value?: number | null
+          notes?: string | null
+          per_user_limit?: number
+          specific_member_ids?: string[] | null
+          stackable?: boolean
+          start_date?: string
+          tenant_id?: string | null
+          total_usage_limit?: number | null
+          updated_at?: string
+          usage_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupons_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupons_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_packages: {
         Row: {
           branch_id: string | null

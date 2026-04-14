@@ -76,7 +76,11 @@ export type ActivityType =
   | "admin_logged_in"
   | "admin_logged_out"
   // Registration Fields
-  | "registration_fields_updated";
+  | "registration_fields_updated"
+  // Coupons
+  | "coupon_created"
+  | "coupon_updated"
+  | "coupon_deleted";
 
 interface LogActivityParams {
   category: ActivityCategory;

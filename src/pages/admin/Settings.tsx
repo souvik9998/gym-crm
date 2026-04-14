@@ -24,6 +24,7 @@ import {
   ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import { Textarea } from "@/components/ui/textarea";
+import { TicketPercent } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -44,6 +45,7 @@ import { ButtonSpinner } from "@/components/ui/button-spinner";
 // Lazy load HolidayCalendarTab for code splitting
 const HolidayCalendarTab = lazy(() => import("@/components/admin/HolidayCalendarTab"));
 import { RegistrationFieldsSettings } from "@/components/admin/RegistrationFieldsSettings";
+import { CouponsDiscountsTab } from "@/components/admin/CouponsDiscountsTab";
 
 interface CustomPackage {
   id: string;
@@ -946,7 +948,7 @@ const AdminSettings = () => {
       <div className="max-w-4xl mx-auto space-y-4 lg:space-y-6">
         <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val })}>
           {/* Modern pill-style tabs with subtle glow on active */}
-          <TabsList className="grid w-full grid-cols-7 bg-muted/40 backdrop-blur-sm h-auto p-1 rounded-2xl border border-border/40">
+          <TabsList className="grid w-full grid-cols-8 bg-muted/40 backdrop-blur-sm h-auto p-1 rounded-2xl border border-border/40">
             <TabsTrigger value="packages" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
               <CubeIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               <span className="hidden lg:inline">Packages</span>
@@ -970,6 +972,10 @@ const AdminSettings = () => {
             <TabsTrigger value="general" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
               <Cog6ToothIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               <span className="hidden lg:inline">General</span>
+            </TabsTrigger>
+            <TabsTrigger value="coupons" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
+              <TicketPercent className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+              <span className="hidden lg:inline">Coupons</span>
             </TabsTrigger>
             <TabsTrigger value="subscription" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
               <ShieldCheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
@@ -1716,6 +1722,11 @@ const AdminSettings = () => {
                 <AutomatedReportsSettings />
               </>
             )}
+          </TabsContent>
+
+          {/* Coupons Tab */}
+          <TabsContent value="coupons" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6 animate-fade-in">
+            <CouponsDiscountsTab />
           </TabsContent>
 
           {/* Subscription Plan Tab */}
