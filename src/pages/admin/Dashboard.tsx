@@ -629,8 +629,6 @@ const AdminDashboard = () => {
                       value={memberFilter} 
                       onChange={handleMemberFilterChange}
                       counts={filterCounts}
-                      ptFilterActive={ptFilterActive}
-                      onPtFilterChange={handlePtFilterChange}
                       mobileMode={true}
                     />
                     <TimeSlotFilterDropdown
@@ -739,8 +737,6 @@ const AdminDashboard = () => {
                     value={memberFilter} 
                     onChange={handleMemberFilterChange}
                     counts={filterCounts}
-                    ptFilterActive={ptFilterActive}
-                    onPtFilterChange={handlePtFilterChange}
                     mobileMode={false}
                   />
                   <TrainerFilterDropdown

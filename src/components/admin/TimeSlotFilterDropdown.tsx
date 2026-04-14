@@ -253,7 +253,11 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
             {/* Header */}
             <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b border-border/40 px-4 py-2.5">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-foreground">Filter by Trainer & Slot</p>
+                <p className="text-xs font-semibold text-foreground">
+                  {trainerFilter && displayGroups.length === 1
+                    ? `${displayGroups[0].trainer_name}'s Slots`
+                    : "Filter by Time Slot"}
+                </p>
                 {isActive && (
                   <button
                     onClick={() => { onChange(null); setOpen(false); }}
