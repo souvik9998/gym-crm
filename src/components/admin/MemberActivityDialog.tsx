@@ -552,22 +552,47 @@ export const MemberActivityDialog = ({
                               <Calendar className="w-3.5 h-3.5" />
                               {formatDate(pt.start_date)} — {formatDate(pt.end_date)}
                             </p>
+                            {pt.time_slot && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                <Clock className="w-3 h-3" />
+                                {formatSlotTime(pt.time_slot.start_time)} – {formatSlotTime(pt.time_slot.end_time)}
+                              </p>
+                            )}
                             {pt.personal_trainer?.specialization && (
                               <p className="text-xs text-muted-foreground/70">
                                 Specialization: {pt.personal_trainer.specialization}
                               </p>
                             )}
                           </div>
-                          <div className="text-right">
-                            <p className="font-bold text-accent flex items-center gap-0.5 text-sm">
+                          <div className="text-right space-y-1.5">
+                            <p className="font-bold text-accent flex items-center justify-end gap-0.5 text-sm">
                               <IndianRupee className="w-3.5 h-3.5" />
                               {Number(pt.total_fee).toLocaleString("en-IN")}
                             </p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                            <p className="text-[11px] text-muted-foreground">
                               ₹{Number(pt.monthly_fee).toLocaleString("en-IN")}/mo
                             </p>
                           </div>
                         </div>
+                        {/* WhatsApp Notify Button */}
+                        {pt.status === "active" && new Date(pt.end_date) >= new Date() && (
+                          <div className="mt-3 pt-2.5 border-t border-border/40">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full gap-1.5 text-xs h-8"
+                              disabled={isSendingWhatsApp === pt.id}
+                              onClick={() => handleNotifyWhatsApp(pt)}
+                            >
+                              {isSendingWhatsApp === pt.id ? (
+                                <Spinner className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
+                              )}
+                              Notify via WhatsApp
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </AnimatedItem>
                   ))
