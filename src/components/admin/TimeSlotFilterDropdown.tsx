@@ -36,6 +36,7 @@ interface TrainerGroup {
 interface TimeSlotFilterDropdownProps {
   value: string | null;
   onChange: (slotId: string | null) => void;
+  trainerFilter?: string | null;
   compact?: boolean;
 }
 
