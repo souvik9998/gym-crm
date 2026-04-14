@@ -18,7 +18,10 @@ import {
   User,
   Clock,
   AlertCircle,
+  TicketPercent,
 } from "lucide-react";
+import CouponInput from "@/components/ui/coupon-input";
+import { useCouponValidation } from "@/hooks/useCouponValidation";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
@@ -413,7 +416,16 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
   
   const subtotalAmount = gymAmount + ptAmount;
   const taxAmount = taxEnabled && taxRate > 0 ? Math.round((subtotalAmount * taxRate) / 100) : 0;
-  const totalAmount = subtotalAmount + taxAmount;
+
+  const adminCoupon = useCouponValidation({
+    branchId: currentBranch?.id,
+    isNewMember: false,
+    memberId: member?.id,
+    subtotal: subtotalAmount + taxAmount,
+  });
+
+  const couponDiscount = adminCoupon.appliedCoupon?.discountAmount || 0;
+  const totalAmount = Math.max(0, subtotalAmount + taxAmount - couponDiscount);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -508,11 +520,26 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
         payment_mode: "cash",
         status: "success",
         payment_type: paymentTypeValue,
-        notes: `Cash payment via admin - ${paymentTypeValue}`,
+        notes: `Cash payment via admin - ${paymentTypeValue}${adminCoupon.appliedCoupon ? ` (Coupon: ${adminCoupon.appliedCoupon.coupon.code}, -₹${couponDiscount})` : ""}`,
         branch_id: currentBranch?.id,
       }).select().single();
 
       if (paymentError) throw paymentError;
+
+      // Record coupon usage if applied
+      if (adminCoupon.appliedCoupon) {
+        await supabase.from("coupon_usage").insert({
+          coupon_id: adminCoupon.appliedCoupon.coupon.id,
+          member_id: member.id,
+          payment_id: paymentRecord.id,
+          discount_applied: couponDiscount,
+          branch_id: currentBranch?.id,
+        });
+        // Increment usage count
+        await supabase.from("coupons").update({
+          usage_count: adminCoupon.appliedCoupon.coupon.usage_count + 1,
+        }).eq("id", adminCoupon.appliedCoupon.coupon.id);
+      }
 
       // Create ledger entries for cash payment
       try {
@@ -945,11 +972,29 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
                       <span>₹{taxAmount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
+                  {couponDiscount > 0 && (
+                    <div className="flex justify-between text-[10px] md:text-sm text-success">
+                      <span>Coupon ({adminCoupon.appliedCoupon?.coupon.code})</span>
+                      <span>-₹{couponDiscount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between font-bold pt-1 md:pt-2 border-t border-border text-xs md:text-base">
                     <span>Total (Cash)</span>
                     <span className="text-accent">₹{totalAmount.toLocaleString("en-IN")}</span>
                   </div>
               </div>
+
+              {/* Coupon Input */}
+              <CouponInput
+                couponCode={adminCoupon.couponCode}
+                onCouponCodeChange={adminCoupon.setCouponCode}
+                onApply={adminCoupon.validateCoupon}
+                onRemove={adminCoupon.removeCoupon}
+                isValidating={adminCoupon.isValidating}
+                appliedCoupon={adminCoupon.appliedCoupon}
+                error={adminCoupon.couponError}
+                compact
+              />
             </>
           )}
 

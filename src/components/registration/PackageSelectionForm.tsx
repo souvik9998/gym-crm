@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, Calendar, IndianRupee, Sparkles, User, Dumbbell, Clock, AlertCircle, CalendarDays } from "lucide-react";
+import { Check, Calendar, IndianRupee, Sparkles, User, Dumbbell, Clock, AlertCircle, CalendarDays, TicketPercent } from "lucide-react";
+import CouponInput from "@/components/ui/coupon-input";
+import { useCouponValidation } from "@/hooks/useCouponValidation";
 import { Badge } from "@/components/ui/badge";
 import { addDays, addMonths, differenceInDays, format, isBefore } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -77,6 +79,9 @@ export interface PackageSelectionData {
   ptEndDate?: string;
   startDate?: string;
   ptStartDate?: string;
+  couponId?: string;
+  couponCode?: string;
+  couponDiscount?: number;
 }
 
 // Skeleton for loading state
@@ -313,7 +318,15 @@ const PackageSelectionForm = ({
   const subtotal = subscriptionAmount + joiningFee + trainerFee;
   const taxRate = taxSettings?.taxEnabled ? taxSettings.taxRate : 0;
   const taxAmount = taxRate > 0 ? Math.round((subtotal * taxRate) / 100) : 0;
-  const totalAmount = subtotal + taxAmount;
+
+  const coupon = useCouponValidation({
+    branchId,
+    isNewMember,
+    subtotal: subtotal + taxAmount,
+  });
+
+  const couponDiscount = coupon.appliedCoupon?.discountAmount || 0;
+  const totalAmount = Math.max(0, subtotal + taxAmount - couponDiscount);
 
   const parsedExistingMembershipEndDate = existingMembershipEndDate ? new Date(existingMembershipEndDate) : null;
   const parsedExistingPTEndDate = existingPTEndDate ? new Date(existingPTEndDate) : null;
@@ -350,6 +363,9 @@ const PackageSelectionForm = ({
       ptEndDate: wantsTrainer && selectedPTOption ? format(selectedPTOption.endDate, "yyyy-MM-dd") : undefined,
       startDate: format(selectedStartDate, "yyyy-MM-dd"),
       ptStartDate: wantsTrainer ? format(ptStartDate, "yyyy-MM-dd") : undefined,
+      couponId: coupon.appliedCoupon?.coupon.id,
+      couponCode: coupon.appliedCoupon?.coupon.code,
+      couponDiscount,
     });
   };
 
@@ -811,6 +827,19 @@ const PackageSelectionForm = ({
             </div>
           )}
 
+          {couponDiscount > 0 && (
+            <div className="flex justify-between items-center text-success">
+              <span className="flex items-center gap-2">
+                <TicketPercent className="w-4 h-4" />
+                Coupon ({coupon.appliedCoupon?.coupon.code})
+              </span>
+              <span className="font-semibold flex items-center">
+                -<IndianRupee className="w-4 h-4" />
+                {couponDiscount.toLocaleString("en-IN")}
+              </span>
+            </div>
+          )}
+
           <div className="border-t border-border pt-3">
             <div className="flex justify-between items-center">
               <span className="font-bold text-lg">Total</span>
@@ -821,6 +850,20 @@ const PackageSelectionForm = ({
             </div>
           </div>
         </div>
+
+        {/* Coupon Code */}
+        <div className="animate-fade-in" style={{ animationDelay: "250ms" }}>
+          <CouponInput
+            couponCode={coupon.couponCode}
+            onCouponCodeChange={coupon.setCouponCode}
+            onApply={coupon.validateCoupon}
+            onRemove={coupon.removeCoupon}
+            isValidating={coupon.isValidating}
+            appliedCoupon={coupon.appliedCoupon}
+            error={coupon.couponError}
+          />
+        </div>
+
 
         {/* Action Buttons */}
         <div className="flex gap-3">
