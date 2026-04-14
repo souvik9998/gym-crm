@@ -704,7 +704,7 @@ export const MembersTable = ({
       : <ArrowDown className="w-3.5 h-3.5 ml-1 text-accent" />;
   };
 
-  const sortedMembers = [...filteredMembers].sort((a, b) => {
+  const sortedMembers = [...timeSlotFiltered].sort((a, b) => {
     let comparison = 0;
 
     switch (sortField) {
