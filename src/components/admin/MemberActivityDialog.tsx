@@ -689,6 +689,69 @@ export const MemberActivityDialog = ({
                   onSuccess={fetchMemberData}
                 />
               )}
+
+              {/* Assign Time Slot Dialog */}
+              {assigningSlotForPt && (
+                <Dialog open={!!assigningSlotForPt} onOpenChange={(open) => !open && setAssigningSlotForPt(null)}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2 text-base">
+                        <Clock className="w-4 h-4 text-accent" />
+                        Assign Time Slot
+                      </DialogTitle>
+                      <DialogDescription className="text-xs">
+                        Select a time slot for {assigningSlotForPt.personal_trainer?.name}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3 pt-2">
+                      {availableSlots.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">No time slots available for this trainer</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {availableSlots.map((slot) => {
+                            const isFull = slot.current_count >= slot.capacity;
+                            return (
+                              <button
+                                key={slot.id}
+                                disabled={isFull}
+                                onClick={() => setSelectedSlotId(slot.id)}
+                                className={cn(
+                                  "w-full flex items-center justify-between p-3 rounded-lg border text-sm transition-all",
+                                  selectedSlotId === slot.id
+                                    ? "border-accent bg-accent/5 ring-1 ring-accent/20"
+                                    : "border-border/60 hover:border-border",
+                                  isFull && "opacity-50 cursor-not-allowed"
+                                )}
+                              >
+                                <span className="flex items-center gap-2">
+                                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                                  {formatSlotTime(slot.start_time)} – {formatSlotTime(slot.end_time)}
+                                </span>
+                                <span className={cn("text-xs", isFull ? "text-destructive" : "text-muted-foreground")}>
+                                  {slot.current_count}/{slot.capacity}{isFull ? " Full" : ""}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <div className="flex gap-2 pt-2">
+                        <Button variant="outline" className="flex-1" onClick={() => setAssigningSlotForPt(null)}>
+                          Cancel
+                        </Button>
+                        <Button
+                          className="flex-1"
+                          disabled={!selectedSlotId || isSavingSlot}
+                          onClick={handleSaveSlotAssignment}
+                        >
+                          {isSavingSlot && <Spinner className="w-4 h-4 animate-spin mr-2" />}
+                          Assign Slot
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
             </TabsContent>
 
             {/* Health Tab */}
