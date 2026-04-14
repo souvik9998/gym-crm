@@ -1047,6 +1047,66 @@ export type Database = {
           },
         ]
       }
+      member_assessments: {
+        Row: {
+          allowed_exercises: string | null
+          assessed_by: string
+          assessment_date: string
+          branch_id: string
+          created_at: string
+          current_condition: string | null
+          id: string
+          injuries_health_issues: string | null
+          member_id: string
+          mobility_limitations: string | null
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          allowed_exercises?: string | null
+          assessed_by?: string
+          assessment_date?: string
+          branch_id: string
+          created_at?: string
+          current_condition?: string | null
+          id?: string
+          injuries_health_issues?: string | null
+          member_id: string
+          mobility_limitations?: string | null
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          allowed_exercises?: string | null
+          assessed_by?: string
+          assessment_date?: string
+          branch_id?: string
+          created_at?: string
+          current_condition?: string | null
+          id?: string
+          injuries_health_issues?: string | null
+          member_id?: string
+          mobility_limitations?: string | null
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_assessments_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_assessments_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_details: {
         Row: {
           address: string | null
@@ -1159,6 +1219,101 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "member_documents_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_exercise_items: {
+        Row: {
+          created_at: string
+          exercise_name: string
+          id: string
+          notes: string | null
+          plan_id: string
+          reps: string
+          sets: number
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          exercise_name: string
+          id?: string
+          notes?: string | null
+          plan_id: string
+          reps?: string
+          sets?: number
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          exercise_name?: string
+          id?: string
+          notes?: string | null
+          plan_id?: string
+          reps?: string
+          sets?: number
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_exercise_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "member_exercise_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_exercise_plans: {
+        Row: {
+          branch_id: string
+          created_at: string
+          created_by: string
+          goal: string
+          id: string
+          is_active: boolean
+          member_id: string
+          plan_name: string
+          updated_at: string
+          workout_split: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          created_by?: string
+          goal?: string
+          id?: string
+          is_active?: boolean
+          member_id: string
+          plan_name: string
+          updated_at?: string
+          workout_split?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          created_by?: string
+          goal?: string
+          id?: string
+          is_active?: boolean
+          member_id?: string
+          plan_name?: string
+          updated_at?: string
+          workout_split?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_exercise_plans_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_exercise_plans_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "members"
