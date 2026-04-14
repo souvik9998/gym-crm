@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { Plus, Download, FileText, Upload, Heart } from "lucide-react";
+import { Plus, Download, FileText, Upload, Heart, Trash2 } from "lucide-react";
 import type { MemberDocument, HealthDetails } from "./MemberHealthTab";
 
 interface HealthFilesSectionProps {
@@ -22,6 +22,7 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
   const [showHealthForm, setShowHealthForm] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingHealth, setIsSavingHealth] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [docType, setDocType] = useState("medical_record");
   const [docNotes, setDocNotes] = useState("");
@@ -36,6 +37,65 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
     emergency_contact_phone: healthDetails?.emergency_contact_phone || null,
   });
 
+  // Extract storage path from file_url
+  const getStoragePath = (fileUrl: string): string => {
+    // If it's a full URL, extract the path after /object/public/member-documents/
+    const marker = "/object/public/member-documents/";
+    const idx = fileUrl.indexOf(marker);
+    if (idx !== -1) return decodeURIComponent(fileUrl.substring(idx + marker.length));
+    // If it's already a relative path
+    return fileUrl;
+  };
+
+  const handleDownload = async (doc: MemberDocument) => {
+    try {
+      const storagePath = getStoragePath(doc.file_url);
+      const { data, error } = await supabase.storage
+        .from("member-documents")
+        .createSignedUrl(storagePath, 300); // 5 min signed URL
+
+      if (error) throw error;
+      if (!data?.signedUrl) throw new Error("Could not generate download link");
+
+      // Fetch as blob for proper download
+      const response = await fetch(data.signedUrl);
+      if (!response.ok) throw new Error("Download failed");
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = doc.file_name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err: any) {
+      console.error("Download error:", err);
+      // Fallback: try opening the URL directly
+      window.open(doc.file_url, "_blank");
+      toast.error("Download may have failed", { description: "Opened in new tab instead" });
+    }
+  };
+
+  const handleDeleteDoc = async (doc: MemberDocument) => {
+    if (!confirm(`Delete "${doc.file_name}"?`)) return;
+    setDeletingId(doc.id);
+    try {
+      // Delete from storage
+      const storagePath = getStoragePath(doc.file_url);
+      await supabase.storage.from("member-documents").remove([storagePath]);
+      // Delete from DB
+      const { error } = await supabase.from("member_documents").delete().eq("id", doc.id);
+      if (error) throw error;
+      toast.success("Document deleted");
+      onRefresh();
+    } catch (err: any) {
+      toast.error("Error deleting document", { description: err.message });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const handleUpload = async () => {
     if (!file) { toast.error("Please select a file"); return; }
     if (file.size > 10 * 1024 * 1024) { toast.error("File must be under 10MB"); return; }
@@ -46,13 +106,12 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
       const { error: storageError } = await supabase.storage.from("member-documents").upload(path, file);
       if (storageError) throw storageError;
 
-      const { data: urlData } = supabase.storage.from("member-documents").getPublicUrl(path);
-
+      // Store the relative path (not public URL) since bucket is private
       const { error: dbError } = await supabase.from("member_documents").insert({
         member_id: memberId,
         document_type: docType,
         file_name: file.name,
-        file_url: urlData.publicUrl || path,
+        file_url: path,
         file_size: file.size,
         uploaded_by: docNotes || "Admin",
       });
@@ -125,7 +184,7 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
           <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 flex items-center gap-1.5">
             <Heart className="w-3 h-3" /> Health Details
           </h5>
-          <Button variant="ghost" size="sm" onClick={() => setShowHealthForm(!showHealthForm)} className="h-6 text-xs px-2">
+          <Button variant="ghost" size="sm" onClick={() => { setShowHealthForm(!showHealthForm); setHealthForm({ blood_group: healthDetails?.blood_group || null, height_cm: healthDetails?.height_cm || null, weight_kg: healthDetails?.weight_kg || null, medical_conditions: healthDetails?.medical_conditions || null, allergies: healthDetails?.allergies || null, emergency_contact_name: healthDetails?.emergency_contact_name || null, emergency_contact_phone: healthDetails?.emergency_contact_phone || null }); }} className="h-6 text-xs px-2">
             {hasHealthData ? "Edit" : "Add"}
           </Button>
         </div>
@@ -251,11 +310,20 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
                     </p>
                   </div>
                 </div>
-                <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                <div className="flex items-center gap-0.5 flex-shrink-0">
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDownload(doc)}>
                     <Download className="w-3.5 h-3.5" />
                   </Button>
-                </a>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => handleDeleteDoc(doc)}
+                    disabled={deletingId === doc.id}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
