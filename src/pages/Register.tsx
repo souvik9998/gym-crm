@@ -354,6 +354,7 @@ const Register = () => {
             onBack={() => setStep(needsHealthStep ? "health" : "details")}
             isLoading={isPaymentLoading}
             branchId={branchId}
+            allowSelfSelectTrainer={fieldSettings?.self_select_trainer?.enabled !== false}
           />
         )}
       </main>
