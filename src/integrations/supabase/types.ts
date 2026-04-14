@@ -1816,6 +1816,7 @@ export type Database = {
           personal_trainer_id: string
           start_date: string
           status: string
+          time_slot_id: string | null
           total_fee: number
           updated_at: string | null
         }
@@ -1829,6 +1830,7 @@ export type Database = {
           personal_trainer_id: string
           start_date?: string
           status?: string
+          time_slot_id?: string | null
           total_fee?: number
           updated_at?: string | null
         }
@@ -1842,6 +1844,7 @@ export type Database = {
           personal_trainer_id?: string
           start_date?: string
           status?: string
+          time_slot_id?: string | null
           total_fee?: number
           updated_at?: string | null
         }
@@ -1865,6 +1868,13 @@ export type Database = {
             columns: ["personal_trainer_id"]
             isOneToOne: false
             referencedRelation: "personal_trainers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pt_subscriptions_time_slot_id_fkey"
+            columns: ["time_slot_id"]
+            isOneToOne: false
+            referencedRelation: "trainer_time_slots"
             referencedColumns: ["id"]
           },
         ]
