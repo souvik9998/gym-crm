@@ -31,6 +31,8 @@ import {
   Wallet,
   Plus,
   RefreshCw,
+  MessageCircle,
+  Loader2 as Spinner,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
