@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Dumbbell, Loader2, Clock, MessageCircle } from "lucide-react";
 
@@ -73,7 +74,8 @@ export const AssignTrainerDialog = ({
   const [monthlyFee, setMonthlyFee] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [notifyWhatsApp, setNotifyWhatsApp] = useState(false);
-  const [isFetching, setIsFetching] = useState(true);
+  const [isFetchingTrainers, setIsFetchingTrainers] = useState(true);
+  const [isFetchingSlots, setIsFetchingSlots] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -90,7 +92,7 @@ export const AssignTrainerDialog = ({
   }, [open, branchId]);
 
   const fetchTrainers = async () => {
-    setIsFetching(true);
+    setIsFetchingTrainers(true);
     const { data } = await supabase
       .from("personal_trainers")
       .select("id, name, monthly_fee, specialization, phone")
@@ -104,15 +106,16 @@ export const AssignTrainerDialog = ({
         : data;
       setTrainers(filtered);
     }
-    setIsFetching(false);
+    setIsFetchingTrainers(false);
   };
 
   const fetchTimeSlots = async (trainerId: string) => {
-    // trainer_time_slots.trainer_id references staff.id, not personal_trainers.id
-    // Look up the staff ID via phone number match
+    setIsFetchingSlots(true);
+    setTimeSlots([]);
     const trainer = trainers.find((t) => t.id === trainerId);
     if (!trainer?.phone) {
       setTimeSlots([]);
+      setIsFetchingSlots(false);
       return;
     }
 
@@ -126,6 +129,7 @@ export const AssignTrainerDialog = ({
 
     if (!staffData) {
       setTimeSlots([]);
+      setIsFetchingSlots(false);
       return;
     }
 
@@ -149,6 +153,7 @@ export const AssignTrainerDialog = ({
     } else {
       setTimeSlots([]);
     }
+    setIsFetchingSlots(false);
   };
 
   const handleTrainerChange = (trainerId: string) => {
@@ -190,7 +195,6 @@ export const AssignTrainerDialog = ({
 
     setIsLoading(true);
     try {
-      // If replacing, mark old PT as inactive
       if (mode === "replace" && existingPtId) {
         await supabase
           .from("pt_subscriptions")
@@ -200,7 +204,6 @@ export const AssignTrainerDialog = ({
 
       const totalFee = calculateTotalFee();
 
-      // Create new PT subscription with time slot
       const insertData: any = {
         member_id: memberId,
         personal_trainer_id: selectedTrainerId,
@@ -219,7 +222,6 @@ export const AssignTrainerDialog = ({
       const { error } = await supabase.from("pt_subscriptions").insert(insertData);
       if (error) throw error;
 
-      // Also add member to time_slot_members if slot selected
       if (selectedTimeSlotId) {
         await supabase.from("time_slot_members").insert({
           time_slot_id: selectedTimeSlotId,
@@ -229,7 +231,6 @@ export const AssignTrainerDialog = ({
         });
       }
 
-      // Send WhatsApp notification if checked
       if (notifyWhatsApp && memberName) {
         try {
           const selectedTrainer = trainers.find(t => t.id === selectedTrainerId);
@@ -271,6 +272,8 @@ export const AssignTrainerDialog = ({
     }
   };
 
+  const showFormFields = !isFetchingTrainers;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
@@ -288,16 +291,19 @@ export const AssignTrainerDialog = ({
 
         <div className="space-y-4 pt-2">
           {/* Trainer Selection */}
-          <div className="space-y-1.5">
-            <Label className="text-sm">Trainer</Label>
-            {isFetching ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading trainers...
+          <div className="space-y-1.5 animate-fade-in" style={{ animationDelay: "0ms" }}>
+            <Label className="text-sm font-medium">Trainer</Label>
+            {isFetchingTrainers ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full rounded-md" />
+                <div className="flex items-center gap-2 px-1">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Loading trainers...</span>
+                </div>
               </div>
             ) : (
               <Select value={selectedTrainerId} onValueChange={handleTrainerChange}>
-                <SelectTrigger>
+                <SelectTrigger className="transition-all duration-200">
                   <SelectValue placeholder="Select trainer" />
                 </SelectTrigger>
                 <SelectContent>
@@ -320,18 +326,32 @@ export const AssignTrainerDialog = ({
             )}
           </div>
 
-          {/* Time Slot Selection */}
+          {/* Time Slot Selection — with loading state */}
           {selectedTrainerId && (
-            <div className="space-y-1.5">
-              <Label className="text-sm flex items-center gap-1.5">
+            <div
+              className="space-y-1.5 animate-fade-in"
+              style={{ animationDelay: "50ms", animationFillMode: "backwards" }}
+            >
+              <Label className="text-sm font-medium flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-muted-foreground" />
                 Time Slot
               </Label>
-              {timeSlots.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-1">No time slots available for this trainer</p>
+              {isFetchingSlots ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full rounded-md" />
+                  <div className="flex items-center gap-2 px-1">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Loading time slots...</span>
+                  </div>
+                </div>
+              ) : timeSlots.length === 0 ? (
+                <div className="rounded-md border border-dashed border-border/60 p-3 text-center animate-fade-in">
+                  <Clock className="w-4 h-4 mx-auto mb-1 text-muted-foreground/50" />
+                  <p className="text-xs text-muted-foreground">No time slots available for this trainer</p>
+                </div>
               ) : (
                 <Select value={selectedTimeSlotId} onValueChange={setSelectedTimeSlotId}>
-                  <SelectTrigger>
+                  <SelectTrigger className="transition-all duration-200">
                     <SelectValue placeholder="Select time slot (optional)" />
                   </SelectTrigger>
                   <SelectContent>
@@ -352,57 +372,104 @@ export const AssignTrainerDialog = ({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Start Date</Label>
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">End Date</Label>
-              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            </div>
-          </div>
+          {/* Date & Fee Fields */}
+          {showFormFields && (
+            <>
+              <div
+                className="grid grid-cols-2 gap-3 animate-fade-in"
+                style={{ animationDelay: "100ms", animationFillMode: "backwards" }}
+              >
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Start Date</Label>
+                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="transition-all duration-200" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">End Date</Label>
+                  <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="transition-all duration-200" />
+                </div>
+              </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-sm">Monthly Fee (₹)</Label>
-            <Input
-              type="number"
-              value={monthlyFee}
-              onChange={(e) => setMonthlyFee(e.target.value)}
-              placeholder="e.g. 2000"
-            />
-          </div>
+              <div
+                className="space-y-1.5 animate-fade-in"
+                style={{ animationDelay: "150ms", animationFillMode: "backwards" }}
+              >
+                <Label className="text-sm">Monthly Fee (₹)</Label>
+                <Input
+                  type="number"
+                  value={monthlyFee}
+                  onChange={(e) => setMonthlyFee(e.target.value)}
+                  placeholder="e.g. 2000"
+                  className="transition-all duration-200"
+                />
+              </div>
 
-          {monthlyFee && startDate && endDate && (
-            <div className="rounded-lg bg-muted/50 p-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Fee</span>
-                <span className="font-semibold">₹{calculateTotalFee().toLocaleString("en-IN")}</span>
+              {monthlyFee && startDate && endDate && (
+                <div className="rounded-lg bg-muted/50 p-3 text-sm animate-fade-in">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Fee</span>
+                    <span className="font-semibold">₹{calculateTotalFee().toLocaleString("en-IN")}</span>
+                  </div>
+                </div>
+              )}
+
+              <div
+                className="flex items-center gap-2 pt-1 animate-fade-in"
+                style={{ animationDelay: "200ms", animationFillMode: "backwards" }}
+              >
+                <Checkbox
+                  id="notify-whatsapp"
+                  checked={notifyWhatsApp}
+                  onCheckedChange={(checked) => setNotifyWhatsApp(checked === true)}
+                  className="transition-all duration-200"
+                />
+                <label htmlFor="notify-whatsapp" className="text-sm flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground transition-colors duration-200">
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
+                  Notify member via WhatsApp
+                </label>
+              </div>
+
+              <div
+                className="flex gap-2 pt-2 animate-fade-in"
+                style={{ animationDelay: "250ms", animationFillMode: "backwards" }}
+              >
+                <Button variant="outline" className="flex-1 transition-all duration-200" onClick={() => onOpenChange(false)} disabled={isLoading}>
+                  Cancel
+                </Button>
+                <Button className="flex-1 transition-all duration-200" onClick={handleSubmit} disabled={isLoading || !selectedTrainerId}>
+                  {isLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                  {mode === "assign" ? "Assign" : "Replace"}
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* Full skeleton when trainers are loading */}
+          {isFetchingTrainers && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-16 rounded" />
+                <Skeleton className="h-10 w-full rounded-md" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-20 rounded" />
+                  <Skeleton className="h-10 w-full rounded-md" />
+                </div>
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-16 rounded" />
+                  <Skeleton className="h-10 w-full rounded-md" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-24 rounded" />
+                <Skeleton className="h-10 w-full rounded-md" />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Skeleton className="h-10 flex-1 rounded-md" />
+                <Skeleton className="h-10 flex-1 rounded-md" />
               </div>
             </div>
           )}
-
-          <div className="flex items-center gap-2 pt-1">
-            <Checkbox
-              id="notify-whatsapp"
-              checked={notifyWhatsApp}
-              onCheckedChange={(checked) => setNotifyWhatsApp(checked === true)}
-            />
-            <label htmlFor="notify-whatsapp" className="text-sm flex items-center gap-1.5 cursor-pointer text-muted-foreground">
-              <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
-              Notify member via WhatsApp
-            </label>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={isLoading}>
-              Cancel
-            </Button>
-            <Button className="flex-1" onClick={handleSubmit} disabled={isLoading || !selectedTrainerId}>
-              {isLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              {mode === "assign" ? "Assign" : "Replace"}
-            </Button>
-          </div>
         </div>
       </DialogContent>
     </Dialog>
