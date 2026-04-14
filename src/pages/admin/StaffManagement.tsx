@@ -4,7 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StaffTrainersTab } from "@/components/admin/staff/StaffTrainersTab";
 import { StaffOtherTab } from "@/components/admin/staff/StaffOtherTab";
 import { StaffOverviewTab } from "@/components/admin/staff/StaffOverviewTab";
-import { AcademicCapIcon, UserGroupIcon, ChartBarIcon } from "@heroicons/react/24/outline";
+import { TimeSlotManagement } from "@/components/admin/staff/TimeSlotManagement";
+import { AcademicCapIcon, UserGroupIcon, ChartBarIcon, ClockIcon } from "@heroicons/react/24/outline";
 import { useStaffPageData } from "@/hooks/queries/useStaffPageData";
 
 export interface Staff {
@@ -42,6 +43,13 @@ export interface StaffPermissions {
   can_access_analytics: boolean;
   can_change_settings: boolean;
   can_send_whatsapp: boolean;
+  member_access_type?: string;
+  can_manage_time_slots?: boolean;
+  can_create_time_slots?: boolean;
+  can_edit_delete_time_slots?: boolean;
+  can_view_time_slots?: boolean;
+  can_assign_members_to_slots?: boolean;
+  can_view_slot_members?: boolean;
 }
 
 export interface StaffBranchAssignment {
@@ -59,7 +67,7 @@ const StaffManagement = () => {
 
   return (
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-3 mb-6">
+        <TabsList className="grid w-full max-w-lg grid-cols-4 mb-6">
           <TabsTrigger value="trainers" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
             <AcademicCapIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
             <span>Trainers</span>
@@ -67,6 +75,10 @@ const StaffManagement = () => {
           <TabsTrigger value="staff" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
             <UserGroupIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
             <span>Other Staff</span>
+          </TabsTrigger>
+          <TabsTrigger value="timeslots" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
+            <ClockIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+            <span>Time Slots</span>
           </TabsTrigger>
           <TabsTrigger value="overview" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
             <ChartBarIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
@@ -91,6 +103,14 @@ const StaffManagement = () => {
             currentBranch={currentBranch}
             onRefresh={() => refetch()}
             isLoading={isLoading}
+          />
+        </TabsContent>
+
+        <TabsContent value="timeslots">
+          <TimeSlotManagement
+            trainers={trainers}
+            currentBranch={currentBranch}
+            allStaff={staff}
           />
         </TabsContent>
 
