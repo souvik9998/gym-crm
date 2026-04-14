@@ -18,7 +18,10 @@ import {
   User,
   Clock,
   AlertCircle,
+  TicketPercent,
 } from "lucide-react";
+import CouponInput from "@/components/ui/coupon-input";
+import { useCouponValidation } from "@/hooks/useCouponValidation";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
