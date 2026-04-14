@@ -77,6 +77,9 @@ export interface PackageSelectionData {
   ptEndDate?: string;
   startDate?: string;
   ptStartDate?: string;
+  couponId?: string;
+  couponCode?: string;
+  couponDiscount?: number;
 }
 
 // Skeleton for loading state
@@ -313,7 +316,15 @@ const PackageSelectionForm = ({
   const subtotal = subscriptionAmount + joiningFee + trainerFee;
   const taxRate = taxSettings?.taxEnabled ? taxSettings.taxRate : 0;
   const taxAmount = taxRate > 0 ? Math.round((subtotal * taxRate) / 100) : 0;
-  const totalAmount = subtotal + taxAmount;
+
+  const coupon = useCouponValidation({
+    branchId,
+    isNewMember,
+    subtotal: subtotal + taxAmount,
+  });
+
+  const couponDiscount = coupon.appliedCoupon?.discountAmount || 0;
+  const totalAmount = Math.max(0, subtotal + taxAmount - couponDiscount);
 
   const parsedExistingMembershipEndDate = existingMembershipEndDate ? new Date(existingMembershipEndDate) : null;
   const parsedExistingPTEndDate = existingPTEndDate ? new Date(existingPTEndDate) : null;
@@ -350,6 +361,9 @@ const PackageSelectionForm = ({
       ptEndDate: wantsTrainer && selectedPTOption ? format(selectedPTOption.endDate, "yyyy-MM-dd") : undefined,
       startDate: format(selectedStartDate, "yyyy-MM-dd"),
       ptStartDate: wantsTrainer ? format(ptStartDate, "yyyy-MM-dd") : undefined,
+      couponId: coupon.appliedCoupon?.coupon.id,
+      couponCode: coupon.appliedCoupon?.coupon.code,
+      couponDiscount,
     });
   };
 
