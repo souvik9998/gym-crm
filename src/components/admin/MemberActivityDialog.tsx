@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { MemberHealthTab } from "./health/MemberHealthTab";
 import { AssignTrainerDialog } from "./AssignTrainerDialog";
 import {
@@ -31,6 +32,8 @@ import {
   Wallet,
   Plus,
   RefreshCw,
+  MessageCircle,
+  Loader2 as Spinner,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +74,7 @@ interface PTSubscription {
   total_fee: number;
   status: string;
   personal_trainer: { id: string; name: string; specialization: string | null } | null;
+  time_slot: { id: string; start_time: string; end_time: string } | null;
 }
 
 interface MemberDetails {
@@ -119,6 +123,7 @@ export const MemberActivityDialog = ({
   const [activeTab, setActiveTab] = useState("overview");
   const [showAssignTrainer, setShowAssignTrainer] = useState(false);
   const [assignMode, setAssignMode] = useState<"assign" | "replace">("assign");
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && memberId) {
@@ -166,15 +171,15 @@ export const MemberActivityDialog = ({
 
       const { data: ptData } = await supabase
         .from("pt_subscriptions")
-        .select("*, personal_trainer:personal_trainers(id, name, specialization)")
+        .select("*, personal_trainer:personal_trainers(id, name, specialization), time_slot:trainer_time_slots(id, start_time, end_time)")
         .eq("member_id", memberId)
         .order("created_at", { ascending: false });
 
       if (ptData) {
-        setPtSubscriptions(ptData);
+        setPtSubscriptions(ptData as any);
         const today = new Date().toISOString().split("T")[0];
         const active = ptData.find(pt => pt.end_date >= today && pt.status === "active");
-        setActivePT(active || null);
+        setActivePT((active as any) || null);
       }
     } catch (error) {
       console.error("Error fetching member data:", error);
@@ -232,6 +237,43 @@ export const MemberActivityDialog = ({
       month: "short",
       year: "numeric",
     });
+  };
+
+  const formatSlotTime = (time: string) => {
+    const [h, m] = time.split(":");
+    const hour = parseInt(h);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const h12 = hour % 12 || 12;
+    return `${h12}:${m} ${ampm}`;
+  };
+
+  const handleNotifyWhatsApp = async (pt: PTSubscription) => {
+    if (!member) return;
+    setIsSendingWhatsApp(pt.id);
+    try {
+      const trainerName = pt.personal_trainer?.name || "your trainer";
+      const slotInfo = pt.time_slot 
+        ? `\nTime Slot: ${formatSlotTime(pt.time_slot.start_time)} – ${formatSlotTime(pt.time_slot.end_time)}`
+        : "";
+      const message = `Hi ${member.name}, your personal trainer *${trainerName}* has been assigned.${slotInfo}\nPeriod: ${formatDate(pt.start_date)} to ${formatDate(pt.end_date)}`;
+
+      const { error } = await supabase.functions.invoke("send-whatsapp", {
+        body: {
+          phone: member.phone,
+          type: "custom",
+          customMessage: message,
+          branchId: member.branch_id,
+        },
+      });
+
+      if (error) throw error;
+      toast.success("WhatsApp notification sent!");
+    } catch (error: any) {
+      console.error("WhatsApp error:", error);
+      toast.error("Failed to send WhatsApp notification");
+    } finally {
+      setIsSendingWhatsApp(null);
+    }
   };
 
   const totalPaid = payments
@@ -510,22 +552,47 @@ export const MemberActivityDialog = ({
                               <Calendar className="w-3.5 h-3.5" />
                               {formatDate(pt.start_date)} — {formatDate(pt.end_date)}
                             </p>
+                            {pt.time_slot && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                <Clock className="w-3 h-3" />
+                                {formatSlotTime(pt.time_slot.start_time)} – {formatSlotTime(pt.time_slot.end_time)}
+                              </p>
+                            )}
                             {pt.personal_trainer?.specialization && (
                               <p className="text-xs text-muted-foreground/70">
                                 Specialization: {pt.personal_trainer.specialization}
                               </p>
                             )}
                           </div>
-                          <div className="text-right">
-                            <p className="font-bold text-accent flex items-center gap-0.5 text-sm">
+                          <div className="text-right space-y-1.5">
+                            <p className="font-bold text-accent flex items-center justify-end gap-0.5 text-sm">
                               <IndianRupee className="w-3.5 h-3.5" />
                               {Number(pt.total_fee).toLocaleString("en-IN")}
                             </p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                            <p className="text-[11px] text-muted-foreground">
                               ₹{Number(pt.monthly_fee).toLocaleString("en-IN")}/mo
                             </p>
                           </div>
                         </div>
+                        {/* WhatsApp Notify Button */}
+                        {pt.status === "active" && new Date(pt.end_date) >= new Date() && (
+                          <div className="mt-3 pt-2.5 border-t border-border/40">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full gap-1.5 text-xs h-8"
+                              disabled={isSendingWhatsApp === pt.id}
+                              onClick={() => handleNotifyWhatsApp(pt)}
+                            >
+                              {isSendingWhatsApp === pt.id ? (
+                                <Spinner className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
+                              )}
+                              Notify via WhatsApp
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </AnimatedItem>
                   ))

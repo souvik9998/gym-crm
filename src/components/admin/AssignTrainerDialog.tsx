@@ -18,13 +18,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Dumbbell, Loader2 } from "lucide-react";
+import { Dumbbell, Loader2, Clock } from "lucide-react";
 
 interface Trainer {
   id: string;
   name: string;
   monthly_fee: number;
   specialization: string | null;
+}
+
+interface TimeSlot {
+  id: string;
+  start_time: string;
+  end_time: string;
+  capacity: number;
+  current_count: number;
 }
 
 interface AssignTrainerDialogProps {
@@ -52,6 +60,8 @@ export const AssignTrainerDialog = ({
 }: AssignTrainerDialogProps) => {
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [selectedTrainerId, setSelectedTrainerId] = useState("");
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+  const [selectedTimeSlotId, setSelectedTimeSlotId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [monthlyFee, setMonthlyFee] = useState("");
@@ -61,12 +71,13 @@ export const AssignTrainerDialog = ({
   useEffect(() => {
     if (open) {
       fetchTrainers();
-      // Default dates
       const today = new Date().toISOString().split("T")[0];
       setStartDate(today);
       setEndDate(membershipEndDate || "");
       setSelectedTrainerId("");
+      setSelectedTimeSlotId("");
       setMonthlyFee("");
+      setTimeSlots([]);
     }
   }, [open, branchId]);
 
@@ -80,7 +91,6 @@ export const AssignTrainerDialog = ({
       .order("name");
 
     if (data) {
-      // Filter out existing trainer in replace mode
       const filtered = existingTrainerId
         ? data.filter((t) => t.id !== existingTrainerId)
         : data;
@@ -89,12 +99,47 @@ export const AssignTrainerDialog = ({
     setIsFetching(false);
   };
 
+  const fetchTimeSlots = async (trainerId: string) => {
+    const { data: slots } = await supabase
+      .from("trainer_time_slots")
+      .select("id, start_time, end_time, capacity")
+      .eq("trainer_id", trainerId)
+      .eq("branch_id", branchId)
+      .eq("status", "active");
+
+    if (slots) {
+      // Get member counts for each slot
+      const slotsWithCounts: TimeSlot[] = await Promise.all(
+        slots.map(async (slot) => {
+          const { count } = await supabase
+            .from("time_slot_members")
+            .select("*", { count: "exact", head: true })
+            .eq("time_slot_id", slot.id);
+          return { ...slot, current_count: count || 0 };
+        })
+      );
+      setTimeSlots(slotsWithCounts);
+    } else {
+      setTimeSlots([]);
+    }
+  };
+
   const handleTrainerChange = (trainerId: string) => {
     setSelectedTrainerId(trainerId);
+    setSelectedTimeSlotId("");
     const trainer = trainers.find((t) => t.id === trainerId);
     if (trainer) {
       setMonthlyFee(trainer.monthly_fee.toString());
     }
+    fetchTimeSlots(trainerId);
+  };
+
+  const formatTime = (time: string) => {
+    const [h, m] = time.split(":");
+    const hour = parseInt(h);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const h12 = hour % 12 || 12;
+    return `${h12}:${m} ${ampm}`;
   };
 
   const calculateTotalFee = () => {
@@ -128,8 +173,8 @@ export const AssignTrainerDialog = ({
 
       const totalFee = calculateTotalFee();
 
-      // Create new PT subscription
-      const { error } = await supabase.from("pt_subscriptions").insert({
+      // Create new PT subscription with time slot
+      const insertData: any = {
         member_id: memberId,
         personal_trainer_id: selectedTrainerId,
         branch_id: branchId,
@@ -138,9 +183,24 @@ export const AssignTrainerDialog = ({
         monthly_fee: Number(monthlyFee),
         total_fee: totalFee,
         status: "active",
-      });
+      };
 
+      if (selectedTimeSlotId) {
+        insertData.time_slot_id = selectedTimeSlotId;
+      }
+
+      const { error } = await supabase.from("pt_subscriptions").insert(insertData);
       if (error) throw error;
+
+      // Also add member to time_slot_members if slot selected
+      if (selectedTimeSlotId) {
+        await supabase.from("time_slot_members").insert({
+          time_slot_id: selectedTimeSlotId,
+          member_id: memberId,
+          branch_id: branchId,
+          assigned_by: "admin",
+        });
+      }
 
       toast.success(
         mode === "assign"
@@ -159,7 +219,7 @@ export const AssignTrainerDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Dumbbell className="w-4 h-4 text-accent" />
@@ -167,12 +227,13 @@ export const AssignTrainerDialog = ({
           </DialogTitle>
           <DialogDescription className="text-xs">
             {mode === "assign"
-              ? "Select a trainer and set the training period"
+              ? "Select a trainer, time slot, and set the training period"
               : "Choose a new trainer to replace the current one"}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
+          {/* Trainer Selection */}
           <div className="space-y-1.5">
             <Label className="text-sm">Trainer</Label>
             {isFetching ? (
@@ -204,6 +265,38 @@ export const AssignTrainerDialog = ({
               </Select>
             )}
           </div>
+
+          {/* Time Slot Selection */}
+          {selectedTrainerId && (
+            <div className="space-y-1.5">
+              <Label className="text-sm flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                Time Slot
+              </Label>
+              {timeSlots.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-1">No time slots available for this trainer</p>
+              ) : (
+                <Select value={selectedTimeSlotId} onValueChange={setSelectedTimeSlotId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select time slot (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeSlots.map((slot) => {
+                      const isFull = slot.current_count >= slot.capacity;
+                      return (
+                        <SelectItem key={slot.id} value={slot.id} disabled={isFull}>
+                          <span>{formatTime(slot.start_time)} – {formatTime(slot.end_time)}</span>
+                          <span className={`ml-2 ${isFull ? "text-destructive" : "text-muted-foreground"}`}>
+                            ({slot.current_count}/{slot.capacity}{isFull ? " Full" : ""})
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
