@@ -683,9 +683,50 @@ export const MembersTable = ({
     }
   });
 
-  // Apply time slot filter
-  const timeSlotFiltered = timeSlotFilter
-    ? filteredMembers.filter((m) => m.activePT?.time_slot_id === timeSlotFilter)
+  // Fetch member IDs for trainer/slot filter from time_slot_members
+  const { data: slotMemberIds } = useQuery({
+    queryKey: ["slot-member-ids", currentBranch?.id, trainerFilter, timeSlotFilter],
+    queryFn: async () => {
+      if (!currentBranch?.id) return null;
+
+      // If timeSlotFilter is set, just get members in that slot
+      if (timeSlotFilter) {
+        const { data } = await supabase
+          .from("time_slot_members" as any)
+          .select("member_id")
+          .eq("time_slot_id", timeSlotFilter);
+        return new Set((data as any[] || []).map((d: any) => d.member_id));
+      }
+
+      // If trainerFilter is set, get all slots for that trainer, then members
+      if (trainerFilter) {
+        const { data: slots } = await supabase
+          .from("trainer_time_slots" as any)
+          .select("id")
+          .eq("branch_id", currentBranch.id)
+          .eq("trainer_id", trainerFilter)
+          .eq("status", "available");
+        
+        if (!slots || slots.length === 0) return new Set<string>();
+        
+        const slotIds = (slots as any[]).map((s: any) => s.id);
+        const { data: members } = await supabase
+          .from("time_slot_members" as any)
+          .select("member_id")
+          .in("time_slot_id", slotIds);
+        
+        return new Set((members as any[] || []).map((d: any) => d.member_id));
+      }
+
+      return null; // no filter active
+    },
+    enabled: !!currentBranch?.id && (!!trainerFilter || !!timeSlotFilter),
+    staleTime: 30000,
+  });
+
+  // Apply trainer/slot filter
+  const timeSlotFiltered = (trainerFilter || timeSlotFilter) && slotMemberIds
+    ? filteredMembers.filter((m) => slotMemberIds.has(m.id))
     : filteredMembers;
 
   const handleSort = (field: SortField) => {
