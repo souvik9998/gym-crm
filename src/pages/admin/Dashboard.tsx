@@ -158,6 +158,8 @@ const AdminDashboard = () => {
     setMemberFilter,
     ptFilterActive,
     setPtFilterActive,
+    timeSlotFilter,
+    setTimeSlotFilter,
     sortBy,
     setSortBy,
     sortOrder,
