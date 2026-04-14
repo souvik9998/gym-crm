@@ -29,8 +29,8 @@ const Index = () => {
   const [membershipEndDate, setMembershipEndDate] = useState<string | null>(null);
   const [membershipStartDate, setMembershipStartDate] = useState<string | null>(null);
   const [showOptions, setShowOptions] = useState(false);
+  const [allowSelfSelectTrainer, setAllowSelfSelectTrainer] = useState(true);
   const [branchInfo, setBranchInfo] = useState<{ id: string; name: string; logo_url?: string | null } | null>(() => {
-    // Instantly restore cached branch info to avoid "Loading..."
     if (branchId) {
       const cached = sessionStorage.getItem(`branch-info-${branchId}`);
       if (cached) {
