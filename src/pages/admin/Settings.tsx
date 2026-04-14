@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment, memo, useCallback, lazy, Suspense } from "react";
+import { useState, useEffect, Fragment, memo, useCallback, lazy, Suspense, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -954,24 +954,70 @@ const AdminSettings = () => {
     { value: "subscription", label: "Subscription" },
   ];
 
+  const activeTabLabel = settingsTabs.find(t => t.value === activeTab)?.label || "Packages";
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [mobileMenuOpen]);
+
   return (
     <Fragment>
       <div className="max-w-4xl mx-auto px-1 sm:px-0">
-        <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val })}>
-          {/* Horizontal Tab Navigation */}
-          <div className="border-b border-border/60 mb-4 lg:mb-5">
-            <TabsList className="flex w-full h-auto bg-transparent p-0 gap-0 overflow-x-auto scrollbar-hide -mb-px">
+        <Tabs value={activeTab} onValueChange={(val) => { setSearchParams({ tab: val }); setMobileMenuOpen(false); }}>
+
+          {/* Mobile: dropdown tab selector */}
+          <div className="lg:hidden relative mb-4" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(prev => !prev)}
+              className="flex items-center justify-between w-full px-3 py-2.5 border border-border/60 rounded-lg bg-background text-sm font-medium text-foreground"
+            >
+              <span>{activeTabLabel}</span>
+              <svg className={cn("w-4 h-4 text-muted-foreground transition-transform", mobileMenuOpen && "rotate-180")} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            {mobileMenuOpen && (
+              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-background border border-border/60 rounded-lg shadow-lg py-1 animate-fade-in">
+                {settingsTabs.map((tab) => (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    className={cn(
+                      "w-full text-left px-4 py-2.5 text-sm font-medium rounded-none",
+                      "text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors",
+                      "data-[state=active]:text-primary data-[state=active]:bg-primary/5 data-[state=active]:font-semibold",
+                      "focus-visible:ring-0 focus-visible:ring-offset-0",
+                    )}
+                  >
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop: horizontal tabs */}
+          <div className="hidden lg:block border-b border-border/60 mb-5">
+            <TabsList className="flex w-full h-auto bg-transparent p-0 gap-0 -mb-px">
               {settingsTabs.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
                   className={cn(
-                    "px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium whitespace-nowrap rounded-none border-b-2 border-transparent",
+                    "px-4 py-2 text-sm font-medium whitespace-nowrap rounded-none border-b-2 border-transparent",
                     "text-muted-foreground hover:text-foreground transition-colors duration-200",
                     "data-[state=active]:text-foreground data-[state=active]:border-primary",
                     "data-[state=active]:bg-transparent data-[state=active]:shadow-none",
                     "focus-visible:ring-0 focus-visible:ring-offset-0",
-                    "flex-shrink-0",
                   )}
                 >
                   {tab.label}
