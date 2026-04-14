@@ -122,6 +122,7 @@ export const MemberActivityDialog = ({
   const [activeTab, setActiveTab] = useState("overview");
   const [showAssignTrainer, setShowAssignTrainer] = useState(false);
   const [assignMode, setAssignMode] = useState<"assign" | "replace">("assign");
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && memberId) {
