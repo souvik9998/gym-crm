@@ -203,6 +203,9 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
               <span className="text-sm font-semibold">{activePlan.plan_name}</span>
               <Badge className="bg-emerald-500/10 text-emerald-600 text-[10px] px-1.5 py-0 border-emerald-500/20">Active</Badge>
             </div>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDeletePlan(activePlan.id)}>
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
             <span>🎯 {activePlan.goal}</span>
