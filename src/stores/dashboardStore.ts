@@ -68,6 +68,8 @@ export const useDashboardStore = create<DashboardUIState>()(
       
       setPtFilterActive: (active) => set({ ptFilterActive: active }),
       
+      setTrainerFilter: (trainerId) => set({ trainerFilter: trainerId, timeSlotFilter: null }),
+      
       setTimeSlotFilter: (slotId) => set({ timeSlotFilter: slotId }),
       
       setSortBy: (sortBy) => set({ sortBy }),
