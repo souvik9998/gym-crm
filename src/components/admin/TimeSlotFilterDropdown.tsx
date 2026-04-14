@@ -158,9 +158,15 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
     staleTime: 30000,
   });
 
-  const allSlots = useMemo(() => trainerGroups.flatMap(g => g.slots), [trainerGroups]);
+  // Filter by selected trainer if any
+  const displayGroups = useMemo(() => {
+    if (!trainerFilter) return trainerGroups;
+    return trainerGroups.filter(g => g.trainer_id === trainerFilter);
+  }, [trainerGroups, trainerFilter]);
+
+  const allSlots = useMemo(() => displayGroups.flatMap(g => g.slots), [displayGroups]);
   const selectedSlot = allSlots.find((s) => s.id === value);
-  const selectedTrainer = trainerGroups.find(g => g.slots.some(s => s.id === value));
+  const selectedTrainer = displayGroups.find(g => g.slots.some(s => s.id === value));
   const hasSlots = allSlots.length > 0;
   const isActive = value !== null;
 
