@@ -85,7 +85,7 @@ export const AssignTrainerDialog = ({
     setIsFetching(true);
     const { data } = await supabase
       .from("personal_trainers")
-      .select("id, name, monthly_fee, specialization")
+      .select("id, name, monthly_fee, specialization, phone")
       .eq("branch_id", branchId)
       .eq("is_active", true)
       .order("name");
