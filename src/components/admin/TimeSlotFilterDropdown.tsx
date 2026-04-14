@@ -267,7 +267,7 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
 
             {/* Trainer groups */}
             <div className="p-2 space-y-1">
-              {trainerGroups.map((group, gIdx) => {
+              {displayGroups.map((group, gIdx) => {
                 const colorSet = slotColors[gIdx % slotColors.length];
                 const hasSelectedSlot = group.slots.some(s => s.id === value);
 
