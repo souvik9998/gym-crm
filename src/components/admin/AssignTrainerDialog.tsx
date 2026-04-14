@@ -104,8 +104,7 @@ export const AssignTrainerDialog = ({
       .from("trainer_time_slots")
       .select("id, start_time, end_time, capacity")
       .eq("trainer_id", trainerId)
-      .eq("branch_id", branchId)
-      .eq("status", "active");
+      .eq("branch_id", branchId);
 
     if (slots) {
       // Get member counts for each slot

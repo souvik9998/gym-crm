@@ -75,6 +75,8 @@ interface PTSubscription {
   status: string;
   personal_trainer: { id: string; name: string; specialization: string | null } | null;
   time_slot: { id: string; start_time: string; end_time: string } | null;
+  time_slot_id: string | null;
+  branch_id: string | null;
 }
 
 interface MemberDetails {
@@ -124,6 +126,10 @@ export const MemberActivityDialog = ({
   const [showAssignTrainer, setShowAssignTrainer] = useState(false);
   const [assignMode, setAssignMode] = useState<"assign" | "replace">("assign");
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState<string | null>(null);
+  const [assigningSlotForPt, setAssigningSlotForPt] = useState<PTSubscription | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<any[]>([]);
+  const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [isSavingSlot, setIsSavingSlot] = useState(false);
 
   useEffect(() => {
     if (open && memberId) {
@@ -273,6 +279,63 @@ export const MemberActivityDialog = ({
       toast.error("Failed to send WhatsApp notification");
     } finally {
       setIsSendingWhatsApp(null);
+    }
+  };
+
+  const handleOpenSlotAssign = async (pt: PTSubscription) => {
+    if (!pt.personal_trainer) return;
+    setAssigningSlotForPt(pt);
+    setSelectedSlotId("");
+    // Fetch available time slots for this trainer
+    const { data: slots } = await supabase
+      .from("trainer_time_slots")
+      .select("id, start_time, end_time, capacity, status")
+      .eq("trainer_id", pt.personal_trainer.id)
+      .eq("branch_id", pt.branch_id || member?.branch_id || "");
+
+    if (slots) {
+      const slotsWithCounts = await Promise.all(
+        slots.map(async (slot) => {
+          const { count } = await supabase
+            .from("time_slot_members")
+            .select("*", { count: "exact", head: true })
+            .eq("time_slot_id", slot.id);
+          return { ...slot, current_count: count || 0 };
+        })
+      );
+      setAvailableSlots(slotsWithCounts);
+    } else {
+      setAvailableSlots([]);
+    }
+  };
+
+  const handleSaveSlotAssignment = async () => {
+    if (!assigningSlotForPt || !selectedSlotId || !member) return;
+    setIsSavingSlot(true);
+    try {
+      // Update pt_subscription with time_slot_id
+      const { error: updateError } = await supabase
+        .from("pt_subscriptions")
+        .update({ time_slot_id: selectedSlotId })
+        .eq("id", assigningSlotForPt.id);
+      if (updateError) throw updateError;
+
+      // Add to time_slot_members
+      await supabase.from("time_slot_members").insert({
+        time_slot_id: selectedSlotId,
+        member_id: memberId!,
+        branch_id: member.branch_id,
+        assigned_by: "admin",
+      });
+
+      toast.success("Time slot assigned successfully!");
+      setAssigningSlotForPt(null);
+      fetchMemberData();
+    } catch (error: any) {
+      console.error("Error assigning slot:", error);
+      toast.error(error.message || "Failed to assign time slot");
+    } finally {
+      setIsSavingSlot(false);
     }
   };
 
@@ -574,23 +637,36 @@ export const MemberActivityDialog = ({
                             </p>
                           </div>
                         </div>
-                        {/* WhatsApp Notify Button */}
+                        {/* Action buttons for active PTs */}
                         {pt.status === "active" && new Date(pt.end_date) >= new Date() && (
-                          <div className="mt-3 pt-2.5 border-t border-border/40">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full gap-1.5 text-xs h-8"
-                              disabled={isSendingWhatsApp === pt.id}
-                              onClick={() => handleNotifyWhatsApp(pt)}
-                            >
-                              {isSendingWhatsApp === pt.id ? (
-                                <Spinner className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
-                              )}
-                              Notify via WhatsApp
-                            </Button>
+                          <div className="mt-3 pt-2.5 border-t border-border/40 space-y-2">
+                            {!pt.time_slot && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full gap-1.5 text-xs h-8"
+                                onClick={() => handleOpenSlotAssign(pt)}
+                              >
+                                <Clock className="w-3.5 h-3.5 text-amber-500" />
+                                Assign Time Slot
+                              </Button>
+                            )}
+                            {pt.time_slot && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full gap-1.5 text-xs h-8"
+                                disabled={isSendingWhatsApp === pt.id}
+                                onClick={() => handleNotifyWhatsApp(pt)}
+                              >
+                                {isSendingWhatsApp === pt.id ? (
+                                  <Spinner className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
+                                )}
+                                Notify via WhatsApp
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -612,6 +688,69 @@ export const MemberActivityDialog = ({
                   membershipEndDate={subscriptions.find(s => s.status === "active" || s.status === "expiring_soon")?.end_date}
                   onSuccess={fetchMemberData}
                 />
+              )}
+
+              {/* Assign Time Slot Dialog */}
+              {assigningSlotForPt && (
+                <Dialog open={!!assigningSlotForPt} onOpenChange={(open) => !open && setAssigningSlotForPt(null)}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2 text-base">
+                        <Clock className="w-4 h-4 text-accent" />
+                        Assign Time Slot
+                      </DialogTitle>
+                      <DialogDescription className="text-xs">
+                        Select a time slot for {assigningSlotForPt.personal_trainer?.name}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3 pt-2">
+                      {availableSlots.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">No time slots available for this trainer</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {availableSlots.map((slot) => {
+                            const isFull = slot.current_count >= slot.capacity;
+                            return (
+                              <button
+                                key={slot.id}
+                                disabled={isFull}
+                                onClick={() => setSelectedSlotId(slot.id)}
+                                className={cn(
+                                  "w-full flex items-center justify-between p-3 rounded-lg border text-sm transition-all",
+                                  selectedSlotId === slot.id
+                                    ? "border-accent bg-accent/5 ring-1 ring-accent/20"
+                                    : "border-border/60 hover:border-border",
+                                  isFull && "opacity-50 cursor-not-allowed"
+                                )}
+                              >
+                                <span className="flex items-center gap-2">
+                                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                                  {formatSlotTime(slot.start_time)} – {formatSlotTime(slot.end_time)}
+                                </span>
+                                <span className={cn("text-xs", isFull ? "text-destructive" : "text-muted-foreground")}>
+                                  {slot.current_count}/{slot.capacity}{isFull ? " Full" : ""}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <div className="flex gap-2 pt-2">
+                        <Button variant="outline" className="flex-1" onClick={() => setAssigningSlotForPt(null)}>
+                          Cancel
+                        </Button>
+                        <Button
+                          className="flex-1"
+                          disabled={!selectedSlotId || isSavingSlot}
+                          onClick={handleSaveSlotAssignment}
+                        >
+                          {isSavingSlot && <Spinner className="w-4 h-4 animate-spin mr-2" />}
+                          Assign Slot
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               )}
             </TabsContent>
 
