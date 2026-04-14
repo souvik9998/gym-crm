@@ -416,7 +416,16 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
   
   const subtotalAmount = gymAmount + ptAmount;
   const taxAmount = taxEnabled && taxRate > 0 ? Math.round((subtotalAmount * taxRate) / 100) : 0;
-  const totalAmount = subtotalAmount + taxAmount;
+
+  const adminCoupon = useCouponValidation({
+    branchId: currentBranch?.id,
+    isNewMember: false,
+    memberId: member?.id,
+    subtotal: subtotalAmount + taxAmount,
+  });
+
+  const couponDiscount = adminCoupon.appliedCoupon?.discountAmount || 0;
+  const totalAmount = Math.max(0, subtotalAmount + taxAmount - couponDiscount);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
