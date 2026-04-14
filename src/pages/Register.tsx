@@ -30,6 +30,7 @@ interface RegistrationFieldSettings {
   identity_proof_upload?: FieldSetting;
   health_details?: FieldSetting;
   medical_records_upload?: FieldSetting;
+  self_select_trainer?: FieldSetting;
 }
 
 const Register = () => {
