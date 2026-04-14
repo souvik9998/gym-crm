@@ -84,6 +84,7 @@ export const AssignTrainerDialog = ({
       setSelectedTrainerId("");
       setSelectedTimeSlotId("");
       setMonthlyFee("");
+      setNotifyWhatsApp(false);
       setTimeSlots([]);
     }
   }, [open, branchId]);
