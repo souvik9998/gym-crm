@@ -77,9 +77,10 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
   monthlyPackages: PublicMonthlyPackage[];
   customPackages: PublicCustomPackage[];
   taxSettings?: PublicTaxSettings;
+  allowSelfSelectTrainer?: boolean;
 }> {
   const cacheKey = `public-packages-${branchId || "all"}`;
-  const cached = getCached<{ monthlyPackages: PublicMonthlyPackage[]; customPackages: PublicCustomPackage[]; taxSettings?: PublicTaxSettings }>(cacheKey);
+  const cached = getCached<{ monthlyPackages: PublicMonthlyPackage[]; customPackages: PublicCustomPackage[]; taxSettings?: PublicTaxSettings; allowSelfSelectTrainer?: boolean }>(cacheKey);
   if (cached) return cached;
 
   try {
@@ -108,6 +109,7 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
       monthlyPackages: data.monthlyPackages || [],
       customPackages: data.customPackages || [],
       taxSettings: data.taxSettings || undefined,
+      allowSelfSelectTrainer: data.allowSelfSelectTrainer !== false,
     };
     setCache(cacheKey, result);
     return result;
