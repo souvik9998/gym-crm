@@ -762,6 +762,7 @@ const AdminDashboard = () => {
                   refreshKey={refreshKey} 
                   filterValue={memberFilter}
                   ptFilterActive={ptFilterActive}
+                  trainerFilter={trainerFilter}
                   timeSlotFilter={timeSlotFilter}
                   sortBy={sortBy}
                   sortOrder={sortOrder}
