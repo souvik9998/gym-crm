@@ -229,6 +229,33 @@ export const AssignTrainerDialog = ({
         });
       }
 
+      // Send WhatsApp notification if checked
+      if (notifyWhatsApp && memberName) {
+        try {
+          const selectedTrainer = trainers.find(t => t.id === selectedTrainerId);
+          const trainerName = selectedTrainer?.name || "your trainer";
+          const selectedSlot = timeSlots.find(s => s.id === selectedTimeSlotId);
+          const slotInfo = selectedSlot 
+            ? `\nTime Slot: ${formatTime(selectedSlot.start_time)} – ${formatTime(selectedSlot.end_time)}`
+            : "";
+          const formatDateStr = (d: string) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+          const message = `Hi ${memberName}, your personal trainer *${trainerName}* has been assigned.${slotInfo}\nPeriod: ${formatDateStr(startDate)} to ${formatDateStr(endDate)}`;
+
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              memberIds: [memberId],
+              type: "custom",
+              customMessage: message,
+              branchId,
+            },
+          });
+          toast.success("WhatsApp notification sent!");
+        } catch (whatsAppError) {
+          console.error("WhatsApp notify error:", whatsAppError);
+          toast.error("Trainer assigned but WhatsApp notification failed");
+        }
+      }
+
       toast.success(
         mode === "assign"
           ? "Trainer assigned successfully"
