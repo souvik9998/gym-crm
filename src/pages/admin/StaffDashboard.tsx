@@ -22,6 +22,7 @@ import DailyPassTable from "@/components/admin/DailyPassTable";
 import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
 // AddPaymentDialog removed - payment mode now selected in AddMemberDialog
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
+import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 import { toast } from "@/components/ui/sonner";
 import {
   Popover,
@@ -97,6 +98,7 @@ const StaffDashboard = () => {
   const [activeTab, setActiveTab] = useState("members");
   const [memberFilter, setMemberFilter] = useState<MemberFilterValue>("all");
   const [ptFilterActive, setPtFilterActive] = useState(false);
+  const [timeSlotFilter, setTimeSlotFilter] = useState<string | null>(null);
   const [sortOpen, setSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState<"name" | "join_date" | "end_date">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -337,11 +339,17 @@ const StaffDashboard = () => {
                     {/* Filter Section */}
                     <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
                       {activeTab === "members" && (
-                        <MemberFilter
-                          value={memberFilter}
-                          onChange={handleMemberFilterChange}
-                          counts={filterCounts}
-                        />
+                        <>
+                          <MemberFilter
+                            value={memberFilter}
+                            onChange={handleMemberFilterChange}
+                            counts={filterCounts}
+                          />
+                          <TimeSlotFilterDropdown
+                            value={timeSlotFilter}
+                            onChange={setTimeSlotFilter}
+                          />
+                        </>
                       )}
                     </div>
 
@@ -370,6 +378,7 @@ const StaffDashboard = () => {
                   searchQuery={searchQuery}
                   filterValue={memberFilter}
                   ptFilterActive={ptFilterActive}
+                  timeSlotFilter={timeSlotFilter}
                   sortBy={sortBy}
                   sortOrder={sortOrder}
                   refreshKey={refreshKey}
