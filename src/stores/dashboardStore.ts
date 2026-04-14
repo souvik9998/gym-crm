@@ -21,6 +21,10 @@ interface DashboardUIState {
   ptFilterActive: boolean;
   setPtFilterActive: (active: boolean) => void;
   
+  // Trainer filter
+  trainerFilter: string | null;
+  setTrainerFilter: (trainerId: string | null) => void;
+  
   // Time slot filter
   timeSlotFilter: string | null; // time_slot_id or null for "all"
   setTimeSlotFilter: (slotId: string | null) => void;
