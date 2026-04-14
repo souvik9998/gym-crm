@@ -83,6 +83,7 @@ interface MemberData {
   phone: string;
   email: string | null;
   join_date: string;
+  branch_id: string;
 }
 
 // Staggered animation wrapper
