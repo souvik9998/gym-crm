@@ -956,22 +956,17 @@ const AdminSettings = () => {
 
   return (
     <Fragment>
-      <div className="max-w-4xl mx-auto">
-        {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-        </div>
-
+      <div className="max-w-4xl mx-auto px-1 sm:px-0">
         <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val })}>
           {/* Horizontal Tab Navigation */}
-          <div className="border-b border-border/60 mb-6">
+          <div className="border-b border-border/60 mb-4 lg:mb-5">
             <TabsList className="flex w-full h-auto bg-transparent p-0 gap-0 overflow-x-auto scrollbar-hide -mb-px">
               {settingsTabs.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
                   className={cn(
-                    "px-4 py-2.5 text-sm font-medium whitespace-nowrap rounded-none border-b-2 border-transparent",
+                    "px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium whitespace-nowrap rounded-none border-b-2 border-transparent",
                     "text-muted-foreground hover:text-foreground transition-colors duration-200",
                     "data-[state=active]:text-foreground data-[state=active]:border-primary",
                     "data-[state=active]:bg-transparent data-[state=active]:shadow-none",
