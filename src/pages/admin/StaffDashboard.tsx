@@ -23,6 +23,7 @@ import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
 // AddPaymentDialog removed - payment mode now selected in AddMemberDialog
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
+import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { toast } from "@/components/ui/sonner";
 import {
   Popover,
@@ -98,6 +99,7 @@ const StaffDashboard = () => {
   const [activeTab, setActiveTab] = useState("members");
   const [memberFilter, setMemberFilter] = useState<MemberFilterValue>("all");
   const [ptFilterActive, setPtFilterActive] = useState(false);
+  const [trainerFilter, setTrainerFilter] = useState<string | null>(null);
   const [timeSlotFilter, setTimeSlotFilter] = useState<string | null>(null);
   const [sortOpen, setSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState<"name" | "join_date" | "end_date">("name");
@@ -345,9 +347,14 @@ const StaffDashboard = () => {
                             onChange={handleMemberFilterChange}
                             counts={filterCounts}
                           />
+                          <TrainerFilterDropdown
+                            value={trainerFilter}
+                            onChange={(v) => { setTrainerFilter(v); setTimeSlotFilter(null); }}
+                          />
                           <TimeSlotFilterDropdown
                             value={timeSlotFilter}
                             onChange={setTimeSlotFilter}
+                            trainerFilter={trainerFilter}
                           />
                         </>
                       )}
@@ -378,6 +385,7 @@ const StaffDashboard = () => {
                   searchQuery={searchQuery}
                   filterValue={memberFilter}
                   ptFilterActive={ptFilterActive}
+                  trainerFilter={trainerFilter}
                   timeSlotFilter={timeSlotFilter}
                   sortBy={sortBy}
                   sortOrder={sortOrder}

@@ -23,6 +23,7 @@ import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
 // AddPaymentDialog removed - payment mode now selected in AddMemberDialog
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
+import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { toast } from "@/components/ui/sonner";
 import {
@@ -159,6 +160,8 @@ const AdminDashboard = () => {
     setMemberFilter,
     ptFilterActive,
     setPtFilterActive,
+    trainerFilter,
+    setTrainerFilter,
     timeSlotFilter,
     setTimeSlotFilter,
     sortBy,
@@ -633,6 +636,12 @@ const AdminDashboard = () => {
                     <TimeSlotFilterDropdown
                       value={timeSlotFilter}
                       onChange={setTimeSlotFilter}
+                      trainerFilter={trainerFilter}
+                      compact={true}
+                    />
+                    <TrainerFilterDropdown
+                      value={trainerFilter}
+                      onChange={setTrainerFilter}
                       compact={true}
                     />
                   </div>
@@ -734,9 +743,14 @@ const AdminDashboard = () => {
                     onPtFilterChange={handlePtFilterChange}
                     mobileMode={false}
                   />
+                  <TrainerFilterDropdown
+                    value={trainerFilter}
+                    onChange={setTrainerFilter}
+                  />
                   <TimeSlotFilterDropdown
                     value={timeSlotFilter}
                     onChange={setTimeSlotFilter}
+                    trainerFilter={trainerFilter}
                   />
                 </div>
 
@@ -748,6 +762,7 @@ const AdminDashboard = () => {
                   refreshKey={refreshKey} 
                   filterValue={memberFilter}
                   ptFilterActive={ptFilterActive}
+                  trainerFilter={trainerFilter}
                   timeSlotFilter={timeSlotFilter}
                   sortBy={sortBy}
                   sortOrder={sortOrder}

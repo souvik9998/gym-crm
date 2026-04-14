@@ -21,6 +21,10 @@ interface DashboardUIState {
   ptFilterActive: boolean;
   setPtFilterActive: (active: boolean) => void;
   
+  // Trainer filter
+  trainerFilter: string | null;
+  setTrainerFilter: (trainerId: string | null) => void;
+  
   // Time slot filter
   timeSlotFilter: string | null; // time_slot_id or null for "all"
   setTimeSlotFilter: (slotId: string | null) => void;
@@ -44,6 +48,7 @@ const initialState = {
   activeTab: "members",
   memberFilter: "all" as MemberFilterValue,
   ptFilterActive: false,
+  trainerFilter: null as string | null,
   timeSlotFilter: null as string | null,
   sortBy: "name" as SortByValue,
   sortOrder: "asc" as SortOrderValue,
@@ -63,6 +68,8 @@ export const useDashboardStore = create<DashboardUIState>()(
       
       setPtFilterActive: (active) => set({ ptFilterActive: active }),
       
+      setTrainerFilter: (trainerId) => set({ trainerFilter: trainerId, timeSlotFilter: null }),
+      
       setTimeSlotFilter: (slotId) => set({ timeSlotFilter: slotId }),
       
       setSortBy: (sortBy) => set({ sortBy }),
@@ -75,6 +82,7 @@ export const useDashboardStore = create<DashboardUIState>()(
         activeTab: initialState.activeTab,
         memberFilter: initialState.memberFilter,
         ptFilterActive: initialState.ptFilterActive,
+        trainerFilter: initialState.trainerFilter,
         timeSlotFilter: initialState.timeSlotFilter,
         sortBy: initialState.sortBy,
         sortOrder: initialState.sortOrder,
@@ -90,6 +98,7 @@ export const useDashboardStore = create<DashboardUIState>()(
         activeTab: state.activeTab,
         memberFilter: state.memberFilter,
         ptFilterActive: state.ptFilterActive,
+        trainerFilter: state.trainerFilter,
         timeSlotFilter: state.timeSlotFilter,
         sortBy: state.sortBy,
         sortOrder: state.sortOrder,

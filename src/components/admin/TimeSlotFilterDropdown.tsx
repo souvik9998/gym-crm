@@ -36,6 +36,7 @@ interface TrainerGroup {
 interface TimeSlotFilterDropdownProps {
   value: string | null;
   onChange: (slotId: string | null) => void;
+  trainerFilter?: string | null;
   compact?: boolean;
 }
 
@@ -59,7 +60,7 @@ const slotColors = [
   { bg: "bg-rose-50 dark:bg-rose-950/30", border: "border-rose-200 dark:border-rose-800", text: "text-rose-700 dark:text-rose-300", bar: "bg-rose-500", activeBg: "bg-rose-100 dark:bg-rose-900/50", ring: "ring-rose-300/50" },
 ];
 
-export const TimeSlotFilterDropdown = ({ value, onChange, compact = false }: TimeSlotFilterDropdownProps) => {
+export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, compact = false }: TimeSlotFilterDropdownProps) => {
   const [open, setOpen] = useState(false);
   const { currentBranch } = useBranch();
 
@@ -157,9 +158,15 @@ export const TimeSlotFilterDropdown = ({ value, onChange, compact = false }: Tim
     staleTime: 30000,
   });
 
-  const allSlots = useMemo(() => trainerGroups.flatMap(g => g.slots), [trainerGroups]);
+  // Filter by selected trainer if any
+  const displayGroups = useMemo(() => {
+    if (!trainerFilter) return trainerGroups;
+    return trainerGroups.filter(g => g.trainer_id === trainerFilter);
+  }, [trainerGroups, trainerFilter]);
+
+  const allSlots = useMemo(() => displayGroups.flatMap(g => g.slots), [displayGroups]);
   const selectedSlot = allSlots.find((s) => s.id === value);
-  const selectedTrainer = trainerGroups.find(g => g.slots.some(s => s.id === value));
+  const selectedTrainer = displayGroups.find(g => g.slots.some(s => s.id === value));
   const hasSlots = allSlots.length > 0;
   const isActive = value !== null;
 
@@ -260,7 +267,7 @@ export const TimeSlotFilterDropdown = ({ value, onChange, compact = false }: Tim
 
             {/* Trainer groups */}
             <div className="p-2 space-y-1">
-              {trainerGroups.map((group, gIdx) => {
+              {displayGroups.map((group, gIdx) => {
                 const colorSet = slotColors[gIdx % slotColors.length];
                 const hasSelectedSlot = group.slots.some(s => s.id === value);
 
