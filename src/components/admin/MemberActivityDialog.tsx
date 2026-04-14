@@ -282,6 +282,63 @@ export const MemberActivityDialog = ({
     }
   };
 
+  const handleOpenSlotAssign = async (pt: PTSubscription) => {
+    if (!pt.personal_trainer) return;
+    setAssigningSlotForPt(pt);
+    setSelectedSlotId("");
+    // Fetch available time slots for this trainer
+    const { data: slots } = await supabase
+      .from("trainer_time_slots")
+      .select("id, start_time, end_time, capacity, status")
+      .eq("trainer_id", pt.personal_trainer.id)
+      .eq("branch_id", pt.branch_id || member?.branch_id || "");
+
+    if (slots) {
+      const slotsWithCounts = await Promise.all(
+        slots.map(async (slot) => {
+          const { count } = await supabase
+            .from("time_slot_members")
+            .select("*", { count: "exact", head: true })
+            .eq("time_slot_id", slot.id);
+          return { ...slot, current_count: count || 0 };
+        })
+      );
+      setAvailableSlots(slotsWithCounts);
+    } else {
+      setAvailableSlots([]);
+    }
+  };
+
+  const handleSaveSlotAssignment = async () => {
+    if (!assigningSlotForPt || !selectedSlotId || !member) return;
+    setIsSavingSlot(true);
+    try {
+      // Update pt_subscription with time_slot_id
+      const { error: updateError } = await supabase
+        .from("pt_subscriptions")
+        .update({ time_slot_id: selectedSlotId })
+        .eq("id", assigningSlotForPt.id);
+      if (updateError) throw updateError;
+
+      // Add to time_slot_members
+      await supabase.from("time_slot_members").insert({
+        time_slot_id: selectedSlotId,
+        member_id: memberId!,
+        branch_id: member.branch_id,
+        assigned_by: "admin",
+      });
+
+      toast.success("Time slot assigned successfully!");
+      setAssigningSlotForPt(null);
+      fetchMemberData();
+    } catch (error: any) {
+      console.error("Error assigning slot:", error);
+      toast.error(error.message || "Failed to assign time slot");
+    } finally {
+      setIsSavingSlot(false);
+    }
+  };
+
   const totalPaid = payments
     .filter((p) => p.status === "success")
     .reduce((sum, p) => sum + Number(p.amount), 0);
