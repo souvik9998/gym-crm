@@ -977,6 +977,11 @@ const AdminSettings = () => {
             </TabsTrigger>
           </TabsList>
 
+          {/* Registration Fields Tab */}
+          <TabsContent value="registration" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6 animate-fade-in">
+            <RegistrationFieldsSettings />
+          </TabsContent>
+
           {/* Packages Tab */}
           <TabsContent value="packages" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6 animate-fade-in">
             {isLoadingData ? (
