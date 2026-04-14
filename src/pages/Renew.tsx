@@ -28,6 +28,7 @@ const Renew = () => {
   const [existingMembershipEndDate, setExistingMembershipEndDate] = useState<string | null>(null);
   const [existingPTEndDate, setExistingPTEndDate] = useState<string | null>(null);
   const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(null);
+  const [allowSelfSelectTrainer, setAllowSelfSelectTrainer] = useState(true);
 
   const branchId = stateBranchId || member?.branch_id;
 
