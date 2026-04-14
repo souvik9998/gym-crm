@@ -126,6 +126,10 @@ export const MemberActivityDialog = ({
   const [showAssignTrainer, setShowAssignTrainer] = useState(false);
   const [assignMode, setAssignMode] = useState<"assign" | "replace">("assign");
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState<string | null>(null);
+  const [assigningSlotForPt, setAssigningSlotForPt] = useState<PTSubscription | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<any[]>([]);
+  const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [isSavingSlot, setIsSavingSlot] = useState(false);
 
   useEffect(() => {
     if (open && memberId) {
