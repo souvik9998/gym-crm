@@ -637,23 +637,36 @@ export const MemberActivityDialog = ({
                             </p>
                           </div>
                         </div>
-                        {/* WhatsApp Notify Button */}
+                        {/* Action buttons for active PTs */}
                         {pt.status === "active" && new Date(pt.end_date) >= new Date() && (
-                          <div className="mt-3 pt-2.5 border-t border-border/40">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full gap-1.5 text-xs h-8"
-                              disabled={isSendingWhatsApp === pt.id}
-                              onClick={() => handleNotifyWhatsApp(pt)}
-                            >
-                              {isSendingWhatsApp === pt.id ? (
-                                <Spinner className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
-                              )}
-                              Notify via WhatsApp
-                            </Button>
+                          <div className="mt-3 pt-2.5 border-t border-border/40 space-y-2">
+                            {!pt.time_slot && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full gap-1.5 text-xs h-8"
+                                onClick={() => handleOpenSlotAssign(pt)}
+                              >
+                                <Clock className="w-3.5 h-3.5 text-amber-500" />
+                                Assign Time Slot
+                              </Button>
+                            )}
+                            {pt.time_slot && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full gap-1.5 text-xs h-8"
+                                disabled={isSendingWhatsApp === pt.id}
+                                onClick={() => handleNotifyWhatsApp(pt)}
+                              >
+                                {isSendingWhatsApp === pt.id ? (
+                                  <Spinner className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
+                                )}
+                                Notify via WhatsApp
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
