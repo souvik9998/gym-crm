@@ -265,7 +265,7 @@ export const MemberActivityDialog = ({
 
       const { error } = await supabase.functions.invoke("send-whatsapp", {
         body: {
-          phone: member.phone,
+          memberIds: [member.id],
           type: "custom",
           customMessage: message,
           branchId: member.branch_id,
