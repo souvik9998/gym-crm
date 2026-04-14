@@ -269,134 +269,97 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
               </div>
             </div>
 
-            {/* Trainer groups */}
+            {/* Flat slot list */}
             <div className="p-2 space-y-1">
-              {displayGroups.map((group, gIdx) => {
-                const colorSet = slotColors[gIdx % slotColors.length];
-                const hasSelectedSlot = group.slots.some(s => s.id === value);
+              {allSlots.map((slot, sIdx) => {
+                const colorSet = slotColors[sIdx % slotColors.length];
+                const isSelected = value === slot.id;
+                const isFull = slot.members.length >= slot.capacity;
+                const fillPct = Math.min((slot.members.length / slot.capacity) * 100, 100);
 
                 return (
-                  <div
-                    key={group.trainer_id}
+                  <button
+                    key={slot.id}
+                    onClick={() => {
+                      onChange(isSelected ? null : slot.id);
+                      setOpen(false);
+                    }}
                     className={cn(
-                      "rounded-lg border transition-all duration-300 overflow-hidden",
+                      "w-full text-left rounded-lg px-3 py-2.5 transition-all duration-200",
+                      "hover:scale-[1.01] active:scale-[0.99]",
                       "animate-fade-in",
-                      hasSelectedSlot
-                        ? `${colorSet.activeBg} ${colorSet.border} shadow-sm`
-                        : "border-transparent hover:border-border/40 hover:bg-muted/30"
+                      isSelected
+                        ? `${colorSet.activeBg} ${colorSet.border} border shadow-sm ring-1 ${colorSet.ring}`
+                        : "border border-transparent hover:bg-muted/50"
                     )}
-                    style={{ animationDelay: `${gIdx * 70}ms` }}
+                    style={{ animationDelay: `${sIdx * 50}ms` }}
                   >
-                    {/* Trainer header */}
-                    <div className="flex items-center gap-2.5 px-3 py-2">
-                      <Avatar className="w-7 h-7 ring-2 ring-background shadow-sm">
-                        <AvatarFallback className={cn("text-[10px] font-bold", colorSet.bg, colorSet.text)}>
-                          {getInitials(group.trainer_name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-foreground truncate">{group.trainer_name}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {group.slots.length} slot{group.slots.length !== 1 ? "s" : ""} · {group.total_members} member{group.total_members !== 1 ? "s" : ""}
-                        </p>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <Clock className={cn("w-3.5 h-3.5", isSelected ? colorSet.text : "text-muted-foreground")} />
+                        <span className={cn(
+                          "text-xs font-semibold",
+                          isSelected ? colorSet.text : "text-foreground"
+                        )}>
+                          {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
+                        </span>
+                        {isSelected && (
+                          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center animate-scale-in", colorSet.bar)}>
+                            <Check className="w-2.5 h-2.5 text-white" />
+                          </div>
+                        )}
                       </div>
+                      <span className={cn(
+                        "text-[10px] font-medium tabular-nums px-1.5 py-0.5 rounded-md",
+                        isFull ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
+                      )}>
+                        {slot.members.length}/{slot.capacity}
+                      </span>
                     </div>
 
-                    {/* Slots */}
-                    <div className="px-2 pb-2 space-y-1">
-                      {group.slots.map((slot, sIdx) => {
-                        const isSelected = value === slot.id;
-                        const isFull = slot.members.length >= slot.capacity;
-                        const fillPct = Math.min((slot.members.length / slot.capacity) * 100, 100);
-
-                        return (
-                          <button
-                            key={slot.id}
-                            onClick={() => {
-                              onChange(isSelected ? null : slot.id);
-                              setOpen(false);
-                            }}
-                            className={cn(
-                              "w-full text-left rounded-lg px-3 py-2 transition-all duration-200",
-                              "hover:scale-[1.01] active:scale-[0.99]",
-                              "animate-fade-in",
-                              isSelected
-                                ? `${colorSet.activeBg} ${colorSet.border} border shadow-sm ring-1 ${colorSet.ring}`
-                                : "border border-transparent hover:bg-muted/50"
-                            )}
-                            style={{ animationDelay: `${gIdx * 70 + sIdx * 40}ms` }}
-                          >
-                            <div className="flex items-center justify-between mb-1.5">
-                              <div className="flex items-center gap-2">
-                                <Clock className={cn("w-3.5 h-3.5", isSelected ? colorSet.text : "text-muted-foreground")} />
-                                <span className={cn(
-                                  "text-xs font-semibold",
-                                  isSelected ? colorSet.text : "text-foreground"
-                                )}>
-                                  {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
-                                </span>
-                                {isSelected && (
-                                  <div className={cn("w-4 h-4 rounded-full flex items-center justify-center animate-scale-in", colorSet.bar)}>
-                                    <Check className="w-2.5 h-2.5 text-white" />
-                                  </div>
-                                )}
-                              </div>
-                              <span className={cn(
-                                "text-[10px] font-medium tabular-nums px-1.5 py-0.5 rounded-md",
-                                isFull ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
-                              )}>
-                                {slot.members.length}/{slot.capacity}
-                              </span>
-                            </div>
-
-                            {/* Capacity bar */}
-                            <div className="w-full h-1 bg-muted/60 rounded-full overflow-hidden mb-2">
-                              <div
-                                className={cn(
-                                  "h-full rounded-full transition-all duration-500",
-                                  isFull ? "bg-destructive" : colorSet.bar
-                                )}
-                                style={{ width: `${fillPct}%` }}
-                              />
-                            </div>
-
-                            {/* Member avatars */}
-                            {slot.members.length > 0 && (
-                              <div className="flex items-center gap-1.5">
-                                <div className="flex -space-x-1.5">
-                                  {slot.members.slice(0, 5).map((member, mIdx) => (
-                                    <div
-                                      key={member.id}
-                                      title={member.name}
-                                      className={cn(
-                                        "w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ring-1 ring-background transition-transform duration-200 hover:scale-110 hover:z-10",
-                                        colorSet.bg, colorSet.text
-                                      )}
-                                      style={{ animationDelay: `${mIdx * 30}ms` }}
-                                    >
-                                      {member.name.charAt(0).toUpperCase()}
-                                    </div>
-                                  ))}
-                                  {slot.members.length > 5 && (
-                                    <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[7px] font-bold text-muted-foreground ring-1 ring-background">
-                                      +{slot.members.length - 5}
-                                    </div>
-                                  )}
-                                </div>
-                                <span className="text-[10px] text-muted-foreground truncate">
-                                  {slot.members.slice(0, 2).map(m => m.name.split(" ")[0]).join(", ")}
-                                  {slot.members.length > 2 && ` +${slot.members.length - 2}`}
-                                </span>
-                              </div>
-                            )}
-                            {slot.members.length === 0 && (
-                              <p className="text-[10px] text-muted-foreground/50 italic">No members assigned</p>
-                            )}
-                          </button>
-                        );
-                      })}
+                    {/* Capacity bar */}
+                    <div className="w-full h-1 bg-muted/60 rounded-full overflow-hidden mb-2">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all duration-500",
+                          isFull ? "bg-destructive" : colorSet.bar
+                        )}
+                        style={{ width: `${fillPct}%` }}
+                      />
                     </div>
-                  </div>
+
+                    {/* Member avatars */}
+                    {slot.members.length > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex -space-x-1.5">
+                          {slot.members.slice(0, 5).map((member, mIdx) => (
+                            <div
+                              key={member.id}
+                              title={member.name}
+                              className={cn(
+                                "w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ring-1 ring-background transition-transform duration-200 hover:scale-110 hover:z-10",
+                                colorSet.bg, colorSet.text
+                              )}
+                            >
+                              {member.name.charAt(0).toUpperCase()}
+                            </div>
+                          ))}
+                          {slot.members.length > 5 && (
+                            <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[7px] font-bold text-muted-foreground ring-1 ring-background">
+                              +{slot.members.length - 5}
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground truncate">
+                          {slot.members.slice(0, 2).map(m => m.name.split(" ")[0]).join(", ")}
+                          {slot.members.length > 2 && ` +${slot.members.length - 2}`}
+                        </span>
+                      </div>
+                    )}
+                    {slot.members.length === 0 && (
+                      <p className="text-[10px] text-muted-foreground/50 italic">No members assigned</p>
+                    )}
+                  </button>
                 );
               })}
             </div>
