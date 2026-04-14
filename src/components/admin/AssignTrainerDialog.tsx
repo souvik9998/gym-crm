@@ -25,6 +25,7 @@ interface Trainer {
   name: string;
   monthly_fee: number;
   specialization: string | null;
+  phone: string | null;
 }
 
 interface TimeSlot {
