@@ -247,7 +247,12 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
             <div key={plan.id} className="rounded-lg border border-border/40 bg-card/30 p-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium">{plan.plan_name}</span>
-                <span className="text-[10px] text-muted-foreground">{plan.goal} • {plan.workout_split}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground">{plan.goal} • {plan.workout_split}</span>
+                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDeletePlan(plan.id)}>
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
               </div>
               <p className="text-[10px] text-muted-foreground mt-0.5">{plan.exercises.length} exercises • By {plan.created_by}</p>
             </div>
