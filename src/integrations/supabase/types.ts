@@ -2133,12 +2133,19 @@ export type Database = {
           can_access_analytics: boolean
           can_access_ledger: boolean
           can_access_payments: boolean
+          can_assign_members_to_slots: boolean
           can_change_settings: boolean
+          can_create_time_slots: boolean
+          can_edit_delete_time_slots: boolean
           can_manage_members: boolean
+          can_manage_time_slots: boolean
           can_send_whatsapp: boolean
           can_view_members: boolean
+          can_view_slot_members: boolean
+          can_view_time_slots: boolean
           created_at: string
           id: string
+          member_access_type: string
           staff_id: string
           updated_at: string
         }
@@ -2146,12 +2153,19 @@ export type Database = {
           can_access_analytics?: boolean
           can_access_ledger?: boolean
           can_access_payments?: boolean
+          can_assign_members_to_slots?: boolean
           can_change_settings?: boolean
+          can_create_time_slots?: boolean
+          can_edit_delete_time_slots?: boolean
           can_manage_members?: boolean
+          can_manage_time_slots?: boolean
           can_send_whatsapp?: boolean
           can_view_members?: boolean
+          can_view_slot_members?: boolean
+          can_view_time_slots?: boolean
           created_at?: string
           id?: string
+          member_access_type?: string
           staff_id: string
           updated_at?: string
         }
@@ -2159,12 +2173,19 @@ export type Database = {
           can_access_analytics?: boolean
           can_access_ledger?: boolean
           can_access_payments?: boolean
+          can_assign_members_to_slots?: boolean
           can_change_settings?: boolean
+          can_create_time_slots?: boolean
+          can_edit_delete_time_slots?: boolean
           can_manage_members?: boolean
+          can_manage_time_slots?: boolean
           can_send_whatsapp?: boolean
           can_view_members?: boolean
+          can_view_slot_members?: boolean
+          can_view_time_slots?: boolean
           created_at?: string
           id?: string
+          member_access_type?: string
           staff_id?: string
           updated_at?: string
         }
@@ -2536,6 +2557,112 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      time_slot_members: {
+        Row: {
+          assigned_by: string | null
+          branch_id: string
+          created_at: string
+          id: string
+          member_id: string
+          time_slot_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          branch_id: string
+          created_at?: string
+          id?: string
+          member_id: string
+          time_slot_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          branch_id?: string
+          created_at?: string
+          id?: string
+          member_id?: string
+          time_slot_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_slot_members_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_slot_members_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_slot_members_time_slot_id_fkey"
+            columns: ["time_slot_id"]
+            isOneToOne: false
+            referencedRelation: "trainer_time_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trainer_time_slots: {
+        Row: {
+          branch_id: string
+          capacity: number
+          created_at: string
+          end_time: string
+          id: string
+          is_recurring: boolean
+          recurring_days: number[] | null
+          start_time: string
+          status: string
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          capacity?: number
+          created_at?: string
+          end_time: string
+          id?: string
+          is_recurring?: boolean
+          recurring_days?: number[] | null
+          start_time: string
+          status?: string
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          capacity?: number
+          created_at?: string
+          end_time?: string
+          id?: string
+          is_recurring?: boolean
+          recurring_days?: number[] | null
+          start_time?: string
+          status?: string
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_time_slots_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trainer_time_slots_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_activity_logs: {
         Row: {
