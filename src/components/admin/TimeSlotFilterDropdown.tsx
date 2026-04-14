@@ -4,21 +4,33 @@ import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Clock, ChevronDown, X, Check } from "lucide-react";
+import { Clock, ChevronDown, X, Check, Users, User } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+interface SlotMember {
+  id: string;
+  name: string;
+}
 
 interface TimeSlot {
   id: string;
   start_time: string;
   end_time: string;
-  trainer_name?: string;
   capacity: number;
-  member_count?: number;
+  members: SlotMember[];
+}
+
+interface TrainerGroup {
+  trainer_id: string;
+  trainer_name: string;
+  slots: TimeSlot[];
+  total_members: number;
 }
 
 interface TimeSlotFilterDropdownProps {
@@ -35,80 +47,124 @@ const formatTime = (time: string) => {
   return `${h12}:${m} ${ampm}`;
 };
 
-const getTimePeriod = (time: string): "MORNING" | "AFTERNOON" | "EVENING" => {
-  const hour = parseInt(time.split(":")[0]);
-  if (hour < 12) return "MORNING";
-  if (hour < 17) return "AFTERNOON";
-  return "EVENING";
+const getInitials = (name: string) => {
+  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
 };
+
+const slotColors = [
+  { bg: "bg-violet-50 dark:bg-violet-950/30", border: "border-violet-200 dark:border-violet-800", text: "text-violet-700 dark:text-violet-300", bar: "bg-violet-500", activeBg: "bg-violet-100 dark:bg-violet-900/50", ring: "ring-violet-300/50" },
+  { bg: "bg-sky-50 dark:bg-sky-950/30", border: "border-sky-200 dark:border-sky-800", text: "text-sky-700 dark:text-sky-300", bar: "bg-sky-500", activeBg: "bg-sky-100 dark:bg-sky-900/50", ring: "ring-sky-300/50" },
+  { bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-200 dark:border-emerald-800", text: "text-emerald-700 dark:text-emerald-300", bar: "bg-emerald-500", activeBg: "bg-emerald-100 dark:bg-emerald-900/50", ring: "ring-emerald-300/50" },
+  { bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-200 dark:border-amber-800", text: "text-amber-700 dark:text-amber-300", bar: "bg-amber-500", activeBg: "bg-amber-100 dark:bg-amber-900/50", ring: "ring-amber-300/50" },
+  { bg: "bg-rose-50 dark:bg-rose-950/30", border: "border-rose-200 dark:border-rose-800", text: "text-rose-700 dark:text-rose-300", bar: "bg-rose-500", activeBg: "bg-rose-100 dark:bg-rose-900/50", ring: "ring-rose-300/50" },
+];
 
 export const TimeSlotFilterDropdown = ({ value, onChange, compact = false }: TimeSlotFilterDropdownProps) => {
   const [open, setOpen] = useState(false);
   const { currentBranch } = useBranch();
 
-  const { data: timeSlots = [], isLoading } = useQuery({
-    queryKey: ["time-slots-filter", currentBranch?.id],
+  const { data: trainerGroups = [], isLoading } = useQuery({
+    queryKey: ["time-slots-mega-menu", currentBranch?.id],
     queryFn: async () => {
       if (!currentBranch?.id) return [];
-      
+
+      // Fetch slots - trainer_id references staff.id
       const { data: slots, error } = await supabase
-        .from("trainer_time_slots")
-        .select("id, start_time, end_time, capacity, trainer:personal_trainers(name)")
+        .from("trainer_time_slots" as any)
+        .select("id, start_time, end_time, capacity, trainer_id")
         .eq("branch_id", currentBranch.id)
         .eq("status", "available")
         .order("start_time", { ascending: true });
 
       if (error) throw error;
+      if (!slots || slots.length === 0) return [];
 
-      // Get member counts per slot
-      const slotIds = (slots || []).map((s: any) => s.id);
-      let memberCounts: Record<string, number> = {};
-      
-      if (slotIds.length > 0) {
-        const { data: members } = await supabase
-          .from("time_slot_members" as any)
-          .select("time_slot_id")
-          .in("time_slot_id", slotIds);
-
-        if (members) {
-          for (const m of members as any[]) {
-            memberCounts[m.time_slot_id] = (memberCounts[m.time_slot_id] || 0) + 1;
+      // Get trainer names from staff table
+      const trainerIds = [...new Set((slots as any[]).map((s: any) => s.trainer_id).filter(Boolean))];
+      let staffMap: Record<string, string> = {};
+      if (trainerIds.length > 0) {
+        const { data: staffData } = await supabase
+          .from("staff")
+          .select("id, full_name")
+          .in("id", trainerIds);
+        if (staffData) {
+          for (const s of staffData) {
+            staffMap[s.id] = s.full_name;
           }
         }
       }
 
-      return (slots || []).map((s: any) => ({
-        id: s.id,
-        start_time: s.start_time,
-        end_time: s.end_time,
-        trainer_name: (s.trainer as any)?.name || "Unassigned",
-        capacity: s.capacity,
-        member_count: memberCounts[s.id] || 0,
-      })) as TimeSlot[];
+      // Get members per slot
+      const slotIds = (slots as any[]).map((s: any) => s.id);
+      let slotMembers: Record<string, SlotMember[]> = {};
+      if (slotIds.length > 0) {
+        const { data: tsmData } = await supabase
+          .from("time_slot_members" as any)
+          .select("time_slot_id, member_id")
+          .in("time_slot_id", slotIds);
+
+        if (tsmData && (tsmData as any[]).length > 0) {
+          const memberIds = [...new Set((tsmData as any[]).map((t: any) => t.member_id))];
+          const { data: membersData } = await supabase
+            .from("members")
+            .select("id, name")
+            .in("id", memberIds);
+
+          const memberMap: Record<string, string> = {};
+          if (membersData) {
+            for (const m of membersData) {
+              memberMap[m.id] = m.name;
+            }
+          }
+
+          for (const tsm of tsmData as any[]) {
+            if (!slotMembers[tsm.time_slot_id]) slotMembers[tsm.time_slot_id] = [];
+            slotMembers[tsm.time_slot_id].push({
+              id: tsm.member_id,
+              name: memberMap[tsm.member_id] || "Unknown",
+            });
+          }
+        }
+      }
+
+      // Group by trainer
+      const groupMap: Record<string, TrainerGroup> = {};
+      for (const slot of slots as any[]) {
+        const tid = slot.trainer_id || "unassigned";
+        const tName = staffMap[slot.trainer_id] || "Unassigned";
+        if (!groupMap[tid]) {
+          groupMap[tid] = {
+            trainer_id: tid,
+            trainer_name: tName,
+            slots: [],
+            total_members: 0,
+          };
+        }
+        const members = slotMembers[slot.id] || [];
+        groupMap[tid].slots.push({
+          id: slot.id,
+          start_time: slot.start_time,
+          end_time: slot.end_time,
+          capacity: slot.capacity,
+          members,
+        });
+        groupMap[tid].total_members += members.length;
+      }
+
+      return Object.values(groupMap).sort((a, b) => a.trainer_name.localeCompare(b.trainer_name));
     },
     enabled: !!currentBranch?.id,
     staleTime: 30000,
   });
 
-  const groupedSlots = useMemo(() => {
-    const groups: Record<string, TimeSlot[]> = {
-      MORNING: [],
-      AFTERNOON: [],
-      EVENING: [],
-    };
-    timeSlots.forEach((slot) => {
-      const period = getTimePeriod(slot.start_time);
-      groups[period].push(slot);
-    });
-    return groups;
-  }, [timeSlots]);
-
-  const selectedSlot = timeSlots.find((s) => s.id === value);
-  const hasSlots = timeSlots.length > 0;
+  const allSlots = useMemo(() => trainerGroups.flatMap(g => g.slots), [trainerGroups]);
+  const selectedSlot = allSlots.find((s) => s.id === value);
+  const selectedTrainer = trainerGroups.find(g => g.slots.some(s => s.id === value));
+  const hasSlots = allSlots.length > 0;
   const isActive = value !== null;
 
   const selectedLabel = selectedSlot
-    ? `${formatTime(selectedSlot.start_time)} – ${formatTime(selectedSlot.end_time)}`
+    ? `${selectedTrainer?.trainer_name} · ${formatTime(selectedSlot.start_time)}`
     : "Time Slot";
 
   return (
@@ -132,7 +188,7 @@ export const TimeSlotFilterDropdown = ({ value, onChange, compact = false }: Tim
               isActive ? "text-indigo-700 dark:text-indigo-300" : "text-indigo-600 dark:text-indigo-400"
             )} />
             <span className={cn(
-              "text-[10px] lg:text-xs font-medium transition-colors max-w-[120px] truncate",
+              "text-[10px] lg:text-xs font-medium transition-colors max-w-[140px] truncate",
               isActive ? "text-indigo-800 dark:text-indigo-200" : "text-indigo-700 dark:text-indigo-300"
             )}>
               {compact ? (isActive ? selectedLabel : "Slot") : selectedLabel}
@@ -157,125 +213,181 @@ export const TimeSlotFilterDropdown = ({ value, onChange, compact = false }: Tim
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
-        align="start" 
-        className="w-[340px] p-0 rounded-xl border-border/50 shadow-xl overflow-hidden"
+      <PopoverContent
+        align="end"
+        className="w-[420px] p-0 rounded-xl border-border/50 shadow-2xl overflow-hidden"
         sideOffset={6}
       >
         {isLoading ? (
-          <div className="p-4 space-y-3">
-            <Skeleton className="h-4 w-20" />
-            <div className="grid grid-cols-3 gap-2">
-              <Skeleton className="h-9 rounded-lg" />
-              <Skeleton className="h-9 rounded-lg" />
-              <Skeleton className="h-9 rounded-lg" />
-            </div>
-            <Skeleton className="h-4 w-24" />
-            <div className="grid grid-cols-3 gap-2">
-              <Skeleton className="h-9 rounded-lg" />
-              <Skeleton className="h-9 rounded-lg" />
-            </div>
+          <div className="p-4 space-y-4">
+            {[1, 2].map(i => (
+              <div key={i} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="w-8 h-8 rounded-full" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+                <div className="ml-10 space-y-1.5">
+                  <Skeleton className="h-10 rounded-lg" />
+                  <Skeleton className="h-10 rounded-lg" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : !hasSlots ? (
-          <div className="p-6 text-center">
-            <Clock className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
-            <p className="text-sm text-muted-foreground">No time slots available</p>
+          <div className="p-8 text-center">
+            <div className="w-12 h-12 mx-auto rounded-full bg-muted/60 flex items-center justify-center mb-3">
+              <Clock className="w-6 h-6 text-muted-foreground/40" />
+            </div>
+            <p className="text-sm font-medium text-muted-foreground">No time slots available</p>
             <p className="text-xs text-muted-foreground/60 mt-1">Create slots in Staff Management</p>
           </div>
         ) : (
-          <div className="p-3 space-y-3">
-            {(["MORNING", "AFTERNOON", "EVENING"] as const).map((period, periodIdx) => {
-              const slots = groupedSlots[period];
-              if (slots.length === 0) return null;
+          <div className="max-h-[420px] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b border-border/40 px-4 py-2.5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-foreground">Filter by Trainer & Slot</p>
+                {isActive && (
+                  <button
+                    onClick={() => { onChange(null); setOpen(false); }}
+                    className="text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-0.5 rounded-md hover:bg-muted"
+                  >
+                    Clear filter
+                  </button>
+                )}
+              </div>
+            </div>
 
-              return (
-                <div
-                  key={period}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${periodIdx * 60}ms` }}
-                >
-                  <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase mb-1.5 px-1">
-                    {period}
-                  </p>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {slots.map((slot, slotIdx) => {
-                      const isSelected = value === slot.id;
-                      const isFull = slot.member_count! >= slot.capacity;
+            {/* Trainer groups */}
+            <div className="p-2 space-y-1">
+              {trainerGroups.map((group, gIdx) => {
+                const colorSet = slotColors[gIdx % slotColors.length];
+                const hasSelectedSlot = group.slots.some(s => s.id === value);
 
-                      return (
-                        <button
-                          key={slot.id}
-                          onClick={() => {
-                            onChange(isSelected ? null : slot.id);
-                            setOpen(false);
-                          }}
-                          className={cn(
-                            "relative flex flex-col items-center justify-center px-2 py-2 rounded-lg text-xs font-medium",
-                            "border transition-all duration-200 cursor-pointer",
-                            "hover:scale-[1.03] active:scale-[0.97]",
-                            "animate-fade-in",
-                            isSelected
-                              ? "bg-indigo-100 dark:bg-indigo-900/50 border-indigo-400 dark:border-indigo-600 text-indigo-800 dark:text-indigo-200 shadow-md ring-1 ring-indigo-300/50"
-                              : "bg-card border-border/60 text-foreground hover:bg-muted/80 hover:border-border hover:shadow-sm"
-                          )}
-                          style={{ animationDelay: `${periodIdx * 60 + slotIdx * 40}ms` }}
-                        >
-                          {isSelected && (
-                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-indigo-500 rounded-full flex items-center justify-center animate-scale-in">
-                              <Check className="w-2.5 h-2.5 text-white" />
+                return (
+                  <div
+                    key={group.trainer_id}
+                    className={cn(
+                      "rounded-lg border transition-all duration-300 overflow-hidden",
+                      "animate-fade-in",
+                      hasSelectedSlot
+                        ? `${colorSet.activeBg} ${colorSet.border} shadow-sm`
+                        : "border-transparent hover:border-border/40 hover:bg-muted/30"
+                    )}
+                    style={{ animationDelay: `${gIdx * 70}ms` }}
+                  >
+                    {/* Trainer header */}
+                    <div className="flex items-center gap-2.5 px-3 py-2">
+                      <Avatar className="w-7 h-7 ring-2 ring-background shadow-sm">
+                        <AvatarFallback className={cn("text-[10px] font-bold", colorSet.bg, colorSet.text)}>
+                          {getInitials(group.trainer_name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-foreground truncate">{group.trainer_name}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {group.slots.length} slot{group.slots.length !== 1 ? "s" : ""} · {group.total_members} member{group.total_members !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Slots */}
+                    <div className="px-2 pb-2 space-y-1">
+                      {group.slots.map((slot, sIdx) => {
+                        const isSelected = value === slot.id;
+                        const isFull = slot.members.length >= slot.capacity;
+                        const fillPct = Math.min((slot.members.length / slot.capacity) * 100, 100);
+
+                        return (
+                          <button
+                            key={slot.id}
+                            onClick={() => {
+                              onChange(isSelected ? null : slot.id);
+                              setOpen(false);
+                            }}
+                            className={cn(
+                              "w-full text-left rounded-lg px-3 py-2 transition-all duration-200",
+                              "hover:scale-[1.01] active:scale-[0.99]",
+                              "animate-fade-in",
+                              isSelected
+                                ? `${colorSet.activeBg} ${colorSet.border} border shadow-sm ring-1 ${colorSet.ring}`
+                                : "border border-transparent hover:bg-muted/50"
+                            )}
+                            style={{ animationDelay: `${gIdx * 70 + sIdx * 40}ms` }}
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2">
+                                <Clock className={cn("w-3.5 h-3.5", isSelected ? colorSet.text : "text-muted-foreground")} />
+                                <span className={cn(
+                                  "text-xs font-semibold",
+                                  isSelected ? colorSet.text : "text-foreground"
+                                )}>
+                                  {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
+                                </span>
+                                {isSelected && (
+                                  <div className={cn("w-4 h-4 rounded-full flex items-center justify-center animate-scale-in", colorSet.bar)}>
+                                    <Check className="w-2.5 h-2.5 text-white" />
+                                  </div>
+                                )}
+                              </div>
+                              <span className={cn(
+                                "text-[10px] font-medium tabular-nums px-1.5 py-0.5 rounded-md",
+                                isFull ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
+                              )}>
+                                {slot.members.length}/{slot.capacity}
+                              </span>
                             </div>
-                          )}
-                          <span className="whitespace-nowrap text-[11px] leading-tight">
-                            {formatTime(slot.start_time)}
-                          </span>
-                          <span className="text-[9px] text-muted-foreground leading-tight">
-                            {formatTime(slot.end_time)}
-                          </span>
-                          {/* Capacity indicator */}
-                          <div className="w-full mt-1.5 flex items-center gap-1">
-                            <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+
+                            {/* Capacity bar */}
+                            <div className="w-full h-1 bg-muted/60 rounded-full overflow-hidden mb-2">
                               <div
                                 className={cn(
-                                  "h-full rounded-full transition-all duration-300",
-                                  isFull ? "bg-destructive" : isSelected ? "bg-indigo-500" : "bg-primary/60"
+                                  "h-full rounded-full transition-all duration-500",
+                                  isFull ? "bg-destructive" : colorSet.bar
                                 )}
-                                style={{ width: `${Math.min((slot.member_count! / slot.capacity) * 100, 100)}%` }}
+                                style={{ width: `${fillPct}%` }}
                               />
                             </div>
-                            <span className="text-[8px] text-muted-foreground tabular-nums">
-                              {slot.member_count}/{slot.capacity}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
 
-            {/* Footer actions */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => {
-                  onChange(null);
-                  setOpen(false);
-                }}
-              >
-                Clear
-              </Button>
-              {value && (
-                <Button
-                  size="sm"
-                  className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
-                  onClick={() => setOpen(false)}
-                >
-                  Apply filter
-                </Button>
-              )}
+                            {/* Member avatars */}
+                            {slot.members.length > 0 && (
+                              <div className="flex items-center gap-1.5">
+                                <div className="flex -space-x-1.5">
+                                  {slot.members.slice(0, 5).map((member, mIdx) => (
+                                    <div
+                                      key={member.id}
+                                      title={member.name}
+                                      className={cn(
+                                        "w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ring-1 ring-background transition-transform duration-200 hover:scale-110 hover:z-10",
+                                        colorSet.bg, colorSet.text
+                                      )}
+                                      style={{ animationDelay: `${mIdx * 30}ms` }}
+                                    >
+                                      {member.name.charAt(0).toUpperCase()}
+                                    </div>
+                                  ))}
+                                  {slot.members.length > 5 && (
+                                    <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[7px] font-bold text-muted-foreground ring-1 ring-background">
+                                      +{slot.members.length - 5}
+                                    </div>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-muted-foreground truncate">
+                                  {slot.members.slice(0, 2).map(m => m.name.split(" ")[0]).join(", ")}
+                                  {slot.members.length > 2 && ` +${slot.members.length - 2}`}
+                                </span>
+                              </div>
+                            )}
+                            {slot.members.length === 0 && (
+                              <p className="text-[10px] text-muted-foreground/50 italic">No members assigned</p>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
