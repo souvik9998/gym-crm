@@ -238,6 +238,43 @@ export const MemberActivityDialog = ({
     });
   };
 
+  const formatSlotTime = (time: string) => {
+    const [h, m] = time.split(":");
+    const hour = parseInt(h);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const h12 = hour % 12 || 12;
+    return `${h12}:${m} ${ampm}`;
+  };
+
+  const handleNotifyWhatsApp = async (pt: PTSubscription) => {
+    if (!member) return;
+    setIsSendingWhatsApp(pt.id);
+    try {
+      const trainerName = pt.personal_trainer?.name || "your trainer";
+      const slotInfo = pt.time_slot 
+        ? `\nTime Slot: ${formatSlotTime(pt.time_slot.start_time)} – ${formatSlotTime(pt.time_slot.end_time)}`
+        : "";
+      const message = `Hi ${member.name}, your personal trainer *${trainerName}* has been assigned.${slotInfo}\nPeriod: ${formatDate(pt.start_date)} to ${formatDate(pt.end_date)}`;
+
+      const { error } = await supabase.functions.invoke("send-whatsapp", {
+        body: {
+          phone: member.phone,
+          type: "custom",
+          customMessage: message,
+          branchId: member.branch_id,
+        },
+      });
+
+      if (error) throw error;
+      toast.success("WhatsApp notification sent!");
+    } catch (error: any) {
+      console.error("WhatsApp error:", error);
+      toast.error("Failed to send WhatsApp notification");
+    } finally {
+      setIsSendingWhatsApp(null);
+    }
+  };
+
   const totalPaid = payments
     .filter((p) => p.status === "success")
     .reduce((sum, p) => sum + Number(p.amount), 0);
