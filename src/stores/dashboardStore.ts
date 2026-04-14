@@ -82,10 +82,12 @@ export const useDashboardStore = create<DashboardUIState>()(
         activeTab: initialState.activeTab,
         memberFilter: initialState.memberFilter,
         ptFilterActive: initialState.ptFilterActive,
+        trainerFilter: initialState.trainerFilter,
         timeSlotFilter: initialState.timeSlotFilter,
         sortBy: initialState.sortBy,
         sortOrder: initialState.sortOrder,
         dailyPassFilter: initialState.dailyPassFilter,
+      }),
         // Don't reset branch - that should persist
       }),
     }),
