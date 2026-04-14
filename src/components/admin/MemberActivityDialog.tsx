@@ -75,6 +75,8 @@ interface PTSubscription {
   status: string;
   personal_trainer: { id: string; name: string; specialization: string | null } | null;
   time_slot: { id: string; start_time: string; end_time: string } | null;
+  time_slot_id: string | null;
+  branch_id: string | null;
 }
 
 interface MemberDetails {
