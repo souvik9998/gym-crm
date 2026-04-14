@@ -23,6 +23,7 @@ import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
 // AddPaymentDialog removed - payment mode now selected in AddMemberDialog
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
+import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { toast } from "@/components/ui/sonner";
 import {
@@ -159,6 +160,8 @@ const AdminDashboard = () => {
     setMemberFilter,
     ptFilterActive,
     setPtFilterActive,
+    trainerFilter,
+    setTrainerFilter,
     timeSlotFilter,
     setTimeSlotFilter,
     sortBy,
