@@ -184,6 +184,28 @@ const Register = () => {
         if (healthDetails && data.memberId) {
           await saveHealthData(data.memberId);
         }
+
+        // Record coupon usage if applied
+        if (packageData.couponId && data.memberId) {
+          try {
+            await supabase.from("coupon_usage").insert({
+              coupon_id: packageData.couponId,
+              member_id: data.memberId,
+              discount_applied: packageData.couponDiscount || 0,
+              branch_id: branchId,
+            });
+            await supabase.from("coupons").update({
+              usage_count: supabase.rpc ? undefined : undefined, // increment handled below
+            });
+            // Simple increment
+            const { data: couponData } = await supabase.from("coupons").select("usage_count").eq("id", packageData.couponId).single();
+            if (couponData) {
+              await supabase.from("coupons").update({ usage_count: couponData.usage_count + 1 }).eq("id", packageData.couponId);
+            }
+          } catch (err) {
+            console.error("Failed to record coupon usage:", err);
+          }
+        }
         
         try {
           const notificationType: WhatsAppAutoSendType = data.isDailyPass ? "daily_pass" : "new_registration";
