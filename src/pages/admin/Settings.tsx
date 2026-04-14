@@ -944,14 +944,14 @@ const AdminSettings = () => {
   };
 
   const settingsTabs = [
-    { value: "packages", label: "Packages", icon: CubeIcon },
-    { value: "registration", label: "Registration Fields", icon: ClipboardDocumentListIcon },
-    { value: "branches", label: "Branches", icon: BuildingStorefrontIcon },
-    { value: "holidays", label: "Holiday Calendar", icon: CalendarDaysIcon },
-    { value: "whatsapp", label: "WhatsApp", icon: ChatBubbleLeftEllipsisIcon },
-    { value: "general", label: "General & Invoice", icon: Cog6ToothIcon },
-    { value: "coupons", label: "Coupons & Discounts", icon: TicketPercent },
-    { value: "subscription", label: "Subscription Plan", icon: ShieldCheckIcon },
+    { value: "packages", label: "Packages" },
+    { value: "registration", label: "Registration" },
+    { value: "branches", label: "Branches" },
+    { value: "holidays", label: "Holidays" },
+    { value: "whatsapp", label: "WhatsApp" },
+    { value: "general", label: "General" },
+    { value: "coupons", label: "Coupons" },
+    { value: "subscription", label: "Subscription" },
   ];
 
   return (
