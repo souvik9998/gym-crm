@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { MemberHealthTab } from "./health/MemberHealthTab";
 import {
   Dialog,
   DialogContent,
@@ -82,6 +83,7 @@ interface MemberData {
   phone: string;
   email: string | null;
   join_date: string;
+  branch_id: string;
 }
 
 // Staggered animation wrapper
@@ -262,11 +264,12 @@ export const MemberActivityDialog = ({
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col px-5 sm:px-6 pb-5 sm:pb-6 min-h-0 overflow-hidden">
-            <TabsList className="grid w-full grid-cols-4 h-10 flex-shrink-0 p-1 bg-muted/50 rounded-xl">
-              <TabsTrigger value="overview" className="text-xs md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Overview</TabsTrigger>
-              <TabsTrigger value="subscriptions" className="text-xs md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Gym</TabsTrigger>
-              <TabsTrigger value="pt" className="text-xs md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">PT History</TabsTrigger>
-              <TabsTrigger value="payments" className="text-xs md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Payments</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-5 h-10 flex-shrink-0 p-1 bg-muted/50 rounded-xl">
+              <TabsTrigger value="overview" className="text-[10px] md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Overview</TabsTrigger>
+              <TabsTrigger value="subscriptions" className="text-[10px] md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Gym</TabsTrigger>
+              <TabsTrigger value="pt" className="text-[10px] md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">PT History</TabsTrigger>
+              <TabsTrigger value="health" className="text-[10px] md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Health</TabsTrigger>
+              <TabsTrigger value="payments" className="text-[10px] md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Payments</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}
@@ -498,6 +501,13 @@ export const MemberActivityDialog = ({
                   ))
                 )}
               </div>
+            </TabsContent>
+
+            {/* Health Tab */}
+            <TabsContent value="health" className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1" key="health">
+              {member && (
+                <MemberHealthTab memberId={memberId!} branchId={member.branch_id || ""} />
+              )}
             </TabsContent>
 
             {/* Payments Tab */}
