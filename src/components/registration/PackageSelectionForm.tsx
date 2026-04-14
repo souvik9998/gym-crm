@@ -126,7 +126,8 @@ const PackageSelectionForm = ({
   existingMembershipEndDate,
   existingPTEndDate,
   minStartDate: propMinStartDate,
-  branchId
+  branchId,
+  allowSelfSelectTrainer = true,
 }: PackageSelectionFormProps) => {
   const [packageType, setPackageType] = useState<"monthly" | "custom">("monthly");
   const [selectedMonthlyPackage, setSelectedMonthlyPackage] = useState<MonthlyPackage | null>(null);
