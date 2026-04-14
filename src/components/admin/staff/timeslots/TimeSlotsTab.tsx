@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/sonner";
 import { Staff } from "@/pages/admin/StaffManagement";
 import { PlusIcon, PencilIcon, TrashIcon, ClockIcon } from "@heroicons/react/24/outline";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
+import { TimeSlotDetailDialog } from "./TimeSlotDetailDialog";
 
 interface TimeSlot {
   id: string;
@@ -42,6 +43,8 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSlot, setEditingSlot] = useState<TimeSlot | null>(null);
+  const [detailSlot, setDetailSlot] = useState<TimeSlot | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean; title: string; description: string; onConfirm: () => void;
   }>({ open: false, title: "", description: "", onConfirm: () => {} });
@@ -66,7 +69,6 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
         .order("start_time");
 
       if (slotsData) {
-        // Get member counts
         const slotIds = slotsData.map(s => s.id);
         let memberCounts: Record<string, number> = {};
         if (slotIds.length > 0) {
@@ -102,7 +104,8 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
 
   const handleOpenCreate = () => { resetForm(); setDialogOpen(true); };
 
-  const handleOpenEdit = (slot: TimeSlot) => {
+  const handleOpenEdit = (slot: TimeSlot, e: React.MouseEvent) => {
+    e.stopPropagation();
     setEditingSlot(slot);
     setForm({
       trainer_id: slot.trainer_id,
@@ -113,6 +116,11 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
       recurring_days: slot.recurring_days || [],
     });
     setDialogOpen(true);
+  };
+
+  const handleCardClick = (slot: TimeSlot) => {
+    setDetailSlot(slot);
+    setDetailOpen(true);
   };
 
   const handleSave = async () => {
@@ -144,7 +152,8 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
     fetchSlots();
   };
 
-  const handleDelete = (slot: TimeSlot) => {
+  const handleDelete = (slot: TimeSlot, e: React.MouseEvent) => {
+    e.stopPropagation();
     setConfirmDialog({
       open: true,
       title: "Delete Time Slot",
@@ -198,10 +207,15 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
         </Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {slots.map(slot => {
-            const isFull = slot.member_count >= slot.capacity;
+          {slots.map((slot, index) => {
+            const isFull = (slot.member_count || 0) >= slot.capacity;
             return (
-              <Card key={slot.id} className="border-0 shadow-sm">
+              <Card
+                key={slot.id}
+                className="border-0 shadow-sm cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200 animate-fade-in"
+                style={{ animationDelay: `${index * 40}ms`, animationFillMode: "backwards" }}
+                onClick={() => handleCardClick(slot)}
+              >
                 <CardHeader className="p-3 lg:p-4 pb-2">
                   <div className="flex items-start justify-between">
                     <div>
@@ -211,8 +225,8 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
                       </CardDescription>
                     </div>
                     <Badge className={isFull
-                      ? "bg-red-100 text-red-700 text-[10px]"
-                      : "bg-green-100 text-green-700 text-[10px]"
+                      ? "bg-destructive/10 text-destructive text-[10px]"
+                      : "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]"
                     }>
                       {isFull ? "Full" : "Available"}
                     </Badge>
@@ -225,22 +239,22 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
                   </div>
                   <div className="w-full bg-muted rounded-full h-1.5">
                     <div
-                      className={`h-1.5 rounded-full transition-all ${isFull ? "bg-red-500" : "bg-primary"}`}
-                      style={{ width: `${Math.min((slot.member_count / slot.capacity) * 100, 100)}%` }}
+                      className={`h-1.5 rounded-full transition-all duration-500 ${isFull ? "bg-destructive" : "bg-primary"}`}
+                      style={{ width: `${Math.min(((slot.member_count || 0) / slot.capacity) * 100, 100)}%` }}
                     />
                   </div>
                   {slot.is_recurring && slot.recurring_days && (
                     <div className="flex flex-wrap gap-1">
                       {slot.recurring_days.sort().map(d => (
-                        <Badge key={d} variant="outline" className="text-[10px] px-1.5 py-0">{DAY_LABELS[d]}</Badge>
+                        <Badge key={d} variant="secondary" className="text-[10px] px-1.5 py-0">{DAY_LABELS[d]}</Badge>
                       ))}
                     </div>
                   )}
                   <div className="flex gap-2 pt-1">
-                    <Button variant="outline" size="sm" className="flex-1 text-xs h-7" onClick={() => handleOpenEdit(slot)}>
+                    <Button variant="outline" size="sm" className="flex-1 text-xs h-7" onClick={(e) => handleOpenEdit(slot, e)}>
                       <PencilIcon className="w-3 h-3 mr-1" /> Edit
                     </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7 text-destructive hover:text-destructive" onClick={() => handleDelete(slot)}>
+                    <Button variant="outline" size="sm" className="text-xs h-7 text-destructive hover:text-destructive" onClick={(e) => handleDelete(slot, e)}>
                       <TrashIcon className="w-3 h-3" />
                     </Button>
                   </div>
@@ -250,6 +264,25 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
           })}
         </div>
       )}
+
+      {/* Detail Dialog */}
+      <TimeSlotDetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        slot={detailSlot ? {
+          id: detailSlot.id,
+          trainer_id: detailSlot.trainer_id,
+          trainer_name: detailSlot.trainer_name || "Unknown",
+          start_time: detailSlot.start_time,
+          end_time: detailSlot.end_time,
+          capacity: detailSlot.capacity,
+          is_recurring: detailSlot.is_recurring,
+          recurring_days: detailSlot.recurring_days,
+          member_count: detailSlot.member_count || 0,
+        } : null}
+        branchId={currentBranch?.id || ""}
+        onUpdated={fetchSlots}
+      />
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) resetForm(); setDialogOpen(o); }}>
