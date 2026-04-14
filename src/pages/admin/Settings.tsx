@@ -943,45 +943,48 @@ const AdminSettings = () => {
     });
   };
 
+  const settingsTabs = [
+    { value: "packages", label: "Packages", icon: CubeIcon },
+    { value: "registration", label: "Registration Fields", icon: ClipboardDocumentListIcon },
+    { value: "branches", label: "Branches", icon: BuildingStorefrontIcon },
+    { value: "holidays", label: "Holiday Calendar", icon: CalendarDaysIcon },
+    { value: "whatsapp", label: "WhatsApp", icon: ChatBubbleLeftEllipsisIcon },
+    { value: "general", label: "General & Invoice", icon: Cog6ToothIcon },
+    { value: "coupons", label: "Coupons & Discounts", icon: TicketPercent },
+    { value: "subscription", label: "Subscription Plan", icon: ShieldCheckIcon },
+  ];
+
   return (
     <Fragment>
-      <div className="max-w-4xl mx-auto space-y-4 lg:space-y-6">
-        <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val })}>
-          {/* Modern pill-style tabs with subtle glow on active */}
-          <TabsList className="grid w-full grid-cols-8 bg-muted/40 backdrop-blur-sm h-auto p-1 rounded-2xl border border-border/40">
-            <TabsTrigger value="packages" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
-              <CubeIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              <span className="hidden lg:inline">Packages</span>
-            </TabsTrigger>
-            <TabsTrigger value="registration" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
-              <ClipboardDocumentListIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              <span className="hidden lg:inline">Registration</span>
-            </TabsTrigger>
-            <TabsTrigger value="branches" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
-              <BuildingStorefrontIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              <span className="hidden lg:inline">Branches</span>
-            </TabsTrigger>
-            <TabsTrigger value="holidays" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
-              <CalendarDaysIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              <span className="hidden lg:inline">Holidays</span>
-            </TabsTrigger>
-            <TabsTrigger value="whatsapp" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
-              <ChatBubbleLeftEllipsisIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              <span className="hidden lg:inline">WhatsApp</span>
-            </TabsTrigger>
-            <TabsTrigger value="general" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
-              <Cog6ToothIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              <span className="hidden lg:inline">General</span>
-            </TabsTrigger>
-            <TabsTrigger value="coupons" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
-              <TicketPercent className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              <span className="hidden lg:inline">Coupons</span>
-            </TabsTrigger>
-            <TabsTrigger value="subscription" className="gap-1.5 lg:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border-border/50 rounded-xl text-[10px] lg:text-sm px-1.5 lg:px-3 py-2.5 transition-all duration-300 data-[state=active]:scale-[1.02]">
-              <ShieldCheckIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              <span className="hidden lg:inline">Plan</span>
-            </TabsTrigger>
-          </TabsList>
+      <div className="max-w-5xl mx-auto">
+        <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val })} className="flex flex-col lg:flex-row gap-4 lg:gap-6">
+          {/* Sidebar Navigation - horizontal scroll on mobile, vertical on desktop */}
+          <div className="lg:w-56 flex-shrink-0">
+            <TabsList className="flex lg:flex-col w-full h-auto bg-transparent p-0 gap-0.5 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 scrollbar-hide">
+              {settingsTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    className={cn(
+                      "flex items-center gap-2.5 justify-start w-auto lg:w-full px-3 py-2.5 rounded-lg text-xs lg:text-sm font-medium whitespace-nowrap",
+                      "text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-200",
+                      "data-[state=active]:bg-accent/10 data-[state=active]:text-accent data-[state=active]:font-semibold",
+                      "data-[state=active]:shadow-none border-0 ring-0 shadow-none",
+                      "flex-shrink-0 lg:flex-shrink",
+                    )}
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <span>{tab.label}</span>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </div>
+
+          {/* Content Area */}
+          <div className="flex-1 min-w-0">
 
           {/* Registration Fields Tab */}
           <TabsContent value="registration" className="space-y-4 lg:space-y-6 mt-4 lg:mt-6 animate-fade-in">
