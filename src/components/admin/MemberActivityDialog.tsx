@@ -286,11 +286,37 @@ export const MemberActivityDialog = ({
     if (!pt.personal_trainer) return;
     setAssigningSlotForPt(pt);
     setSelectedSlotId("");
-    // Fetch available time slots for this trainer
+
+    // trainer_time_slots.trainer_id references staff.id, not personal_trainers.id
+    // Look up staff ID via personal_trainer's phone
+    const { data: ptData } = await supabase
+      .from("personal_trainers")
+      .select("phone")
+      .eq("id", pt.personal_trainer.id)
+      .maybeSingle();
+
+    if (!ptData?.phone) {
+      setAvailableSlots([]);
+      return;
+    }
+
+    const { data: staffData } = await supabase
+      .from("staff")
+      .select("id")
+      .eq("phone", ptData.phone)
+      .eq("role", "trainer")
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!staffData) {
+      setAvailableSlots([]);
+      return;
+    }
+
     const { data: slots } = await supabase
       .from("trainer_time_slots")
       .select("id, start_time, end_time, capacity, status")
-      .eq("trainer_id", pt.personal_trainer.id)
+      .eq("trainer_id", staffData.id)
       .eq("branch_id", pt.branch_id || member?.branch_id || "");
 
     if (slots) {
