@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import {
   Dialog,
   DialogContent,
@@ -171,6 +172,17 @@ export const TimeSlotDetailDialog = ({
     if (error) {
       toast.error("Failed to add members");
     } else {
+      const names = selected.map(m => m.name).join(", ");
+      await logAdminActivity({
+        category: "time_slots",
+        type: "time_slot_member_added",
+        description: `Added ${selected.length} member(s) to ${slot.trainer_name}'s slot: ${names}`,
+        entityType: "time_slot",
+        entityId: slot.id,
+        entityName: slot.trainer_name,
+        newValue: { members_added: selected.map(m => ({ id: m.id, name: m.name })) },
+        branchId,
+      });
       toast.success(`${selected.length} member(s) added`);
       setAddMode(false);
       fetchSlotMembers();
@@ -180,7 +192,18 @@ export const TimeSlotDetailDialog = ({
   };
 
   const handleRemoveMember = async (id: string, name: string) => {
+    if (!slot) return;
     await supabase.from("time_slot_members").delete().eq("id", id);
+    await logAdminActivity({
+      category: "time_slots",
+      type: "time_slot_member_removed",
+      description: `Removed ${name} from ${slot.trainer_name}'s time slot`,
+      entityType: "time_slot",
+      entityId: slot.id,
+      entityName: slot.trainer_name,
+      oldValue: { member_name: name },
+      branchId,
+    });
     toast.success(`${name} removed`);
     fetchSlotMembers();
     onUpdated();
@@ -201,6 +224,17 @@ export const TimeSlotDetailDialog = ({
     if (error) {
       toast.error("Failed to update slot");
     } else {
+      await logAdminActivity({
+        category: "time_slots",
+        type: "time_slot_updated",
+        description: `Updated ${slot.trainer_name}'s slot: ${editStartTime}-${editEndTime}, capacity ${editCapacity}`,
+        entityType: "time_slot",
+        entityId: slot.id,
+        entityName: slot.trainer_name,
+        oldValue: { start_time: slot.start_time, end_time: slot.end_time, capacity: slot.capacity },
+        newValue: { start_time: editStartTime, end_time: editEndTime, capacity: editCapacity },
+        branchId,
+      });
       toast.success("Slot updated");
       onUpdated();
       onOpenChange(false);
