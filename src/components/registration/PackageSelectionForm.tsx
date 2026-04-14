@@ -827,6 +827,19 @@ const PackageSelectionForm = ({
             </div>
           )}
 
+          {couponDiscount > 0 && (
+            <div className="flex justify-between items-center text-success">
+              <span className="flex items-center gap-2">
+                <TicketPercent className="w-4 h-4" />
+                Coupon ({coupon.appliedCoupon?.coupon.code})
+              </span>
+              <span className="font-semibold flex items-center">
+                -<IndianRupee className="w-4 h-4" />
+                {couponDiscount.toLocaleString("en-IN")}
+              </span>
+            </div>
+          )}
+
           <div className="border-t border-border pt-3">
             <div className="flex justify-between items-center">
               <span className="font-bold text-lg">Total</span>
@@ -837,6 +850,20 @@ const PackageSelectionForm = ({
             </div>
           </div>
         </div>
+
+        {/* Coupon Code */}
+        <div className="animate-fade-in" style={{ animationDelay: "250ms" }}>
+          <CouponInput
+            couponCode={coupon.couponCode}
+            onCouponCodeChange={coupon.setCouponCode}
+            onApply={coupon.validateCoupon}
+            onRemove={coupon.removeCoupon}
+            isValidating={coupon.isValidating}
+            appliedCoupon={coupon.appliedCoupon}
+            error={coupon.couponError}
+          />
+        </div>
+
 
         {/* Action Buttons */}
         <div className="flex gap-3">
