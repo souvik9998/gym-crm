@@ -169,15 +169,15 @@ export const MemberActivityDialog = ({
 
       const { data: ptData } = await supabase
         .from("pt_subscriptions")
-        .select("*, personal_trainer:personal_trainers(id, name, specialization)")
+        .select("*, personal_trainer:personal_trainers(id, name, specialization), time_slot:trainer_time_slots(id, start_time, end_time)")
         .eq("member_id", memberId)
         .order("created_at", { ascending: false });
 
       if (ptData) {
-        setPtSubscriptions(ptData);
+        setPtSubscriptions(ptData as any);
         const today = new Date().toISOString().split("T")[0];
         const active = ptData.find(pt => pt.end_date >= today && pt.status === "active");
-        setActivePT(active || null);
+        setActivePT((active as any) || null);
       }
     } catch (error) {
       console.error("Error fetching member data:", error);
