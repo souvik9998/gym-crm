@@ -22,6 +22,7 @@ import DailyPassTable from "@/components/admin/DailyPassTable";
 import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
 // AddPaymentDialog removed - payment mode now selected in AddMemberDialog
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
+import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { toast } from "@/components/ui/sonner";
 import {
@@ -620,7 +621,7 @@ const AdminDashboard = () => {
                 {/* Mobile/Tablet: Filter + Action Buttons Row */}
                 <div className="md:hidden flex items-center gap-2">
                   {/* Member Filter Dropdown */}
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 flex items-center gap-1.5">
                     <MemberFilter 
                       value={memberFilter} 
                       onChange={handleMemberFilterChange}
@@ -628,6 +629,11 @@ const AdminDashboard = () => {
                       ptFilterActive={ptFilterActive}
                       onPtFilterChange={handlePtFilterChange}
                       mobileMode={true}
+                    />
+                    <TimeSlotFilterDropdown
+                      value={timeSlotFilter}
+                      onChange={setTimeSlotFilter}
+                      compact={true}
                     />
                   </div>
                   
@@ -719,7 +725,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Desktop/Tablet: Inline Member Filter Chips */}
-                <div className="hidden md:block">
+                <div className="hidden md:flex md:items-center md:gap-2 md:flex-wrap">
                   <MemberFilter 
                     value={memberFilter} 
                     onChange={handleMemberFilterChange}
@@ -727,6 +733,10 @@ const AdminDashboard = () => {
                     ptFilterActive={ptFilterActive}
                     onPtFilterChange={handlePtFilterChange}
                     mobileMode={false}
+                  />
+                  <TimeSlotFilterDropdown
+                    value={timeSlotFilter}
+                    onChange={setTimeSlotFilter}
                   />
                 </div>
 
@@ -738,6 +748,7 @@ const AdminDashboard = () => {
                   refreshKey={refreshKey} 
                   filterValue={memberFilter}
                   ptFilterActive={ptFilterActive}
+                  timeSlotFilter={timeSlotFilter}
                   sortBy={sortBy}
                   sortOrder={sortOrder}
                 />
