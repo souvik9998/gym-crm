@@ -117,6 +117,8 @@ export const MemberActivityDialog = ({
   const [activePT, setActivePT] = useState<PTSubscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+  const [showAssignTrainer, setShowAssignTrainer] = useState(false);
+  const [assignMode, setAssignMode] = useState<"assign" | "replace">("assign");
 
   useEffect(() => {
     if (open && memberId) {
