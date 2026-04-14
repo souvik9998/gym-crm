@@ -490,7 +490,7 @@ Deno.serve(async (req) => {
                 .in("member_id", memberIds)
                 .order("end_date", { ascending: false }),
               supabase.from("pt_subscriptions")
-                .select("member_id, end_date, personal_trainer:personal_trainers(name)")
+                .select("member_id, end_date, time_slot_id, personal_trainer:personal_trainers(name)")
                 .in("member_id", memberIds)
                 .eq("status", "active")
                 .gte("end_date", today)
@@ -522,7 +522,7 @@ Deno.serve(async (req) => {
             ...member,
             subscription: subData || undefined,
             activePT: ptData
-              ? { trainer_name: trainerData?.name || "Unknown", end_date: ptData.end_date }
+              ? { trainer_name: trainerData?.name || "Unknown", end_date: ptData.end_date, time_slot_id: ptData.time_slot_id || null }
               : null,
           };
         });
