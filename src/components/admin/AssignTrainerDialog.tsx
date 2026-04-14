@@ -382,6 +382,18 @@ export const AssignTrainerDialog = ({
             </div>
           )}
 
+          <div className="flex items-center gap-2 pt-1">
+            <Checkbox
+              id="notify-whatsapp"
+              checked={notifyWhatsApp}
+              onCheckedChange={(checked) => setNotifyWhatsApp(checked === true)}
+            />
+            <label htmlFor="notify-whatsapp" className="text-sm flex items-center gap-1.5 cursor-pointer text-muted-foreground">
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
+              Notify member via WhatsApp
+            </label>
+          </div>
+
           <div className="flex gap-2 pt-2">
             <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancel
