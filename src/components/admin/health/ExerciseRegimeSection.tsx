@@ -108,6 +108,18 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
     }
   };
 
+  const handleDeletePlan = async (planId: string) => {
+    if (!confirm("Delete this exercise plan?")) return;
+    try {
+      const { error } = await supabase.from("member_exercise_plans").delete().eq("id", planId);
+      if (error) throw error;
+      toast.success("Plan deleted");
+      await onRefresh();
+    } catch (err: any) {
+      toast.error("Error deleting plan", { description: err.message });
+    }
+  };
+
   const activePlan = plans.find(p => p.is_active);
   const pastPlans = plans.filter(p => !p.is_active);
 
