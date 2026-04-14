@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { Plus, ChevronDown, ChevronUp, Calendar, User } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2 } from "lucide-react";
 import type { MemberAssessment } from "./MemberHealthTab";
 
 interface AssessmentSectionProps {
@@ -20,6 +20,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     assessed_by: "",
     current_condition: "",
@@ -55,6 +56,21 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       toast.error("Error saving assessment", { description: err.message });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this assessment?")) return;
+    setDeletingId(id);
+    try {
+      const { error } = await supabase.from("member_assessments").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Assessment deleted");
+      await onRefresh();
+    } catch (err: any) {
+      toast.error("Error deleting assessment", { description: err.message });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -111,8 +127,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       ) : (
         assessments.map(a => (
           <div key={a.id} className="rounded-xl border border-border/60 bg-card/50 p-3 hover:border-border transition-colors">
-            <button onClick={() => setExpandedId(expandedId === a.id ? null : a.id)} className="w-full flex items-center justify-between text-left">
-              <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-between">
+              <button onClick={() => setExpandedId(expandedId === a.id ? null : a.id)} className="flex items-center gap-2.5 text-left flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Calendar className="w-3 h-3" />
                   {formatDate(a.assessment_date)}
@@ -122,9 +138,22 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
                   <User className="w-3 h-3" />
                   {a.assessed_by}
                 </div>
+              </button>
+              <div className="flex items-center gap-0.5 flex-shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => handleDelete(a.id)}
+                  disabled={deletingId === a.id}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+                <button onClick={() => setExpandedId(expandedId === a.id ? null : a.id)} className="p-1">
+                  {expandedId === a.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                </button>
               </div>
-              {expandedId === a.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-            </button>
+            </div>
             {expandedId === a.id && (
               <div className="mt-3 space-y-2 text-sm">
                 {a.current_condition && <DetailRow label="Condition" value={a.current_condition} />}

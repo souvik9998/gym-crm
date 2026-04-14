@@ -108,6 +108,18 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
     }
   };
 
+  const handleDeletePlan = async (planId: string) => {
+    if (!confirm("Delete this exercise plan?")) return;
+    try {
+      const { error } = await supabase.from("member_exercise_plans").delete().eq("id", planId);
+      if (error) throw error;
+      toast.success("Plan deleted");
+      await onRefresh();
+    } catch (err: any) {
+      toast.error("Error deleting plan", { description: err.message });
+    }
+  };
+
   const activePlan = plans.find(p => p.is_active);
   const pastPlans = plans.filter(p => !p.is_active);
 
@@ -191,6 +203,9 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
               <span className="text-sm font-semibold">{activePlan.plan_name}</span>
               <Badge className="bg-emerald-500/10 text-emerald-600 text-[10px] px-1.5 py-0 border-emerald-500/20">Active</Badge>
             </div>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDeletePlan(activePlan.id)}>
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
             <span>🎯 {activePlan.goal}</span>
@@ -232,7 +247,12 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
             <div key={plan.id} className="rounded-lg border border-border/40 bg-card/30 p-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium">{plan.plan_name}</span>
-                <span className="text-[10px] text-muted-foreground">{plan.goal} • {plan.workout_split}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground">{plan.goal} • {plan.workout_split}</span>
+                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDeletePlan(plan.id)}>
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
               </div>
               <p className="text-[10px] text-muted-foreground mt-0.5">{plan.exercises.length} exercises • By {plan.created_by}</p>
             </div>

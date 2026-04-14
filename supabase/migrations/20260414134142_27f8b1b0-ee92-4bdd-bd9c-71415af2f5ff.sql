@@ -1,0 +1,1 @@
+CREATE POLICY "authenticated_delete_member_documents" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'member-documents');
