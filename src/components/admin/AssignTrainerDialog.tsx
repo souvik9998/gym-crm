@@ -17,8 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Dumbbell, Loader2, Clock } from "lucide-react";
+import { Dumbbell, Loader2, Clock, MessageCircle } from "lucide-react";
 
 interface Trainer {
   id: string;
@@ -40,6 +41,8 @@ interface AssignTrainerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   memberId: string;
+  memberName?: string;
+  memberPhone?: string;
   branchId: string;
   mode: "assign" | "replace";
   existingPtId?: string;
@@ -52,6 +55,8 @@ export const AssignTrainerDialog = ({
   open,
   onOpenChange,
   memberId,
+  memberName,
+  memberPhone,
   branchId,
   mode,
   existingPtId,
@@ -67,6 +72,7 @@ export const AssignTrainerDialog = ({
   const [endDate, setEndDate] = useState("");
   const [monthlyFee, setMonthlyFee] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [notifyWhatsApp, setNotifyWhatsApp] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
 
   useEffect(() => {
@@ -78,6 +84,7 @@ export const AssignTrainerDialog = ({
       setSelectedTrainerId("");
       setSelectedTimeSlotId("");
       setMonthlyFee("");
+      setNotifyWhatsApp(false);
       setTimeSlots([]);
     }
   }, [open, branchId]);
@@ -222,6 +229,33 @@ export const AssignTrainerDialog = ({
         });
       }
 
+      // Send WhatsApp notification if checked
+      if (notifyWhatsApp && memberName) {
+        try {
+          const selectedTrainer = trainers.find(t => t.id === selectedTrainerId);
+          const trainerName = selectedTrainer?.name || "your trainer";
+          const selectedSlot = timeSlots.find(s => s.id === selectedTimeSlotId);
+          const slotInfo = selectedSlot 
+            ? `\nTime Slot: ${formatTime(selectedSlot.start_time)} – ${formatTime(selectedSlot.end_time)}`
+            : "";
+          const formatDateStr = (d: string) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+          const message = `Hi ${memberName}, your personal trainer *${trainerName}* has been assigned.${slotInfo}\nPeriod: ${formatDateStr(startDate)} to ${formatDateStr(endDate)}`;
+
+          await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              memberIds: [memberId],
+              type: "custom",
+              customMessage: message,
+              branchId,
+            },
+          });
+          toast.success("WhatsApp notification sent!");
+        } catch (whatsAppError) {
+          console.error("WhatsApp notify error:", whatsAppError);
+          toast.error("Trainer assigned but WhatsApp notification failed");
+        }
+      }
+
       toast.success(
         mode === "assign"
           ? "Trainer assigned successfully"
@@ -347,6 +381,18 @@ export const AssignTrainerDialog = ({
               </div>
             </div>
           )}
+
+          <div className="flex items-center gap-2 pt-1">
+            <Checkbox
+              id="notify-whatsapp"
+              checked={notifyWhatsApp}
+              onCheckedChange={(checked) => setNotifyWhatsApp(checked === true)}
+            />
+            <label htmlFor="notify-whatsapp" className="text-sm flex items-center gap-1.5 cursor-pointer text-muted-foreground">
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
+              Notify member via WhatsApp
+            </label>
+          </div>
 
           <div className="flex gap-2 pt-2">
             <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={isLoading}>
