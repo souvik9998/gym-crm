@@ -237,6 +237,7 @@ const Renew = () => {
           existingMembershipEndDate={existingMembershipEndDate || undefined}
           existingPTEndDate={existingPTEndDate || undefined}
           branchId={member.branch_id || undefined}
+          allowSelfSelectTrainer={allowSelfSelectTrainer}
         />
       </main>
       <PoweredByBadge />
