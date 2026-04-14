@@ -40,6 +40,7 @@ const DEFAULT_FIELDS: RegistrationFields = {
   identity_proof_upload: { enabled: false, required: false, locked: false },
   health_details: { enabled: false, required: false, locked: false },
   medical_records_upload: { enabled: false, required: false, locked: false },
+  self_select_trainer: { enabled: true, required: false, locked: false },
 };
 
 const FIELD_CONFIG = [
