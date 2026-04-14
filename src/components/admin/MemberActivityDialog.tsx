@@ -263,11 +263,12 @@ export const MemberActivityDialog = ({
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col px-5 sm:px-6 pb-5 sm:pb-6 min-h-0 overflow-hidden">
-            <TabsList className="grid w-full grid-cols-4 h-10 flex-shrink-0 p-1 bg-muted/50 rounded-xl">
-              <TabsTrigger value="overview" className="text-xs md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Overview</TabsTrigger>
-              <TabsTrigger value="subscriptions" className="text-xs md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Gym</TabsTrigger>
-              <TabsTrigger value="pt" className="text-xs md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">PT History</TabsTrigger>
-              <TabsTrigger value="payments" className="text-xs md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Payments</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-5 h-10 flex-shrink-0 p-1 bg-muted/50 rounded-xl">
+              <TabsTrigger value="overview" className="text-[10px] md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Overview</TabsTrigger>
+              <TabsTrigger value="subscriptions" className="text-[10px] md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Gym</TabsTrigger>
+              <TabsTrigger value="pt" className="text-[10px] md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">PT History</TabsTrigger>
+              <TabsTrigger value="health" className="text-[10px] md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Health</TabsTrigger>
+              <TabsTrigger value="payments" className="text-[10px] md:text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">Payments</TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}
