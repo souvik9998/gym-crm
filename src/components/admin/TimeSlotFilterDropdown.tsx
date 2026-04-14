@@ -48,9 +48,6 @@ const formatTime = (time: string) => {
   return `${h12}:${m} ${ampm}`;
 };
 
-const getInitials = (name: string) => {
-  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
-};
 
 const slotColors = [
   { bg: "bg-violet-50 dark:bg-violet-950/30", border: "border-violet-200 dark:border-violet-800", text: "text-violet-700 dark:text-violet-300", bar: "bg-violet-500", activeBg: "bg-violet-100 dark:bg-violet-900/50", ring: "ring-violet-300/50" },
