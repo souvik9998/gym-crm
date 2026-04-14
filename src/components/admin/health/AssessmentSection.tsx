@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2 } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle } from "lucide-react";
 import type { MemberAssessment } from "./MemberHealthTab";
 
 interface AssessmentSectionProps {
@@ -21,6 +21,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({
     assessed_by: "",
     current_condition: "",
@@ -60,8 +61,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this assessment?")) return;
     setDeletingId(id);
+    setConfirmDeleteId(null);
     try {
       const { error } = await supabase.from("member_assessments").delete().eq("id", id);
       if (error) throw error;
@@ -127,6 +128,17 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       ) : (
         assessments.map(a => (
           <div key={a.id} className="rounded-xl border border-border/60 bg-card/50 p-3 hover:border-border transition-colors">
+            {/* Inline delete confirmation */}
+            {confirmDeleteId === a.id && (
+              <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg p-2.5 mb-2 animate-in fade-in duration-200">
+                <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0" />
+                <span className="text-xs text-destructive font-medium flex-1">Delete this assessment?</span>
+                <Button size="sm" variant="destructive" className="h-6 text-xs px-2 rounded-md" onClick={() => handleDelete(a.id)} disabled={deletingId === a.id}>
+                  {deletingId === a.id ? <ButtonSpinner /> : "Delete"}
+                </Button>
+                <Button size="sm" variant="outline" className="h-6 text-xs px-2 rounded-md" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <button onClick={() => setExpandedId(expandedId === a.id ? null : a.id)} className="flex items-center gap-2.5 text-left flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -144,7 +156,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
                   variant="ghost"
                   size="sm"
                   className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => handleDelete(a.id)}
+                  onClick={() => setConfirmDeleteId(confirmDeleteId === a.id ? null : a.id)}
                   disabled={deletingId === a.id}
                 >
                   <Trash2 className="w-3 h-3" />
