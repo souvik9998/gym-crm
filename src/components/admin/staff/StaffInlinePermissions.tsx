@@ -13,7 +13,7 @@ import {
   UserGroupIcon,
   UsersIcon,
 } from "@heroicons/react/24/outline";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 export interface InlinePermissions {
   can_view_members: boolean;
@@ -156,18 +156,32 @@ export const StaffInlinePermissions = ({
         <Separator />
         <div>
           <p className="text-xs font-medium text-muted-foreground mb-2">Member Access</p>
-          <Select
-            value={permissions.member_access_type || "all"}
-            onValueChange={(v) => onChange({ ...permissions, member_access_type: v })}
-          >
-            <SelectTrigger className="h-8 text-xs w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Access All Members</SelectItem>
-              <SelectItem value="assigned">Assigned Members Only</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => onChange({ ...permissions, member_access_type: "all" })}
+              className={cn(
+                "px-3 py-1.5 text-xs rounded-md border transition-colors",
+                (permissions.member_access_type || "all") === "all"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background border-border hover:bg-muted"
+              )}
+            >
+              All Members
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange({ ...permissions, member_access_type: "assigned" })}
+              className={cn(
+                "px-3 py-1.5 text-xs rounded-md border transition-colors",
+                permissions.member_access_type === "assigned"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background border-border hover:bg-muted"
+              )}
+            >
+              Assigned Only
+            </button>
+          </div>
         </div>
         <div>
           <p className="text-xs font-medium text-muted-foreground mb-2">Time Slot Permissions</p>
@@ -234,18 +248,32 @@ export const StaffInlinePermissions = ({
               <p className="text-sm font-medium">Member Access Type</p>
               <p className="text-xs text-muted-foreground">Control which members this staff can see</p>
             </div>
-            <Select
-              value={permissions.member_access_type || "all"}
-              onValueChange={(v) => onChange({ ...permissions, member_access_type: v })}
-            >
-              <SelectTrigger className="h-9 text-sm w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Members</SelectItem>
-                <SelectItem value="assigned">Assigned Only</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => onChange({ ...permissions, member_access_type: "all" })}
+                className={cn(
+                  "px-3 py-1.5 text-sm rounded-md border transition-colors",
+                  (permissions.member_access_type || "all") === "all"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background border-border hover:bg-muted"
+                )}
+              >
+                All Members
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange({ ...permissions, member_access_type: "assigned" })}
+                className={cn(
+                  "px-3 py-1.5 text-sm rounded-md border transition-colors",
+                  permissions.member_access_type === "assigned"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background border-border hover:bg-muted"
+                )}
+              >
+                Assigned Only
+              </button>
+            </div>
           </div>
         </div>
       </div>
