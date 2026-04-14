@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { Plus, Download, FileText, Upload, Heart, Trash2 } from "lucide-react";
+import { Plus, Download, FileText, Upload, Heart, Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import type { MemberDocument, HealthDetails } from "./MemberHealthTab";
 
 interface HealthFilesSectionProps {
@@ -23,6 +23,8 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingHealth, setIsSavingHealth] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [docType, setDocType] = useState("medical_record");
   const [docNotes, setDocNotes] = useState("");
@@ -37,27 +39,25 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
     emergency_contact_phone: healthDetails?.emergency_contact_phone || null,
   });
 
-  // Extract storage path from file_url
   const getStoragePath = (fileUrl: string): string => {
-    // If it's a full URL, extract the path after /object/public/member-documents/
     const marker = "/object/public/member-documents/";
     const idx = fileUrl.indexOf(marker);
     if (idx !== -1) return decodeURIComponent(fileUrl.substring(idx + marker.length));
-    // If it's already a relative path
     return fileUrl;
   };
 
   const handleDownload = async (doc: MemberDocument) => {
+    setDownloadingId(doc.id);
+    toast.info(`Preparing download: ${doc.file_name}...`);
     try {
       const storagePath = getStoragePath(doc.file_url);
       const { data, error } = await supabase.storage
         .from("member-documents")
-        .createSignedUrl(storagePath, 300); // 5 min signed URL
+        .createSignedUrl(storagePath, 300);
 
       if (error) throw error;
       if (!data?.signedUrl) throw new Error("Could not generate download link");
 
-      // Fetch as blob for proper download
       const response = await fetch(data.signedUrl);
       if (!response.ok) throw new Error("Download failed");
       const blob = await response.blob();
@@ -69,22 +69,22 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
+      toast.success(`Downloaded ${doc.file_name}`);
     } catch (err: any) {
       console.error("Download error:", err);
-      // Fallback: try opening the URL directly
       window.open(doc.file_url, "_blank");
       toast.error("Download may have failed", { description: "Opened in new tab instead" });
+    } finally {
+      setDownloadingId(null);
     }
   };
 
   const handleDeleteDoc = async (doc: MemberDocument) => {
-    if (!confirm(`Delete "${doc.file_name}"?`)) return;
     setDeletingId(doc.id);
+    setConfirmDeleteId(null);
     try {
-      // Delete from storage
       const storagePath = getStoragePath(doc.file_url);
       await supabase.storage.from("member-documents").remove([storagePath]);
-      // Delete from DB
       const { error } = await supabase.from("member_documents").delete().eq("id", doc.id);
       if (error) throw error;
       toast.success("Document deleted");
@@ -106,7 +106,6 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
       const { error: storageError } = await supabase.storage.from("member-documents").upload(path, file);
       if (storageError) throw storageError;
 
-      // Store the relative path (not public URL) since bucket is private
       const { error: dbError } = await supabase.from("member_documents").insert({
         member_id: memberId,
         document_type: docType,
@@ -297,32 +296,45 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
         ) : (
           <div className="space-y-2">
             {documents.map(doc => (
-              <div key={doc.id} className="flex items-center justify-between rounded-lg border border-border/60 bg-card/50 p-2.5 hover:border-border transition-colors">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-muted/80 flex-shrink-0">
-                    <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+              <div key={doc.id} className="rounded-lg border border-border/60 bg-card/50 p-2.5 hover:border-border transition-colors">
+                {/* Inline delete confirmation */}
+                {confirmDeleteId === doc.id && (
+                  <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg p-2 mb-2 animate-in fade-in duration-200">
+                    <AlertTriangle className="w-3.5 h-3.5 text-destructive flex-shrink-0" />
+                    <span className="text-xs text-destructive font-medium flex-1 truncate">Delete "{doc.file_name}"?</span>
+                    <Button size="sm" variant="destructive" className="h-6 text-xs px-2 rounded-md" onClick={() => handleDeleteDoc(doc)} disabled={deletingId === doc.id}>
+                      {deletingId === doc.id ? <ButtonSpinner /> : "Delete"}
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-6 text-xs px-2 rounded-md" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium truncate">{doc.file_name}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {doc.document_type.replace(/_/g, " ")} • {formatDate(doc.created_at)}
-                      {doc.file_size ? ` • ${formatSize(doc.file_size)}` : ""}
-                    </p>
+                )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-muted/80 flex-shrink-0">
+                      <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{doc.file_name}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {doc.document_type.replace(/_/g, " ")} • {formatDate(doc.created_at)}
+                        {doc.file_size ? ` • ${formatSize(doc.file_size)}` : ""}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-0.5 flex-shrink-0">
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDownload(doc)}>
-                    <Download className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => handleDeleteDoc(doc)}
-                    disabled={deletingId === doc.id}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDownload(doc)} disabled={downloadingId === doc.id}>
+                      {downloadingId === doc.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => setConfirmDeleteId(confirmDeleteId === doc.id ? null : doc.id)}
+                      disabled={deletingId === doc.id}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}

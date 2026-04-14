@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Dumbbell } from "lucide-react";
+import { Plus, Trash2, Dumbbell, AlertTriangle } from "lucide-react";
 import type { ExercisePlan } from "./MemberHealthTab";
 
 interface ExerciseRegimeSectionProps {
@@ -30,6 +30,8 @@ const SPLITS = ["Full Body", "Push-Pull-Legs", "Upper-Lower", "Bro Split", "Cust
 export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: ExerciseRegimeSectionProps) => {
   const [showForm, setShowForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [planName, setPlanName] = useState("");
   const [goal, setGoal] = useState("General Fitness");
   const [workoutSplit, setWorkoutSplit] = useState("Full Body");
@@ -58,14 +60,12 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
 
     setIsSaving(true);
     try {
-      // Deactivate existing active plans
       await supabase
         .from("member_exercise_plans")
         .update({ is_active: false })
         .eq("member_id", memberId)
         .eq("is_active", true);
 
-      // Create new plan
       const { data: plan, error: planError } = await supabase
         .from("member_exercise_plans")
         .insert({
@@ -82,7 +82,6 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
 
       if (planError) throw planError;
 
-      // Insert exercises
       const exerciseRows = validExercises.map((e, i) => ({
         plan_id: plan.id,
         exercise_name: e.exercise_name,
@@ -109,7 +108,8 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
   };
 
   const handleDeletePlan = async (planId: string) => {
-    if (!confirm("Delete this exercise plan?")) return;
+    setDeletingId(planId);
+    setConfirmDeleteId(null);
     try {
       const { error } = await supabase.from("member_exercise_plans").delete().eq("id", planId);
       if (error) throw error;
@@ -117,11 +117,24 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
       await onRefresh();
     } catch (err: any) {
       toast.error("Error deleting plan", { description: err.message });
+    } finally {
+      setDeletingId(null);
     }
   };
 
   const activePlan = plans.find(p => p.is_active);
   const pastPlans = plans.filter(p => !p.is_active);
+
+  const DeleteConfirmBanner = ({ planId, label }: { planId: string; label: string }) => (
+    <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg p-2 mb-2 animate-in fade-in duration-200">
+      <AlertTriangle className="w-3.5 h-3.5 text-destructive flex-shrink-0" />
+      <span className="text-xs text-destructive font-medium flex-1 truncate">Delete "{label}"?</span>
+      <Button size="sm" variant="destructive" className="h-6 text-xs px-2 rounded-md" onClick={() => handleDeletePlan(planId)} disabled={deletingId === planId}>
+        {deletingId === planId ? <ButtonSpinner /> : "Delete"}
+      </Button>
+      <Button size="sm" variant="outline" className="h-6 text-xs px-2 rounded-md" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+    </div>
+  );
 
   return (
     <div className="space-y-3">
@@ -197,13 +210,14 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
       {/* Active Plan */}
       {activePlan && (
         <div className="rounded-xl border-2 border-emerald-500/30 bg-emerald-500/5 p-3">
+          {confirmDeleteId === activePlan.id && <DeleteConfirmBanner planId={activePlan.id} label={activePlan.plan_name} />}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Dumbbell className="w-4 h-4 text-emerald-600" />
               <span className="text-sm font-semibold">{activePlan.plan_name}</span>
               <Badge className="bg-emerald-500/10 text-emerald-600 text-[10px] px-1.5 py-0 border-emerald-500/20">Active</Badge>
             </div>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDeletePlan(activePlan.id)}>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => setConfirmDeleteId(confirmDeleteId === activePlan.id ? null : activePlan.id)}>
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </div>
@@ -245,11 +259,12 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Previous Plans</p>
           {pastPlans.map(plan => (
             <div key={plan.id} className="rounded-lg border border-border/40 bg-card/30 p-2.5">
+              {confirmDeleteId === plan.id && <DeleteConfirmBanner planId={plan.id} label={plan.plan_name} />}
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium">{plan.plan_name}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-muted-foreground">{plan.goal} • {plan.workout_split}</span>
-                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDeletePlan(plan.id)}>
+                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive" onClick={() => setConfirmDeleteId(confirmDeleteId === plan.id ? null : plan.id)}>
                     <Trash2 className="w-3 h-3" />
                   </Button>
                 </div>
