@@ -128,6 +128,7 @@ export const StaffPermissionsDialog = ({
         can_access_analytics: staff?.role === "manager",
         can_change_settings: false,
         can_send_whatsapp: staff?.role === "manager",
+        can_access_attendance: true,
         member_access_type: "all",
         can_manage_time_slots: staff?.role === "manager" || staff?.role === "trainer",
         can_create_time_slots: staff?.role === "manager",
