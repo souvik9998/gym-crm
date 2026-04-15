@@ -421,7 +421,7 @@ export const SimpleAttendanceTab = () => {
 
       {/* Mobile: Stacked layout */}
       <div className="lg:hidden space-y-2.5">
-        <div className="flex items-center gap-1.5 justify-center">
+        <div className="flex items-center gap-1.5 justify-start">
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("prev")}>
             <ChevronLeftIcon className="w-4 h-4" />
           </Button>
@@ -473,20 +473,20 @@ export const SimpleAttendanceTab = () => {
             <ChevronRightIcon className="w-4 h-4" />
           </Button>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 justify-start">
           <TrainerFilterDropdown value={selectedTrainerId} onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }} compact />
           <TimeSlotFilterDropdown value={selectedSlotId} onChange={setSelectedSlotId} trainerFilter={selectedTrainerId} compact />
         </div>
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-start gap-3">
           {[
             { label: "Present", count: stats.present, color: "text-green-600", dot: "bg-green-500" },
             { label: "Late", count: stats.late, color: "text-amber-600", dot: "bg-amber-500" },
             { label: "Absent", count: stats.absent, color: "text-red-500", dot: "bg-red-500" },
             { label: "Total", count: stats.total, color: "text-foreground", dot: "bg-muted-foreground" },
           ].map((s) => (
-            <div key={s.label} className="flex items-center gap-1 text-[11px]">
-              <div className={cn("w-2 h-2 rounded-full", s.dot)} />
-              <span className="text-muted-foreground hidden sm:inline">{s.label}</span>
+            <div key={s.label} className="flex items-center gap-1.5 text-[11px]">
+              <div className={cn("w-2 h-2 rounded-full shrink-0", s.dot)} />
+              <span className="text-muted-foreground">{s.label}</span>
               <span className={cn("font-bold", s.color)}>{s.count}</span>
             </div>
           ))}

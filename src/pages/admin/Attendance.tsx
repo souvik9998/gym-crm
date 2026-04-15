@@ -83,9 +83,9 @@ const Attendance = () => {
       </div>
 
       <Tabs defaultValue={defaultTab} className="space-y-2 lg:space-y-3">
-        {/* Tabs - scrollable pill style on mobile */}
-        <div className="-mx-1 px-1 lg:mx-0 lg:px-0">
-          <TabsList className="bg-muted/50 rounded-lg p-0.5 lg:p-1 h-auto inline-flex w-full lg:w-auto overflow-x-auto scrollbar-hide gap-0.5">
+        {/* Tabs - scrollable pill style on mobile, left-aligned */}
+        <div className="-mx-1 px-1 lg:mx-0 lg:px-0 overflow-x-auto scrollbar-hide">
+          <TabsList className="bg-muted/50 rounded-lg p-0.5 lg:p-1 h-auto inline-flex w-auto lg:w-auto gap-0.5 justify-start">
             {tabs.map((tab) => (
               <TabsTrigger
                 key={tab.value}
