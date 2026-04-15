@@ -12,9 +12,18 @@ import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
 import { format } from "date-fns";
-import { Calendar, MapPin, CheckCircle2, ArrowLeft, ArrowRight, IndianRupee, User, Phone, Mail, Ticket } from "lucide-react";
+import { Calendar, MapPin, CheckCircle2, ArrowLeft, ArrowRight, IndianRupee, User, Phone, Mail, Ticket, TicketPercent, X } from "lucide-react";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import { cn } from "@/lib/utils";
+
+interface AppliedCoupon {
+  id: string;
+  code: string;
+  discount_type: string;
+  discount_value: number;
+  max_discount_cap: number | null;
+  discountAmount: number;
+}
 
 type Step = "phone" | "details" | "payment";
 type PaymentStage = "idle" | "verifying" | "processing" | "success";
@@ -74,6 +83,57 @@ export default function EventRegistration() {
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const [paymentStage, setPaymentStage] = useState<PaymentStage>("idle");
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState("");
+
+  const calculateCouponDiscount = (coupon: Omit<AppliedCoupon, 'discountAmount'>, basePrice: number): number => {
+    if (basePrice <= 0) return 0;
+    let discount = 0;
+    if (coupon.discount_type === "percentage") {
+      discount = (basePrice * coupon.discount_value) / 100;
+      if (coupon.max_discount_cap && discount > coupon.max_discount_cap) discount = coupon.max_discount_cap;
+    } else if (coupon.discount_type === "flat") {
+      discount = coupon.discount_value;
+    }
+    return Math.min(Math.round(discount), basePrice);
+  };
+
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim().toUpperCase();
+    if (!code) { setCouponError("Enter a coupon code"); return; }
+    setCouponLoading(true);
+    setCouponError("");
+    try {
+      const { data: coupon, error } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("code", code)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (error) throw error;
+      if (!coupon) { setCouponError("Invalid coupon code"); return; }
+      const applicableOn = coupon.applicable_on as any;
+      if (!applicableOn?.event) { setCouponError("This coupon is not valid for events"); return; }
+      const today = new Date().toISOString().split("T")[0];
+      if (coupon.start_date > today) { setCouponError("Coupon is not yet active"); return; }
+      if (coupon.end_date && coupon.end_date < today) { setCouponError("Coupon has expired"); return; }
+      if (coupon.total_usage_limit && coupon.usage_count >= coupon.total_usage_limit) { setCouponError("Coupon usage limit reached"); return; }
+      if (coupon.applicable_branch_ids?.length > 0 && !coupon.applicable_branch_ids.includes(event?.branch_id)) { setCouponError("Coupon not valid for this branch"); return; }
+      const basePrice = Number(selectedPricing?.price || 0);
+      const discountAmount = calculateCouponDiscount(coupon, basePrice);
+      setAppliedCoupon({ id: coupon.id, code: coupon.code, discount_type: coupon.discount_type, discount_value: coupon.discount_value, max_discount_cap: coupon.max_discount_cap, discountAmount });
+    } catch (err: any) {
+      setCouponError(err.message || "Failed to validate coupon");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => { setAppliedCoupon(null); setCouponCode(""); setCouponError(""); };
+
   const { data: event, isLoading: eventLoading } = useQuery({
     queryKey: ["public-event", eventId],
     queryFn: async () => {
@@ -102,6 +162,21 @@ export default function EventRegistration() {
       toast.error("Enter a valid 10-digit phone number");
       return;
     }
+
+    // Check for duplicate registration
+    const { data: existingReg } = await supabase
+      .from("event_registrations")
+      .select("id")
+      .eq("event_id", eventId!)
+      .eq("phone", phone)
+      .eq("payment_status", "success")
+      .maybeSingle();
+
+    if (existingReg) {
+      toast.error("You are already registered for this event");
+      return;
+    }
+
     const { data } = await supabase
       .from("members")
       .select("id, name, email")
@@ -135,6 +210,16 @@ export default function EventRegistration() {
       if (!event || !eventId) throw new Error("Event not found");
       if (!name.trim()) throw new Error("Name is required");
       if (!selectedPricingId) throw new Error("Select a pricing option");
+
+      // Duplicate check
+      const { data: dupReg } = await supabase
+        .from("event_registrations")
+        .select("id")
+        .eq("event_id", eventId)
+        .eq("phone", phone)
+        .eq("payment_status", "success")
+        .maybeSingle();
+      if (dupReg) throw new Error("You are already registered for this event");
 
       if (selectedPricing?.capacity_limit) {
         const { count } = await supabase
@@ -191,8 +276,14 @@ export default function EventRegistration() {
   // Razorpay payment flow
   const handlePayment = async () => {
     if (!event || !eventId || !selectedPricing) return;
-    const amount = Number(selectedPricing.price);
-    if (amount <= 0) { registerFreeMutation.mutate(); return; }
+    const baseAmount = Number(selectedPricing.price);
+    const couponDisc = appliedCoupon?.discountAmount || 0;
+    const amount = Math.max(0, baseAmount - couponDisc);
+    if (amount <= 0) {
+      // Coupon made it free - register directly
+      registerFreeMutation.mutate();
+      return;
+    }
 
     setIsPaymentLoading(true);
     setPaymentStage("idle");
@@ -359,6 +450,9 @@ export default function EventRegistration() {
   const customFields = event.event_custom_fields || [];
   const pricingOptions = event.event_pricing_options || [];
   const stepIndex = ["phone", "details", "payment"].indexOf(step);
+  const payBasePrice = Number(selectedPricing?.price || 0);
+  const payDiscount = appliedCoupon?.discountAmount || 0;
+  const payTotal = Math.max(0, payBasePrice - payDiscount);
 
   return (
     <div className="min-h-screen bg-background">
@@ -610,15 +704,61 @@ export default function EventRegistration() {
                     <IndianRupee className="w-5 h-5 text-primary" />
                     <h3 className="font-semibold text-lg">Complete Payment</h3>
                   </div>
+
+                  {/* Coupon section */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-1.5">
+                      <TicketPercent className="w-4 h-4" /> Have a Coupon?
+                    </Label>
+                    {appliedCoupon ? (
+                      <div className="flex items-center justify-between p-3 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                          <span className="text-sm font-mono font-bold">{appliedCoupon.code}</span>
+                          <span className="text-xs text-green-600">-₹{appliedCoupon.discountAmount}</span>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={removeCoupon}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Input
+                          value={couponCode}
+                          onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(""); }}
+                          placeholder="Enter coupon code"
+                          className="rounded-xl font-mono text-sm"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleApplyCoupon}
+                          disabled={couponLoading || !couponCode.trim()}
+                          className="rounded-xl px-4 h-10"
+                        >
+                          {couponLoading ? <ButtonSpinner /> : "Apply"}
+                        </Button>
+                      </div>
+                    )}
+                    {couponError && <p className="text-xs text-destructive">{couponError}</p>}
+                  </div>
+
+                  {/* Price summary */}
                   <div className="p-5 rounded-xl bg-muted/30 border border-border/40 space-y-3">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{selectedPricing?.name}</span>
-                      <span className="font-medium">₹{selectedPricing?.price}</span>
+                      <span className="font-medium">₹{payBasePrice}</span>
                     </div>
+                    {payDiscount > 0 && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Coupon ({appliedCoupon?.code})</span>
+                        <span>-₹{payDiscount}</span>
+                      </div>
+                    )}
                     <div className="border-t border-border/40" />
                     <div className="flex justify-between text-base font-bold">
                       <span>Total</span>
-                      <span className="text-primary">₹{selectedPricing?.price}</span>
+                      <span className="text-primary">{payTotal === 0 ? "Free" : `₹${payTotal}`}</span>
                     </div>
                   </div>
                   <div className="flex gap-3">
@@ -633,7 +773,7 @@ export default function EventRegistration() {
                     >
                       {isPaymentLoading ? <><ButtonSpinner /> Processing...</> : (
                         <>
-                          <IndianRupee className="w-4 h-4" /> Pay ₹{selectedPricing?.price}
+                          <IndianRupee className="w-4 h-4" /> {payTotal === 0 ? "Register (Free)" : `Pay ₹${payTotal}`}
                         </>
                       )}
                     </Button>
@@ -672,11 +812,21 @@ export default function EventRegistration() {
                   )}
                 </div>
                 {selectedPricing && (
-                  <div className="pt-3 border-t border-border/40">
-                    <div className="flex justify-between items-center">
+                  <div className="pt-3 border-t border-border/40 space-y-1">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">{selectedPricing.name}</span>
+                      <span>₹{payBasePrice}</span>
+                    </div>
+                    {payDiscount > 0 && (
+                      <div className="flex justify-between items-center text-sm text-green-600">
+                        <span>Coupon</span>
+                        <span>-₹{payDiscount}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center pt-1">
                       <span className="text-sm text-muted-foreground">Total</span>
                       <span className="text-lg font-bold text-primary">
-                        {Number(selectedPricing.price) === 0 ? "Free" : `₹${selectedPricing.price}`}
+                        {payTotal === 0 ? "Free" : `₹${payTotal}`}
                       </span>
                     </div>
                   </div>

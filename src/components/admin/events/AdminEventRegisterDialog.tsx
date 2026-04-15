@@ -212,6 +212,16 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
       if (!phone || phone.length !== 10) throw new Error("Valid phone number is required");
       if (!selectedPricingId) throw new Error("Select a pricing option");
 
+      // Duplicate registration check
+      const { data: existingReg } = await supabase
+        .from("event_registrations")
+        .select("id")
+        .eq("event_id", event.id)
+        .eq("phone", phone)
+        .eq("payment_status", "success")
+        .maybeSingle();
+      if (existingReg) throw new Error("This phone number is already registered for this event");
+
       // Check capacity
       if (selectedPricing?.capacity_limit) {
         const { count } = await supabase
