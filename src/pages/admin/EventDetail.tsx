@@ -45,6 +45,13 @@ export default function EventDetail() {
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [itemFilter, setItemFilter] = useState("all");
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteReg, setDeleteReg] = useState<any>(null);
+  const [editReg, setEditReg] = useState<any>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editEmail, setEditEmail] = useState("");
 
   const { data: event, isLoading: eventLoading } = useQuery({
     queryKey: ["event-detail", eventId],
