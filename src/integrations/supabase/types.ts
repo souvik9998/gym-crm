@@ -474,6 +474,7 @@ export type Database = {
           logo_url: string | null
           name: string
           phone: string | null
+          slug: string
           tenant_id: string | null
           updated_at: string
         }
@@ -488,6 +489,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           phone?: string | null
+          slug: string
           tenant_id?: string | null
           updated_at?: string
         }
@@ -502,6 +504,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           phone?: string | null
+          slug?: string
           tenant_id?: string | null
           updated_at?: string
         }
@@ -1133,6 +1136,7 @@ export type Database = {
           id: string
           location: string | null
           selection_mode: string
+          slug: string
           status: string
           title: string
           updated_at: string
@@ -1149,6 +1153,7 @@ export type Database = {
           id?: string
           location?: string | null
           selection_mode?: string
+          slug: string
           status?: string
           title: string
           updated_at?: string
@@ -1165,6 +1170,7 @@ export type Database = {
           id?: string
           location?: string | null
           selection_mode?: string
+          slug?: string
           status?: string
           title?: string
           updated_at?: string
@@ -3246,6 +3252,7 @@ export type Database = {
         }[]
       }
       generate_invoice_number: { Args: { _branch_id: string }; Returns: string }
+      generate_slug: { Args: { input_text: string }; Returns: string }
       get_dashboard_stats: {
         Args: { _branch_id?: string }
         Returns: {
