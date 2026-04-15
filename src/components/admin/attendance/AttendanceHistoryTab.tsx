@@ -19,6 +19,8 @@ import {
   ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAttendanceFilters, formatSlotTime } from "@/hooks/queries/useAttendanceFilters";
+import { UserGroupIcon, FunnelIcon } from "@heroicons/react/24/outline";
 
 function getMonthDates(year: number, month: number): (string | null)[][] {
   const first = new Date(year, month, 1);
@@ -55,6 +57,14 @@ export const AttendanceHistoryTab = () => {
   const [search, setSearch] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
   const [activeView, setActiveView] = useState("calendar");
+  const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+
+  const { trainers, allSlots, isLimitedAccess } = useAttendanceFilters();
+  const filteredSlots = useMemo(() => {
+    if (selectedTrainerId) return allSlots.filter(s => s.trainer_id === selectedTrainerId);
+    return allSlots;
+  }, [allSlots, selectedTrainerId]);
 
   const weeks = useMemo(() => getMonthDates(currentMonth.year, currentMonth.month), [currentMonth]);
   const monthStart = `${currentMonth.year}-${String(currentMonth.month + 1).padStart(2, "0")}-01`;
@@ -69,7 +79,7 @@ export const AttendanceHistoryTab = () => {
     setSelectedDate(null);
   };
 
-  const { data: monthRecords = [], isLoading, refetch } = useQuery({
+  const { data: rawMonthRecords = [], isLoading, refetch } = useQuery({
     queryKey: ["attendance-history", branchId, monthStart, monthEnd],
     queryFn: async () => {
       if (!branchId) return [];
@@ -86,6 +96,18 @@ export const AttendanceHistoryTab = () => {
     },
     enabled: !!branchId,
   });
+
+  // Filter records by selected trainer/slot
+  const monthRecords = useMemo(() => {
+    let records = rawMonthRecords;
+    if (selectedSlotId) {
+      records = records.filter((r: any) => r.time_slot_id === selectedSlotId);
+    } else if (selectedTrainerId) {
+      const trainerSlotIds = new Set(allSlots.filter(s => s.trainer_id === selectedTrainerId).map(s => s.id));
+      records = records.filter((r: any) => r.time_slot_id && trainerSlotIds.has(r.time_slot_id));
+    }
+    return records;
+  }, [rawMonthRecords, selectedSlotId, selectedTrainerId, allSlots]);
 
   const daySummary = useMemo(() => {
     const map: Record<string, { present: number; late: number; absent: number; total: number }> = {};
@@ -191,7 +213,46 @@ export const AttendanceHistoryTab = () => {
         </div>
       </div>
 
-      {/* View Tabs */}
+      {/* Trainer & Slot Filters */}
+      {(trainers.length > 0 || allSlots.length > 0) && !isLimitedAccess && (
+        <div className="space-y-1.5">
+          {trainers.length > 1 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+              <UserGroupIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <button onClick={() => { setSelectedTrainerId(null); setSelectedSlotId(null); }}
+                className={cn(
+                  "shrink-0 px-2.5 py-1 rounded-full text-[10px] lg:text-xs font-medium transition-all duration-200 border active:scale-95",
+                  !selectedTrainerId ? "bg-foreground text-background border-foreground" : "bg-card border-border text-muted-foreground hover:text-foreground"
+                )}>All Trainers</button>
+              {trainers.map((t) => (
+                <button key={t.id} onClick={() => { setSelectedTrainerId(t.id); setSelectedSlotId(null); }}
+                  className={cn(
+                    "shrink-0 px-2.5 py-1 rounded-full text-[10px] lg:text-xs font-medium transition-all duration-200 border active:scale-95",
+                    selectedTrainerId === t.id ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:border-primary/30"
+                  )}>{t.name}</button>
+              ))}
+            </div>
+          )}
+          {filteredSlots.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+              <FunnelIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <button onClick={() => setSelectedSlotId(null)}
+                className={cn(
+                  "shrink-0 px-2 py-1 rounded-full text-[10px] lg:text-xs font-medium transition-all duration-200 border active:scale-95",
+                  !selectedSlotId ? "bg-foreground text-background border-foreground" : "bg-card border-border text-muted-foreground"
+                )}>All Slots</button>
+              {filteredSlots.map((slot) => (
+                <button key={slot.id} onClick={() => setSelectedSlotId(slot.id)}
+                  className={cn(
+                    "shrink-0 px-2 py-1 rounded-lg border text-[10px] lg:text-xs font-medium transition-all duration-200 active:scale-95",
+                    selectedSlotId === slot.id ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:border-primary/30"
+                  )}>{formatSlotTime(slot.start_time)} – {formatSlotTime(slot.end_time)}</button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <Tabs value={activeView} onValueChange={setActiveView}>
         <TabsList className="h-7 p-0.5 bg-muted/50 w-full">
           <TabsTrigger value="calendar" className="gap-1 text-[10px] lg:text-xs h-6 px-2 lg:px-3 flex-1">
