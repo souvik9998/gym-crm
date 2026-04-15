@@ -161,13 +161,14 @@ const allNavItems: NavItem[] = [
 ];
 
 const allBottomNavItems: NavItem[] = [
-  // QR Code - requires settings permission
+  // QR Code - requires settings permission AND qr attendance enabled
   {
     title: "QR Code",
     href: "/admin/qr-code",
     icon: QrCodeIcon,
     iconSolid: QrCodeIconSolid,
     requiresPermission: "can_change_settings",
+    tenantModule: "attendance_qr",
   },
   // Settings - requires settings permission
   {

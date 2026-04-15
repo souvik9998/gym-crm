@@ -2,6 +2,27 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders, errorResponse, successResponse, handleCorsRequest, validateAuth } from "../_shared/auth.ts";
 import { enforceRateLimit } from "../_shared/rate-limit.ts";
 
+// ─── Helper: Check if a tenant feature is enabled for a branch ───
+async function isTenantFeatureEnabled(serviceClient: any, branchId: string, featureKey: string): Promise<boolean> {
+  const { data: branch } = await serviceClient
+    .from("branches")
+    .select("tenant_id")
+    .eq("id", branchId)
+    .maybeSingle();
+
+  if (!branch?.tenant_id) return true;
+
+  const { data: limits } = await serviceClient
+    .from("tenant_limits")
+    .select("features")
+    .eq("tenant_id", branch.tenant_id)
+    .maybeSingle();
+
+  if (!limits?.features) return true;
+  const features = limits.features as Record<string, boolean>;
+  return features[featureKey] !== false;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return handleCorsRequest();
 
@@ -17,6 +38,11 @@ Deno.serve(async (req) => {
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    // For enroll action, check biometric permission using branch_id from body
+    if (action === "enroll") {
+      // We'll check inside handleEnroll since body isn't parsed yet
+    }
 
     switch (action) {
       case "sync":
@@ -69,6 +95,12 @@ async function handleEnroll(req: Request, serviceClient: any) {
 
   if (!branch_id || !member_id || !device_id) {
     return errorResponse("branch_id, member_id, and device_id are required", 400);
+  }
+
+  // Check if biometric attendance is enabled for this branch's tenant
+  const biometricEnabled = await isTenantFeatureEnabled(serviceClient, branch_id, "attendance_biometric");
+  if (!biometricEnabled) {
+    return errorResponse("Biometric attendance is not enabled for this branch. Contact the platform admin.", 403);
   }
 
   const validTypes = ["fingerprint", "rfid", "face"];

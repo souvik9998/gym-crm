@@ -10,6 +10,27 @@ import {
   UUIDSchema,
 } from "../_shared/validation.ts";
 
+// ─── Helper: Check if a tenant feature is enabled for a branch ───
+async function isTenantFeatureEnabled(serviceClient: any, branchId: string, featureKey: string): Promise<boolean> {
+  const { data: branch } = await serviceClient
+    .from("branches")
+    .select("tenant_id")
+    .eq("id", branchId)
+    .maybeSingle();
+
+  if (!branch?.tenant_id) return true; // No tenant = legacy, allow
+
+  const { data: limits } = await serviceClient
+    .from("tenant_limits")
+    .select("features")
+    .eq("tenant_id", branch.tenant_id)
+    .maybeSingle();
+
+  if (!limits?.features) return true; // No limits configured = allow
+  const features = limits.features as Record<string, boolean>;
+  return features[featureKey] !== false; // Default to true if key missing
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return handleCorsRequest();
 
@@ -27,6 +48,14 @@ Deno.serve(async (req) => {
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    // Enforce QR attendance permission for member-facing check-in actions
+    if (branchId && (action === "check-in" || action === "member-check-in" || action === "staff-device-check-in")) {
+      const qrEnabled = await isTenantFeatureEnabled(serviceClient, branchId, "attendance_qr");
+      if (!qrEnabled) {
+        return errorResponse("QR attendance is not enabled for this branch. Contact your gym admin.", 403);
+      }
+    }
 
     switch (action) {
       case "check-in":
