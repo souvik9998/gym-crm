@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
-import { Lock, User, Phone, Calendar, MapPin, IdCard, Upload, Heart, FileText, Dumbbell } from "lucide-react";
+import { Lock, User, Phone, Calendar, MapPin, IdCard, Upload, Heart, FileText, Dumbbell, Clock } from "lucide-react";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 
 interface FieldSetting {
