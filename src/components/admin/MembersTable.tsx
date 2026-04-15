@@ -1037,7 +1037,8 @@ export const MembersTable = ({
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 cursor-pointer transition-all duration-200 active:scale-[0.99] active:bg-muted/60",
                   "hover:bg-muted/40",
-                  selectedMembers.has(member.id) && "bg-primary/5"
+                  selectedMembers.has(member.id) && "bg-primary/5",
+                  isNewMember(member) && "border-l-2 border-l-emerald-500 bg-emerald-500/5"
                 )}
                 style={{ animationDelay: `${index * 40}ms` }}
                 onClick={() => handleMemberClick(member)}
