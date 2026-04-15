@@ -269,6 +269,9 @@ export function NotificationCenter() {
                         <NotificationBadge type={n.type} />
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{n.description}</p>
+                      {n.category === "new_member" && (
+                        <p className="text-[11px] text-emerald-500 mt-1.5 font-medium group-hover:underline">Tap to view members →</p>
+                      )}
                       {n.category === "member" && (
                         <p className="text-[11px] text-primary mt-1.5 font-medium group-hover:underline">Tap to send reminder →</p>
                       )}
