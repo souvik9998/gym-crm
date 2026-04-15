@@ -568,6 +568,12 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                         {getPaymentDisplayPhone(payment)}
                       </p>
                     </div>
+                    {getPaymentEventName(payment) && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Event</p>
+                        <p className="font-medium mt-0.5 text-purple-700 dark:text-purple-400">{getPaymentEventName(payment)}</p>
+                      </div>
+                    )}
                     <div>
                       <p className="text-xs text-muted-foreground">Type</p>
                       <div className="mt-0.5">{getPaymentTypeBadge(payment.payment_type)}</div>
