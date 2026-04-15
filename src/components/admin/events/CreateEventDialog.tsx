@@ -153,9 +153,10 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
   };
 
   // Resolve final pricing options based on pricing type
+  // Single Price: all items share the same singlePrice; Variable: each item has its own price
   const getEffectivePricingOptions = (): PricingOption[] => {
     if (pricingType === "single") {
-      return [{ name: "General", description: "", price: singlePrice, capacity_limit: singleCapacity, is_active: true }];
+      return pricingOptions.map(p => ({ ...p, price: singlePrice }));
     }
     return pricingOptions;
   };
