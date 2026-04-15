@@ -18,9 +18,9 @@ import {
   UserGroupIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  FunnelIcon,
 } from "@heroicons/react/24/outline";
-import { useAttendanceFilters, formatSlotTime } from "@/hooks/queries/useAttendanceFilters";
+import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
+import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 
 type AttendanceStatus = "present" | "absent" | "late";
 
