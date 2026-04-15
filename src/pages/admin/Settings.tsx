@@ -972,7 +972,7 @@ const AdminSettings = () => {
 
   return (
     <Fragment>
-      <div className="max-w-4xl mx-auto px-1 sm:px-0">
+      <div className="max-w-4xl px-1 sm:px-0">
         <Tabs value={activeTab} onValueChange={(val) => { setSearchParams({ tab: val }); setMobileMenuOpen(false); }}>
 
           {/* Mobile: dropdown tab selector */}
