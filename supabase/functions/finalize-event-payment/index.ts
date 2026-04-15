@@ -8,9 +8,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const SelectedItemSchema = z.object({
+  id: z.string().uuid(),
+  price: z.number().min(0),
+});
+
 const FinalizeEventPaymentSchema = z.object({
   eventId: z.string().uuid(),
-  pricingOptionId: z.string().uuid(),
+  pricingOptionId: z.string().uuid().optional().nullable(),
+  selectedItems: z.array(SelectedItemSchema).optional().nullable(),
   branchId: z.string().uuid(),
   memberId: z.string().uuid().optional().nullable(),
   name: z.string().trim().min(2).max(100),
@@ -42,15 +48,11 @@ async function resolveRazorpayCredentials(branchId: string) {
   if (gymCreds) {
     keyId = gymCreds.keyId;
     keySecret = gymCreds.keySecret;
-    console.log("Using per-gym Razorpay credentials for event payment finalization");
   }
 
   if (!keyId || !keySecret) {
     keyId = Deno.env.get("RAZORPAY_KEY_ID");
     keySecret = Deno.env.get("RAZORPAY_KEY_SECRET");
-    if (keyId && keySecret) {
-      console.log("Using global Razorpay credentials for event payment finalization (fallback)");
-    }
   }
 
   if (!keyId || !keySecret) {
@@ -102,6 +104,7 @@ Deno.serve(async (req) => {
     const {
       eventId,
       pricingOptionId,
+      selectedItems,
       branchId,
       memberId,
       name,
@@ -114,6 +117,8 @@ Deno.serve(async (req) => {
       razorpaySignature,
     } = parsed.data;
 
+    const isMultiSelect = Array.isArray(selectedItems) && selectedItems.length > 0;
+
     if (!razorpayPaymentId || !razorpaySignature) {
       return jsonResponse({ error: "Missing payment verification details" }, 400);
     }
@@ -125,20 +130,41 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+    // Validate amount server-side for multi-select
+    if (isMultiSelect) {
+      const itemIds = selectedItems.map(i => i.id);
+      const { data: dbItems } = await supabase
+        .from("event_pricing_options")
+        .select("id, price, capacity_limit, is_active")
+        .eq("event_id", eventId)
+        .in("id", itemIds);
+
+      if (!dbItems || dbItems.length !== itemIds.length) {
+        return jsonResponse({ error: "Invalid pricing options selected" }, 400);
+      }
+
+      for (const dbItem of dbItems) {
+        if (!dbItem.is_active) {
+          return jsonResponse({ error: `Item is no longer available` }, 400);
+        }
+      }
+
+      const serverTotal = dbItems.reduce((sum, item) => sum + Number(item.price || 0), 0);
+      // Allow some tolerance for coupon discounts - amount should be <= serverTotal
+      if (amount > serverTotal) {
+        return jsonResponse({ error: "Amount mismatch" }, 400);
+      }
+    }
+
     let paymentRecordId: string;
 
-    const { data: existingPayment, error: existingPaymentError } = await supabase
+    const { data: existingPayment } = await supabase
       .from("payments")
       .select("id")
       .eq("razorpay_order_id", razorpayOrderId)
       .eq("razorpay_payment_id", razorpayPaymentId)
       .eq("payment_type", "event_registration")
       .maybeSingle();
-
-    if (existingPaymentError) {
-      console.error("Error checking existing event payment:", existingPaymentError);
-      throw new Error("Failed to finalize payment");
-    }
 
     if (existingPayment?.id) {
       paymentRecordId = existingPayment.id;
@@ -166,17 +192,13 @@ Deno.serve(async (req) => {
       paymentRecordId = createdPayment.id;
     }
 
-    const { data: registrationByPayment, error: registrationByPaymentError } = await supabase
+    // Check for existing registration by payment
+    const { data: registrationByPayment } = await supabase
       .from("event_registrations")
       .select("id, payment_status")
       .eq("event_id", eventId)
       .eq("payment_id", paymentRecordId)
       .maybeSingle();
-
-    if (registrationByPaymentError) {
-      console.error("Error checking registration by payment:", registrationByPaymentError);
-      throw new Error("Failed to finalize registration");
-    }
 
     if (registrationByPayment?.id && registrationByPayment.payment_status === "success") {
       return jsonResponse({
@@ -187,104 +209,81 @@ Deno.serve(async (req) => {
     }
 
     let registrationId: string;
-    let shouldIncrementSlots = false;
+
+    const registrationData = {
+      event_id: eventId,
+      pricing_option_id: isMultiSelect ? null : (pricingOptionId || null),
+      member_id: memberId || null,
+      name,
+      phone,
+      email: email || null,
+      amount_paid: amount,
+      payment_status: "success" as const,
+      payment_id: paymentRecordId,
+      custom_field_responses: customResponses && Object.keys(customResponses).length > 0 ? customResponses : null,
+    };
 
     if (registrationByPayment?.id) {
-      const { data: updatedRegistration, error: updateError } = await supabase
+      const { data: updated, error: updateError } = await supabase
         .from("event_registrations")
-        .update({
-          pricing_option_id: pricingOptionId,
-          member_id: memberId || null,
-          name,
-          phone,
-          email: email || null,
-          amount_paid: amount,
-          payment_status: "success",
-          payment_id: paymentRecordId,
-          custom_field_responses: customResponses && Object.keys(customResponses).length > 0 ? customResponses : null,
-        })
+        .update(registrationData)
         .eq("id", registrationByPayment.id)
         .select("id")
         .single();
 
-      if (updateError || !updatedRegistration) {
-        console.error("Error updating event registration by payment:", updateError);
-        throw new Error("Failed to finalize registration");
-      }
-
-      registrationId = updatedRegistration.id;
-      shouldIncrementSlots = registrationByPayment.payment_status !== "success";
+      if (updateError || !updated) throw new Error("Failed to finalize registration");
+      registrationId = updated.id;
     } else {
-      const { data: existingRegistration, error: existingRegistrationError } = await supabase
+      // Check for existing registration by phone
+      const { data: existingReg } = await supabase
         .from("event_registrations")
         .select("id, payment_status")
         .eq("event_id", eventId)
-        .eq("pricing_option_id", pricingOptionId)
         .eq("phone", phone)
         .order("registered_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (existingRegistrationError) {
-        console.error("Error checking existing registration:", existingRegistrationError);
-        throw new Error("Failed to finalize registration");
-      }
-
-      if (existingRegistration?.id) {
-        const { data: updatedRegistration, error: updateError } = await supabase
+      if (existingReg?.id) {
+        const { data: updated, error: updateError } = await supabase
           .from("event_registrations")
-          .update({
-            member_id: memberId || null,
-            name,
-            phone,
-            email: email || null,
-            amount_paid: amount,
-            payment_status: "success",
-            payment_id: paymentRecordId,
-            custom_field_responses: customResponses && Object.keys(customResponses).length > 0 ? customResponses : null,
-          })
-          .eq("id", existingRegistration.id)
+          .update(registrationData)
+          .eq("id", existingReg.id)
           .select("id")
           .single();
 
-        if (updateError || !updatedRegistration) {
-          console.error("Error updating existing event registration:", updateError);
-          throw new Error("Failed to finalize registration");
-        }
-
-        registrationId = updatedRegistration.id;
-        shouldIncrementSlots = existingRegistration.payment_status !== "success";
+        if (updateError || !updated) throw new Error("Failed to finalize registration");
+        registrationId = updated.id;
       } else {
-        const { data: createdRegistration, error: registrationInsertError } = await supabase
+        const { data: created, error: insertError } = await supabase
           .from("event_registrations")
-          .insert({
-            event_id: eventId,
-            pricing_option_id: pricingOptionId,
-            member_id: memberId || null,
-            name,
-            phone,
-            email: email || null,
-            amount_paid: amount,
-            payment_status: "success",
-            payment_id: paymentRecordId,
-            custom_field_responses: customResponses && Object.keys(customResponses).length > 0 ? customResponses : null,
-          })
+          .insert(registrationData)
           .select("id")
           .single();
 
-        if (registrationInsertError || !createdRegistration) {
-          console.error("Error creating event registration:", registrationInsertError);
-          throw new Error("Failed to create event registration");
-        }
-
-        registrationId = createdRegistration.id;
-        shouldIncrementSlots = true;
+        if (insertError || !created) throw new Error("Failed to create event registration");
+        registrationId = created.id;
       }
     }
 
-    // slots_filled is now derived from actual registration counts - no manual increment needed
+    // Insert registration items for multi-select
+    if (isMultiSelect) {
+      // Delete old items first (in case of re-processing)
+      await supabase.from("event_registration_items").delete().eq("registration_id", registrationId);
 
-    // Send WhatsApp notification if event has whatsapp_notify_on_register enabled
+      const items = selectedItems.map(item => ({
+        registration_id: registrationId,
+        pricing_option_id: item.id,
+        amount_paid: item.price,
+      }));
+
+      const { error: itemsError } = await supabase.from("event_registration_items").insert(items);
+      if (itemsError) {
+        console.error("Error inserting registration items:", itemsError);
+      }
+    }
+
+    // Send WhatsApp notification
     try {
       const { data: eventData } = await supabase
         .from("events")
@@ -333,7 +332,6 @@ Deno.serve(async (req) => {
 
           console.log("WhatsApp event registration notification sent:", waResponse.status);
 
-          // Log the notification
           await supabase.from("whatsapp_notifications").insert({
             recipient_phone: formattedPhone,
             recipient_name: name,

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -44,6 +45,7 @@ export default function EventDetail() {
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [itemFilter, setItemFilter] = useState("all");
 
   const { data: event, isLoading: eventLoading } = useQuery({
     queryKey: ["event-detail", eventId],
@@ -59,6 +61,8 @@ export default function EventDetail() {
     enabled: !!eventId,
   });
 
+  const isMultiSelect = event?.selection_mode === "multiple";
+
   const { data: registrations = [], isLoading: regsLoading } = useQuery({
     queryKey: ["event-registrations", eventId],
     queryFn: async () => {
@@ -68,7 +72,28 @@ export default function EventDetail() {
         .eq("event_id", eventId!)
         .order("registered_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+
+      // Fetch registration items for multi-select events
+      if (data && data.length > 0) {
+        const regIds = data.map((r: any) => r.id);
+        const { data: items } = await supabase
+          .from("event_registration_items")
+          .select("*, event_pricing_options:pricing_option_id(name, price)")
+          .in("registration_id", regIds);
+
+        const itemsMap: Record<string, any[]> = {};
+        (items || []).forEach((item: any) => {
+          if (!itemsMap[item.registration_id]) itemsMap[item.registration_id] = [];
+          itemsMap[item.registration_id].push(item);
+        });
+
+        return data.map((r: any) => ({
+          ...r,
+          registration_items: itemsMap[r.id] || [],
+        }));
+      }
+
+      return (data || []).map((r: any) => ({ ...r, registration_items: [] }));
     },
     enabled: !!eventId,
   });
@@ -118,7 +143,16 @@ export default function EventDetail() {
   const filtered = registrations.filter((r: any) => {
     const matchSearch = r.name.toLowerCase().includes(search.toLowerCase()) || r.phone.includes(search);
     const matchStatus = statusFilter === "all" || r.payment_status === statusFilter;
-    return matchSearch && matchStatus;
+    // Item filter: for multi-select, check registration_items; for single, check pricing_option_id
+    let matchItem = true;
+    if (itemFilter !== "all") {
+      if (isMultiSelect) {
+        matchItem = (r.registration_items || []).some((item: any) => item.pricing_option_id === itemFilter);
+      } else {
+        matchItem = r.pricing_option_id === itemFilter;
+      }
+    }
+    return matchSearch && matchStatus && matchItem;
   });
 
   const totalRevenue = registrations
@@ -127,21 +161,51 @@ export default function EventDetail() {
 
   const paidCount = registrations.filter((r: any) => r.payment_status === "success").length;
 
-  // Compute real slots_filled from registrations
+  // Compute real slots_filled - use registration_items for multi-select
   const regCountMap = useMemo(() => {
     const map: Record<string, number> = {};
-    registrations.filter((r: any) => r.payment_status === "success").forEach((r: any) => {
-      map[r.pricing_option_id] = (map[r.pricing_option_id] || 0) + 1;
-    });
+    const successRegs = registrations.filter((r: any) => r.payment_status === "success");
+    if (isMultiSelect) {
+      successRegs.forEach((r: any) => {
+        (r.registration_items || []).forEach((item: any) => {
+          map[item.pricing_option_id] = (map[item.pricing_option_id] || 0) + 1;
+        });
+      });
+    } else {
+      successRegs.forEach((r: any) => {
+        if (r.pricing_option_id) map[r.pricing_option_id] = (map[r.pricing_option_id] || 0) + 1;
+      });
+    }
     return map;
-  }, [registrations]);
+  }, [registrations, isMultiSelect]);
+
+  // Per-item revenue breakdown
+  const perItemRevenue = useMemo(() => {
+    const map: Record<string, number> = {};
+    const successRegs = registrations.filter((r: any) => r.payment_status === "success");
+    if (isMultiSelect) {
+      successRegs.forEach((r: any) => {
+        (r.registration_items || []).forEach((item: any) => {
+          map[item.pricing_option_id] = (map[item.pricing_option_id] || 0) + Number(item.amount_paid || 0);
+        });
+      });
+    } else {
+      successRegs.forEach((r: any) => {
+        if (r.pricing_option_id) {
+          map[r.pricing_option_id] = (map[r.pricing_option_id] || 0) + Number(r.amount_paid || 0);
+        }
+      });
+    }
+    return map;
+  }, [registrations, isMultiSelect]);
 
   const pricingWithRealSlots = useMemo(() =>
     (event?.event_pricing_options || []).map((p: any) => ({
       ...p,
       slots_filled: regCountMap[p.id] || 0,
+      revenue: perItemRevenue[p.id] || 0,
     })),
-    [event?.event_pricing_options, regCountMap]
+    [event?.event_pricing_options, regCountMap, perItemRevenue]
   );
 
   const totalCapacity = pricingWithRealSlots.reduce(
@@ -150,15 +214,20 @@ export default function EventDetail() {
 
   const handleExport = () => {
     if (filtered.length === 0) { toast.error("No data to export"); return; }
-    const exportData = filtered.map((r: any) => ({
-      Name: r.name,
-      Phone: r.phone,
-      Email: r.email || "-",
-      "Pricing Option": r.event_pricing_options?.name || "-",
-      "Amount Paid": `₹${r.amount_paid}`,
-      "Payment Status": r.payment_status,
-      "Registered At": format(new Date(r.registered_at), "dd/MM/yyyy hh:mm a"),
-    }));
+    const exportData = filtered.map((r: any) => {
+      const itemNames = isMultiSelect && r.registration_items?.length > 0
+        ? r.registration_items.map((i: any) => i.event_pricing_options?.name || "Item").join(", ")
+        : r.event_pricing_options?.name || "-";
+      return {
+        Name: r.name,
+        Phone: r.phone,
+        Email: r.email || "-",
+        [isMultiSelect ? "Selected Items" : "Pricing Option"]: itemNames,
+        "Amount Paid": `₹${r.amount_paid}`,
+        "Payment Status": r.payment_status,
+        "Registered At": format(new Date(r.registered_at), "dd/MM/yyyy hh:mm a"),
+      };
+    });
     exportToExcel(exportData, `${event?.title}_registrations`);
     toast.success("Exported successfully");
   };
@@ -257,13 +326,30 @@ export default function EventDetail() {
               <IndianRupee className="w-4 h-4" />
               <span className="text-sm font-medium">₹{totalRevenue.toLocaleString()} Revenue</span>
             </div>
-            {pricingWithRealSlots.map((p: any) => (
-              <div key={p.id} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-muted/50 text-muted-foreground text-xs">
-                <span className="font-medium">{p.name}</span>
-                <span>₹{p.price}</span>
-                {p.capacity_limit > 0 && <span>({p.slots_filled}/{p.capacity_limit})</span>}
-              </div>
-            ))}
+            <TooltipProvider>
+              {pricingWithRealSlots.map((p: any) => (
+                <Tooltip key={p.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setItemFilter(itemFilter === p.id ? "all" : p.id)}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs transition-colors cursor-pointer ${
+                        itemFilter === p.id
+                          ? "bg-primary/10 text-primary border border-primary/30"
+                          : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <span className="font-medium">{p.name}</span>
+                      <span>{p.slots_filled} reg</span>
+                      <span>• ₹{(p.revenue || 0).toLocaleString()}</span>
+                      {p.capacity_limit > 0 && <span>({p.slots_filled}/{p.capacity_limit})</span>}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Click to filter by {p.name}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </TooltipProvider>
           </div>
         </CardContent>
       </Card>
@@ -316,7 +402,7 @@ export default function EventDetail() {
                       <TableHead>Name</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead className="hidden md:table-cell">Email</TableHead>
-                      <TableHead>Pricing</TableHead>
+                      <TableHead>{isMultiSelect ? "Items" : "Pricing"}</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="hidden lg:table-cell">Date</TableHead>
@@ -324,12 +410,18 @@ export default function EventDetail() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map((r: any) => (
+                    {filtered.map((r: any) => {
+                      const itemNames = isMultiSelect && r.registration_items?.length > 0
+                        ? r.registration_items.map((i: any) => i.event_pricing_options?.name || "Item").join(", ")
+                        : r.event_pricing_options?.name || "-";
+                      return (
                       <TableRow key={r.id}>
                         <TableCell className="font-medium">{r.name}</TableCell>
                         <TableCell>{r.phone}</TableCell>
                         <TableCell className="hidden md:table-cell text-muted-foreground">{r.email || "-"}</TableCell>
-                        <TableCell>{r.event_pricing_options?.name || "-"}</TableCell>
+                        <TableCell className="max-w-[200px]">
+                          <span className="text-xs truncate block" title={itemNames}>{itemNames}</span>
+                        </TableCell>
                         <TableCell>₹{r.amount_paid}</TableCell>
                         <TableCell>
                           <Badge
@@ -353,7 +445,8 @@ export default function EventDetail() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

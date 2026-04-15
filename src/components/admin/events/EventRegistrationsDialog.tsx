@@ -25,6 +25,8 @@ export function EventRegistrationsDialog({ open, onOpenChange, event }: Props) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [registerOpen, setRegisterOpen] = useState(false);
 
+  const isMultiSelect = event?.selection_mode === "multiple";
+
   const { data: registrations = [], isLoading } = useQuery({
     queryKey: ["event-registrations", event?.id],
     queryFn: async () => {
@@ -34,7 +36,22 @@ export function EventRegistrationsDialog({ open, onOpenChange, event }: Props) {
         .eq("event_id", event.id)
         .order("registered_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+
+      if (data && data.length > 0) {
+        const regIds = data.map((r: any) => r.id);
+        const { data: items } = await supabase
+          .from("event_registration_items")
+          .select("*, event_pricing_options:pricing_option_id(name, price)")
+          .in("registration_id", regIds);
+        const itemsMap: Record<string, any[]> = {};
+        (items || []).forEach((item: any) => {
+          if (!itemsMap[item.registration_id]) itemsMap[item.registration_id] = [];
+          itemsMap[item.registration_id].push(item);
+        });
+        return data.map((r: any) => ({ ...r, registration_items: itemsMap[r.id] || [] }));
+      }
+
+      return (data || []).map((r: any) => ({ ...r, registration_items: [] }));
     },
     enabled: !!event?.id && open,
   });
@@ -52,15 +69,20 @@ export function EventRegistrationsDialog({ open, onOpenChange, event }: Props) {
 
   const handleExport = () => {
     if (filtered.length === 0) { toast.error("No data to export"); return; }
-    const exportData = filtered.map((r: any) => ({
-      Name: r.name,
-      Phone: r.phone,
-      Email: r.email || "-",
-      "Pricing Option": r.event_pricing_options?.name || "-",
-      "Amount Paid": `₹${r.amount_paid}`,
-      "Payment Status": r.payment_status,
-      "Registered At": format(new Date(r.registered_at), "dd/MM/yyyy hh:mm a"),
-    }));
+    const exportData = filtered.map((r: any) => {
+      const itemNames = isMultiSelect && r.registration_items?.length > 0
+        ? r.registration_items.map((i: any) => i.event_pricing_options?.name || "Item").join(", ")
+        : r.event_pricing_options?.name || "-";
+      return {
+        Name: r.name,
+        Phone: r.phone,
+        Email: r.email || "-",
+        [isMultiSelect ? "Selected Items" : "Pricing Option"]: itemNames,
+        "Amount Paid": `₹${r.amount_paid}`,
+        "Payment Status": r.payment_status,
+        "Registered At": format(new Date(r.registered_at), "dd/MM/yyyy hh:mm a"),
+      };
+    });
     exportToExcel(exportData, `${event.title}_registrations`);
     toast.success("Exported successfully");
   };
@@ -124,18 +146,24 @@ export function EventRegistrationsDialog({ open, onOpenChange, event }: Props) {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Phone</TableHead>
-                  <TableHead>Pricing</TableHead>
+                  <TableHead>{isMultiSelect ? "Items" : "Pricing"}</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((r: any) => (
+                {filtered.map((r: any) => {
+                  const itemNames = isMultiSelect && r.registration_items?.length > 0
+                    ? r.registration_items.map((i: any) => i.event_pricing_options?.name || "Item").join(", ")
+                    : r.event_pricing_options?.name || "-";
+                  return (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">{r.name}</TableCell>
                     <TableCell>{r.phone}</TableCell>
-                    <TableCell>{r.event_pricing_options?.name || "-"}</TableCell>
+                    <TableCell className="max-w-[150px]">
+                      <span className="text-xs truncate block" title={itemNames}>{itemNames}</span>
+                    </TableCell>
                     <TableCell>₹{r.amount_paid}</TableCell>
                     <TableCell>
                       <Badge variant={r.payment_status === "success" ? "default" : r.payment_status === "pending" ? "secondary" : "destructive"} className="text-[10px]">
@@ -146,7 +174,8 @@ export function EventRegistrationsDialog({ open, onOpenChange, event }: Props) {
                       {format(new Date(r.registered_at), "dd MMM, hh:mm a")}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           )}
