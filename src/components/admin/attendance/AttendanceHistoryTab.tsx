@@ -254,7 +254,7 @@ export const AttendanceHistoryTab = () => {
       )}
 
       <Tabs value={activeView} onValueChange={setActiveView}>
-        <TabsList className="h-7 p-0.5 bg-muted/50 w-full">
+        <TabsList className="h-7 p-0.5 bg-muted/50 w-auto lg:w-full justify-start">
           <TabsTrigger value="calendar" className="gap-1 text-[10px] lg:text-xs h-6 px-2 lg:px-3 flex-1">
             <CalendarDaysIcon className="w-3 h-3 lg:w-3.5 lg:h-3.5" /> Calendar
           </TabsTrigger>
