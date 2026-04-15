@@ -27,6 +27,7 @@ interface FieldSetting {
 }
 
 interface RegistrationFieldSettings {
+  photo_id?: FieldSetting;
   identity_proof_upload?: FieldSetting;
   health_details?: FieldSetting;
   medical_records_upload?: FieldSetting;
@@ -329,6 +330,8 @@ const Register = () => {
             onSubmit={handleDetailsSubmit}
             onBack={() => navigate(branchSlug ? `/b/${branchSlug}` : "/admin/login")}
             initialData={memberDetails}
+            showPhotoId={fieldSettings?.photo_id?.enabled !== false}
+            photoIdRequired={fieldSettings?.photo_id?.required || false}
           />
         )}
 
