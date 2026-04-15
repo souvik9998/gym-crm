@@ -775,9 +775,7 @@ export default function EventRegistration() {
                 </CardContent>
               </Card>
               );
-            })()}
-              </Card>
-            )}
+          </div>
           </div>
 
           {/* Sidebar summary on desktop */}
