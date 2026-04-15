@@ -321,13 +321,30 @@ export default function EventDetail() {
               <IndianRupee className="w-4 h-4" />
               <span className="text-sm font-medium">₹{totalRevenue.toLocaleString()} Revenue</span>
             </div>
-            {pricingWithRealSlots.map((p: any) => (
-              <div key={p.id} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-muted/50 text-muted-foreground text-xs">
-                <span className="font-medium">{p.name}</span>
-                <span>₹{p.price}</span>
-                {p.capacity_limit > 0 && <span>({p.slots_filled}/{p.capacity_limit})</span>}
-              </div>
-            ))}
+            <TooltipProvider>
+              {pricingWithRealSlots.map((p: any) => (
+                <Tooltip key={p.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setItemFilter(itemFilter === p.id ? "all" : p.id)}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs transition-colors cursor-pointer ${
+                        itemFilter === p.id
+                          ? "bg-primary/10 text-primary border border-primary/30"
+                          : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <span className="font-medium">{p.name}</span>
+                      <span>{p.slots_filled} reg</span>
+                      <span>• ₹{(p.revenue || 0).toLocaleString()}</span>
+                      {p.capacity_limit > 0 && <span>({p.slots_filled}/{p.capacity_limit})</span>}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Click to filter by {p.name}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </TooltipProvider>
           </div>
         </CardContent>
       </Card>
