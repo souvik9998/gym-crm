@@ -204,50 +204,30 @@ export default function EventRegistration() {
           try {
             setPaymentStage("processing");
 
-            // Verify payment
+            // Verify and finalize payment + registration atomically
             const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
-              "verify-razorpay-payment",
+              "finalize-event-payment",
               {
                 body: {
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  memberId: existingMemberId,
-                  memberName: name.trim(),
-                  memberPhone: phone,
-                  amount,
-                  isNewMember: !existingMemberId,
+                  eventId,
+                  pricingOptionId: selectedPricingId,
                   branchId: event.branch_id,
-                  // Skip member/subscription creation — this is event-only
-                  skipMemberCreation: true,
+                  memberId: existingMemberId,
+                  name: name.trim(),
+                  phone,
+                  email: email.trim() || null,
+                  amount,
+                  customResponses,
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature,
                 },
               }
             );
 
-            if (verifyError) throw new Error(verifyError.message || "Payment verification failed");
-
-            // Payment verified — now create the event registration with success status
-            const { error: regError } = await supabase.from("event_registrations").insert({
-              event_id: eventId,
-              pricing_option_id: selectedPricingId,
-              member_id: existingMemberId,
-              name: name.trim(),
-              phone,
-              email: email.trim() || null,
-              amount_paid: amount,
-              payment_status: "success",
-              payment_id: response.razorpay_payment_id,
-              custom_field_responses: customResponses,
-            });
-
-            if (regError) throw regError;
-
-            // Update slots
-            try {
-              await supabase.from("event_pricing_options")
-                .update({ slots_filled: (selectedPricing.slots_filled || 0) + 1 })
-                .eq("id", selectedPricingId);
-            } catch { /* non-critical */ }
+            if (verifyError || !verifyData?.success) {
+              throw new Error(verifyError?.message || verifyData?.error || "Payment verification failed");
+            }
 
             setPaymentStage("success");
             setIsPaymentLoading(false);
