@@ -13,6 +13,7 @@ export interface MemberWithSubscription {
   phone: string;
   email: string | null;
   join_date: string | null;
+  created_at: string | null;
   branch_id: string;
   subscription?: {
     id: string;
