@@ -404,6 +404,7 @@ const AdminDashboard = () => {
                       <UsersIcon className="w-4 h-4" />
                       <span>Members</span>
                     </TabsTrigger>
+                    {isDailyPassEnabled && (
                     <TabsTrigger 
                       value="daily_pass" 
                       className="gap-1 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
@@ -411,6 +412,7 @@ const AdminDashboard = () => {
                       <ClockIcon className="w-4 h-4" />
                       <span>Daily Passes</span>
                     </TabsTrigger>
+                    )}
                     <TabsTrigger 
                       value="payments" 
                       className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
