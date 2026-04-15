@@ -103,6 +103,9 @@ const App = () => (
                     <TrainersPage />
                   </Suspense>
                 } />
+                <Route path="/admin/events" element={
+                  <Suspense fallback={<PageLoader />}><Events /></Suspense>
+                } />
                 <Route path="/admin/logs" element={
                   <Suspense fallback={<PageLoader />}>
                     <Logs />
