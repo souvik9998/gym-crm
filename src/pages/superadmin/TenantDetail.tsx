@@ -104,6 +104,7 @@ export default function TenantDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [storageUsedMb, setStorageUsedMb] = useState<number>(0);
   
   // Edit states
   const [editName, setEditName] = useState("");
@@ -182,16 +183,22 @@ export default function TenantDetail() {
         }
       }
 
-      // Fetch branches for this tenant (super admin can see all)
-      const { data: branchData, error: branchError } = await supabase
-        .from("branches")
-        .select("*")
-        .eq("tenant_id", tenantId)
-        .is("deleted_at", null)
-        .order("name");
+      // Fetch branches and storage usage for this tenant
+      const [branchResult, storageResult] = await Promise.all([
+        supabase
+          .from("branches")
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .is("deleted_at", null)
+          .order("name"),
+        supabase.rpc("get_tenant_storage_usage_mb", { _tenant_id: tenantId }),
+      ]);
 
-      if (!branchError && branchData) {
-        setBranches(branchData);
+      if (!branchResult.error && branchResult.data) {
+        setBranches(branchResult.data);
+      }
+      if (storageResult.data !== null) {
+        setStorageUsedMb(Number(storageResult.data) || 0);
       }
     } catch (error) {
       console.error("Error loading tenant:", error);
