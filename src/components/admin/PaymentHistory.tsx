@@ -446,6 +446,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                 <SelectItem value="gym_membership">Gym Only</SelectItem>
                 <SelectItem value="pt_only">PT Only</SelectItem>
                 <SelectItem value="gym_and_pt">Gym + PT</SelectItem>
+                <SelectItem value="event_registration">Event</SelectItem>
               </SelectContent>
             </Select>
           </div>
