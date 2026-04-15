@@ -240,7 +240,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     return null;
   };
 
-
+  const handleExport = () => {
     try {
       const exportData = filteredPayments.map((payment) => ({
         Date: payment.created_at ? new Date(payment.created_at).toLocaleString("en-IN") : "-",
