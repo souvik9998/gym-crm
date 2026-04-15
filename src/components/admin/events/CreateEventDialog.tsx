@@ -11,8 +11,9 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2, GripVertical, Upload, ImageIcon, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ButtonSpinner as Spinner } from "@/components/ui/button-spinner";
 
 interface PricingOption {
   id?: string;
@@ -43,6 +44,7 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [eventDate, setEventDate] = useState("");
   const [eventEndDate, setEventEndDate] = useState("");
   const [location, setLocation] = useState("");
@@ -92,10 +94,31 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
     }
   };
 
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5MB"); return; }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `event-banners/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("event-assets").upload(path, file);
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("event-assets").getPublicUrl(path);
+      setBannerUrl(urlData.publicUrl);
+      toast.success("Banner uploaded");
+    } catch (err: any) {
+      toast.error("Upload failed", { description: err.message });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const resetForm = () => {
     setTitle(""); setDescription(""); setBannerUrl("");
     setEventDate(""); setEventEndDate(""); setLocation("");
-    setStatus("draft"); setWhatsappNotify(false);
+    setStatus("draft"); setWhatsappNotify(false); setUploading(false);
     setPricingOptions([{ name: "General", price: 0, capacity_limit: null }]);
     setCustomFields([]);
   };
@@ -209,8 +232,41 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
                 <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Event description..." className="rounded-xl min-h-[80px]" />
               </div>
               <div className="space-y-2">
-                <Label>Banner Image URL</Label>
-                <Input value={bannerUrl} onChange={(e) => setBannerUrl(e.target.value)} placeholder="https://..." className="rounded-xl" />
+                <Label>Banner Image</Label>
+                {bannerUrl ? (
+                  <div className="relative rounded-xl overflow-hidden border border-border/40">
+                    <img src={bannerUrl} alt="Banner" className="w-full h-36 object-cover" />
+                    <Button
+                      size="icon"
+                      variant="destructive"
+                      className="absolute top-2 right-2 h-7 w-7 rounded-full"
+                      onClick={() => setBannerUrl("")}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed border-border/60 bg-muted/20 cursor-pointer hover:border-primary/40 transition-colors">
+                    {uploading ? (
+                      <><Spinner /><span className="text-xs text-muted-foreground">Uploading...</span></>
+                    ) : (
+                      <>
+                        <Upload className="w-6 h-6 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Click to upload banner image</span>
+                      </>
+                    )}
+                    <input type="file" accept="image/*" className="hidden" onChange={handleBannerUpload} disabled={uploading} />
+                  </label>
+                )}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">or</span>
+                  <Input
+                    value={bannerUrl}
+                    onChange={(e) => setBannerUrl(e.target.value)}
+                    placeholder="Paste image URL..."
+                    className="rounded-xl text-xs h-8"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
