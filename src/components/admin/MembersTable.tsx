@@ -376,12 +376,18 @@ export const MembersTable = ({
         return;
       }
 
-      const { error } = await supabase
+      const { data: updatedRows, error } = await supabase
         .from("subscriptions")
         .update({ status: "inactive" as any })
-        .eq("id", member.subscription.id);
+        .eq("id", member.subscription.id)
+        .select();
       
       if (error) throw error;
+      if (!updatedRows || updatedRows.length === 0) {
+        throw new Error("Update failed — no rows were affected. You may not have permission.");
+      }
+
+      console.log("Move to inactive: updated row =", updatedRows[0]);
       
       invalidateMembers();
 
@@ -417,6 +423,7 @@ export const MembersTable = ({
       
       toast.success(`${member.name} moved to inactive`);
     } catch (error: any) {
+      console.error("Move to inactive error:", error);
       toast.error("Error moving to inactive", {
         description: error.message,
       });
