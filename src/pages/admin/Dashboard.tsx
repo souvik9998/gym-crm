@@ -98,6 +98,29 @@ const AdminDashboard = () => {
   const { isStaffLoggedIn, permissions, isLoading: staffLoading, staffUser } = useStaffAuth();
   const { isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { invalidateMembers, invalidatePayments } = useInvalidateDashboard();
+  const [isDailyPassEnabled, setIsDailyPassEnabled] = useState(true);
+
+  // Fetch daily pass enabled setting
+  useEffect(() => {
+    if (!currentBranch?.id) return;
+    supabase
+      .from("gym_settings")
+      .select("registration_field_settings")
+      .eq("branch_id", currentBranch.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.registration_field_settings) {
+          const parsed = typeof data.registration_field_settings === "string"
+            ? JSON.parse(data.registration_field_settings as string)
+            : data.registration_field_settings;
+          if (parsed?.daily_pass_enabled?.enabled === false) {
+            setIsDailyPassEnabled(false);
+          } else {
+            setIsDailyPassEnabled(true);
+          }
+        }
+      });
+  }, [currentBranch?.id]);
   
   // Check sessions immediately using synchronous localStorage checks
   // This ensures the button appears instantly on page load
