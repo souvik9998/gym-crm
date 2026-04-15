@@ -85,11 +85,11 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
           capacity_limit: p.capacity_limit, is_active: p.is_active ?? true,
         }));
         setPricingOptions(opts);
-        // Detect pricing type: if only 1 item named "General", treat as single pricing
-        if (opts.length === 1 && opts[0].name === "General") {
+        // Detect pricing type: if all items have the same price, treat as uniform
+        const allSamePrice = opts.every((o: any) => o.price === opts[0].price);
+        if (allSamePrice) {
           setPricingType("single");
           setSinglePrice(opts[0].price);
-          setSingleCapacity(opts[0].capacity_limit);
         } else {
           setPricingType("variable");
         }
