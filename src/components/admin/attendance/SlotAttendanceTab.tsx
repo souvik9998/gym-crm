@@ -274,49 +274,20 @@ export const SlotAttendanceTab = () => {
         </div>
       </div>
 
-      {/* Trainer Filter */}
-      {trainers.length > 1 && !isLimitedAccess && (
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
-          <UserGroupIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-          <button onClick={() => { setSelectedTrainerId(null); setSelectedSlotId(null); }}
-            className={cn(
-              "shrink-0 px-2.5 py-1 rounded-full text-[10px] lg:text-xs font-medium transition-all duration-200 border active:scale-95",
-              !selectedTrainerId ? "bg-foreground text-background border-foreground" : "bg-card border-border text-muted-foreground hover:text-foreground"
-            )}>
-            All Trainers
-          </button>
-          {trainers.map((t) => (
-            <button key={t.id} onClick={() => { setSelectedTrainerId(t.id); setSelectedSlotId(null); }}
-              className={cn(
-                "shrink-0 px-2.5 py-1 rounded-full text-[10px] lg:text-xs font-medium transition-all duration-200 border active:scale-95",
-                selectedTrainerId === t.id ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:border-primary/30"
-              )}>
-              {t.name}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Time Slots */}
-      {timeSlots.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
-          <FunnelIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-          {timeSlots.map((slot: any, idx: number) => (
-            <button key={slot.id} onClick={() => { setSelectedSlotId(slot.id); setSearch(""); }}
-              className={cn(
-                "shrink-0 px-2.5 py-1.5 rounded-lg border text-[10px] lg:text-xs font-medium transition-all duration-200 active:scale-95 animate-fade-in",
-                selectedSlotId === slot.id
-                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                  : "bg-card border-border text-muted-foreground hover:border-primary/30"
-              )}
-              style={{ animationDelay: `${idx * 40}ms` }}
-            >
-              <div className="font-semibold">{formatSlotTime(slot.start_time)} – {formatSlotTime(slot.end_time)}</div>
-              <div className="text-[9px] opacity-70 mt-0.5">{slot.trainer_name}</div>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Trainer & Slot Filters */}
+      <div className="flex items-center gap-1.5">
+        <TrainerFilterDropdown
+          value={selectedTrainerId}
+          onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }}
+          compact={isMobile}
+        />
+        <TimeSlotFilterDropdown
+          value={selectedSlotId}
+          onChange={(v) => { setSelectedSlotId(v); setSearch(""); }}
+          trainerFilter={selectedTrainerId}
+          compact={isMobile}
+        />
+      </div>
 
       {timeSlots.length === 0 ? (
         <Card className="border border-border/40 animate-fade-in">
