@@ -526,6 +526,7 @@ export const VerifyRazorpayPaymentSchema = z.object({
   }).optional().nullable(),
   joiningFee: z.number().min(0).max(100000).optional().nullable(),
   branchId: UUIDSchema.optional().nullable(),
+  skipMemberCreation: z.boolean().optional(),
 });
 
 // ============================================================================
