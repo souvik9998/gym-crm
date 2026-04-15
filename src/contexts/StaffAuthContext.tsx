@@ -315,5 +315,6 @@ export const useStaffAuth = () => {
 // Helper hook to check permissions
 export const useStaffPermission = (permission: keyof StaffPermissions): boolean => {
   const { permissions } = useStaffAuth();
-  return permissions?.[permission] || false;
+  const val = permissions?.[permission];
+  return typeof val === 'boolean' ? val : false;
 };
