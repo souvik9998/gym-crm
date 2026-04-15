@@ -914,6 +914,224 @@ export type Database = {
           },
         ]
       }
+      event_custom_fields: {
+        Row: {
+          created_at: string
+          event_id: string
+          field_name: string
+          field_type: string
+          id: string
+          is_required: boolean
+          options: Json | null
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          field_name: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          options?: Json | null
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          field_name?: string
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          options?: Json | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_custom_fields_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_pricing_options: {
+        Row: {
+          capacity_limit: number | null
+          created_at: string
+          event_id: string
+          id: string
+          name: string
+          price: number
+          slots_filled: number
+          sort_order: number
+        }
+        Insert: {
+          capacity_limit?: number | null
+          created_at?: string
+          event_id: string
+          id?: string
+          name: string
+          price?: number
+          slots_filled?: number
+          sort_order?: number
+        }
+        Update: {
+          capacity_limit?: number | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          name?: string
+          price?: number
+          slots_filled?: number
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_pricing_options_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_registrations: {
+        Row: {
+          amount_paid: number
+          created_at: string
+          custom_field_responses: Json | null
+          email: string | null
+          event_id: string
+          id: string
+          member_id: string | null
+          name: string
+          payment_id: string | null
+          payment_status: string
+          phone: string
+          pricing_option_id: string | null
+          registered_at: string
+          updated_at: string
+        }
+        Insert: {
+          amount_paid?: number
+          created_at?: string
+          custom_field_responses?: Json | null
+          email?: string | null
+          event_id: string
+          id?: string
+          member_id?: string | null
+          name: string
+          payment_id?: string | null
+          payment_status?: string
+          phone: string
+          pricing_option_id?: string | null
+          registered_at?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string
+          custom_field_responses?: Json | null
+          email?: string | null
+          event_id?: string
+          id?: string
+          member_id?: string | null
+          name?: string
+          payment_id?: string | null
+          payment_status?: string
+          phone?: string
+          pricing_option_id?: string | null
+          registered_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_pricing_option_id_fkey"
+            columns: ["pricing_option_id"]
+            isOneToOne: false
+            referencedRelation: "event_pricing_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          banner_image_url: string | null
+          branch_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          event_date: string
+          event_end_date: string | null
+          id: string
+          location: string | null
+          status: string
+          title: string
+          updated_at: string
+          whatsapp_notify_on_register: boolean
+        }
+        Insert: {
+          banner_image_url?: string | null
+          branch_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date: string
+          event_end_date?: string | null
+          id?: string
+          location?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          whatsapp_notify_on_register?: boolean
+        }
+        Update: {
+          banner_image_url?: string | null
+          branch_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date?: string
+          event_end_date?: string | null
+          id?: string
+          location?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          whatsapp_notify_on_register?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gym_holidays: {
         Row: {
           branch_id: string
