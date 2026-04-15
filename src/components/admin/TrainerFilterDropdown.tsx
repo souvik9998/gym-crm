@@ -234,7 +234,7 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
 
             {/* Trainer list */}
             <div className="p-1.5 space-y-0.5">
-              {trainers.map((trainer, idx) => {
+              {visibleTrainers.map((trainer, idx) => {
                 const isSelected = value === trainer.id;
                 const colorSet = trainerColors[idx % trainerColors.length];
 
