@@ -59,6 +59,9 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
   const [location, setLocation] = useState("");
   const [status, setStatus] = useState<string>("draft");
   const [whatsappNotify, setWhatsappNotify] = useState(false);
+  const [pricingType, setPricingType] = useState<"single" | "variable">("single");
+  const [singlePrice, setSinglePrice] = useState<number>(0);
+  const [singleCapacity, setSingleCapacity] = useState<number | null>(null);
   const [selectionMode, setSelectionMode] = useState<string>("single");
   const [pricingOptions, setPricingOptions] = useState<PricingOption[]>([
     { name: "General", description: "", price: 0, capacity_limit: null, is_active: true },
@@ -77,10 +80,23 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
       setWhatsappNotify(editEvent.whatsapp_notify_on_register || false);
       setSelectionMode(editEvent.selection_mode || "single");
       if (editEvent.event_pricing_options?.length) {
-        setPricingOptions(editEvent.event_pricing_options.map((p: any) => ({
+        const opts = editEvent.event_pricing_options.map((p: any) => ({
           id: p.id, name: p.name, description: p.description || "", price: p.price,
           capacity_limit: p.capacity_limit, is_active: p.is_active ?? true,
-        })));
+        }));
+        setPricingOptions(opts);
+        // Detect pricing type: if only 1 item named "General", treat as single pricing
+        if (opts.length === 1 && opts[0].name === "General") {
+          setPricingType("single");
+          setSinglePrice(opts[0].price);
+          setSingleCapacity(opts[0].capacity_limit);
+        } else {
+          setPricingType("variable");
+        }
+      } else {
+        setPricingType("single");
+        setSinglePrice(0);
+        setSingleCapacity(null);
       }
       loadCustomFields(editEvent.id);
     } else {
@@ -130,9 +146,18 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
     setTitle(""); setDescription(""); setBannerUrl("");
     setEventDate(""); setEventEndDate(""); setLocation("");
     setStatus("draft"); setWhatsappNotify(false); setUploading(false);
+    setPricingType("single"); setSinglePrice(0); setSingleCapacity(null);
     setSelectionMode("single");
     setPricingOptions([{ name: "General", description: "", price: 0, capacity_limit: null, is_active: true }]);
     setCustomFields([]);
+  };
+
+  // Resolve final pricing options based on pricing type
+  const getEffectivePricingOptions = (): PricingOption[] => {
+    if (pricingType === "single") {
+      return [{ name: "General", description: "", price: singlePrice, capacity_limit: singleCapacity, is_active: true }];
+    }
+    return pricingOptions;
   };
 
   const saveMutation = useMutation({
@@ -140,7 +165,10 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
       if (!currentBranch?.id) throw new Error("No branch selected");
       if (!title.trim()) throw new Error("Title is required");
       if (!eventDate) throw new Error("Event date is required");
-      if (pricingOptions.length === 0) throw new Error("At least one item is required");
+      const effectiveOptions = getEffectivePricingOptions();
+      if (effectiveOptions.length === 0) throw new Error("At least one item is required");
+
+      const effectiveSelectionMode = pricingType === "single" ? "single" : selectionMode;
 
       const eventData = {
         branch_id: currentBranch.id,
@@ -152,7 +180,7 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         location: location.trim() || null,
         status,
         whatsapp_notify_on_register: whatsappNotify,
-        selection_mode: selectionMode,
+        selection_mode: effectiveSelectionMode,
       };
 
       let eventId: string;
@@ -163,7 +191,7 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         eventId = editEvent.id;
 
         // Smart upsert: update existing, insert new, delete removed
-        const existingIds = pricingOptions.filter(p => p.id).map(p => p.id!);
+        const existingIds = effectiveOptions.filter(p => p.id).map(p => p.id!);
         
         // Delete removed pricing options (only those not referenced by registrations)
         if (existingIds.length > 0) {
@@ -172,7 +200,6 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
             .eq("event_id", eventId)
             .not("id", "in", `(${existingIds.join(",")})`);
         } else {
-          // All are new - delete old ones that have no registration references
           const { data: oldOptions } = await supabase
             .from("event_pricing_options")
             .select("id")
@@ -195,8 +222,8 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         }
 
         // Update existing and insert new pricing options
-        for (let i = 0; i < pricingOptions.length; i++) {
-          const p = pricingOptions[i];
+        for (let i = 0; i < effectiveOptions.length; i++) {
+          const p = effectiveOptions[i];
           if (p.id) {
             await supabase.from("event_pricing_options").update({
               name: p.name,
@@ -227,9 +254,9 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         eventId = data.id;
 
         // Insert pricing options for new events
-        if (pricingOptions.length > 0) {
+        if (effectiveOptions.length > 0) {
           const { error: pError } = await supabase.from("event_pricing_options").insert(
-            pricingOptions.map((p, i) => ({
+            effectiveOptions.map((p, i) => ({
               event_id: eventId,
               name: p.name,
               description: p.description || null,
@@ -408,102 +435,166 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
               </div>
             </div>
 
-            {/* Event Items / Pricing Options */}
+            {/* Event Pricing */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-foreground">Event Items</h3>
-                <Button size="sm" variant="outline" onClick={addPricing} className="h-7 text-xs rounded-lg gap-1">
-                  <Plus className="w-3 h-3" /> Add Item
-                </Button>
+                <h3 className="text-sm font-semibold text-foreground">Event Pricing</h3>
+                {pricingType === "variable" && (
+                  <Button size="sm" variant="outline" onClick={addPricing} className="h-7 text-xs rounded-lg gap-1">
+                    <Plus className="w-3 h-3" /> Add Item
+                  </Button>
+                )}
               </div>
 
-              {/* Selection Mode */}
+              {/* Pricing Type Toggle */}
               <div className="flex items-center gap-3 p-3 rounded-xl border border-border/40 bg-muted/20">
-                <Label className="text-xs text-muted-foreground flex-shrink-0">Selection Mode:</Label>
+                <Label className="text-xs text-muted-foreground flex-shrink-0">Pricing Type:</Label>
                 <div className="flex gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setSelectionMode("single")}
+                    onClick={() => setPricingType("single")}
                     className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-                      selectionMode === "single"
+                      pricingType === "single"
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-background border-border hover:bg-muted"
                     }`}
                   >
-                    Single Select
+                    Single Price
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectionMode("multiple")}
+                    onClick={() => setPricingType("variable")}
                     className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-                      selectionMode === "multiple"
+                      pricingType === "variable"
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-background border-border hover:bg-muted"
                     }`}
                   >
-                    Multiple Select
+                    Variable Pricing
                   </button>
                 </div>
               </div>
 
-              {pricingOptions.map((p, i) => (
-                <div key={i} className="p-3 rounded-xl border border-border/40 bg-muted/20 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    <Input
-                      value={p.name}
-                      onChange={(e) => updatePricing(i, "name", e.target.value)}
-                      placeholder="Item name (e.g. Day 1, Full Pass)"
-                      className="rounded-lg h-9 text-sm"
-                    />
-                    <div className="relative w-28 flex-shrink-0">
+              {pricingType === "single" ? (
+                <div className="p-3 rounded-xl border border-border/40 bg-muted/20">
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1">
                       <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₹</span>
                       <Input
                         type="text"
                         inputMode="numeric"
-                        value={p.price === 0 ? "" : String(p.price)}
+                        value={singlePrice === 0 ? "" : String(singlePrice)}
                         onChange={(e) => {
                           const val = e.target.value.replace(/[^0-9]/g, "");
-                          updatePricing(i, "price", val === "" ? 0 : Number(val));
+                          setSinglePrice(val === "" ? 0 : Number(val));
                         }}
-                        placeholder="0"
+                        placeholder="Event price (0 = Free)"
                         className="rounded-lg h-9 text-sm pl-7"
                       />
                     </div>
                     <Input
                       type="text"
                       inputMode="numeric"
-                      value={p.capacity_limit ? String(p.capacity_limit) : ""}
+                      value={singleCapacity ? String(singleCapacity) : ""}
                       onChange={(e) => {
                         const val = e.target.value.replace(/[^0-9]/g, "");
-                        updatePricing(i, "capacity_limit", val === "" ? null : Number(val));
+                        setSingleCapacity(val === "" ? null : Number(val));
                       }}
-                      placeholder="Capacity"
-                      className="rounded-lg h-9 text-sm w-24 flex-shrink-0"
-                      min={0}
+                      placeholder="Max capacity (optional)"
+                      className="rounded-lg h-9 text-sm w-44 flex-shrink-0"
                     />
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <Switch
-                        checked={p.is_active}
-                        onCheckedChange={(v) => updatePricing(i, "is_active", v)}
-                        className="scale-75"
-                      />
-                      {!p.is_active && <Badge variant="secondary" className="text-[9px] py-0">Off</Badge>}
-                    </div>
-                    {pricingOptions.length > 1 && (
-                      <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0 text-destructive" onClick={() => removePricing(i)}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
                   </div>
-                  <Input
-                    value={p.description}
-                    onChange={(e) => updatePricing(i, "description", e.target.value)}
-                    placeholder="Description (optional)"
-                    className="rounded-lg h-8 text-xs"
-                  />
                 </div>
-              ))}
+              ) : (
+                <>
+                  {/* Selection Mode - only for variable pricing */}
+                  <div className="flex items-center gap-3 p-3 rounded-xl border border-border/40 bg-muted/20">
+                    <Label className="text-xs text-muted-foreground flex-shrink-0">Selection Mode:</Label>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setSelectionMode("single")}
+                        className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                          selectionMode === "single"
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background border-border hover:bg-muted"
+                        }`}
+                      >
+                        Single Select
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectionMode("multiple")}
+                        className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                          selectionMode === "multiple"
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background border-border hover:bg-muted"
+                        }`}
+                      >
+                        Multiple Select
+                      </button>
+                    </div>
+                  </div>
+
+                  {pricingOptions.map((p, i) => (
+                    <div key={i} className="p-3 rounded-xl border border-border/40 bg-muted/20 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <Input
+                          value={p.name}
+                          onChange={(e) => updatePricing(i, "name", e.target.value)}
+                          placeholder="Item name (e.g. Day 1, Full Pass)"
+                          className="rounded-lg h-9 text-sm"
+                        />
+                        <div className="relative w-28 flex-shrink-0">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₹</span>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            value={p.price === 0 ? "" : String(p.price)}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, "");
+                              updatePricing(i, "price", val === "" ? 0 : Number(val));
+                            }}
+                            placeholder="0"
+                            className="rounded-lg h-9 text-sm pl-7"
+                          />
+                        </div>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={p.capacity_limit ? String(p.capacity_limit) : ""}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, "");
+                            updatePricing(i, "capacity_limit", val === "" ? null : Number(val));
+                          }}
+                          placeholder="Capacity"
+                          className="rounded-lg h-9 text-sm w-24 flex-shrink-0"
+                        />
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <Switch
+                            checked={p.is_active}
+                            onCheckedChange={(v) => updatePricing(i, "is_active", v)}
+                            className="scale-75"
+                          />
+                          {!p.is_active && <Badge variant="secondary" className="text-[9px] py-0">Off</Badge>}
+                        </div>
+                        {pricingOptions.length > 1 && (
+                          <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0 text-destructive" onClick={() => removePricing(i)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                      <Input
+                        value={p.description}
+                        onChange={(e) => updatePricing(i, "description", e.target.value)}
+                        placeholder="Description (optional)"
+                        className="rounded-lg h-8 text-xs"
+                      />
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
 
             {/* Custom Fields */}
