@@ -287,6 +287,16 @@ export const MembersTable = ({
     return member.subscription?.status === "inactive";
   };
 
+  const computeStatusFromDates = (endDate: string | null | undefined): string => {
+    if (!endDate) return "active";
+    const now = new Date();
+    const end = new Date(endDate);
+    const diffDays = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return "expired";
+    if (diffDays <= 7) return "expiring_soon";
+    return "active";
+  };
+
   const handleMoveToActive = async (member: Member, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     try {
@@ -297,28 +307,30 @@ export const MembersTable = ({
         return;
       }
 
-      // Update subscription status to active
+      // Compute the correct status based on subscription end_date
+      const computedStatus = computeStatusFromDates(member.subscription?.end_date);
+
       const { error } = await supabase
         .from("subscriptions")
-        .update({ status: "active" as any })
+        .update({ status: computedStatus as any })
         .eq("id", member.subscription.id);
       
       if (error) throw error;
       
-      // Invalidate cache to refetch with updated data
       invalidateMembers();
 
-      // Log activity for staff
+      const statusLabel = computedStatus === "expiring_soon" ? "Expiring Soon" : computedStatus === "expired" ? "Expired" : "Active";
+
       if (isStaffLoggedIn && staffUser) {
         await logStaffActivity({
           category: "members",
           type: "member_moved_to_active",
-          description: `Staff "${staffUser.fullName}" moved "${member.name}" to active status`,
+          description: `Staff "${staffUser.fullName}" restored "${member.name}" to ${statusLabel} status`,
           entityType: "members",
           entityId: member.id,
           entityName: member.name,
           oldValue: { status: member.subscription.status },
-          newValue: { status: "active" },
+          newValue: { status: computedStatus },
           branchId: currentBranch?.id,
           staffId: staffUser.id,
           staffName: staffUser.fullName,
@@ -329,17 +341,17 @@ export const MembersTable = ({
         await logAdminActivity({
           category: "members",
           type: "member_status_changed",
-          description: `Moved "${member.name}" to active status`,
+          description: `Restored "${member.name}" to ${statusLabel} status`,
           entityType: "members",
           entityId: member.id,
           entityName: member.name,
           oldValue: { status: member.subscription.status },
-          newValue: { status: "active" },
+          newValue: { status: computedStatus },
           branchId: currentBranch?.id,
         });
       }
       
-      toast.success(`${member.name} moved to active`);
+      toast.success(`${member.name} restored to ${statusLabel}`);
     } catch (error: any) {
       toast.error("Error moving to active", {
         description: error.message,
@@ -1117,7 +1129,7 @@ export const MembersTable = ({
                         {isInactive(member) && (
                           <DropdownMenuItem onClick={(e) => handleMoveToActive(member, e)}>
                             <UserCheck className="w-4 h-4 mr-2" />
-                            Move to Active
+                            Restore Status
                           </DropdownMenuItem>
                         )}
                         {!isInactive(member) && member.subscription && (
@@ -1402,7 +1414,7 @@ export const MembersTable = ({
                               {isInactive(member) && (
                                 <DropdownMenuItem onClick={(e) => handleMoveToActive(member, e)}>
                                   <UserCheck className="w-4 h-4 mr-2" />
-                                  Move to Active
+                                  Restore Status
                                 </DropdownMenuItem>
                               )}
                               {!isInactive(member) && member.subscription && (
