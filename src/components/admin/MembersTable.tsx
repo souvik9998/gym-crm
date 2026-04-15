@@ -1296,7 +1296,8 @@ export const MembersTable = ({
                     key={member.id}
                     className={cn(
                       "transition-colors duration-150 ease-in-out hover:bg-muted/50 cursor-pointer",
-                      selectedMembers.has(member.id) && "bg-primary/5"
+                      selectedMembers.has(member.id) && "bg-primary/5",
+                      isNewMember(member) && "bg-emerald-500/[0.06] hover:bg-emerald-500/10 border-l-2 border-l-emerald-500"
                     )}
                     onClick={() => handleMemberClick(member)}
                   >
