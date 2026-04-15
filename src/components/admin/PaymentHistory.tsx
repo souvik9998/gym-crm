@@ -24,7 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download, User, Clock, FileText, Eye, Copy, MoreVertical } from "lucide-react";
+import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download, User, Clock, FileText, Eye, Copy, MoreVertical, CalendarDays } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
@@ -165,10 +165,18 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
         );
       case "pt_only":
       case "pt":
+      case "pt_subscription":
         return (
           <Badge variant="outline" className="text-xs bg-warning/10 text-warning">
             <Dumbbell className="w-3 h-3 mr-1" />
             PT
+          </Badge>
+        );
+      case "event_registration":
+        return (
+          <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+            <CalendarDays className="w-3 h-3 mr-1" />
+            Event
           </Badge>
         );
       case "gym_membership":
@@ -187,7 +195,10 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
         return "Gym + PT";
       case "pt_only":
       case "pt":
+      case "pt_subscription":
         return "PT";
+      case "event_registration":
+        return "Event";
       case "gym_membership":
         return "Gym";
       default:
