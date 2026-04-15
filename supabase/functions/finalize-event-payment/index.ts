@@ -287,7 +287,7 @@ Deno.serve(async (req) => {
     try {
       const { data: eventData } = await supabase
         .from("events")
-        .select("title, whatsapp_notify_on_register, event_date, location, branch_id, branches(name)")
+        .select("title, whatsapp_notify_on_register, event_date, event_end_date, location, branch_id, branches(name)")
         .eq("id", eventId)
         .single();
 
@@ -298,16 +298,45 @@ Deno.serve(async (req) => {
         const eventTime = new Date(eventData.event_date).toLocaleTimeString("en-IN", {
           hour: "2-digit", minute: "2-digit",
         });
-        const branchDisplayName = (eventData.branches as any)?.name || "the gym";
+        const endDateStr = eventData.event_end_date
+          ? new Date(eventData.event_end_date).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
+          : null;
+        const branchDisplayName = (eventData.branches as any)?.name || "Your Gym";
         const locationText = eventData.location ? `\n📍 *Venue:* ${eventData.location}` : "";
+
+        // Fetch selected pricing option names
+        let itemsText = "";
+        if (isMultiSelect && selectedItems?.length) {
+          const optionIds = selectedItems.map((i: any) => i.id);
+          const { data: options } = await supabase
+            .from("event_pricing_options")
+            .select("name, price")
+            .in("id", optionIds);
+          if (options?.length) {
+            itemsText = "\n\n🎫 *Registered For:*";
+            options.forEach((opt: any) => {
+              itemsText += `\n  • ${opt.name}${opt.price > 0 ? ` — ₹${opt.price}` : " — Free"}`;
+            });
+          }
+        } else if (pricingOptionId) {
+          const { data: singleOpt } = await supabase
+            .from("event_pricing_options")
+            .select("name, price")
+            .eq("id", pricingOptionId)
+            .maybeSingle();
+          if (singleOpt) {
+            itemsText = `\n\n🎫 *Registered For:* ${singleOpt.name}${singleOpt.price > 0 ? ` — ₹${singleOpt.price}` : " — Free"}`;
+          }
+        }
 
         const message =
           `🎉 *Event Registration Confirmed!*\n\n` +
           `Hi ${name}, 👋\n\n` +
           `You've been successfully registered for *${eventData.title}*!\n\n` +
-          `📅 *Date:* ${eventDate}\n` +
-          `🕐 *Time:* ${eventTime}${locationText}\n` +
-          `💰 *Amount Paid:* ₹${amount}\n\n` +
+          `📅 *Date:* ${eventDate}${endDateStr ? ` — ${endDateStr}` : ""}\n` +
+          `🕐 *Time:* ${eventTime}${locationText}` +
+          itemsText +
+          `\n💰 *Amount Paid:* ₹${amount}\n\n` +
           `We look forward to seeing you there! 🔥\n\n` +
           `— Team ${branchDisplayName}`;
 
