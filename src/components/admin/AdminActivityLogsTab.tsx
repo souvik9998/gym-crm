@@ -144,6 +144,7 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case "members": return <Users className="w-4 h-4" />;
+      case "member": return <Users className="w-4 h-4" />;
       case "payments": return <IndianRupee className="w-4 h-4" />;
       case "packages": return <Package className="w-4 h-4" />;
       case "trainers": return <Dumbbell className="w-4 h-4" />;
@@ -151,6 +152,11 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
       case "settings": return <Settings className="w-4 h-4" />;
       case "whatsapp": return <MessageCircle className="w-4 h-4" />;
       case "subscriptions": return <Calendar className="w-4 h-4" />;
+      case "auth": return <Eye className="w-4 h-4" />;
+      case "branch": return <Settings className="w-4 h-4" />;
+      case "ledger": return <IndianRupee className="w-4 h-4" />;
+      case "time_slots": return <Calendar className="w-4 h-4" />;
+      case "events": return <Calendar className="w-4 h-4" />;
       default: return <TrendingUp className="w-4 h-4" />;
     }
   };
@@ -158,6 +164,7 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
   const getCategoryBadge = (category: string) => {
     const colors: Record<string, string> = {
       members: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+      member: "bg-blue-500/10 text-blue-500 border-blue-500/20",
       payments: "bg-green-500/10 text-green-500 border-green-500/20",
       packages: "bg-purple-500/10 text-purple-500 border-purple-500/20",
       trainers: "bg-orange-500/10 text-orange-500 border-orange-500/20",
@@ -165,12 +172,17 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
       settings: "bg-gray-500/10 text-gray-500 border-gray-500/20",
       whatsapp: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
       subscriptions: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",
+      auth: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+      branch: "bg-teal-500/10 text-teal-500 border-teal-500/20",
+      ledger: "bg-lime-500/10 text-lime-500 border-lime-500/20",
+      time_slots: "bg-pink-500/10 text-pink-500 border-pink-500/20",
+      events: "bg-rose-500/10 text-rose-500 border-rose-500/20",
     };
     return (
       <Badge className={colors[category] || "bg-muted text-muted-foreground"}>
         <span className="flex items-center gap-1">
           {getCategoryIcon(category)}
-          {category.charAt(0).toUpperCase() + category.slice(1)}
+          {category.replace(/_/g, " ").charAt(0).toUpperCase() + category.replace(/_/g, " ").slice(1)}
         </span>
       </Badge>
     );
@@ -319,14 +331,19 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="auth">Auth</SelectItem>
                       <SelectItem value="members">Members</SelectItem>
                       <SelectItem value="payments">Payments</SelectItem>
                       <SelectItem value="packages">Packages</SelectItem>
                       <SelectItem value="trainers">Trainers</SelectItem>
                       <SelectItem value="staff">Staff</SelectItem>
                       <SelectItem value="settings">Settings</SelectItem>
-                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
                       <SelectItem value="subscriptions">Subscriptions</SelectItem>
+                      <SelectItem value="ledger">Ledger</SelectItem>
+                      <SelectItem value="branch">Branch</SelectItem>
+                      <SelectItem value="time_slots">Time Slots</SelectItem>
+                      <SelectItem value="events">Events</SelectItem>
+                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
