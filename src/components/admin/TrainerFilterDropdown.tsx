@@ -170,7 +170,7 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
             )}>
               {compact ? (isActive ? selectedLabel : "Trainer") : selectedLabel}
             </span>
-            {isActive ? (
+            {isActive && !isLimitedAccess ? (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
