@@ -22,38 +22,61 @@ export function useAttendanceFilters() {
   const branchId = currentBranch?.id;
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
 
-  // Resolve staff → trainer ID
+  // Resolve staff → staff trainer ID (for limited access)
   const { data: staffTrainerId } = useQuery({
     queryKey: ["staff-trainer-id-filter", staffUser?.id, branchId],
     queryFn: async () => {
       if (!staffUser?.id || !branchId) return null;
-      const { data: staffData } = await supabase.from("staff").select("phone").eq("id", staffUser.id).single();
-      if (!staffData?.phone) return null;
-      const { data: trainer } = await supabase.from("personal_trainers").select("id")
-        .eq("phone", staffData.phone).eq("branch_id", branchId).eq("is_active", true).maybeSingle();
-      return trainer?.id || null;
+      // In trainer_time_slots, trainer_id references staff.id
+      // Check if this staff user has any slots
+      const { data: slots } = await supabase
+        .from("trainer_time_slots" as any)
+        .select("trainer_id")
+        .eq("branch_id", branchId)
+        .eq("status", "available")
+        .eq("trainer_id", staffUser.id)
+        .limit(1);
+      if (slots && (slots as any[]).length > 0) return staffUser.id;
+      return null;
     },
     enabled: !!staffUser?.id && !!branchId && isLimitedAccess,
     staleTime: 60000,
   });
 
-  // Fetch all active slots with trainer info
+  // Fetch all active slots with trainer info from staff table
   const { data: allSlots = [] } = useQuery<SlotOption[]>({
     queryKey: ["attendance-filter-slots", branchId, isLimitedAccess, staffTrainerId],
     queryFn: async (): Promise<SlotOption[]> => {
       if (!branchId) return [];
-      let query = supabase.from("trainer_time_slots")
-        .select("id, start_time, end_time, trainer_id, personal_trainers(name)") as any;
+      let query = supabase.from("trainer_time_slots" as any)
+        .select("id, start_time, end_time, trainer_id") as any;
       query = query.eq("branch_id", branchId).eq("status", "available").order("start_time");
       if (isLimitedAccess && staffTrainerId) query = query.eq("trainer_id", staffTrainerId);
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []).map((s: any) => ({
+      if (!data || data.length === 0) return [];
+
+      // Get trainer names from staff table
+      const trainerIds = [...new Set((data as any[]).map((s: any) => s.trainer_id).filter(Boolean))];
+      let staffMap: Record<string, string> = {};
+      if (trainerIds.length > 0) {
+        const { data: staffData } = await supabase
+          .from("staff")
+          .select("id, full_name")
+          .in("id", trainerIds);
+        if (staffData) {
+          for (const s of staffData) {
+            staffMap[s.id] = s.full_name;
+          }
+        }
+      }
+
+      return (data as any[]).map((s: any) => ({
         id: s.id,
         start_time: s.start_time,
         end_time: s.end_time,
         trainer_id: s.trainer_id,
-        trainer_name: s.personal_trainers?.name || "Unassigned",
+        trainer_name: staffMap[s.trainer_id] || "Unassigned",
       }));
     },
     enabled: !!branchId && (!isLimitedAccess || staffTrainerId !== undefined),
