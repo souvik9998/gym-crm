@@ -292,20 +292,30 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
     if (hasChildren) {
       return (
         <Collapsible key={item.title} open={isExpanded} onOpenChange={() => toggleExpanded(item.title)}>
-          <CollapsibleTrigger asChild>
+          <div
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
+              active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
             <button
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
-                active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
+              onClick={() => handleNavClick(item.href)}
+              className="flex items-center gap-3 flex-1 min-w-0 text-left"
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
-              <span className="flex-1 text-left text-sm font-medium">{item.title}</span>
-              <ChevronDownIcon
-                className={cn("w-4 h-4 transition-transform duration-200", isExpanded ? "rotate-180" : "")}
-              />
+              <span className="text-sm font-medium truncate">{item.title}</span>
             </button>
-          </CollapsibleTrigger>
+            <CollapsibleTrigger asChild>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                className="p-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
+              >
+                <ChevronDownIcon
+                  className={cn("w-4 h-4 transition-transform duration-200", isExpanded ? "rotate-180" : "")}
+                />
+              </button>
+            </CollapsibleTrigger>
+          </div>
           <CollapsibleContent className="pl-4 mt-1 space-y-1">
             {item.children?.map((child) => {
               const childActive = isActive(child.href);
