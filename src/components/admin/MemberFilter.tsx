@@ -344,6 +344,34 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
             </div>
           </DropdownMenuItem>
           
+          {/* Trainer & Slot Filters - inside dropdown */}
+          {(onTrainerFilterChange || onTimeSlotFilterChange) && (
+            <>
+              <DropdownMenuSeparator className="my-1" />
+              <div className="px-2 py-1.5 space-y-1.5">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1">Filters</p>
+                {onTrainerFilterChange && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <TrainerFilterDropdown
+                      value={trainerFilter || null}
+                      onChange={onTrainerFilterChange}
+                      compact={false}
+                    />
+                  </div>
+                )}
+                {onTimeSlotFilterChange && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <TimeSlotFilterDropdown
+                      value={timeSlotFilter || null}
+                      onChange={onTimeSlotFilterChange}
+                      trainerFilter={trainerFilter}
+                      compact={false}
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     );
