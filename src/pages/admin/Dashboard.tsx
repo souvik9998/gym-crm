@@ -602,6 +602,10 @@ const AdminDashboard = () => {
                               <RadioGroupItem value="end_date" id="sort-expiry-tablet" />
                               <Label htmlFor="sort-expiry-tablet" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
                             </div>
+                            <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                              <RadioGroupItem value="created_at" id="sort-reg-tablet" />
+                              <Label htmlFor="sort-reg-tablet" className="cursor-pointer flex-1 text-sm">Latest Registration</Label>
+                            </div>
                           </RadioGroup>
                           <Separator />
                           <div className="p-2 space-y-1">
