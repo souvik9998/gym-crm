@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
         .replace(/\{name\}/gi, memberName)
         .replace(/\{expiry_date\}/gi, formattedDate)
         .replace(/\{days\}/gi, Math.abs(diffDays).toString())
-        .replace(/\{branch_name\}/gi, actualBranchName || "Pro Plus Fitness");
+        .replace(/\{branch_name\}/gi, actualBranchName || "Your Gym");
 
       if (paymentInfo) {
         const paymentDate = new Date(paymentInfo.date).toLocaleDateString("en-IN", {
@@ -274,8 +274,8 @@ Deno.serve(async (req) => {
       const diffDays = Math.ceil((endDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
       const actualBranchName = requestBranchName || msgBranchName;
-      const gymDisplayName = actualBranchName || "Pro Plus Fitness";
-      const teamName = actualBranchName ? `Team ${actualBranchName}` : "Team Pro Plus Fitness";
+      const gymDisplayName = actualBranchName || "Your Gym";
+      const teamName = `Team ${gymDisplayName}`;
 
       if (msgType === "custom" && customMessage) {
         return replacePlaceholders(customMessage, memberName, expiryDate, diffDays, paymentInfo, actualBranchName);
