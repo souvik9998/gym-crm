@@ -439,7 +439,9 @@ export default function EventRegistration() {
 
   const customFields = event.event_custom_fields || [];
   const pricingOptions = event.event_pricing_options || [];
-  const stepIndex = ["phone", "details", "payment"].indexOf(step);
+  const payBasePrice = Number(selectedPricing?.price || 0);
+  const payDiscount = appliedCoupon?.discountAmount || 0;
+  const payTotal = Math.max(0, payBasePrice - payDiscount);
 
   return (
     <div className="min-h-screen bg-background">
