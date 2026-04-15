@@ -206,7 +206,7 @@ export const CouponsDiscountsTab = () => {
         is_active: form.is_active,
         total_usage_limit: form.total_usage_limit ? Number(form.total_usage_limit) : null,
         per_user_limit: Number(form.per_user_limit) || 1,
-        applicable_on: { new_registration: form.applicable_on_registration, renewal: form.applicable_on_renewal },
+        applicable_on: { new_registration: form.applicable_on_registration, renewal: form.applicable_on_renewal, event: form.applicable_on_event },
         first_time_only: form.first_time_only,
         existing_members_only: form.existing_members_only,
         expired_members_only: form.expired_members_only,
@@ -459,6 +459,10 @@ export const CouponsDiscountsTab = () => {
                 <label className="flex items-center gap-2 text-sm">
                   <Switch checked={form.applicable_on_renewal} onCheckedChange={v => setForm(f => ({ ...f, applicable_on_renewal: v }))} />
                   Membership Renewal
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Switch checked={form.applicable_on_event} onCheckedChange={v => setForm(f => ({ ...f, applicable_on_event: v }))} />
+                  Event Registration
                 </label>
               </div>
             </div>
