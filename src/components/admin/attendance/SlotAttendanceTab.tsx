@@ -21,6 +21,7 @@ import {
   FunnelIcon,
 } from "@heroicons/react/24/outline";
 import { AttendanceDatePicker } from "./AttendanceDatePicker";
+import { useAttendanceFilters, formatSlotTime } from "@/hooks/queries/useAttendanceFilters";
 
 type AttendanceStatus = "present" | "absent" | "late";
 
@@ -40,6 +41,7 @@ export const SlotAttendanceTab = () => {
   const today = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [localAttendance, setLocalAttendance] = useState<Map<string, AttendanceStatus>>(new Map());
@@ -48,33 +50,13 @@ export const SlotAttendanceTab = () => {
   const isFutureDate = selectedDate > today;
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
 
-  const { data: staffTrainerId } = useQuery({
-    queryKey: ["staff-trainer-id", staffUser?.id, branchId],
-    queryFn: async () => {
-      if (!staffUser?.id || !branchId) return null;
-      const { data: staffData } = await supabase.from("staff").select("phone").eq("id", staffUser.id).single();
-      if (!staffData?.phone) return null;
-      const { data: trainer } = await supabase.from("personal_trainers").select("id")
-        .eq("phone", staffData.phone).eq("branch_id", branchId).eq("is_active", true).maybeSingle();
-      return trainer?.id || null;
-    },
-    enabled: !!staffUser?.id && !!branchId && isLimitedAccess,
-  });
+  const { trainers, allSlots, staffTrainerId } = useAttendanceFilters();
 
-  const { data: timeSlots = [] } = useQuery<any[]>({
-    queryKey: ["trainer-time-slots-attendance", branchId, isLimitedAccess, staffTrainerId],
-    queryFn: async (): Promise<any[]> => {
-      if (!branchId) return [];
-      let query = supabase.from("trainer_time_slots")
-        .select("id, start_time, end_time, capacity, trainer_id, personal_trainers(name)") as any;
-      query = query.eq("branch_id", branchId).eq("is_active", true).order("start_time");
-      if (isLimitedAccess && staffTrainerId) query = query.eq("trainer_id", staffTrainerId);
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!branchId && (!isLimitedAccess || staffTrainerId !== undefined),
-  });
+  // Filter slots by selected trainer
+  const timeSlots = useMemo(() => {
+    if (selectedTrainerId) return allSlots.filter(s => s.trainer_id === selectedTrainerId);
+    return allSlots;
+  }, [allSlots, selectedTrainerId]);
 
   useEffect(() => {
     if (timeSlots.length > 0 && !selectedSlotId) setSelectedSlotId(timeSlots[0].id);
