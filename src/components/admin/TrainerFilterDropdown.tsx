@@ -122,9 +122,24 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
     enabled: !!currentBranch?.id,
     staleTime: 30000,
   });
+  // For limited-access staff, filter trainers to only show themselves and auto-select
+  const visibleTrainers = useMemo(() => {
+    if (isLimitedAccess && staffUser?.id) {
+      return trainers.filter((t) => t.id === staffUser.id);
+    }
+    return trainers;
+  }, [trainers, isLimitedAccess, staffUser?.id]);
 
-  const selectedTrainer = trainers.find((t) => t.id === value);
-  const hasTrainers = trainers.length > 0;
+  // Auto-select for limited access staff
+  useEffect(() => {
+    if (isLimitedAccess && staffUser?.id && visibleTrainers.length > 0 && !value) {
+      const self = visibleTrainers.find((t) => t.id === staffUser.id);
+      if (self) onChange(self.id);
+    }
+  }, [isLimitedAccess, staffUser?.id, visibleTrainers, value, onChange]);
+
+  const selectedTrainer = visibleTrainers.find((t) => t.id === value);
+  const hasTrainers = visibleTrainers.length > 0;
   const isActive = value !== null;
 
   const selectedLabel = selectedTrainer ? selectedTrainer.name : "Trainer";
