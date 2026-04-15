@@ -219,7 +219,28 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     }
   };
 
-  const handleExport = () => {
+  const getPaymentDisplayName = (payment: PaymentWithDetails) => {
+    if (payment.payment_type === "event_registration" && payment.event_registration) {
+      return payment.event_registration.name;
+    }
+    return payment.member?.name || payment.daily_pass_user?.name || "Unknown";
+  };
+
+  const getPaymentDisplayPhone = (payment: PaymentWithDetails) => {
+    if (payment.payment_type === "event_registration" && payment.event_registration) {
+      return payment.event_registration.phone;
+    }
+    return payment.member?.phone || payment.daily_pass_user?.phone || "-";
+  };
+
+  const getPaymentEventName = (payment: PaymentWithDetails) => {
+    if (payment.payment_type === "event_registration" && payment.event_registration) {
+      return payment.event_registration.event_name;
+    }
+    return null;
+  };
+
+
     try {
       const exportData = filteredPayments.map((payment) => ({
         Date: payment.created_at ? new Date(payment.created_at).toLocaleString("en-IN") : "-",
