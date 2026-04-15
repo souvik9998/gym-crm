@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Bell, AlertTriangle, AlertCircle, Info, ChevronRight, Send, CreditCard, Phone } from "lucide-react";
+import { Bell, AlertTriangle, AlertCircle, Info, ChevronRight, Send, CreditCard, Phone, UserPlus, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -23,11 +23,12 @@ import { toast } from "@/components/ui/sonner";
 import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
 import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 
-const categoryFilters = ["all", "plan", "limit", "member"] as const;
+const categoryFilters = ["all", "new_member", "plan", "limit", "member"] as const;
 type CategoryFilter = (typeof categoryFilters)[number];
 
 const categoryLabels: Record<CategoryFilter, string> = {
   all: "All",
+  new_member: "New",
   plan: "Plan",
   limit: "Limits",
   member: "Members",
@@ -42,6 +43,11 @@ function NotificationIcon({ type }: { type: AdminNotification["type"] }) {
   if (type === "warning") return (
     <div className="h-9 w-9 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
       <AlertTriangle className="h-[18px] w-[18px] text-accent-foreground" />
+    </div>
+  );
+  if (type === "success") return (
+    <div className="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+      <UserPlus className="h-[18px] w-[18px] text-emerald-500" />
     </div>
   );
   return (
@@ -60,6 +66,11 @@ function NotificationBadge({ type }: { type: AdminNotification["type"] }) {
   if (type === "warning") return (
     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-accent text-accent-foreground tracking-wide uppercase">
       Warning
+    </span>
+  );
+  if (type === "success") return (
+    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 tracking-wide uppercase">
+      New
     </span>
   );
   return null;
