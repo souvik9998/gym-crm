@@ -326,7 +326,7 @@ export const SimpleAttendanceTab = () => {
   };
 
   return (
-    <div className="space-y-3 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       {/* Desktop: Week Nav + Filters + Stats in one row */}
       <div className="hidden lg:flex items-center gap-4">
         {/* Week Navigation */}
@@ -420,12 +420,12 @@ export const SimpleAttendanceTab = () => {
       </div>
 
       {/* Mobile: Stacked layout */}
-      <div className="lg:hidden space-y-2.5">
+      <div className="lg:hidden space-y-3">
         <div className="flex items-center gap-1.5 justify-start">
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("prev")}>
             <ChevronLeftIcon className="w-4 h-4" />
           </Button>
-          <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-1 justify-between">
             {weekDates.map((d, i) => {
               const isSelected = d === selectedDate;
               const isToday = d === today;
