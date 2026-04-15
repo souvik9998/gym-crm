@@ -4,9 +4,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
-import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
 import { Lock, User, Phone, Calendar, MapPin, IdCard, Upload, Heart, FileText, Dumbbell, Clock } from "lucide-react";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
@@ -74,7 +72,6 @@ export const RegistrationFieldsSettings = () => {
   const { currentBranch } = useBranch();
   const [fields, setFields] = useState<RegistrationFields>(DEFAULT_FIELDS);
   const [originalFields, setOriginalFields] = useState<RegistrationFields>(DEFAULT_FIELDS);
-  const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
