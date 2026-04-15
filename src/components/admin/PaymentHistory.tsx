@@ -244,8 +244,9 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     try {
       const exportData = filteredPayments.map((payment) => ({
         Date: payment.created_at ? new Date(payment.created_at).toLocaleString("en-IN") : "-",
-        "Member Name": payment.member?.name || payment.daily_pass_user?.name || "-",
-        "Member Phone": payment.member?.phone || payment.daily_pass_user?.phone || "-",
+        "Member Name": getPaymentDisplayName(payment),
+        "Member Phone": getPaymentDisplayPhone(payment),
+        "Event Name": getPaymentEventName(payment) || "-",
         "Payment Type": getPaymentTypeText(payment.payment_type),
         "Payment Mode": payment.payment_mode === "online" ? "Online" : "Cash",
         Amount: `₹${Number(payment.amount).toLocaleString("en-IN")}`,
