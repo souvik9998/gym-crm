@@ -32,6 +32,7 @@ interface RegistrationFieldSettings {
   health_details?: FieldSetting;
   medical_records_upload?: FieldSetting;
   self_select_trainer?: FieldSetting;
+  daily_pass_enabled?: FieldSetting;
 }
 
 const Register = () => {
@@ -358,6 +359,7 @@ const Register = () => {
             isLoading={isPaymentLoading}
             branchId={branchId}
             allowSelfSelectTrainer={fieldSettings?.self_select_trainer?.enabled !== false}
+            allowDailyPass={fieldSettings?.daily_pass_enabled?.enabled !== false}
           />
         )}
       </main>
