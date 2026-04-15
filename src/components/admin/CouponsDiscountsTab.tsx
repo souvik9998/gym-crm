@@ -169,6 +169,7 @@ export const CouponsDiscountsTab = () => {
       per_user_limit: String(coupon.per_user_limit),
       applicable_on_registration: coupon.applicable_on?.new_registration !== false,
       applicable_on_renewal: coupon.applicable_on?.renewal !== false,
+      applicable_on_event: coupon.applicable_on?.event === true,
       first_time_only: coupon.first_time_only,
       existing_members_only: coupon.existing_members_only,
       expired_members_only: coupon.expired_members_only,
