@@ -53,11 +53,11 @@ interface MembersTableProps {
   ptFilterActive?: boolean;
   trainerFilter?: string | null;
   timeSlotFilter?: string | null;
-  sortBy?: "name" | "join_date" | "end_date" | "created_at";
+  sortBy?: "name" | "join_date" | "end_date";
   sortOrder?: "asc" | "desc";
 }
 
-type SortField = "name" | "phone" | "status" | "trainer" | "expiry" | "end_date" | "join_date" | "created_at";
+type SortField = "name" | "phone" | "status" | "trainer" | "expiry" | "end_date" | "join_date";
 type SortOrder = "asc" | "desc";
 
 export const MembersTable = ({ 
@@ -122,7 +122,7 @@ export const MembersTable = ({
   const canManageMembers = isAdmin || (isStaffLoggedIn && permissions?.can_manage_members === true);
   
   // Map external sortBy to internal sortField
-  const mapSortByToField = (sortBy?: "name" | "join_date" | "end_date" | "created_at"): SortField => {
+  const mapSortByToField = (sortBy?: "name" | "join_date" | "end_date"): SortField => {
     if (!sortBy) return "name";
     if (sortBy === "end_date") return "expiry";
     return sortBy;
@@ -815,11 +815,6 @@ export const MembersTable = ({
         const joinA = a.join_date ? new Date(a.join_date).getTime() : 0;
         const joinB = b.join_date ? new Date(b.join_date).getTime() : 0;
         comparison = joinA - joinB;
-        break;
-      case "created_at":
-        const regA = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const regB = b.created_at ? new Date(b.created_at).getTime() : 0;
-        comparison = regA - regB;
         break;
       default:
         return 0;
