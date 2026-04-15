@@ -112,8 +112,9 @@ export default function Events() {
     return { totalRegs, paidRegs, totalCapacity, visiblePricingOptions };
   };
 
-  const copyEventLink = (eventId: string) => {
-    const url = `${window.location.origin}/event/${eventId}`;
+  const copyEventLink = (event: any) => {
+    const slug = event.slug || event.id;
+    const url = `${window.location.origin}/event/${slug}`;
     navigator.clipboard.writeText(url);
     toast.success("Event link copied!");
   };
@@ -233,7 +234,7 @@ export default function Events() {
                     <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => setQrEvent(event)}>
                       <QrCode className="w-3.5 h-3.5" />
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => copyEventLink(event.id)}>
+                    <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => copyEventLink(event)}>
                       <Copy className="w-3.5 h-3.5" />
                     </Button>
                     <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs text-destructive" onClick={() => setDeleteEvent(event)}>

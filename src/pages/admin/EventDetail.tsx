@@ -290,8 +290,9 @@ export default function EventDetail() {
   };
 
   const copyEventLink = () => {
-    if (!eventId) return;
-    navigator.clipboard.writeText(`${window.location.origin}/event/${eventId}`);
+    if (!event) return;
+    const slug = (event as any).slug || eventId;
+    navigator.clipboard.writeText(`${window.location.origin}/event/${slug}`);
     toast.success("Event link copied!");
   };
 
