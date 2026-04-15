@@ -40,6 +40,10 @@ interface MemberFilterProps {
   ptFilterActive?: boolean;
   onPtFilterChange?: (active: boolean) => void;
   mobileMode?: boolean;
+  trainerFilter?: string | null;
+  onTrainerFilterChange?: (value: string | null) => void;
+  timeSlotFilter?: string | null;
+  onTimeSlotFilterChange?: (value: string | null) => void;
 }
 
 const filterCategories: {
