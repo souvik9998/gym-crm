@@ -720,6 +720,70 @@ export type Database = {
           },
         ]
       }
+      daily_attendance: {
+        Row: {
+          branch_id: string
+          created_at: string
+          date: string
+          id: string
+          marked_by: string | null
+          marked_by_type: string | null
+          member_id: string
+          notes: string | null
+          status: string
+          time_slot_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          date?: string
+          id?: string
+          marked_by?: string | null
+          marked_by_type?: string | null
+          member_id: string
+          notes?: string | null
+          status?: string
+          time_slot_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          marked_by?: string | null
+          marked_by_type?: string | null
+          member_id?: string
+          notes?: string | null
+          status?: string
+          time_slot_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_attendance_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_attendance_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_attendance_time_slot_id_fkey"
+            columns: ["time_slot_id"]
+            isOneToOne: false
+            referencedRelation: "trainer_time_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_pass_subscriptions: {
         Row: {
           branch_id: string | null
