@@ -39,7 +39,7 @@ export default function Events() {
       if (!currentBranch?.id) return [];
       const { data, error } = await supabase
         .from("events")
-        .select("*, event_pricing_options(*), event_registrations(id, payment_status)")
+        .select("*, event_pricing_options(*), event_custom_fields(*), event_registrations(id, payment_status)")
         .eq("branch_id", currentBranch.id)
         .order("event_date", { ascending: false });
       if (error) throw error;
