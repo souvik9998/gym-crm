@@ -34,7 +34,7 @@ const Renew = () => {
 
   useEffect(() => {
     if (!member) {
-      navigate(branchId ? `/b/${branchId}` : "/admin/login", { replace: true });
+      navigate("/admin/login", { replace: true });
       return;
     }
 
