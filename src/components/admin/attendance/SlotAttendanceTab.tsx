@@ -42,12 +42,13 @@ export const SlotAttendanceTab = () => {
     queryKey: ["trainer-time-slots-attendance", branchId],
     queryFn: async (): Promise<any[]> => {
       if (!branchId) return [];
-      const { data, error } = await (supabase
+      const query = supabase
         .from("trainer_time_slots")
-        .select("id, start_time, end_time, capacity, trainer_id, personal_trainers(name)")
+        .select("id, start_time, end_time, capacity, trainer_id, personal_trainers(name)") as any;
+      const { data, error } = await query
         .eq("branch_id", branchId)
         .eq("is_active", true)
-        .order("start_time") as any);
+        .order("start_time");
       if (error) throw error;
       return data || [];
     },
