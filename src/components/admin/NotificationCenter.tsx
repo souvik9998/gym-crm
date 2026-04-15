@@ -180,7 +180,7 @@ export function NotificationCenter() {
 
   return (
     <>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
@@ -189,19 +189,19 @@ export function NotificationCenter() {
             title="Notifications"
           >
             <Bell className="w-[18px] h-[18px]" />
-            {dangerCount > 0 && (
+            {unseenDanger > 0 && (
               <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground px-1 animate-in zoom-in-50 duration-300 border-2 border-card">
-                {dangerCount > 9 ? "9+" : dangerCount}
+                {unseenDanger > 9 ? "9+" : unseenDanger}
               </span>
             )}
-            {dangerCount === 0 && successCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white px-1 animate-in zoom-in-50 duration-300 border-2 border-card">
-                {successCount > 9 ? "9+" : successCount}
+            {unseenDanger === 0 && unseenSuccess > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-primary-foreground px-1 animate-in zoom-in-50 duration-300 border-2 border-card">
+                {unseenSuccess > 9 ? "9+" : unseenSuccess}
               </span>
             )}
-            {dangerCount === 0 && successCount === 0 && totalCount > 0 && (
+            {unseenDanger === 0 && unseenSuccess === 0 && unseenTotal > 0 && (
               <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1 animate-in zoom-in-50 duration-300 border-2 border-card">
-                {totalCount > 9 ? "9+" : totalCount}
+                {unseenTotal > 9 ? "9+" : unseenTotal}
               </span>
             )}
           </Button>
