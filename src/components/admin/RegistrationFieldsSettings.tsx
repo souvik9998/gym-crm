@@ -99,15 +99,28 @@ export const RegistrationFieldsSettings = () => {
   };
 
   const handleToggle = (key: string, type: "enabled" | "required", value: boolean) => {
-    setFields(prev => ({
-      ...prev,
-      [key]: {
+    setFields(prev => {
+      const updated = { ...prev };
+      
+      // Update the target field
+      updated[key as keyof RegistrationFields] = {
         ...prev[key as keyof RegistrationFields],
         [type]: value,
         // If disabling, also unset required
         ...(type === "enabled" && !value ? { required: false } : {}),
-      },
-    }));
+      };
+      
+      // Mutual exclusivity: photo_id and identity_proof_upload
+      if (type === "enabled" && value) {
+        if (key === "photo_id") {
+          updated.identity_proof_upload = { ...prev.identity_proof_upload, enabled: false, required: false };
+        } else if (key === "identity_proof_upload") {
+          updated.photo_id = { ...prev.photo_id, enabled: false, required: false };
+        }
+      }
+      
+      return updated;
+    });
   };
 
   const hasChanges = JSON.stringify(fields) !== JSON.stringify(originalFields);
