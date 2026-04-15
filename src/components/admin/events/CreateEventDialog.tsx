@@ -146,9 +146,18 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
     setTitle(""); setDescription(""); setBannerUrl("");
     setEventDate(""); setEventEndDate(""); setLocation("");
     setStatus("draft"); setWhatsappNotify(false); setUploading(false);
+    setPricingType("single"); setSinglePrice(0); setSingleCapacity(null);
     setSelectionMode("single");
     setPricingOptions([{ name: "General", description: "", price: 0, capacity_limit: null, is_active: true }]);
     setCustomFields([]);
+  };
+
+  // Resolve final pricing options based on pricing type
+  const getEffectivePricingOptions = (): PricingOption[] => {
+    if (pricingType === "single") {
+      return [{ name: "General", description: "", price: singlePrice, capacity_limit: singleCapacity, is_active: true }];
+    }
+    return pricingOptions;
   };
 
   const saveMutation = useMutation({
