@@ -336,4 +336,3 @@ export const getDefaultPermissions = (role: string): InlinePermissions => ({
   can_assign_members_to_slots: role === "manager" || role === "trainer",
   can_view_slot_members: true,
 });
-});
