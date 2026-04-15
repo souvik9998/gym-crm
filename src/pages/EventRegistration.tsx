@@ -684,22 +684,72 @@ export default function EventRegistration() {
             )}
 
             {/* Step 3: Payment */}
-            {step === "payment" && (
+            {step === "payment" && (() => {
+              const payBasePrice = Number(selectedPricing?.price || 0);
+              const payDiscount = appliedCoupon?.discountAmount || 0;
+              const payTotal = Math.max(0, payBasePrice - payDiscount);
+              return (
               <Card className="border border-border/50">
                 <CardContent className="p-5 sm:p-6 space-y-5">
                   <div className="flex items-center gap-2">
                     <IndianRupee className="w-5 h-5 text-primary" />
                     <h3 className="font-semibold text-lg">Complete Payment</h3>
                   </div>
+
+                  {/* Coupon section */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-1.5">
+                      <TicketPercent className="w-4 h-4" /> Have a Coupon?
+                    </Label>
+                    {appliedCoupon ? (
+                      <div className="flex items-center justify-between p-3 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                          <span className="text-sm font-mono font-bold">{appliedCoupon.code}</span>
+                          <span className="text-xs text-green-600">-₹{appliedCoupon.discountAmount}</span>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={removeCoupon}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Input
+                          value={couponCode}
+                          onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(""); }}
+                          placeholder="Enter coupon code"
+                          className="rounded-xl font-mono text-sm"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleApplyCoupon}
+                          disabled={couponLoading || !couponCode.trim()}
+                          className="rounded-xl px-4 h-10"
+                        >
+                          {couponLoading ? <ButtonSpinner /> : "Apply"}
+                        </Button>
+                      </div>
+                    )}
+                    {couponError && <p className="text-xs text-destructive">{couponError}</p>}
+                  </div>
+
+                  {/* Price summary */}
                   <div className="p-5 rounded-xl bg-muted/30 border border-border/40 space-y-3">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{selectedPricing?.name}</span>
-                      <span className="font-medium">₹{selectedPricing?.price}</span>
+                      <span className="font-medium">₹{payBasePrice}</span>
                     </div>
+                    {payDiscount > 0 && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Coupon ({appliedCoupon?.code})</span>
+                        <span>-₹{payDiscount}</span>
+                      </div>
+                    )}
                     <div className="border-t border-border/40" />
                     <div className="flex justify-between text-base font-bold">
                       <span>Total</span>
-                      <span className="text-primary">₹{selectedPricing?.price}</span>
+                      <span className="text-primary">{payTotal === 0 ? "Free" : `₹${payTotal}`}</span>
                     </div>
                   </div>
                   <div className="flex gap-3">
@@ -714,7 +764,7 @@ export default function EventRegistration() {
                     >
                       {isPaymentLoading ? <><ButtonSpinner /> Processing...</> : (
                         <>
-                          <IndianRupee className="w-4 h-4" /> Pay ₹{selectedPricing?.price}
+                          <IndianRupee className="w-4 h-4" /> {payTotal === 0 ? "Register (Free)" : `Pay ₹${payTotal}`}
                         </>
                       )}
                     </Button>
@@ -723,6 +773,9 @@ export default function EventRegistration() {
                     Payment will be processed securely via Razorpay
                   </p>
                 </CardContent>
+              </Card>
+              );
+            })()}
               </Card>
             )}
           </div>
