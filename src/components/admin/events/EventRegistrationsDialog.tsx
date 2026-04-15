@@ -151,6 +151,14 @@ export function EventRegistrationsDialog({ open, onOpenChange, event }: Props) {
             </Table>
           )}
         </ScrollArea>
+
+        {registerOpen && (
+          <AdminEventRegisterDialog
+            open={registerOpen}
+            onOpenChange={setRegisterOpen}
+            event={event}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
