@@ -802,11 +802,21 @@ export default function EventRegistration() {
                   )}
                 </div>
                 {selectedPricing && (
-                  <div className="pt-3 border-t border-border/40">
-                    <div className="flex justify-between items-center">
+                  <div className="pt-3 border-t border-border/40 space-y-1">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">{selectedPricing.name}</span>
+                      <span>₹{payBasePrice}</span>
+                    </div>
+                    {payDiscount > 0 && (
+                      <div className="flex justify-between items-center text-sm text-green-600">
+                        <span>Coupon</span>
+                        <span>-₹{payDiscount}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center pt-1">
                       <span className="text-sm text-muted-foreground">Total</span>
                       <span className="text-lg font-bold text-primary">
-                        {Number(selectedPricing.price) === 0 ? "Free" : `₹${selectedPricing.price}`}
+                        {payTotal === 0 ? "Free" : `₹${payTotal}`}
                       </span>
                     </div>
                   </div>
