@@ -76,7 +76,7 @@ const App = () => (
                 </Suspense>
               } />
               <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/event/:eventId" element={
+              <Route path="/event/:eventSlug" element={
                 <Suspense fallback={<PageLoader />}><EventRegistration /></Suspense>
               } />
               <Route path="/check-in" element={<CheckIn />} />
@@ -239,11 +239,11 @@ const App = () => (
                 } />
               </Route>
               
-              {/* Branch-specific routes for member registration */}
-              <Route path="/b/:branchId" element={<Index />} />
-              <Route path="/b/:branchId/register" element={<Register />} />
-              <Route path="/b/:branchId/renew" element={<Renew />} />
-              <Route path="/b/:branchId/extend-pt" element={<ExtendPT />} />
+              {/* Branch-specific routes for member registration (slug or UUID) */}
+              <Route path="/b/:branchSlug" element={<Index />} />
+              <Route path="/b/:branchSlug/register" element={<Register />} />
+              <Route path="/b/:branchSlug/renew" element={<Renew />} />
+              <Route path="/b/:branchSlug/extend-pt" element={<ExtendPT />} />
               
               {/* Catch all - redirect to admin login */}
               <Route path="*" element={<Navigate to="/admin/login" replace />} />
