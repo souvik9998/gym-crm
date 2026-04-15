@@ -36,7 +36,15 @@ interface BranchContextType {
   tenantId: string | null;
 }
 
-export const BranchContext = createContext<BranchContextType | undefined>(undefined);
+type BranchContextGlobal = typeof globalThis & {
+  __gymkloudBranchContext?: React.Context<BranchContextType | undefined>;
+};
+
+const branchContextGlobal = globalThis as BranchContextGlobal;
+
+export const BranchContext =
+  branchContextGlobal.__gymkloudBranchContext ??
+  (branchContextGlobal.__gymkloudBranchContext = createContext<BranchContextType | undefined>(undefined));
 
 const CURRENT_BRANCH_KEY = "admin-current-branch-id";
 
