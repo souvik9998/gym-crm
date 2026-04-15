@@ -1,22 +1,22 @@
 import { useEffect, ReactNode, useContext } from "react";
-import { useBranch } from "@/contexts/BranchContext";
+import { BranchContext } from "@/contexts/BranchContext";
 import { StaffAuthContext } from "@/contexts/StaffAuthContext";
 
 /**
  * Bridge component to connect StaffAuth with BranchContext.
- * Gracefully handles cases where StaffAuthProvider is not yet mounted
- * (e.g., during HMR or error recovery) to prevent blank screens.
+ * Uses useContext directly (instead of useBranch) to gracefully handle
+ * cases where BranchProvider context is temporarily unavailable during HMR.
  */
 export const StaffBranchBridge = ({ children }: { children: ReactNode }) => {
-  const { setStaffBranchRestriction } = useBranch();
+  const branchCtx = useContext(BranchContext);
   const staffAuth = useContext(StaffAuthContext);
   
   useEffect(() => {
-    if (staffAuth) {
-      staffAuth.setBranchRestrictionCallback(setStaffBranchRestriction);
+    if (branchCtx && staffAuth) {
+      staffAuth.setBranchRestrictionCallback(branchCtx.setStaffBranchRestriction);
       return () => staffAuth.setBranchRestrictionCallback(null);
     }
-  }, [staffAuth, setStaffBranchRestriction]);
+  }, [branchCtx, staffAuth]);
   
   return <>{children}</>;
 };
