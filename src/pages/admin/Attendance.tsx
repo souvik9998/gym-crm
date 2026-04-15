@@ -65,35 +65,39 @@ const Attendance = () => {
   const defaultTab = tabs[0]?.value || "history";
 
   return (
-    <div className="space-y-3 animate-fade-in">
+    <div className="space-y-2 lg:space-y-3 animate-fade-in">
+      {/* Header - compact on mobile */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg lg:text-2xl font-bold tracking-tight">Attendance</h1>
-          <p className="text-[11px] lg:text-sm text-muted-foreground mt-0.5">
+        <div className="min-w-0">
+          <h1 className="text-base lg:text-2xl font-bold tracking-tight">Attendance</h1>
+          <p className="text-[10px] lg:text-sm text-muted-foreground mt-0.5 truncate">
             {isSlotMode ? "Time slot based attendance" : "Track daily member attendance"}
           </p>
         </div>
         <Badge variant="outline" className={cn(
-          "text-[10px] lg:text-xs shrink-0 transition-colors duration-300",
+          "text-[9px] lg:text-xs shrink-0 transition-colors duration-300 px-1.5 py-0.5 lg:px-2.5 lg:py-0.5",
           isSlotMode ? "border-primary/30 text-primary" : "border-muted-foreground/30"
         )}>
           {isSlotMode ? "Slot Mode" : "Simple Mode"}
         </Badge>
       </div>
 
-      <Tabs defaultValue={defaultTab} className="space-y-3">
-        <TabsList className="bg-muted/50 rounded-lg p-0.5 lg:p-1 h-auto inline-flex overflow-x-auto scrollbar-hide gap-0.5 lg:gap-1">
-          {tabs.map((tab) => (
-            <TabsTrigger
-              key={tab.value}
-              value={tab.value}
-              className="gap-1 lg:gap-1.5 rounded-md text-[10px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2 data-[state=active]:shadow-sm shrink-0 transition-all duration-200 data-[state=active]:scale-[1.02]"
-            >
-              <tab.icon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      <Tabs defaultValue={defaultTab} className="space-y-2 lg:space-y-3">
+        {/* Tabs - scrollable pill style on mobile */}
+        <div className="-mx-1 px-1 lg:mx-0 lg:px-0">
+          <TabsList className="bg-muted/50 rounded-lg p-0.5 lg:p-1 h-auto inline-flex w-full lg:w-auto overflow-x-auto scrollbar-hide gap-0.5">
+            {tabs.map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="gap-1 lg:gap-1.5 rounded-md text-[10px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2 data-[state=active]:shadow-sm shrink-0 transition-all duration-200 data-[state=active]:scale-[1.02] whitespace-nowrap"
+              >
+                <tab.icon className="w-3 h-3 lg:w-4 lg:h-4" />
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {canManual && (
           <TabsContent value="mark" className="mt-0 animate-fade-in">
