@@ -143,7 +143,16 @@ export default function EventDetail() {
   const filtered = registrations.filter((r: any) => {
     const matchSearch = r.name.toLowerCase().includes(search.toLowerCase()) || r.phone.includes(search);
     const matchStatus = statusFilter === "all" || r.payment_status === statusFilter;
-    return matchSearch && matchStatus;
+    // Item filter: for multi-select, check registration_items; for single, check pricing_option_id
+    let matchItem = true;
+    if (itemFilter !== "all") {
+      if (isMultiSelect) {
+        matchItem = (r.registration_items || []).some((item: any) => item.pricing_option_id === itemFilter);
+      } else {
+        matchItem = r.pricing_option_id === itemFilter;
+      }
+    }
+    return matchSearch && matchStatus && matchItem;
   });
 
   const totalRevenue = registrations
@@ -152,21 +161,51 @@ export default function EventDetail() {
 
   const paidCount = registrations.filter((r: any) => r.payment_status === "success").length;
 
-  // Compute real slots_filled from registrations
+  // Compute real slots_filled - use registration_items for multi-select
   const regCountMap = useMemo(() => {
     const map: Record<string, number> = {};
-    registrations.filter((r: any) => r.payment_status === "success").forEach((r: any) => {
-      map[r.pricing_option_id] = (map[r.pricing_option_id] || 0) + 1;
-    });
+    const successRegs = registrations.filter((r: any) => r.payment_status === "success");
+    if (isMultiSelect) {
+      successRegs.forEach((r: any) => {
+        (r.registration_items || []).forEach((item: any) => {
+          map[item.pricing_option_id] = (map[item.pricing_option_id] || 0) + 1;
+        });
+      });
+    } else {
+      successRegs.forEach((r: any) => {
+        if (r.pricing_option_id) map[r.pricing_option_id] = (map[r.pricing_option_id] || 0) + 1;
+      });
+    }
     return map;
-  }, [registrations]);
+  }, [registrations, isMultiSelect]);
+
+  // Per-item revenue breakdown
+  const perItemRevenue = useMemo(() => {
+    const map: Record<string, number> = {};
+    const successRegs = registrations.filter((r: any) => r.payment_status === "success");
+    if (isMultiSelect) {
+      successRegs.forEach((r: any) => {
+        (r.registration_items || []).forEach((item: any) => {
+          map[item.pricing_option_id] = (map[item.pricing_option_id] || 0) + Number(item.amount_paid || 0);
+        });
+      });
+    } else {
+      successRegs.forEach((r: any) => {
+        if (r.pricing_option_id) {
+          map[r.pricing_option_id] = (map[r.pricing_option_id] || 0) + Number(r.amount_paid || 0);
+        }
+      });
+    }
+    return map;
+  }, [registrations, isMultiSelect]);
 
   const pricingWithRealSlots = useMemo(() =>
     (event?.event_pricing_options || []).map((p: any) => ({
       ...p,
       slots_filled: regCountMap[p.id] || 0,
+      revenue: perItemRevenue[p.id] || 0,
     })),
-    [event?.event_pricing_options, regCountMap]
+    [event?.event_pricing_options, regCountMap, perItemRevenue]
   );
 
   const totalCapacity = pricingWithRealSlots.reduce(
