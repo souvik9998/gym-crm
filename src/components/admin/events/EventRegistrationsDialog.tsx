@@ -146,18 +146,24 @@ export function EventRegistrationsDialog({ open, onOpenChange, event }: Props) {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Phone</TableHead>
-                  <TableHead>Pricing</TableHead>
+                  <TableHead>{isMultiSelect ? "Items" : "Pricing"}</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((r: any) => (
+                {filtered.map((r: any) => {
+                  const itemNames = isMultiSelect && r.registration_items?.length > 0
+                    ? r.registration_items.map((i: any) => i.event_pricing_options?.name || "Item").join(", ")
+                    : r.event_pricing_options?.name || "-";
+                  return (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">{r.name}</TableCell>
                     <TableCell>{r.phone}</TableCell>
-                    <TableCell>{r.event_pricing_options?.name || "-"}</TableCell>
+                    <TableCell className="max-w-[150px]">
+                      <span className="text-xs truncate block" title={itemNames}>{itemNames}</span>
+                    </TableCell>
                     <TableCell>₹{r.amount_paid}</TableCell>
                     <TableCell>
                       <Badge variant={r.payment_status === "success" ? "default" : r.payment_status === "pending" ? "secondary" : "destructive"} className="text-[10px]">
@@ -168,7 +174,8 @@ export function EventRegistrationsDialog({ open, onOpenChange, event }: Props) {
                       {format(new Date(r.registered_at), "dd MMM, hh:mm a")}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           )}
