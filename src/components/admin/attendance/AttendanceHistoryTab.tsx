@@ -79,7 +79,7 @@ export const AttendanceHistoryTab = () => {
     setSelectedDate(null);
   };
 
-  const { data: monthRecords = [], isLoading, refetch } = useQuery({
+  const { data: rawMonthRecords = [], isLoading, refetch } = useQuery({
     queryKey: ["attendance-history", branchId, monthStart, monthEnd],
     queryFn: async () => {
       if (!branchId) return [];
@@ -96,6 +96,18 @@ export const AttendanceHistoryTab = () => {
     },
     enabled: !!branchId,
   });
+
+  // Filter records by selected trainer/slot
+  const monthRecords = useMemo(() => {
+    let records = rawMonthRecords;
+    if (selectedSlotId) {
+      records = records.filter((r: any) => r.time_slot_id === selectedSlotId);
+    } else if (selectedTrainerId) {
+      const trainerSlotIds = new Set(allSlots.filter(s => s.trainer_id === selectedTrainerId).map(s => s.id));
+      records = records.filter((r: any) => r.time_slot_id && trainerSlotIds.has(r.time_slot_id));
+    }
+    return records;
+  }, [rawMonthRecords, selectedSlotId, selectedTrainerId, allSlots]);
 
   const daySummary = useMemo(() => {
     const map: Record<string, { present: number; late: number; absent: number; total: number }> = {};
