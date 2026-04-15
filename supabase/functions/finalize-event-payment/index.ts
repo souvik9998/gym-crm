@@ -303,6 +303,72 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Send WhatsApp notification if event has whatsapp_notify_on_register enabled
+    try {
+      const { data: eventData } = await supabase
+        .from("events")
+        .select("title, whatsapp_notify_on_register, event_date, location, branch_id, branches(name)")
+        .eq("id", eventId)
+        .single();
+
+      if (eventData?.whatsapp_notify_on_register) {
+        const eventDate = new Date(eventData.event_date).toLocaleDateString("en-IN", {
+          day: "numeric", month: "long", year: "numeric",
+        });
+        const eventTime = new Date(eventData.event_date).toLocaleTimeString("en-IN", {
+          hour: "2-digit", minute: "2-digit",
+        });
+        const branchDisplayName = (eventData.branches as any)?.name || "the gym";
+        const locationText = eventData.location ? `\n📍 *Venue:* ${eventData.location}` : "";
+
+        const message =
+          `🎉 *Event Registration Confirmed!*\n\n` +
+          `Hi ${name}, 👋\n\n` +
+          `You've been successfully registered for *${eventData.title}*!\n\n` +
+          `📅 *Date:* ${eventDate}\n` +
+          `🕐 *Time:* ${eventTime}${locationText}\n` +
+          `💰 *Amount Paid:* ₹${amount}\n\n` +
+          `We look forward to seeing you there! 🔥\n\n` +
+          `— Team ${branchDisplayName}`;
+
+        const formattedPhone = phone.length === 10 ? `91${phone}` : phone;
+
+        const PERISKOPE_API_KEY = Deno.env.get("PERISKOPE_API_KEY");
+        const PERISKOPE_PHONE = Deno.env.get("PERISKOPE_PHONE");
+
+        if (PERISKOPE_API_KEY && PERISKOPE_PHONE) {
+          const waResponse = await fetch("https://api.periskope.app/api/v1/message/sendMessage", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${PERISKOPE_API_KEY}`,
+            },
+            body: JSON.stringify({
+              chatId: `${formattedPhone}@s.whatsapp.net`,
+              fromMe: PERISKOPE_PHONE,
+              message,
+            }),
+          });
+
+          console.log("WhatsApp event registration notification sent:", waResponse.status);
+
+          // Log the notification
+          await supabase.from("whatsapp_notifications").insert({
+            recipient_phone: formattedPhone,
+            recipient_name: name,
+            notification_type: "event_registration",
+            message_content: message.substring(0, 500),
+            status: waResponse.ok ? "sent" : "failed",
+            is_manual: false,
+            branch_id: branchId,
+            member_id: memberId || null,
+          });
+        }
+      }
+    } catch (waError) {
+      console.error("WhatsApp notification error (non-critical):", waError);
+    }
+
     return jsonResponse({
       success: true,
       registrationId,

@@ -12,7 +12,7 @@ import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
 import { format } from "date-fns";
-import { Calendar, MapPin, CheckCircle2, ArrowLeft, ArrowRight, IndianRupee } from "lucide-react";
+import { Calendar, MapPin, CheckCircle2, ArrowLeft, ArrowRight, IndianRupee, User, Phone, Mail, Ticket } from "lucide-react";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,41 @@ type PaymentStage = "idle" | "verifying" | "processing" | "success";
 declare global {
   interface Window {
     Razorpay: unknown;
+  }
+}
+
+// Send WhatsApp for free event registrations
+async function sendEventWhatsApp(params: {
+  phone: string;
+  name: string;
+  eventTitle: string;
+  eventDate: string;
+  location?: string | null;
+  amount: number;
+  branchId: string;
+  memberId?: string | null;
+}) {
+  try {
+    await supabase.functions.invoke("send-whatsapp", {
+      body: {
+        phone: params.phone,
+        name: params.name,
+        type: "event_registration",
+        branchId: params.branchId,
+        customMessage:
+          `🎉 *Event Registration Confirmed!*\n\n` +
+          `Hi ${params.name}, 👋\n\n` +
+          `You've been successfully registered for *${params.eventTitle}*!\n\n` +
+          `📅 *Date:* ${new Date(params.eventDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}\n` +
+          `🕐 *Time:* ${new Date(params.eventDate).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}` +
+          (params.location ? `\n📍 *Venue:* ${params.location}` : "") +
+          `\n💰 *Amount:* ${params.amount === 0 ? "Free" : `₹${params.amount}`}\n\n` +
+          `We look forward to seeing you there! 🔥`,
+        memberIds: params.memberId ? [params.memberId] : undefined,
+      },
+    });
+  } catch (e) {
+    console.error("WhatsApp event notification error:", e);
   }
 }
 
@@ -83,7 +118,6 @@ export default function EventRegistration() {
     setPhoneChecked(true);
   };
 
-  // Load Razorpay script
   const loadRazorpayScript = useCallback((): Promise<boolean> => {
     return new Promise((resolve) => {
       if (window.Razorpay) { resolve(true); return; }
@@ -135,6 +169,20 @@ export default function EventRegistration() {
           .update({ slots_filled: (selectedPricing?.slots_filled || 0) + 1 })
           .eq("id", selectedPricingId);
       } catch { /* non-critical */ }
+
+      // Send WhatsApp for free registration
+      if (event.whatsapp_notify_on_register) {
+        sendEventWhatsApp({
+          phone,
+          name: name.trim(),
+          eventTitle: event.title,
+          eventDate: event.event_date,
+          location: event.location,
+          amount: 0,
+          branchId: event.branch_id,
+          memberId: existingMemberId,
+        });
+      }
     },
     onSuccess: () => setRegistered(true),
     onError: (err: any) => toast.error("Registration failed", { description: err.message }),
@@ -150,13 +198,11 @@ export default function EventRegistration() {
     setPaymentStage("idle");
 
     try {
-      // Validate custom fields first
       const customFields = event.event_custom_fields || [];
       for (const field of customFields) {
         if (field.is_required && !customResponses[field.id]) throw new Error(`${field.field_name} is required`);
       }
 
-      // Check capacity
       if (selectedPricing.capacity_limit) {
         const { count } = await supabase
           .from("event_registrations")
@@ -170,7 +216,6 @@ export default function EventRegistration() {
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) throw new Error("Failed to load payment gateway");
 
-      // Create Razorpay order via edge function
       const { data: orderData, error: orderError } = await supabase.functions.invoke(
         "create-razorpay-order",
         {
@@ -186,7 +231,6 @@ export default function EventRegistration() {
 
       if (orderError || !orderData) throw new Error(orderError?.message || "Failed to create order");
 
-      // Open Razorpay checkout
       let isVerifying = false;
       const options = {
         key: orderData.keyId,
@@ -204,7 +248,6 @@ export default function EventRegistration() {
           try {
             setPaymentStage("processing");
 
-            // Verify and finalize payment + registration atomically
             const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
               "finalize-event-payment",
               {
@@ -293,7 +336,7 @@ export default function EventRegistration() {
   if (registered) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md w-full border-green-200 dark:border-green-800">
+        <Card className="max-w-lg w-full border-green-200 dark:border-green-800">
           <CardContent className="p-8 text-center space-y-4">
             <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-8 h-8 text-green-600" />
@@ -315,6 +358,7 @@ export default function EventRegistration() {
 
   const customFields = event.event_custom_fields || [];
   const pricingOptions = event.event_pricing_options || [];
+  const stepIndex = ["phone", "details", "payment"].indexOf(step);
 
   return (
     <div className="min-h-screen bg-background">
@@ -322,239 +366,337 @@ export default function EventRegistration() {
         <PaymentProcessingOverlay stage={paymentStage as "verifying" | "processing" | "success"} isVisible={true} />
       )}
 
+      {/* Hero Banner */}
       {event.banner_image_url && (
-        <div className="w-full h-48 sm:h-64 overflow-hidden">
+        <div className="w-full h-48 sm:h-56 lg:h-72 overflow-hidden relative">
           <img src={event.banner_image_url} alt={event.title} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
         </div>
       )}
 
-      <div className="max-w-lg mx-auto p-4 sm:p-6 space-y-4">
-        {/* Event Info */}
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-foreground">{event.title}</h1>
-          {event.description && <p className="text-sm text-muted-foreground">{event.description}</p>}
-          <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4" />
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Event Header */}
+        <div className="space-y-3">
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">{event.title}</h1>
+          {event.description && <p className="text-sm lg:text-base text-muted-foreground leading-relaxed">{event.description}</p>}
+          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-primary" />
               {format(new Date(event.event_date), "dd MMM yyyy, hh:mm a")}
             </div>
             {event.location && (
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4" />
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-primary" />
                 {event.location}
               </div>
             )}
           </div>
           <div className="flex flex-wrap gap-2 pt-1">
             {pricingOptions.map((p: any) => (
-              <Badge key={p.id} variant="secondary" className="text-xs">
+              <Badge key={p.id} variant="secondary" className="text-xs px-3 py-1">
                 {p.name}: {Number(p.price) === 0 ? "Free" : `₹${p.price}`}
-                {p.capacity_limit && ` (${p.capacity_limit - p.slots_filled} spots left)`}
+                {p.capacity_limit && ` (${Math.max(0, p.capacity_limit - p.slots_filled)} spots left)`}
               </Badge>
             ))}
           </div>
         </div>
 
-        {/* Step indicators */}
-        <div className="flex items-center gap-2 pt-2">
-          {["phone", "details", "payment"].map((s, i) => (
-            <div key={s} className="flex items-center gap-2 flex-1">
-              <div className={cn(
-                "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
-                step === s ? "bg-primary text-primary-foreground" :
-                  (["phone", "details", "payment"].indexOf(step) > i ? "bg-green-500 text-white" : "bg-muted text-muted-foreground")
-              )}>
-                {["phone", "details", "payment"].indexOf(step) > i ? "✓" : i + 1}
+        {/* Step Indicator */}
+        <div className="flex items-center gap-0">
+          {["Phone", "Details", "Payment"].map((label, i) => (
+            <div key={label} className="flex items-center flex-1">
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all",
+                  stepIndex === i ? "bg-primary text-primary-foreground shadow-md" :
+                    stepIndex > i ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"
+                )}>
+                  {stepIndex > i ? "✓" : i + 1}
+                </div>
+                <span className={cn(
+                  "text-xs font-medium hidden sm:block",
+                  stepIndex === i ? "text-foreground" : "text-muted-foreground"
+                )}>{label}</span>
               </div>
-              {i < 2 && <div className="flex-1 h-0.5 bg-muted rounded" />}
+              {i < 2 && <div className={cn(
+                "flex-1 h-0.5 mx-3 rounded-full transition-colors",
+                stepIndex > i ? "bg-green-500" : "bg-muted"
+              )} />}
             </div>
           ))}
         </div>
 
-        {/* Step 1: Phone */}
-        {step === "phone" && (
-          <Card>
-            <CardContent className="p-5 space-y-4">
-              <h3 className="font-semibold">Enter your phone number</h3>
-              <div className="space-y-2">
-                <Label>Phone Number *</Label>
-                <div className="flex gap-2">
-                  <span className="flex items-center px-3 bg-muted rounded-l-xl text-sm text-muted-foreground">+91</span>
-                  <Input
-                    value={phone}
-                    onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); setPhoneChecked(false); }}
-                    placeholder="Enter 10-digit number"
-                    className="rounded-r-xl rounded-l-none"
-                    maxLength={10}
-                    inputMode="numeric"
-                  />
-                </div>
-              </div>
-              {phoneChecked && !existingMemberId && (
-                <div className="space-y-2">
-                  <Label>Full Name *</Label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" className="rounded-xl" />
-                  <Label>Email (optional)</Label>
-                  <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" className="rounded-xl" type="email" />
-                </div>
-              )}
-              {phoneChecked && existingMemberId && (
-                <div className="p-3 rounded-xl bg-green-50 dark:bg-green-900/10 text-sm">
-                  <p className="font-medium text-green-700 dark:text-green-400">Welcome back, {name}!</p>
-                </div>
-              )}
-              <Button
-                onClick={() => {
-                  if (!phoneChecked) { checkPhone(); return; }
-                  if (!name.trim()) { toast.error("Name is required"); return; }
-                  setStep("details");
-                }}
-                className="w-full rounded-xl gap-2"
-              >
-                {!phoneChecked ? "Check" : <>Next <ArrowRight className="w-4 h-4" /></>}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        {/* Two-column layout on desktop */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Main form area */}
+          <div className="lg:col-span-3">
+            {/* Step 1: Phone */}
+            {step === "phone" && (
+              <Card className="border border-border/50">
+                <CardContent className="p-5 sm:p-6 space-y-5">
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold text-lg">Your Phone Number</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Phone Number *</Label>
+                      <div className="flex">
+                        <span className="flex items-center px-4 bg-muted border border-r-0 border-input rounded-l-lg text-sm text-muted-foreground font-medium">+91</span>
+                        <Input
+                          value={phone}
+                          onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); setPhoneChecked(false); }}
+                          placeholder="Enter 10-digit number"
+                          className="rounded-l-none"
+                          maxLength={10}
+                          inputMode="numeric"
+                        />
+                      </div>
+                    </div>
+                    {phoneChecked && !existingMemberId && (
+                      <div className="space-y-4 animate-fade-in">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Full Name *</Label>
+                          <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" className="pl-10" />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Email (optional)</Label>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" className="pl-10" type="email" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {phoneChecked && existingMemberId && (
+                      <div className="p-4 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-green-600" />
+                          <p className="font-medium text-green-700 dark:text-green-400">Welcome back, {name}!</p>
+                        </div>
+                        <p className="text-xs text-green-600 dark:text-green-500 mt-1 ml-7">Your details have been auto-filled</p>
+                      </div>
+                    )}
+                    <Button
+                      onClick={() => {
+                        if (!phoneChecked) { checkPhone(); return; }
+                        if (!name.trim()) { toast.error("Name is required"); return; }
+                        setStep("details");
+                      }}
+                      className="w-full rounded-xl gap-2 h-12"
+                      size="lg"
+                    >
+                      {!phoneChecked ? "Continue" : <>Next <ArrowRight className="w-4 h-4" /></>}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Step 2: Details & Pricing */}
-        {step === "details" && (
-          <Card>
-            <CardContent className="p-5 space-y-4">
-              <h3 className="font-semibold">Select Option & Fill Details</h3>
-              
-              <div className="space-y-2">
-                <Label>Select Pricing *</Label>
-                <div className="grid gap-2">
-                  {pricingOptions.map((p: any) => {
-                    const isFull = p.capacity_limit && p.slots_filled >= p.capacity_limit;
-                    return (
-                      <button
-                        key={p.id}
-                        disabled={isFull}
-                        onClick={() => setSelectedPricingId(p.id)}
-                        className={cn(
-                          "flex items-center justify-between p-3 rounded-xl border transition-all text-left",
-                          selectedPricingId === p.id
-                            ? "border-primary bg-primary/5"
-                            : "border-border/40 hover:border-primary/50",
-                          isFull && "opacity-50 cursor-not-allowed"
-                        )}
-                      >
-                        <div>
-                          <p className="font-medium text-sm">{p.name}</p>
-                          {p.capacity_limit && (
-                            <p className="text-xs text-muted-foreground">
-                              {isFull ? "Sold out" : `${p.capacity_limit - p.slots_filled} spots left`}
-                            </p>
+            {/* Step 2: Details & Pricing */}
+            {step === "details" && (
+              <Card className="border border-border/50">
+                <CardContent className="p-5 sm:p-6 space-y-5">
+                  <div className="flex items-center gap-2">
+                    <Ticket className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold text-lg">Select Option & Fill Details</h3>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Select Pricing *</Label>
+                    <div className="grid gap-2">
+                      {pricingOptions.map((p: any) => {
+                        const isFull = p.capacity_limit && p.slots_filled >= p.capacity_limit;
+                        return (
+                          <button
+                            key={p.id}
+                            disabled={isFull}
+                            onClick={() => setSelectedPricingId(p.id)}
+                            className={cn(
+                              "flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left",
+                              selectedPricingId === p.id
+                                ? "border-primary bg-primary/5 shadow-sm"
+                                : "border-border/40 hover:border-primary/50",
+                              isFull && "opacity-50 cursor-not-allowed"
+                            )}
+                          >
+                            <div>
+                              <p className="font-medium">{p.name}</p>
+                              {p.capacity_limit && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {isFull ? "Sold out" : `${Math.max(0, p.capacity_limit - p.slots_filled)} spots left`}
+                                </p>
+                              )}
+                            </div>
+                            <span className="font-bold text-lg">
+                              {Number(p.price) === 0 ? "Free" : `₹${p.price}`}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {customFields.length > 0 && (
+                    <div className="space-y-4 pt-2">
+                      <p className="text-sm font-medium text-muted-foreground">Additional Information</p>
+                      {customFields.map((field: any) => (
+                        <div key={field.id} className="space-y-1.5">
+                          <Label className="text-sm font-medium">
+                            {field.field_name} {field.is_required && <span className="text-destructive">*</span>}
+                          </Label>
+                          {field.field_type === "select" ? (
+                            <Select
+                              value={customResponses[field.id] || ""}
+                              onValueChange={(v) => setCustomResponses({ ...customResponses, [field.id]: v })}
+                            >
+                              <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select..." /></SelectTrigger>
+                              <SelectContent>
+                                {(Array.isArray(field.options) ? field.options : []).map((opt: string) => (
+                                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input
+                              type={field.field_type === "number" ? "number" : "text"}
+                              value={customResponses[field.id] || ""}
+                              onChange={(e) => setCustomResponses({ ...customResponses, [field.id]: e.target.value })}
+                              className="rounded-xl"
+                              placeholder={field.field_name}
+                            />
                           )}
                         </div>
-                        <span className="font-bold text-sm">
-                          {Number(p.price) === 0 ? "Free" : `₹${p.price}`}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {customFields.length > 0 && (
-                <div className="space-y-3">
-                  {customFields.map((field: any) => (
-                    <div key={field.id} className="space-y-1.5">
-                      <Label className="text-sm">
-                        {field.field_name} {field.is_required && <span className="text-destructive">*</span>}
-                      </Label>
-                      {field.field_type === "select" ? (
-                        <Select
-                          value={customResponses[field.id] || ""}
-                          onValueChange={(v) => setCustomResponses({ ...customResponses, [field.id]: v })}
-                        >
-                          <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select..." /></SelectTrigger>
-                          <SelectContent>
-                            {(Array.isArray(field.options) ? field.options : []).map((opt: string) => (
-                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input
-                          type={field.field_type === "number" ? "number" : "text"}
-                          value={customResponses[field.id] || ""}
-                          onChange={(e) => setCustomResponses({ ...customResponses, [field.id]: e.target.value })}
-                          className="rounded-xl"
-                          placeholder={field.field_name}
-                        />
-                      )}
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => setStep("phone")} className="rounded-xl gap-2">
-                  <ArrowLeft className="w-4 h-4" /> Back
-                </Button>
-                <Button
-                  onClick={() => {
-                    for (const field of customFields) {
-                      if (field.is_required && !customResponses[field.id]) {
-                        toast.error(`${field.field_name} is required`);
-                        return;
-                      }
-                    }
-                    if (Number(selectedPricing?.price || 0) === 0) {
-                      registerFreeMutation.mutate();
-                    } else {
-                      setStep("payment");
-                    }
-                  }}
-                  className="flex-1 rounded-xl gap-2"
-                >
-                  {Number(selectedPricing?.price || 0) === 0 ? "Register (Free)" : <>Proceed to Pay <ArrowRight className="w-4 h-4" /></>}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 3: Payment */}
-        {step === "payment" && (
-          <Card>
-            <CardContent className="p-5 space-y-4">
-              <h3 className="font-semibold">Payment</h3>
-              <div className="p-4 rounded-xl bg-muted/30 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>{selectedPricing?.name}</span>
-                  <span className="font-semibold">₹{selectedPricing?.price}</span>
-                </div>
-                <div className="flex justify-between text-sm font-bold pt-2 border-t border-border/40">
-                  <span>Total</span>
-                  <span>₹{selectedPricing?.price}</span>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep("details")} className="rounded-xl gap-2">
-                  <ArrowLeft className="w-4 h-4" /> Back
-                </Button>
-                <Button
-                  onClick={handlePayment}
-                  disabled={isPaymentLoading}
-                  className="flex-1 rounded-xl gap-2"
-                >
-                  {isPaymentLoading ? <><ButtonSpinner /> Processing...</> : (
-                    <>
-                      <IndianRupee className="w-4 h-4" /> Pay ₹{selectedPricing?.price}
-                    </>
                   )}
-                </Button>
-              </div>
-              <p className="text-[10px] text-muted-foreground text-center">
-                Payment will be processed securely via Razorpay
-              </p>
-            </CardContent>
-          </Card>
-        )}
+
+                  <div className="flex gap-3 pt-2">
+                    <Button variant="outline" onClick={() => setStep("phone")} className="rounded-xl gap-2 h-12">
+                      <ArrowLeft className="w-4 h-4" /> Back
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        for (const field of customFields) {
+                          if (field.is_required && !customResponses[field.id]) {
+                            toast.error(`${field.field_name} is required`);
+                            return;
+                          }
+                        }
+                        if (Number(selectedPricing?.price || 0) === 0) {
+                          registerFreeMutation.mutate();
+                        } else {
+                          setStep("payment");
+                        }
+                      }}
+                      className="flex-1 rounded-xl gap-2 h-12"
+                      size="lg"
+                    >
+                      {Number(selectedPricing?.price || 0) === 0 ? "Register (Free)" : <>Proceed to Pay <ArrowRight className="w-4 h-4" /></>}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Step 3: Payment */}
+            {step === "payment" && (
+              <Card className="border border-border/50">
+                <CardContent className="p-5 sm:p-6 space-y-5">
+                  <div className="flex items-center gap-2">
+                    <IndianRupee className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold text-lg">Complete Payment</h3>
+                  </div>
+                  <div className="p-5 rounded-xl bg-muted/30 border border-border/40 space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{selectedPricing?.name}</span>
+                      <span className="font-medium">₹{selectedPricing?.price}</span>
+                    </div>
+                    <div className="border-t border-border/40" />
+                    <div className="flex justify-between text-base font-bold">
+                      <span>Total</span>
+                      <span className="text-primary">₹{selectedPricing?.price}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => setStep("details")} className="rounded-xl gap-2 h-12">
+                      <ArrowLeft className="w-4 h-4" /> Back
+                    </Button>
+                    <Button
+                      onClick={handlePayment}
+                      disabled={isPaymentLoading}
+                      className="flex-1 rounded-xl gap-2 h-12"
+                      size="lg"
+                    >
+                      {isPaymentLoading ? <><ButtonSpinner /> Processing...</> : (
+                        <>
+                          <IndianRupee className="w-4 h-4" /> Pay ₹{selectedPricing?.price}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground text-center">
+                    Payment will be processed securely via Razorpay
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Sidebar summary on desktop */}
+          <div className="hidden lg:block lg:col-span-2">
+            <Card className="border border-border/50 sticky top-6">
+              <CardContent className="p-5 space-y-4">
+                <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Registration Summary</h4>
+                <div className="space-y-3 text-sm">
+                  {name && (
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-foreground">{name}</span>
+                    </div>
+                  )}
+                  {phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-foreground">+91 {phone}</span>
+                    </div>
+                  )}
+                  {selectedPricing && (
+                    <div className="flex items-center gap-2">
+                      <Ticket className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-foreground">{selectedPricing.name}</span>
+                    </div>
+                  )}
+                </div>
+                {selectedPricing && (
+                  <div className="pt-3 border-t border-border/40">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Total</span>
+                      <span className="text-lg font-bold text-primary">
+                        {Number(selectedPricing.price) === 0 ? "Free" : `₹${selectedPricing.price}`}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground space-y-1 pt-2 border-t border-border/40">
+                  <p className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" />
+                    {format(new Date(event.event_date), "dd MMM yyyy, hh:mm a")}
+                  </p>
+                  {event.location && (
+                    <p className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5" />
+                      {event.location}
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
       <PoweredByBadge />
     </div>
