@@ -18,7 +18,9 @@ import {
   UserGroupIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  FunnelIcon,
 } from "@heroicons/react/24/outline";
+import { useAttendanceFilters, formatSlotTime } from "@/hooks/queries/useAttendanceFilters";
 
 type AttendanceStatus = "present" | "absent" | "late";
 
@@ -63,6 +65,14 @@ export const SimpleAttendanceTab = () => {
   const [search, setSearch] = useState("");
   const [localAttendance, setLocalAttendance] = useState<Map<string, AttendanceStatus>>(new Map());
   const [hasChanges, setHasChanges] = useState(false);
+  const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+
+  const { trainers, allSlots, isLimitedAccess: isLimited } = useAttendanceFilters();
+  const filteredSlots = useMemo(() => {
+    if (selectedTrainerId) return allSlots.filter(s => s.trainer_id === selectedTrainerId);
+    return allSlots;
+  }, [allSlots, selectedTrainerId]);
 
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
   const isFutureDate = selectedDate > today;
