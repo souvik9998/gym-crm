@@ -26,6 +26,11 @@ export interface PaymentWithDetails {
     name: string;
     phone: string;
   } | null;
+  event_registration?: {
+    name: string;
+    phone: string;
+    event_name: string;
+  } | null;
 }
 
 /**
@@ -45,7 +50,8 @@ export async function fetchPayments(branchId?: string): Promise<PaymentWithDetai
       member_id,
       daily_pass_user_id,
       member:members(name, phone),
-      daily_pass_user:daily_pass_users(name, phone)
+      daily_pass_user:daily_pass_users(name, phone),
+      event_registrations(name, phone, event:events(title))
     `)
     .order("created_at", { ascending: false });
 
@@ -56,7 +62,18 @@ export async function fetchPayments(branchId?: string): Promise<PaymentWithDetai
   const { data, error } = await query;
   if (error) throw error;
 
-  return (data || []) as PaymentWithDetails[];
+  return (data || []).map((p: any) => {
+    const er = p.event_registrations?.[0];
+    return {
+      ...p,
+      event_registrations: undefined,
+      event_registration: er ? {
+        name: er.name,
+        phone: er.phone,
+        event_name: er.event?.title || "Event",
+      } : null,
+    };
+  }) as PaymentWithDetails[];
 }
 
 export interface PaginatedPaymentsResponse {
@@ -99,7 +116,8 @@ export async function fetchPaymentsPaginated(
       member_id,
       daily_pass_user_id,
       member:members(name, phone),
-      daily_pass_user:daily_pass_users(name, phone)
+      daily_pass_user:daily_pass_users(name, phone),
+      event_registrations(name, phone, event:events(title))
     `)
     .eq("branch_id", branchId)
     .order("created_at", { ascending: false })
@@ -108,7 +126,18 @@ export async function fetchPaymentsPaginated(
   if (error) throw error;
 
   const totalCount = count || 0;
-  const fetchedData = (data || []) as PaymentWithDetails[];
+  const fetchedData = (data || []).map((p: any) => {
+    const er = p.event_registrations?.[0];
+    return {
+      ...p,
+      event_registrations: undefined,
+      event_registration: er ? {
+        name: er.name,
+        phone: er.phone,
+        event_name: er.event?.title || "Event",
+      } : null,
+    };
+  }) as PaymentWithDetails[];
   const nextCursor = cursor + limit < totalCount ? cursor + limit : null;
 
   return {

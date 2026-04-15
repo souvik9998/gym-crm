@@ -24,7 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download, User, Clock, FileText, Eye, Copy, MoreVertical } from "lucide-react";
+import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download, User, Clock, FileText, Eye, Copy, MoreVertical, CalendarDays } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
@@ -165,10 +165,18 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
         );
       case "pt_only":
       case "pt":
+      case "pt_subscription":
         return (
           <Badge variant="outline" className="text-xs bg-warning/10 text-warning">
             <Dumbbell className="w-3 h-3 mr-1" />
             PT
+          </Badge>
+        );
+      case "event_registration":
+        return (
+          <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+            <CalendarDays className="w-3 h-3 mr-1" />
+            Event
           </Badge>
         );
       case "gym_membership":
@@ -187,7 +195,10 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
         return "Gym + PT";
       case "pt_only":
       case "pt":
+      case "pt_subscription":
         return "PT";
+      case "event_registration":
+        return "Event";
       case "gym_membership":
         return "Gym";
       default:
@@ -208,12 +219,34 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     }
   };
 
+  const getPaymentDisplayName = (payment: PaymentWithDetails) => {
+    if (payment.payment_type === "event_registration" && payment.event_registration) {
+      return payment.event_registration.name;
+    }
+    return payment.member?.name || payment.daily_pass_user?.name || "Unknown";
+  };
+
+  const getPaymentDisplayPhone = (payment: PaymentWithDetails) => {
+    if (payment.payment_type === "event_registration" && payment.event_registration) {
+      return payment.event_registration.phone;
+    }
+    return payment.member?.phone || payment.daily_pass_user?.phone || "-";
+  };
+
+  const getPaymentEventName = (payment: PaymentWithDetails) => {
+    if (payment.payment_type === "event_registration" && payment.event_registration) {
+      return payment.event_registration.event_name;
+    }
+    return null;
+  };
+
   const handleExport = () => {
     try {
       const exportData = filteredPayments.map((payment) => ({
         Date: payment.created_at ? new Date(payment.created_at).toLocaleString("en-IN") : "-",
-        "Member Name": payment.member?.name || payment.daily_pass_user?.name || "-",
-        "Member Phone": payment.member?.phone || payment.daily_pass_user?.phone || "-",
+        "Member Name": getPaymentDisplayName(payment),
+        "Member Phone": getPaymentDisplayPhone(payment),
+        "Event Name": getPaymentEventName(payment) || "-",
         "Payment Type": getPaymentTypeText(payment.payment_type),
         "Payment Mode": payment.payment_mode === "online" ? "Online" : "Cash",
         Amount: `₹${Number(payment.amount).toLocaleString("en-IN")}`,
@@ -435,6 +468,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                 <SelectItem value="gym_membership">Gym Only</SelectItem>
                 <SelectItem value="pt_only">PT Only</SelectItem>
                 <SelectItem value="gym_and_pt">Gym + PT</SelectItem>
+                <SelectItem value="event_registration">Event</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -501,7 +535,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                       </span>
                     </div>
                     <p className="text-sm font-medium truncate">
-                      {payment.member?.name || payment.daily_pass_user?.name || "Unknown"}
+                      {getPaymentDisplayName(payment)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -519,18 +553,27 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                         <User className="w-3 h-3" /> Member
                       </p>
                       <p className="font-medium mt-0.5">
-                        {payment.member?.name || payment.daily_pass_user?.name || "Unknown"}
-                        {payment.daily_pass_user_id && (
+                        {getPaymentDisplayName(payment)}
+                        {payment.daily_pass_user_id && !payment.event_registration && (
                           <Badge variant="outline" className="ml-1 text-[9px] py-0">Daily</Badge>
+                        )}
+                        {payment.payment_type === "event_registration" && (
+                          <Badge variant="outline" className="ml-1 text-[9px] py-0 bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400">Event</Badge>
                         )}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Phone</p>
                       <p className="font-medium mt-0.5">
-                        {payment.member?.phone || payment.daily_pass_user?.phone || "-"}
+                        {getPaymentDisplayPhone(payment)}
                       </p>
                     </div>
+                    {getPaymentEventName(payment) && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Event</p>
+                        <p className="font-medium mt-0.5 text-purple-700 dark:text-purple-400">{getPaymentEventName(payment)}</p>
+                      </div>
+                    )}
                     <div>
                       <p className="text-xs text-muted-foreground">Type</p>
                       <div className="mt-0.5">{getPaymentTypeBadge(payment.payment_type)}</div>
@@ -645,13 +688,19 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                   </TableCell>
                   <TableCell>
                     <div className="font-medium">
-                      {payment.member?.name || payment.daily_pass_user?.name || "Unknown"}
-                      {payment.daily_pass_user_id && (
+                      {getPaymentDisplayName(payment)}
+                      {payment.daily_pass_user_id && payment.payment_type !== "event_registration" && (
                         <Badge variant="outline" className="ml-2 text-[10px] py-0">Daily Pass</Badge>
+                      )}
+                      {payment.payment_type === "event_registration" && (
+                        <Badge variant="outline" className="ml-2 text-[10px] py-0 bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400">Event</Badge>
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {payment.member?.phone || payment.daily_pass_user?.phone || "-"}
+                      {getPaymentDisplayPhone(payment)}
+                      {getPaymentEventName(payment) && (
+                        <span className="ml-1 text-purple-600 dark:text-purple-400">· {getPaymentEventName(payment)}</span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
