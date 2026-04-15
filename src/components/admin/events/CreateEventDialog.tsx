@@ -254,9 +254,9 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         eventId = data.id;
 
         // Insert pricing options for new events
-        if (pricingOptions.length > 0) {
+        if (effectiveOptions.length > 0) {
           const { error: pError } = await supabase.from("event_pricing_options").insert(
-            pricingOptions.map((p, i) => ({
+            effectiveOptions.map((p, i) => ({
               event_id: eventId,
               name: p.name,
               description: p.description || null,
