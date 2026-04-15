@@ -1053,6 +1053,11 @@ export const MembersTable = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <p className="font-semibold text-sm truncate text-foreground">{member.name}</p>
+                    {isNewMember(member) && (
+                      <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[9px] px-1.5 py-0 h-4 animate-in zoom-in-50 duration-300 font-bold">
+                        NEW
+                      </Badge>
+                    )}
                     {enrolledMemberIds.has(member.id) && (
                       <Fingerprint className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
                     )}
@@ -1300,6 +1305,11 @@ export const MembersTable = ({
                         </div>
                         <div className="flex items-center gap-1.5">
                           <p className="font-medium text-sm">{member.name}</p>
+                          {isNewMember(member) && (
+                            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[9px] px-1.5 py-0 h-4 animate-in zoom-in-50 duration-300 font-bold">
+                              NEW
+                            </Badge>
+                          )}
                           {enrolledMemberIds.has(member.id) && (
                             <Fingerprint className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
                           )}
