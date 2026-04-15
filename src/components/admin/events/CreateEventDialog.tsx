@@ -80,10 +80,23 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
       setWhatsappNotify(editEvent.whatsapp_notify_on_register || false);
       setSelectionMode(editEvent.selection_mode || "single");
       if (editEvent.event_pricing_options?.length) {
-        setPricingOptions(editEvent.event_pricing_options.map((p: any) => ({
+        const opts = editEvent.event_pricing_options.map((p: any) => ({
           id: p.id, name: p.name, description: p.description || "", price: p.price,
           capacity_limit: p.capacity_limit, is_active: p.is_active ?? true,
-        })));
+        }));
+        setPricingOptions(opts);
+        // Detect pricing type: if only 1 item named "General", treat as single pricing
+        if (opts.length === 1 && opts[0].name === "General") {
+          setPricingType("single");
+          setSinglePrice(opts[0].price);
+          setSingleCapacity(opts[0].capacity_limit);
+        } else {
+          setPricingType("variable");
+        }
+      } else {
+        setPricingType("single");
+        setSinglePrice(0);
+        setSingleCapacity(null);
       }
       loadCustomFields(editEvent.id);
     } else {
