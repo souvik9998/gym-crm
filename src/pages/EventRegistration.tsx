@@ -338,7 +338,9 @@ export default function EventRegistration() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PaymentProcessingOverlay stage={paymentStage} isVisible={paymentStage !== "idle"} />
+      {paymentStage !== "idle" && (
+        <PaymentProcessingOverlay stage={paymentStage as "verifying" | "processing" | "success"} isVisible={true} />
+      )}
 
       {event.banner_image_url && (
         <div className="w-full h-48 sm:h-64 overflow-hidden">
