@@ -59,6 +59,9 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
   const [location, setLocation] = useState("");
   const [status, setStatus] = useState<string>("draft");
   const [whatsappNotify, setWhatsappNotify] = useState(false);
+  const [pricingType, setPricingType] = useState<"single" | "variable">("single");
+  const [singlePrice, setSinglePrice] = useState<number>(0);
+  const [singleCapacity, setSingleCapacity] = useState<number | null>(null);
   const [selectionMode, setSelectionMode] = useState<string>("single");
   const [pricingOptions, setPricingOptions] = useState<PricingOption[]>([
     { name: "General", description: "", price: 0, capacity_limit: null, is_active: true },
