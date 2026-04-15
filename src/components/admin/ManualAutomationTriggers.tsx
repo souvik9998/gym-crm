@@ -6,13 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/sonner";
 import { getEdgeFunctionUrl, getEdgeFunctionHeaders } from "@/lib/supabaseConfig";
 import { getAuthToken } from "@/api/authenticatedFetch";
+import { useBranch } from "@/contexts/BranchContext";
 import { BoltIcon } from "@heroicons/react/24/outline";
 
 export function ManualAutomationTriggers() {
   const [isRunningExpiry, setIsRunningExpiry] = useState(false);
   const [lastExpiryResult, setLastExpiryResult] = useState<any>(null);
+  const { currentBranch } = useBranch();
 
   const handleRunExpiryReminder = async () => {
+    if (!currentBranch?.id) {
+      toast.error("No branch selected");
+      return;
+    }
+
     setIsRunningExpiry(true);
     setLastExpiryResult(null);
     try {
@@ -22,7 +29,7 @@ export function ManualAutomationTriggers() {
       const res = await fetch(getEdgeFunctionUrl("daily-whatsapp-job"), {
         method: "POST",
         headers: getEdgeFunctionHeaders(token),
-        body: JSON.stringify({ manual: true }),
+        body: JSON.stringify({ manual: true, branchId: currentBranch.id }),
       });
 
       const result = await res.json();
@@ -34,7 +41,7 @@ export function ManualAutomationTriggers() {
         toast.info("Job already ran today", { description: "The daily expiry reminder was already executed." });
       } else {
         toast.success("Expiry reminders sent!", {
-          description: `${result.notificationsSent} sent, ${result.failed} failed`,
+          description: `${result.notificationsSent} sent, ${result.failed} failed for ${currentBranch.name}`,
         });
       }
     } catch (e: any) {
@@ -54,18 +61,17 @@ export function ManualAutomationTriggers() {
           <div>
             <CardTitle className="text-base lg:text-xl">Manual Automation Triggers</CardTitle>
             <CardDescription className="text-xs lg:text-sm">
-              Test and manually trigger automated messaging jobs
+              Test and manually trigger automated messaging jobs for <strong>{currentBranch?.name || "current branch"}</strong>
             </CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3 p-4 lg:p-6 pt-0 lg:pt-0">
-        {/* Expiry Reminder Trigger */}
         <div className="flex items-center justify-between p-3 lg:p-4 bg-muted/20 border border-border/40 rounded-xl">
           <div className="space-y-0.5 flex-1 mr-3">
             <p className="text-xs lg:text-sm font-medium">Expiry Reminder Job</p>
             <p className="text-[10px] lg:text-xs text-muted-foreground">
-              Sends reminders to members with expiring/expired memberships
+              Sends reminders to members with expiring/expired memberships in this branch
             </p>
           </div>
           <Button
@@ -79,7 +85,6 @@ export function ManualAutomationTriggers() {
           </Button>
         </div>
 
-        {/* Last run result */}
         {lastExpiryResult && !lastExpiryResult.skipped && (
           <div className="p-3 bg-muted/30 border border-border/40 rounded-lg space-y-1.5 animate-fade-in">
             <p className="text-xs font-medium text-muted-foreground">Last Run Result</p>
@@ -106,7 +111,7 @@ export function ManualAutomationTriggers() {
         )}
 
         <p className="text-[10px] text-muted-foreground italic">
-          💡 These jobs run automatically every day at 9:00 AM IST. Use manual triggers only for testing.
+          💡 These jobs run automatically every day at 9:00 AM IST for all branches. Use manual triggers only for testing.
         </p>
       </CardContent>
     </Card>
