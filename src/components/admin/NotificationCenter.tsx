@@ -176,7 +176,12 @@ export function NotificationCenter() {
                 {dangerCount > 9 ? "9+" : dangerCount}
               </span>
             )}
-            {dangerCount === 0 && totalCount > 0 && (
+            {dangerCount === 0 && successCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white px-1 animate-in zoom-in-50 duration-300 border-2 border-card">
+                {successCount > 9 ? "9+" : successCount}
+              </span>
+            )}
+            {dangerCount === 0 && successCount === 0 && totalCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1 animate-in zoom-in-50 duration-300 border-2 border-card">
                 {totalCount > 9 ? "9+" : totalCount}
               </span>
