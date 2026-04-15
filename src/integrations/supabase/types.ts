@@ -2430,6 +2430,7 @@ export type Database = {
           can_change_settings: boolean
           can_create_time_slots: boolean
           can_edit_delete_time_slots: boolean
+          can_manage_events: boolean
           can_manage_members: boolean
           can_manage_time_slots: boolean
           can_send_whatsapp: boolean
@@ -2451,6 +2452,7 @@ export type Database = {
           can_change_settings?: boolean
           can_create_time_slots?: boolean
           can_edit_delete_time_slots?: boolean
+          can_manage_events?: boolean
           can_manage_members?: boolean
           can_manage_time_slots?: boolean
           can_send_whatsapp?: boolean
@@ -2472,6 +2474,7 @@ export type Database = {
           can_change_settings?: boolean
           can_create_time_slots?: boolean
           can_edit_delete_time_slots?: boolean
+          can_manage_events?: boolean
           can_manage_members?: boolean
           can_manage_time_slots?: boolean
           can_send_whatsapp?: boolean
