@@ -12,9 +12,18 @@ import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
 import { format } from "date-fns";
-import { Calendar, MapPin, CheckCircle2, ArrowLeft, ArrowRight, IndianRupee, User, Phone, Mail, Ticket } from "lucide-react";
+import { Calendar, MapPin, CheckCircle2, ArrowLeft, ArrowRight, IndianRupee, User, Phone, Mail, Ticket, TicketPercent, X } from "lucide-react";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import { cn } from "@/lib/utils";
+
+interface AppliedCoupon {
+  id: string;
+  code: string;
+  discount_type: string;
+  discount_value: number;
+  max_discount_cap: number | null;
+  discountAmount: number;
+}
 
 type Step = "phone" | "details" | "payment";
 type PaymentStage = "idle" | "verifying" | "processing" | "success";
