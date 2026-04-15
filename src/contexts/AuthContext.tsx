@@ -184,17 +184,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (limits) {
             const features = limits.features as Record<string, boolean> | null;
             if (features) {
+              const attendanceEnabled = features.attendance ?? true;
               tenantPermissions = {
                 members_management: features.members_management ?? true,
-                attendance: features.attendance ?? true,
-                attendance_manual: features.attendance_manual ?? true,
-                attendance_qr: features.attendance_qr ?? true,
-                attendance_biometric: features.attendance_biometric ?? false,
+                attendance: attendanceEnabled,
+                // Sub-flags: only enabled if explicitly set AND parent attendance is on
+                attendance_manual: attendanceEnabled && (features.attendance_manual ?? attendanceEnabled),
+                attendance_qr: attendanceEnabled && (features.attendance_qr ?? false),
+                attendance_biometric: attendanceEnabled && (features.attendance_biometric ?? false),
                 payments_billing: features.payments_billing ?? true,
                 staff_management: features.staff_management ?? true,
                 reports_analytics: features.reports_analytics ?? true,
-                branch_analytics: features.branch_analytics ?? true,
-                event_management: features.event_management ?? true,
+                // New keys default to false when missing from DB
+                branch_analytics: features.branch_analytics ?? false,
+                event_management: features.event_management ?? false,
                 workout_diet_plans: features.workout_diet_plans ?? false,
                 notifications: features.notifications ?? true,
                 integrations: features.integrations ?? true,
