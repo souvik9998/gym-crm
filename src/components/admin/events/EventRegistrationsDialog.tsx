@@ -9,9 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { useState } from "react";
-import { Download, Search, IndianRupee, Users } from "lucide-react";
+import { Download, Search, IndianRupee, Users, UserPlus } from "lucide-react";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { toast } from "@/components/ui/sonner";
+import { AdminEventRegisterDialog } from "./AdminEventRegisterDialog";
 
 interface Props {
   open: boolean;
@@ -22,6 +23,7 @@ interface Props {
 export function EventRegistrationsDialog({ open, onOpenChange, event }: Props) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [registerOpen, setRegisterOpen] = useState(false);
 
   const { data: registrations = [], isLoading } = useQuery({
     queryKey: ["event-registrations", event?.id],
@@ -103,6 +105,9 @@ export function EventRegistrationsDialog({ open, onOpenChange, event }: Props) {
             <Button size="sm" variant="outline" onClick={handleExport} className="h-9 rounded-xl gap-1.5">
               <Download className="w-3.5 h-3.5" /> Export
             </Button>
+            <Button size="sm" onClick={() => setRegisterOpen(true)} className="h-9 rounded-xl gap-1.5">
+              <UserPlus className="w-3.5 h-3.5" /> Register
+            </Button>
           </div>
         </div>
 
@@ -146,6 +151,14 @@ export function EventRegistrationsDialog({ open, onOpenChange, event }: Props) {
             </Table>
           )}
         </ScrollArea>
+
+        {registerOpen && (
+          <AdminEventRegisterDialog
+            open={registerOpen}
+            onOpenChange={setRegisterOpen}
+            event={event}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

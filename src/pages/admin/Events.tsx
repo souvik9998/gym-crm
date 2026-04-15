@@ -8,10 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/sonner";
 import { format } from "date-fns";
-import { Plus, Search, Calendar, MapPin, Users, IndianRupee, Eye, Edit2, Trash2, QrCode, Link2, Copy } from "lucide-react";
+import { Plus, Search, Calendar, MapPin, Users, IndianRupee, Eye, Edit2, Trash2, QrCode, Copy, UserPlus } from "lucide-react";
 import { CreateEventDialog } from "@/components/admin/events/CreateEventDialog";
 import { EventRegistrationsDialog } from "@/components/admin/events/EventRegistrationsDialog";
 import { EventQRDialog } from "@/components/admin/events/EventQRDialog";
+import { AdminEventRegisterDialog } from "@/components/admin/events/AdminEventRegisterDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const statusColors: Record<string, string> = {
@@ -30,6 +31,7 @@ export default function Events() {
   const [viewRegistrations, setViewRegistrations] = useState<any>(null);
   const [qrEvent, setQrEvent] = useState<any>(null);
   const [deleteEvent, setDeleteEvent] = useState<any>(null);
+  const [registerEvent, setRegisterEvent] = useState<any>(null);
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["events", currentBranch?.id],
@@ -37,7 +39,7 @@ export default function Events() {
       if (!currentBranch?.id) return [];
       const { data, error } = await supabase
         .from("events")
-        .select("*, event_pricing_options(*), event_registrations(id, payment_status)")
+        .select("*, event_pricing_options(*), event_custom_fields(*), event_registrations(id, payment_status)")
         .eq("branch_id", currentBranch.id)
         .order("event_date", { ascending: false });
       if (error) throw error;
@@ -177,7 +179,10 @@ export default function Events() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 pt-1 border-t border-border/40">
+                  <div className="flex items-center gap-1.5 pt-1 border-t border-border/40 flex-wrap">
+                    <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => setRegisterEvent(event)}>
+                      <UserPlus className="w-3.5 h-3.5" /> Register
+                    </Button>
                     <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => setViewRegistrations(event)}>
                       <Eye className="w-3.5 h-3.5" /> View
                     </Button>
@@ -234,6 +239,14 @@ export default function Events() {
         confirmText="Delete"
         variant="destructive"
       />
+
+      {registerEvent && (
+        <AdminEventRegisterDialog
+          open={!!registerEvent}
+          onOpenChange={() => setRegisterEvent(null)}
+          event={registerEvent}
+        />
+      )}
     </div>
   );
 }
