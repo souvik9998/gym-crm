@@ -200,6 +200,7 @@ Deno.serve(async (req) => {
       customPackage,
       joiningFee,
       branchId,
+      skipMemberCreation,
     } = validation.data!;
 
     console.log("Verifying payment:", { razorpay_order_id, razorpay_payment_id, memberId, isNewMember, isDailyPass, trainerId, months, customDays, ptStartDate, gymStartDate, branchId });
