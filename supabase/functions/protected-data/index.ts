@@ -464,12 +464,44 @@ Deno.serve(async (req) => {
           return jsonResponse({ members: [], nextCursor: null, totalCount: 0 });
         }
 
+        // Check if staff has "assigned only" member access - restrict to their time slot members
+        let assignedMemberIds: string[] | null = null;
+        if (auth.isStaff && auth.staffId && auth.permissions?.member_access_type === "assigned") {
+          // Get time slots belonging to this staff member (as trainer)
+          const { data: staffSlots } = await supabase
+            .from("trainer_time_slots")
+            .select("id")
+            .eq("trainer_id", auth.staffId);
+
+          const slotIds = (staffSlots || []).map((s: any) => s.id);
+
+          if (slotIds.length > 0) {
+            const { data: slotMembers } = await supabase
+              .from("time_slot_members")
+              .select("member_id")
+              .in("time_slot_id", slotIds);
+            assignedMemberIds = [...new Set((slotMembers || []).map((sm: any) => sm.member_id))];
+          } else {
+            assignedMemberIds = [];
+          }
+
+          if (assignedMemberIds.length === 0) {
+            return jsonResponse({ members: [], nextCursor: null, totalCount: 0 });
+          }
+        }
+
         let countQuery = supabase.from("members").select("*", { count: "exact", head: true });
         let membersQuery = supabase.from("members").select("*").order("created_at", { ascending: false });
 
         if (Array.isArray(allowedBranchIds)) {
           countQuery = countQuery.in("branch_id", allowedBranchIds);
           membersQuery = membersQuery.in("branch_id", allowedBranchIds);
+        }
+
+        // Apply assigned-only filter
+        if (assignedMemberIds !== null) {
+          countQuery = countQuery.in("id", assignedMemberIds);
+          membersQuery = membersQuery.in("id", assignedMemberIds);
         }
 
         const { count, error: countError } = await countQuery;
@@ -1003,7 +1035,7 @@ Deno.serve(async (req) => {
             .select("id, full_name, phone, role, id_type, id_number, salary_type, monthly_salary, session_fee, percentage_fee, specialization, auth_user_id, password_set_at, is_active, created_at, updated_at, last_login_at, last_login_ip, failed_login_attempts, locked_until")
             .order("full_name"),
           supabase.from("staff_permissions")
-            .select("id, staff_id, can_view_members, can_manage_members, can_access_ledger, can_access_payments, can_access_analytics, can_change_settings"),
+            .select("*"),
           supabase.from("staff_branch_assignments")
             .select("id, staff_id, branch_id, is_primary, branches(name)"),
           (() => {

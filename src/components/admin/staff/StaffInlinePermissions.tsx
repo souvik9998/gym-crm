@@ -23,6 +23,7 @@ export interface InlinePermissions {
   can_access_analytics: boolean;
   can_change_settings: boolean;
   can_send_whatsapp: boolean;
+  can_access_attendance: boolean;
   member_access_type?: string;
   can_manage_time_slots?: boolean;
   can_create_time_slots?: boolean;
@@ -80,6 +81,12 @@ const CORE_PERMISSION_OPTIONS = [
     label: "WhatsApp Access", 
     description: "Send WhatsApp messages to members",
     icon: ChatBubbleLeftRightIcon,
+  },
+  { 
+    key: "can_access_attendance" as const, 
+    label: "Attendance Access", 
+    description: "Mark and view attendance records",
+    icon: ClockIcon,
   },
 ];
 
@@ -320,6 +327,7 @@ export const getDefaultPermissions = (role: string): InlinePermissions => ({
   can_access_analytics: role === "manager",
   can_change_settings: false,
   can_send_whatsapp: role === "manager",
+  can_access_attendance: true,
   member_access_type: "all",
   can_manage_time_slots: role === "manager" || role === "trainer",
   can_create_time_slots: role === "manager",

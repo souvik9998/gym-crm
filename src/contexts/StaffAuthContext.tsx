@@ -18,6 +18,7 @@ export interface StaffPermissions {
   can_access_analytics: boolean;
   can_change_settings: boolean;
   can_send_whatsapp: boolean;
+  can_access_attendance: boolean;
   member_access_type?: string;
   can_manage_time_slots?: boolean;
   can_create_time_slots?: boolean;

@@ -2205,6 +2205,7 @@ export type Database = {
       staff_permissions: {
         Row: {
           can_access_analytics: boolean
+          can_access_attendance: boolean
           can_access_ledger: boolean
           can_access_payments: boolean
           can_assign_members_to_slots: boolean
@@ -2225,6 +2226,7 @@ export type Database = {
         }
         Insert: {
           can_access_analytics?: boolean
+          can_access_attendance?: boolean
           can_access_ledger?: boolean
           can_access_payments?: boolean
           can_assign_members_to_slots?: boolean
@@ -2245,6 +2247,7 @@ export type Database = {
         }
         Update: {
           can_access_analytics?: boolean
+          can_access_attendance?: boolean
           can_access_ledger?: boolean
           can_access_payments?: boolean
           can_assign_members_to_slots?: boolean
