@@ -161,27 +161,86 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         const { error } = await supabase.from("events").update(eventData).eq("id", editEvent.id);
         if (error) throw error;
         eventId = editEvent.id;
-        await supabase.from("event_pricing_options").delete().eq("event_id", eventId);
+
+        // Smart upsert: update existing, insert new, delete removed
+        const existingIds = pricingOptions.filter(p => p.id).map(p => p.id!);
+        
+        // Delete removed pricing options (only those not referenced by registrations)
+        if (existingIds.length > 0) {
+          await supabase.from("event_pricing_options")
+            .delete()
+            .eq("event_id", eventId)
+            .not("id", "in", `(${existingIds.join(",")})`);
+        } else {
+          // All are new - delete old ones that have no registration references
+          const { data: oldOptions } = await supabase
+            .from("event_pricing_options")
+            .select("id")
+            .eq("event_id", eventId);
+          if (oldOptions?.length) {
+            for (const opt of oldOptions) {
+              const { count } = await supabase
+                .from("event_registration_items")
+                .select("id", { count: "exact", head: true })
+                .eq("pricing_option_id", opt.id);
+              const { count: regCount } = await supabase
+                .from("event_registrations")
+                .select("id", { count: "exact", head: true })
+                .eq("pricing_option_id", opt.id);
+              if ((count || 0) === 0 && (regCount || 0) === 0) {
+                await supabase.from("event_pricing_options").delete().eq("id", opt.id);
+              }
+            }
+          }
+        }
+
+        // Update existing and insert new pricing options
+        for (let i = 0; i < pricingOptions.length; i++) {
+          const p = pricingOptions[i];
+          if (p.id) {
+            await supabase.from("event_pricing_options").update({
+              name: p.name,
+              description: p.description || null,
+              price: p.price,
+              capacity_limit: p.capacity_limit || null,
+              is_active: p.is_active,
+              sort_order: i,
+            }).eq("id", p.id);
+          } else {
+            await supabase.from("event_pricing_options").insert({
+              event_id: eventId,
+              name: p.name,
+              description: p.description || null,
+              price: p.price,
+              capacity_limit: p.capacity_limit || null,
+              is_active: p.is_active,
+              sort_order: i,
+            });
+          }
+        }
+
+        // Handle custom fields: delete and re-insert (no FK dependencies)
         await supabase.from("event_custom_fields").delete().eq("event_id", eventId);
       } else {
         const { data, error } = await supabase.from("events").insert(eventData).select("id").single();
         if (error) throw error;
         eventId = data.id;
-      }
 
-      if (pricingOptions.length > 0) {
-        const { error: pError } = await supabase.from("event_pricing_options").insert(
-          pricingOptions.map((p, i) => ({
-            event_id: eventId,
-            name: p.name,
-            description: p.description || null,
-            price: p.price,
-            capacity_limit: p.capacity_limit || null,
-            is_active: p.is_active,
-            sort_order: i,
-          }))
-        );
-        if (pError) throw pError;
+        // Insert pricing options for new events
+        if (pricingOptions.length > 0) {
+          const { error: pError } = await supabase.from("event_pricing_options").insert(
+            pricingOptions.map((p, i) => ({
+              event_id: eventId,
+              name: p.name,
+              description: p.description || null,
+              price: p.price,
+              capacity_limit: p.capacity_limit || null,
+              is_active: p.is_active,
+              sort_order: i,
+            }))
+          );
+          if (pError) throw pError;
+        }
       }
 
       if (customFields.length > 0) {
@@ -197,9 +256,13 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         );
         if (fError) throw fError;
       }
+
+      return eventId;
     },
-    onSuccess: () => {
+    onSuccess: (eventId) => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
+      queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] });
       toast.success(isEditing ? "Event updated" : "Event created");
 
       // Activity logging
