@@ -97,6 +97,7 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         setPricingType("single");
         setSinglePrice(0);
         setSingleCapacity(null);
+        setPricingOptions([{ name: "General", description: "", price: 0, capacity_limit: null, is_active: true }]);
       }
       loadCustomFields(editEvent.id);
     } else {
