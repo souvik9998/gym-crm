@@ -755,6 +755,18 @@ export const MembersTable = ({
   };
 
   const sortedMembers = [...timeSlotFiltered].sort((a, b) => {
+    // New members (added within 1 hour) always appear at the top
+    const aIsNew = isNewMember(a);
+    const bIsNew = isNewMember(b);
+    if (aIsNew && !bIsNew) return -1;
+    if (!aIsNew && bIsNew) return 1;
+    if (aIsNew && bIsNew) {
+      // Among new members, sort by most recent first
+      const aTime = new Date(a.created_at!).getTime();
+      const bTime = new Date(b.created_at!).getTime();
+      return bTime - aTime;
+    }
+
     let comparison = 0;
 
     switch (sortField) {
