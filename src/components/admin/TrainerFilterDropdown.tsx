@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Dumbbell, ChevronDown, X, Check, Users } from "lucide-react";
@@ -41,6 +42,8 @@ const trainerColors = [
 export const TrainerFilterDropdown = ({ value, onChange, compact = false }: TrainerFilterDropdownProps) => {
   const [open, setOpen] = useState(false);
   const { currentBranch } = useBranch();
+  const { staffUser, permissions, isStaffLoggedIn } = useStaffAuth();
+  const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
 
   const { data: trainers = [], isLoading } = useQuery({
     queryKey: ["trainer-filter-list", currentBranch?.id],
@@ -119,9 +122,24 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
     enabled: !!currentBranch?.id,
     staleTime: 30000,
   });
+  // For limited-access staff, filter trainers to only show themselves and auto-select
+  const visibleTrainers = useMemo(() => {
+    if (isLimitedAccess && staffUser?.id) {
+      return trainers.filter((t) => t.id === staffUser.id);
+    }
+    return trainers;
+  }, [trainers, isLimitedAccess, staffUser?.id]);
 
-  const selectedTrainer = trainers.find((t) => t.id === value);
-  const hasTrainers = trainers.length > 0;
+  // Auto-select for limited access staff
+  useEffect(() => {
+    if (isLimitedAccess && staffUser?.id && visibleTrainers.length > 0 && !value) {
+      const self = visibleTrainers.find((t) => t.id === staffUser.id);
+      if (self) onChange(self.id);
+    }
+  }, [isLimitedAccess, staffUser?.id, visibleTrainers, value, onChange]);
+
+  const selectedTrainer = visibleTrainers.find((t) => t.id === value);
+  const hasTrainers = visibleTrainers.length > 0;
   const isActive = value !== null;
 
   const selectedLabel = selectedTrainer ? selectedTrainer.name : "Trainer";
@@ -152,7 +170,7 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
             )}>
               {compact ? (isActive ? selectedLabel : "Trainer") : selectedLabel}
             </span>
-            {isActive ? (
+            {isActive && !isLimitedAccess ? (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -216,7 +234,7 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
 
             {/* Trainer list */}
             <div className="p-1.5 space-y-0.5">
-              {trainers.map((trainer, idx) => {
+              {visibleTrainers.map((trainer, idx) => {
                 const isSelected = value === trainer.id;
                 const colorSet = trainerColors[idx % trainerColors.length];
 
