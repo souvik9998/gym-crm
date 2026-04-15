@@ -194,31 +194,27 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         // Smart upsert: update existing, insert new, delete removed
         const existingIds = effectiveOptions.filter(p => p.id).map(p => p.id!);
         
+        // Get all current pricing option IDs for this event
+        const { data: currentOptions } = await supabase
+          .from("event_pricing_options")
+          .select("id")
+          .eq("event_id", eventId);
+        
+        const currentIds = (currentOptions || []).map(o => o.id);
+        const idsToRemove = currentIds.filter(id => !existingIds.includes(id));
+        
         // Delete removed pricing options (only those not referenced by registrations)
-        if (existingIds.length > 0) {
-          await supabase.from("event_pricing_options")
-            .delete()
-            .eq("event_id", eventId)
-            .not("id", "in", `(${existingIds.join(",")})`);
-        } else {
-          const { data: oldOptions } = await supabase
-            .from("event_pricing_options")
-            .select("id")
-            .eq("event_id", eventId);
-          if (oldOptions?.length) {
-            for (const opt of oldOptions) {
-              const { count } = await supabase
-                .from("event_registration_items")
-                .select("id", { count: "exact", head: true })
-                .eq("pricing_option_id", opt.id);
-              const { count: regCount } = await supabase
-                .from("event_registrations")
-                .select("id", { count: "exact", head: true })
-                .eq("pricing_option_id", opt.id);
-              if ((count || 0) === 0 && (regCount || 0) === 0) {
-                await supabase.from("event_pricing_options").delete().eq("id", opt.id);
-              }
-            }
+        for (const removeId of idsToRemove) {
+          const { count } = await supabase
+            .from("event_registration_items")
+            .select("id", { count: "exact", head: true })
+            .eq("pricing_option_id", removeId);
+          const { count: regCount } = await supabase
+            .from("event_registrations")
+            .select("id", { count: "exact", head: true })
+            .eq("pricing_option_id", removeId);
+          if ((count || 0) === 0 && (regCount || 0) === 0) {
+            await supabase.from("event_pricing_options").delete().eq("id", removeId);
           }
         }
 
@@ -330,12 +326,15 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
     onError: (err: any) => toast.error("Error", { description: err.message }),
   });
 
-  const addPricing = () => setPricingOptions([...pricingOptions, { name: "", description: "", price: 0, capacity_limit: null, is_active: true }]);
-  const removePricing = (i: number) => setPricingOptions(pricingOptions.filter((_, idx) => idx !== i));
+  const addPricing = () => setPricingOptions(prev => [...prev, { name: "", description: "", price: 0, capacity_limit: null, is_active: true }]);
+  const removePricing = (i: number) => {
+    setPricingOptions(prev => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, idx) => idx !== i);
+    });
+  };
   const updatePricing = (i: number, field: string, value: any) => {
-    const updated = [...pricingOptions];
-    (updated[i] as any)[field] = value;
-    setPricingOptions(updated);
+    setPricingOptions(prev => prev.map((item, idx) => idx === i ? { ...item, [field]: value } : item));
   };
 
   const addCustomField = () => setCustomFields([...customFields, { field_name: "", field_type: "text", is_required: false, options: [] }]);
@@ -530,7 +529,7 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
 
               {/* Item list */}
               {pricingOptions.map((p, i) => (
-                <div key={i} className="p-3 rounded-xl border border-border/40 bg-muted/20 space-y-2">
+                <div key={p.id || `new-${i}`} className="p-3 rounded-xl border border-border/40 bg-muted/20 space-y-2">
                   <div className="flex items-center gap-2">
                     <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     <Input
