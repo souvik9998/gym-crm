@@ -165,7 +165,10 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
       if (!currentBranch?.id) throw new Error("No branch selected");
       if (!title.trim()) throw new Error("Title is required");
       if (!eventDate) throw new Error("Event date is required");
-      if (pricingOptions.length === 0) throw new Error("At least one item is required");
+      const effectiveOptions = getEffectivePricingOptions();
+      if (effectiveOptions.length === 0) throw new Error("At least one item is required");
+
+      const effectiveSelectionMode = pricingType === "single" ? "single" : selectionMode;
 
       const eventData = {
         branch_id: currentBranch.id,
@@ -177,7 +180,7 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         location: location.trim() || null,
         status,
         whatsapp_notify_on_register: whatsappNotify,
-        selection_mode: selectionMode,
+        selection_mode: effectiveSelectionMode,
       };
 
       let eventId: string;
