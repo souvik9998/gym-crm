@@ -56,12 +56,25 @@ Deno.serve(async (req) => {
       isManual = false,
       adminUserId,
       branchId,
-      branchName,
+      branchName: rawBranchName,
       phone,
       name,
       endDate,
       staffCredentials,
     } = validation.data!;
+
+    // Resolve branch name: use provided name, or look up from DB
+    let branchName = rawBranchName;
+    if (!branchName && branchId) {
+      const { data: branchData } = await supabase
+        .from("branches")
+        .select("name")
+        .eq("id", branchId)
+        .maybeSingle();
+      if (branchData?.name) {
+        branchName = branchData.name;
+      }
+    }
 
     // Check if WhatsApp is enabled for the specific branch
     if (branchId) {
