@@ -33,8 +33,17 @@ verify_jwt = false
 [functions.generate-invoice]
 verify_jwt = false
 
+[functions.scheduled-reports]
+verify_jwt = false
+
 # Run daily WhatsApp job every day at 9:00 AM IST (3:30 AM UTC)
 [[cron_jobs]]
 name = "daily-whatsapp-notifications"
 schedule = "30 3 * * *"
 function = "daily-whatsapp-job"
+
+# Run scheduled reports check every day at 9:00 AM IST (3:30 AM UTC)
+[[cron_jobs]]
+name = "scheduled-reports-check"
+schedule = "30 3 * * *"
+function = "scheduled-reports"
