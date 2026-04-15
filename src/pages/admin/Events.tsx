@@ -179,7 +179,10 @@ export default function Events() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 pt-1 border-t border-border/40">
+                  <div className="flex items-center gap-1.5 pt-1 border-t border-border/40 flex-wrap">
+                    <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => setRegisterEvent(event)}>
+                      <UserPlus className="w-3.5 h-3.5" /> Register
+                    </Button>
                     <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => setViewRegistrations(event)}>
                       <Eye className="w-3.5 h-3.5" /> View
                     </Button>
