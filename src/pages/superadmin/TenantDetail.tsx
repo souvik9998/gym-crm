@@ -605,6 +605,7 @@ export default function TenantDetail() {
                   <p className="text-[10px] text-muted-foreground">of {editLimits.max_storage_mb} MB</p>
                 </CardContent>
               </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="branches" className="space-y-4">
@@ -820,6 +821,9 @@ export default function TenantDetail() {
                       onChange={(e) => setEditLimits(prev => ({ ...prev, max_storage_mb: parseInt(e.target.value) || 0 }))}
                       min={0}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Used: {storageUsedMb} MB
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label>Plan Expiry Date</Label>
