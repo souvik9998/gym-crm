@@ -60,6 +60,7 @@ type CouponForm = {
   per_user_limit: string;
   applicable_on_registration: boolean;
   applicable_on_renewal: boolean;
+  applicable_on_event: boolean;
   first_time_only: boolean;
   existing_members_only: boolean;
   expired_members_only: boolean;
@@ -81,6 +82,7 @@ const defaultForm: CouponForm = {
   per_user_limit: "1",
   applicable_on_registration: true,
   applicable_on_renewal: true,
+  applicable_on_event: false,
   first_time_only: false,
   existing_members_only: false,
   expired_members_only: false,
@@ -167,6 +169,7 @@ export const CouponsDiscountsTab = () => {
       per_user_limit: String(coupon.per_user_limit),
       applicable_on_registration: coupon.applicable_on?.new_registration !== false,
       applicable_on_renewal: coupon.applicable_on?.renewal !== false,
+      applicable_on_event: coupon.applicable_on?.event === true,
       first_time_only: coupon.first_time_only,
       existing_members_only: coupon.existing_members_only,
       expired_members_only: coupon.expired_members_only,
@@ -203,7 +206,7 @@ export const CouponsDiscountsTab = () => {
         is_active: form.is_active,
         total_usage_limit: form.total_usage_limit ? Number(form.total_usage_limit) : null,
         per_user_limit: Number(form.per_user_limit) || 1,
-        applicable_on: { new_registration: form.applicable_on_registration, renewal: form.applicable_on_renewal },
+        applicable_on: { new_registration: form.applicable_on_registration, renewal: form.applicable_on_renewal, event: form.applicable_on_event },
         first_time_only: form.first_time_only,
         existing_members_only: form.existing_members_only,
         expired_members_only: form.expired_members_only,
@@ -457,6 +460,10 @@ export const CouponsDiscountsTab = () => {
                   <Switch checked={form.applicable_on_renewal} onCheckedChange={v => setForm(f => ({ ...f, applicable_on_renewal: v }))} />
                   Membership Renewal
                 </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Switch checked={form.applicable_on_event} onCheckedChange={v => setForm(f => ({ ...f, applicable_on_event: v }))} />
+                  Event Registration
+                </label>
               </div>
             </div>
 
@@ -603,7 +610,7 @@ export const CouponsDiscountsTab = () => {
                       <div className="bg-muted/30 rounded-lg p-2">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Applies To</p>
                         <p className="font-medium">
-                          {[coupon.applicable_on?.new_registration && "Registration", coupon.applicable_on?.renewal && "Renewal"].filter(Boolean).join(", ") || "All"}
+                          {[coupon.applicable_on?.new_registration && "Registration", coupon.applicable_on?.renewal && "Renewal", coupon.applicable_on?.event && "Event"].filter(Boolean).join(", ") || "All"}
                         </p>
                       </div>
                       <div className="bg-muted/30 rounded-lg p-2">

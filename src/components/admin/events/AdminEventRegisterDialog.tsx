@@ -7,15 +7,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { Search, UserPlus, CheckCircle2 } from "lucide-react";
+import { Search, UserPlus, CheckCircle2, TicketPercent, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   event: any;
+}
+
+interface AppliedCoupon {
+  id: string;
+  code: string;
+  discount_type: string;
+  discount_value: number;
+  max_discount_cap: number | null;
+  discountAmount: number;
 }
 
 export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
@@ -29,6 +39,13 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
   const [foundMember, setFoundMember] = useState<any>(null);
   const [searchDone, setSearchDone] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<"success" | "pending">("success");
+  const [freeForExisting, setFreeForExisting] = useState(false);
+
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState("");
 
   const pricingOptions = event?.event_pricing_options || [];
   const customFields = event?.event_custom_fields || [];
@@ -38,6 +55,37 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
       setSelectedPricingId(pricingOptions[0].id);
     }
   }, [open, pricingOptions]);
+
+  // Recalculate coupon discount when pricing changes
+  useEffect(() => {
+    if (appliedCoupon) {
+      const pricing = pricingOptions.find((p: any) => p.id === selectedPricingId);
+      const basePrice = Number(pricing?.price || 0);
+      const newDiscount = calculateDiscount(appliedCoupon, basePrice);
+      setAppliedCoupon(prev => prev ? { ...prev, discountAmount: newDiscount } : null);
+    }
+  }, [selectedPricingId]);
+
+  const calculateDiscount = (coupon: Omit<AppliedCoupon, 'discountAmount'>, basePrice: number): number => {
+    if (basePrice <= 0) return 0;
+    let discount = 0;
+    if (coupon.discount_type === "percentage") {
+      discount = (basePrice * coupon.discount_value) / 100;
+      if (coupon.max_discount_cap && discount > coupon.max_discount_cap) {
+        discount = coupon.max_discount_cap;
+      }
+    } else if (coupon.discount_type === "flat") {
+      discount = coupon.discount_value;
+    }
+    return Math.min(discount, basePrice);
+  };
+
+  const selectedPricing = pricingOptions.find((p: any) => p.id === selectedPricingId);
+  const basePrice = Number(selectedPricing?.price || 0);
+  const isExistingMember = !!foundMember;
+  const effectiveFree = freeForExisting && isExistingMember;
+  const couponDiscount = effectiveFree ? 0 : (appliedCoupon?.discountAmount || 0);
+  const finalAmount = effectiveFree ? 0 : Math.max(0, basePrice - couponDiscount);
 
   const resetForm = () => {
     setPhone("");
@@ -49,6 +97,10 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
     setSearchDone(false);
     setMode("search");
     setPaymentStatus("success");
+    setFreeForExisting(false);
+    setCouponCode("");
+    setAppliedCoupon(null);
+    setCouponError("");
   };
 
   const handleSearch = async () => {
@@ -57,7 +109,6 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
       return;
     }
 
-    // Check if already registered
     const { data: existing } = await supabase
       .from("event_registrations")
       .select("id")
@@ -90,7 +141,70 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
     setSearchDone(true);
   };
 
-  const selectedPricing = pricingOptions.find((p: any) => p.id === selectedPricingId);
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim().toUpperCase();
+    if (!code) { setCouponError("Enter a coupon code"); return; }
+
+    setCouponLoading(true);
+    setCouponError("");
+
+    try {
+      const { data: coupon, error } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("code", code)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!coupon) { setCouponError("Invalid coupon code"); return; }
+
+      // Check if applicable on events
+      const applicableOn = coupon.applicable_on as any;
+      if (!applicableOn?.event) {
+        setCouponError("This coupon is not valid for events");
+        return;
+      }
+
+      // Check date validity
+      const today = new Date().toISOString().split("T")[0];
+      if (coupon.start_date > today) { setCouponError("Coupon is not yet active"); return; }
+      if (coupon.end_date && coupon.end_date < today) { setCouponError("Coupon has expired"); return; }
+
+      // Check usage limit
+      if (coupon.total_usage_limit && coupon.usage_count >= coupon.total_usage_limit) {
+        setCouponError("Coupon usage limit reached");
+        return;
+      }
+
+      // Check branch
+      if (coupon.branch_id && coupon.branch_id !== event.branch_id) {
+        setCouponError("Coupon not valid for this branch");
+        return;
+      }
+
+      const discountAmount = calculateDiscount(coupon, basePrice);
+
+      setAppliedCoupon({
+        id: coupon.id,
+        code: coupon.code,
+        discount_type: coupon.discount_type,
+        discount_value: coupon.discount_value,
+        max_discount_cap: coupon.max_discount_cap,
+        discountAmount,
+      });
+    } catch (err: any) {
+      setCouponError(err.message || "Failed to validate coupon");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError("");
+  };
 
   const registerMutation = useMutation({
     mutationFn: async () => {
@@ -118,7 +232,8 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
         }
       }
 
-      const amount = Number(selectedPricing?.price || 0);
+      const amountToPay = finalAmount;
+      const effectivePaymentStatus = amountToPay === 0 ? "success" : paymentStatus;
 
       const { error } = await supabase.from("event_registrations").insert({
         event_id: event.id,
@@ -127,19 +242,29 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
         name: name.trim(),
         phone,
         email: email.trim() || null,
-        amount_paid: paymentStatus === "success" ? amount : 0,
-        payment_status: paymentStatus,
+        amount_paid: effectivePaymentStatus === "success" ? amountToPay : 0,
+        payment_status: effectivePaymentStatus,
         custom_field_responses: Object.keys(customResponses).length > 0 ? customResponses : null,
       });
       if (error) throw error;
 
       // Update slots filled
-      if (paymentStatus === "success") {
+      if (effectivePaymentStatus === "success") {
         try {
           await supabase
             .from("event_pricing_options")
             .update({ slots_filled: (selectedPricing?.slots_filled || 0) + 1 })
             .eq("id", selectedPricingId);
+        } catch { /* non-critical */ }
+      }
+
+      // Increment coupon usage
+      if (appliedCoupon && !effectiveFree) {
+        try {
+          await supabase
+            .from("coupons")
+            .update({ usage_count: (appliedCoupon as any).usage_count ? (appliedCoupon as any).usage_count + 1 : 1 })
+            .eq("id", appliedCoupon.id);
         } catch { /* non-critical */ }
       }
     },
@@ -160,7 +285,7 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="w-5 h-5" />
@@ -183,7 +308,7 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
               size="sm"
               variant={mode === "new" ? "default" : "outline"}
               className="flex-1 rounded-xl text-xs"
-              onClick={() => { setMode("new"); setFoundMember(null); setSearchDone(false); }}
+              onClick={() => { setMode("new"); setFoundMember(null); setSearchDone(false); setFreeForExisting(false); }}
             >
               <UserPlus className="w-3.5 h-3.5 mr-1.5" /> New Person
             </Button>
@@ -198,7 +323,7 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
                   <span className="flex items-center px-3 bg-muted rounded-l-xl text-sm text-muted-foreground">+91</span>
                   <Input
                     value={phone}
-                    onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); setSearchDone(false); setFoundMember(null); }}
+                    onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); setSearchDone(false); setFoundMember(null); setFreeForExisting(false); }}
                     placeholder="Enter 10-digit number"
                     className="rounded-r-xl rounded-l-none"
                     maxLength={10}
@@ -298,6 +423,85 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
             </div>
           )}
 
+          {/* Free for existing member toggle */}
+          {isExistingMember && basePrice > 0 && (
+            <div className="flex items-center justify-between p-3 rounded-xl border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
+              <div>
+                <p className="text-sm font-medium">Free for Existing Member</p>
+                <p className="text-xs text-muted-foreground">Waive the fee for this gym member</p>
+              </div>
+              <Switch checked={freeForExisting} onCheckedChange={(v) => { setFreeForExisting(v); if (v) removeCoupon(); }} />
+            </div>
+          )}
+
+          {/* Coupon code section */}
+          {basePrice > 0 && !effectiveFree && (
+            <div className="space-y-2">
+              <Label className="text-xs font-medium flex items-center gap-1.5">
+                <TicketPercent className="w-3.5 h-3.5" /> Coupon Code
+              </Label>
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between p-2.5 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                    <div>
+                      <span className="text-sm font-mono font-bold">{appliedCoupon.code}</span>
+                      <span className="text-xs text-green-600 ml-2">-₹{appliedCoupon.discountAmount}</span>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={removeCoupon}>
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    value={couponCode}
+                    onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(""); }}
+                    placeholder="Enter coupon code"
+                    className="rounded-xl font-mono text-sm"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleApplyCoupon}
+                    disabled={couponLoading || !couponCode.trim()}
+                    className="rounded-xl px-4"
+                  >
+                    {couponLoading ? <ButtonSpinner /> : "Apply"}
+                  </Button>
+                </div>
+              )}
+              {couponError && <p className="text-xs text-destructive">{couponError}</p>}
+            </div>
+          )}
+
+          {/* Price summary */}
+          {basePrice > 0 && (
+            <div className="p-3 rounded-xl bg-muted/30 border border-border/50 space-y-1">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Base Price</span>
+                <span>₹{basePrice}</span>
+              </div>
+              {effectiveFree && (
+                <div className="flex justify-between text-xs text-green-600">
+                  <span>Existing Member Discount</span>
+                  <span>-₹{basePrice}</span>
+                </div>
+              )}
+              {couponDiscount > 0 && (
+                <div className="flex justify-between text-xs text-green-600">
+                  <span>Coupon ({appliedCoupon?.code})</span>
+                  <span>-₹{couponDiscount}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm font-semibold pt-1 border-t border-border/40">
+                <span>Total</span>
+                <span>{finalAmount === 0 ? "Free" : `₹${finalAmount}`}</span>
+              </div>
+            </div>
+          )}
+
           {/* Custom fields */}
           {customFields.length > 0 && (
             <div className="space-y-3">
@@ -335,8 +539,8 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
             </div>
           )}
 
-          {/* Payment status - for paid events admin can mark as paid or pending */}
-          {selectedPricing && Number(selectedPricing.price) > 0 && (
+          {/* Payment status - only for paid non-free registrations */}
+          {finalAmount > 0 && (
             <div className="space-y-1.5">
               <Label className="text-xs">Payment Status</Label>
               <Select value={paymentStatus} onValueChange={(val) => setPaymentStatus(val as "success" | "pending")}>
@@ -355,7 +559,7 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
             className="w-full rounded-xl gap-2"
           >
             {registerMutation.isPending ? <ButtonSpinner /> : <UserPlus className="w-4 h-4" />}
-            Register Member
+            Register Member {finalAmount > 0 ? `• ₹${finalAmount}` : finalAmount === 0 && basePrice > 0 ? "• Free" : ""}
           </Button>
         </div>
       </DialogContent>
