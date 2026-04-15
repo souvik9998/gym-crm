@@ -51,9 +51,9 @@ export const SlotAttendanceTab = () => {
   const isFutureDate = selectedDate > today;
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
 
-  const { trainers, allSlots, staffTrainerId } = useAttendanceFilters();
+  const { allSlots } = useAttendanceFilters();
 
-  // Filter slots by selected trainer
+  // Filter slots by selected trainer for auto-select fallback
   const timeSlots = useMemo(() => {
     if (selectedTrainerId) return allSlots.filter(s => s.trainer_id === selectedTrainerId);
     return allSlots;
