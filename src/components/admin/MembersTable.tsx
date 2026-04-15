@@ -442,6 +442,13 @@ export const MembersTable = ({
     }
   }, [members.length]);
 
+  const isNewMember = (member: Member): boolean => {
+    if (!member.created_at) return false;
+    const createdAt = new Date(member.created_at).getTime();
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    return createdAt > oneHourAgo;
+  };
+
   const isExpiringSoon = (member: Member): boolean => {
     if (!member.subscription) return false;
     if (member.subscription.status === "inactive") return false;
@@ -1030,7 +1037,8 @@ export const MembersTable = ({
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 cursor-pointer transition-all duration-200 active:scale-[0.99] active:bg-muted/60",
                   "hover:bg-muted/40",
-                  selectedMembers.has(member.id) && "bg-primary/5"
+                  selectedMembers.has(member.id) && "bg-primary/5",
+                  isNewMember(member) && "border-l-2 border-l-emerald-500 bg-emerald-500/5"
                 )}
                 style={{ animationDelay: `${index * 40}ms` }}
                 onClick={() => handleMemberClick(member)}
@@ -1046,6 +1054,11 @@ export const MembersTable = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <p className="font-semibold text-sm truncate text-foreground">{member.name}</p>
+                    {isNewMember(member) && (
+                      <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[9px] px-1.5 py-0 h-4 animate-in zoom-in-50 duration-300 font-bold">
+                        NEW
+                      </Badge>
+                    )}
                     {enrolledMemberIds.has(member.id) && (
                       <Fingerprint className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
                     )}
@@ -1293,6 +1306,11 @@ export const MembersTable = ({
                         </div>
                         <div className="flex items-center gap-1.5">
                           <p className="font-medium text-sm">{member.name}</p>
+                          {isNewMember(member) && (
+                            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[9px] px-1.5 py-0 h-4 animate-in zoom-in-50 duration-300 font-bold">
+                              NEW
+                            </Badge>
+                          )}
                           {enrolledMemberIds.has(member.id) && (
                             <Fingerprint className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
                           )}

@@ -3,6 +3,7 @@
  * - Plan expiry warnings
  * - Resource limit warnings (members, branches, staff, whatsapp, trainers)
  * - Expiring/expired members
+ * - Recently added members (within 1 hour)
  */
 import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,8 +13,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export interface AdminNotification {
   id: string;
-  type: "danger" | "warning" | "info";
-  category: "plan" | "limit" | "member";
+  type: "danger" | "warning" | "info" | "success";
+  category: "plan" | "limit" | "member" | "new_member";
   title: string;
   description: string;
   actionRoute?: string;
@@ -55,20 +56,59 @@ export function useAdminNotifications() {
     fetchNotifications();
   }, [tenantId, currentBranch?.id, dashStats]);
 
+  // Auto-refresh every 5 minutes to keep new member notifications current
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (tenantId) fetchNotifications();
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [tenantId, currentBranch?.id]);
+
   const fetchNotifications = async () => {
     if (!tenantId) { setIsLoading(false); return; }
 
     try {
       const items: AdminNotification[] = [];
 
-      // Fetch limits and usage in parallel — tenantId from AuthContext (no redundant query)
-      const [limitsRes, usageRes] = await Promise.all([
+      // Fetch limits, usage, and recent members in parallel
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      
+      let recentMembersQuery = supabase
+        .from("members")
+        .select("id, name, created_at")
+        .gte("created_at", oneHourAgo)
+        .order("created_at", { ascending: false });
+      
+      if (currentBranch?.id) {
+        recentMembersQuery = recentMembersQuery.eq("branch_id", currentBranch.id);
+      }
+
+      const [limitsRes, usageRes, recentMembersRes] = await Promise.all([
         supabase.from("tenant_limits").select("*").eq("tenant_id", tenantId).single(),
         supabase.rpc("get_tenant_current_usage", { _tenant_id: tenantId }),
+        recentMembersQuery,
       ]);
 
       const limits = limitsRes.data as TenantLimitsData | null;
       const usage = (usageRes.data as TenantUsageData[] | null)?.[0];
+      const recentMembers = recentMembersRes.data || [];
+
+      // New members notification (within 1 hour)
+      if (recentMembers.length > 0) {
+        const memberNames = recentMembers.slice(0, 3).map((m: any) => m.name);
+        const moreCount = recentMembers.length - 3;
+        const namesList = memberNames.join(", ") + (moreCount > 0 ? ` and ${moreCount} more` : "");
+        
+        items.push({
+          id: "new-members-recent",
+          type: "success",
+          category: "new_member",
+          title: `${recentMembers.length} New Member${recentMembers.length > 1 ? "s" : ""} Added`,
+          description: `Recently registered: ${namesList}`,
+          actionRoute: "/admin/dashboard",
+          timestamp: new Date(recentMembers[0].created_at),
+        });
+      }
 
       if (limits) {
         // Plan expiry check
@@ -173,7 +213,8 @@ export function useAdminNotifications() {
   };
 
   const dangerCount = useMemo(() => notifications.filter(n => n.type === "danger").length, [notifications]);
+  const successCount = useMemo(() => notifications.filter(n => n.type === "success").length, [notifications]);
   const totalCount = notifications.length;
 
-  return { notifications, isLoading, dangerCount, totalCount, refetch: fetchNotifications };
+  return { notifications, isLoading, dangerCount, successCount, totalCount, refetch: fetchNotifications };
 }

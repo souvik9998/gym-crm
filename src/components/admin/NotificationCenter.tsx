@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Bell, AlertTriangle, AlertCircle, Info, ChevronRight, Send, CreditCard, Phone } from "lucide-react";
+import { Bell, AlertTriangle, AlertCircle, Info, ChevronRight, Send, CreditCard, Phone, UserPlus, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -23,11 +23,12 @@ import { toast } from "@/components/ui/sonner";
 import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
 import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 
-const categoryFilters = ["all", "plan", "limit", "member"] as const;
+const categoryFilters = ["all", "new_member", "plan", "limit", "member"] as const;
 type CategoryFilter = (typeof categoryFilters)[number];
 
 const categoryLabels: Record<CategoryFilter, string> = {
   all: "All",
+  new_member: "New",
   plan: "Plan",
   limit: "Limits",
   member: "Members",
@@ -42,6 +43,11 @@ function NotificationIcon({ type }: { type: AdminNotification["type"] }) {
   if (type === "warning") return (
     <div className="h-9 w-9 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
       <AlertTriangle className="h-[18px] w-[18px] text-accent-foreground" />
+    </div>
+  );
+  if (type === "success") return (
+    <div className="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+      <UserPlus className="h-[18px] w-[18px] text-emerald-500" />
     </div>
   );
   return (
@@ -62,12 +68,17 @@ function NotificationBadge({ type }: { type: AdminNotification["type"] }) {
       Warning
     </span>
   );
+  if (type === "success") return (
+    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 tracking-wide uppercase">
+      New
+    </span>
+  );
   return null;
 }
 
 export function NotificationCenter() {
   const navigate = useNavigate();
-  const { notifications, dangerCount, totalCount } = useAdminNotifications();
+  const { notifications, dangerCount, successCount, totalCount } = useAdminNotifications();
   const [filter, setFilter] = useState<CategoryFilter>("all");
   const [open, setOpen] = useState(false);
   const [planDialog, setPlanDialog] = useState<{ open: boolean; notification: AdminNotification | null }>({ open: false, notification: null });
@@ -80,6 +91,7 @@ export function NotificationCenter() {
 
   const filterCounts: Record<CategoryFilter, number> = {
     all: totalCount,
+    new_member: notifications.filter(n => n.category === "new_member").length,
     plan: notifications.filter(n => n.category === "plan").length,
     limit: notifications.filter(n => n.category === "limit").length,
     member: notifications.filter(n => n.category === "member").length,
@@ -92,6 +104,9 @@ export function NotificationCenter() {
     } else if (n.category === "member") {
       setOpen(false);
       setMemberDialog({ open: true, notification: n });
+    } else if (n.category === "new_member") {
+      navigate("/admin/dashboard");
+      setOpen(false);
     } else if (n.actionRoute) {
       navigate(n.actionRoute);
       setOpen(false);
@@ -164,7 +179,12 @@ export function NotificationCenter() {
                 {dangerCount > 9 ? "9+" : dangerCount}
               </span>
             )}
-            {dangerCount === 0 && totalCount > 0 && (
+            {dangerCount === 0 && successCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white px-1 animate-in zoom-in-50 duration-300 border-2 border-card">
+                {successCount > 9 ? "9+" : successCount}
+              </span>
+            )}
+            {dangerCount === 0 && successCount === 0 && totalCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1 animate-in zoom-in-50 duration-300 border-2 border-card">
                 {totalCount > 9 ? "9+" : totalCount}
               </span>
@@ -249,6 +269,9 @@ export function NotificationCenter() {
                         <NotificationBadge type={n.type} />
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{n.description}</p>
+                      {n.category === "new_member" && (
+                        <p className="text-[11px] text-emerald-500 mt-1.5 font-medium group-hover:underline">Tap to view members →</p>
+                      )}
                       {n.category === "member" && (
                         <p className="text-[11px] text-primary mt-1.5 font-medium group-hover:underline">Tap to send reminder →</p>
                       )}
