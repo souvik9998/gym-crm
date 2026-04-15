@@ -330,12 +330,15 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
     onError: (err: any) => toast.error("Error", { description: err.message }),
   });
 
-  const addPricing = () => setPricingOptions([...pricingOptions, { name: "", description: "", price: 0, capacity_limit: null, is_active: true }]);
-  const removePricing = (i: number) => setPricingOptions(pricingOptions.filter((_, idx) => idx !== i));
+  const addPricing = () => setPricingOptions(prev => [...prev, { name: "", description: "", price: 0, capacity_limit: null, is_active: true }]);
+  const removePricing = (i: number) => {
+    setPricingOptions(prev => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, idx) => idx !== i);
+    });
+  };
   const updatePricing = (i: number, field: string, value: any) => {
-    const updated = [...pricingOptions];
-    (updated[i] as any)[field] = value;
-    setPricingOptions(updated);
+    setPricingOptions(prev => prev.map((item, idx) => idx === i ? { ...item, [field]: value } : item));
   };
 
   const addCustomField = () => setCustomFields([...customFields, { field_name: "", field_type: "text", is_required: false, options: [] }]);
