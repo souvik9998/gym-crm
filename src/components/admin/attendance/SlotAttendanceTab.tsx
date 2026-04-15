@@ -38,16 +38,16 @@ export const SlotAttendanceTab = () => {
   const [hasChanges, setHasChanges] = useState(false);
 
   // Fetch trainer time slots for this branch
-  const { data: timeSlots = [] } = useQuery({
+  const { data: timeSlots = [] } = useQuery<any[]>({
     queryKey: ["trainer-time-slots-attendance", branchId],
-    queryFn: async () => {
+    queryFn: async (): Promise<any[]> => {
       if (!branchId) return [];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase
         .from("trainer_time_slots")
         .select("id, start_time, end_time, capacity, trainer_id, personal_trainers(name)")
-        .eq("branch_id", branchId as string)
+        .eq("branch_id", branchId)
         .eq("is_active", true)
-        .order("start_time") as any;
+        .order("start_time") as any);
       if (error) throw error;
       return data || [];
     },
