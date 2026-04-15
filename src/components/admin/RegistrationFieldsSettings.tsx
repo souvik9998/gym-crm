@@ -46,18 +46,29 @@ const DEFAULT_FIELDS: RegistrationFields = {
 };
 
 const FIELD_CONFIG = [
-  { key: "name", label: "Full Name", description: "Member's full name", icon: User },
-  { key: "phone", label: "Phone Number", description: "10-digit mobile number", icon: Phone },
-  { key: "gender", label: "Gender", description: "Male / Female / Other", icon: User },
-  { key: "date_of_birth", label: "Date of Birth", description: "Member's date of birth", icon: Calendar },
-  { key: "address", label: "Address", description: "Residential address", icon: MapPin },
-  { key: "photo_id", label: "Photo ID (Manual Entry)", description: "ID type dropdown and number input by user", icon: IdCard, group: "identity" },
-  { key: "identity_proof_upload", label: "Identity Proof Upload", description: "Upload scan/photo of ID document (PDF/Image)", icon: Upload, group: "identity" },
-  { key: "health_details", label: "Health Details", description: "Blood group, height, weight, medical conditions, allergies, emergency contact", icon: Heart },
-  { key: "medical_records_upload", label: "Medical Records Upload", description: "Upload medical certificates or health reports", icon: FileText },
-  { key: "self_select_trainer", label: "Member Self-Select Trainer", description: "Allow members to choose their own trainer during registration/renewal. If disabled, only admin can assign trainers.", icon: Dumbbell },
-  { key: "daily_pass_enabled", label: "Daily Pass", description: "Enable daily pass system. When disabled, Daily Pass tab is hidden from dashboard and public pages.", icon: Clock },
+  // Personal Information
+  { key: "name", label: "Full Name", description: "Member's full name", icon: User, section: "personal" },
+  { key: "phone", label: "Phone Number", description: "10-digit mobile number", icon: Phone, section: "personal" },
+  { key: "gender", label: "Gender", description: "Male / Female / Other", icon: User, section: "personal" },
+  { key: "date_of_birth", label: "Date of Birth", description: "Member's date of birth", icon: Calendar, section: "personal" },
+  { key: "address", label: "Address", description: "Residential address", icon: MapPin, section: "personal" },
+  // Identity Verification
+  { key: "photo_id", label: "Photo ID (Manual Entry)", description: "ID type dropdown and number input by user", icon: IdCard, section: "identity", group: "identity" },
+  { key: "identity_proof_upload", label: "Identity Proof Upload", description: "Upload scan/photo of ID document (PDF/Image)", icon: Upload, section: "identity", group: "identity" },
+  // Health & Medical
+  { key: "health_details", label: "Health Details", description: "Blood group, height, weight, medical conditions, allergies, emergency contact", icon: Heart, section: "health" },
+  { key: "medical_records_upload", label: "Medical Records Upload", description: "Upload medical certificates or health reports", icon: FileText, section: "health" },
+  // Feature Controls
+  { key: "self_select_trainer", label: "Member Self-Select Trainer", description: "Allow members to choose their own trainer during registration/renewal. If disabled, only admin can assign trainers.", icon: Dumbbell, section: "features" },
+  { key: "daily_pass_enabled", label: "Daily Pass", description: "Enable daily pass system. When disabled, Daily Pass tab is hidden from dashboard and public pages.", icon: Clock, section: "features" },
 ];
+
+const SECTION_HEADERS: Record<string, { title: string; subtitle?: string }> = {
+  personal: { title: "Personal Information", subtitle: "Basic member details collected during registration" },
+  identity: { title: "Identity Verification", subtitle: "Choose one verification method" },
+  health: { title: "Health & Medical", subtitle: "Optional health information and document uploads" },
+  features: { title: "Feature Controls", subtitle: "Toggle platform features for this branch" },
+};
 
 export const RegistrationFieldsSettings = () => {
   const { currentBranch } = useBranch();
@@ -185,69 +196,77 @@ export const RegistrationFieldsSettings = () => {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0 space-y-3">
-        {FIELD_CONFIG.map(({ key, label, description, icon: Icon, group }: any) => {
-          const field = fields[key as keyof RegistrationFields];
-          const isLocked = field.locked;
-          const isIdentityGroup = group === "identity";
-          const otherIdentityEnabled = key === "photo_id" 
-            ? fields.identity_proof_upload.enabled 
-            : key === "identity_proof_upload" 
-              ? fields.photo_id.enabled 
-              : false;
+      <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0 space-y-5">
+        {(() => {
+          let lastSection = "";
+          return FIELD_CONFIG.map(({ key, label, description, icon: Icon, group, section }: any) => {
+            const field = fields[key as keyof RegistrationFields];
+            const isLocked = field.locked;
+            const isIdentityGroup = group === "identity";
+            const otherIdentityEnabled = key === "photo_id" 
+              ? fields.identity_proof_upload.enabled 
+              : key === "identity_proof_upload" 
+                ? fields.photo_id.enabled 
+                : false;
 
-          return (
-            <div key={key}>
-              {/* Show "Identity Verification" section header before first identity field */}
-              {key === "photo_id" && (
-                <div className="flex items-center gap-2 pt-2 pb-1">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Identity Verification</span>
-                  <span className="text-[10px] text-muted-foreground">(choose one)</span>
-                </div>
-              )}
-              <div
-                className={`flex items-center justify-between p-3 lg:p-4 rounded-xl border transition-all duration-200 ${
-                  field.enabled
-                    ? "bg-accent/5 border-accent/20"
-                    : "bg-muted/20 border-border/40"
-                } ${isIdentityGroup ? "ml-2 border-l-2" : ""}`}
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
-                    field.enabled ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
-                  }`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="font-medium text-sm truncate">{label}</p>
-                      {isLocked && <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />}
-                    </div>
-                    <p className="text-[10px] lg:text-xs text-muted-foreground truncate">{description}</p>
-                  </div>
-                </div>
+            const showSectionHeader = section !== lastSection;
+            if (showSectionHeader) lastSection = section;
+            const sectionInfo = SECTION_HEADERS[section];
 
-                <div className="flex items-center gap-4 flex-shrink-0 ml-2">
-                  {!isLocked && field.enabled && key !== "daily_pass_enabled" && (
-                    <div className="flex items-center gap-1.5">
-                      <Label className="text-[10px] text-muted-foreground">Required</Label>
-                      <Switch
-                        checked={field.required}
-                        onCheckedChange={(v) => handleToggle(key, "required", v)}
-                        className="scale-75"
-                      />
+            return (
+              <div key={key}>
+                {showSectionHeader && sectionInfo && (
+                  <div className={`${key !== "name" ? "pt-4 mt-2 border-t border-border/40" : ""} pb-2`}>
+                    <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">{sectionInfo.title}</h3>
+                    {sectionInfo.subtitle && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{sectionInfo.subtitle}</p>
+                    )}
+                  </div>
+                )}
+                <div
+                  className={`flex items-center justify-between p-3 lg:p-4 rounded-xl border transition-all duration-200 ${
+                    field.enabled
+                      ? "bg-accent/5 border-accent/20"
+                      : "bg-muted/20 border-border/40"
+                  } ${isIdentityGroup ? "ml-2 border-l-2" : ""}`}
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
+                      field.enabled ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
+                    }`}>
+                      <Icon className="w-4 h-4" />
                     </div>
-                  )}
-                  <Switch
-                    checked={field.enabled}
-                    onCheckedChange={(v) => handleToggle(key, "enabled", v)}
-                    disabled={isLocked}
-                  />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium text-sm truncate">{label}</p>
+                        {isLocked && <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />}
+                      </div>
+                      <p className="text-[10px] lg:text-xs text-muted-foreground truncate">{description}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 flex-shrink-0 ml-2">
+                    {!isLocked && field.enabled && key !== "daily_pass_enabled" && key !== "self_select_trainer" && (
+                      <div className="flex items-center gap-1.5">
+                        <Label className="text-[10px] text-muted-foreground">Required</Label>
+                        <Switch
+                          checked={field.required}
+                          onCheckedChange={(v) => handleToggle(key, "required", v)}
+                          className="scale-75"
+                        />
+                      </div>
+                    )}
+                    <Switch
+                      checked={field.enabled}
+                      onCheckedChange={(v) => handleToggle(key, "enabled", v)}
+                      disabled={isLocked}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          });
+        })()}
 
         <div className="pt-3">
           <Button

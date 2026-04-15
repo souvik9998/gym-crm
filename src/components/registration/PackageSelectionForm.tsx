@@ -62,6 +62,7 @@ interface PackageSelectionFormProps {
   minStartDate?: Date;
   branchId?: string;
   allowSelfSelectTrainer?: boolean;
+  allowDailyPass?: boolean;
 }
 
 export interface PackageSelectionData {
@@ -128,6 +129,7 @@ const PackageSelectionForm = ({
   minStartDate: propMinStartDate,
   branchId,
   allowSelfSelectTrainer = true,
+  allowDailyPass = true,
 }: PackageSelectionFormProps) => {
   const [packageType, setPackageType] = useState<"monthly" | "custom">("monthly");
   const [selectedMonthlyPackage, setSelectedMonthlyPackage] = useState<MonthlyPackage | null>(null);
@@ -464,8 +466,8 @@ const PackageSelectionForm = ({
               </TabsTrigger>
               <TabsTrigger 
                 value="custom" 
-                className={hasActiveMembership ? "gap-2 opacity-50 cursor-not-allowed" : "gap-2"}
-                disabled={hasActiveMembership}
+                className={hasActiveMembership || !allowDailyPass ? "gap-2 opacity-50 cursor-not-allowed hidden" : "gap-2"}
+                disabled={hasActiveMembership || !allowDailyPass}
               >
                 <Sparkles className="w-4 h-4" />
                 Daily Pass
