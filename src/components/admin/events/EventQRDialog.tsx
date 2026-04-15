@@ -1,10 +1,10 @@
-import { useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Copy, Download, Share2 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
-import QRCode from "qrcode";
+import { QRCodeSVG } from "qrcode.react";
+import { useRef } from "react";
 
 interface Props {
   open: boolean;
@@ -13,18 +13,8 @@ interface Props {
 }
 
 export function EventQRDialog({ open, onOpenChange, event }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const qrRef = useRef<HTMLDivElement>(null);
   const eventUrl = `${window.location.origin}/event/${event.id}`;
-
-  useEffect(() => {
-    if (open && canvasRef.current) {
-      QRCode.toCanvas(canvasRef.current, eventUrl, {
-        width: 250,
-        margin: 2,
-        color: { dark: "#000000", light: "#ffffff" },
-      });
-    }
-  }, [open, eventUrl]);
 
   const copyLink = () => {
     navigator.clipboard.writeText(eventUrl);
@@ -32,12 +22,24 @@ export function EventQRDialog({ open, onOpenChange, event }: Props) {
   };
 
   const downloadQR = () => {
-    if (!canvasRef.current) return;
-    const link = document.createElement("a");
-    link.download = `${event.title.replace(/\s+/g, "_")}_QR.png`;
-    link.href = canvasRef.current.toDataURL("image/png");
-    link.click();
-    toast.success("QR code downloaded");
+    if (!qrRef.current) return;
+    const svg = qrRef.current.querySelector("svg");
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx?.drawImage(img, 0, 0);
+      const link = document.createElement("a");
+      link.download = `${event.title.replace(/\s+/g, "_")}_QR.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      toast.success("QR code downloaded");
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
   };
 
   const shareEvent = async () => {
@@ -57,8 +59,8 @@ export function EventQRDialog({ open, onOpenChange, event }: Props) {
           <DialogTitle>Event QR Code & Link</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col items-center gap-4">
-          <div className="p-4 bg-white rounded-2xl shadow-sm">
-            <canvas ref={canvasRef} />
+          <div ref={qrRef} className="p-4 bg-white rounded-2xl shadow-sm">
+            <QRCodeSVG value={eventUrl} size={250} level="M" />
           </div>
           <p className="text-sm font-medium text-foreground text-center">{event.title}</p>
           <div className="flex items-center gap-2 w-full">

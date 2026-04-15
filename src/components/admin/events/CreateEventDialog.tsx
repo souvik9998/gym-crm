@@ -11,8 +11,9 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2, GripVertical, Upload, ImageIcon, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ButtonSpinner as Spinner } from "@/components/ui/button-spinner";
 
 interface PricingOption {
   id?: string;
