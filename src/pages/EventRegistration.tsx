@@ -188,10 +188,22 @@ export default function EventRegistration() {
   });
 
   const isMultiSelect = (event as any)?.selection_mode === "multiple";
-  const pricingOptions = useMemo(() => 
-    (event?.event_pricing_options || []).filter((p: any) => p.is_active !== false),
-    [event?.event_pricing_options]
-  );
+  const pricingOptions = useMemo(() => {
+    const allOptions = event?.event_pricing_options || [];
+    const isLegacyPlaceholderOption = (option: any) => {
+      if (allOptions.length <= 1) return false;
+      const normalizedName = String(option?.name || "").trim().toLowerCase();
+      if (normalizedName !== "general") return false;
+
+      return allOptions.some((other: any) =>
+        other?.id !== option?.id &&
+        other?.price === option?.price &&
+        other?.capacity_limit === option?.capacity_limit
+      );
+    };
+
+    return allOptions.filter((p: any) => p.is_active !== false && !isLegacyPlaceholderOption(p));
+  }, [event?.event_pricing_options]);
 
   useEffect(() => {
     if (pricingOptions.length > 0 && !selectedPricingId && !isMultiSelect) {
