@@ -274,7 +274,15 @@ export default function TenantDetail() {
   const handleToggleFeature = async (featureKey: string, enabled: boolean) => {
     if (!tenant) return;
     
-    const newFeatures = { ...editFeatures, [featureKey]: enabled };
+    let newFeatures = { ...editFeatures, [featureKey]: enabled };
+    
+    // When master attendance is turned off, disable all sub-flags
+    if (featureKey === "attendance" && !enabled) {
+      newFeatures.attendance_manual = false;
+      newFeatures.attendance_qr = false;
+      newFeatures.attendance_biometric = false;
+    }
+    
     setEditFeatures(newFeatures);
     setIsSavingFeatures(true);
     try {
@@ -282,7 +290,8 @@ export default function TenantDetail() {
       toast.success(`${featureKey.replace(/_/g, " ")} ${enabled ? "enabled" : "disabled"}`);
     } catch (error) {
       console.error("Error updating feature:", error);
-      setEditFeatures(prev => ({ ...prev, [featureKey]: !enabled }));
+      // Revert all changes
+      setEditFeatures(editFeatures);
       toast.error("Failed to update feature");
     } finally {
       setIsSavingFeatures(false);
