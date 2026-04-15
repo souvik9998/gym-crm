@@ -18,6 +18,13 @@ export interface StaffPermissions {
   can_access_analytics: boolean;
   can_change_settings: boolean;
   can_send_whatsapp: boolean;
+  member_access_type?: string;
+  can_manage_time_slots?: boolean;
+  can_create_time_slots?: boolean;
+  can_edit_delete_time_slots?: boolean;
+  can_view_time_slots?: boolean;
+  can_assign_members_to_slots?: boolean;
+  can_view_slot_members?: boolean;
 }
 
 export interface StaffBranch {
@@ -308,5 +315,6 @@ export const useStaffAuth = () => {
 // Helper hook to check permissions
 export const useStaffPermission = (permission: keyof StaffPermissions): boolean => {
   const { permissions } = useStaffAuth();
-  return permissions?.[permission] || false;
+  const val = permissions?.[permission];
+  return typeof val === 'boolean' ? val : false;
 };
