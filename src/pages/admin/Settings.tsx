@@ -34,6 +34,7 @@ import { WhatsAppAutoSendSettings } from "@/components/admin/WhatsAppAutoSendSet
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { BranchManagement } from "@/components/admin/BranchManagement";
 import { AutomatedReportsSettings } from "@/components/admin/AutomatedReportsSettings";
+import { ManualAutomationTriggers } from "@/components/admin/ManualAutomationTriggers";
 import { SubscriptionPlanTab } from "@/components/admin/SubscriptionPlanTab";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
@@ -1508,6 +1509,8 @@ const AdminSettings = () => {
             </Card>
 
             <WhatsAppAutoSendSettings whatsappEnabled={whatsappEnabled} />
+
+            <ManualAutomationTriggers />
 
             <WhatsAppTemplates />
           </TabsContent>
