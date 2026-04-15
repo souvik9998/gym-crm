@@ -1006,14 +1006,14 @@ const AdminSettings = () => {
           </div>
 
           {/* Desktop: horizontal tabs */}
-          <div className="hidden lg:block border-b border-border/60 mb-5">
-            <TabsList className="flex w-full h-auto bg-transparent p-0 gap-0 -mb-px">
+          <div className="hidden lg:block border-b border-border/60 mb-6">
+            <TabsList className="inline-flex h-auto bg-transparent p-0 gap-1 -mb-px">
               {settingsTabs.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
                   className={cn(
-                    "px-4 py-2 text-sm font-medium whitespace-nowrap rounded-none border-b-2 border-transparent",
+                    "px-5 py-2.5 text-sm font-medium whitespace-nowrap rounded-none border-b-2 border-transparent",
                     "text-muted-foreground hover:text-foreground transition-colors duration-200",
                     "data-[state=active]:text-foreground data-[state=active]:border-primary",
                     "data-[state=active]:bg-transparent data-[state=active]:shadow-none",
