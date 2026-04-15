@@ -333,6 +333,7 @@ export const BranchManagement = () => {
             .from("branches")
             .insert({
               name: formData.name.trim(),
+              slug: '',
               address: formData.address.trim() || null,
               phone: formData.phone.trim() || null,
               email: formData.email.trim() || null,

@@ -139,6 +139,7 @@ export const BranchSelector = () => {
           .from("branches")
           .insert({
             name: newBranch.name.trim(),
+            slug: '',
             address: newBranch.address.trim() || null,
             phone: newBranch.phone.trim() || null,
             email: newBranch.email.trim() || null,
