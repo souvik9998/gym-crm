@@ -177,7 +177,7 @@ export default function EventRegistration() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("events")
-        .select("*, event_pricing_options(*), event_custom_fields(*)")
+        .select("*, event_pricing_options(*), event_custom_fields(*), branches(name)")
         .eq("id", eventId!)
         .eq("status", "published")
         .single();
@@ -389,8 +389,11 @@ export default function EventRegistration() {
       if (event.whatsapp_notify_on_register) {
         sendEventWhatsApp({
           phone, name: name.trim(), eventTitle: event.title,
-          eventDate: event.event_date, location: event.location,
-          amount: 0, branchId: event.branch_id, memberId: existingMemberId,
+          eventDate: event.event_date, eventEndDate: event.event_end_date,
+          location: event.location, amount: 0, branchId: event.branch_id,
+          branchName: (event as any).branches?.name,
+          memberId: existingMemberId,
+          selectedItems: selectedItems.map((p: any) => ({ name: p.name, price: Number(p.price || 0) })),
         });
       }
     },
