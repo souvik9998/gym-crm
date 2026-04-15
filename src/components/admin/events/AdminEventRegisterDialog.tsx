@@ -35,6 +35,8 @@ interface AppliedCoupon {
 
 export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
   const queryClient = useQueryClient();
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
+  const { isAdmin } = useIsAdmin();
   const [mode, setMode] = useState<"search" | "new">("search");
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
@@ -264,6 +266,24 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
       queryClient.invalidateQueries({ queryKey: ["event-reg-counts", event.id] });
       queryClient.invalidateQueries({ queryKey: ["events"] });
       toast.success("Member registered successfully!");
+
+      const desc = `${isStaffLoggedIn ? `Staff "${staffUser?.fullName}"` : "Admin"} registered "${name}" for event "${event.title}"`;
+      if (isStaffLoggedIn && staffUser) {
+        logStaffActivity({
+          category: "events", type: "event_registration_added", description: desc,
+          entityType: "event_registrations", entityName: name,
+          newValue: { name, phone, event_title: event.title, amount: finalAmount },
+          branchId: event.branch_id, staffId: staffUser.id, staffName: staffUser.fullName, staffPhone: staffUser.phone,
+        });
+      } else if (isAdmin) {
+        logAdminActivity({
+          category: "events", type: "event_registration_added", description: desc,
+          entityType: "event_registrations", entityName: name,
+          newValue: { name, phone, event_title: event.title, amount: finalAmount },
+          branchId: event.branch_id,
+        });
+      }
+
       resetForm();
       onOpenChange(false);
     },
