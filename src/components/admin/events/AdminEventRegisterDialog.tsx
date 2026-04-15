@@ -264,6 +264,7 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["event-registrations", event.id] });
       queryClient.invalidateQueries({ queryKey: ["event-reg-counts", event.id] });
+      queryClient.invalidateQueries({ queryKey: ["event-detail", event.id] });
       queryClient.invalidateQueries({ queryKey: ["events"] });
       toast.success("Member registered successfully!");
 
