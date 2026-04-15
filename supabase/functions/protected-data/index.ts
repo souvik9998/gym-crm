@@ -1003,7 +1003,7 @@ Deno.serve(async (req) => {
             .select("id, full_name, phone, role, id_type, id_number, salary_type, monthly_salary, session_fee, percentage_fee, specialization, auth_user_id, password_set_at, is_active, created_at, updated_at, last_login_at, last_login_ip, failed_login_attempts, locked_until")
             .order("full_name"),
           supabase.from("staff_permissions")
-            .select("id, staff_id, can_view_members, can_manage_members, can_access_ledger, can_access_payments, can_access_analytics, can_change_settings"),
+            .select("*"),
           supabase.from("staff_branch_assignments")
             .select("id, staff_id, branch_id, is_primary, branches(name)"),
           (() => {
