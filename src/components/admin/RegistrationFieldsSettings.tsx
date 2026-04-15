@@ -186,50 +186,64 @@ export const RegistrationFieldsSettings = () => {
         </div>
       </CardHeader>
       <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0 space-y-3">
-        {FIELD_CONFIG.map(({ key, label, description, icon: Icon }) => {
+        {FIELD_CONFIG.map(({ key, label, description, icon: Icon, group }: any) => {
           const field = fields[key as keyof RegistrationFields];
           const isLocked = field.locked;
+          const isIdentityGroup = group === "identity";
+          const otherIdentityEnabled = key === "photo_id" 
+            ? fields.identity_proof_upload.enabled 
+            : key === "identity_proof_upload" 
+              ? fields.photo_id.enabled 
+              : false;
 
           return (
-            <div
-              key={key}
-              className={`flex items-center justify-between p-3 lg:p-4 rounded-xl border transition-all duration-200 ${
-                field.enabled
-                  ? "bg-accent/5 border-accent/20"
-                  : "bg-muted/20 border-border/40"
-              }`}
-            >
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
-                  field.enabled ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
-                }`}>
-                  <Icon className="w-4 h-4" />
+            <div key={key}>
+              {/* Show "Identity Verification" section header before first identity field */}
+              {key === "photo_id" && (
+                <div className="flex items-center gap-2 pt-2 pb-1">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Identity Verification</span>
+                  <span className="text-[10px] text-muted-foreground">(choose one)</span>
                 </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="font-medium text-sm truncate">{label}</p>
-                    {isLocked && <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />}
+              )}
+              <div
+                className={`flex items-center justify-between p-3 lg:p-4 rounded-xl border transition-all duration-200 ${
+                  field.enabled
+                    ? "bg-accent/5 border-accent/20"
+                    : "bg-muted/20 border-border/40"
+                } ${isIdentityGroup ? "ml-2 border-l-2" : ""}`}
+              >
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
+                    field.enabled ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
+                  }`}>
+                    <Icon className="w-4 h-4" />
                   </div>
-                  <p className="text-[10px] lg:text-xs text-muted-foreground truncate">{description}</p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-medium text-sm truncate">{label}</p>
+                      {isLocked && <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />}
+                    </div>
+                    <p className="text-[10px] lg:text-xs text-muted-foreground truncate">{description}</p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-4 flex-shrink-0 ml-2">
-                {!isLocked && field.enabled && (
-                  <div className="flex items-center gap-1.5">
-                    <Label className="text-[10px] text-muted-foreground">Required</Label>
-                    <Switch
-                      checked={field.required}
-                      onCheckedChange={(v) => handleToggle(key, "required", v)}
-                      className="scale-75"
-                    />
-                  </div>
-                )}
-                <Switch
-                  checked={field.enabled}
-                  onCheckedChange={(v) => handleToggle(key, "enabled", v)}
-                  disabled={isLocked}
-                />
+                <div className="flex items-center gap-4 flex-shrink-0 ml-2">
+                  {!isLocked && field.enabled && key !== "daily_pass_enabled" && (
+                    <div className="flex items-center gap-1.5">
+                      <Label className="text-[10px] text-muted-foreground">Required</Label>
+                      <Switch
+                        checked={field.required}
+                        onCheckedChange={(v) => handleToggle(key, "required", v)}
+                        className="scale-75"
+                      />
+                    </div>
+                  )}
+                  <Switch
+                    checked={field.enabled}
+                    onCheckedChange={(v) => handleToggle(key, "enabled", v)}
+                    disabled={isLocked}
+                  />
+                </div>
               </div>
             </div>
           );
