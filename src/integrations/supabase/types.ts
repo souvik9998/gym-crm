@@ -959,8 +959,10 @@ export type Database = {
         Row: {
           capacity_limit: number | null
           created_at: string
+          description: string | null
           event_id: string
           id: string
+          is_active: boolean
           name: string
           price: number
           slots_filled: number
@@ -969,8 +971,10 @@ export type Database = {
         Insert: {
           capacity_limit?: number | null
           created_at?: string
+          description?: string | null
           event_id: string
           id?: string
+          is_active?: boolean
           name: string
           price?: number
           slots_filled?: number
@@ -979,8 +983,10 @@ export type Database = {
         Update: {
           capacity_limit?: number | null
           created_at?: string
+          description?: string | null
           event_id?: string
           id?: string
+          is_active?: boolean
           name?: string
           price?: number
           slots_filled?: number
@@ -992,6 +998,45 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_registration_items: {
+        Row: {
+          amount_paid: number
+          created_at: string
+          id: string
+          pricing_option_id: string
+          registration_id: string
+        }
+        Insert: {
+          amount_paid?: number
+          created_at?: string
+          id?: string
+          pricing_option_id: string
+          registration_id: string
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string
+          id?: string
+          pricing_option_id?: string
+          registration_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registration_items_pricing_option_id_fkey"
+            columns: ["pricing_option_id"]
+            isOneToOne: false
+            referencedRelation: "event_pricing_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registration_items_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "event_registrations"
             referencedColumns: ["id"]
           },
         ]
@@ -1087,6 +1132,7 @@ export type Database = {
           event_end_date: string | null
           id: string
           location: string | null
+          selection_mode: string
           status: string
           title: string
           updated_at: string
@@ -1102,6 +1148,7 @@ export type Database = {
           event_end_date?: string | null
           id?: string
           location?: string | null
+          selection_mode?: string
           status?: string
           title: string
           updated_at?: string
@@ -1117,6 +1164,7 @@ export type Database = {
           event_end_date?: string | null
           id?: string
           location?: string | null
+          selection_mode?: string
           status?: string
           title?: string
           updated_at?: string
