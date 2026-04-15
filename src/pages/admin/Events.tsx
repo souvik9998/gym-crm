@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
@@ -10,7 +11,6 @@ import { toast } from "@/components/ui/sonner";
 import { format } from "date-fns";
 import { Plus, Search, Calendar, MapPin, Users, IndianRupee, Eye, Edit2, Trash2, QrCode, Copy, UserPlus } from "lucide-react";
 import { CreateEventDialog } from "@/components/admin/events/CreateEventDialog";
-import { EventRegistrationsDialog } from "@/components/admin/events/EventRegistrationsDialog";
 import { EventQRDialog } from "@/components/admin/events/EventQRDialog";
 import { AdminEventRegisterDialog } from "@/components/admin/events/AdminEventRegisterDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -24,11 +24,11 @@ const statusColors: Record<string, string> = {
 
 export default function Events() {
   const { currentBranch } = useBranch();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<any>(null);
-  const [viewRegistrations, setViewRegistrations] = useState<any>(null);
   const [qrEvent, setQrEvent] = useState<any>(null);
   const [deleteEvent, setDeleteEvent] = useState<any>(null);
   const [registerEvent, setRegisterEvent] = useState<any>(null);
@@ -136,7 +136,7 @@ export default function Events() {
               <Card
                 key={event.id}
                 className="border border-border/40 hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
-                onClick={() => setViewRegistrations(event)}
+                onClick={() => navigate(`/admin/events/${event.id}`)}
               >
                 {event.banner_image_url && (
                   <div className="h-36 overflow-hidden">
@@ -187,7 +187,7 @@ export default function Events() {
                     <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => setRegisterEvent(event)}>
                       <UserPlus className="w-3.5 h-3.5" /> Register
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => setViewRegistrations(event)}>
+                    <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => navigate(`/admin/events/${event.id}`)}>
                       <Eye className="w-3.5 h-3.5" /> View
                     </Button>
                     <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => setEditEvent(event)}>
@@ -218,13 +218,6 @@ export default function Events() {
         editEvent={editEvent}
       />
 
-      {viewRegistrations && (
-        <EventRegistrationsDialog
-          open={!!viewRegistrations}
-          onOpenChange={() => setViewRegistrations(null)}
-          event={viewRegistrations}
-        />
-      )}
 
       {qrEvent && (
         <EventQRDialog
