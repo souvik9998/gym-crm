@@ -81,6 +81,21 @@ export function NotificationCenter() {
   const { notifications, dangerCount, successCount, totalCount } = useAdminNotifications();
   const [filter, setFilter] = useState<CategoryFilter>("all");
   const [open, setOpen] = useState(false);
+  const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
+
+  // When popover opens, mark all current notifications as seen
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (isOpen) {
+      setSeenIds(new Set(notifications.map(n => n.id)));
+    }
+  };
+
+  // Unseen counts for the badge
+  const unseenNotifications = notifications.filter(n => !seenIds.has(n.id));
+  const unseenDanger = unseenNotifications.filter(n => n.type === "danger").length;
+  const unseenSuccess = unseenNotifications.filter(n => n.type === "success").length;
+  const unseenTotal = unseenNotifications.length;
   const [planDialog, setPlanDialog] = useState<{ open: boolean; notification: AdminNotification | null }>({ open: false, notification: null });
   const [memberDialog, setMemberDialog] = useState<{ open: boolean; notification: AdminNotification | null }>({ open: false, notification: null });
   const [sendingReminder, setSendingReminder] = useState(false);
