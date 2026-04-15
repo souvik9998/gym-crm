@@ -565,7 +565,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                     <div>
                       <p className="text-xs text-muted-foreground">Phone</p>
                       <p className="font-medium mt-0.5">
-                        {payment.member?.phone || payment.daily_pass_user?.phone || "-"}
+                        {getPaymentDisplayPhone(payment)}
                       </p>
                     </div>
                     <div>
@@ -682,13 +682,19 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                   </TableCell>
                   <TableCell>
                     <div className="font-medium">
-                      {payment.member?.name || payment.daily_pass_user?.name || "Unknown"}
-                      {payment.daily_pass_user_id && (
+                      {getPaymentDisplayName(payment)}
+                      {payment.daily_pass_user_id && payment.payment_type !== "event_registration" && (
                         <Badge variant="outline" className="ml-2 text-[10px] py-0">Daily Pass</Badge>
+                      )}
+                      {payment.payment_type === "event_registration" && (
+                        <Badge variant="outline" className="ml-2 text-[10px] py-0 bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400">Event</Badge>
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {payment.member?.phone || payment.daily_pass_user?.phone || "-"}
+                      {getPaymentDisplayPhone(payment)}
+                      {getPaymentEventName(payment) && (
+                        <span className="ml-1 text-purple-600 dark:text-purple-400">· {getPaymentEventName(payment)}</span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
