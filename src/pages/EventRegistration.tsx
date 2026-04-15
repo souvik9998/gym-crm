@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { Calendar, MapPin, CheckCircle2, ArrowLeft, ArrowRight, IndianRupee, User, Phone, Mail, Ticket, TicketPercent, X } from "lucide-react";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface AppliedCoupon {
   id: string;
@@ -34,7 +35,6 @@ declare global {
   }
 }
 
-// Send WhatsApp for free event registrations
 async function sendEventWhatsApp(params: {
   phone: string;
   name: string;
@@ -76,14 +76,16 @@ export default function EventRegistration() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [existingMemberId, setExistingMemberId] = useState<string | null>(null);
+  // For single mode
   const [selectedPricingId, setSelectedPricingId] = useState<string>("");
+  // For multiple mode
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [customResponses, setCustomResponses] = useState<Record<string, string>>({});
   const [registered, setRegistered] = useState(false);
   const [phoneChecked, setPhoneChecked] = useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const [paymentStage, setPaymentStage] = useState<PaymentStage>("idle");
 
-  // Coupon state
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
@@ -122,8 +124,7 @@ export default function EventRegistration() {
       if (coupon.end_date && coupon.end_date < today) { setCouponError("Coupon has expired"); return; }
       if (coupon.total_usage_limit && coupon.usage_count >= coupon.total_usage_limit) { setCouponError("Coupon usage limit reached"); return; }
       if (coupon.applicable_branch_ids?.length > 0 && !coupon.applicable_branch_ids.includes(event?.branch_id)) { setCouponError("Coupon not valid for this branch"); return; }
-      const basePrice = Number(selectedPricing?.price || 0);
-      const discountAmount = calculateCouponDiscount(coupon, basePrice);
+      const discountAmount = calculateCouponDiscount(coupon, totalBasePrice);
       setAppliedCoupon({ id: coupon.id, code: coupon.code, discount_type: coupon.discount_type, discount_value: coupon.discount_value, max_discount_cap: coupon.max_discount_cap, discountAmount });
     } catch (err: any) {
       setCouponError(err.message || "Failed to validate coupon");
@@ -145,7 +146,6 @@ export default function EventRegistration() {
         .single();
       if (error) throw error;
 
-      // Fetch real registration counts per pricing option
       if (data?.event_pricing_options?.length) {
         const { data: regCounts } = await supabase
           .from("event_registrations")
@@ -153,14 +153,32 @@ export default function EventRegistration() {
           .eq("event_id", eventId!)
           .eq("payment_status", "success");
 
+        // Also count from registration_items for multi-select events
+        const { data: itemCounts } = await supabase
+          .from("event_registration_items" as any)
+          .select("pricing_option_id")
+          .in("registration_id", 
+            (await supabase.from("event_registrations").select("id").eq("event_id", eventId!).eq("payment_status", "success")).data?.map((r: any) => r.id) || []
+          );
+
         const countMap: Record<string, number> = {};
-        (regCounts || []).forEach((r: any) => {
-          countMap[r.pricing_option_id] = (countMap[r.pricing_option_id] || 0) + 1;
-        });
-        data.event_pricing_options = data.event_pricing_options.map((p: any) => ({
-          ...p,
-          slots_filled: countMap[p.id] || 0,
-        }));
+        
+        if ((data as any).selection_mode === "multiple" && itemCounts) {
+          (itemCounts as any[] || []).forEach((r: any) => {
+            countMap[r.pricing_option_id] = (countMap[r.pricing_option_id] || 0) + 1;
+          });
+        } else {
+          (regCounts || []).forEach((r: any) => {
+            if (r.pricing_option_id) countMap[r.pricing_option_id] = (countMap[r.pricing_option_id] || 0) + 1;
+          });
+        }
+
+        data.event_pricing_options = data.event_pricing_options
+          .map((p: any) => ({
+            ...p,
+            slots_filled: countMap[p.id] || 0,
+          }))
+          .sort((a: any, b: any) => a.sort_order - b.sort_order);
       }
 
       return data;
@@ -168,21 +186,57 @@ export default function EventRegistration() {
     enabled: !!eventId,
   });
 
-  useEffect(() => {
-    if (event?.event_pricing_options?.length && !selectedPricingId) {
-      setSelectedPricingId(event.event_pricing_options[0].id);
-    }
-  }, [event]);
+  const isMultiSelect = (event as any)?.selection_mode === "multiple";
+  const pricingOptions = useMemo(() => 
+    (event?.event_pricing_options || []).filter((p: any) => p.is_active !== false),
+    [event?.event_pricing_options]
+  );
 
-  const selectedPricing = event?.event_pricing_options?.find((p: any) => p.id === selectedPricingId);
+  useEffect(() => {
+    if (pricingOptions.length > 0 && !selectedPricingId && !isMultiSelect) {
+      setSelectedPricingId(pricingOptions[0].id);
+    }
+  }, [pricingOptions, isMultiSelect]);
+
+  // Compute totals
+  const selectedItems = useMemo(() => {
+    if (isMultiSelect) {
+      return pricingOptions.filter((p: any) => selectedItemIds.has(p.id));
+    }
+    const found = pricingOptions.find((p: any) => p.id === selectedPricingId);
+    return found ? [found] : [];
+  }, [isMultiSelect, selectedItemIds, selectedPricingId, pricingOptions]);
+
+  const totalBasePrice = useMemo(() => 
+    selectedItems.reduce((sum: number, p: any) => sum + Number(p.price || 0), 0),
+    [selectedItems]
+  );
+
+  // Recalculate coupon when selection changes
+  useEffect(() => {
+    if (appliedCoupon) {
+      const newDiscount = calculateCouponDiscount(appliedCoupon, totalBasePrice);
+      setAppliedCoupon(prev => prev ? { ...prev, discountAmount: newDiscount } : null);
+    }
+  }, [totalBasePrice]);
+
+  const payDiscount = appliedCoupon?.discountAmount || 0;
+  const payTotal = Math.max(0, totalBasePrice - payDiscount);
+
+  const toggleItemSelection = (id: string) => {
+    setSelectedItemIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const checkPhone = async () => {
     if (phone.length !== 10 || !/^[6-9]/.test(phone)) {
       toast.error("Enter a valid 10-digit phone number");
       return;
     }
-
-    // Check for duplicate registration
     const { data: existingReg } = await supabase
       .from("event_registrations")
       .select("id")
@@ -190,19 +244,16 @@ export default function EventRegistration() {
       .eq("phone", phone)
       .eq("payment_status", "success")
       .maybeSingle();
-
     if (existingReg) {
       toast.error("You are already registered for this event");
       return;
     }
-
     const { data } = await supabase
       .from("members")
       .select("id, name, email")
       .eq("phone", phone)
       .eq("branch_id", event?.branch_id)
       .maybeSingle();
-    
     if (data) {
       setName(data.name);
       setEmail(data.email || "");
@@ -223,41 +274,57 @@ export default function EventRegistration() {
     });
   }, []);
 
-  // Free registration mutation
+  const validateSelection = () => {
+    if (isMultiSelect) {
+      if (selectedItemIds.size === 0) { toast.error("Select at least one item"); return false; }
+    } else {
+      if (!selectedPricingId) { toast.error("Select an option"); return false; }
+    }
+    return true;
+  };
+
+  const validateCapacity = async () => {
+    for (const item of selectedItems) {
+      if (item.capacity_limit) {
+        const spotsLeft = item.capacity_limit - (item.slots_filled || 0);
+        if (spotsLeft <= 0) {
+          throw new Error(`"${item.name}" is fully booked!`);
+        }
+      }
+    }
+  };
+
+  const insertRegistrationItems = async (registrationId: string) => {
+    if (isMultiSelect && selectedItems.length > 0) {
+      const items = selectedItems.map((p: any) => ({
+        registration_id: registrationId,
+        pricing_option_id: p.id,
+        amount_paid: Number(p.price || 0),
+      }));
+      await supabase.from("event_registration_items" as any).insert(items);
+    }
+  };
+
+  // Free registration
   const registerFreeMutation = useMutation({
     mutationFn: async () => {
       if (!event || !eventId) throw new Error("Event not found");
       if (!name.trim()) throw new Error("Name is required");
-      if (!selectedPricingId) throw new Error("Select a pricing option");
+      if (!validateSelection()) throw new Error("Select an option");
 
-      // Duplicate check
-      const { data: dupReg } = await supabase
-        .from("event_registrations")
-        .select("id")
-        .eq("event_id", eventId)
-        .eq("phone", phone)
-        .eq("payment_status", "success")
-        .maybeSingle();
+      const { data: dupReg } = await supabase.from("event_registrations").select("id").eq("event_id", eventId).eq("phone", phone).eq("payment_status", "success").maybeSingle();
       if (dupReg) throw new Error("You are already registered for this event");
 
-      if (selectedPricing?.capacity_limit) {
-        const { count } = await supabase
-          .from("event_registrations")
-          .select("id", { count: "exact", head: true })
-          .eq("event_id", eventId)
-          .eq("pricing_option_id", selectedPricingId)
-          .eq("payment_status", "success");
-        if ((count || 0) >= selectedPricing.capacity_limit) throw new Error("This option is fully booked!");
-      }
+      await validateCapacity();
 
       const customFields = event.event_custom_fields || [];
       for (const field of customFields) {
         if (field.is_required && !customResponses[field.id]) throw new Error(`${field.field_name} is required`);
       }
 
-      const { error } = await supabase.from("event_registrations").insert({
+      const { data: reg, error } = await supabase.from("event_registrations").insert({
         event_id: eventId,
-        pricing_option_id: selectedPricingId,
+        pricing_option_id: isMultiSelect ? null : selectedPricingId,
         member_id: existingMemberId,
         name: name.trim(),
         phone,
@@ -265,22 +332,16 @@ export default function EventRegistration() {
         amount_paid: 0,
         payment_status: "success",
         custom_field_responses: customResponses,
-      });
+      }).select("id").single();
       if (error) throw error;
 
-      // slots_filled is derived from actual registrations, no manual increment needed
+      await insertRegistrationItems(reg.id);
 
-      // Send WhatsApp for free registration
       if (event.whatsapp_notify_on_register) {
         sendEventWhatsApp({
-          phone,
-          name: name.trim(),
-          eventTitle: event.title,
-          eventDate: event.event_date,
-          location: event.location,
-          amount: 0,
-          branchId: event.branch_id,
-          memberId: existingMemberId,
+          phone, name: name.trim(), eventTitle: event.title,
+          eventDate: event.event_date, location: event.location,
+          amount: 0, branchId: event.branch_id, memberId: existingMemberId,
         });
       }
     },
@@ -290,12 +351,11 @@ export default function EventRegistration() {
 
   // Razorpay payment flow
   const handlePayment = async () => {
-    if (!event || !eventId || !selectedPricing) return;
-    const baseAmount = Number(selectedPricing.price);
-    const couponDisc = appliedCoupon?.discountAmount || 0;
-    const amount = Math.max(0, baseAmount - couponDisc);
+    if (!event || !eventId) return;
+    if (!validateSelection()) return;
+
+    const amount = payTotal;
     if (amount <= 0) {
-      // Coupon made it free - register directly
       registerFreeMutation.mutate();
       return;
     }
@@ -308,58 +368,41 @@ export default function EventRegistration() {
       for (const field of customFields) {
         if (field.is_required && !customResponses[field.id]) throw new Error(`${field.field_name} is required`);
       }
-
-      if (selectedPricing.capacity_limit) {
-        const { count } = await supabase
-          .from("event_registrations")
-          .select("id", { count: "exact", head: true })
-          .eq("event_id", eventId)
-          .eq("pricing_option_id", selectedPricingId)
-          .eq("payment_status", "success");
-        if ((count || 0) >= selectedPricing.capacity_limit) throw new Error("This option is fully booked!");
-      }
+      await validateCapacity();
 
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) throw new Error("Failed to load payment gateway");
 
       const { data: orderData, error: orderError } = await supabase.functions.invoke(
         "create-razorpay-order",
-        {
-          body: {
-            amount,
-            memberName: name.trim(),
-            memberPhone: phone,
-            isNewMember: !existingMemberId,
-            branchId: event.branch_id,
-          },
-        }
+        { body: { amount, memberName: name.trim(), memberPhone: phone, isNewMember: !existingMemberId, branchId: event.branch_id } }
       );
-
       if (orderError || !orderData) throw new Error(orderError?.message || "Failed to create order");
 
+      const selectedItemsList = selectedItems.map((p: any) => ({ id: p.id, price: Number(p.price) }));
+      
       let isVerifying = false;
       const options = {
         key: orderData.keyId,
         amount: orderData.amount,
         currency: orderData.currency,
         name: event.title,
-        description: `${selectedPricing.name} - Event Registration`,
+        description: selectedItems.map((p: any) => p.name).join(", "),
         order_id: orderData.orderId,
         prefill: { name: name.trim(), contact: phone },
         theme: { color: "#F97316" },
         handler: async function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
           isVerifying = true;
           setPaymentStage("verifying");
-
           try {
             setPaymentStage("processing");
-
             const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
               "finalize-event-payment",
               {
                 body: {
                   eventId,
-                  pricingOptionId: selectedPricingId,
+                  pricingOptionId: isMultiSelect ? null : selectedPricingId,
+                  selectedItems: isMultiSelect ? selectedItemsList : undefined,
                   branchId: event.branch_id,
                   memberId: existingMemberId,
                   name: name.trim(),
@@ -373,18 +416,15 @@ export default function EventRegistration() {
                 },
               }
             );
-
             if (verifyError || !verifyData?.success) {
               throw new Error(verifyError?.message || verifyData?.error || "Payment verification failed");
             }
-
             setPaymentStage("success");
             setIsPaymentLoading(false);
             await new Promise((r) => setTimeout(r, 400));
             setRegistered(true);
           } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : "Payment verification failed";
-            console.error("Verification error:", error);
             isVerifying = false;
             setIsPaymentLoading(false);
             setPaymentStage("idle");
@@ -400,10 +440,8 @@ export default function EventRegistration() {
         },
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const razorpay = new (window.Razorpay as any)(options);
       razorpay.on("payment.failed", function (resp: { error: { description: string } }) {
-        console.error("Payment failed:", resp.error);
         toast.error("Payment Failed", { description: resp.error.description });
         setIsPaymentLoading(false);
         setPaymentStage("idle");
@@ -411,7 +449,6 @@ export default function EventRegistration() {
       razorpay.open();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Failed to initiate payment";
-      console.error("Payment initiation error:", error);
       toast.error("Payment Error", { description: msg });
       setIsPaymentLoading(false);
       setPaymentStage("idle");
@@ -451,6 +488,11 @@ export default function EventRegistration() {
             <p className="text-muted-foreground">
               You've been registered for <strong>{event.title}</strong>. See you there!
             </p>
+            {selectedItems.length > 0 && (
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p className="font-medium">Selected: {selectedItems.map((p: any) => p.name).join(", ")}</p>
+              </div>
+            )}
             <div className="text-sm text-muted-foreground space-y-1">
               <p>{format(new Date(event.event_date), "EEEE, dd MMM yyyy • hh:mm a")}</p>
               {event.location && <p>{event.location}</p>}
@@ -463,11 +505,125 @@ export default function EventRegistration() {
   }
 
   const customFields = event.event_custom_fields || [];
-  const pricingOptions = event.event_pricing_options || [];
   const stepIndex = ["phone", "details", "payment"].indexOf(step);
-  const payBasePrice = Number(selectedPricing?.price || 0);
-  const payDiscount = appliedCoupon?.discountAmount || 0;
-  const payTotal = Math.max(0, payBasePrice - payDiscount);
+
+  // Render item selection based on mode
+  const renderItemSelection = () => {
+    if (isMultiSelect) {
+      return (
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Select Items *</Label>
+          <p className="text-xs text-muted-foreground">You can select multiple items</p>
+          <div className="grid gap-2">
+            {pricingOptions.map((p: any) => {
+              const isFull = p.capacity_limit && p.slots_filled >= p.capacity_limit;
+              const isSelected = selectedItemIds.has(p.id);
+              return (
+                <button
+                  key={p.id}
+                  disabled={isFull}
+                  onClick={() => toggleItemSelection(p.id)}
+                  className={cn(
+                    "flex items-start gap-3 p-4 rounded-xl border-2 transition-all text-left",
+                    isSelected
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border/40 hover:border-primary/50",
+                    isFull && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  <Checkbox checked={isSelected} className="mt-0.5" disabled={isFull} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">{p.name}</p>
+                      <span className="font-bold text-lg flex-shrink-0 ml-2">
+                        {Number(p.price) === 0 ? "Free" : `₹${p.price}`}
+                      </span>
+                    </div>
+                    {p.description && <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>}
+                    {p.capacity_limit && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {isFull ? (
+                          <Badge variant="destructive" className="text-[10px] py-0">Sold Out</Badge>
+                        ) : (
+                          `${Math.max(0, p.capacity_limit - p.slots_filled)} spots left`
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {selectedItems.length > 0 && (
+            <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 mt-2">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Selected ({selectedItems.length})</p>
+              {selectedItems.map((p: any) => (
+                <div key={p.id} className="flex justify-between text-sm">
+                  <span>{p.name}</span>
+                  <span className="font-medium">{Number(p.price) === 0 ? "Free" : `₹${p.price}`}</span>
+                </div>
+              ))}
+              <div className="border-t border-primary/20 mt-2 pt-2 flex justify-between font-bold text-sm">
+                <span>Total</span>
+                <span className="text-primary">{totalBasePrice === 0 ? "Free" : `₹${totalBasePrice}`}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Single select (radio style)
+    return (
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Select Option *</Label>
+        <div className="grid gap-2">
+          {pricingOptions.map((p: any) => {
+            const isFull = p.capacity_limit && p.slots_filled >= p.capacity_limit;
+            return (
+              <button
+                key={p.id}
+                disabled={isFull}
+                onClick={() => setSelectedPricingId(p.id)}
+                className={cn(
+                  "flex items-start gap-3 p-4 rounded-xl border-2 transition-all text-left",
+                  selectedPricingId === p.id
+                    ? "border-primary bg-primary/5 shadow-sm"
+                    : "border-border/40 hover:border-primary/50",
+                  isFull && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                <div className={cn(
+                  "w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center",
+                  selectedPricingId === p.id ? "border-primary" : "border-muted-foreground/40"
+                )}>
+                  {selectedPricingId === p.id && <div className="w-2 h-2 rounded-full bg-primary" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium">{p.name}</p>
+                    <span className="font-bold text-lg flex-shrink-0 ml-2">
+                      {Number(p.price) === 0 ? "Free" : `₹${p.price}`}
+                    </span>
+                  </div>
+                  {p.description && <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>}
+                  {p.capacity_limit && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {isFull ? (
+                        <Badge variant="destructive" className="text-[10px] py-0">Sold Out</Badge>
+                      ) : (
+                        `${Math.max(0, p.capacity_limit - p.slots_filled)} spots left`
+                      )}
+                    </p>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -475,7 +631,6 @@ export default function EventRegistration() {
         <PaymentProcessingOverlay stage={paymentStage as "verifying" | "processing" | "success"} isVisible={true} />
       )}
 
-      {/* Hero Banner */}
       {event.banner_image_url && (
         <div className="w-full h-48 sm:h-56 lg:h-72 overflow-hidden relative">
           <img src={event.banner_image_url} alt={event.title} className="w-full h-full object-cover" />
@@ -501,12 +656,15 @@ export default function EventRegistration() {
             )}
           </div>
           <div className="flex flex-wrap gap-2 pt-1">
-            {pricingOptions.map((p: any) => (
-              <Badge key={p.id} variant="secondary" className="text-xs px-3 py-1">
-                {p.name}: {Number(p.price) === 0 ? "Free" : `₹${p.price}`}
-                {p.capacity_limit && ` (${Math.max(0, p.capacity_limit - p.slots_filled)} spots left)`}
-              </Badge>
-            ))}
+            {pricingOptions.map((p: any) => {
+              const isFull = p.capacity_limit && p.slots_filled >= p.capacity_limit;
+              return (
+                <Badge key={p.id} variant={isFull ? "destructive" : "secondary"} className="text-xs px-3 py-1">
+                  {p.name}: {Number(p.price) === 0 ? "Free" : `₹${p.price}`}
+                  {isFull ? " (Sold Out)" : p.capacity_limit ? ` (${Math.max(0, p.capacity_limit - p.slots_filled)} left)` : ""}
+                </Badge>
+              );
+            })}
           </div>
         </div>
 
@@ -535,9 +693,7 @@ export default function EventRegistration() {
           ))}
         </div>
 
-        {/* Two-column layout on desktop */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Main form area */}
           <div className="lg:col-span-3">
             {/* Step 1: Phone */}
             {step === "phone" && (
@@ -605,49 +761,16 @@ export default function EventRegistration() {
               </Card>
             )}
 
-            {/* Step 2: Details & Pricing */}
+            {/* Step 2: Details & Selection */}
             {step === "details" && (
               <Card className="border border-border/50">
                 <CardContent className="p-5 sm:p-6 space-y-5">
                   <div className="flex items-center gap-2">
                     <Ticket className="w-5 h-5 text-primary" />
-                    <h3 className="font-semibold text-lg">Select Option & Fill Details</h3>
+                    <h3 className="font-semibold text-lg">Select {isMultiSelect ? "Items" : "Option"} & Fill Details</h3>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Select Pricing *</Label>
-                    <div className="grid gap-2">
-                      {pricingOptions.map((p: any) => {
-                        const isFull = p.capacity_limit && p.slots_filled >= p.capacity_limit;
-                        return (
-                          <button
-                            key={p.id}
-                            disabled={isFull}
-                            onClick={() => setSelectedPricingId(p.id)}
-                            className={cn(
-                              "flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left",
-                              selectedPricingId === p.id
-                                ? "border-primary bg-primary/5 shadow-sm"
-                                : "border-border/40 hover:border-primary/50",
-                              isFull && "opacity-50 cursor-not-allowed"
-                            )}
-                          >
-                            <div>
-                              <p className="font-medium">{p.name}</p>
-                              {p.capacity_limit && (
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {isFull ? "Sold out" : `${Math.max(0, p.capacity_limit - p.slots_filled)} spots left`}
-                                </p>
-                              )}
-                            </div>
-                            <span className="font-bold text-lg">
-                              {Number(p.price) === 0 ? "Free" : `₹${p.price}`}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  {renderItemSelection()}
 
                   {customFields.length > 0 && (
                     <div className="space-y-4 pt-2">
@@ -689,13 +812,14 @@ export default function EventRegistration() {
                     </Button>
                     <Button
                       onClick={() => {
+                        if (!validateSelection()) return;
                         for (const field of customFields) {
                           if (field.is_required && !customResponses[field.id]) {
                             toast.error(`${field.field_name} is required`);
                             return;
                           }
                         }
-                        if (Number(selectedPricing?.price || 0) === 0) {
+                        if (totalBasePrice === 0) {
                           registerFreeMutation.mutate();
                         } else {
                           setStep("payment");
@@ -704,7 +828,7 @@ export default function EventRegistration() {
                       className="flex-1 rounded-xl gap-2 h-12"
                       size="lg"
                     >
-                      {Number(selectedPricing?.price || 0) === 0 ? "Register (Free)" : <>Proceed to Pay <ArrowRight className="w-4 h-4" /></>}
+                      {totalBasePrice === 0 ? "Register (Free)" : <>Proceed to Pay <ArrowRight className="w-4 h-4" /></>}
                     </Button>
                   </div>
                 </CardContent>
@@ -744,13 +868,7 @@ export default function EventRegistration() {
                           placeholder="Enter coupon code"
                           className="rounded-xl font-mono text-sm"
                         />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleApplyCoupon}
-                          disabled={couponLoading || !couponCode.trim()}
-                          className="rounded-xl px-4 h-10"
-                        >
+                        <Button size="sm" variant="outline" onClick={handleApplyCoupon} disabled={couponLoading || !couponCode.trim()} className="rounded-xl px-4 h-10">
                           {couponLoading ? <ButtonSpinner /> : "Apply"}
                         </Button>
                       </div>
@@ -760,10 +878,12 @@ export default function EventRegistration() {
 
                   {/* Price summary */}
                   <div className="p-5 rounded-xl bg-muted/30 border border-border/40 space-y-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{selectedPricing?.name}</span>
-                      <span className="font-medium">₹{payBasePrice}</span>
-                    </div>
+                    {selectedItems.map((p: any) => (
+                      <div key={p.id} className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{p.name}</span>
+                        <span className="font-medium">₹{Number(p.price)}</span>
+                      </div>
+                    ))}
                     {payDiscount > 0 && (
                       <div className="flex justify-between text-sm text-green-600">
                         <span>Coupon ({appliedCoupon?.code})</span>
@@ -819,19 +939,21 @@ export default function EventRegistration() {
                       <span className="text-foreground">+91 {phone}</span>
                     </div>
                   )}
-                  {selectedPricing && (
-                    <div className="flex items-center gap-2">
+                  {selectedItems.length > 0 && selectedItems.map((p: any) => (
+                    <div key={p.id} className="flex items-center gap-2">
                       <Ticket className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-foreground">{selectedPricing.name}</span>
+                      <span className="text-foreground">{p.name}</span>
                     </div>
-                  )}
+                  ))}
                 </div>
-                {selectedPricing && (
+                {selectedItems.length > 0 && (
                   <div className="pt-3 border-t border-border/40 space-y-1">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">{selectedPricing.name}</span>
-                      <span>₹{payBasePrice}</span>
-                    </div>
+                    {selectedItems.map((p: any) => (
+                      <div key={p.id} className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">{p.name}</span>
+                        <span>₹{Number(p.price)}</span>
+                      </div>
+                    ))}
                     {payDiscount > 0 && (
                       <div className="flex justify-between items-center text-sm text-green-600">
                         <span>Coupon</span>
