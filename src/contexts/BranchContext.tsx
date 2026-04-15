@@ -36,7 +36,7 @@ interface BranchContextType {
   tenantId: string | null;
 }
 
-const BranchContext = createContext<BranchContextType | undefined>(undefined);
+export const BranchContext = createContext<BranchContextType | undefined>(undefined);
 
 const CURRENT_BRANCH_KEY = "admin-current-branch-id";
 
