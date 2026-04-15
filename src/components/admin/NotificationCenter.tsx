@@ -104,6 +104,9 @@ export function NotificationCenter() {
     } else if (n.category === "member") {
       setOpen(false);
       setMemberDialog({ open: true, notification: n });
+    } else if (n.category === "new_member") {
+      navigate("/admin/dashboard");
+      setOpen(false);
     } else if (n.actionRoute) {
       navigate(n.actionRoute);
       setOpen(false);
