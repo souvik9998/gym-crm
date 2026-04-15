@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, memo, Fragment } from "react";
-// StaffDashboard - v2
+// StaffDashboard - v3 (matching admin layout)
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,6 @@ import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
 import DailyPassTable from "@/components/admin/DailyPassTable";
 import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
-// AddPaymentDialog removed - payment mode now selected in AddMemberDialog
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
@@ -39,14 +38,15 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useDashboardStats, useInvalidateDashboard } from "@/hooks/queries";
 import { DashboardStatsSkeleton } from "@/components/ui/skeleton-loaders";
 
-// Memoized stat card component
+// Memoized stat card - matching admin layout with mobile/desktop variants
 const StatCard = memo(({ 
   value, 
   label, 
   icon: Icon, 
   colorClass = "text-foreground",
   bgClass = "bg-primary/10",
-  iconClass = "text-primary"
+  iconClass = "text-primary",
+  index = 0,
 }: { 
   value: number | string; 
   label: string; 
@@ -54,15 +54,31 @@ const StatCard = memo(({
   colorClass?: string;
   bgClass?: string;
   iconClass?: string;
+  index?: number;
 }) => (
-  <Card className="hover-lift border-0 shadow-sm">
-    <CardContent className="p-5">
+  <Card className="hover-lift border-0 shadow-sm h-full lg:animate-none" style={{ animationDelay: `${index * 80}ms` }}>
+    {/* Mobile/Tablet layout */}
+    <CardContent className="p-3 md:p-4 lg:hidden flex items-center justify-between">
+      <div className="flex-1 min-w-0 pr-2">
+        <p className={`text-lg md:text-xl font-bold ${colorClass} leading-tight break-words tracking-tight`}>
+          {value}
+        </p>
+        <p className="text-[10px] md:text-xs text-muted-foreground leading-tight mt-1 font-medium">
+          {label}
+        </p>
+      </div>
+      <div className={`w-10 h-10 md:w-11 md:h-11 ${bgClass} rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 active:scale-90`}>
+        <Icon className={`w-5 h-5 md:w-5.5 md:h-5.5 ${iconClass}`} />
+      </div>
+    </CardContent>
+    {/* Desktop layout */}
+    <CardContent className="hidden lg:block lg:p-5">
       <div className="flex items-center justify-between">
-        <div>
-          <p className={`text-2xl font-bold ${colorClass}`}>{value}</p>
-          <p className="text-xs text-muted-foreground mt-1">{label}</p>
+        <div className="min-w-0 flex-1">
+          <p className={`text-2xl font-bold ${colorClass} truncate`}>{value}</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{label}</p>
         </div>
-        <div className={`p-3 ${bgClass} rounded-xl`}>
+        <div className={`p-3 ${bgClass} rounded-xl flex-shrink-0 ml-2`}>
           <Icon className={`w-6 h-6 ${iconClass}`} />
         </div>
       </div>
@@ -77,7 +93,6 @@ const StaffDashboard = () => {
   const { isStaffLoggedIn, staffUser, isLoading: staffLoading } = useStaffAuth();
   const { invalidateMembers, invalidatePayments } = useInvalidateDashboard();
   
-  // STRICT Permission checks based on policy:
   const canViewMembers = useStaffPermission("can_view_members");
   const canManageMembers = useStaffPermission("can_manage_members");
   const canAccessPayments = useStaffPermission("can_access_payments");
@@ -85,7 +100,6 @@ const StaffDashboard = () => {
   const canSeeMembers = canViewMembers || canManageMembers;
   const canRecordPayments = canManageMembers;
   
-  // Search with debouncing
   const [searchInput, setSearchInput] = useState("");
   const searchQuery = useDebounce(searchInput, 300);
   
@@ -105,14 +119,12 @@ const StaffDashboard = () => {
   const [sortBy, setSortBy] = useState<"name" | "join_date" | "end_date">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
-  // Redirect if not staff logged in
   useEffect(() => {
     if (!staffLoading && !isStaffLoggedIn) {
       navigate("/admin/login");
     }
   }, [staffLoading, isStaffLoggedIn, navigate]);
 
-  // Dashboard stats with React Query caching - using the new hook
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats();
 
   const displayStats = stats || {
@@ -141,20 +153,11 @@ const StaffDashboard = () => {
     invalidatePayments();
   }, [invalidatePayments]);
 
-  // Memoized filter change handler
   const handleMemberFilterChange = useCallback((value: MemberFilterValue) => {
     setMemberFilter(value);
+    setPtFilterActive(false);
   }, []);
 
-  // Separate handler for PT filter toggle
-  const handlePtFilterChange = useCallback((active: boolean) => {
-    setPtFilterActive(active);
-    if (active) {
-      setMemberFilter("all");
-    }
-  }, []);
-
-  // Memoized counts object
   const filterCounts = useMemo(() => ({
     all: displayStats.totalMembers,
     active: displayStats.activeMembers,
@@ -178,18 +181,19 @@ const StaffDashboard = () => {
 
   return (
     <Fragment>
-      <div className="space-y-6 max-w-7xl mx-auto">
-        {/* Stats Grid - Only show if can see members */}
+      <div className="space-y-3 md:space-y-6 max-w-7xl mx-auto">
+        {/* Stats Grid */}
         {canSeeMembers && (
           <>
             {statsLoading && !stats ? (
               <DashboardStatsSkeleton />
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
                 <StatCard 
                   value={displayStats.totalMembers} 
                   label="Total Members" 
                   icon={UsersIcon}
+                  index={0}
                 />
                 <StatCard 
                   value={displayStats.activeMembers} 
@@ -198,6 +202,7 @@ const StaffDashboard = () => {
                   colorClass="text-success"
                   bgClass="bg-success/10"
                   iconClass="text-success"
+                  index={1}
                 />
                 <StatCard 
                   value={displayStats.expiringSoon} 
@@ -206,8 +211,8 @@ const StaffDashboard = () => {
                   colorClass="text-warning"
                   bgClass="bg-warning/10"
                   iconClass="text-warning"
+                  index={2}
                 />
-                {/* Revenue stat - only if can access payments OR can manage members */}
                 {(canAccessPayments || canRecordPayments) && (
                   <StatCard 
                     value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
@@ -216,6 +221,7 @@ const StaffDashboard = () => {
                     colorClass="text-accent"
                     bgClass="bg-accent/10"
                     iconClass="text-accent"
+                    index={3}
                   />
                 )}
               </div>
@@ -227,40 +233,51 @@ const StaffDashboard = () => {
         {canSeeMembers && (
           <Card className="border-0 shadow-sm">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <CardHeader className="pb-4 border-b">
-                <div className="flex flex-col gap-4">
-                  {/* Top Row - Tabs and Actions */}
-                  <div className="flex items-center justify-between gap-3">
-                    {/* Tabs */}
+              <CardHeader className="pb-2 lg:pb-4 border-b px-2 lg:px-6 pt-2 lg:pt-6">
+                <div className="flex flex-col gap-2 lg:gap-4">
+                  {/* Desktop: Tabs + Search + Actions in one row */}
+                  <div className="hidden lg:flex flex-row items-center gap-3">
                     <TabsList className="bg-muted/50 p-1 h-10">
                       <TabsTrigger 
                         value="members" 
-                        className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                        className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
                       >
                         <UsersIcon className="w-4 h-4" />
-                        <span className="hidden sm:inline">Members</span>
+                        <span>Members</span>
                       </TabsTrigger>
                       <TabsTrigger 
                         value="daily_pass" 
-                        className="gap-1 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                        className="gap-1 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
                       >
                         <ClockIcon className="w-4 h-4" />
-                        <span className="hidden sm:inline">Daily Passes</span>
+                        <span>Daily Passes</span>
                       </TabsTrigger>
                       {canAccessPayments && (
                         <TabsTrigger 
                           value="payments" 
-                          className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                          className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
                         >
                           <CreditCardIcon className="w-4 h-4" />
-                          <span className="hidden sm:inline">Payments</span>
+                          <span>Payments</span>
                         </TabsTrigger>
                       )}
                     </TabsList>
                     
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-2">
-                      {/* Sort Button */}
+                    {/* Search Bar - Desktop */}
+                    {(activeTab === "members" || activeTab === "daily_pass") && (
+                      <div className="relative flex-1 max-w-md group">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200 z-10" />
+                        <Input
+                          placeholder="Search by name or phone..."
+                          className="pl-10 h-9 text-sm bg-muted/40 border border-border/50 hover:bg-muted/60 hover:border-border focus:bg-background focus:border-border focus:ring-2 focus:ring-ring/20 shadow-sm hover:shadow transition-all duration-200"
+                          value={activeTab === "members" ? searchInput : dailyPassSearchInput}
+                          onChange={(e) => activeTab === "members" ? setSearchInput(e.target.value) : setDailyPassSearchInput(e.target.value)}
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Action Buttons - Desktop */}
+                    <div className="flex items-center gap-2 flex-wrap ml-auto">
                       <Popover open={sortOpen} onOpenChange={setSortOpen}>
                         <PopoverTrigger asChild>
                           <Button 
@@ -286,16 +303,16 @@ const StaffDashboard = () => {
                             className="p-2"
                           >
                             <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                              <RadioGroupItem value="name" id="sort-name" />
-                              <Label htmlFor="sort-name" className="cursor-pointer flex-1 text-sm">Name</Label>
+                              <RadioGroupItem value="name" id="staff-sort-name" />
+                              <Label htmlFor="staff-sort-name" className="cursor-pointer flex-1 text-sm">Name</Label>
                             </div>
                             <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                              <RadioGroupItem value="join_date" id="sort-join" />
-                              <Label htmlFor="sort-join" className="cursor-pointer flex-1 text-sm">Join Date</Label>
+                              <RadioGroupItem value="join_date" id="staff-sort-join" />
+                              <Label htmlFor="staff-sort-join" className="cursor-pointer flex-1 text-sm">Join Date</Label>
                             </div>
                             <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                              <RadioGroupItem value="end_date" id="sort-expiry" />
-                              <Label htmlFor="sort-expiry" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
+                              <RadioGroupItem value="end_date" id="staff-sort-expiry" />
+                              <Label htmlFor="staff-sort-expiry" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
                             </div>
                           </RadioGroup>
                           <Separator />
@@ -318,99 +335,277 @@ const StaffDashboard = () => {
                         </PopoverContent>
                       </Popover>
 
-
-
-
-                      {/* Add Member Button */}
                       {canManageMembers && (
-                        <Button
-                          variant="accent"
+                        <Button 
                           size="sm"
-                          className="gap-1.5 h-9"
-                          onClick={() => setIsAddMemberOpen(true)}
+                          onClick={() => setIsAddMemberOpen(true)} 
+                          className="gap-1.5 h-9 bg-foreground text-background hover:bg-foreground/90"
                         >
                           <PlusIcon className="w-4 h-4" />
-                          <span className="hidden sm:inline">Add Member</span>
+                          <span>Add Member</span>
                         </Button>
                       )}
                     </div>
                   </div>
 
-                  {/* Second Row - Filters and Search */}
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                    {/* Filter Section */}
-                    <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-                      {activeTab === "members" && (
-                        <>
-                          <MemberFilter
-                            value={memberFilter}
-                            onChange={handleMemberFilterChange}
-                            counts={filterCounts}
-                          />
-                          <TrainerFilterDropdown
-                            value={trainerFilter}
-                            onChange={(v) => { setTrainerFilter(v); setTimeSlotFilter(null); }}
-                          />
-                          <TimeSlotFilterDropdown
-                            value={timeSlotFilter}
-                            onChange={setTimeSlotFilter}
-                            trainerFilter={trainerFilter}
-                          />
-                        </>
+                  {/* Mobile/Tablet: Text-only Tabs */}
+                  <div className="lg:hidden">
+                    <TabsList className="bg-muted/40 p-0.5 h-9 md:h-10 w-full rounded-xl">
+                      <TabsTrigger 
+                        value="members" 
+                        className="flex-1 text-xs md:text-sm leading-tight px-2 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all duration-200 gap-1.5"
+                      >
+                        <UsersIcon className="w-3.5 h-3.5 hidden md:inline" />
+                        Members
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="daily_pass" 
+                        className="flex-1 text-xs md:text-sm leading-tight px-2 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all duration-200 gap-1.5"
+                      >
+                        <ClockIcon className="w-3.5 h-3.5 hidden md:inline" />
+                        Daily Passes
+                      </TabsTrigger>
+                      {canAccessPayments && (
+                        <TabsTrigger 
+                          value="payments" 
+                          className="flex-1 text-xs md:text-sm leading-tight px-2 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all duration-200 gap-1.5"
+                        >
+                          <CreditCardIcon className="w-3.5 h-3.5 hidden md:inline" />
+                          Payments
+                        </TabsTrigger>
                       )}
-                    </div>
-
-                    {/* Search */}
-                    <div className="relative w-full sm:w-64">
-                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        placeholder={activeTab === "daily_pass" ? "Search passes..." : "Search members..."}
-                        className="pl-9 h-9 text-sm bg-background"
-                        value={activeTab === "daily_pass" ? dailyPassSearchInput : searchInput}
-                        onChange={(e) => {
-                          if (activeTab === "daily_pass") {
-                            setDailyPassSearchInput(e.target.value);
-                          } else {
-                            setSearchInput(e.target.value);
-                          }
-                        }}
-                      />
-                    </div>
+                    </TabsList>
                   </div>
+                  
+                  {/* Search Bar - Mobile/Tablet */}
+                  {(activeTab === "members" || activeTab === "daily_pass") && (
+                    <div className="flex items-center gap-1.5 lg:hidden">
+                      <div className="relative flex-1 group">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
+                        <Input
+                          placeholder="Search by name or phone..."
+                          className="pl-9 h-9 md:h-10 text-sm bg-muted/30 border-transparent rounded-xl hover:bg-muted/50 hover:border-border focus:bg-background focus:border-border focus:ring-2 focus:ring-ring/20 transition-all duration-200"
+                          value={activeTab === "members" ? searchInput : dailyPassSearchInput}
+                          onChange={(e) => activeTab === "members" ? setSearchInput(e.target.value) : setDailyPassSearchInput(e.target.value)}
+                        />
+                      </div>
+                      {/* Tablet-only inline action buttons */}
+                      <div className="hidden md:flex lg:hidden items-center gap-1.5">
+                        <Popover open={sortOpen} onOpenChange={setSortOpen}>
+                          <PopoverTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="icon"
+                              className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                              title="Sort"
+                            >
+                              {sortOrder === "asc" ? (
+                                <BarsArrowUpIcon className="w-4 h-4" />
+                              ) : (
+                                <BarsArrowDownIcon className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-56 p-0" align="end">
+                            <div className="p-3 border-b border-border">
+                              <p className="text-sm font-medium text-foreground">Sort by</p>
+                            </div>
+                            <RadioGroup 
+                              value={sortBy} 
+                              onValueChange={(value) => setSortBy(value as typeof sortBy)}
+                              className="p-2"
+                            >
+                              <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                                <RadioGroupItem value="name" id="staff-sort-name-tablet" />
+                                <Label htmlFor="staff-sort-name-tablet" className="cursor-pointer flex-1 text-sm">Name</Label>
+                              </div>
+                              <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                                <RadioGroupItem value="join_date" id="staff-sort-join-tablet" />
+                                <Label htmlFor="staff-sort-join-tablet" className="cursor-pointer flex-1 text-sm">Join Date</Label>
+                              </div>
+                              <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                                <RadioGroupItem value="end_date" id="staff-sort-expiry-tablet" />
+                                <Label htmlFor="staff-sort-expiry-tablet" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
+                              </div>
+                            </RadioGroup>
+                            <Separator />
+                            <div className="p-2 space-y-1">
+                              <button
+                                onClick={() => setSortOrder("asc")}
+                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "asc" ? "bg-muted font-medium" : ""}`}
+                              >
+                                <BarsArrowUpIcon className="w-4 h-4" />
+                                Oldest first
+                              </button>
+                              <button
+                                onClick={() => setSortOrder("desc")}
+                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "desc" ? "bg-muted font-medium" : ""}`}
+                              >
+                                <BarsArrowDownIcon className="w-4 h-4" />
+                                Newest first
+                              </button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                        {canManageMembers && (
+                          <Button 
+                            size="sm"
+                            onClick={() => setIsAddMemberOpen(true)} 
+                            className="gap-1 h-9 bg-foreground text-background hover:bg-foreground/90 text-xs px-3 whitespace-nowrap"
+                          >
+                            <PlusIcon className="w-3.5 h-3.5" />
+                            Add Member
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
 
-              <TabsContent value="members" className="p-0 m-0">
-                <MembersTable
-                  searchQuery={searchQuery}
-                  filterValue={memberFilter}
-                  ptFilterActive={ptFilterActive}
-                  trainerFilter={trainerFilter}
-                  timeSlotFilter={timeSlotFilter}
-                  sortBy={sortBy}
-                  sortOrder={sortOrder}
-                  refreshKey={refreshKey}
-                />
-              </TabsContent>
+              <CardContent className="p-3 sm:p-4 lg:pt-2 lg:px-6 lg:pb-6">
+                <TabsContent value="members" className="mt-0 space-y-2.5 lg:space-y-4">
+                  {/* Mobile: Filter + Action Buttons Row */}
+                  <div className="md:hidden flex items-center gap-2">
+                    <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                      <MemberFilter 
+                        value={memberFilter} 
+                        onChange={handleMemberFilterChange}
+                        counts={filterCounts}
+                        mobileMode={true}
+                      />
+                      <TimeSlotFilterDropdown
+                        value={timeSlotFilter}
+                        onChange={setTimeSlotFilter}
+                        trainerFilter={trainerFilter}
+                        compact={true}
+                      />
+                      <TrainerFilterDropdown
+                        value={trainerFilter}
+                        onChange={(v) => { setTrainerFilter(v); setTimeSlotFilter(null); }}
+                        compact={true}
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <Popover open={sortOpen} onOpenChange={setSortOpen}>
+                        <PopoverTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            className="h-9 w-9 rounded-xl border-border/50 bg-card text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95 transition-all duration-200"
+                            title="Sort"
+                          >
+                            {sortOrder === "asc" ? (
+                              <BarsArrowUpIcon className="w-4 h-4" />
+                            ) : (
+                              <BarsArrowDownIcon className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56 p-0 rounded-xl shadow-lg border-border/50" align="end">
+                          <div className="p-3 border-b border-border/50">
+                            <p className="text-sm font-semibold text-foreground">Sort by</p>
+                          </div>
+                          <RadioGroup 
+                            value={sortBy} 
+                            onValueChange={(value) => setSortBy(value as typeof sortBy)}
+                            className="p-1.5"
+                          >
+                            <div className="flex items-center space-x-2 px-2.5 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
+                              <RadioGroupItem value="name" id="staff-sort-name-mobile" />
+                              <Label htmlFor="staff-sort-name-mobile" className="cursor-pointer flex-1 text-sm">Name</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 px-2.5 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
+                              <RadioGroupItem value="join_date" id="staff-sort-join-mobile" />
+                              <Label htmlFor="staff-sort-join-mobile" className="cursor-pointer flex-1 text-sm">Join Date</Label>
+                            </div>
+                            <div className="flex items-center space-x-2 px-2.5 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
+                              <RadioGroupItem value="end_date" id="staff-sort-expiry-mobile" />
+                              <Label htmlFor="staff-sort-expiry-mobile" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
+                            </div>
+                          </RadioGroup>
+                          <Separator />
+                          <div className="p-1.5 space-y-0.5">
+                            <button
+                              onClick={() => setSortOrder("asc")}
+                              className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm hover:bg-muted transition-colors ${sortOrder === "asc" ? "bg-muted font-medium" : ""}`}
+                            >
+                              <BarsArrowUpIcon className="w-4 h-4" />
+                              Oldest first
+                            </button>
+                            <button
+                              onClick={() => setSortOrder("desc")}
+                              className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm hover:bg-muted transition-colors ${sortOrder === "desc" ? "bg-muted font-medium" : ""}`}
+                            >
+                              <BarsArrowDownIcon className="w-4 h-4" />
+                              Newest first
+                            </button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      {canManageMembers && (
+                        <Button 
+                          size="sm"
+                          onClick={() => setIsAddMemberOpen(true)} 
+                          className="gap-1 h-9 bg-foreground text-background hover:bg-foreground/90 text-xs px-3 rounded-xl active:scale-95 transition-all duration-200 shadow-sm whitespace-nowrap"
+                        >
+                          <PlusIcon className="w-3.5 h-3.5" />
+                          <span className="font-medium hidden min-[400px]:inline">Add Member</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
 
-              <TabsContent value="daily_pass" className="p-0 m-0">
-                <DailyPassTable
-                  searchQuery={dailyPassSearchQuery}
-                  filterValue={dailyPassFilter}
-                  refreshKey={refreshKey}
-                />
-              </TabsContent>
+                  {/* Desktop/Tablet: Inline Member Filter Chips */}
+                  <div className="hidden md:flex md:items-center md:gap-2 md:flex-wrap">
+                    <MemberFilter 
+                      value={memberFilter} 
+                      onChange={handleMemberFilterChange}
+                      counts={filterCounts}
+                      mobileMode={false}
+                    />
+                    <TrainerFilterDropdown
+                      value={trainerFilter}
+                      onChange={(v) => { setTrainerFilter(v); setTimeSlotFilter(null); }}
+                    />
+                    <TimeSlotFilterDropdown
+                      value={timeSlotFilter}
+                      onChange={setTimeSlotFilter}
+                      trainerFilter={trainerFilter}
+                    />
+                  </div>
 
-              {canAccessPayments && (
-                <TabsContent value="payments" className="p-0 m-0">
-                  <PaymentHistory refreshKey={refreshKey} />
+                  <MembersTable
+                    searchQuery={searchQuery} 
+                    refreshKey={refreshKey} 
+                    filterValue={memberFilter}
+                    ptFilterActive={ptFilterActive}
+                    trainerFilter={trainerFilter}
+                    timeSlotFilter={timeSlotFilter}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                  />
                 </TabsContent>
-              )}
+
+                <TabsContent value="daily_pass" className="mt-0">
+                  <DailyPassTable 
+                    searchQuery={dailyPassSearchQuery} 
+                    refreshKey={refreshKey}
+                    filterValue={dailyPassFilter}
+                  />
+                </TabsContent>
+
+                {canAccessPayments && (
+                  <TabsContent value="payments" className="mt-0">
+                    <PaymentHistory refreshKey={refreshKey} />
+                  </TabsContent>
+                )}
+              </CardContent>
             </Tabs>
           </Card>
         )}
 
-        {/* No Access Message - show if user can't see members AND can't access payments */}
+        {/* No Access Message */}
         {!canSeeMembers && !canAccessPayments && (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-12 text-center">
@@ -428,7 +623,7 @@ const StaffDashboard = () => {
           </Card>
         )}
 
-        {/* Payment-only access: show just payment history */}
+        {/* Payment-only access */}
         {!canSeeMembers && canAccessPayments && (
           <Card className="border-0 shadow-sm">
             <CardHeader className="border-b pb-4">
@@ -442,7 +637,6 @@ const StaffDashboard = () => {
         )}
       </div>
 
-      {/* Dialogs - Only canManageMembers can add members */}
       {canManageMembers && (
         <AddMemberDialog
           open={isAddMemberOpen}
