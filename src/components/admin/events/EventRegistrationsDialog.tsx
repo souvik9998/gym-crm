@@ -105,6 +105,9 @@ export function EventRegistrationsDialog({ open, onOpenChange, event }: Props) {
             <Button size="sm" variant="outline" onClick={handleExport} className="h-9 rounded-xl gap-1.5">
               <Download className="w-3.5 h-3.5" /> Export
             </Button>
+            <Button size="sm" onClick={() => setRegisterOpen(true)} className="h-9 rounded-xl gap-1.5">
+              <UserPlus className="w-3.5 h-3.5" /> Register
+            </Button>
           </div>
         </div>
 
