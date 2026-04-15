@@ -41,6 +41,8 @@ interface TenantUsageData {
   monthly_checkins: number;
 }
 
+import { CircleStackIcon } from "@heroicons/react/24/outline";
+
 const MODULE_LABELS: Record<string, { label: string; description: string }> = {
   members_management: { label: "Members Management", description: "Add, edit, and manage gym members" },
   attendance: { label: "Attendance", description: "Track member and staff attendance" },
@@ -57,6 +59,7 @@ export function SubscriptionPlanTab() {
   const [limits, setLimits] = useState<TenantLimitsData | null>(null);
   const [usage, setUsage] = useState<TenantUsageData | null>(null);
   const [tenantName, setTenantName] = useState<string>("");
+  const [storageUsedMb, setStorageUsedMb] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -85,10 +88,11 @@ export function SubscriptionPlanTab() {
       if (!tenantId) return;
 
       // Fetch tenant info, limits, and usage in parallel
-      const [tenantRes, limitsRes, usageRes] = await Promise.all([
+      const [tenantRes, limitsRes, usageRes, storageRes] = await Promise.all([
         supabase.from("tenants").select("name").eq("id", tenantId).single(),
         supabase.from("tenant_limits").select("*").eq("tenant_id", tenantId).single(),
         supabase.rpc("get_tenant_current_usage", { _tenant_id: tenantId }),
+        supabase.rpc("get_tenant_storage_usage_mb", { _tenant_id: tenantId }),
       ]);
 
       if (tenantRes.data) setTenantName(tenantRes.data.name);
@@ -99,6 +103,7 @@ export function SubscriptionPlanTab() {
         });
       }
       if (usageRes.data?.[0]) setUsage(usageRes.data[0]);
+      if (storageRes.data !== null) setStorageUsedMb(Number(storageRes.data) || 0);
     } catch (error) {
       console.error("Error fetching plan details:", error);
     } finally {
@@ -142,6 +147,7 @@ export function SubscriptionPlanTab() {
     { label: "Trainers", used: usage?.trainers_count ?? 0, max: limits.max_trainers, icon: UsersIcon },
     { label: "Monthly Check-ins", used: usage?.monthly_checkins ?? 0, max: limits.max_monthly_checkins, icon: ChartBarIcon },
     { label: "WhatsApp Messages", used: usage?.whatsapp_this_month ?? 0, max: limits.max_monthly_whatsapp_messages, icon: BoltIcon },
+    { label: "Storage (MB)", used: storageUsedMb, max: limits.max_storage_mb, icon: CircleStackIcon },
   ];
 
   const enabledModules = Object.entries(limits.features).filter(([, v]) => v === true);
@@ -187,8 +193,11 @@ export function SubscriptionPlanTab() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 lg:gap-3">
-            <span className="text-xs lg:text-sm font-medium text-muted-foreground">Storage Limit:</span>
-            <span className="font-semibold text-sm lg:text-base">{limits.max_storage_mb} MB</span>
+            <span className="text-xs lg:text-sm font-medium text-muted-foreground">Storage:</span>
+            <span className="font-semibold text-sm lg:text-base">{storageUsedMb} MB / {limits.max_storage_mb} MB used</span>
+            {storageUsedMb >= limits.max_storage_mb && (
+              <Badge variant="destructive" className="text-[10px] lg:text-xs">Full</Badge>
+            )}
           </div>
 
           {isExpired && (

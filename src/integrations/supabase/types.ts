@@ -3283,6 +3283,10 @@ export type Database = {
       }
       get_tenant_from_branch: { Args: { _branch_id: string }; Returns: string }
       get_tenant_permissions: { Args: { _tenant_id: string }; Returns: Json }
+      get_tenant_storage_usage_mb: {
+        Args: { _tenant_id: string }
+        Returns: number
+      }
       get_user_tenant_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {

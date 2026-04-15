@@ -104,6 +104,7 @@ export default function TenantDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [storageUsedMb, setStorageUsedMb] = useState<number>(0);
   
   // Edit states
   const [editName, setEditName] = useState("");
@@ -182,16 +183,22 @@ export default function TenantDetail() {
         }
       }
 
-      // Fetch branches for this tenant (super admin can see all)
-      const { data: branchData, error: branchError } = await supabase
-        .from("branches")
-        .select("*")
-        .eq("tenant_id", tenantId)
-        .is("deleted_at", null)
-        .order("name");
+      // Fetch branches and storage usage for this tenant
+      const [branchResult, storageResult] = await Promise.all([
+        supabase
+          .from("branches")
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .is("deleted_at", null)
+          .order("name"),
+        supabase.rpc("get_tenant_storage_usage_mb", { _tenant_id: tenantId }),
+      ]);
 
-      if (!branchError && branchData) {
-        setBranches(branchData);
+      if (!branchResult.error && branchResult.data) {
+        setBranches(branchResult.data);
+      }
+      if (storageResult.data !== null) {
+        setStorageUsedMb(Number(storageResult.data) || 0);
       }
     } catch (error) {
       console.error("Error loading tenant:", error);
@@ -552,7 +559,7 @@ export default function TenantDetail() {
             </Card>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
               <Card>
                 <CardContent className="p-4">
                   <p className="text-sm text-muted-foreground">Branches</p>
@@ -589,6 +596,13 @@ export default function TenantDetail() {
                   <p className="text-sm text-muted-foreground">Check-ins</p>
                   <p className="text-2xl font-bold">{tenant.usage?.monthly_checkins || 0}</p>
                   <p className="text-[10px] text-muted-foreground">This month</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground">Storage</p>
+                  <p className="text-2xl font-bold">{storageUsedMb} MB</p>
+                  <p className="text-[10px] text-muted-foreground">of {editLimits.max_storage_mb} MB</p>
                 </CardContent>
               </Card>
             </div>
@@ -807,6 +821,9 @@ export default function TenantDetail() {
                       onChange={(e) => setEditLimits(prev => ({ ...prev, max_storage_mb: parseInt(e.target.value) || 0 }))}
                       min={0}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Used: {storageUsedMb} MB
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label>Plan Expiry Date</Label>
