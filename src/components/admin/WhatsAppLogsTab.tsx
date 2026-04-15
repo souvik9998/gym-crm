@@ -402,9 +402,14 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
                       <SelectItem value="promotional">Promotional</SelectItem>
                       <SelectItem value="expiry_reminder">Expiry Reminder</SelectItem>
                       <SelectItem value="expired_reminder">Expired Reminder</SelectItem>
+                      <SelectItem value="expiring_today">Expiring Today</SelectItem>
+                      <SelectItem value="expiring_2days">Expiring in 2 Days</SelectItem>
                       <SelectItem value="payment_details">Payment Details</SelectItem>
                       <SelectItem value="new_registration">New Registration</SelectItem>
                       <SelectItem value="renewal">Renewal</SelectItem>
+                      <SelectItem value="pt_extension">PT Extension</SelectItem>
+                      <SelectItem value="daily_pass">Daily Pass</SelectItem>
+                      <SelectItem value="custom">Custom</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
