@@ -45,9 +45,9 @@ export const SlotAttendanceTab = () => {
       const { data, error } = await supabase
         .from("trainer_time_slots")
         .select("id, start_time, end_time, capacity, trainer_id, personal_trainers(name)")
-        .eq("branch_id", branchId)
+        .eq("branch_id", branchId as string)
         .eq("is_active", true)
-        .order("start_time");
+        .order("start_time") as any;
       if (error) throw error;
       return data || [];
     },
