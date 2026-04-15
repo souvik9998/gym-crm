@@ -1594,65 +1594,6 @@ const AdminSettings = () => {
                   </CardContent>
                 </Card>
 
-                {/* Attendance Mode Card */}
-                <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
-                  <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                        <CalendarDaysIcon className="w-4 h-4 lg:w-5 lg:h-5" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-base lg:text-xl">Attendance Mode</CardTitle>
-                        <CardDescription className="text-xs lg:text-sm">Choose how attendance is tracked at your gym</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4 lg:space-y-5 p-4 lg:p-6 pt-0 lg:pt-0">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {[
-                        {
-                          value: "simple",
-                          label: "Simple Attendance",
-                          desc: "Mark all members as Present/Absent/Late daily. Best for small gyms.",
-                        },
-                        {
-                          value: "time_slot",
-                          label: "Time Slot Based",
-                          desc: "Track attendance per trainer time slot. Best for scheduled gyms.",
-                        },
-                      ].map((mode) => (
-                          <button
-                            key={mode.value}
-                            onClick={async () => {
-                              if (!settings?.id || !currentBranch?.id) return;
-                              const { error } = await supabase
-                                .from("gym_settings")
-                                .update({ attendance_mode: mode.value } as any)
-                                .eq("id", settings.id)
-                                .eq("branch_id", currentBranch.id);
-                              if (error) {
-                                toast.error("Failed to update attendance mode");
-                              } else {
-                                toast.success(`Switched to ${mode.label}`);
-                                refetchData();
-                              }
-                            }}
-                            className={cn(
-                              "text-left p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-sm",
-                              (fetchedSettings as any)?.attendance_mode === mode.value || (!((fetchedSettings as any)?.attendance_mode) && mode.value === "simple")
-                                ? "border-primary bg-primary/5 shadow-sm"
-                                : "border-border/50 hover:border-primary/30"
-                            )}
-                          >
-                            <p className="text-sm font-semibold">{mode.label}</p>
-                            <p className="text-[11px] text-muted-foreground mt-1">{mode.desc}</p>
-                          </button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* GST Configuration Card */}
                 <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
                   <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
                     <div className="flex items-center gap-3">
