@@ -211,6 +211,16 @@ export default function EventRegistration() {
       if (!name.trim()) throw new Error("Name is required");
       if (!selectedPricingId) throw new Error("Select a pricing option");
 
+      // Duplicate check
+      const { data: dupReg } = await supabase
+        .from("event_registrations")
+        .select("id")
+        .eq("event_id", eventId)
+        .eq("phone", phone)
+        .eq("payment_status", "success")
+        .maybeSingle();
+      if (dupReg) throw new Error("You are already registered for this event");
+
       if (selectedPricing?.capacity_limit) {
         const { count } = await supabase
           .from("event_registrations")
