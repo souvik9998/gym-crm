@@ -61,6 +61,8 @@ export default function EventDetail() {
     enabled: !!eventId,
   });
 
+  const isMultiSelect = event?.selection_mode === "multiple";
+
   const { data: registrations = [], isLoading: regsLoading } = useQuery({
     queryKey: ["event-registrations", eventId],
     queryFn: async () => {
@@ -70,7 +72,28 @@ export default function EventDetail() {
         .eq("event_id", eventId!)
         .order("registered_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+
+      // Fetch registration items for multi-select events
+      if (data && data.length > 0) {
+        const regIds = data.map((r: any) => r.id);
+        const { data: items } = await supabase
+          .from("event_registration_items")
+          .select("*, event_pricing_options:pricing_option_id(name, price)")
+          .in("registration_id", regIds);
+
+        const itemsMap: Record<string, any[]> = {};
+        (items || []).forEach((item: any) => {
+          if (!itemsMap[item.registration_id]) itemsMap[item.registration_id] = [];
+          itemsMap[item.registration_id].push(item);
+        });
+
+        return data.map((r: any) => ({
+          ...r,
+          registration_items: itemsMap[r.id] || [],
+        }));
+      }
+
+      return (data || []).map((r: any) => ({ ...r, registration_items: [] }));
     },
     enabled: !!eventId,
   });
