@@ -435,102 +435,166 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
               </div>
             </div>
 
-            {/* Event Items / Pricing Options */}
+            {/* Event Pricing */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-foreground">Event Items</h3>
-                <Button size="sm" variant="outline" onClick={addPricing} className="h-7 text-xs rounded-lg gap-1">
-                  <Plus className="w-3 h-3" /> Add Item
-                </Button>
+                <h3 className="text-sm font-semibold text-foreground">Event Pricing</h3>
+                {pricingType === "variable" && (
+                  <Button size="sm" variant="outline" onClick={addPricing} className="h-7 text-xs rounded-lg gap-1">
+                    <Plus className="w-3 h-3" /> Add Item
+                  </Button>
+                )}
               </div>
 
-              {/* Selection Mode */}
+              {/* Pricing Type Toggle */}
               <div className="flex items-center gap-3 p-3 rounded-xl border border-border/40 bg-muted/20">
-                <Label className="text-xs text-muted-foreground flex-shrink-0">Selection Mode:</Label>
+                <Label className="text-xs text-muted-foreground flex-shrink-0">Pricing Type:</Label>
                 <div className="flex gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setSelectionMode("single")}
+                    onClick={() => setPricingType("single")}
                     className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-                      selectionMode === "single"
+                      pricingType === "single"
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-background border-border hover:bg-muted"
                     }`}
                   >
-                    Single Select
+                    Single Price
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectionMode("multiple")}
+                    onClick={() => setPricingType("variable")}
                     className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-                      selectionMode === "multiple"
+                      pricingType === "variable"
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-background border-border hover:bg-muted"
                     }`}
                   >
-                    Multiple Select
+                    Variable Pricing
                   </button>
                 </div>
               </div>
 
-              {pricingOptions.map((p, i) => (
-                <div key={i} className="p-3 rounded-xl border border-border/40 bg-muted/20 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    <Input
-                      value={p.name}
-                      onChange={(e) => updatePricing(i, "name", e.target.value)}
-                      placeholder="Item name (e.g. Day 1, Full Pass)"
-                      className="rounded-lg h-9 text-sm"
-                    />
-                    <div className="relative w-28 flex-shrink-0">
+              {pricingType === "single" ? (
+                <div className="p-3 rounded-xl border border-border/40 bg-muted/20">
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1">
                       <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₹</span>
                       <Input
                         type="text"
                         inputMode="numeric"
-                        value={p.price === 0 ? "" : String(p.price)}
+                        value={singlePrice === 0 ? "" : String(singlePrice)}
                         onChange={(e) => {
                           const val = e.target.value.replace(/[^0-9]/g, "");
-                          updatePricing(i, "price", val === "" ? 0 : Number(val));
+                          setSinglePrice(val === "" ? 0 : Number(val));
                         }}
-                        placeholder="0"
+                        placeholder="Event price (0 = Free)"
                         className="rounded-lg h-9 text-sm pl-7"
                       />
                     </div>
                     <Input
                       type="text"
                       inputMode="numeric"
-                      value={p.capacity_limit ? String(p.capacity_limit) : ""}
+                      value={singleCapacity ? String(singleCapacity) : ""}
                       onChange={(e) => {
                         const val = e.target.value.replace(/[^0-9]/g, "");
-                        updatePricing(i, "capacity_limit", val === "" ? null : Number(val));
+                        setSingleCapacity(val === "" ? null : Number(val));
                       }}
-                      placeholder="Capacity"
-                      className="rounded-lg h-9 text-sm w-24 flex-shrink-0"
-                      min={0}
+                      placeholder="Max capacity (optional)"
+                      className="rounded-lg h-9 text-sm w-44 flex-shrink-0"
                     />
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <Switch
-                        checked={p.is_active}
-                        onCheckedChange={(v) => updatePricing(i, "is_active", v)}
-                        className="scale-75"
-                      />
-                      {!p.is_active && <Badge variant="secondary" className="text-[9px] py-0">Off</Badge>}
-                    </div>
-                    {pricingOptions.length > 1 && (
-                      <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0 text-destructive" onClick={() => removePricing(i)}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
                   </div>
-                  <Input
-                    value={p.description}
-                    onChange={(e) => updatePricing(i, "description", e.target.value)}
-                    placeholder="Description (optional)"
-                    className="rounded-lg h-8 text-xs"
-                  />
                 </div>
-              ))}
+              ) : (
+                <>
+                  {/* Selection Mode - only for variable pricing */}
+                  <div className="flex items-center gap-3 p-3 rounded-xl border border-border/40 bg-muted/20">
+                    <Label className="text-xs text-muted-foreground flex-shrink-0">Selection Mode:</Label>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setSelectionMode("single")}
+                        className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                          selectionMode === "single"
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background border-border hover:bg-muted"
+                        }`}
+                      >
+                        Single Select
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectionMode("multiple")}
+                        className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                          selectionMode === "multiple"
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background border-border hover:bg-muted"
+                        }`}
+                      >
+                        Multiple Select
+                      </button>
+                    </div>
+                  </div>
+
+                  {pricingOptions.map((p, i) => (
+                    <div key={i} className="p-3 rounded-xl border border-border/40 bg-muted/20 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <Input
+                          value={p.name}
+                          onChange={(e) => updatePricing(i, "name", e.target.value)}
+                          placeholder="Item name (e.g. Day 1, Full Pass)"
+                          className="rounded-lg h-9 text-sm"
+                        />
+                        <div className="relative w-28 flex-shrink-0">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₹</span>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            value={p.price === 0 ? "" : String(p.price)}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, "");
+                              updatePricing(i, "price", val === "" ? 0 : Number(val));
+                            }}
+                            placeholder="0"
+                            className="rounded-lg h-9 text-sm pl-7"
+                          />
+                        </div>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={p.capacity_limit ? String(p.capacity_limit) : ""}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, "");
+                            updatePricing(i, "capacity_limit", val === "" ? null : Number(val));
+                          }}
+                          placeholder="Capacity"
+                          className="rounded-lg h-9 text-sm w-24 flex-shrink-0"
+                        />
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <Switch
+                            checked={p.is_active}
+                            onCheckedChange={(v) => updatePricing(i, "is_active", v)}
+                            className="scale-75"
+                          />
+                          {!p.is_active && <Badge variant="secondary" className="text-[9px] py-0">Off</Badge>}
+                        </div>
+                        {pricingOptions.length > 1 && (
+                          <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0 text-destructive" onClick={() => removePricing(i)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                      <Input
+                        value={p.description}
+                        onChange={(e) => updatePricing(i, "description", e.target.value)}
+                        placeholder="Description (optional)"
+                        className="rounded-lg h-8 text-xs"
+                      />
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
 
             {/* Custom Fields */}
