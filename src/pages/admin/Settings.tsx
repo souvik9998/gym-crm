@@ -236,6 +236,17 @@ const AdminSettings = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Reset sync refs when branch changes so fresh data loads
+  const prevBranchId = useRef(currentBranch?.id);
+  useEffect(() => {
+    if (currentBranch?.id && currentBranch.id !== prevBranchId.current) {
+      prevBranchId.current = currentBranch.id;
+      initialSyncDone.current = false;
+      monthlyPackagesSynced.current = false;
+      customPackagesSynced.current = false;
+    }
+  }, [currentBranch?.id]);
+
   // Only sync fetched data to local state on initial load, not on every refetch
   const initialSyncDone = useRef(false);
 
