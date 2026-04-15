@@ -90,7 +90,7 @@ StatCard.displayName = "StatCard";
 const StaffDashboard = () => {
   const navigate = useNavigate();
   const { currentBranch } = useBranch();
-  const { isStaffLoggedIn, staffUser, isLoading: staffLoading } = useStaffAuth();
+  const { isStaffLoggedIn, staffUser, isLoading: staffLoading, permissions } = useStaffAuth();
   const { invalidateMembers, invalidatePayments } = useInvalidateDashboard();
   
   const canViewMembers = useStaffPermission("can_view_members");
@@ -99,6 +99,7 @@ const StaffDashboard = () => {
   
   const canSeeMembers = canViewMembers || canManageMembers;
   const canRecordPayments = canManageMembers;
+  const showTrainerFilter = permissions?.member_access_type !== "assigned";
   
   const [searchInput, setSearchInput] = useState("");
   const searchQuery = useDebounce(searchInput, 300);
@@ -480,11 +481,13 @@ const StaffDashboard = () => {
                         trainerFilter={trainerFilter}
                         compact={true}
                       />
-                      <TrainerFilterDropdown
-                        value={trainerFilter}
-                        onChange={(v) => { setTrainerFilter(v); setTimeSlotFilter(null); }}
-                        compact={true}
-                      />
+                      {showTrainerFilter && (
+                        <TrainerFilterDropdown
+                          value={trainerFilter}
+                          onChange={(v) => { setTrainerFilter(v); setTimeSlotFilter(null); }}
+                          compact={true}
+                        />
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <Popover open={sortOpen} onOpenChange={setSortOpen}>
@@ -564,10 +567,12 @@ const StaffDashboard = () => {
                       counts={filterCounts}
                       mobileMode={false}
                     />
-                    <TrainerFilterDropdown
-                      value={trainerFilter}
-                      onChange={(v) => { setTrainerFilter(v); setTimeSlotFilter(null); }}
-                    />
+                    {showTrainerFilter && (
+                      <TrainerFilterDropdown
+                        value={trainerFilter}
+                        onChange={(v) => { setTrainerFilter(v); setTimeSlotFilter(null); }}
+                      />
+                    )}
                     <TimeSlotFilterDropdown
                       value={timeSlotFilter}
                       onChange={setTimeSlotFilter}
