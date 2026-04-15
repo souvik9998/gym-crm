@@ -78,7 +78,7 @@ function NotificationBadge({ type }: { type: AdminNotification["type"] }) {
 
 export function NotificationCenter() {
   const navigate = useNavigate();
-  const { notifications, dangerCount, totalCount } = useAdminNotifications();
+  const { notifications, dangerCount, successCount, totalCount } = useAdminNotifications();
   const [filter, setFilter] = useState<CategoryFilter>("all");
   const [open, setOpen] = useState(false);
   const [planDialog, setPlanDialog] = useState<{ open: boolean; notification: AdminNotification | null }>({ open: false, notification: null });
@@ -91,6 +91,7 @@ export function NotificationCenter() {
 
   const filterCounts: Record<CategoryFilter, number> = {
     all: totalCount,
+    new_member: notifications.filter(n => n.category === "new_member").length,
     plan: notifications.filter(n => n.category === "plan").length,
     limit: notifications.filter(n => n.category === "limit").length,
     member: notifications.filter(n => n.category === "member").length,
