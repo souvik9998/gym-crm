@@ -62,6 +62,10 @@ export default function EventDetail() {
         .eq("id", eventId!)
         .single();
       if (error) throw error;
+      // Sort pricing options by sort_order
+      if (data?.event_pricing_options) {
+        data.event_pricing_options.sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      }
       return data;
     },
     enabled: !!eventId,
