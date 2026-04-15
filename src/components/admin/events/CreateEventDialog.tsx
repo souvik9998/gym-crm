@@ -191,7 +191,7 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         eventId = editEvent.id;
 
         // Smart upsert: update existing, insert new, delete removed
-        const existingIds = pricingOptions.filter(p => p.id).map(p => p.id!);
+        const existingIds = effectiveOptions.filter(p => p.id).map(p => p.id!);
         
         // Delete removed pricing options (only those not referenced by registrations)
         if (existingIds.length > 0) {
@@ -200,7 +200,6 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
             .eq("event_id", eventId)
             .not("id", "in", `(${existingIds.join(",")})`);
         } else {
-          // All are new - delete old ones that have no registration references
           const { data: oldOptions } = await supabase
             .from("event_pricing_options")
             .select("id")
@@ -223,8 +222,8 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         }
 
         // Update existing and insert new pricing options
-        for (let i = 0; i < pricingOptions.length; i++) {
-          const p = pricingOptions[i];
+        for (let i = 0; i < effectiveOptions.length; i++) {
+          const p = effectiveOptions[i];
           if (p.id) {
             await supabase.from("event_pricing_options").update({
               name: p.name,
