@@ -194,31 +194,27 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         // Smart upsert: update existing, insert new, delete removed
         const existingIds = effectiveOptions.filter(p => p.id).map(p => p.id!);
         
+        // Get all current pricing option IDs for this event
+        const { data: currentOptions } = await supabase
+          .from("event_pricing_options")
+          .select("id")
+          .eq("event_id", eventId);
+        
+        const currentIds = (currentOptions || []).map(o => o.id);
+        const idsToRemove = currentIds.filter(id => !existingIds.includes(id));
+        
         // Delete removed pricing options (only those not referenced by registrations)
-        if (existingIds.length > 0) {
-          await supabase.from("event_pricing_options")
-            .delete()
-            .eq("event_id", eventId)
-            .not("id", "in", `(${existingIds.join(",")})`);
-        } else {
-          const { data: oldOptions } = await supabase
-            .from("event_pricing_options")
-            .select("id")
-            .eq("event_id", eventId);
-          if (oldOptions?.length) {
-            for (const opt of oldOptions) {
-              const { count } = await supabase
-                .from("event_registration_items")
-                .select("id", { count: "exact", head: true })
-                .eq("pricing_option_id", opt.id);
-              const { count: regCount } = await supabase
-                .from("event_registrations")
-                .select("id", { count: "exact", head: true })
-                .eq("pricing_option_id", opt.id);
-              if ((count || 0) === 0 && (regCount || 0) === 0) {
-                await supabase.from("event_pricing_options").delete().eq("id", opt.id);
-              }
-            }
+        for (const removeId of idsToRemove) {
+          const { count } = await supabase
+            .from("event_registration_items")
+            .select("id", { count: "exact", head: true })
+            .eq("pricing_option_id", removeId);
+          const { count: regCount } = await supabase
+            .from("event_registrations")
+            .select("id", { count: "exact", head: true })
+            .eq("pricing_option_id", removeId);
+          if ((count || 0) === 0 && (regCount || 0) === 0) {
+            await supabase.from("event_pricing_options").delete().eq("id", removeId);
           }
         }
 
