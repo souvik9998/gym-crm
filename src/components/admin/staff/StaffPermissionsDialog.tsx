@@ -26,6 +26,8 @@ import {
   Cog6ToothIcon,
   ClockIcon,
   UserGroupIcon,
+  ChatBubbleLeftRightIcon,
+  CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 
 interface StaffPermissionsDialogProps {
@@ -44,6 +46,7 @@ interface Permissions {
   can_change_settings: boolean;
   can_send_whatsapp: boolean;
   can_access_attendance: boolean;
+  can_manage_events: boolean;
   member_access_type: string;
   can_manage_time_slots: boolean;
   can_create_time_slots: boolean;
@@ -60,8 +63,9 @@ const CORE_PERMISSIONS: Array<{ key: keyof Permissions; label: string; descripti
   { key: "can_access_payments", label: "Payment Logs", description: "Can view payment history and records", icon: CurrencyRupeeIcon },
   { key: "can_access_analytics", label: "Analytics Access", description: "Can view analytics and statistics dashboards", icon: ChartBarIcon },
   { key: "can_change_settings", label: "Settings Access", description: "Can modify gym settings and configurations", icon: Cog6ToothIcon },
-  { key: "can_send_whatsapp", label: "WhatsApp Access", description: "Can send WhatsApp messages to members", icon: Cog6ToothIcon },
+  { key: "can_send_whatsapp", label: "WhatsApp Access", description: "Can send WhatsApp messages to members", icon: ChatBubbleLeftRightIcon },
   { key: "can_access_attendance", label: "Attendance Access", description: "Can mark and view attendance records", icon: ClockIcon },
+  { key: "can_manage_events", label: "Events Access", description: "Create and manage events & registrations", icon: CalendarDaysIcon },
 ];
 
 const TIME_SLOT_PERMISSIONS: Array<{ key: keyof Permissions; label: string; description: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -89,6 +93,7 @@ export const StaffPermissionsDialog = ({
     can_change_settings: false,
     can_send_whatsapp: false,
     can_access_attendance: true,
+    can_manage_events: false,
     member_access_type: "all",
     can_manage_time_slots: false,
     can_create_time_slots: false,
@@ -111,6 +116,7 @@ export const StaffPermissionsDialog = ({
         can_change_settings: p.can_change_settings ?? false,
         can_send_whatsapp: p.can_send_whatsapp ?? false,
         can_access_attendance: p.can_access_attendance ?? true,
+        can_manage_events: p.can_manage_events ?? false,
         member_access_type: p.member_access_type ?? "all",
         can_manage_time_slots: p.can_manage_time_slots ?? false,
         can_create_time_slots: p.can_create_time_slots ?? false,
@@ -129,6 +135,7 @@ export const StaffPermissionsDialog = ({
         can_change_settings: false,
         can_send_whatsapp: staff?.role === "manager",
         can_access_attendance: true,
+        can_manage_events: staff?.role === "manager",
         member_access_type: "all",
         can_manage_time_slots: staff?.role === "manager" || staff?.role === "trainer",
         can_create_time_slots: staff?.role === "manager",
