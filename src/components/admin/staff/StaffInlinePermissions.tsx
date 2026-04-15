@@ -82,6 +82,12 @@ const CORE_PERMISSION_OPTIONS = [
     description: "Send WhatsApp messages to members",
     icon: ChatBubbleLeftRightIcon,
   },
+  { 
+    key: "can_access_attendance" as const, 
+    label: "Attendance Access", 
+    description: "Mark and view attendance records",
+    icon: ClockIcon,
+  },
 ];
 
 const TIME_SLOT_PERMISSION_OPTIONS = [
@@ -321,6 +327,7 @@ export const getDefaultPermissions = (role: string): InlinePermissions => ({
   can_access_analytics: role === "manager",
   can_change_settings: false,
   can_send_whatsapp: role === "manager",
+  can_access_attendance: true,
   member_access_type: "all",
   can_manage_time_slots: role === "manager" || role === "trainer",
   can_create_time_slots: role === "manager",
@@ -328,4 +335,5 @@ export const getDefaultPermissions = (role: string): InlinePermissions => ({
   can_view_time_slots: true,
   can_assign_members_to_slots: role === "manager" || role === "trainer",
   can_view_slot_members: true,
+});
 });
