@@ -97,6 +97,12 @@ async function handleEnroll(req: Request, serviceClient: any) {
     return errorResponse("branch_id, member_id, and device_id are required", 400);
   }
 
+  // Check if biometric attendance is enabled for this branch's tenant
+  const biometricEnabled = await isTenantFeatureEnabled(serviceClient, branch_id, "attendance_biometric");
+  if (!biometricEnabled) {
+    return errorResponse("Biometric attendance is not enabled for this branch. Contact the platform admin.", 403);
+  }
+
   const validTypes = ["fingerprint", "rfid", "face"];
   const type = validTypes.includes(enrollment_type || "") ? enrollment_type : "fingerprint";
 
