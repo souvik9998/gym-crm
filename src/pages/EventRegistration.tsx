@@ -162,6 +162,21 @@ export default function EventRegistration() {
       toast.error("Enter a valid 10-digit phone number");
       return;
     }
+
+    // Check for duplicate registration
+    const { data: existingReg } = await supabase
+      .from("event_registrations")
+      .select("id")
+      .eq("event_id", eventId!)
+      .eq("phone", phone)
+      .eq("payment_status", "success")
+      .maybeSingle();
+
+    if (existingReg) {
+      toast.error("You are already registered for this event");
+      return;
+    }
+
     const { data } = await supabase
       .from("members")
       .select("id, name, email")
