@@ -98,6 +98,29 @@ const AdminDashboard = () => {
   const { isStaffLoggedIn, permissions, isLoading: staffLoading, staffUser } = useStaffAuth();
   const { isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { invalidateMembers, invalidatePayments } = useInvalidateDashboard();
+  const [isDailyPassEnabled, setIsDailyPassEnabled] = useState(true);
+
+  // Fetch daily pass enabled setting
+  useEffect(() => {
+    if (!currentBranch?.id) return;
+    supabase
+      .from("gym_settings")
+      .select("registration_field_settings")
+      .eq("branch_id", currentBranch.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.registration_field_settings) {
+          const parsed = typeof data.registration_field_settings === "string"
+            ? JSON.parse(data.registration_field_settings as string)
+            : data.registration_field_settings;
+          if (parsed?.daily_pass_enabled?.enabled === false) {
+            setIsDailyPassEnabled(false);
+          } else {
+            setIsDailyPassEnabled(true);
+          }
+        }
+      });
+  }, [currentBranch?.id]);
   
   // Check sessions immediately using synchronous localStorage checks
   // This ensures the button appears instantly on page load
@@ -381,6 +404,7 @@ const AdminDashboard = () => {
                       <UsersIcon className="w-4 h-4" />
                       <span>Members</span>
                     </TabsTrigger>
+                    {isDailyPassEnabled && (
                     <TabsTrigger 
                       value="daily_pass" 
                       className="gap-1 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
@@ -388,6 +412,7 @@ const AdminDashboard = () => {
                       <ClockIcon className="w-4 h-4" />
                       <span>Daily Passes</span>
                     </TabsTrigger>
+                    )}
                     <TabsTrigger 
                       value="payments" 
                       className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
@@ -507,6 +532,7 @@ const AdminDashboard = () => {
                       <UsersIcon className="w-3.5 h-3.5 hidden md:inline" />
                       Members
                     </TabsTrigger>
+                    {isDailyPassEnabled && (
                     <TabsTrigger 
                       value="daily_pass" 
                       className="flex-1 text-xs md:text-sm leading-tight px-2 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all duration-200 gap-1.5"
@@ -514,6 +540,7 @@ const AdminDashboard = () => {
                       <ClockIcon className="w-3.5 h-3.5 hidden md:inline" />
                       Daily Passes
                     </TabsTrigger>
+                    )}
                     <TabsTrigger 
                       value="payments" 
                       className="flex-1 text-xs md:text-sm leading-tight px-2 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all duration-200 gap-1.5"

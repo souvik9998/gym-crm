@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
-import { Lock, User, Phone, Calendar, MapPin, IdCard, Upload, Heart, FileText, Dumbbell } from "lucide-react";
+import { Lock, User, Phone, Calendar, MapPin, IdCard, Upload, Heart, FileText, Dumbbell, Clock } from "lucide-react";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 
 interface FieldSetting {
@@ -28,6 +28,7 @@ interface RegistrationFields {
   health_details: FieldSetting;
   medical_records_upload: FieldSetting;
   self_select_trainer: FieldSetting;
+  daily_pass_enabled: FieldSetting;
 }
 
 const DEFAULT_FIELDS: RegistrationFields = {
@@ -41,6 +42,7 @@ const DEFAULT_FIELDS: RegistrationFields = {
   health_details: { enabled: false, required: false, locked: false },
   medical_records_upload: { enabled: false, required: false, locked: false },
   self_select_trainer: { enabled: true, required: false, locked: false },
+  daily_pass_enabled: { enabled: true, required: false, locked: false },
 };
 
 const FIELD_CONFIG = [
@@ -49,11 +51,12 @@ const FIELD_CONFIG = [
   { key: "gender", label: "Gender", description: "Male / Female / Other", icon: User },
   { key: "date_of_birth", label: "Date of Birth", description: "Member's date of birth", icon: Calendar },
   { key: "address", label: "Address", description: "Residential address", icon: MapPin },
-  { key: "photo_id", label: "Photo ID (Aadhaar/PAN)", description: "ID type and number", icon: IdCard },
-  { key: "identity_proof_upload", label: "Identity Proof Upload", description: "Upload scan/photo of ID document", icon: Upload },
+  { key: "photo_id", label: "Photo ID (Manual Entry)", description: "ID type dropdown and number input by user", icon: IdCard, group: "identity" },
+  { key: "identity_proof_upload", label: "Identity Proof Upload", description: "Upload scan/photo of ID document (PDF/Image)", icon: Upload, group: "identity" },
   { key: "health_details", label: "Health Details", description: "Blood group, height, weight, medical conditions, allergies, emergency contact", icon: Heart },
   { key: "medical_records_upload", label: "Medical Records Upload", description: "Upload medical certificates or health reports", icon: FileText },
   { key: "self_select_trainer", label: "Member Self-Select Trainer", description: "Allow members to choose their own trainer during registration/renewal. If disabled, only admin can assign trainers.", icon: Dumbbell },
+  { key: "daily_pass_enabled", label: "Daily Pass", description: "Enable daily pass system. When disabled, Daily Pass tab is hidden from dashboard and public pages.", icon: Clock },
 ];
 
 export const RegistrationFieldsSettings = () => {
@@ -96,15 +99,28 @@ export const RegistrationFieldsSettings = () => {
   };
 
   const handleToggle = (key: string, type: "enabled" | "required", value: boolean) => {
-    setFields(prev => ({
-      ...prev,
-      [key]: {
+    setFields(prev => {
+      const updated = { ...prev };
+      
+      // Update the target field
+      updated[key as keyof RegistrationFields] = {
         ...prev[key as keyof RegistrationFields],
         [type]: value,
         // If disabling, also unset required
         ...(type === "enabled" && !value ? { required: false } : {}),
-      },
-    }));
+      };
+      
+      // Mutual exclusivity: photo_id and identity_proof_upload
+      if (type === "enabled" && value) {
+        if (key === "photo_id") {
+          updated.identity_proof_upload = { ...prev.identity_proof_upload, enabled: false, required: false };
+        } else if (key === "identity_proof_upload") {
+          updated.photo_id = { ...prev.photo_id, enabled: false, required: false };
+        }
+      }
+      
+      return updated;
+    });
   };
 
   const hasChanges = JSON.stringify(fields) !== JSON.stringify(originalFields);
@@ -170,50 +186,64 @@ export const RegistrationFieldsSettings = () => {
         </div>
       </CardHeader>
       <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0 space-y-3">
-        {FIELD_CONFIG.map(({ key, label, description, icon: Icon }) => {
+        {FIELD_CONFIG.map(({ key, label, description, icon: Icon, group }: any) => {
           const field = fields[key as keyof RegistrationFields];
           const isLocked = field.locked;
+          const isIdentityGroup = group === "identity";
+          const otherIdentityEnabled = key === "photo_id" 
+            ? fields.identity_proof_upload.enabled 
+            : key === "identity_proof_upload" 
+              ? fields.photo_id.enabled 
+              : false;
 
           return (
-            <div
-              key={key}
-              className={`flex items-center justify-between p-3 lg:p-4 rounded-xl border transition-all duration-200 ${
-                field.enabled
-                  ? "bg-accent/5 border-accent/20"
-                  : "bg-muted/20 border-border/40"
-              }`}
-            >
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
-                  field.enabled ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
-                }`}>
-                  <Icon className="w-4 h-4" />
+            <div key={key}>
+              {/* Show "Identity Verification" section header before first identity field */}
+              {key === "photo_id" && (
+                <div className="flex items-center gap-2 pt-2 pb-1">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Identity Verification</span>
+                  <span className="text-[10px] text-muted-foreground">(choose one)</span>
                 </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="font-medium text-sm truncate">{label}</p>
-                    {isLocked && <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />}
+              )}
+              <div
+                className={`flex items-center justify-between p-3 lg:p-4 rounded-xl border transition-all duration-200 ${
+                  field.enabled
+                    ? "bg-accent/5 border-accent/20"
+                    : "bg-muted/20 border-border/40"
+                } ${isIdentityGroup ? "ml-2 border-l-2" : ""}`}
+              >
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
+                    field.enabled ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"
+                  }`}>
+                    <Icon className="w-4 h-4" />
                   </div>
-                  <p className="text-[10px] lg:text-xs text-muted-foreground truncate">{description}</p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-medium text-sm truncate">{label}</p>
+                      {isLocked && <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />}
+                    </div>
+                    <p className="text-[10px] lg:text-xs text-muted-foreground truncate">{description}</p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-4 flex-shrink-0 ml-2">
-                {!isLocked && field.enabled && (
-                  <div className="flex items-center gap-1.5">
-                    <Label className="text-[10px] text-muted-foreground">Required</Label>
-                    <Switch
-                      checked={field.required}
-                      onCheckedChange={(v) => handleToggle(key, "required", v)}
-                      className="scale-75"
-                    />
-                  </div>
-                )}
-                <Switch
-                  checked={field.enabled}
-                  onCheckedChange={(v) => handleToggle(key, "enabled", v)}
-                  disabled={isLocked}
-                />
+                <div className="flex items-center gap-4 flex-shrink-0 ml-2">
+                  {!isLocked && field.enabled && key !== "daily_pass_enabled" && (
+                    <div className="flex items-center gap-1.5">
+                      <Label className="text-[10px] text-muted-foreground">Required</Label>
+                      <Switch
+                        checked={field.required}
+                        onCheckedChange={(v) => handleToggle(key, "required", v)}
+                        className="scale-75"
+                      />
+                    </div>
+                  )}
+                  <Switch
+                    checked={field.enabled}
+                    onCheckedChange={(v) => handleToggle(key, "enabled", v)}
+                    disabled={isLocked}
+                  />
+                </div>
               </div>
             </div>
           );
