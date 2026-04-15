@@ -1047,7 +1047,7 @@ export const MembersTable = ({
               <div 
                 key={member.id}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-all duration-200 active:scale-[0.99] active:bg-muted/60",
+                  "flex items-center gap-2.5 px-3 py-3 cursor-pointer transition-all duration-200 active:scale-[0.99] active:bg-muted/60",
                   "hover:bg-muted/40",
                   selectedMembers.has(member.id) && "bg-primary/5",
                   isNewMember(member) && "border-l-2 border-l-emerald-500 bg-emerald-500/5"
@@ -1055,11 +1055,15 @@ export const MembersTable = ({
                 style={{ animationDelay: `${index * 40}ms` }}
                 onClick={() => handleMemberClick(member)}
               >
-                {/* Avatar */}
-                <div className="w-10 h-10 rounded-full bg-muted/80 flex items-center justify-center flex-shrink-0 ring-1 ring-border/50 transition-transform duration-200 active:scale-95">
-                  <span className="text-sm font-semibold text-muted-foreground">
-                    {member.name.charAt(0).toUpperCase()}
-                  </span>
+                {/* Selection Checkbox */}
+                <div 
+                  className="flex-shrink-0"
+                  onClick={(e) => toggleMemberSelection(member.id, e)}
+                >
+                  <Checkbox
+                    checked={selectedMembers.has(member.id)}
+                    className="h-5 w-5 rounded-md border-border/60 data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all duration-150"
+                  />
                 </div>
                 
                 {/* Member Info */}
