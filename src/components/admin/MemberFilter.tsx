@@ -1,13 +1,16 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, XCircle, Clock, ChevronDown, UserX, Users, Dumbbell } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, ChevronDown, UserX, Users, Dumbbell, Filter } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
+import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 
 export type MemberFilterCategory = "all" | "active" | "expired" | "inactive" | "expiring_soon" | "pt";
 

@@ -954,15 +954,16 @@ export const MembersTable = ({
     <div className="w-full space-y-3">
       {/* Bulk action bar */}
       {selectedMembers.size > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
-          <span className="text-sm font-medium">
+        <div className="flex flex-wrap items-center justify-between gap-2 p-2 md:p-3 bg-primary/5 border border-primary/20 rounded-lg">
+          <span className="text-xs md:text-sm font-medium">
             {selectedMembers.size} member{selectedMembers.size > 1 ? "s" : ""} selected
           </span>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setSelectedMembers(new Set())}
+              className="h-7 md:h-8 text-[10px] md:text-xs px-2 md:px-3"
             >
               Clear
             </Button>
@@ -971,10 +972,10 @@ export const MembersTable = ({
               size="sm"
               onClick={() => handleBulkWhatsApp("promotional")}
               disabled={bulkActionType !== null}
-              className="gap-2"
+              className="gap-1 md:gap-2 h-7 md:h-8 text-[10px] md:text-xs px-2 md:px-3"
             >
-              <MessageCircle className="w-4 h-4" />
-              {bulkActionType === "promotional" ? "Sending..." : "Send Promotional"}
+              <MessageCircle className="w-3 h-3 md:w-4 md:h-4" />
+              {bulkActionType === "promotional" ? "Sending..." : "Promotional"}
             </Button>
             {hasExpiringOrExpiredSelected() && (
               <Button
@@ -982,10 +983,10 @@ export const MembersTable = ({
                 size="sm"
                 onClick={() => handleBulkWhatsApp("expiry_reminder")}
                 disabled={bulkActionType !== null}
-                className="gap-2"
+                className="gap-1 md:gap-2 h-7 md:h-8 text-[10px] md:text-xs px-2 md:px-3"
               >
-                <Clock className="w-4 h-4" />
-                {bulkActionType === "expiry_reminder" ? "Sending..." : "Send Expiry Reminder"}
+                <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                {bulkActionType === "expiry_reminder" ? "Sending..." : "Expiry Reminder"}
               </Button>
             )}
           </div>
