@@ -214,15 +214,20 @@ export default function EventDetail() {
 
   const handleExport = () => {
     if (filtered.length === 0) { toast.error("No data to export"); return; }
-    const exportData = filtered.map((r: any) => ({
-      Name: r.name,
-      Phone: r.phone,
-      Email: r.email || "-",
-      "Pricing Option": r.event_pricing_options?.name || "-",
-      "Amount Paid": `₹${r.amount_paid}`,
-      "Payment Status": r.payment_status,
-      "Registered At": format(new Date(r.registered_at), "dd/MM/yyyy hh:mm a"),
-    }));
+    const exportData = filtered.map((r: any) => {
+      const itemNames = isMultiSelect && r.registration_items?.length > 0
+        ? r.registration_items.map((i: any) => i.event_pricing_options?.name || "Item").join(", ")
+        : r.event_pricing_options?.name || "-";
+      return {
+        Name: r.name,
+        Phone: r.phone,
+        Email: r.email || "-",
+        [isMultiSelect ? "Selected Items" : "Pricing Option"]: itemNames,
+        "Amount Paid": `₹${r.amount_paid}`,
+        "Payment Status": r.payment_status,
+        "Registered At": format(new Date(r.registered_at), "dd/MM/yyyy hh:mm a"),
+      };
+    });
     exportToExcel(exportData, `${event?.title}_registrations`);
     toast.success("Exported successfully");
   };
