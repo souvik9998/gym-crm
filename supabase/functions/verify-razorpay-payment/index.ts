@@ -254,6 +254,15 @@ Deno.serve(async (req) => {
 
     console.log("Payment signature verified successfully");
 
+    // If skipMemberCreation is set (e.g. event registration), return after verification
+    if (skipMemberCreation) {
+      console.log("skipMemberCreation flag set — returning verification success without member/subscription creation");
+      return new Response(
+        JSON.stringify({ success: true, verified: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
     // Initialize Supabase client with service role
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
