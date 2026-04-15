@@ -169,7 +169,7 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
       const effectiveOptions = getEffectivePricingOptions();
       if (effectiveOptions.length === 0) throw new Error("At least one item is required");
 
-      const effectiveSelectionMode = pricingType === "single" ? "single" : selectionMode;
+      const effectiveSelectionMode = pricingOptions.length <= 1 ? "single" : selectionMode;
 
       const eventData = {
         branch_id: currentBranch.id,
