@@ -31,6 +31,7 @@ export default function Events() {
   const [viewRegistrations, setViewRegistrations] = useState<any>(null);
   const [qrEvent, setQrEvent] = useState<any>(null);
   const [deleteEvent, setDeleteEvent] = useState<any>(null);
+  const [registerEvent, setRegisterEvent] = useState<any>(null);
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["events", currentBranch?.id],
