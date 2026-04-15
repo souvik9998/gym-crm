@@ -191,16 +191,17 @@ export const SimpleAttendanceTab = () => {
   }, [memberList, search, slotMemberIds]);
 
   const stats = useMemo(() => {
-    const total = memberList.length;
+    const source = filteredList;
+    const total = source.length;
     let present = 0, late = 0, absent = 0;
-    memberList.forEach((m) => {
+    source.forEach((m) => {
       const s = localAttendance.get(m.memberId) || "absent";
       if (s === "present") present++;
       else if (s === "late") late++;
       else absent++;
     });
     return { total, present, late, absent };
-  }, [memberList, localAttendance]);
+  }, [filteredList, localAttendance]);
 
   const toggleStatus = useCallback((memberId: string, newStatus: AttendanceStatus) => {
     if (isFutureDate) return;
