@@ -42,27 +42,53 @@ async function sendEventWhatsApp(params: {
   name: string;
   eventTitle: string;
   eventDate: string;
+  eventEndDate?: string | null;
   location?: string | null;
   amount: number;
   branchId: string;
+  branchName?: string | null;
   memberId?: string | null;
+  selectedItems?: { name: string; price: number }[];
 }) {
   try {
+    const dateStr = new Date(params.eventDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+    const timeStr = new Date(params.eventDate).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+    const endDateStr = params.eventEndDate
+      ? new Date(params.eventEndDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
+      : null;
+    const gymName = params.branchName || "Your Gym";
+
+    let message =
+      `🎉 *Event Registration Confirmed!*\n\n` +
+      `Hi ${params.name}, 👋\n\n` +
+      `You've been successfully registered for *${params.eventTitle}*!\n\n` +
+      `📅 *Date:* ${dateStr}${endDateStr ? ` — ${endDateStr}` : ""}\n` +
+      `🕐 *Time:* ${timeStr}`;
+
+    if (params.location) {
+      message += `\n📍 *Venue:* ${params.location}`;
+    }
+
+    // Add selected sub-events / pricing options
+    if (params.selectedItems && params.selectedItems.length > 0) {
+      message += `\n\n🎫 *Registered For:*`;
+      params.selectedItems.forEach((item) => {
+        message += `\n  • ${item.name}${item.price > 0 ? ` — ₹${item.price}` : " — Free"}`;
+      });
+    }
+
+    message += `\n💰 *Total Amount:* ${params.amount === 0 ? "Free" : `₹${params.amount}`}\n\n`;
+    message += `We look forward to seeing you there! 🔥\n\n`;
+    message += `— Team ${gymName}`;
+
     await supabase.functions.invoke("send-whatsapp", {
       body: {
         phone: params.phone,
         name: params.name,
         type: "event_registration",
         branchId: params.branchId,
-        customMessage:
-          `🎉 *Event Registration Confirmed!*\n\n` +
-          `Hi ${params.name}, 👋\n\n` +
-          `You've been successfully registered for *${params.eventTitle}*!\n\n` +
-          `📅 *Date:* ${new Date(params.eventDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}\n` +
-          `🕐 *Time:* ${new Date(params.eventDate).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}` +
-          (params.location ? `\n📍 *Venue:* ${params.location}` : "") +
-          `\n💰 *Amount:* ${params.amount === 0 ? "Free" : `₹${params.amount}`}\n\n` +
-          `We look forward to seeing you there! 🔥`,
+        branchName: params.branchName,
+        customMessage: message,
         memberIds: params.memberId ? [params.memberId] : undefined,
       },
     });
