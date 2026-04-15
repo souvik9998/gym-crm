@@ -100,12 +100,15 @@ async function sendEventWhatsApp(params: {
 export default function EventRegistration() {
   const { eventSlug } = useParams<{ eventSlug: string }>();
   const [eventId, setEventId] = useState<string | null>(null);
+  const [slugResolving, setSlugResolving] = useState(true);
 
   // Resolve slug/UUID to event ID
   useEffect(() => {
-    if (!eventSlug) return;
+    if (!eventSlug) { setSlugResolving(false); return; }
+    setSlugResolving(true);
     resolveEventId(eventSlug).then((id) => {
       setEventId(id || eventSlug);
+      setSlugResolving(false);
     });
   }, [eventSlug]);
   const [step, setStep] = useState<Step>("phone");
@@ -527,7 +530,7 @@ export default function EventRegistration() {
     }
   };
 
-  if (eventLoading) {
+  if (slugResolving || eventLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
