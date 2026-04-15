@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,14 @@ interface AttendanceDatePickerProps {
   onChange: (value: string) => void;
   label?: string;
   className?: string;
+  maxDate?: Date; // Optional max date (defaults to today for attendance marking)
+  disableFuture?: boolean;
 }
 
-export const AttendanceDatePicker = ({ value, onChange, label, className }: AttendanceDatePickerProps) => {
+export const AttendanceDatePicker = ({ value, onChange, label, className, maxDate, disableFuture = false }: AttendanceDatePickerProps) => {
   const [open, setOpen] = useState(false);
   const date = value ? parseISO(value) : undefined;
+  const today = startOfDay(new Date());
 
   const handleSelect = (d: Date | undefined) => {
     if (d) {
@@ -23,6 +26,10 @@ export const AttendanceDatePicker = ({ value, onChange, label, className }: Atte
       setOpen(false);
     }
   };
+
+  const disabledDays = disableFuture
+    ? (day: Date) => isAfter(startOfDay(day), maxDate || today)
+    : undefined;
 
   return (
     <div className={cn("flex flex-col gap-1", className)}>
@@ -45,6 +52,7 @@ export const AttendanceDatePicker = ({ value, onChange, label, className }: Atte
             mode="single"
             selected={date}
             onSelect={handleSelect}
+            disabled={disabledDays}
             initialFocus
             className={cn("p-3 pointer-events-auto")}
             classNames={{
@@ -72,7 +80,7 @@ export const AttendanceDatePicker = ({ value, onChange, label, className }: Atte
               day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground shadow-sm",
               day_today: "bg-accent text-accent-foreground font-semibold",
               day_outside: "text-muted-foreground/40",
-              day_disabled: "text-muted-foreground/30",
+              day_disabled: "text-muted-foreground/30 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground/30",
             }}
           />
         </PopoverContent>
