@@ -1049,12 +1049,12 @@ const AdminSettings = () => {
           <div className="min-w-0">
 
           {/* Registration Fields Tab */}
-          <TabsContent value="registration" className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in">
+          <TabsContent value="registration" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
             <RegistrationFieldsSettings />
           </TabsContent>
 
           {/* Packages Tab */}
-          <TabsContent value="packages" className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in">
+          <TabsContent value="packages" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
             {isLoadingData ? (
               <SettingsPackagesSkeleton />
             ) : (
@@ -1377,19 +1377,19 @@ const AdminSettings = () => {
           </TabsContent>
 
           {/* Branches Tab */}
-          <TabsContent value="branches" className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in">
+          <TabsContent value="branches" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
             <BranchManagement />
           </TabsContent>
 
           {/* Holiday Calendar Tab */}
-          <TabsContent value="holidays" className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in">
+          <TabsContent value="holidays" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
             <Suspense fallback={<div className="space-y-4"><div className="h-64 bg-muted/30 rounded-xl animate-pulse" /><div className="h-48 bg-muted/30 rounded-xl animate-pulse" /></div>}>
               <HolidayCalendarTab />
             </Suspense>
           </TabsContent>
 
           {/* WhatsApp Templates */}
-          <TabsContent value="whatsapp" className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in">
+          <TabsContent value="whatsapp" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
             {/* WhatsApp Enable/Disable Toggle */}
             <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
               <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
@@ -1534,7 +1534,7 @@ const AdminSettings = () => {
           </TabsContent>
 
           {/* General Settings */}
-          <TabsContent value="general" className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in">
+          <TabsContent value="general" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
             {isLoadingData ? (
               <SettingsGeneralSkeleton />
             ) : (
@@ -1791,12 +1791,12 @@ const AdminSettings = () => {
           </TabsContent>
 
           {/* Coupons Tab */}
-          <TabsContent value="coupons" className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in">
+          <TabsContent value="coupons" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
             <CouponsDiscountsTab />
           </TabsContent>
 
           {/* Subscription Plan Tab */}
-          <TabsContent value="subscription" className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in">
+          <TabsContent value="subscription" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
             <SubscriptionPlanTab />
           </TabsContent>
           </div>{/* end content area */}
