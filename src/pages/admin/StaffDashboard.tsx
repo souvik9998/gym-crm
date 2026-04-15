@@ -481,11 +481,13 @@ const StaffDashboard = () => {
                         trainerFilter={trainerFilter}
                         compact={true}
                       />
-                      <TrainerFilterDropdown
-                        value={trainerFilter}
-                        onChange={(v) => { setTrainerFilter(v); setTimeSlotFilter(null); }}
-                        compact={true}
-                      />
+                      {showTrainerFilter && (
+                        <TrainerFilterDropdown
+                          value={trainerFilter}
+                          onChange={(v) => { setTrainerFilter(v); setTimeSlotFilter(null); }}
+                          compact={true}
+                        />
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <Popover open={sortOpen} onOpenChange={setSortOpen}>
@@ -565,10 +567,12 @@ const StaffDashboard = () => {
                       counts={filterCounts}
                       mobileMode={false}
                     />
-                    <TrainerFilterDropdown
-                      value={trainerFilter}
-                      onChange={(v) => { setTrainerFilter(v); setTimeSlotFilter(null); }}
-                    />
+                    {showTrainerFilter && (
+                      <TrainerFilterDropdown
+                        value={trainerFilter}
+                        onChange={(v) => { setTrainerFilter(v); setTimeSlotFilter(null); }}
+                      />
+                    )}
                     <TimeSlotFilterDropdown
                       value={timeSlotFilter}
                       onChange={setTimeSlotFilter}
