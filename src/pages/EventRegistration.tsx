@@ -266,8 +266,14 @@ export default function EventRegistration() {
   // Razorpay payment flow
   const handlePayment = async () => {
     if (!event || !eventId || !selectedPricing) return;
-    const amount = Number(selectedPricing.price);
-    if (amount <= 0) { registerFreeMutation.mutate(); return; }
+    const baseAmount = Number(selectedPricing.price);
+    const couponDisc = appliedCoupon?.discountAmount || 0;
+    const amount = Math.max(0, baseAmount - couponDisc);
+    if (amount <= 0) {
+      // Coupon made it free - register directly
+      registerFreeMutation.mutate();
+      return;
+    }
 
     setIsPaymentLoading(true);
     setPaymentStage("idle");
