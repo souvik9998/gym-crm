@@ -1129,7 +1129,7 @@ export const MembersTable = ({
                         {isInactive(member) && (
                           <DropdownMenuItem onClick={(e) => handleMoveToActive(member, e)}>
                             <UserCheck className="w-4 h-4 mr-2" />
-                            Move to Active
+                            Restore Status
                           </DropdownMenuItem>
                         )}
                         {!isInactive(member) && member.subscription && (
@@ -1414,7 +1414,7 @@ export const MembersTable = ({
                               {isInactive(member) && (
                                 <DropdownMenuItem onClick={(e) => handleMoveToActive(member, e)}>
                                   <UserCheck className="w-4 h-4 mr-2" />
-                                  Move to Active
+                                  Restore Status
                                 </DropdownMenuItem>
                               )}
                               {!isInactive(member) && member.subscription && (
