@@ -195,12 +195,15 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         status,
         whatsapp_notify_on_register: whatsappNotify,
         selection_mode: effectiveSelectionMode,
+        slug: '',
       };
 
       let eventId: string;
 
       if (isEditing) {
-        const { error } = await supabase.from("events").update(eventData).eq("id", editEvent.id);
+        // Don't send slug on update - keep existing
+        const { slug, ...updateData } = eventData;
+        const { error } = await supabase.from("events").update(updateData).eq("id", editEvent.id);
         if (error) throw error;
         eventId = editEvent.id;
 

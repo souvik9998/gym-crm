@@ -14,7 +14,7 @@ interface Props {
 
 export function EventQRDialog({ open, onOpenChange, event }: Props) {
   const qrRef = useRef<HTMLDivElement>(null);
-  const eventUrl = `${window.location.origin}/event/${event.id}`;
+  const eventUrl = `${window.location.origin}/event/${event.slug || event.id}`;
 
   const copyLink = () => {
     navigator.clipboard.writeText(eventUrl);

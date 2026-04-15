@@ -7,6 +7,7 @@ import { Phone, ArrowRight, Shield, Clock, CreditCard, Dumbbell, UserPlus, Arrow
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { fetchPublicBranch, fetchDefaultBranch } from "@/api/publicData";
+import { resolveBranch } from "@/lib/slugResolver";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import { phoneSchema, validateField, validateForm } from "@/lib/validation";
 import { z } from "zod";
@@ -19,9 +20,10 @@ const formSchema = z.object({
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { branchId } = useParams<{ branchId?: string }>();
+  const { branchSlug } = useParams<{ branchSlug?: string }>();
+  const [resolvedBranchId, setResolvedBranchId] = useState<string | null>(null);
   const [phone, setPhone] = useState(() => {
-    const saved = sessionStorage.getItem(`registration-phone-${branchId || "default"}`);
+    const saved = sessionStorage.getItem(`registration-phone-${branchSlug || "default"}`);
     return saved || "";
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -31,8 +33,8 @@ const Index = () => {
   const [showOptions, setShowOptions] = useState(false);
   const [allowSelfSelectTrainer, setAllowSelfSelectTrainer] = useState(true);
   const [branchInfo, setBranchInfo] = useState<{ id: string; name: string; logo_url?: string | null } | null>(() => {
-    if (branchId) {
-      const cached = sessionStorage.getItem(`branch-info-${branchId}`);
+    if (branchSlug) {
+      const cached = sessionStorage.getItem(`branch-info-${branchSlug}`);
       if (cached) {
         try { return JSON.parse(cached); } catch { /* ignore */ }
       }
@@ -43,60 +45,67 @@ const Index = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [phoneError, setPhoneError] = useState<string | undefined>();
   
+  // Use resolved branch ID for all API calls
+  const branchId = resolvedBranchId || branchInfo?.id;
 
-  // Redirect to default branch if no branchId is provided
+  // Redirect to default branch if no branchSlug is provided
   useEffect(() => {
-    if (!branchId && !isRedirecting) {
+    if (!branchSlug && !isRedirecting) {
       setIsRedirecting(true);
-      fetchDefaultBranch().then((branch) => {
-        if (branch) {
-          navigate(`/b/${branch.id}`, { replace: true });
-        }
-      });
-    }
-  }, [branchId, navigate, isRedirecting]);
-
-  // Fetch branch info - try direct DB first (fast), edge function as fallback
-  useEffect(() => {
-    if (!branchId) return;
-    if (branchInfo) {
-      // Already have cached data, still refresh in background
-      setIsBranchLoading(false);
-    }
-    
-    // Try direct Supabase query first (much faster, no cold start)
-    const fetchDirect = async () => {
-      try {
-        const { data, error } = await supabase
+      // Fetch default branch and redirect using its slug
+      (async () => {
+        const { data } = await supabase
           .from("branches")
-          .select("id, name, logo_url")
-          .eq("id", branchId)
+          .select("id, slug, name, logo_url")
+          .eq("is_default", true)
           .eq("is_active", true)
           .is("deleted_at", null)
           .maybeSingle();
-        
-        if (!error && data) {
-          const info = { id: data.id, name: data.name, logo_url: data.logo_url };
+        if (data?.slug) {
+          navigate(`/b/${data.slug}`, { replace: true });
+        } else {
+          const fallback = await fetchDefaultBranch();
+          if (fallback) navigate(`/b/${fallback.id}`, { replace: true });
+        }
+      })();
+    }
+  }, [branchSlug, navigate, isRedirecting]);
+
+  // Resolve slug to branch ID and info
+  useEffect(() => {
+    if (!branchSlug) return;
+    if (branchInfo) {
+      setIsBranchLoading(false);
+      setResolvedBranchId(branchInfo.id);
+    }
+    
+    const resolve = async () => {
+      try {
+        const branch = await resolveBranch(branchSlug);
+        if (branch) {
+          const info = { id: branch.id, name: branch.name, logo_url: branch.logo_url };
           setBranchInfo(info);
-          sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
+          setResolvedBranchId(branch.id);
+          sessionStorage.setItem(`branch-info-${branchSlug}`, JSON.stringify(info));
           setIsBranchLoading(false);
           return;
         }
-      } catch { /* fall through to edge function */ }
+      } catch { /* fall through */ }
       
-      // Fallback to edge function (for cases where RLS blocks anonymous read)
+      // Fallback to edge function
       try {
-        const branch = await fetchPublicBranch(branchId);
+        const branch = await fetchPublicBranch(branchSlug);
         if (branch) {
           const info = { id: branch.id, name: branch.name };
           setBranchInfo(info);
-          sessionStorage.setItem(`branch-info-${branchId}`, JSON.stringify(info));
+          setResolvedBranchId(branch.id);
+          sessionStorage.setItem(`branch-info-${branchSlug}`, JSON.stringify(info));
         }
       } catch { /* ignore */ }
       setIsBranchLoading(false);
     };
     
-    fetchDirect();
+    resolve();
 
     // Fetch trainer self-select setting
     supabase
@@ -205,7 +214,7 @@ const Index = () => {
         setExistingMember(member);
         setShowOptions(true);
       } else {
-        const basePath = branchId ? `/b/${branchId}/register` : "/register";
+        const basePath = branchSlug ? `/b/${branchSlug}/register` : "/register";
         navigate(basePath, { state: { phone, branchId, branchName: branchInfo?.name } });
       }
     } catch (error: any) {
@@ -218,7 +227,7 @@ const Index = () => {
   };
 
   const handleOptionSelect = (option: "renew" | "extend-pt") => {
-    const basePath = branchId ? `/b/${branchId}` : "";
+    const basePath = branchSlug ? `/b/${branchSlug}` : "";
     if (option === "renew") {
       navigate(`${basePath}/renew`, { state: { member: existingMember, branchId, branchName: branchInfo?.name } });
     } else {

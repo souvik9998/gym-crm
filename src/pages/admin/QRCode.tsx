@@ -26,12 +26,14 @@ const QRCodePage = () => {
 
   const getPortalUrl = () => {
     if (!currentBranch || typeof window === "undefined") return "";
-    return `${window.location.origin}/b/${currentBranch.id}`;
+    const slug = (currentBranch as any).slug || currentBranch.id;
+    return `${window.location.origin}/b/${slug}`;
   };
 
   const getAttendanceUrl = () => {
     if (!currentBranch || typeof window === "undefined") return "";
-    return `${window.location.origin}/check-in?branch_id=${currentBranch.id}`;
+    const slug = (currentBranch as any).slug || currentBranch.id;
+    return `${window.location.origin}/check-in?branch=${slug}`;
   };
 
   const handleCopy = async (url: string, key: string) => {

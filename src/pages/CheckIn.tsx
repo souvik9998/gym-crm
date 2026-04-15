@@ -14,13 +14,15 @@ import {
 } from "@/api/attendance";
 import { supabase } from "@/integrations/supabase/client";
 import PoweredByBadge from "@/components/PoweredByBadge";
+import { resolveBranch, isUUID } from "@/lib/slugResolver";
 
 type CheckInStatus = "loading" | "login" | "success" | "checked_out" | "expired" | "duplicate" | "device_mismatch" | "not_found" | "error";
 
 const CheckIn = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const branchId = searchParams.get("branch_id") || "";
+  const branchParam = searchParams.get("branch") || searchParams.get("branch_id") || "";
+  const [branchId, setBranchId] = useState(isUUID(branchParam) ? branchParam : "");
 
   const [status, setStatus] = useState<CheckInStatus>("loading");
   const [message, setMessage] = useState("");
@@ -31,6 +33,15 @@ const CheckIn = () => {
   const [phone, setPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+
+  // Resolve slug to UUID if needed
+  useEffect(() => {
+    if (branchParam && !isUUID(branchParam)) {
+      resolveBranch(branchParam).then((b) => {
+        if (b) setBranchId(b.id);
+      });
+    }
+  }, [branchParam]);
 
   const processResult = useCallback((result: any) => {
     setUserName(result.name || result.member_name || "");

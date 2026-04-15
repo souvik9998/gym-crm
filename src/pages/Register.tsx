@@ -36,10 +36,10 @@ interface RegistrationFieldSettings {
 const Register = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { branchId: urlBranchId } = useParams<{ branchId?: string }>();
+  const { branchSlug } = useParams<{ branchSlug?: string }>();
   const { initiatePayment, isLoading: isPaymentLoading, paymentStage } = useRazorpay();
   const { phone, branchId: stateBranchId, branchName: stateBranchName } = (location.state as { phone: string; branchId?: string; branchName?: string }) || {};
-  const branchId = urlBranchId || stateBranchId;
+  const branchId = stateBranchId;
   
   const [step, setStep] = useState<Step>("details");
   const [memberDetails, setMemberDetails] = useState<MemberDetailsData | null>(null);
@@ -84,7 +84,7 @@ const Register = () => {
 
   useEffect(() => {
     if (!phone) {
-      const redirectPath = branchId ? `/b/${branchId}` : "/admin/login";
+      const redirectPath = branchSlug ? `/b/${branchSlug}` : "/admin/login";
       navigate(redirectPath, { replace: true });
     }
   }, [phone, navigate, branchId]);
@@ -297,7 +297,7 @@ const Register = () => {
               } else if (step === "health") {
                 setStep("details");
               } else {
-                navigate(branchId ? `/b/${branchId}` : "/admin/login");
+                navigate(branchSlug ? `/b/${branchSlug}` : "/admin/login");
               }
             }}
           >
@@ -327,7 +327,7 @@ const Register = () => {
         {step === "details" && (
           <MemberDetailsForm
             onSubmit={handleDetailsSubmit}
-            onBack={() => navigate(branchId ? `/b/${branchId}` : "/admin/login")}
+            onBack={() => navigate(branchSlug ? `/b/${branchSlug}` : "/admin/login")}
             initialData={memberDetails}
           />
         )}
