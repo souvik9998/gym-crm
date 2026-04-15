@@ -83,6 +83,57 @@ export default function EventRegistration() {
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const [paymentStage, setPaymentStage] = useState<PaymentStage>("idle");
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState("");
+
+  const calculateCouponDiscount = (coupon: Omit<AppliedCoupon, 'discountAmount'>, basePrice: number): number => {
+    if (basePrice <= 0) return 0;
+    let discount = 0;
+    if (coupon.discount_type === "percentage") {
+      discount = (basePrice * coupon.discount_value) / 100;
+      if (coupon.max_discount_cap && discount > coupon.max_discount_cap) discount = coupon.max_discount_cap;
+    } else if (coupon.discount_type === "flat") {
+      discount = coupon.discount_value;
+    }
+    return Math.min(Math.round(discount), basePrice);
+  };
+
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim().toUpperCase();
+    if (!code) { setCouponError("Enter a coupon code"); return; }
+    setCouponLoading(true);
+    setCouponError("");
+    try {
+      const { data: coupon, error } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("code", code)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (error) throw error;
+      if (!coupon) { setCouponError("Invalid coupon code"); return; }
+      const applicableOn = coupon.applicable_on as any;
+      if (!applicableOn?.event) { setCouponError("This coupon is not valid for events"); return; }
+      const today = new Date().toISOString().split("T")[0];
+      if (coupon.start_date > today) { setCouponError("Coupon is not yet active"); return; }
+      if (coupon.end_date && coupon.end_date < today) { setCouponError("Coupon has expired"); return; }
+      if (coupon.total_usage_limit && coupon.usage_count >= coupon.total_usage_limit) { setCouponError("Coupon usage limit reached"); return; }
+      if (coupon.applicable_branch_ids?.length > 0 && !coupon.applicable_branch_ids.includes(event?.branch_id)) { setCouponError("Coupon not valid for this branch"); return; }
+      const basePrice = Number(selectedPricing?.price || 0);
+      const discountAmount = calculateCouponDiscount(coupon, basePrice);
+      setAppliedCoupon({ id: coupon.id, code: coupon.code, discount_type: coupon.discount_type, discount_value: coupon.discount_value, max_discount_cap: coupon.max_discount_cap, discountAmount });
+    } catch (err: any) {
+      setCouponError(err.message || "Failed to validate coupon");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => { setAppliedCoupon(null); setCouponCode(""); setCouponError(""); };
+
   const { data: event, isLoading: eventLoading } = useQuery({
     queryKey: ["public-event", eventId],
     queryFn: async () => {
