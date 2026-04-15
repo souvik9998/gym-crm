@@ -18,10 +18,11 @@ import {
   ClockIcon,
   UserGroupIcon,
   CheckBadgeIcon,
-  FunnelIcon,
 } from "@heroicons/react/24/outline";
 import { AttendanceDatePicker } from "./AttendanceDatePicker";
-import { useAttendanceFilters, formatSlotTime } from "@/hooks/queries/useAttendanceFilters";
+import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
+import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
+import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
 
 type AttendanceStatus = "present" | "absent" | "late";
 
