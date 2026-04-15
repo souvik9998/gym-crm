@@ -19,6 +19,8 @@ import {
   ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAttendanceFilters, formatSlotTime } from "@/hooks/queries/useAttendanceFilters";
+import { UserGroupIcon, FunnelIcon } from "@heroicons/react/24/outline";
 
 function getMonthDates(year: number, month: number): (string | null)[][] {
   const first = new Date(year, month, 1);
@@ -55,6 +57,14 @@ export const AttendanceHistoryTab = () => {
   const [search, setSearch] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
   const [activeView, setActiveView] = useState("calendar");
+  const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+
+  const { trainers, allSlots, isLimitedAccess } = useAttendanceFilters();
+  const filteredSlots = useMemo(() => {
+    if (selectedTrainerId) return allSlots.filter(s => s.trainer_id === selectedTrainerId);
+    return allSlots;
+  }, [allSlots, selectedTrainerId]);
 
   const weeks = useMemo(() => getMonthDates(currentMonth.year, currentMonth.month), [currentMonth]);
   const monthStart = `${currentMonth.year}-${String(currentMonth.month + 1).padStart(2, "0")}-01`;
