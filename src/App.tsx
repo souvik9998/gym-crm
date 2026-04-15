@@ -110,16 +110,21 @@ const App = () => (
                     </Suspense>
                   </ProtectedRoute>
                 } />
-                <Route path="/admin/attendance" element={
-                  <ProtectedRoute requiredPermission="admin_only" requiredModule="attendance">
-                    <Suspense fallback={<PageLoader />}>
-                      <Attendance />
-                    </Suspense>
-                  </ProtectedRoute>
-                } />
               </Route>
 
               {/* Permission-gated routes with persistent layout */}
+              <Route element={
+                <ProtectedRoute requiredPermission="can_access_attendance" requiredModule="attendance">
+                  <AdminLayoutRoute />
+                </ProtectedRoute>
+              }>
+                <Route path="/admin/attendance" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <Attendance />
+                  </Suspense>
+                } />
+              </Route>
+
               <Route element={
                 <ProtectedRoute requiredPermission="can_change_settings">
                   <AdminLayoutRoute />
