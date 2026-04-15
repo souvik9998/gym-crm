@@ -1083,7 +1083,7 @@ export const MembersTable = ({
                             Move to Active
                           </DropdownMenuItem>
                         )}
-                        {!isInactive(member) && isExpired(member) && member.subscription && (
+                        {!isInactive(member) && member.subscription && (
                           <DropdownMenuItem onClick={(e) => handleMoveToInactive(member, e)}>
                             <UserX className="w-4 h-4 mr-2" />
                             Move to Inactive
@@ -1362,7 +1362,7 @@ export const MembersTable = ({
                                   Move to Active
                                 </DropdownMenuItem>
                               )}
-                              {!isInactive(member) && isExpired(member) && member.subscription && (
+                              {!isInactive(member) && member.subscription && (
                                 <DropdownMenuItem onClick={(e) => handleMoveToInactive(member, e)}>
                                   <UserX className="w-4 h-4 mr-2" />
                                   Move to Inactive
