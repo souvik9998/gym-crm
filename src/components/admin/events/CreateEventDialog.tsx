@@ -396,17 +396,25 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
                     <div className="relative w-28 flex-shrink-0">
                       <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₹</span>
                       <Input
-                        type="number"
-                        value={p.price}
-                        onChange={(e) => updatePricing(i, "price", Number(e.target.value))}
+                        type="text"
+                        inputMode="numeric"
+                        value={p.price === 0 ? "" : String(p.price)}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, "");
+                          updatePricing(i, "price", val === "" ? 0 : Number(val));
+                        }}
+                        placeholder="0"
                         className="rounded-lg h-9 text-sm pl-7"
-                        min={0}
                       />
                     </div>
                     <Input
-                      type="number"
-                      value={p.capacity_limit ?? ""}
-                      onChange={(e) => updatePricing(i, "capacity_limit", e.target.value ? Number(e.target.value) : null)}
+                      type="text"
+                      inputMode="numeric"
+                      value={p.capacity_limit ? String(p.capacity_limit) : ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, "");
+                        updatePricing(i, "capacity_limit", val === "" ? null : Number(val));
+                      }}
                       placeholder="Capacity"
                       className="rounded-lg h-9 text-sm w-24 flex-shrink-0"
                       min={0}
