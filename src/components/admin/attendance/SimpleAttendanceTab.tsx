@@ -68,7 +68,38 @@ export const SimpleAttendanceTab = () => {
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
 
-  // Trainer & slot filters now use dashboard dropdowns (no custom hook needed)
+  // Fetch slot-member mapping for trainer/slot filtering
+  const { data: slotMemberIds } = useQuery({
+    queryKey: ["slot-member-ids-filter", branchId, selectedTrainerId, selectedSlotId],
+    queryFn: async (): Promise<string[] | null> => {
+      if (!branchId) return null;
+      // If no filter active, return null (show all)
+      if (!selectedTrainerId && !selectedSlotId) return null;
+
+      // Get relevant slot IDs
+      let slotIds: string[] = [];
+      if (selectedSlotId) {
+        slotIds = [selectedSlotId];
+      } else if (selectedTrainerId) {
+        const { data: slots } = await supabase
+          .from("trainer_time_slots" as any)
+          .select("id")
+          .eq("branch_id", branchId)
+          .eq("trainer_id", selectedTrainerId)
+          .eq("status", "available");
+        slotIds = (slots as any[] || []).map((s: any) => s.id);
+      }
+      if (slotIds.length === 0) return [];
+
+      const { data: tsm } = await supabase
+        .from("time_slot_members" as any)
+        .select("member_id")
+        .in("time_slot_id", slotIds);
+      return [...new Set((tsm as any[] || []).map((t: any) => t.member_id))];
+    },
+    enabled: !!branchId && (!!selectedTrainerId || !!selectedSlotId),
+    staleTime: 30000,
+  });
 
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
   const isFutureDate = selectedDate > today;
@@ -146,10 +177,18 @@ export const SimpleAttendanceTab = () => {
   }, [activeMembers]);
 
   const filteredList = useMemo(() => {
-    if (!search.trim()) return memberList;
-    const q = search.toLowerCase();
-    return memberList.filter((m) => m.memberName.toLowerCase().includes(q) || m.memberPhone.includes(q));
-  }, [memberList, search]);
+    let list = memberList;
+    // Apply trainer/slot filter
+    if (slotMemberIds !== undefined && slotMemberIds !== null) {
+      const idSet = new Set(slotMemberIds);
+      list = list.filter((m) => idSet.has(m.memberId));
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((m) => m.memberName.toLowerCase().includes(q) || m.memberPhone.includes(q));
+    }
+    return list;
+  }, [memberList, search, slotMemberIds]);
 
   const stats = useMemo(() => {
     const total = memberList.length;
