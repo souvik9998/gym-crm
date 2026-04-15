@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
+import { logUserActivity } from "@/hooks/useUserActivityLog";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -345,7 +346,18 @@ export default function EventRegistration() {
         });
       }
     },
-    onSuccess: () => setRegistered(true),
+    onSuccess: () => {
+      setRegistered(true);
+      logUserActivity({
+        type: "event_registration",
+        description: `User "${name}" registered for event "${event?.title}" (free)`,
+        memberName: name.trim(),
+        memberPhone: phone,
+        amount: 0,
+        branchId: event?.branch_id,
+        metadata: { event_id: eventId, event_title: event?.title, payment_type: "free" },
+      });
+    },
     onError: (err: any) => toast.error("Registration failed", { description: err.message }),
   });
 
@@ -423,6 +435,15 @@ export default function EventRegistration() {
             setIsPaymentLoading(false);
             await new Promise((r) => setTimeout(r, 400));
             setRegistered(true);
+            logUserActivity({
+              type: "event_registration",
+              description: `User "${name}" registered for event "${event?.title}" (paid ₹${amount})`,
+              memberName: name.trim(),
+              memberPhone: phone,
+              amount,
+              branchId: event?.branch_id,
+              metadata: { event_id: eventId, event_title: event?.title, payment_type: "razorpay", razorpay_payment_id: response.razorpay_payment_id },
+            });
           } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : "Payment verification failed";
             isVerifying = false;

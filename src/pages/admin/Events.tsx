@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +30,8 @@ export default function Events() {
   const { currentBranch } = useBranch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
+  const { isAdmin } = useIsAdmin();
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<any>(null);
@@ -50,13 +56,30 @@ export default function Events() {
 
   const deleteMutation = useMutation({
     mutationFn: async (eventId: string) => {
+      // Get event name before deletion for logging
+      const eventToDelete = events.find((e: any) => e.id === eventId);
       const { error } = await supabase.from("events").delete().eq("id", eventId);
       if (error) throw error;
+      return eventToDelete;
     },
-    onSuccess: () => {
+    onSuccess: (deletedEvent: any) => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
       toast.success("Event deleted");
       setDeleteEvent(null);
+
+      const desc = `${isStaffLoggedIn ? `Staff "${staffUser?.fullName}"` : "Admin"} deleted event "${deletedEvent?.title || "Unknown"}"`;
+      if (isStaffLoggedIn && staffUser) {
+        logStaffActivity({
+          category: "events", type: "event_deleted", description: desc,
+          entityType: "events", entityName: deletedEvent?.title,
+          branchId: currentBranch?.id, staffId: staffUser.id, staffName: staffUser.fullName, staffPhone: staffUser.phone,
+        });
+      } else if (isAdmin) {
+        logAdminActivity({
+          category: "events", type: "event_deleted", description: desc,
+          entityType: "events", entityName: deletedEvent?.title, branchId: currentBranch?.id,
+        });
+      }
     },
     onError: (err: any) => toast.error("Failed to delete", { description: err.message }),
   });

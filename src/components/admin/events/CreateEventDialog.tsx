@@ -2,6 +2,10 @@ import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +46,8 @@ interface Props {
 export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
   const { currentBranch } = useBranch();
   const queryClient = useQueryClient();
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
+  const { isAdmin } = useIsAdmin();
   const isEditing = !!editEvent;
 
   const [title, setTitle] = useState("");
@@ -195,6 +201,38 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["events"] });
       toast.success(isEditing ? "Event updated" : "Event created");
+
+      // Activity logging
+      const activityType = isEditing ? "event_updated" : "event_created";
+      const desc = isEditing
+        ? `${isStaffLoggedIn ? `Staff "${staffUser?.fullName}"` : "Admin"} updated event "${title}"`
+        : `${isStaffLoggedIn ? `Staff "${staffUser?.fullName}"` : "Admin"} created event "${title}"`;
+
+      if (isStaffLoggedIn && staffUser) {
+        logStaffActivity({
+          category: "events",
+          type: activityType,
+          description: desc,
+          entityType: "events",
+          entityName: title,
+          newValue: { title, status, selection_mode: selectionMode, pricing_options: pricingOptions.length },
+          branchId: currentBranch?.id,
+          staffId: staffUser.id,
+          staffName: staffUser.fullName,
+          staffPhone: staffUser.phone,
+        });
+      } else if (isAdmin) {
+        logAdminActivity({
+          category: "events",
+          type: activityType,
+          description: desc,
+          entityType: "events",
+          entityName: title,
+          newValue: { title, status, selection_mode: selectionMode, pricing_options: pricingOptions.length },
+          branchId: currentBranch?.id,
+        });
+      }
+
       onOpenChange(false);
       resetForm();
     },

@@ -6,7 +6,8 @@ export type UserActivityType =
   | "renewal"
   | "pt_subscription"
   | "pt_extension"
-  | "daily_pass";
+  | "daily_pass"
+  | "event_registration";
 
 interface LogUserActivityParams {
   type: UserActivityType;
