@@ -310,12 +310,19 @@ export const MembersTable = ({
       // Compute the correct status based on subscription end_date
       const computedStatus = computeStatusFromDates(member.subscription?.end_date);
 
-      const { error } = await supabase
+      console.log("Restore status: subscription id =", member.subscription.id, "end_date =", member.subscription?.end_date, "computed =", computedStatus);
+
+      const { data: updatedRows, error } = await supabase
         .from("subscriptions")
         .update({ status: computedStatus as any })
-        .eq("id", member.subscription.id);
+        .eq("id", member.subscription.id)
+        .select();
       
       if (error) throw error;
+      if (!updatedRows || updatedRows.length === 0) {
+        throw new Error("Update failed — no rows were affected. You may not have permission to update this subscription.");
+      }
+      console.log("Restore status: updated row =", updatedRows[0]);
       
       invalidateMembers();
 
