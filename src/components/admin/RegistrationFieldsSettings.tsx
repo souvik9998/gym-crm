@@ -28,6 +28,7 @@ interface RegistrationFields {
   health_details: FieldSetting;
   medical_records_upload: FieldSetting;
   self_select_trainer: FieldSetting;
+  daily_pass_enabled: FieldSetting;
 }
 
 const DEFAULT_FIELDS: RegistrationFields = {
@@ -41,6 +42,7 @@ const DEFAULT_FIELDS: RegistrationFields = {
   health_details: { enabled: false, required: false, locked: false },
   medical_records_upload: { enabled: false, required: false, locked: false },
   self_select_trainer: { enabled: true, required: false, locked: false },
+  daily_pass_enabled: { enabled: true, required: false, locked: false },
 };
 
 const FIELD_CONFIG = [
@@ -49,11 +51,12 @@ const FIELD_CONFIG = [
   { key: "gender", label: "Gender", description: "Male / Female / Other", icon: User },
   { key: "date_of_birth", label: "Date of Birth", description: "Member's date of birth", icon: Calendar },
   { key: "address", label: "Address", description: "Residential address", icon: MapPin },
-  { key: "photo_id", label: "Photo ID (Aadhaar/PAN)", description: "ID type and number", icon: IdCard },
-  { key: "identity_proof_upload", label: "Identity Proof Upload", description: "Upload scan/photo of ID document", icon: Upload },
+  { key: "photo_id", label: "Photo ID (Manual Entry)", description: "ID type dropdown and number input by user", icon: IdCard, group: "identity" },
+  { key: "identity_proof_upload", label: "Identity Proof Upload", description: "Upload scan/photo of ID document (PDF/Image)", icon: Upload, group: "identity" },
   { key: "health_details", label: "Health Details", description: "Blood group, height, weight, medical conditions, allergies, emergency contact", icon: Heart },
   { key: "medical_records_upload", label: "Medical Records Upload", description: "Upload medical certificates or health reports", icon: FileText },
   { key: "self_select_trainer", label: "Member Self-Select Trainer", description: "Allow members to choose their own trainer during registration/renewal. If disabled, only admin can assign trainers.", icon: Dumbbell },
+  { key: "daily_pass_enabled", label: "Daily Pass", description: "Enable daily pass system. When disabled, Daily Pass tab is hidden from dashboard and public pages.", icon: Clock },
 ];
 
 export const RegistrationFieldsSettings = () => {
