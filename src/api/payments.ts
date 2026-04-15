@@ -26,6 +26,11 @@ export interface PaymentWithDetails {
     name: string;
     phone: string;
   } | null;
+  event_registration?: {
+    name: string;
+    phone: string;
+    event_name: string;
+  } | null;
 }
 
 /**
