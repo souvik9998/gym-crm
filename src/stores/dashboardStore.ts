@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { MemberFilterValue } from '@/components/admin/MemberFilter';
 
-type SortByValue = "name" | "join_date" | "end_date";
+type SortByValue = "name" | "join_date" | "end_date" | "created_at";
 type SortOrderValue = "asc" | "desc";
 type DailyPassFilterValue = "all" | "active" | "expired";
 

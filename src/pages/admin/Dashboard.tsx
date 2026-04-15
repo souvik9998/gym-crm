@@ -602,6 +602,10 @@ const AdminDashboard = () => {
                               <RadioGroupItem value="end_date" id="sort-expiry-tablet" />
                               <Label htmlFor="sort-expiry-tablet" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
                             </div>
+                            <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                              <RadioGroupItem value="created_at" id="sort-reg-tablet" />
+                              <Label htmlFor="sort-reg-tablet" className="cursor-pointer flex-1 text-sm">Latest Registration</Label>
+                            </div>
                           </RadioGroup>
                           <Separator />
                           <div className="p-2 space-y-1">
@@ -649,23 +653,8 @@ const AdminDashboard = () => {
             </CardHeader>
             <CardContent className="p-3 sm:p-4 lg:pt-2 lg:px-6 lg:pb-6">
               <TabsContent value="members" className="mt-0 space-y-2.5 lg:space-y-4">
-                {/* Mobile/Tablet: Filter + Action Buttons Row */}
-                <div className="md:hidden flex items-center gap-1.5">
-                  {/* Member Filter Dropdown (includes trainer/slot filters inside) */}
-                  <div className="flex-1 min-w-0">
-                    <MemberFilter 
-                      value={memberFilter} 
-                      onChange={handleMemberFilterChange}
-                      counts={filterCounts}
-                      mobileMode={true}
-                      trainerFilter={trainerFilter}
-                      onTrainerFilterChange={setTrainerFilter}
-                      timeSlotFilter={timeSlotFilter}
-                      onTimeSlotFilterChange={setTimeSlotFilter}
-                    />
-                  </div>
-                  
-                  {/* Action Buttons */}
+                {/* Mobile/Tablet: Action Buttons Row */}
+                <div className="md:hidden flex items-center gap-1.5 justify-end">
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     {/* Sort */}
                     <Popover open={sortOpen} onOpenChange={setSortOpen}>
@@ -703,6 +692,10 @@ const AdminDashboard = () => {
                           <div className="flex items-center space-x-2 px-2.5 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
                             <RadioGroupItem value="end_date" id="sort-expiry-mobile" />
                             <Label htmlFor="sort-expiry-mobile" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
+                          </div>
+                          <div className="flex items-center space-x-2 px-2.5 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors">
+                            <RadioGroupItem value="created_at" id="sort-reg-mobile" />
+                            <Label htmlFor="sort-reg-mobile" className="cursor-pointer flex-1 text-sm">Latest Registration</Label>
                           </div>
                         </RadioGroup>
                         <Separator />
@@ -748,25 +741,6 @@ const AdminDashboard = () => {
                       </Button>
                     )}
                   </div>
-                </div>
-
-                {/* Desktop/Tablet: Inline Member Filter Chips */}
-                <div className="hidden md:flex md:items-center md:gap-2 md:flex-wrap">
-                  <MemberFilter 
-                    value={memberFilter} 
-                    onChange={handleMemberFilterChange}
-                    counts={filterCounts}
-                    mobileMode={false}
-                  />
-                  <TrainerFilterDropdown
-                    value={trainerFilter}
-                    onChange={setTrainerFilter}
-                  />
-                  <TimeSlotFilterDropdown
-                    value={timeSlotFilter}
-                    onChange={setTimeSlotFilter}
-                    trainerFilter={trainerFilter}
-                  />
                 </div>
 
 
