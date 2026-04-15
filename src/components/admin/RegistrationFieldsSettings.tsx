@@ -4,9 +4,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
-import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
 import { Lock, User, Phone, Calendar, MapPin, IdCard, Upload, Heart, FileText, Dumbbell, Clock } from "lucide-react";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
@@ -74,7 +72,6 @@ export const RegistrationFieldsSettings = () => {
   const { currentBranch } = useBranch();
   const [fields, setFields] = useState<RegistrationFields>(DEFAULT_FIELDS);
   const [originalFields, setOriginalFields] = useState<RegistrationFields>(DEFAULT_FIELDS);
-  const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -109,40 +106,12 @@ export const RegistrationFieldsSettings = () => {
     }
   };
 
-  const handleToggle = (key: string, type: "enabled" | "required", value: boolean) => {
-    setFields(prev => {
-      const updated = { ...prev };
-      
-      // Update the target field
-      updated[key as keyof RegistrationFields] = {
-        ...prev[key as keyof RegistrationFields],
-        [type]: value,
-        // If disabling, also unset required
-        ...(type === "enabled" && !value ? { required: false } : {}),
-      };
-      
-      // Mutual exclusivity: photo_id and identity_proof_upload
-      if (type === "enabled" && value) {
-        if (key === "photo_id") {
-          updated.identity_proof_upload = { ...prev.identity_proof_upload, enabled: false, required: false };
-        } else if (key === "identity_proof_upload") {
-          updated.photo_id = { ...prev.photo_id, enabled: false, required: false };
-        }
-      }
-      
-      return updated;
-    });
-  };
-
-  const hasChanges = JSON.stringify(fields) !== JSON.stringify(originalFields);
-
-  const handleSave = async () => {
+  const saveFields = async (updatedFields: RegistrationFields) => {
     if (!currentBranch?.id) return;
-    setIsSaving(true);
     try {
       const { error } = await supabase
         .from("gym_settings")
-        .update({ registration_field_settings: fields as any })
+        .update({ registration_field_settings: updatedFields as any })
         .eq("branch_id", currentBranch.id);
 
       if (error) throw error;
@@ -154,17 +123,40 @@ export const RegistrationFieldsSettings = () => {
         entityType: "gym_settings",
         entityName: currentBranch.name || "Gym Settings",
         oldValue: originalFields,
-        newValue: fields,
+        newValue: updatedFields,
         branchId: currentBranch.id,
       });
 
-      setOriginalFields(fields);
-      toast.success("Registration field settings saved");
+      setOriginalFields(updatedFields);
+      toast.success("Settings saved");
     } catch (err: any) {
       toast.error("Error saving settings", { description: err.message });
-    } finally {
-      setIsSaving(false);
     }
+  };
+
+  const handleToggle = (key: string, type: "enabled" | "required", value: boolean) => {
+    setFields(prev => {
+      const updated = { ...prev };
+      
+      updated[key as keyof RegistrationFields] = {
+        ...prev[key as keyof RegistrationFields],
+        [type]: value,
+        ...(type === "enabled" && !value ? { required: false } : {}),
+      };
+      
+      if (type === "enabled" && value) {
+        if (key === "photo_id") {
+          updated.identity_proof_upload = { ...prev.identity_proof_upload, enabled: false, required: false };
+        } else if (key === "identity_proof_upload") {
+          updated.photo_id = { ...prev.photo_id, enabled: false, required: false };
+        }
+      }
+      
+      // Auto-save
+      saveFields(updated);
+      
+      return updated;
+    });
   };
 
   if (isLoading) {
@@ -268,17 +260,6 @@ export const RegistrationFieldsSettings = () => {
           });
         })()}
 
-        <div className="pt-3">
-          <Button
-            onClick={handleSave}
-            disabled={isSaving || !hasChanges}
-            className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl"
-          >
-            {isSaving ? (
-              <span className="flex items-center gap-2"><ButtonSpinner />Saving...</span>
-            ) : "Save Field Settings"}
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );
