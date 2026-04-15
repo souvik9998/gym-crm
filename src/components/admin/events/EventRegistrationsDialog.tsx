@@ -25,6 +25,8 @@ export function EventRegistrationsDialog({ open, onOpenChange, event }: Props) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [registerOpen, setRegisterOpen] = useState(false);
 
+  const isMultiSelect = event?.selection_mode === "multiple";
+
   const { data: registrations = [], isLoading } = useQuery({
     queryKey: ["event-registrations", event?.id],
     queryFn: async () => {
@@ -34,7 +36,22 @@ export function EventRegistrationsDialog({ open, onOpenChange, event }: Props) {
         .eq("event_id", event.id)
         .order("registered_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+
+      if (data && data.length > 0) {
+        const regIds = data.map((r: any) => r.id);
+        const { data: items } = await supabase
+          .from("event_registration_items")
+          .select("*, event_pricing_options:pricing_option_id(name, price)")
+          .in("registration_id", regIds);
+        const itemsMap: Record<string, any[]> = {};
+        (items || []).forEach((item: any) => {
+          if (!itemsMap[item.registration_id]) itemsMap[item.registration_id] = [];
+          itemsMap[item.registration_id].push(item);
+        });
+        return data.map((r: any) => ({ ...r, registration_items: itemsMap[r.id] || [] }));
+      }
+
+      return (data || []).map((r: any) => ({ ...r, registration_items: [] }));
     },
     enabled: !!event?.id && open,
   });
