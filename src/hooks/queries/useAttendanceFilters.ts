@@ -44,7 +44,7 @@ export function useAttendanceFilters() {
       if (!branchId) return [];
       let query = supabase.from("trainer_time_slots")
         .select("id, start_time, end_time, trainer_id, personal_trainers(name)") as any;
-      query = query.eq("branch_id", branchId).eq("is_active", true).order("start_time");
+      query = query.eq("branch_id", branchId).eq("status", "available").order("start_time");
       if (isLimitedAccess && staffTrainerId) query = query.eq("trainer_id", staffTrainerId);
       const { data, error } = await query;
       if (error) throw error;
