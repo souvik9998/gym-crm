@@ -173,13 +173,7 @@ export const SlotAttendanceTab = () => {
     },
   });
 
-  const formatTime = (t: string) => {
-    const [h, m] = t.split(":");
-    const hour = parseInt(h);
-    return `${hour % 12 || 12}:${m} ${hour >= 12 ? "PM" : "AM"}`;
-  };
-
-  // ── Mobile member card ──
+  const isLoading = loadingMembers || loadingRecords;
   const MobileMemberCard = ({ member, idx }: { member: any; idx: number }) => (
     <div
       className={cn(
