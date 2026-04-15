@@ -136,7 +136,7 @@ export default function Events() {
               <Card
                 key={event.id}
                 className="border border-border/40 hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
-                onClick={() => setViewRegistrations(event)}
+                onClick={() => navigate(`/admin/events/${event.id}`)}
               >
                 {event.banner_image_url && (
                   <div className="h-36 overflow-hidden">
@@ -187,7 +187,7 @@ export default function Events() {
                     <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => setRegisterEvent(event)}>
                       <UserPlus className="w-3.5 h-3.5" /> Register
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => setViewRegistrations(event)}>
+                    <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => navigate(`/admin/events/${event.id}`)}>
                       <Eye className="w-3.5 h-3.5" /> View
                     </Button>
                     <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => setEditEvent(event)}>
@@ -218,13 +218,6 @@ export default function Events() {
         editEvent={editEvent}
       />
 
-      {viewRegistrations && (
-        <EventRegistrationsDialog
-          open={!!viewRegistrations}
-          onOpenChange={() => setViewRegistrations(null)}
-          event={viewRegistrations}
-        />
-      )}
 
       {qrEvent && (
         <EventQRDialog
