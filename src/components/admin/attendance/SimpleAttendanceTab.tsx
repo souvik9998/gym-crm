@@ -292,7 +292,7 @@ export const SimpleAttendanceTab = () => {
   return (
     <div className="space-y-3 animate-fade-in">
       {/* Week Navigation */}
-      <div className="flex items-center gap-1.5 justify-center">
+      <div className="flex items-center gap-1.5 lg:justify-start justify-center">
         <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("prev")}>
           <ChevronLeftIcon className="w-4 h-4" />
         </Button>
@@ -363,7 +363,7 @@ export const SimpleAttendanceTab = () => {
           )}
         </div>
       )}
-      <div className="flex items-center justify-center gap-2 lg:gap-4">
+      <div className="flex items-center justify-center lg:justify-start gap-2 lg:gap-4">
         {[
           { label: "Present", count: stats.present, color: "text-green-600", dot: "bg-green-500" },
           { label: "Late", count: stats.late, color: "text-amber-600", dot: "bg-amber-500" },

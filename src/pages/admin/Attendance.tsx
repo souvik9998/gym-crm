@@ -72,7 +72,7 @@ const Attendance = () => {
       </div>
 
       <Tabs defaultValue="mark" className="space-y-3">
-        <TabsList className="bg-muted/50 rounded-lg p-0.5 lg:p-1 h-auto flex overflow-x-auto scrollbar-hide gap-0.5 lg:gap-1 w-full">
+        <TabsList className="bg-muted/50 rounded-lg p-0.5 lg:p-1 h-auto inline-flex overflow-x-auto scrollbar-hide gap-0.5 lg:gap-1">
           {tabs.map((tab) => (
             <TabsTrigger
               key={tab.value}
