@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { logUserActivity } from "@/hooks/useUserActivityLog";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveEventId } from "@/lib/slugResolver";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,7 +72,16 @@ async function sendEventWhatsApp(params: {
 }
 
 export default function EventRegistration() {
-  const { eventId } = useParams<{ eventId: string }>();
+  const { eventSlug } = useParams<{ eventSlug: string }>();
+  const [eventId, setEventId] = useState<string | null>(null);
+
+  // Resolve slug/UUID to event ID
+  useEffect(() => {
+    if (!eventSlug) return;
+    resolveEventId(eventSlug).then((id) => {
+      setEventId(id || eventSlug);
+    });
+  }, [eventSlug]);
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");

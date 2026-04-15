@@ -229,7 +229,7 @@ const Index = () => {
   const handleOptionSelect = (option: "renew" | "extend-pt") => {
     const basePath = branchSlug ? `/b/${branchSlug}` : "";
     if (option === "renew") {
-      navigate(`${basePath}/renew`, { state: { member: existingMember, branchId, branchName: branchInfo?.name } });
+      navigate(`${basePath}/renew`, { state: { member: existingMember, branchId, branchName: branchInfo?.name, branchSlug } });
     } else {
       navigate(`${basePath}/extend-pt`, {
         state: {
