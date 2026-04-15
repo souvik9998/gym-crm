@@ -214,7 +214,7 @@ const Index = () => {
         setExistingMember(member);
         setShowOptions(true);
       } else {
-        const basePath = branchId ? `/b/${branchId}/register` : "/register";
+        const basePath = branchSlug ? `/b/${branchSlug}/register` : "/register";
         navigate(basePath, { state: { phone, branchId, branchName: branchInfo?.name } });
       }
     } catch (error: any) {
@@ -227,7 +227,7 @@ const Index = () => {
   };
 
   const handleOptionSelect = (option: "renew" | "extend-pt") => {
-    const basePath = branchId ? `/b/${branchId}` : "";
+    const basePath = branchSlug ? `/b/${branchSlug}` : "";
     if (option === "renew") {
       navigate(`${basePath}/renew`, { state: { member: existingMember, branchId, branchName: branchInfo?.name } });
     } else {
