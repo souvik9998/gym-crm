@@ -34,6 +34,15 @@ const CheckIn = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
 
+  // Resolve slug to UUID if needed
+  useEffect(() => {
+    if (branchParam && !isUUID(branchParam)) {
+      resolveBranch(branchParam).then((b) => {
+        if (b) setBranchId(b.id);
+      });
+    }
+  }, [branchParam]);
+
   const processResult = useCallback((result: any) => {
     setUserName(result.name || result.member_name || "");
     setCheckInTime(result.check_in_at || "");
