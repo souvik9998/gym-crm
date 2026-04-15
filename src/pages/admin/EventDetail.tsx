@@ -397,7 +397,7 @@ export default function EventDetail() {
                       <TableHead>Name</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead className="hidden md:table-cell">Email</TableHead>
-                      <TableHead>Pricing</TableHead>
+                      <TableHead>{isMultiSelect ? "Items" : "Pricing"}</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="hidden lg:table-cell">Date</TableHead>
@@ -405,12 +405,18 @@ export default function EventDetail() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map((r: any) => (
+                    {filtered.map((r: any) => {
+                      const itemNames = isMultiSelect && r.registration_items?.length > 0
+                        ? r.registration_items.map((i: any) => i.event_pricing_options?.name || "Item").join(", ")
+                        : r.event_pricing_options?.name || "-";
+                      return (
                       <TableRow key={r.id}>
                         <TableCell className="font-medium">{r.name}</TableCell>
                         <TableCell>{r.phone}</TableCell>
                         <TableCell className="hidden md:table-cell text-muted-foreground">{r.email || "-"}</TableCell>
-                        <TableCell>{r.event_pricing_options?.name || "-"}</TableCell>
+                        <TableCell className="max-w-[200px]">
+                          <span className="text-xs truncate block" title={itemNames}>{itemNames}</span>
+                        </TableCell>
                         <TableCell>₹{r.amount_paid}</TableCell>
                         <TableCell>
                           <Badge
