@@ -805,26 +805,6 @@ export default function TenantDetail() {
                     </div>
                   ))}
 
-                  {/* Advanced Features */}
-                  <div className="col-span-full mt-4">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Advanced Features</p>
-                  </div>
-                  {[
-                    { key: "workout_diet_plans", label: "Workout/Diet Plans", desc: "Create workout & diet plans" },
-                    { key: "leads_crm", label: "Leads/Enquiries CRM", desc: "Manage leads & follow-ups" },
-                  ].map(({ key, label, desc }) => (
-                    <div key={key} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                      <div>
-                        <p className="text-sm font-medium">{label}</p>
-                        <p className="text-xs text-muted-foreground">{desc}</p>
-                      </div>
-                      <Switch
-                        checked={editFeatures[key] ?? false}
-                        onCheckedChange={(checked) => handleToggleFeature(key, checked)}
-                        disabled={isSavingFeatures}
-                      />
-                    </div>
-                  ))}
                 </div>
               </CardContent>
             </Card>
