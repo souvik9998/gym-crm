@@ -38,6 +38,8 @@ export default function EventDetail() {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
+  const { isAdmin } = useIsAdmin();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -107,11 +109,26 @@ export default function EventDetail() {
       const { error } = await supabase.from("event_registrations").delete().eq("id", regId);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_data, regId) => {
+      const deletedReg = registrations.find((r: any) => r.id === regId);
       queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] });
       queryClient.invalidateQueries({ queryKey: ["events"] });
       toast.success("Registration removed");
       setDeleteReg(null);
+
+      const desc = `${isStaffLoggedIn ? `Staff "${staffUser?.fullName}"` : "Admin"} deleted event registration for "${deletedReg?.name || "Unknown"}"`;
+      if (isStaffLoggedIn && staffUser) {
+        logStaffActivity({
+          category: "events", type: "event_registration_deleted", description: desc,
+          entityType: "event_registrations", entityName: deletedReg?.name,
+          branchId: event?.branch_id, staffId: staffUser.id, staffName: staffUser.fullName, staffPhone: staffUser.phone,
+        });
+      } else if (isAdmin) {
+        logAdminActivity({
+          category: "events", type: "event_registration_deleted", description: desc,
+          entityType: "event_registrations", entityName: deletedReg?.name, branchId: event?.branch_id,
+        });
+      }
     },
     onError: (err: any) => toast.error("Failed to remove", { description: err.message }),
   });
@@ -132,6 +149,24 @@ export default function EventDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["event-registrations", eventId] });
       toast.success("Registration updated");
+
+      const desc = `${isStaffLoggedIn ? `Staff "${staffUser?.fullName}"` : "Admin"} updated event registration for "${editName}"`;
+      if (isStaffLoggedIn && staffUser) {
+        logStaffActivity({
+          category: "events", type: "event_registration_updated", description: desc,
+          entityType: "event_registrations", entityName: editName,
+          newValue: { name: editName, phone: editPhone, email: editEmail },
+          branchId: event?.branch_id, staffId: staffUser.id, staffName: staffUser.fullName, staffPhone: staffUser.phone,
+        });
+      } else if (isAdmin) {
+        logAdminActivity({
+          category: "events", type: "event_registration_updated", description: desc,
+          entityType: "event_registrations", entityName: editName,
+          newValue: { name: editName, phone: editPhone, email: editEmail },
+          branchId: event?.branch_id,
+        });
+      }
+
       setEditReg(null);
     },
     onError: (err: any) => toast.error("Failed to update", { description: err.message }),
