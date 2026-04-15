@@ -158,6 +158,7 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
       case "pt_subscription":
       case "pt_extension": return <Dumbbell className="w-4 h-4" />;
       case "daily_pass": return <Calendar className="w-4 h-4" />;
+      case "event_registration": return <Calendar className="w-4 h-4" />;
       default: return <Calendar className="w-4 h-4" />;
     }
   };
@@ -169,6 +170,7 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
       pt_subscription: "bg-orange-500/10 text-orange-500 border-orange-500/20",
       pt_extension: "bg-purple-500/10 text-purple-500 border-purple-500/20",
       daily_pass: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",
+      event_registration: "bg-rose-500/10 text-rose-500 border-rose-500/20",
     };
     const labels: Record<string, string> = {
       registration: "Registration",
@@ -176,12 +178,13 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
       pt_subscription: "PT Subscription",
       pt_extension: "PT Extension",
       daily_pass: "Daily Pass",
+      event_registration: "Event Registration",
     };
     return (
       <Badge className={colors[type] || "bg-muted text-muted-foreground"}>
         <span className="flex items-center gap-1">
           {getTypeIcon(type)}
-          {labels[type] || type}
+          {labels[type] || type.replace(/_/g, " ")}
         </span>
       </Badge>
     );
@@ -331,6 +334,7 @@ const UserActivityLogsTab = ({ refreshKey }: UserActivityLogsTabProps) => {
                       <SelectItem value="pt_subscription">PT Subscription</SelectItem>
                       <SelectItem value="pt_extension">PT Extension</SelectItem>
                       <SelectItem value="daily_pass">Daily Pass</SelectItem>
+                      <SelectItem value="event_registration">Event Registration</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
