@@ -65,8 +65,8 @@ const Attendance = () => {
   const defaultTab = tabs[0]?.value || "history";
 
   return (
-    <div className="space-y-2 lg:space-y-3 animate-fade-in">
-      {/* Header - compact on mobile */}
+    <div className="space-y-3 lg:space-y-3 animate-fade-in">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="min-w-0">
           <h1 className="text-base lg:text-2xl font-bold tracking-tight">Attendance</h1>
@@ -82,7 +82,7 @@ const Attendance = () => {
         </Badge>
       </div>
 
-      <Tabs defaultValue={defaultTab} className="space-y-2 lg:space-y-3">
+      <Tabs defaultValue={defaultTab} className="space-y-3 lg:space-y-3">
         {/* Tabs - scrollable pill style on mobile, left-aligned */}
         <div className="-mx-1 px-1 lg:mx-0 lg:px-0 overflow-x-auto scrollbar-hide">
           <TabsList className="bg-muted/50 rounded-lg p-0.5 lg:p-1 h-auto inline-flex w-auto lg:w-auto gap-0.5 justify-start">
