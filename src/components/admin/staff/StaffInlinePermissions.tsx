@@ -12,6 +12,7 @@ import {
   ClockIcon,
   UserGroupIcon,
   UsersIcon,
+  CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ export interface InlinePermissions {
   can_change_settings: boolean;
   can_send_whatsapp: boolean;
   can_access_attendance: boolean;
+  can_manage_events: boolean;
   member_access_type?: string;
   can_manage_time_slots?: boolean;
   can_create_time_slots?: boolean;
@@ -87,6 +89,12 @@ const CORE_PERMISSION_OPTIONS = [
     label: "Attendance Access", 
     description: "Mark and view attendance records",
     icon: ClockIcon,
+  },
+  { 
+    key: "can_manage_events" as const, 
+    label: "Events Access", 
+    description: "Create and manage events & registrations",
+    icon: CalendarDaysIcon,
   },
 ];
 
@@ -328,6 +336,7 @@ export const getDefaultPermissions = (role: string): InlinePermissions => ({
   can_change_settings: false,
   can_send_whatsapp: role === "manager",
   can_access_attendance: true,
+  can_manage_events: role === "manager",
   member_access_type: "all",
   can_manage_time_slots: role === "manager" || role === "trainer",
   can_create_time_slots: role === "manager",

@@ -57,7 +57,8 @@ interface NavItem {
     | "can_access_analytics"
     | "can_access_attendance"
     | "can_change_settings"
-    | ("can_view_members" | "can_manage_members" | "can_access_ledger" | "can_access_payments" | "can_access_analytics" | "can_access_attendance" | "can_change_settings")[];
+    | "can_manage_events"
+    | ("can_view_members" | "can_manage_members" | "can_access_ledger" | "can_access_payments" | "can_access_analytics" | "can_access_attendance" | "can_change_settings" | "can_manage_events")[];
   adminOnly?: boolean;
   staffOnly?: boolean; // Only visible to staff users
   /** Tenant module key — item hidden if this module is disabled for the tenant */
@@ -116,13 +117,13 @@ const allNavItems: NavItem[] = [
     requiresPermission: "can_access_attendance",
     tenantModule: "attendance",
   },
-  // Events - admin only
+  // Events - available to staff with event permission
   {
     title: "Events",
     href: "/admin/events",
     icon: CalendarDaysIcon,
     iconSolid: CalendarDaysIcon,
-    adminOnly: true,
+    requiresPermission: "can_manage_events" as any,
   },
   // Ledger - requires ONLY ledger permission
   {
