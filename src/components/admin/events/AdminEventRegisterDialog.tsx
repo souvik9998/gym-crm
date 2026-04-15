@@ -258,15 +258,7 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
       });
       if (error) throw error;
 
-      // Update slots filled
-      if (effectivePaymentStatus === "success") {
-        try {
-          await supabase
-            .from("event_pricing_options")
-            .update({ slots_filled: (selectedPricing?.slots_filled || 0) + 1 })
-            .eq("id", selectedPricingId);
-        } catch { /* non-critical */ }
-      }
+      // slots_filled is derived from actual registrations, no manual increment needed
 
       // Increment coupon usage
       if (appliedCoupon && !effectiveFree) {

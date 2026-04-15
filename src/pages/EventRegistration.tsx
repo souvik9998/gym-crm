@@ -144,6 +144,25 @@ export default function EventRegistration() {
         .eq("status", "published")
         .single();
       if (error) throw error;
+
+      // Fetch real registration counts per pricing option
+      if (data?.event_pricing_options?.length) {
+        const { data: regCounts } = await supabase
+          .from("event_registrations")
+          .select("pricing_option_id")
+          .eq("event_id", eventId!)
+          .eq("payment_status", "success");
+
+        const countMap: Record<string, number> = {};
+        (regCounts || []).forEach((r: any) => {
+          countMap[r.pricing_option_id] = (countMap[r.pricing_option_id] || 0) + 1;
+        });
+        data.event_pricing_options = data.event_pricing_options.map((p: any) => ({
+          ...p,
+          slots_filled: countMap[p.id] || 0,
+        }));
+      }
+
       return data;
     },
     enabled: !!eventId,
@@ -249,11 +268,7 @@ export default function EventRegistration() {
       });
       if (error) throw error;
 
-      try {
-        await supabase.from("event_pricing_options")
-          .update({ slots_filled: (selectedPricing?.slots_filled || 0) + 1 })
-          .eq("id", selectedPricingId);
-      } catch { /* non-critical */ }
+      // slots_filled is derived from actual registrations, no manual increment needed
 
       // Send WhatsApp for free registration
       if (event.whatsapp_notify_on_register) {
