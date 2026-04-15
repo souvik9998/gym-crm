@@ -35,6 +35,7 @@ const ExtendPT = () => {
   const member = location.state?.member;
   const branchId = location.state?.branchId || member?.branch_id;
   const stateBranchName = location.state?.branchName;
+  const stateBranchSlug = location.state?.branchSlug;
   const membershipStartDate = location.state?.membershipStartDate ? new Date(location.state.membershipStartDate) : null;
   const membershipEndDate = location.state?.membershipEndDate ? new Date(location.state.membershipEndDate) : null;
 
@@ -347,7 +348,7 @@ const ExtendPT = () => {
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-foreground -ml-2"
-            onClick={() => navigate(branchId ? `/b/${branchId}` : "/admin/login", { state: { returnToOptions: true, phone: member.phone } })}
+            onClick={() => navigate(stateBranchSlug ? `/b/${stateBranchSlug}` : branchId ? `/b/${branchId}` : "/admin/login", { state: { returnToOptions: true, phone: member.phone } })}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back

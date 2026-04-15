@@ -238,6 +238,7 @@ const Index = () => {
           membershipEndDate,
           branchId,
           branchName: branchInfo?.name,
+          branchSlug,
         },
       });
     }
