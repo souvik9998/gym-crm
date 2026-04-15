@@ -42,6 +42,8 @@ const trainerColors = [
 export const TrainerFilterDropdown = ({ value, onChange, compact = false }: TrainerFilterDropdownProps) => {
   const [open, setOpen] = useState(false);
   const { currentBranch } = useBranch();
+  const { staffUser, permissions, isStaffLoggedIn } = useStaffAuth();
+  const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
 
   const { data: trainers = [], isLoading } = useQuery({
     queryKey: ["trainer-filter-list", currentBranch?.id],
