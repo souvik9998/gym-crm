@@ -1620,12 +1620,7 @@ const AdminSettings = () => {
                           label: "Time Slot Based",
                           desc: "Track attendance per trainer time slot. Best for scheduled gyms.",
                         },
-                      ].map((mode) => {
-                        const currentMode = (() => {
-                          const el = document.querySelector<HTMLElement>("[data-attendance-mode]");
-                          return el?.dataset.attendanceMode || "simple";
-                        })();
-                        return (
+                      ].map((mode) => (
                           <button
                             key={mode.value}
                             onClick={async () => {
@@ -1639,7 +1634,6 @@ const AdminSettings = () => {
                                 toast.error("Failed to update attendance mode");
                               } else {
                                 toast.success(`Switched to ${mode.label}`);
-                                // Force re-render by updating a hidden element
                                 refetchData();
                               }
                             }}
@@ -1653,8 +1647,7 @@ const AdminSettings = () => {
                             <p className="text-sm font-semibold">{mode.label}</p>
                             <p className="text-[11px] text-muted-foreground mt-1">{mode.desc}</p>
                           </button>
-                        );
-                      })}
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
