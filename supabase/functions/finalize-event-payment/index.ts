@@ -337,15 +337,15 @@ Deno.serve(async (req) => {
         const PERISKOPE_PHONE = Deno.env.get("PERISKOPE_PHONE");
 
         if (PERISKOPE_API_KEY && PERISKOPE_PHONE) {
-          const waResponse = await fetch("https://api.periskope.app/api/v1/message/sendMessage", {
+          const waResponse = await fetch("https://api.periskope.app/v1/message/send", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${PERISKOPE_API_KEY}`,
+              "x-phone": PERISKOPE_PHONE,
             },
             body: JSON.stringify({
-              chatId: `${formattedPhone}@s.whatsapp.net`,
-              fromMe: PERISKOPE_PHONE,
+              chat_id: `${formattedPhone}@c.us`,
               message,
             }),
           });
