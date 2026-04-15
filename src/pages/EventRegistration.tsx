@@ -773,6 +773,7 @@ export default function EventRegistration() {
                 </CardContent>
               </Card>
             )}
+          </div>
 
           {/* Sidebar summary on desktop */}
           <div className="hidden lg:block lg:col-span-2">
