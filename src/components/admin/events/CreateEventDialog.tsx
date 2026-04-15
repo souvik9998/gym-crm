@@ -11,15 +11,18 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { Plus, Trash2, GripVertical, Upload, ImageIcon, X } from "lucide-react";
+import { Plus, Trash2, GripVertical, Upload, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ButtonSpinner as Spinner } from "@/components/ui/button-spinner";
+import { Badge } from "@/components/ui/badge";
 
 interface PricingOption {
   id?: string;
   name: string;
+  description: string;
   price: number;
   capacity_limit: number | null;
+  is_active: boolean;
 }
 
 interface CustomField {
@@ -50,8 +53,9 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
   const [location, setLocation] = useState("");
   const [status, setStatus] = useState<string>("draft");
   const [whatsappNotify, setWhatsappNotify] = useState(false);
+  const [selectionMode, setSelectionMode] = useState<string>("single");
   const [pricingOptions, setPricingOptions] = useState<PricingOption[]>([
-    { name: "General", price: 0, capacity_limit: null },
+    { name: "General", description: "", price: 0, capacity_limit: null, is_active: true },
   ]);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
 
@@ -65,12 +69,13 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
       setLocation(editEvent.location || "");
       setStatus(editEvent.status || "draft");
       setWhatsappNotify(editEvent.whatsapp_notify_on_register || false);
+      setSelectionMode(editEvent.selection_mode || "single");
       if (editEvent.event_pricing_options?.length) {
         setPricingOptions(editEvent.event_pricing_options.map((p: any) => ({
-          id: p.id, name: p.name, price: p.price, capacity_limit: p.capacity_limit,
+          id: p.id, name: p.name, description: p.description || "", price: p.price,
+          capacity_limit: p.capacity_limit, is_active: p.is_active ?? true,
         })));
       }
-      // Load custom fields
       loadCustomFields(editEvent.id);
     } else {
       resetForm();
@@ -119,7 +124,8 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
     setTitle(""); setDescription(""); setBannerUrl("");
     setEventDate(""); setEventEndDate(""); setLocation("");
     setStatus("draft"); setWhatsappNotify(false); setUploading(false);
-    setPricingOptions([{ name: "General", price: 0, capacity_limit: null }]);
+    setSelectionMode("single");
+    setPricingOptions([{ name: "General", description: "", price: 0, capacity_limit: null, is_active: true }]);
     setCustomFields([]);
   };
 
@@ -128,7 +134,7 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
       if (!currentBranch?.id) throw new Error("No branch selected");
       if (!title.trim()) throw new Error("Title is required");
       if (!eventDate) throw new Error("Event date is required");
-      if (pricingOptions.length === 0) throw new Error("At least one pricing option is required");
+      if (pricingOptions.length === 0) throw new Error("At least one item is required");
 
       const eventData = {
         branch_id: currentBranch.id,
@@ -140,6 +146,7 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         location: location.trim() || null,
         status,
         whatsapp_notify_on_register: whatsappNotify,
+        selection_mode: selectionMode,
       };
 
       let eventId: string;
@@ -148,8 +155,6 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         const { error } = await supabase.from("events").update(eventData).eq("id", editEvent.id);
         if (error) throw error;
         eventId = editEvent.id;
-
-        // Delete old pricing options and recreate
         await supabase.from("event_pricing_options").delete().eq("event_id", eventId);
         await supabase.from("event_custom_fields").delete().eq("event_id", eventId);
       } else {
@@ -158,21 +163,21 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         eventId = data.id;
       }
 
-      // Insert pricing options
       if (pricingOptions.length > 0) {
         const { error: pError } = await supabase.from("event_pricing_options").insert(
           pricingOptions.map((p, i) => ({
             event_id: eventId,
             name: p.name,
+            description: p.description || null,
             price: p.price,
             capacity_limit: p.capacity_limit || null,
+            is_active: p.is_active,
             sort_order: i,
           }))
         );
         if (pError) throw pError;
       }
 
-      // Insert custom fields
       if (customFields.length > 0) {
         const { error: fError } = await supabase.from("event_custom_fields").insert(
           customFields.map((f, i) => ({
@@ -196,7 +201,7 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
     onError: (err: any) => toast.error("Error", { description: err.message }),
   });
 
-  const addPricing = () => setPricingOptions([...pricingOptions, { name: "", price: 0, capacity_limit: null }]);
+  const addPricing = () => setPricingOptions([...pricingOptions, { name: "", description: "", price: 0, capacity_limit: null, is_active: true }]);
   const removePricing = (i: number) => setPricingOptions(pricingOptions.filter((_, idx) => idx !== i));
   const updatePricing = (i: number, field: string, value: any) => {
     const updated = [...pricingOptions];
@@ -302,46 +307,92 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
               </div>
             </div>
 
-            {/* Pricing Options */}
+            {/* Event Items / Pricing Options */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-foreground">Pricing Options</h3>
+                <h3 className="text-sm font-semibold text-foreground">Event Items</h3>
                 <Button size="sm" variant="outline" onClick={addPricing} className="h-7 text-xs rounded-lg gap-1">
-                  <Plus className="w-3 h-3" /> Add
+                  <Plus className="w-3 h-3" /> Add Item
                 </Button>
               </div>
+
+              {/* Selection Mode */}
+              <div className="flex items-center gap-3 p-3 rounded-xl border border-border/40 bg-muted/20">
+                <Label className="text-xs text-muted-foreground flex-shrink-0">Selection Mode:</Label>
+                <div className="flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setSelectionMode("single")}
+                    className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                      selectionMode === "single"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border hover:bg-muted"
+                    }`}
+                  >
+                    Single Select
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectionMode("multiple")}
+                    className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                      selectionMode === "multiple"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border hover:bg-muted"
+                    }`}
+                  >
+                    Multiple Select
+                  </button>
+                </div>
+              </div>
+
               {pricingOptions.map((p, i) => (
-                <div key={i} className="flex items-center gap-2 p-3 rounded-xl border border-border/40 bg-muted/20">
-                  <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <Input
-                    value={p.name}
-                    onChange={(e) => updatePricing(i, "name", e.target.value)}
-                    placeholder="Option name"
-                    className="rounded-lg h-9 text-sm"
-                  />
-                  <div className="relative w-28 flex-shrink-0">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₹</span>
+                <div key={i} className="p-3 rounded-xl border border-border/40 bg-muted/20 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <Input
+                      value={p.name}
+                      onChange={(e) => updatePricing(i, "name", e.target.value)}
+                      placeholder="Item name (e.g. Day 1, Full Pass)"
+                      className="rounded-lg h-9 text-sm"
+                    />
+                    <div className="relative w-28 flex-shrink-0">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₹</span>
+                      <Input
+                        type="number"
+                        value={p.price}
+                        onChange={(e) => updatePricing(i, "price", Number(e.target.value))}
+                        className="rounded-lg h-9 text-sm pl-7"
+                        min={0}
+                      />
+                    </div>
                     <Input
                       type="number"
-                      value={p.price}
-                      onChange={(e) => updatePricing(i, "price", Number(e.target.value))}
-                      className="rounded-lg h-9 text-sm pl-7"
+                      value={p.capacity_limit ?? ""}
+                      onChange={(e) => updatePricing(i, "capacity_limit", e.target.value ? Number(e.target.value) : null)}
+                      placeholder="Capacity"
+                      className="rounded-lg h-9 text-sm w-24 flex-shrink-0"
                       min={0}
                     />
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <Switch
+                        checked={p.is_active}
+                        onCheckedChange={(v) => updatePricing(i, "is_active", v)}
+                        className="scale-75"
+                      />
+                      {!p.is_active && <Badge variant="secondary" className="text-[9px] py-0">Off</Badge>}
+                    </div>
+                    {pricingOptions.length > 1 && (
+                      <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0 text-destructive" onClick={() => removePricing(i)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                   </div>
                   <Input
-                    type="number"
-                    value={p.capacity_limit ?? ""}
-                    onChange={(e) => updatePricing(i, "capacity_limit", e.target.value ? Number(e.target.value) : null)}
-                    placeholder="Capacity"
-                    className="rounded-lg h-9 text-sm w-24 flex-shrink-0"
-                    min={0}
+                    value={p.description}
+                    onChange={(e) => updatePricing(i, "description", e.target.value)}
+                    placeholder="Description (optional)"
+                    className="rounded-lg h-8 text-xs"
                   />
-                  {pricingOptions.length > 1 && (
-                    <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0 text-destructive" onClick={() => removePricing(i)}>
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
                 </div>
               ))}
             </div>
@@ -392,16 +443,14 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
                   )}
                 </div>
               ))}
-              {customFields.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-2">No custom fields added</p>
-              )}
             </div>
-          </div>
 
-          <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-border/40">
-            <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Cancel</Button>
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="rounded-xl">
-              {saveMutation.isPending ? <><ButtonSpinner /> Saving...</> : isEditing ? "Update Event" : "Create Event"}
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending}
+              className="w-full h-11 rounded-xl"
+            >
+              {saveMutation.isPending ? <ButtonSpinner /> : (isEditing ? "Update Event" : "Create Event")}
             </Button>
           </div>
         </ScrollArea>
