@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export interface Branch {
   id: string;
   name: string;
+  slug: string;
   address: string | null;
   phone: string | null;
   email: string | null;

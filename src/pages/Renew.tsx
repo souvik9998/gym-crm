@@ -23,7 +23,7 @@ const Renew = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { initiatePayment, isLoading: isPaymentLoading, paymentStage } = useRazorpay();
-  const { member, branchId: stateBranchId, branchName: stateBranchName } = (location.state as { member: Member; branchId?: string; branchName?: string }) || {};
+  const { member, branchId: stateBranchId, branchName: stateBranchName, branchSlug: stateBranchSlug } = (location.state as { member: Member; branchId?: string; branchName?: string; branchSlug?: string }) || {};
   const [ptStartDate, setPtStartDate] = useState<string | null>(null);
   const [existingMembershipEndDate, setExistingMembershipEndDate] = useState<string | null>(null);
   const [existingPTEndDate, setExistingPTEndDate] = useState<string | null>(null);
@@ -211,7 +211,7 @@ const Renew = () => {
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-foreground -ml-2"
-            onClick={() => navigate(branchId ? `/b/${branchId}` : "/admin/login", { state: { returnToOptions: true, phone: member?.phone } })}
+            onClick={() => navigate(stateBranchSlug ? `/b/${stateBranchSlug}` : branchId ? `/b/${branchId}` : "/admin/login", { state: { returnToOptions: true, phone: member?.phone } })}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
@@ -231,7 +231,7 @@ const Renew = () => {
           isNewMember={false}
           memberName={member.name}
           onSubmit={handlePackageSubmit}
-          onBack={() => navigate(branchId ? `/b/${branchId}` : "/admin/login", { state: { returnToOptions: true, phone: member.phone } })}
+          onBack={() => navigate(stateBranchSlug ? `/b/${stateBranchSlug}` : branchId ? `/b/${branchId}` : "/admin/login", { state: { returnToOptions: true, phone: member.phone } })}
           isLoading={isPaymentLoading}
           ptStartDate={existingPTEndDate && ptStartDate ? ptStartDate : undefined}
           existingMembershipEndDate={existingMembershipEndDate || undefined}
