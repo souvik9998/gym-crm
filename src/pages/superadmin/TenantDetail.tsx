@@ -598,7 +598,13 @@ export default function TenantDetail() {
                   <p className="text-[10px] text-muted-foreground">This month</p>
                 </CardContent>
               </Card>
-            </div>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground">Storage</p>
+                  <p className="text-2xl font-bold">{storageUsedMb} MB</p>
+                  <p className="text-[10px] text-muted-foreground">of {editLimits.max_storage_mb} MB</p>
+                </CardContent>
+              </Card>
           </TabsContent>
 
           <TabsContent value="branches" className="space-y-4">
