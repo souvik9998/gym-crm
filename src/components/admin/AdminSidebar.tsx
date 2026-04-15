@@ -183,7 +183,7 @@ const allBottomNavItems: NavItem[] = [
 export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, isStaffUser = false, onNavigate }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentBranch } = useBranch();
+  const { currentBranch, branches } = useBranch();
   const { permissions, staffUser } = useStaffAuth();
   const { isModuleEnabled } = useTenantPermissions();
   const [expandedItems, setExpandedItems] = useState<string[]>(["Activity Logs"]);
@@ -193,10 +193,12 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
 
   // Filter nav items based on permissions
   const filterNavItems = (items: NavItem[]): NavItem[] => {
-    console.log("[Sidebar] Filtering nav items, isStaffUser:", isStaffUser, "permissions:", permissions);
     return items.filter((item) => {
       // Check tenant module permission first
       if (item.tenantModule && !isModuleEnabled(item.tenantModule as any)) return false;
+      
+      // Hide branch analytics for single-branch tenants
+      if (item.tenantModule === "branch_analytics" && (branches?.length || 0) <= 1) return false;
 
       // Staff-only items should only show for staff users
       if (item.staffOnly && !isStaffUser) return false;

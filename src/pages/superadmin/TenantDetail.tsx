@@ -184,7 +184,18 @@ export default function TenantDetail() {
             plan_expiry_date: data.limits.plan_expiry_date || "",
           });
           if (data.limits.features) {
-            setEditFeatures(data.limits.features as Record<string, boolean>);
+            const saved = data.limits.features as Record<string, boolean>;
+            // Merge saved features with defaults so new keys are visible
+            setEditFeatures(prev => ({
+              ...prev,
+              ...saved,
+              // Ensure new granular keys have sensible defaults if missing
+              attendance_manual: saved.attendance_manual ?? (saved.attendance ?? true),
+              attendance_qr: saved.attendance_qr ?? false,
+              attendance_biometric: saved.attendance_biometric ?? false,
+              branch_analytics: saved.branch_analytics ?? false,
+              event_management: saved.event_management ?? false,
+            }));
           }
         }
       }
@@ -263,7 +274,15 @@ export default function TenantDetail() {
   const handleToggleFeature = async (featureKey: string, enabled: boolean) => {
     if (!tenant) return;
     
-    const newFeatures = { ...editFeatures, [featureKey]: enabled };
+    let newFeatures = { ...editFeatures, [featureKey]: enabled };
+    
+    // When master attendance is turned off, disable all sub-flags
+    if (featureKey === "attendance" && !enabled) {
+      newFeatures.attendance_manual = false;
+      newFeatures.attendance_qr = false;
+      newFeatures.attendance_biometric = false;
+    }
+    
     setEditFeatures(newFeatures);
     setIsSavingFeatures(true);
     try {
@@ -271,7 +290,8 @@ export default function TenantDetail() {
       toast.success(`${featureKey.replace(/_/g, " ")} ${enabled ? "enabled" : "disabled"}`);
     } catch (error) {
       console.error("Error updating feature:", error);
-      setEditFeatures(prev => ({ ...prev, [featureKey]: !enabled }));
+      // Revert all changes
+      setEditFeatures(editFeatures);
       toast.error("Failed to update feature");
     } finally {
       setIsSavingFeatures(false);
