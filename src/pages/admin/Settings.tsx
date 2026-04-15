@@ -236,9 +236,12 @@ const AdminSettings = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Sync hook data to local state when it arrives
+  // Only sync fetched data to local state on initial load, not on every refetch
+  const initialSyncDone = useRef(false);
+
   useEffect(() => {
-    if (fetchedSettings) {
+    if (fetchedSettings && !initialSyncDone.current) {
+      initialSyncDone.current = true;
       setSettings(fetchedSettings);
       setGymName(fetchedSettings.gym_name || "");
       setGymPhone(fetchedSettings.gym_phone || "");
@@ -254,14 +257,18 @@ const AdminSettings = () => {
     }
   }, [fetchedSettings]);
 
+  const monthlyPackagesSynced = useRef(false);
   useEffect(() => {
-    if (fetchedMonthlyPackages) {
+    if (fetchedMonthlyPackages && !monthlyPackagesSynced.current) {
+      monthlyPackagesSynced.current = true;
       setMonthlyPackages(fetchedMonthlyPackages);
     }
   }, [fetchedMonthlyPackages]);
 
+  const customPackagesSynced = useRef(false);
   useEffect(() => {
-    if (fetchedCustomPackages) {
+    if (fetchedCustomPackages && !customPackagesSynced.current) {
+      customPackagesSynced.current = true;
       setCustomPackages(fetchedCustomPackages);
     }
   }, [fetchedCustomPackages]);
