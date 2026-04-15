@@ -1011,16 +1011,29 @@ export const MembersTable = ({
       {isCompact ? (
         <div className="rounded-xl border overflow-hidden bg-card shadow-sm">
           {/* Table Header */}
-          <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/20">
-            <button 
-              className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-              onClick={() => handleSort("name")}
-            >
-              Member
-              {sortField === "name" && (
-                sortOrder === "asc" ? <ArrowUp className="w-3 h-3 text-primary" /> : <ArrowDown className="w-3 h-3 text-primary" />
+          <div className="flex items-center justify-between px-3 py-2.5 border-b bg-muted/20">
+            <div className="flex items-center gap-2.5">
+              <div onClick={(e) => { e.stopPropagation(); toggleSelectAll(); }}>
+                <Checkbox
+                  checked={selectedMembers.size > 0 && selectedMembers.size === sortedMembers.length}
+                  className="h-4.5 w-4.5 rounded-md border-border/60 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                />
+              </div>
+              <button 
+                className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+                onClick={() => handleSort("name")}
+              >
+                Member
+                {sortField === "name" && (
+                  sortOrder === "asc" ? <ArrowUp className="w-3 h-3 text-primary" /> : <ArrowDown className="w-3 h-3 text-primary" />
+                )}
+              </button>
+              {selectedMembers.size > 0 && (
+                <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-md">
+                  {selectedMembers.size}
+                </span>
               )}
-            </button>
+            </div>
             <div className="flex items-center gap-2">
               <button
                 className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"
@@ -1032,12 +1045,6 @@ export const MembersTable = ({
                   <ArrowUp className="w-3.5 h-3.5 text-muted-foreground" />
                 )}
               </button>
-              <button
-                className="p-1.5"
-                onClick={() => setSelectedMembers(new Set())}
-              >
-                <span className="sr-only">Clear</span>
-              </button>
             </div>
           </div>
           
@@ -1047,7 +1054,7 @@ export const MembersTable = ({
               <div 
                 key={member.id}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 cursor-pointer transition-all duration-200 active:scale-[0.99] active:bg-muted/60",
+                  "flex items-center gap-2.5 px-3 py-3 cursor-pointer transition-all duration-200 active:scale-[0.99] active:bg-muted/60",
                   "hover:bg-muted/40",
                   selectedMembers.has(member.id) && "bg-primary/5",
                   isNewMember(member) && "border-l-2 border-l-emerald-500 bg-emerald-500/5"
@@ -1055,11 +1062,15 @@ export const MembersTable = ({
                 style={{ animationDelay: `${index * 40}ms` }}
                 onClick={() => handleMemberClick(member)}
               >
-                {/* Avatar */}
-                <div className="w-10 h-10 rounded-full bg-muted/80 flex items-center justify-center flex-shrink-0 ring-1 ring-border/50 transition-transform duration-200 active:scale-95">
-                  <span className="text-sm font-semibold text-muted-foreground">
-                    {member.name.charAt(0).toUpperCase()}
-                  </span>
+                {/* Selection Checkbox */}
+                <div 
+                  className="flex-shrink-0"
+                  onClick={(e) => toggleMemberSelection(member.id, e)}
+                >
+                  <Checkbox
+                    checked={selectedMembers.has(member.id)}
+                    className="h-5 w-5 rounded-md border-border/60 data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all duration-150"
+                  />
                 </div>
                 
                 {/* Member Info */}

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, memo, Fragment } from "react";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -649,27 +650,70 @@ const AdminDashboard = () => {
             <CardContent className="p-3 sm:p-4 lg:pt-2 lg:px-6 lg:pb-6">
               <TabsContent value="members" className="mt-0 space-y-2.5 lg:space-y-4">
                 {/* Mobile/Tablet: Filter + Action Buttons Row */}
-                <div className="md:hidden flex items-center gap-2">
+                <div className="md:hidden flex items-center gap-1.5">
                   {/* Member Filter Dropdown */}
-                  <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                  <div className="flex-1 min-w-0">
                     <MemberFilter 
                       value={memberFilter} 
                       onChange={handleMemberFilterChange}
                       counts={filterCounts}
                       mobileMode={true}
                     />
-                    <TimeSlotFilterDropdown
-                      value={timeSlotFilter}
-                      onChange={setTimeSlotFilter}
-                      trainerFilter={trainerFilter}
-                      compact={true}
-                    />
-                    <TrainerFilterDropdown
-                      value={trainerFilter}
-                      onChange={setTrainerFilter}
-                      compact={true}
-                    />
                   </div>
+                  
+                  {/* Trainer & Slot Filters in a combined dropdown */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        className={cn(
+                          "h-9 w-9 rounded-xl border-border/50 bg-card hover:bg-muted active:scale-95 transition-all duration-200",
+                          (trainerFilter || timeSlotFilter) && "border-primary/50 bg-primary/5 text-primary"
+                        )}
+                        title="Trainer & Slot Filters"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                        {(trainerFilter || timeSlotFilter) && (
+                          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary" />
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 p-0 rounded-xl border-border/50 shadow-lg" align="end" sideOffset={6}>
+                      <div className="p-3 border-b border-border/40">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold text-foreground">Filters</p>
+                          {(trainerFilter || timeSlotFilter) && (
+                            <button
+                              onClick={() => { setTrainerFilter(null); setTimeSlotFilter(null); }}
+                              className="text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-0.5 rounded-md hover:bg-muted"
+                            >
+                              Clear all
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="p-2 space-y-2">
+                        <div>
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Trainer</p>
+                          <TrainerFilterDropdown
+                            value={trainerFilter}
+                            onChange={setTrainerFilter}
+                            compact={false}
+                          />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Time Slot</p>
+                          <TimeSlotFilterDropdown
+                            value={timeSlotFilter}
+                            onChange={setTimeSlotFilter}
+                            trainerFilter={trainerFilter}
+                            compact={false}
+                          />
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   
                   {/* Action Buttons */}
                   <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -742,8 +786,6 @@ const AdminDashboard = () => {
                       <ArrowDownTrayIcon className="w-4 h-4" />
                     </Button>
                     
-                    
-                    
                     {/* Add Member */}
                     {canManageMembers && (
                       <Button 
@@ -752,7 +794,7 @@ const AdminDashboard = () => {
                         className="gap-1 h-9 bg-foreground text-background hover:bg-foreground/90 text-xs px-3 rounded-xl active:scale-95 transition-all duration-200 shadow-sm whitespace-nowrap"
                       >
                         <PlusIcon className="w-3.5 h-3.5" />
-                        <span className="font-medium hidden min-[400px]:inline">Add Member</span>
+                        <span className="font-medium hidden min-[400px]:inline">Add</span>
                       </Button>
                     )}
                   </div>
