@@ -327,66 +327,126 @@ export const SimpleAttendanceTab = () => {
 
   return (
     <div className="space-y-3 animate-fade-in">
-      {/* Week Navigation */}
-      <div className="flex items-center gap-1.5 lg:justify-start justify-center">
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("prev")}>
-          <ChevronLeftIcon className="w-4 h-4" />
-        </Button>
-        <div className="flex items-center gap-0.5 lg:gap-1 overflow-x-auto scrollbar-hide">
-          {weekDates.map((d, i) => (
-            <button
-              key={d}
-              onClick={() => { if (d <= today) setSelectedDate(d); }}
-              disabled={d > today}
-              className={cn(
-                "flex flex-col items-center rounded-xl transition-all duration-200 shrink-0 active:scale-95",
-                isMobile ? "px-2 py-1.5 min-w-[38px]" : "px-2.5 py-1.5 min-w-[44px]",
-                d === selectedDate
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : d === today
-                    ? "bg-primary/10 text-primary"
-                    : d > today
-                      ? "opacity-25 cursor-not-allowed"
-                      : "hover:bg-muted text-muted-foreground"
-              )}
-            >
-              <span className="text-[9px] lg:text-[10px] font-medium uppercase">{isMobile ? DAY_LABELS[i] : DAY_LABELS_FULL[i]}</span>
-              <span className="text-sm font-bold">{formatDayNum(d)}</span>
-            </button>
+      {/* Desktop: Week Nav + Filters + Stats in one row */}
+      <div className="hidden lg:flex items-center gap-4">
+        {/* Week Navigation */}
+        <div className="flex items-center gap-1 shrink-0">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("prev")}>
+            <ChevronLeftIcon className="w-4 h-4" />
+          </Button>
+          <div className="flex items-center gap-1">
+            {weekDates.map((d, i) => (
+              <button
+                key={d}
+                onClick={() => { if (d <= today) setSelectedDate(d); }}
+                disabled={d > today}
+                className={cn(
+                  "flex flex-col items-center rounded-xl transition-all duration-200 shrink-0 active:scale-95 px-2.5 py-1.5 min-w-[44px]",
+                  d === selectedDate
+                    ? "bg-primary text-primary-foreground shadow-md"
+                    : d === today
+                      ? "bg-primary/10 text-primary"
+                      : d > today
+                        ? "opacity-25 cursor-not-allowed"
+                        : "hover:bg-muted text-muted-foreground"
+                )}
+              >
+                <span className="text-[10px] font-medium uppercase">{DAY_LABELS_FULL[i]}</span>
+                <span className="text-sm font-bold">{formatDayNum(d)}</span>
+              </button>
+            ))}
+          </div>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("next")} disabled={weekDates[6] >= today}>
+            <ChevronRightIcon className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* Divider */}
+        <div className="w-px h-8 bg-border/60 shrink-0" />
+
+        {/* Filters */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <TrainerFilterDropdown
+            value={selectedTrainerId}
+            onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }}
+          />
+          <TimeSlotFilterDropdown
+            value={selectedSlotId}
+            onChange={setSelectedSlotId}
+            trainerFilter={selectedTrainerId}
+          />
+        </div>
+
+        {/* Divider */}
+        <div className="w-px h-8 bg-border/60 shrink-0" />
+
+        {/* Stats */}
+        <div className="flex items-center gap-3">
+          {[
+            { label: "Present", count: stats.present, color: "text-green-600", dot: "bg-green-500" },
+            { label: "Late", count: stats.late, color: "text-amber-600", dot: "bg-amber-500" },
+            { label: "Absent", count: stats.absent, color: "text-red-500", dot: "bg-red-500" },
+            { label: "Total", count: stats.total, color: "text-foreground", dot: "bg-muted-foreground" },
+          ].map((s) => (
+            <div key={s.label} className="flex items-center gap-1 text-xs">
+              <div className={cn("w-2 h-2 rounded-full", s.dot)} />
+              <span className="text-muted-foreground">{s.label}</span>
+              <span className={cn("font-bold", s.color)}>{s.count}</span>
+            </div>
           ))}
         </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("next")} disabled={weekDates[6] >= today}>
-          <ChevronRightIcon className="w-4 h-4" />
-        </Button>
       </div>
 
-      {/* Trainer & Slot Filters */}
-      <div className="flex items-center gap-1.5">
-        <TrainerFilterDropdown
-          value={selectedTrainerId}
-          onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }}
-          compact={isMobile}
-        />
-        <TimeSlotFilterDropdown
-          value={selectedSlotId}
-          onChange={setSelectedSlotId}
-          trainerFilter={selectedTrainerId}
-          compact={isMobile}
-        />
-      </div>
-      <div className="flex items-center justify-center lg:justify-start gap-2 lg:gap-4">
-        {[
-          { label: "Present", count: stats.present, color: "text-green-600", dot: "bg-green-500" },
-          { label: "Late", count: stats.late, color: "text-amber-600", dot: "bg-amber-500" },
-          { label: "Absent", count: stats.absent, color: "text-red-500", dot: "bg-red-500" },
-          { label: "Total", count: stats.total, color: "text-foreground", dot: "bg-muted-foreground" },
-        ].map((s) => (
-          <div key={s.label} className="flex items-center gap-1 text-[11px] lg:text-xs">
-            <div className={cn("w-2 h-2 rounded-full", s.dot)} />
-            <span className="text-muted-foreground hidden sm:inline">{s.label}</span>
-            <span className={cn("font-bold", s.color)}>{s.count}</span>
+      {/* Mobile: Stacked layout */}
+      <div className="lg:hidden space-y-2.5">
+        <div className="flex items-center gap-1.5 justify-center">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("prev")}>
+            <ChevronLeftIcon className="w-4 h-4" />
+          </Button>
+          <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
+            {weekDates.map((d, i) => (
+              <button
+                key={d}
+                onClick={() => { if (d <= today) setSelectedDate(d); }}
+                disabled={d > today}
+                className={cn(
+                  "flex flex-col items-center rounded-xl transition-all duration-200 shrink-0 active:scale-95 px-2 py-1.5 min-w-[38px]",
+                  d === selectedDate
+                    ? "bg-primary text-primary-foreground shadow-md"
+                    : d === today
+                      ? "bg-primary/10 text-primary"
+                      : d > today
+                        ? "opacity-25 cursor-not-allowed"
+                        : "hover:bg-muted text-muted-foreground"
+                )}
+              >
+                <span className="text-[9px] font-medium uppercase">{DAY_LABELS[i]}</span>
+                <span className="text-sm font-bold">{formatDayNum(d)}</span>
+              </button>
+            ))}
           </div>
-        ))}
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("next")} disabled={weekDates[6] >= today}>
+            <ChevronRightIcon className="w-4 h-4" />
+          </Button>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <TrainerFilterDropdown value={selectedTrainerId} onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }} compact />
+          <TimeSlotFilterDropdown value={selectedSlotId} onChange={setSelectedSlotId} trainerFilter={selectedTrainerId} compact />
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          {[
+            { label: "Present", count: stats.present, color: "text-green-600", dot: "bg-green-500" },
+            { label: "Late", count: stats.late, color: "text-amber-600", dot: "bg-amber-500" },
+            { label: "Absent", count: stats.absent, color: "text-red-500", dot: "bg-red-500" },
+            { label: "Total", count: stats.total, color: "text-foreground", dot: "bg-muted-foreground" },
+          ].map((s) => (
+            <div key={s.label} className="flex items-center gap-1 text-[11px]">
+              <div className={cn("w-2 h-2 rounded-full", s.dot)} />
+              <span className="text-muted-foreground hidden sm:inline">{s.label}</span>
+              <span className={cn("font-bold", s.color)}>{s.count}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Search + Quick Actions */}
