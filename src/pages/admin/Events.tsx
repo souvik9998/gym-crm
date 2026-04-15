@@ -239,6 +239,14 @@ export default function Events() {
         confirmText="Delete"
         variant="destructive"
       />
+
+      {registerEvent && (
+        <AdminEventRegisterDialog
+          open={!!registerEvent}
+          onOpenChange={() => setRegisterEvent(null)}
+          event={registerEvent}
+        />
+      )}
     </div>
   );
 }
