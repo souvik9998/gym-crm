@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import { useParams, useNavigate } from "react-router-dom";
 import { useIsSuperAdmin } from "@/hooks/useUserRoles";
 import {
@@ -127,9 +128,14 @@ export default function TenantDetail() {
   const [editFeatures, setEditFeatures] = useState<Record<string, boolean>>({
     members_management: true,
     attendance: true,
+    attendance_manual: true,
+    attendance_qr: true,
+    attendance_biometric: false,
     payments_billing: true,
     staff_management: true,
     reports_analytics: true,
+    branch_analytics: true,
+    event_management: true,
     workout_diet_plans: false,
     notifications: true,
     integrations: true,
@@ -707,15 +713,84 @@ export default function TenantDetail() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Core Modules */}
+                  <div className="col-span-full">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Core Modules</p>
+                  </div>
                   {[
                     { key: "members_management", label: "Members Management", desc: "Add, edit, view gym members" },
-                    { key: "attendance", label: "Attendance", desc: "Check-in/out tracking & insights" },
                     { key: "payments_billing", label: "Payments & Billing", desc: "Payments, ledger, invoices" },
                     { key: "staff_management", label: "Staff Management", desc: "Manage staff accounts & roles" },
-                    { key: "reports_analytics", label: "Reports & Analytics", desc: "Revenue, growth & performance charts" },
-                    { key: "workout_diet_plans", label: "Workout/Diet Plans", desc: "Create workout & diet plans" },
                     { key: "notifications", label: "Notifications (SMS/WhatsApp)", desc: "Automated & manual notifications" },
                     { key: "integrations", label: "Integrations (Razorpay)", desc: "Payment gateway integrations" },
+                  ].map(({ key, label, desc }) => (
+                    <div key={key} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                      <div>
+                        <p className="text-sm font-medium">{label}</p>
+                        <p className="text-xs text-muted-foreground">{desc}</p>
+                      </div>
+                      <Switch
+                        checked={editFeatures[key] ?? false}
+                        onCheckedChange={(checked) => handleToggleFeature(key, checked)}
+                        disabled={isSavingFeatures}
+                      />
+                    </div>
+                  ))}
+
+                  {/* Attendance Modes */}
+                  <div className="col-span-full mt-4">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Attendance Configuration</p>
+                  </div>
+                  {[
+                    { key: "attendance", label: "Attendance Module", desc: "Master toggle — disables all attendance features" },
+                    { key: "attendance_manual", label: "Manual Attendance", desc: "Staff can manually mark daily attendance" },
+                    { key: "attendance_qr", label: "QR Code Attendance", desc: "Members check-in via QR code scanning" },
+                    { key: "attendance_biometric", label: "Biometric Attendance", desc: "Fingerprint / face recognition devices" },
+                  ].map(({ key, label, desc }) => (
+                    <div key={key} className={cn(
+                      "flex items-center justify-between p-3 rounded-lg border border-border",
+                      key !== "attendance" && !editFeatures.attendance && "opacity-50"
+                    )}>
+                      <div>
+                        <p className="text-sm font-medium">{label}</p>
+                        <p className="text-xs text-muted-foreground">{desc}</p>
+                      </div>
+                      <Switch
+                        checked={editFeatures[key] ?? false}
+                        onCheckedChange={(checked) => handleToggleFeature(key, checked)}
+                        disabled={isSavingFeatures || (key !== "attendance" && !editFeatures.attendance)}
+                      />
+                    </div>
+                  ))}
+
+                  {/* Analytics & Events */}
+                  <div className="col-span-full mt-4">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Analytics & Events</p>
+                  </div>
+                  {[
+                    { key: "reports_analytics", label: "Reports & Analytics", desc: "Revenue, growth & performance charts" },
+                    { key: "branch_analytics", label: "Branch Analytics", desc: "Cross-branch comparison analytics (multi-branch only)" },
+                    { key: "event_management", label: "Event Management", desc: "Create and manage gym events & registrations" },
+                  ].map(({ key, label, desc }) => (
+                    <div key={key} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                      <div>
+                        <p className="text-sm font-medium">{label}</p>
+                        <p className="text-xs text-muted-foreground">{desc}</p>
+                      </div>
+                      <Switch
+                        checked={editFeatures[key] ?? false}
+                        onCheckedChange={(checked) => handleToggleFeature(key, checked)}
+                        disabled={isSavingFeatures}
+                      />
+                    </div>
+                  ))}
+
+                  {/* Advanced Features */}
+                  <div className="col-span-full mt-4">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Advanced Features</p>
+                  </div>
+                  {[
+                    { key: "workout_diet_plans", label: "Workout/Diet Plans", desc: "Create workout & diet plans" },
                     { key: "leads_crm", label: "Leads/Enquiries CRM", desc: "Manage leads & follow-ups" },
                   ].map(({ key, label, desc }) => (
                     <div key={key} className="flex items-center justify-between p-3 rounded-lg border border-border">

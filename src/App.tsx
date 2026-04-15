@@ -105,10 +105,14 @@ const App = () => (
                   </Suspense>
                 } />
                 <Route path="/admin/events" element={
-                  <Suspense fallback={<PageLoader />}><Events /></Suspense>
+                  <ProtectedRoute requiredModule="event_management">
+                    <Suspense fallback={<PageLoader />}><Events /></Suspense>
+                  </ProtectedRoute>
                 } />
                 <Route path="/admin/events/:eventId" element={
-                  <Suspense fallback={<PageLoader />}><EventDetail /></Suspense>
+                  <ProtectedRoute requiredModule="event_management">
+                    <Suspense fallback={<PageLoader />}><EventDetail /></Suspense>
+                  </ProtectedRoute>
                 } />
                 <Route path="/admin/logs" element={
                   <Suspense fallback={<PageLoader />}>
@@ -116,7 +120,7 @@ const App = () => (
                   </Suspense>
                 } />
                 <Route path="/admin/branch-analytics" element={
-                  <ProtectedRoute requiredPermission="admin_only" requiredModule="reports_analytics">
+                  <ProtectedRoute requiredPermission="admin_only" requiredModule="branch_analytics">
                     <Suspense fallback={<PageLoader />}>
                       <BranchAnalytics />
                     </Suspense>

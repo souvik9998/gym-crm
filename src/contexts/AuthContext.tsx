@@ -20,9 +20,14 @@ export type AppRole = "admin" | "member" | "staff" | "super_admin" | "tenant_adm
 export interface TenantFeaturePermissions {
   members_management: boolean;
   attendance: boolean;
+  attendance_manual: boolean;
+  attendance_qr: boolean;
+  attendance_biometric: boolean;
   payments_billing: boolean;
   staff_management: boolean;
   reports_analytics: boolean;
+  branch_analytics: boolean;
+  event_management: boolean;
   workout_diet_plans: boolean;
   notifications: boolean;
   integrations: boolean;
@@ -32,9 +37,14 @@ export interface TenantFeaturePermissions {
 const DEFAULT_PERMISSIONS: TenantFeaturePermissions = {
   members_management: true,
   attendance: true,
+  attendance_manual: true,
+  attendance_qr: true,
+  attendance_biometric: false,
   payments_billing: true,
   staff_management: true,
   reports_analytics: true,
+  branch_analytics: true,
+  event_management: true,
   workout_diet_plans: false,
   notifications: true,
   integrations: true,
@@ -44,9 +54,14 @@ const DEFAULT_PERMISSIONS: TenantFeaturePermissions = {
 const ALL_PERMISSIONS: TenantFeaturePermissions = {
   members_management: true,
   attendance: true,
+  attendance_manual: true,
+  attendance_qr: true,
+  attendance_biometric: true,
   payments_billing: true,
   staff_management: true,
   reports_analytics: true,
+  branch_analytics: true,
+  event_management: true,
   workout_diet_plans: true,
   notifications: true,
   integrations: true,
@@ -172,9 +187,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               tenantPermissions = {
                 members_management: features.members_management ?? true,
                 attendance: features.attendance ?? true,
+                attendance_manual: features.attendance_manual ?? true,
+                attendance_qr: features.attendance_qr ?? true,
+                attendance_biometric: features.attendance_biometric ?? false,
                 payments_billing: features.payments_billing ?? true,
                 staff_management: features.staff_management ?? true,
                 reports_analytics: features.reports_analytics ?? true,
+                branch_analytics: features.branch_analytics ?? true,
+                event_management: features.event_management ?? true,
                 workout_diet_plans: features.workout_diet_plans ?? false,
                 notifications: features.notifications ?? true,
                 integrations: features.integrations ?? true,

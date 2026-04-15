@@ -23,10 +23,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Attendance = () => {
   const isMobile = useIsMobile();
   const { currentBranch } = useBranch();
+  const { tenantPermissions, isSuperAdmin } = useAuth();
 
   const { data: attendanceMode = "simple" } = useQuery({
     queryKey: ["attendance-mode", currentBranch?.id],
@@ -44,15 +46,23 @@ const Attendance = () => {
 
   const isSlotMode = attendanceMode === "time_slot";
 
-  const tabs = [
-    { value: "mark", icon: ClipboardDocumentListIcon, label: isMobile ? "Mark" : "Mark Attendance" },
-    { value: "history", icon: ClockIcon, label: "History" },
-    { value: "checkins", icon: UsersIcon, label: isMobile ? "QR" : "QR Check-ins" },
-    { value: "analytics", icon: ExclamationTriangleIcon, label: isMobile ? "Absent" : "Absent Analytics" },
-    { value: "staff", icon: UserGroupIcon, label: "Staff" },
-    { value: "insights", icon: ChartBarIcon, label: "Insights" },
-    { value: "biometric", icon: FingerPrintIcon, label: isMobile ? "Bio" : "Biometric" },
+  // Check attendance mode permissions from tenant features
+  const canManual = isSuperAdmin || tenantPermissions.attendance_manual;
+  const canQR = isSuperAdmin || tenantPermissions.attendance_qr;
+  const canBiometric = isSuperAdmin || tenantPermissions.attendance_biometric;
+
+  const allTabs = [
+    { value: "mark", icon: ClipboardDocumentListIcon, label: isMobile ? "Mark" : "Mark Attendance", visible: canManual },
+    { value: "history", icon: ClockIcon, label: "History", visible: true },
+    { value: "checkins", icon: UsersIcon, label: isMobile ? "QR" : "QR Check-ins", visible: canQR },
+    { value: "analytics", icon: ExclamationTriangleIcon, label: isMobile ? "Absent" : "Absent Analytics", visible: true },
+    { value: "staff", icon: UserGroupIcon, label: "Staff", visible: true },
+    { value: "insights", icon: ChartBarIcon, label: "Insights", visible: true },
+    { value: "biometric", icon: FingerPrintIcon, label: isMobile ? "Bio" : "Biometric", visible: canBiometric },
   ];
+
+  const tabs = allTabs.filter(t => t.visible);
+  const defaultTab = tabs[0]?.value || "history";
 
   return (
     <div className="space-y-3 animate-fade-in">
@@ -71,7 +81,7 @@ const Attendance = () => {
         </Badge>
       </div>
 
-      <Tabs defaultValue="mark" className="space-y-3">
+      <Tabs defaultValue={defaultTab} className="space-y-3">
         <TabsList className="bg-muted/50 rounded-lg p-0.5 lg:p-1 h-auto inline-flex overflow-x-auto scrollbar-hide gap-0.5 lg:gap-1">
           {tabs.map((tab) => (
             <TabsTrigger
@@ -85,15 +95,19 @@ const Attendance = () => {
           ))}
         </TabsList>
 
-        <TabsContent value="mark" className="mt-0 animate-fade-in">
-          {isSlotMode ? <SlotAttendanceTab /> : <SimpleAttendanceTab />}
-        </TabsContent>
+        {canManual && (
+          <TabsContent value="mark" className="mt-0 animate-fade-in">
+            {isSlotMode ? <SlotAttendanceTab /> : <SimpleAttendanceTab />}
+          </TabsContent>
+        )}
         <TabsContent value="history" className="mt-0 animate-fade-in">
           <AttendanceHistoryTab />
         </TabsContent>
-        <TabsContent value="checkins" className="mt-0 animate-fade-in">
-          <MembersAttendanceTab />
-        </TabsContent>
+        {canQR && (
+          <TabsContent value="checkins" className="mt-0 animate-fade-in">
+            <MembersAttendanceTab />
+          </TabsContent>
+        )}
         <TabsContent value="analytics" className="mt-0 animate-fade-in">
           <AbsentAnalyticsTab />
         </TabsContent>
@@ -103,9 +117,11 @@ const Attendance = () => {
         <TabsContent value="insights" className="mt-0 animate-fade-in">
           <AttendanceInsightsTab />
         </TabsContent>
-        <TabsContent value="biometric" className="mt-0 animate-fade-in">
-          <BiometricDevicesTab />
-        </TabsContent>
+        {canBiometric && (
+          <TabsContent value="biometric" className="mt-0 animate-fade-in">
+            <BiometricDevicesTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

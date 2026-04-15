@@ -99,14 +99,14 @@ const allNavItems: NavItem[] = [
     requiresPermission: "can_access_analytics",
     tenantModule: "reports_analytics",
   },
-  // Branch Analytics - admin only
+  // Branch Analytics - admin only, requires branch_analytics module
   {
     title: "Branch Analytics",
     href: "/admin/branch-analytics",
     icon: BuildingOffice2Icon,
     iconSolid: BuildingOffice2Icon,
     adminOnly: true,
-    tenantModule: "reports_analytics",
+    tenantModule: "branch_analytics",
   },
   // Attendance - available to staff with permission
   {
@@ -117,13 +117,14 @@ const allNavItems: NavItem[] = [
     requiresPermission: "can_access_attendance",
     tenantModule: "attendance",
   },
-  // Events - available to staff with event permission
+  // Events - available to staff with event permission, requires event_management module
   {
     title: "Events",
     href: "/admin/events",
     icon: CalendarDaysIcon,
     iconSolid: CalendarDaysIcon,
     requiresPermission: "can_manage_events" as any,
+    tenantModule: "event_management",
   },
   // Ledger - requires ONLY ledger permission
   {
