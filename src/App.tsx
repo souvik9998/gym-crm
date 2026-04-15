@@ -34,6 +34,8 @@ const Logs = lazy(() => import("./pages/admin/Logs"));
 const StaffManagement = lazy(() => import("./pages/admin/StaffManagement"));
 const TrainersPage = lazy(() => import("./pages/admin/Trainers"));
 const Attendance = lazy(() => import("./pages/admin/Attendance"));
+const Events = lazy(() => import("./pages/admin/Events"));
+const EventRegistration = lazy(() => import("./pages/EventRegistration"));
 
 // Lazy load Super Admin pages
 const SuperAdminDashboard = lazy(() => import("./pages/superadmin/Dashboard"));
@@ -73,6 +75,9 @@ const App = () => (
                 </Suspense>
               } />
               <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/event/:eventId" element={
+                <Suspense fallback={<PageLoader />}><EventRegistration /></Suspense>
+              } />
               <Route path="/check-in" element={<CheckIn />} />
               
               {/* Admin routes with persistent layout */}
@@ -97,6 +102,9 @@ const App = () => (
                   <Suspense fallback={<PageLoader />}>
                     <TrainersPage />
                   </Suspense>
+                } />
+                <Route path="/admin/events" element={
+                  <Suspense fallback={<PageLoader />}><Events /></Suspense>
                 } />
                 <Route path="/admin/logs" element={
                   <Suspense fallback={<PageLoader />}>

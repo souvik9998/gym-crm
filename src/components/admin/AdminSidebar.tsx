@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth, useStaffPermission } from "@/contexts/StaffAuthContext";
 import { useTenantPermissions } from "@/hooks/useTenantPermissions";
+import { CalendarDaysIcon } from "@heroicons/react/24/outline";
 import {
   HomeIcon,
   ChartBarIcon,
@@ -114,6 +115,14 @@ const allNavItems: NavItem[] = [
     iconSolid: ClipboardDocumentListIcon,
     requiresPermission: "can_access_attendance",
     tenantModule: "attendance",
+  },
+  // Events - admin only
+  {
+    title: "Events",
+    href: "/admin/events",
+    icon: CalendarDaysIcon,
+    iconSolid: CalendarDaysIcon,
+    adminOnly: true,
   },
   // Ledger - requires ONLY ledger permission
   {
