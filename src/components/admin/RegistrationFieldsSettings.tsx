@@ -46,18 +46,29 @@ const DEFAULT_FIELDS: RegistrationFields = {
 };
 
 const FIELD_CONFIG = [
-  { key: "name", label: "Full Name", description: "Member's full name", icon: User },
-  { key: "phone", label: "Phone Number", description: "10-digit mobile number", icon: Phone },
-  { key: "gender", label: "Gender", description: "Male / Female / Other", icon: User },
-  { key: "date_of_birth", label: "Date of Birth", description: "Member's date of birth", icon: Calendar },
-  { key: "address", label: "Address", description: "Residential address", icon: MapPin },
-  { key: "photo_id", label: "Photo ID (Manual Entry)", description: "ID type dropdown and number input by user", icon: IdCard, group: "identity" },
-  { key: "identity_proof_upload", label: "Identity Proof Upload", description: "Upload scan/photo of ID document (PDF/Image)", icon: Upload, group: "identity" },
-  { key: "health_details", label: "Health Details", description: "Blood group, height, weight, medical conditions, allergies, emergency contact", icon: Heart },
-  { key: "medical_records_upload", label: "Medical Records Upload", description: "Upload medical certificates or health reports", icon: FileText },
-  { key: "self_select_trainer", label: "Member Self-Select Trainer", description: "Allow members to choose their own trainer during registration/renewal. If disabled, only admin can assign trainers.", icon: Dumbbell },
-  { key: "daily_pass_enabled", label: "Daily Pass", description: "Enable daily pass system. When disabled, Daily Pass tab is hidden from dashboard and public pages.", icon: Clock },
+  // Personal Information
+  { key: "name", label: "Full Name", description: "Member's full name", icon: User, section: "personal" },
+  { key: "phone", label: "Phone Number", description: "10-digit mobile number", icon: Phone, section: "personal" },
+  { key: "gender", label: "Gender", description: "Male / Female / Other", icon: User, section: "personal" },
+  { key: "date_of_birth", label: "Date of Birth", description: "Member's date of birth", icon: Calendar, section: "personal" },
+  { key: "address", label: "Address", description: "Residential address", icon: MapPin, section: "personal" },
+  // Identity Verification
+  { key: "photo_id", label: "Photo ID (Manual Entry)", description: "ID type dropdown and number input by user", icon: IdCard, section: "identity", group: "identity" },
+  { key: "identity_proof_upload", label: "Identity Proof Upload", description: "Upload scan/photo of ID document (PDF/Image)", icon: Upload, section: "identity", group: "identity" },
+  // Health & Medical
+  { key: "health_details", label: "Health Details", description: "Blood group, height, weight, medical conditions, allergies, emergency contact", icon: Heart, section: "health" },
+  { key: "medical_records_upload", label: "Medical Records Upload", description: "Upload medical certificates or health reports", icon: FileText, section: "health" },
+  // Feature Controls
+  { key: "self_select_trainer", label: "Member Self-Select Trainer", description: "Allow members to choose their own trainer during registration/renewal. If disabled, only admin can assign trainers.", icon: Dumbbell, section: "features" },
+  { key: "daily_pass_enabled", label: "Daily Pass", description: "Enable daily pass system. When disabled, Daily Pass tab is hidden from dashboard and public pages.", icon: Clock, section: "features" },
 ];
+
+const SECTION_HEADERS: Record<string, { title: string; subtitle?: string }> = {
+  personal: { title: "Personal Information", subtitle: "Basic member details collected during registration" },
+  identity: { title: "Identity Verification", subtitle: "Choose one verification method" },
+  health: { title: "Health & Medical", subtitle: "Optional health information and document uploads" },
+  features: { title: "Feature Controls", subtitle: "Toggle platform features for this branch" },
+};
 
 export const RegistrationFieldsSettings = () => {
   const { currentBranch } = useBranch();
