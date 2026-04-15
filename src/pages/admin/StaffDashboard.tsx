@@ -99,6 +99,7 @@ const StaffDashboard = () => {
   
   const canSeeMembers = canViewMembers || canManageMembers;
   const canRecordPayments = canManageMembers;
+  const showTrainerFilter = permissions?.member_access_type !== "assigned";
   
   const [searchInput, setSearchInput] = useState("");
   const searchQuery = useDebounce(searchInput, 300);
