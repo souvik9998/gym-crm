@@ -532,6 +532,7 @@ const AdminDashboard = () => {
                       <UsersIcon className="w-3.5 h-3.5 hidden md:inline" />
                       Members
                     </TabsTrigger>
+                    {isDailyPassEnabled && (
                     <TabsTrigger 
                       value="daily_pass" 
                       className="flex-1 text-xs md:text-sm leading-tight px-2 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all duration-200 gap-1.5"
@@ -539,6 +540,7 @@ const AdminDashboard = () => {
                       <ClockIcon className="w-3.5 h-3.5 hidden md:inline" />
                       Daily Passes
                     </TabsTrigger>
+                    )}
                     <TabsTrigger 
                       value="payments" 
                       className="flex-1 text-xs md:text-sm leading-tight px-2 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all duration-200 gap-1.5"
