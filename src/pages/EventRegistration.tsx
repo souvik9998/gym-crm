@@ -444,6 +444,7 @@ export default function EventRegistration() {
               branchId: event?.branch_id,
               metadata: { event_id: eventId, event_title: event?.title, payment_type: "razorpay", razorpay_payment_id: response.razorpay_payment_id },
             });
+          } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : "Payment verification failed";
             isVerifying = false;
             setIsPaymentLoading(false);
