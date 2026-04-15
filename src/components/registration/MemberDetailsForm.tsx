@@ -23,6 +23,8 @@ interface MemberDetailsFormProps {
   onSubmit: (data: MemberDetailsData) => void;
   onBack: () => void;
   initialData?: MemberDetailsData | null;
+  showPhotoId?: boolean;
+  photoIdRequired?: boolean;
 }
 
 export interface MemberDetailsData {
@@ -36,7 +38,7 @@ export interface MemberDetailsData {
 
 const STORAGE_KEY = "member-details-form";
 
-const MemberDetailsForm = ({ onSubmit, onBack, initialData }: MemberDetailsFormProps) => {
+const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, photoIdRequired = false }: MemberDetailsFormProps) => {
   const { branchId } = useParams<{ branchId?: string }>();
   const storageKey = `${STORAGE_KEY}-${branchId || "default"}`;
 
@@ -158,8 +160,7 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData }: MemberDetailsFormP
   const isFormValid =
     fullName.trim().length >= 2 &&
     gender !== "" &&
-    photoIdType !== "" &&
-    photoIdNumber.trim().length > 0 &&
+    (!showPhotoId || (photoIdType !== "" && photoIdNumber.trim().length > 0)) &&
     address.trim().length >= 3;
 
   const genderOptions = [
