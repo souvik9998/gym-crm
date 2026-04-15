@@ -1,13 +1,16 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, XCircle, Clock, ChevronDown, UserX, Users, Dumbbell } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, ChevronDown, UserX, Users, Dumbbell, Filter } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
+import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 
 export type MemberFilterCategory = "all" | "active" | "expired" | "inactive" | "expiring_soon" | "pt";
 
@@ -37,6 +40,10 @@ interface MemberFilterProps {
   ptFilterActive?: boolean;
   onPtFilterChange?: (active: boolean) => void;
   mobileMode?: boolean;
+  trainerFilter?: string | null;
+  onTrainerFilterChange?: (value: string | null) => void;
+  timeSlotFilter?: string | null;
+  onTimeSlotFilterChange?: (value: string | null) => void;
 }
 
 const filterCategories: {
@@ -121,7 +128,7 @@ const filterCategories: {
   },
 ];
 
-export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilterChange, mobileMode = false }: MemberFilterProps) => {
+export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilterChange, mobileMode = false, trainerFilter, onTrainerFilterChange, timeSlotFilter, onTimeSlotFilterChange }: MemberFilterProps) => {
   const [openDropdown, setOpenDropdown] = React.useState<string | null>(null);
   const [mobileDropdownOpen, setMobileDropdownOpen] = React.useState(false);
   const hoverTimeoutRef = React.useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
@@ -337,6 +344,34 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
             </div>
           </DropdownMenuItem>
           
+          {/* Trainer & Slot Filters - inside dropdown */}
+          {(onTrainerFilterChange || onTimeSlotFilterChange) && (
+            <>
+              <DropdownMenuSeparator className="my-1" />
+              <div className="px-2 py-1.5 space-y-1.5">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1">Filters</p>
+                {onTrainerFilterChange && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <TrainerFilterDropdown
+                      value={trainerFilter || null}
+                      onChange={onTrainerFilterChange}
+                      compact={false}
+                    />
+                  </div>
+                )}
+                {onTimeSlotFilterChange && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <TimeSlotFilterDropdown
+                      value={timeSlotFilter || null}
+                      onChange={onTimeSlotFilterChange}
+                      trainerFilter={trainerFilter}
+                      compact={false}
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     );
