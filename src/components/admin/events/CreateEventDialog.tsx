@@ -63,10 +63,20 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
   const [singlePrice, setSinglePrice] = useState<number>(0);
   const [singleCapacity, setSingleCapacity] = useState<number | null>(null);
   const [selectionMode, setSelectionMode] = useState<string>("single");
-  const [pricingOptions, setPricingOptions] = useState<PricingOption[]>([
-    { name: "General", description: "", price: 0, capacity_limit: null, is_active: true },
-  ]);
+  const [pricingOptions, setPricingOptions] = useState<PricingOption[]>([]);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
+
+  const isLegacyPlaceholderOption = (option: PricingOption, allOptions: PricingOption[]) => {
+    if (allOptions.length <= 1) return false;
+    const normalizedName = option.name.trim().toLowerCase();
+    if (normalizedName !== "general") return false;
+
+    return allOptions.some((other) =>
+      other !== option &&
+      other.price === option.price &&
+      other.capacity_limit === option.capacity_limit
+    );
+  };
 
   useEffect(() => {
     if (editEvent) {
@@ -80,13 +90,13 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
       setWhatsappNotify(editEvent.whatsapp_notify_on_register || false);
       setSelectionMode(editEvent.selection_mode || "single");
       if (editEvent.event_pricing_options?.length) {
-        const opts = editEvent.event_pricing_options.map((p: any) => ({
+        const rawOptions = editEvent.event_pricing_options.map((p: any) => ({
           id: p.id, name: p.name, description: p.description || "", price: p.price,
           capacity_limit: p.capacity_limit, is_active: p.is_active ?? true,
         }));
+        const opts = rawOptions.filter((option: PricingOption) => !isLegacyPlaceholderOption(option, rawOptions));
         setPricingOptions(opts);
-        // Detect pricing type: if all items have the same price, treat as uniform
-        const allSamePrice = opts.every((o: any) => o.price === opts[0].price);
+        const allSamePrice = opts.length > 0 && opts.every((o: any) => o.price === opts[0].price);
         if (allSamePrice) {
           setPricingType("single");
           setSinglePrice(opts[0].price);
@@ -97,7 +107,7 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
         setPricingType("single");
         setSinglePrice(0);
         setSingleCapacity(null);
-        setPricingOptions([{ name: "General", description: "", price: 0, capacity_limit: null, is_active: true }]);
+        setPricingOptions([]);
       }
       loadCustomFields(editEvent.id);
     } else {
@@ -149,17 +159,19 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
     setStatus("draft"); setWhatsappNotify(false); setUploading(false);
     setPricingType("single"); setSinglePrice(0); setSingleCapacity(null);
     setSelectionMode("single");
-    setPricingOptions([{ name: "General", description: "", price: 0, capacity_limit: null, is_active: true }]);
+    setPricingOptions([]);
     setCustomFields([]);
   };
 
-  // Resolve final pricing options based on pricing type
-  // Single Price: all items share the same singlePrice; Variable: each item has its own price
   const getEffectivePricingOptions = (): PricingOption[] => {
+    const cleanedOptions = pricingOptions
+      .map((p) => ({ ...p, name: p.name.trim(), description: p.description.trim() }))
+      .filter((p) => p.name.length > 0);
+
     if (pricingType === "single") {
-      return pricingOptions.map(p => ({ ...p, price: singlePrice }));
+      return cleanedOptions.map(p => ({ ...p, price: singlePrice }));
     }
-    return pricingOptions;
+    return cleanedOptions;
   };
 
   const saveMutation = useMutation({

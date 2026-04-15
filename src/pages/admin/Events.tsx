@@ -27,6 +27,17 @@ const statusColors: Record<string, string> = {
 };
 
 export default function Events() {
+  const isLegacyPlaceholderOption = (option: any, allOptions: any[]) => {
+    if (allOptions.length <= 1) return false;
+    const normalizedName = String(option?.name || "").trim().toLowerCase();
+    if (normalizedName !== "general") return false;
+
+    return allOptions.some((other) =>
+      other?.id !== option?.id &&
+      other?.price === option?.price &&
+      other?.capacity_limit === option?.capacity_limit
+    );
+  };
   const { currentBranch } = useBranch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -90,12 +101,15 @@ export default function Events() {
 
   const getEventStats = (event: any) => {
     const regs = event.event_registrations || [];
+    const visiblePricingOptions = (event.event_pricing_options || []).filter(
+      (p: any) => !isLegacyPlaceholderOption(p, event.event_pricing_options || [])
+    );
     const totalRegs = regs.length;
     const paidRegs = regs.filter((r: any) => r.payment_status === "success").length;
-    const totalCapacity = (event.event_pricing_options || []).reduce(
+    const totalCapacity = visiblePricingOptions.reduce(
       (sum: number, p: any) => sum + (p.capacity_limit || 0), 0
     );
-    return { totalRegs, paidRegs, totalCapacity };
+    return { totalRegs, paidRegs, totalCapacity, visiblePricingOptions };
   };
 
   const copyEventLink = (eventId: string) => {
@@ -154,7 +168,7 @@ export default function Events() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((event: any) => {
-            const { totalRegs, paidRegs, totalCapacity } = getEventStats(event);
+            const { paidRegs, totalCapacity, visiblePricingOptions } = getEventStats(event);
             return (
               <Card
                 key={event.id}
@@ -197,11 +211,11 @@ export default function Events() {
                       </div>
                       <div className="flex items-center gap-1.5">
                         <IndianRupee className="w-3.5 h-3.5" />
-                        <span>
-                          {(event.event_pricing_options || [])
-                            .map((p: any) => `₹${p.price}`)
-                            .join(" / ") || "Free"}
-                        </span>
+                          <span>
+                            {visiblePricingOptions
+                              .map((p: any) => `₹${p.price}`)
+                              .join(" / ") || "Free"}
+                          </span>
                       </div>
                     </div>
                   </div>

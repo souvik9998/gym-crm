@@ -35,6 +35,17 @@ const statusColors: Record<string, string> = {
 };
 
 export default function EventDetail() {
+  const isLegacyPlaceholderOption = (option: any, allOptions: any[]) => {
+    if (allOptions.length <= 1) return false;
+    const normalizedName = String(option?.name || "").trim().toLowerCase();
+    if (normalizedName !== "general") return false;
+
+    return allOptions.some((other) =>
+      other?.id !== option?.id &&
+      other?.price === option?.price &&
+      other?.capacity_limit === option?.capacity_limit
+    );
+  };
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -242,14 +253,17 @@ export default function EventDetail() {
     return map;
   }, [registrations, isMultiSelect]);
 
-  const pricingWithRealSlots = useMemo(() =>
-    (event?.event_pricing_options || []).map((p: any) => ({
+  const pricingWithRealSlots = useMemo(() => {
+    const options = (event?.event_pricing_options || []).filter(
+      (p: any) => !isLegacyPlaceholderOption(p, event?.event_pricing_options || [])
+    );
+
+    return options.map((p: any) => ({
       ...p,
       slots_filled: regCountMap[p.id] || 0,
       revenue: perItemRevenue[p.id] || 0,
-    })),
-    [event?.event_pricing_options, regCountMap, perItemRevenue]
-  );
+    }));
+  }, [event?.event_pricing_options, regCountMap, perItemRevenue]);
 
   const totalCapacity = pricingWithRealSlots.reduce(
     (sum: number, p: any) => sum + (p.capacity_limit || 0), 0
