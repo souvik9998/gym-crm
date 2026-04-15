@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -127,7 +127,24 @@ export default function EventDetail() {
 
   const paidCount = registrations.filter((r: any) => r.payment_status === "success").length;
 
-  const totalCapacity = (event?.event_pricing_options || []).reduce(
+  // Compute real slots_filled from registrations
+  const regCountMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    registrations.filter((r: any) => r.payment_status === "success").forEach((r: any) => {
+      map[r.pricing_option_id] = (map[r.pricing_option_id] || 0) + 1;
+    });
+    return map;
+  }, [registrations]);
+
+  const pricingWithRealSlots = useMemo(() =>
+    (event?.event_pricing_options || []).map((p: any) => ({
+      ...p,
+      slots_filled: regCountMap[p.id] || 0,
+    })),
+    [event?.event_pricing_options, regCountMap]
+  );
+
+  const totalCapacity = pricingWithRealSlots.reduce(
     (sum: number, p: any) => sum + (p.capacity_limit || 0), 0
   );
 
@@ -240,7 +257,7 @@ export default function EventDetail() {
               <IndianRupee className="w-4 h-4" />
               <span className="text-sm font-medium">₹{totalRevenue.toLocaleString()} Revenue</span>
             </div>
-            {(event.event_pricing_options || []).map((p: any) => (
+            {pricingWithRealSlots.map((p: any) => (
               <div key={p.id} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-muted/50 text-muted-foreground text-xs">
                 <span className="font-medium">{p.name}</span>
                 <span>₹{p.price}</span>

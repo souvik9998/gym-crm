@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -47,8 +47,31 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState("");
 
-  const pricingOptions = event?.event_pricing_options || [];
+  const rawPricingOptions = event?.event_pricing_options || [];
   const customFields = event?.event_custom_fields || [];
+
+  // Fetch real registration counts per pricing option
+  const { data: regCounts = {} } = useQuery({
+    queryKey: ["event-reg-counts", event?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("event_registrations")
+        .select("pricing_option_id")
+        .eq("event_id", event.id)
+        .eq("payment_status", "success");
+      const countMap: Record<string, number> = {};
+      (data || []).forEach((r: any) => {
+        countMap[r.pricing_option_id] = (countMap[r.pricing_option_id] || 0) + 1;
+      });
+      return countMap;
+    },
+    enabled: !!event?.id && open,
+  });
+
+  const pricingOptions = useMemo(() =>
+    rawPricingOptions.map((p: any) => ({ ...p, slots_filled: regCounts[p.id] || 0 })),
+    [rawPricingOptions, regCounts]
+  );
 
   useEffect(() => {
     if (open && pricingOptions.length > 0 && !selectedPricingId) {
@@ -258,15 +281,7 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
       });
       if (error) throw error;
 
-      // Update slots filled
-      if (effectivePaymentStatus === "success") {
-        try {
-          await supabase
-            .from("event_pricing_options")
-            .update({ slots_filled: (selectedPricing?.slots_filled || 0) + 1 })
-            .eq("id", selectedPricingId);
-        } catch { /* non-critical */ }
-      }
+      // slots_filled is derived from actual registrations, no manual increment needed
 
       // Increment coupon usage
       if (appliedCoupon && !effectiveFree) {

@@ -282,26 +282,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (shouldIncrementSlots) {
-      const { data: pricingOption, error: pricingError } = await supabase
-        .from("event_pricing_options")
-        .select("slots_filled")
-        .eq("id", pricingOptionId)
-        .maybeSingle();
-
-      if (pricingError) {
-        console.error("Error fetching event pricing option for slot update:", pricingError);
-      } else if (pricingOption) {
-        const { error: slotUpdateError } = await supabase
-          .from("event_pricing_options")
-          .update({ slots_filled: (pricingOption.slots_filled || 0) + 1 })
-          .eq("id", pricingOptionId);
-
-        if (slotUpdateError) {
-          console.error("Error updating event slots:", slotUpdateError);
-        }
-      }
-    }
+    // slots_filled is now derived from actual registration counts - no manual increment needed
 
     // Send WhatsApp notification if event has whatsapp_notify_on_register enabled
     try {
