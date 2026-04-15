@@ -60,6 +60,7 @@ type CouponForm = {
   per_user_limit: string;
   applicable_on_registration: boolean;
   applicable_on_renewal: boolean;
+  applicable_on_event: boolean;
   first_time_only: boolean;
   existing_members_only: boolean;
   expired_members_only: boolean;
@@ -81,6 +82,7 @@ const defaultForm: CouponForm = {
   per_user_limit: "1",
   applicable_on_registration: true,
   applicable_on_renewal: true,
+  applicable_on_event: false,
   first_time_only: false,
   existing_members_only: false,
   expired_members_only: false,
