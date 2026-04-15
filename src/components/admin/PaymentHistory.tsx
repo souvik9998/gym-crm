@@ -535,7 +535,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                       </span>
                     </div>
                     <p className="text-sm font-medium truncate">
-                      {payment.member?.name || payment.daily_pass_user?.name || "Unknown"}
+                      {getPaymentDisplayName(payment)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -553,9 +553,12 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                         <User className="w-3 h-3" /> Member
                       </p>
                       <p className="font-medium mt-0.5">
-                        {payment.member?.name || payment.daily_pass_user?.name || "Unknown"}
-                        {payment.daily_pass_user_id && (
+                        {getPaymentDisplayName(payment)}
+                        {payment.daily_pass_user_id && !payment.event_registration && (
                           <Badge variant="outline" className="ml-1 text-[9px] py-0">Daily</Badge>
+                        )}
+                        {payment.payment_type === "event_registration" && (
+                          <Badge variant="outline" className="ml-1 text-[9px] py-0 bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400">Event</Badge>
                         )}
                       </p>
                     </div>
