@@ -105,13 +105,13 @@ const allNavItems: NavItem[] = [
     adminOnly: true,
     tenantModule: "reports_analytics",
   },
-  // Attendance - admin only
+  // Attendance - available to staff with permission
   {
     title: "Attendance",
     href: "/admin/attendance",
     icon: ClipboardDocumentListIcon,
     iconSolid: ClipboardDocumentListIcon,
-    adminOnly: true,
+    requiresPermission: "can_access_attendance",
     tenantModule: "attendance",
   },
   // Ledger - requires ONLY ledger permission
