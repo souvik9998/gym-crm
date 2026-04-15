@@ -445,6 +445,24 @@ const StaffActivityLogsTab = ({ refreshKey }: StaffActivityLogsTabProps) => {
                       className="pl-8 lg:pl-10 h-8 lg:h-12 text-xs lg:text-sm"
                     />
                   </div>
+                  <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="w-auto min-w-[80px] lg:w-[160px] h-8 lg:h-12 text-[11px] lg:text-sm">
+                      <Filter className="w-3 h-3 lg:w-4 lg:h-4 mr-0.5 lg:mr-1" />
+                      <SelectValue placeholder="Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="staff_logged_in">Logged In</SelectItem>
+                      <SelectItem value="staff_logged_out">Logged Out</SelectItem>
+                      <SelectItem value="member_added">Member Added</SelectItem>
+                      <SelectItem value="member_updated">Member Updated</SelectItem>
+                      <SelectItem value="member_deleted">Member Deleted</SelectItem>
+                      <SelectItem value="cash_payment_added">Payment</SelectItem>
+                      <SelectItem value="expense_added">Expense Added</SelectItem>
+                      <SelectItem value="income_added">Income Added</SelectItem>
+                      <SelectItem value="whatsapp_message_sent">WhatsApp Sent</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Select value={staffFilter} onValueChange={setStaffFilter}>
                     <SelectTrigger className="w-auto min-w-[80px] lg:w-[180px] h-8 lg:h-12 text-[11px] lg:text-sm">
                       <Filter className="w-3 h-3 lg:w-4 lg:h-4 mr-0.5 lg:mr-1" />
