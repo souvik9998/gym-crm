@@ -442,6 +442,13 @@ export const MembersTable = ({
     }
   }, [members.length]);
 
+  const isNewMember = (member: Member): boolean => {
+    if (!member.created_at) return false;
+    const createdAt = new Date(member.created_at).getTime();
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    return createdAt > oneHourAgo;
+  };
+
   const isExpiringSoon = (member: Member): boolean => {
     if (!member.subscription) return false;
     if (member.subscription.status === "inactive") return false;
