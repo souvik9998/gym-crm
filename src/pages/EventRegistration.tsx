@@ -12,7 +12,7 @@ import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { format } from "date-fns";
 import { Calendar, MapPin, Users, CheckCircle2, ArrowLeft, ArrowRight, IndianRupee } from "lucide-react";
-import { PoweredByBadge } from "@/components/PoweredByBadge";
+import PoweredByBadge from "@/components/PoweredByBadge";
 import { cn } from "@/lib/utils";
 
 type Step = "phone" | "details" | "payment";
@@ -124,14 +124,13 @@ export default function EventRegistration() {
       if (error) throw error;
 
       // Update slots_filled
-      await supabase.rpc("increment_event_slots" as any, {
-        p_pricing_id: selectedPricingId,
-      }).then(() => {}).catch(() => {
-        // If RPC doesn't exist, manually update
-        supabase.from("event_pricing_options")
+      try {
+        await supabase.from("event_pricing_options")
           .update({ slots_filled: (selectedPricing?.slots_filled || 0) + 1 })
           .eq("id", selectedPricingId);
-      });
+      } catch {
+        // Non-critical, continue
+      }
     },
     onSuccess: () => {
       setRegistered(true);
