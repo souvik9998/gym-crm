@@ -529,7 +529,7 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
 
               {/* Item list */}
               {pricingOptions.map((p, i) => (
-                <div key={i} className="p-3 rounded-xl border border-border/40 bg-muted/20 space-y-2">
+                <div key={p.id || `new-${i}`} className="p-3 rounded-xl border border-border/40 bg-muted/20 space-y-2">
                   <div className="flex items-center gap-2">
                     <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     <Input
