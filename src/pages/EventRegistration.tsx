@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,12 +10,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
+import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
 import { format } from "date-fns";
-import { Calendar, MapPin, Users, CheckCircle2, ArrowLeft, ArrowRight, IndianRupee } from "lucide-react";
+import { Calendar, MapPin, CheckCircle2, ArrowLeft, ArrowRight, IndianRupee } from "lucide-react";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import { cn } from "@/lib/utils";
 
 type Step = "phone" | "details" | "payment";
+type PaymentStage = "idle" | "verifying" | "processing" | "success";
+
+declare global {
+  interface Window {
+    Razorpay: unknown;
+  }
+}
 
 export default function EventRegistration() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -28,8 +36,9 @@ export default function EventRegistration() {
   const [customResponses, setCustomResponses] = useState<Record<string, string>>({});
   const [registered, setRegistered] = useState(false);
   const [phoneChecked, setPhoneChecked] = useState(false);
+  const [isPaymentLoading, setIsPaymentLoading] = useState(false);
+  const [paymentStage, setPaymentStage] = useState<PaymentStage>("idle");
 
-  // Fetch event data with anon key (public access)
   const { data: event, isLoading: eventLoading } = useQuery({
     queryKey: ["public-event", eventId],
     queryFn: async () => {
@@ -45,7 +54,6 @@ export default function EventRegistration() {
     enabled: !!eventId,
   });
 
-  // Auto-select first pricing
   useEffect(() => {
     if (event?.event_pricing_options?.length && !selectedPricingId) {
       setSelectedPricingId(event.event_pricing_options[0].id);
@@ -54,13 +62,11 @@ export default function EventRegistration() {
 
   const selectedPricing = event?.event_pricing_options?.find((p: any) => p.id === selectedPricingId);
 
-  // Check phone for existing member
   const checkPhone = async () => {
     if (phone.length !== 10 || !/^[6-9]/.test(phone)) {
       toast.error("Enter a valid 10-digit phone number");
       return;
     }
-    // Look up in members table
     const { data } = await supabase
       .from("members")
       .select("id, name, email")
@@ -77,14 +83,25 @@ export default function EventRegistration() {
     setPhoneChecked(true);
   };
 
-  // Register mutation
-  const registerMutation = useMutation({
+  // Load Razorpay script
+  const loadRazorpayScript = useCallback((): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) { resolve(true); return; }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  }, []);
+
+  // Free registration mutation
+  const registerFreeMutation = useMutation({
     mutationFn: async () => {
       if (!event || !eventId) throw new Error("Event not found");
       if (!name.trim()) throw new Error("Name is required");
       if (!selectedPricingId) throw new Error("Select a pricing option");
 
-      // Check capacity
       if (selectedPricing?.capacity_limit) {
         const { count } = await supabase
           .from("event_registrations")
@@ -92,23 +109,14 @@ export default function EventRegistration() {
           .eq("event_id", eventId)
           .eq("pricing_option_id", selectedPricingId)
           .eq("payment_status", "success");
-        
-        if ((count || 0) >= selectedPricing.capacity_limit) {
-          throw new Error("This option is fully booked!");
-        }
+        if ((count || 0) >= selectedPricing.capacity_limit) throw new Error("This option is fully booked!");
       }
 
-      // Check for required custom fields
       const customFields = event.event_custom_fields || [];
       for (const field of customFields) {
-        if (field.is_required && !customResponses[field.id]) {
-          throw new Error(`${field.field_name} is required`);
-        }
+        if (field.is_required && !customResponses[field.id]) throw new Error(`${field.field_name} is required`);
       }
 
-      const isFree = Number(selectedPricing?.price || 0) === 0;
-
-      // Insert registration
       const { error } = await supabase.from("event_registrations").insert({
         event_id: eventId,
         pricing_option_id: selectedPricingId,
@@ -116,27 +124,170 @@ export default function EventRegistration() {
         name: name.trim(),
         phone,
         email: email.trim() || null,
-        amount_paid: Number(selectedPricing?.price || 0),
-        payment_status: isFree ? "success" : "pending",
+        amount_paid: 0,
+        payment_status: "success",
         custom_field_responses: customResponses,
       });
-
       if (error) throw error;
 
-      // Update slots_filled
       try {
         await supabase.from("event_pricing_options")
           .update({ slots_filled: (selectedPricing?.slots_filled || 0) + 1 })
           .eq("id", selectedPricingId);
-      } catch {
-        // Non-critical, continue
-      }
+      } catch { /* non-critical */ }
     },
-    onSuccess: () => {
-      setRegistered(true);
-    },
+    onSuccess: () => setRegistered(true),
     onError: (err: any) => toast.error("Registration failed", { description: err.message }),
   });
+
+  // Razorpay payment flow
+  const handlePayment = async () => {
+    if (!event || !eventId || !selectedPricing) return;
+    const amount = Number(selectedPricing.price);
+    if (amount <= 0) { registerFreeMutation.mutate(); return; }
+
+    setIsPaymentLoading(true);
+    setPaymentStage("idle");
+
+    try {
+      // Validate custom fields first
+      const customFields = event.event_custom_fields || [];
+      for (const field of customFields) {
+        if (field.is_required && !customResponses[field.id]) throw new Error(`${field.field_name} is required`);
+      }
+
+      // Check capacity
+      if (selectedPricing.capacity_limit) {
+        const { count } = await supabase
+          .from("event_registrations")
+          .select("id", { count: "exact", head: true })
+          .eq("event_id", eventId)
+          .eq("pricing_option_id", selectedPricingId)
+          .eq("payment_status", "success");
+        if ((count || 0) >= selectedPricing.capacity_limit) throw new Error("This option is fully booked!");
+      }
+
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) throw new Error("Failed to load payment gateway");
+
+      // Create Razorpay order via edge function
+      const { data: orderData, error: orderError } = await supabase.functions.invoke(
+        "create-razorpay-order",
+        {
+          body: {
+            amount,
+            memberName: name.trim(),
+            memberPhone: phone,
+            isNewMember: !existingMemberId,
+            branchId: event.branch_id,
+          },
+        }
+      );
+
+      if (orderError || !orderData) throw new Error(orderError?.message || "Failed to create order");
+
+      // Open Razorpay checkout
+      let isVerifying = false;
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: event.title,
+        description: `${selectedPricing.name} - Event Registration`,
+        order_id: orderData.orderId,
+        prefill: { name: name.trim(), contact: phone },
+        theme: { color: "#F97316" },
+        handler: async function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
+          isVerifying = true;
+          setPaymentStage("verifying");
+
+          try {
+            setPaymentStage("processing");
+
+            // Verify payment
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke(
+              "verify-razorpay-payment",
+              {
+                body: {
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  memberId: existingMemberId,
+                  memberName: name.trim(),
+                  memberPhone: phone,
+                  amount,
+                  isNewMember: !existingMemberId,
+                  branchId: event.branch_id,
+                  // Skip member/subscription creation — this is event-only
+                  skipMemberCreation: true,
+                },
+              }
+            );
+
+            if (verifyError) throw new Error(verifyError.message || "Payment verification failed");
+
+            // Payment verified — now create the event registration with success status
+            const { error: regError } = await supabase.from("event_registrations").insert({
+              event_id: eventId,
+              pricing_option_id: selectedPricingId,
+              member_id: existingMemberId,
+              name: name.trim(),
+              phone,
+              email: email.trim() || null,
+              amount_paid: amount,
+              payment_status: "success",
+              payment_id: response.razorpay_payment_id,
+              custom_field_responses: customResponses,
+            });
+
+            if (regError) throw regError;
+
+            // Update slots
+            try {
+              await supabase.from("event_pricing_options")
+                .update({ slots_filled: (selectedPricing.slots_filled || 0) + 1 })
+                .eq("id", selectedPricingId);
+            } catch { /* non-critical */ }
+
+            setPaymentStage("success");
+            setIsPaymentLoading(false);
+            await new Promise((r) => setTimeout(r, 400));
+            setRegistered(true);
+          } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : "Payment verification failed";
+            console.error("Verification error:", error);
+            isVerifying = false;
+            setIsPaymentLoading(false);
+            setPaymentStage("idle");
+            toast.error("Payment Verification Failed", { description: msg });
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            if (isVerifying) return;
+            setIsPaymentLoading(false);
+            setPaymentStage("idle");
+          },
+        },
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const razorpay = new (window.Razorpay as any)(options);
+      razorpay.on("payment.failed", function (resp: { error: { description: string } }) {
+        console.error("Payment failed:", resp.error);
+        toast.error("Payment Failed", { description: resp.error.description });
+        setIsPaymentLoading(false);
+        setPaymentStage("idle");
+      });
+      razorpay.open();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to initiate payment";
+      console.error("Payment initiation error:", error);
+      toast.error("Payment Error", { description: msg });
+      setIsPaymentLoading(false);
+      setPaymentStage("idle");
+    }
+  };
 
   if (eventLoading) {
     return (
@@ -169,8 +320,7 @@ export default function EventRegistration() {
             </div>
             <h2 className="text-xl font-bold text-foreground">Registration Successful!</h2>
             <p className="text-muted-foreground">
-              You've been registered for <strong>{event.title}</strong>.
-              {Number(selectedPricing?.price || 0) === 0 ? " See you there!" : " Payment confirmation pending."}
+              You've been registered for <strong>{event.title}</strong>. See you there!
             </p>
             <div className="text-sm text-muted-foreground space-y-1">
               <p>{format(new Date(event.event_date), "EEEE, dd MMM yyyy • hh:mm a")}</p>
@@ -188,7 +338,10 @@ export default function EventRegistration() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Banner */}
+      {paymentStage !== "idle" && (
+        <PaymentProcessingOverlay stage={paymentStage} />
+      )}
+
       {event.banner_image_url && (
         <div className="w-full h-48 sm:h-64 overflow-hidden">
           <img src={event.banner_image_url} alt={event.title} className="w-full h-full object-cover" />
@@ -212,7 +365,6 @@ export default function EventRegistration() {
               </div>
             )}
           </div>
-          {/* Pricing Preview */}
           <div className="flex flex-wrap gap-2 pt-1">
             {pricingOptions.map((p: any) => (
               <Badge key={p.id} variant="secondary" className="text-xs">
@@ -291,7 +443,6 @@ export default function EventRegistration() {
             <CardContent className="p-5 space-y-4">
               <h3 className="font-semibold">Select Option & Fill Details</h3>
               
-              {/* Pricing Selection */}
               <div className="space-y-2">
                 <Label>Select Pricing *</Label>
                 <div className="grid gap-2">
@@ -327,7 +478,6 @@ export default function EventRegistration() {
                 </div>
               </div>
 
-              {/* Custom Fields */}
               {customFields.length > 0 && (
                 <div className="space-y-3">
                   {customFields.map((field: any) => (
@@ -367,16 +517,14 @@ export default function EventRegistration() {
                 </Button>
                 <Button
                   onClick={() => {
-                    // Validate
                     for (const field of customFields) {
                       if (field.is_required && !customResponses[field.id]) {
                         toast.error(`${field.field_name} is required`);
                         return;
                       }
                     }
-                    // If free, register directly
                     if (Number(selectedPricing?.price || 0) === 0) {
-                      registerMutation.mutate();
+                      registerFreeMutation.mutate();
                     } else {
                       setStep("payment");
                     }
@@ -410,11 +558,11 @@ export default function EventRegistration() {
                   <ArrowLeft className="w-4 h-4" /> Back
                 </Button>
                 <Button
-                  onClick={() => registerMutation.mutate()}
-                  disabled={registerMutation.isPending}
+                  onClick={handlePayment}
+                  disabled={isPaymentLoading}
                   className="flex-1 rounded-xl gap-2"
                 >
-                  {registerMutation.isPending ? <><ButtonSpinner /> Processing...</> : (
+                  {isPaymentLoading ? <><ButtonSpinner /> Processing...</> : (
                     <>
                       <IndianRupee className="w-4 h-4" /> Pay ₹{selectedPricing?.price}
                     </>
@@ -422,7 +570,7 @@ export default function EventRegistration() {
                 </Button>
               </div>
               <p className="text-[10px] text-muted-foreground text-center">
-                Payment will be processed securely
+                Payment will be processed securely via Razorpay
               </p>
             </CardContent>
           </Card>
