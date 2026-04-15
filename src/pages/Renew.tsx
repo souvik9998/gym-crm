@@ -29,6 +29,7 @@ const Renew = () => {
   const [existingPTEndDate, setExistingPTEndDate] = useState<string | null>(null);
   const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(null);
   const [allowSelfSelectTrainer, setAllowSelfSelectTrainer] = useState(true);
+  const [allowDailyPass, setAllowDailyPass] = useState(true);
 
   const branchId = stateBranchId || member?.branch_id;
 
@@ -62,6 +63,9 @@ const Renew = () => {
             : data.registration_field_settings;
           if (parsed?.self_select_trainer?.enabled === false) {
             setAllowSelfSelectTrainer(false);
+          }
+          if (parsed?.daily_pass_enabled?.enabled === false) {
+            setAllowDailyPass(false);
           }
         }
       });
@@ -238,6 +242,7 @@ const Renew = () => {
           existingPTEndDate={existingPTEndDate || undefined}
           branchId={member.branch_id || undefined}
           allowSelfSelectTrainer={allowSelfSelectTrainer}
+          allowDailyPass={allowDailyPass}
         />
       </main>
       <PoweredByBadge />
