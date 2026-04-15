@@ -90,7 +90,7 @@ StatCard.displayName = "StatCard";
 const StaffDashboard = () => {
   const navigate = useNavigate();
   const { currentBranch } = useBranch();
-  const { isStaffLoggedIn, staffUser, isLoading: staffLoading } = useStaffAuth();
+  const { isStaffLoggedIn, staffUser, isLoading: staffLoading, permissions } = useStaffAuth();
   const { invalidateMembers, invalidatePayments } = useInvalidateDashboard();
   
   const canViewMembers = useStaffPermission("can_view_members");
