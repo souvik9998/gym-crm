@@ -686,11 +686,7 @@ export default function EventRegistration() {
             )}
 
             {/* Step 3: Payment */}
-            {step === "payment" && (() => {
-              const payBasePrice = Number(selectedPricing?.price || 0);
-              const payDiscount = appliedCoupon?.discountAmount || 0;
-              const payTotal = Math.max(0, payBasePrice - payDiscount);
-              return (
+            {step === "payment" && (
               <Card className="border border-border/50">
                 <CardContent className="p-5 sm:p-6 space-y-5">
                   <div className="flex items-center gap-2">
@@ -776,9 +772,7 @@ export default function EventRegistration() {
                   </p>
                 </CardContent>
               </Card>
-              );
-          </div>
-          </div>
+            )}
 
           {/* Sidebar summary on desktop */}
           <div className="hidden lg:block lg:col-span-2">
