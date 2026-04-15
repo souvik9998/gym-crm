@@ -238,10 +238,11 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
           </div>
 
           {/* Photo ID Type */}
+          {showPhotoId && (
           <div className="space-y-2 animate-fade-in" style={{ animationDelay: "200ms" }}>
             <Label className="flex items-center gap-2">
               <IdCard className="w-4 h-4 text-accent" />
-              Photo ID Type *
+              Photo ID Type {photoIdRequired ? "*" : ""}
             </Label>
             <Select
               value={photoIdType}
@@ -262,14 +263,15 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
             </Select>
             <InlineError message={touched.photoIdType && !photoIdType ? errors.photoIdType : undefined} />
           </div>
+          )}
 
           {/* Photo ID Number */}
-          {photoIdType && (
+          {showPhotoId && photoIdType && (
             <div className="space-y-2 animate-fade-in">
               <Label>
-                {photoIdType === "aadhaar" && "Aadhaar Number *"}
-                {photoIdType === "pan" && "PAN Number *"}
-                {photoIdType === "voter" && "Voter ID Number *"}
+                {photoIdType === "aadhaar" && `Aadhaar Number ${photoIdRequired ? "*" : ""}`}
+                {photoIdType === "pan" && `PAN Number ${photoIdRequired ? "*" : ""}`}
+                {photoIdType === "voter" && `Voter ID Number ${photoIdRequired ? "*" : ""}`}
               </Label>
               <ValidatedInput
                 value={photoIdNumber}
