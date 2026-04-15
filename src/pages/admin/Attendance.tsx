@@ -31,7 +31,7 @@ const Attendance = () => {
         .from("gym_settings")
         .select("attendance_mode")
         .eq("branch_id", currentBranch.id)
-        .maybeSingle();
+        .maybeSingle() as any;
       return (data?.attendance_mode as string) || "simple";
     },
     enabled: !!currentBranch?.id,
