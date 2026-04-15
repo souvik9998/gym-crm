@@ -9,9 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { useState } from "react";
-import { Download, Search, IndianRupee, Users } from "lucide-react";
+import { Download, Search, IndianRupee, Users, UserPlus } from "lucide-react";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { toast } from "@/components/ui/sonner";
+import { AdminEventRegisterDialog } from "./AdminEventRegisterDialog";
 
 interface Props {
   open: boolean;
