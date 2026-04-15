@@ -335,26 +335,48 @@ export const SimpleAttendanceTab = () => {
             <ChevronLeftIcon className="w-4 h-4" />
           </Button>
           <div className="flex items-center gap-1">
-            {weekDates.map((d, i) => (
-              <button
-                key={d}
-                onClick={() => { if (d <= today) setSelectedDate(d); }}
-                disabled={d > today}
-                className={cn(
-                  "flex flex-col items-center rounded-xl transition-all duration-200 shrink-0 active:scale-95 px-2.5 py-1.5 min-w-[44px]",
-                  d === selectedDate
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : d === today
-                      ? "bg-primary/10 text-primary"
-                      : d > today
-                        ? "opacity-25 cursor-not-allowed"
-                        : "hover:bg-muted text-muted-foreground"
-                )}
-              >
-                <span className="text-[10px] font-medium uppercase">{DAY_LABELS_FULL[i]}</span>
-                <span className="text-sm font-bold">{formatDayNum(d)}</span>
-              </button>
-            ))}
+            {weekDates.map((d, i) => {
+              const isSelected = d === selectedDate;
+              const isToday = d === today;
+              const isFuture = d > today;
+              const isPast = d < today;
+              const hasData = weekLookup[d] && Object.keys(weekLookup[d]).length > 0;
+              return (
+                <button
+                  key={d}
+                  onClick={() => { if (!isFuture) setSelectedDate(d); }}
+                  disabled={isFuture}
+                  className={cn(
+                    "relative flex flex-col items-center rounded-xl shrink-0 px-2.5 py-1.5 min-w-[44px]",
+                    "transition-all duration-300 ease-out",
+                    "active:scale-90 hover:scale-105",
+                    isSelected
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-105"
+                      : isToday
+                        ? "bg-primary/10 text-primary ring-1 ring-primary/30"
+                        : isFuture
+                          ? "opacity-20 cursor-not-allowed"
+                          : isPast
+                            ? "hover:bg-muted/80 text-muted-foreground hover:text-foreground cursor-pointer"
+                            : "hover:bg-muted text-muted-foreground"
+                  )}
+                >
+                  <span className="text-[10px] font-medium uppercase">{DAY_LABELS_FULL[i]}</span>
+                  <span className={cn(
+                    "text-sm font-bold transition-transform duration-300",
+                    isSelected && "animate-[bounce_0.4s_ease-out]"
+                  )}>{formatDayNum(d)}</span>
+                  {/* Attendance indicator dot */}
+                  {hasData && !isSelected && (
+                    <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-green-500 animate-[fadeIn_0.3s_ease-out]" />
+                  )}
+                  {/* Today pulse ring */}
+                  {isToday && !isSelected && (
+                    <div className="absolute inset-0 rounded-xl ring-2 ring-primary/20 animate-pulse" />
+                  )}
+                </button>
+              );
+            })}
           </div>
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("next")} disabled={weekDates[6] >= today}>
             <ChevronRightIcon className="w-4 h-4" />
@@ -404,26 +426,48 @@ export const SimpleAttendanceTab = () => {
             <ChevronLeftIcon className="w-4 h-4" />
           </Button>
           <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
-            {weekDates.map((d, i) => (
-              <button
-                key={d}
-                onClick={() => { if (d <= today) setSelectedDate(d); }}
-                disabled={d > today}
-                className={cn(
-                  "flex flex-col items-center rounded-xl transition-all duration-200 shrink-0 active:scale-95 px-2 py-1.5 min-w-[38px]",
-                  d === selectedDate
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : d === today
-                      ? "bg-primary/10 text-primary"
-                      : d > today
-                        ? "opacity-25 cursor-not-allowed"
-                        : "hover:bg-muted text-muted-foreground"
-                )}
-              >
-                <span className="text-[9px] font-medium uppercase">{DAY_LABELS[i]}</span>
-                <span className="text-sm font-bold">{formatDayNum(d)}</span>
-              </button>
-            ))}
+            {weekDates.map((d, i) => {
+              const isSelected = d === selectedDate;
+              const isToday = d === today;
+              const isFuture = d > today;
+              const isPast = d < today;
+              const hasData = weekLookup[d] && Object.keys(weekLookup[d]).length > 0;
+              return (
+                <button
+                  key={d}
+                  onClick={() => { if (!isFuture) setSelectedDate(d); }}
+                  disabled={isFuture}
+                  className={cn(
+                    "relative flex flex-col items-center rounded-xl shrink-0 px-2 py-1.5 min-w-[38px]",
+                    "transition-all duration-300 ease-out",
+                    "active:scale-90",
+                    isSelected
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-110"
+                      : isToday
+                        ? "bg-primary/10 text-primary ring-1 ring-primary/30"
+                        : isFuture
+                          ? "opacity-20 cursor-not-allowed"
+                          : isPast
+                            ? "text-muted-foreground active:bg-muted/80"
+                            : "text-muted-foreground"
+                  )}
+                >
+                  <span className="text-[9px] font-medium uppercase">{DAY_LABELS[i]}</span>
+                  <span className={cn(
+                    "text-sm font-bold transition-transform duration-300",
+                    isSelected && "animate-[bounce_0.4s_ease-out]"
+                  )}>{formatDayNum(d)}</span>
+                  {/* Attendance indicator dot */}
+                  {hasData && !isSelected && (
+                    <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-green-500" />
+                  )}
+                  {/* Today pulse ring */}
+                  {isToday && !isSelected && (
+                    <div className="absolute inset-0 rounded-xl ring-2 ring-primary/20 animate-pulse" />
+                  )}
+                </button>
+              );
+            })}
           </div>
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("next")} disabled={weekDates[6] >= today}>
             <ChevronRightIcon className="w-4 h-4" />
