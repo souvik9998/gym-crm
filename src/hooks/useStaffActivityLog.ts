@@ -8,7 +8,8 @@ export type StaffActivityCategory =
   | "ledger"
   | "staff"
   | "whatsapp"
-  | "time_slots";
+  | "time_slots"
+  | "events";
 
 export type StaffActivityType = 
   // Members
@@ -64,7 +65,14 @@ export type StaffActivityType =
   | "time_slot_updated"
   | "time_slot_deleted"
   | "time_slot_member_added"
-  | "time_slot_member_removed";
+  | "time_slot_member_removed"
+  // Events
+  | "event_created"
+  | "event_updated"
+  | "event_deleted"
+  | "event_registration_added"
+  | "event_registration_updated"
+  | "event_registration_deleted";
 
 interface LogStaffActivityParams {
   category: StaffActivityCategory;

@@ -12,7 +12,8 @@ export type ActivityCategory =
   | "branch"
   | "staff"
   | "auth"
-  | "time_slots";
+  | "time_slots"
+  | "events";
 
 export type ActivityType = 
   // Members
@@ -91,7 +92,15 @@ export type ActivityType =
   // PT Assignment
   | "pt_assigned"
   | "pt_replaced"
-  | "pt_whatsapp_sent";
+  | "pt_whatsapp_sent"
+  // Events
+  | "event_created"
+  | "event_updated"
+  | "event_deleted"
+  | "event_status_changed"
+  | "event_registration_added"
+  | "event_registration_updated"
+  | "event_registration_deleted";
 
 interface LogActivityParams {
   category: ActivityCategory;
