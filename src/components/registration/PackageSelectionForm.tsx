@@ -62,6 +62,7 @@ interface PackageSelectionFormProps {
   minStartDate?: Date;
   branchId?: string;
   allowSelfSelectTrainer?: boolean;
+  allowDailyPass?: boolean;
 }
 
 export interface PackageSelectionData {
@@ -128,6 +129,7 @@ const PackageSelectionForm = ({
   minStartDate: propMinStartDate,
   branchId,
   allowSelfSelectTrainer = true,
+  allowDailyPass = true,
 }: PackageSelectionFormProps) => {
   const [packageType, setPackageType] = useState<"monthly" | "custom">("monthly");
   const [selectedMonthlyPackage, setSelectedMonthlyPackage] = useState<MonthlyPackage | null>(null);
