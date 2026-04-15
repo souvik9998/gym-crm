@@ -23,6 +23,7 @@ interface Props {
 export function EventRegistrationsDialog({ open, onOpenChange, event }: Props) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [registerOpen, setRegisterOpen] = useState(false);
 
   const { data: registrations = [], isLoading } = useQuery({
     queryKey: ["event-registrations", event?.id],
