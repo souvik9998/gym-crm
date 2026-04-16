@@ -21,6 +21,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
+import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 
 type AttendanceStatus = "present" | "absent" | "late";
 
@@ -67,10 +68,14 @@ export const SimpleAttendanceTab = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const { assignedMemberIds } = useAssignedMemberIds();
 
   // Fetch slot-member mapping for trainer/slot filtering
+  const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
+  const assignedScope = assignedMemberIds === null ? "all" : assignedMemberIds.join(",") || "none";
+
   const { data: slotMemberIds } = useQuery({
-    queryKey: ["slot-member-ids-filter", branchId, selectedTrainerId, selectedSlotId],
+    queryKey: ["slot-member-ids-filter", branchId, selectedTrainerId, selectedSlotId, assignedScope],
     queryFn: async (): Promise<string[] | null> => {
       if (!branchId) return null;
       // If no filter active, return null (show all)
@@ -95,15 +100,21 @@ export const SimpleAttendanceTab = () => {
         .from("time_slot_members" as any)
         .select("member_id")
         .in("time_slot_id", slotIds);
-      return [...new Set((tsm as any[] || []).map((t: any) => t.member_id))];
+
+      const resolvedIds = [...new Set((tsm as any[] || []).map((t: any) => t.member_id))];
+      if (assignedMemberIds !== null) {
+        const allowedIds = new Set(assignedMemberIds);
+        return resolvedIds.filter((memberId) => allowedIds.has(memberId));
+      }
+
+      return resolvedIds;
     },
-    enabled: !!branchId && (!!selectedTrainerId || !!selectedSlotId),
+    enabled: !!branchId && (!!selectedTrainerId || !!selectedSlotId) && (!isLimitedAccess || assignedMemberIds !== undefined),
     staleTime: 30000,
   });
 
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
   const isFutureDate = selectedDate > today;
-  const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
 
   const navigateWeek = (dir: "prev" | "next") => {
     const d = new Date(selectedDate + "T00:00:00");
@@ -114,26 +125,12 @@ export const SimpleAttendanceTab = () => {
   };
 
   const { data: activeMembers = [], isLoading: loadingMembers } = useQuery({
-    queryKey: ["active-members-attendance", branchId, isLimitedAccess, staffUser?.id],
+    queryKey: ["active-members-attendance", branchId, assignedScope],
     queryFn: async () => {
       if (!branchId) return [];
-      if (isLimitedAccess && staffUser?.id) {
-        // Use time_slot_members (consistent with protected-data edge function)
-        const { data: staffSlots } = await supabase
-          .from("trainer_time_slots" as any)
-          .select("id")
-          .eq("trainer_id", staffUser.id)
-          .eq("branch_id", branchId)
-          .eq("status", "available");
-        const slotIds = (staffSlots as any[] || []).map((s: any) => s.id);
-        if (slotIds.length === 0) return [];
-        const { data: slotMembers } = await supabase
-          .from("time_slot_members" as any)
-          .select("member_id")
-          .in("time_slot_id", slotIds);
-        const memberIds = [...new Set((slotMembers as any[] || []).map((sm: any) => sm.member_id))];
-        if (memberIds.length === 0) return [];
-        const { data, error } = await supabase.from("members").select("id, name, phone, subscriptions!inner(status)").eq("branch_id", branchId).in("id", memberIds).in("subscriptions.status", ["active", "expiring_soon"]).order("name");
+      if (assignedMemberIds !== null) {
+        if (assignedMemberIds.length === 0) return [];
+        const { data, error } = await supabase.from("members").select("id, name, phone, subscriptions!inner(status)").eq("branch_id", branchId).in("id", assignedMemberIds).in("subscriptions.status", ["active", "expiring_soon"]).order("name");
         if (error) throw error;
         const seen = new Set<string>();
         return (data || []).filter((m: any) => { if (seen.has(m.id)) return false; seen.add(m.id); return true; });
@@ -143,7 +140,7 @@ export const SimpleAttendanceTab = () => {
       const seen = new Set<string>();
       return (data || []).filter((m: any) => { if (seen.has(m.id)) return false; seen.add(m.id); return true; });
     },
-    enabled: !!branchId,
+    enabled: !!branchId && (!isLimitedAccess || assignedMemberIds !== undefined),
   });
 
   const { data: weekRecords = [], isLoading: loadingRecords } = useQuery({

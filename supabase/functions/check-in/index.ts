@@ -31,6 +31,48 @@ async function isTenantFeatureEnabled(serviceClient: any, branchId: string, feat
   return features[featureKey] !== false; // Default to true if key missing
 }
 
+async function resolveAssignedMemberIdsForAttendance(serviceClient: any, auth: any, requestedBranchId: string | null): Promise<string[] | null> {
+  if (!auth.isStaff || !auth.staffId || auth.permissions?.member_access_type !== "assigned") {
+    return null;
+  }
+
+  const allowedBranchIds = requestedBranchId ? [requestedBranchId] : (auth.branchIds || []);
+  if (allowedBranchIds.length === 0) return [];
+
+  const today = new Date().toISOString().split("T")[0];
+
+  const [{ data: staffRecord }, { data: slots }] = await Promise.all([
+    serviceClient.from("staff").select("phone").eq("id", auth.staffId).maybeSingle(),
+    serviceClient.from("trainer_time_slots").select("id").eq("trainer_id", auth.staffId).in("branch_id", allowedBranchIds).eq("status", "available"),
+  ]);
+
+  const slotIds = (slots || []).map((slot: { id: string }) => slot.id);
+  let trainerProfileIds: string[] = [];
+
+  if (staffRecord?.phone) {
+    const { data: trainerProfiles } = await serviceClient
+      .from("personal_trainers")
+      .select("id")
+      .eq("phone", staffRecord.phone)
+      .in("branch_id", allowedBranchIds);
+
+    trainerProfileIds = (trainerProfiles || []).map((trainer: { id: string }) => trainer.id);
+  }
+
+  const assignmentResults = await Promise.all([
+    ...(slotIds.length > 0
+      ? [serviceClient.from("pt_subscriptions").select("member_id").eq("status", "active").gte("end_date", today).in("branch_id", allowedBranchIds).in("time_slot_id", slotIds)]
+      : []),
+    ...(trainerProfileIds.length > 0
+      ? [serviceClient.from("pt_subscriptions").select("member_id").eq("status", "active").gte("end_date", today).in("branch_id", allowedBranchIds).in("personal_trainer_id", trainerProfileIds)]
+      : []),
+  ]);
+
+  if (assignmentResults.length === 0) return [];
+
+  return [...new Set(assignmentResults.flatMap((result: any) => (result.data || []).map((assignment: any) => assignment.member_id).filter(Boolean)))];
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return handleCorsRequest();
 
@@ -648,6 +690,11 @@ async function handleAttendanceLogs(req: Request, serviceClient: any) {
   const page = parseInt(url.searchParams.get("page") || "1");
   const limit = parseInt(url.searchParams.get("limit") || "50");
   const offset = (page - 1) * limit;
+  const assignedMemberIds = await resolveAssignedMemberIdsForAttendance(serviceClient, auth, branchId);
+
+  if (assignedMemberIds !== null && assignedMemberIds.length === 0) {
+    return successResponse({ data: [], total: 0, page, limit });
+  }
 
   let query = serviceClient
     .from("attendance_logs")
@@ -665,6 +712,10 @@ async function handleAttendanceLogs(req: Request, serviceClient: any) {
     query = query.in("branch_id", auth.branchIds);
   }
 
+  if (assignedMemberIds !== null) {
+    query = query.eq("user_type", "member").in("member_id", assignedMemberIds);
+  }
+
   const { data, error, count } = await query;
   if (error) return errorResponse("Failed to fetch logs: " + error.message, 500);
 
@@ -680,6 +731,11 @@ async function handleInsights(req: Request, serviceClient: any) {
   const branchId = url.searchParams.get("branch_id");
   const dateFrom = url.searchParams.get("date_from") || new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
   const dateTo = url.searchParams.get("date_to") || new Date().toISOString().split("T")[0];
+  const assignedMemberIds = await resolveAssignedMemberIdsForAttendance(serviceClient, auth, branchId);
+
+  if (assignedMemberIds !== null && assignedMemberIds.length === 0) {
+    return successResponse({ daily_footfall: [], peak_hours: [], avg_visit_duration: 0, staff_working_hours: {}, unique_members: 0, total_check_ins: 0, period: { from: dateFrom, to: dateTo } });
+  }
 
   let logsQuery = serviceClient
     .from("attendance_logs")
@@ -689,6 +745,7 @@ async function handleInsights(req: Request, serviceClient: any) {
 
   if (branchId) logsQuery = logsQuery.eq("branch_id", branchId);
   if (auth.isStaff && auth.branchIds?.length) logsQuery = logsQuery.in("branch_id", auth.branchIds);
+  if (assignedMemberIds !== null) logsQuery = logsQuery.eq("user_type", "member").in("member_id", assignedMemberIds);
 
   const { data: logs, error } = await logsQuery;
   if (error) return errorResponse("Failed to fetch insights", 500);

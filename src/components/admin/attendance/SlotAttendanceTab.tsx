@@ -23,6 +23,7 @@ import { AttendanceDatePicker } from "./AttendanceDatePicker";
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
+import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 
 type AttendanceStatus = "present" | "absent" | "late";
 
@@ -47,9 +48,11 @@ export const SlotAttendanceTab = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [localAttendance, setLocalAttendance] = useState<Map<string, AttendanceStatus>>(new Map());
   const [hasChanges, setHasChanges] = useState(false);
+  const { assignedMemberIds } = useAssignedMemberIds();
 
   const isFutureDate = selectedDate > today;
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
+  const assignedScope = assignedMemberIds === null ? "all" : assignedMemberIds.join(",") || "none";
 
   const { allSlots } = useAttendanceFilters();
 
@@ -69,15 +72,21 @@ export const SlotAttendanceTab = () => {
   }, [timeSlots, selectedSlotId]);
 
   const { data: slotMembers = [], isLoading: loadingMembers } = useQuery({
-    queryKey: ["slot-members-attendance", selectedSlotId],
+    queryKey: ["slot-members-attendance", selectedSlotId, assignedScope],
     queryFn: async () => {
       if (!selectedSlotId) return [];
-      const { data, error } = await supabase.from("time_slot_members")
-        .select("member_id, members(id, name, phone)").eq("time_slot_id", selectedSlotId);
+      if (assignedMemberIds !== null && assignedMemberIds.length === 0) return [];
+      let query = supabase.from("time_slot_members")
+        .select("member_id, members(id, name, phone)")
+        .eq("time_slot_id", selectedSlotId);
+      if (assignedMemberIds !== null) {
+        query = query.in("member_id", assignedMemberIds);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []).map((d: any) => d.members).filter(Boolean);
     },
-    enabled: !!selectedSlotId,
+    enabled: !!selectedSlotId && (!isLimitedAccess || assignedMemberIds !== undefined),
   });
 
   const { data: existingRecords = [], isLoading: loadingRecords } = useQuery({

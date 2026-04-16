@@ -136,6 +136,8 @@ async function resolveAssignedMemberIds(
     return null;
   }
 
+  const today = new Date().toISOString().split("T")[0];
+
   let slotQuery = serviceClient
     .from("trainer_time_slots")
     .select("id")
@@ -146,17 +148,75 @@ async function resolveAssignedMemberIds(
     slotQuery = slotQuery.in("branch_id", allowedBranchIds);
   }
 
-  const { data: staffSlots } = await slotQuery;
+  const [{ data: staffRecord }, { data: staffSlots }] = await Promise.all([
+    serviceClient
+      .from("staff")
+      .select("phone")
+      .eq("id", auth.staffId)
+      .maybeSingle(),
+    slotQuery,
+  ]);
+
   const slotIds = (staffSlots || []).map((slot: { id: string }) => slot.id);
 
-  if (slotIds.length === 0) return [];
+  let trainerProfileIds: string[] = [];
+  if (staffRecord?.phone) {
+    let trainerProfileQuery = serviceClient
+      .from("personal_trainers")
+      .select("id")
+      .eq("phone", staffRecord.phone);
 
-  const { data: slotMembers } = await serviceClient
-    .from("time_slot_members")
-    .select("member_id")
-    .in("time_slot_id", slotIds);
+    if (Array.isArray(allowedBranchIds)) {
+      trainerProfileQuery = trainerProfileQuery.in("branch_id", allowedBranchIds);
+    }
 
-  return [...new Set((slotMembers || []).map((member: { member_id: string }) => member.member_id))];
+    const { data: trainerProfiles } = await trainerProfileQuery;
+    trainerProfileIds = (trainerProfiles || []).map((trainer: { id: string }) => trainer.id);
+  }
+
+  if (slotIds.length === 0 && trainerProfileIds.length === 0) return [];
+
+  const assignmentQueries: Promise<{ data: { member_id: string }[] | null; error: unknown }>[] = [];
+
+  if (slotIds.length > 0) {
+    let slotAssignmentQuery = serviceClient
+      .from("pt_subscriptions")
+      .select("member_id")
+      .eq("status", "active")
+      .gte("end_date", today)
+      .in("time_slot_id", slotIds);
+
+    if (Array.isArray(allowedBranchIds)) {
+      slotAssignmentQuery = slotAssignmentQuery.in("branch_id", allowedBranchIds);
+    }
+
+    assignmentQueries.push(slotAssignmentQuery);
+  }
+
+  if (trainerProfileIds.length > 0) {
+    let trainerAssignmentQuery = serviceClient
+      .from("pt_subscriptions")
+      .select("member_id")
+      .eq("status", "active")
+      .gte("end_date", today)
+      .in("personal_trainer_id", trainerProfileIds);
+
+    if (Array.isArray(allowedBranchIds)) {
+      trainerAssignmentQuery = trainerAssignmentQuery.in("branch_id", allowedBranchIds);
+    }
+
+    assignmentQueries.push(trainerAssignmentQuery);
+  }
+
+  const assignmentResults = await Promise.all(assignmentQueries);
+
+  return [
+    ...new Set(
+      assignmentResults.flatMap((result) =>
+        (result.data || []).map((assignment: { member_id: string }) => assignment.member_id).filter(Boolean)
+      )
+    ),
+  ];
 }
 
 async function resolveAllowedBranchIds(
