@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
-import { InformationCircleIcon } from "@heroicons/react/24/outline";
+import { InformationCircleIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
