@@ -1131,6 +1131,11 @@ export const MembersTable = ({
               )}
             </div>
             <div className="flex items-center gap-2">
+              {(trainerFilter || timeSlotFilter) && (
+                <span className="text-[10px] text-muted-foreground tabular-nums">
+                  {sortedMembers.length}/{totalCount}
+                </span>
+              )}
               <button
                 className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"
                 onClick={() => handleSort("expiry")}
