@@ -20,6 +20,8 @@ export const CACHE_KEYS = {
   PT_SUBSCRIPTIONS: "pt-subscriptions",
 } as const;
 
+// Check if PT_SUBSCRIPTIONS already exists, if not this adds it
+
 // Re-export STALE_TIMES from queryClient for backward compatibility
 export { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 
@@ -90,6 +92,17 @@ export function useInvalidateQueries() {
     ]);
   }, [forceInvalidate]);
 
+  const invalidatePtSubscriptions = useCallback(async () => {
+    await Promise.all([
+      forceInvalidate([CACHE_KEYS.PT_SUBSCRIPTIONS]),
+      forceInvalidate([CACHE_KEYS.DASHBOARD_STATS]),
+      forceInvalidate([CACHE_KEYS.MEMBERS]),
+      forceInvalidate([CACHE_KEYS.TRAINERS]),
+      forceInvalidate(["staff-page-data"]),
+      forceInvalidate(["time-slot-members"]),
+    ]);
+  }, [forceInvalidate]);
+
   const invalidateAll = useCallback(() => {
     queryClient.invalidateQueries({ refetchType: "all" });
   }, [queryClient]);
@@ -117,6 +130,7 @@ export function useInvalidateQueries() {
     invalidateDailyPass,
     invalidateSettings,
     invalidateStaff,
+    invalidatePtSubscriptions,
     invalidateAll,
     invalidateBranch,
   };
