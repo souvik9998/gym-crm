@@ -65,6 +65,8 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
   const [photoIdNumber, setPhotoIdNumber] = useState(initial?.photoIdNumber || "");
   const [address, setAddress] = useState(initial?.address || "");
   const [gender, setGender] = useState(initial?.gender || "");
+  const [email, setEmail] = useState(initial?.email || "");
+  const [occupation, setOccupation] = useState(initial?.occupation || "");
   const [dateOfBirth, setDateOfBirth] = useState<string | undefined>(
     initial?.dateOfBirth || undefined
   );
