@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useBranch } from "@/contexts/BranchContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StaffTrainersTab } from "@/components/admin/staff/StaffTrainersTab";
@@ -94,6 +94,7 @@ const StaffManagement = () => {
             currentBranch={currentBranch}
             onRefresh={() => refetch()}
             isLoading={isLoading}
+            onConversionSuccess={() => { refetch(); setActiveTab("staff"); }}
           />
         </TabsContent>
 
@@ -104,6 +105,7 @@ const StaffManagement = () => {
             currentBranch={currentBranch}
             onRefresh={() => refetch()}
             isLoading={isLoading}
+            onConversionSuccess={() => { refetch(); setActiveTab("trainers"); }}
           />
         </TabsContent>
 
