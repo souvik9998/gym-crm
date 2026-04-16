@@ -1016,6 +1016,16 @@ export const StaffOtherTab = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <StaffRoleConversionDialog
+        open={conversionDialog.open}
+        onOpenChange={(open) => setConversionDialog({ ...conversionDialog, open })}
+        staff={conversionDialog.staff}
+        direction="to_trainer"
+        branchId={currentBranch?.id}
+        branchName={currentBranch?.name}
+        onSuccess={onRefresh}
+      />
     </div>
   );
 };
