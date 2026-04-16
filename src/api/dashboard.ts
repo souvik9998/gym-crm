@@ -57,6 +57,10 @@ export async function fetchDashboardStats(branchId?: string, forceEdgeFunction?:
 
     throw new Error("No data returned from RPC");
   } catch (rpcError) {
+    if (forceEdgeFunction) {
+      throw rpcError;
+    }
+
     // Fallback to protected edge function
     try {
       return await protectedFetch<DashboardStats>({

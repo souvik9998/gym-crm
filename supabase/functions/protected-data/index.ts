@@ -126,6 +126,39 @@ function hasBranchAccess(auth: AuthResult, branchId: string | null): boolean {
   return auth.branchIds?.includes(branchId) || false;
 }
 
+async function resolveAssignedMemberIds(
+  // deno-lint-ignore no-explicit-any
+  serviceClient: any,
+  auth: AuthResult,
+  allowedBranchIds: string[] | null,
+): Promise<string[] | null> {
+  if (!auth.isStaff || !auth.staffId || auth.permissions?.member_access_type !== "assigned") {
+    return null;
+  }
+
+  let slotQuery = serviceClient
+    .from("trainer_time_slots")
+    .select("id")
+    .eq("trainer_id", auth.staffId);
+
+  if (Array.isArray(allowedBranchIds)) {
+    if (allowedBranchIds.length === 0) return [];
+    slotQuery = slotQuery.in("branch_id", allowedBranchIds);
+  }
+
+  const { data: staffSlots } = await slotQuery;
+  const slotIds = (staffSlots || []).map((slot: { id: string }) => slot.id);
+
+  if (slotIds.length === 0) return [];
+
+  const { data: slotMembers } = await serviceClient
+    .from("time_slot_members")
+    .select("member_id")
+    .in("time_slot_id", slotIds);
+
+  return [...new Set((slotMembers || []).map((member: { member_id: string }) => member.member_id))];
+}
+
 async function resolveAllowedBranchIds(
   // deno-lint-ignore no-explicit-any
   serviceClient: any,
@@ -306,6 +339,7 @@ Deno.serve(async (req) => {
 
         // Refresh subscription statuses
         await supabase.rpc("refresh_subscription_statuses");
+        const assignedMemberIds = await resolveAssignedMemberIds(supabase, auth, allowedBranchIds);
 
         if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
           return jsonResponse({
@@ -315,8 +349,16 @@ Deno.serve(async (req) => {
           }, 30);
         }
 
+        if (assignedMemberIds !== null && assignedMemberIds.length === 0) {
+          return jsonResponse({
+            totalMembers: 0, activeMembers: 0, expiringSoon: 0,
+            expiredMembers: 0, inactiveMembers: 0, monthlyRevenue: 0,
+            withPT: 0, dailyPassUsers: 0,
+          }, 30);
+        }
+
         // Use RPC for single-branch queries, manual for multi-branch
-        if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 1) {
+        if (assignedMemberIds === null && Array.isArray(allowedBranchIds) && allowedBranchIds.length === 1) {
           const { data: rpcData, error: rpcError } = await supabase.rpc("get_dashboard_stats", {
             _branch_id: allowedBranchIds[0],
           });
@@ -335,22 +377,39 @@ Deno.serve(async (req) => {
           }
         }
 
+        const applyAssignedMembersFilter = (
+          // deno-lint-ignore no-explicit-any
+          query: any,
+          column = "member_id",
+        ) => {
+          if (assignedMemberIds !== null) {
+            return query.in(column, assignedMemberIds);
+          }
+          return query;
+        };
+
         // Multi-branch: parallel queries with column pruning
         const [membersCountRes, memberIdsRes, subsRes, paymentsRes, ptRes, dailyPassRes] = await Promise.all([
-          applyBranchFilter(supabase.from("members").select("*", { count: "exact", head: true })),
-          applyBranchFilter(supabase.from("members").select("id")),
-          applyBranchFilter(supabase.from("subscriptions").select("member_id, status, end_date").order("end_date", { ascending: false })),
-          applyBranchFilter(
-            supabase.from("payments").select("amount")
-              .eq("status", "success")
-              .gte("created_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
+          applyAssignedMembersFilter(applyBranchFilter(supabase.from("members").select("*", { count: "exact", head: true })), "id"),
+          applyAssignedMembersFilter(applyBranchFilter(supabase.from("members").select("id")), "id"),
+          applyAssignedMembersFilter(applyBranchFilter(supabase.from("subscriptions").select("member_id, status, end_date").order("end_date", { ascending: false }))),
+          applyAssignedMembersFilter(
+            applyBranchFilter(
+              supabase.from("payments").select("amount")
+                .eq("status", "success")
+                .gte("created_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
+            )
           ),
-          applyBranchFilter(
-            supabase.from("pt_subscriptions").select("member_id")
-              .eq("status", "active")
-              .gte("end_date", new Date().toISOString().split("T")[0])
+          applyAssignedMembersFilter(
+            applyBranchFilter(
+              supabase.from("pt_subscriptions").select("member_id")
+                .eq("status", "active")
+                .gte("end_date", new Date().toISOString().split("T")[0])
+            )
           ),
-          applyBranchFilter(supabase.from("daily_pass_users").select("*", { count: "exact", head: true })),
+          assignedMemberIds !== null
+            ? Promise.resolve({ count: 0, data: null, error: null })
+            : applyBranchFilter(supabase.from("daily_pass_users").select("*", { count: "exact", head: true })),
         ]);
 
         // Group subscriptions by member (latest first) - already ordered
@@ -464,30 +523,9 @@ Deno.serve(async (req) => {
           return jsonResponse({ members: [], nextCursor: null, totalCount: 0 });
         }
 
-        // Check if staff has "assigned only" member access - restrict to their time slot members
-        let assignedMemberIds: string[] | null = null;
-        if (auth.isStaff && auth.staffId && auth.permissions?.member_access_type === "assigned") {
-          // Get time slots belonging to this staff member (as trainer)
-          const { data: staffSlots } = await supabase
-            .from("trainer_time_slots")
-            .select("id")
-            .eq("trainer_id", auth.staffId);
-
-          const slotIds = (staffSlots || []).map((s: any) => s.id);
-
-          if (slotIds.length > 0) {
-            const { data: slotMembers } = await supabase
-              .from("time_slot_members")
-              .select("member_id")
-              .in("time_slot_id", slotIds);
-            assignedMemberIds = [...new Set((slotMembers || []).map((sm: any) => sm.member_id))];
-          } else {
-            assignedMemberIds = [];
-          }
-
-          if (assignedMemberIds.length === 0) {
-            return jsonResponse({ members: [], nextCursor: null, totalCount: 0 });
-          }
+        const assignedMemberIds = await resolveAssignedMemberIds(supabase, auth, allowedBranchIds);
+        if (assignedMemberIds !== null && assignedMemberIds.length === 0) {
+          return jsonResponse({ members: [], nextCursor: null, totalCount: 0 });
         }
 
         let countQuery = supabase.from("members").select("*", { count: "exact", head: true });
@@ -569,6 +607,11 @@ Deno.serve(async (req) => {
           return errorResponse("Permission denied: cannot view member", 403);
         }
         if (!memberId) return errorResponse("Member ID required", 400);
+
+        const assignedMemberIds = await resolveAssignedMemberIds(supabase, auth, allowedBranchIds);
+        if (assignedMemberIds !== null && !assignedMemberIds.includes(memberId)) {
+          return errorResponse("Access denied to this member", 403);
+        }
 
         const { data: member, error: memberError } = await supabase
           .from("members").select("*").eq("id", memberId).single();

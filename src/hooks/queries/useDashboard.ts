@@ -20,14 +20,14 @@ export type { DashboardStats } from "@/api/dashboard";
  */
 export function useDashboardStats() {
   const { currentBranch } = useBranch();
-  const { isStaffLoggedIn, permissions } = useStaffAuth();
+  const { isStaffLoggedIn, permissions, staffUser } = useStaffAuth();
   const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   const isAuthenticated = isAdmin || isStaffLoggedIn;
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
 
   return useQuery({
-    queryKey: [...queryKeys.dashboardStats(branchId), isLimitedAccess ? "assigned" : "all"],
+    queryKey: [...queryKeys.dashboardStats(branchId), isLimitedAccess ? "assigned" : "all", staffUser?.id || "admin"],
     queryFn: () => dashboardApi.fetchDashboardStats(branchId, isLimitedAccess),
     staleTime: STALE_TIMES.REAL_TIME,
     gcTime: GC_TIME,

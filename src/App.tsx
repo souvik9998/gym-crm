@@ -104,16 +104,6 @@ const App = () => (
                     <TrainersPage />
                   </Suspense>
                 } />
-                <Route path="/admin/events" element={
-                  <ProtectedRoute requiredModule="event_management">
-                    <Suspense fallback={<PageLoader />}><Events /></Suspense>
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/events/:eventId" element={
-                  <ProtectedRoute requiredModule="event_management">
-                    <Suspense fallback={<PageLoader />}><EventDetail /></Suspense>
-                  </ProtectedRoute>
-                } />
                 <Route path="/admin/logs" element={
                   <Suspense fallback={<PageLoader />}>
                     <Logs />
@@ -178,6 +168,23 @@ const App = () => (
                 <Route path="/admin/ledger" element={
                   <Suspense fallback={<PageLoader />}>
                     <AdminLedger />
+                  </Suspense>
+                } />
+              </Route>
+
+              <Route element={
+                <ProtectedRoute requiredPermission="can_manage_events" requiredModule="event_management">
+                  <AdminLayoutRoute />
+                </ProtectedRoute>
+              }>
+                <Route path="/admin/events" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <Events />
+                  </Suspense>
+                } />
+                <Route path="/admin/events/:eventId" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <EventDetail />
                   </Suspense>
                 } />
               </Route>

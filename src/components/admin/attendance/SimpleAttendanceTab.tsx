@@ -236,11 +236,15 @@ export const SimpleAttendanceTab = () => {
     mutationFn: async () => {
       if (!branchId) throw new Error("No branch selected");
       if (isFutureDate) throw new Error("Cannot mark attendance for future dates");
+      const targetMemberIds = filteredList.map((member) => member.memberId);
+      if (targetMemberIds.length === 0) return;
+
       const { error: deleteError } = await supabase
         .from("daily_attendance").delete()
-        .eq("branch_id", branchId).eq("date", selectedDate).is("time_slot_id", null);
+        .eq("branch_id", branchId).eq("date", selectedDate).is("time_slot_id", null)
+        .in("member_id", targetMemberIds);
       if (deleteError) throw deleteError;
-      const records = memberList.map((m) => ({
+      const records = filteredList.map((m) => ({
         member_id: m.memberId, branch_id: branchId, date: selectedDate,
         status: localAttendance.get(m.memberId) || "absent",
         time_slot_id: null as string | null,
