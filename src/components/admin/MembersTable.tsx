@@ -740,21 +740,31 @@ export const MembersTable = ({
         // If a trainer filter is also active, we need to get that trainer's members
         // and then exclude those who have slots
         if (trainerFilter && trainerFilter !== "__no_trainer__") {
-          const { data: staffRecord } = await supabase
-            .from("staff")
-            .select("phone")
+          // Resolve trainerFilter to personal_trainer_ids
+          // First check if it's directly a personal_trainer_id
+          const { data: directPt } = await supabase
+            .from("personal_trainers")
+            .select("id")
             .eq("id", trainerFilter)
+            .eq("branch_id", currentBranch.id)
             .maybeSingle();
 
-          if (!staffRecord?.phone) return { type: "include" as const, ids: new Set<string>() };
-
-          const { data: ptProfiles } = await supabase
-            .from("personal_trainers" as any)
-            .select("id")
-            .eq("phone", staffRecord.phone)
-            .eq("branch_id", currentBranch.id);
-
-          const ptIds = (ptProfiles as any[] || []).map((p: any) => p.id);
+          let ptIds: string[] = [];
+          if (directPt) {
+            ptIds = [directPt.id];
+          } else {
+            // Resolve staff_id → phone via secure function
+            const { data: staffBasic } = await supabase.rpc("get_branch_staff_basic", { p_branch_id: currentBranch.id });
+            const staffRecord = (staffBasic as any[] || []).find((s: any) => s.staff_id === trainerFilter);
+            if (staffRecord?.phone) {
+              const { data: ptProfiles } = await supabase
+                .from("personal_trainers")
+                .select("id")
+                .eq("phone", staffRecord.phone)
+                .eq("branch_id", currentBranch.id);
+              ptIds = (ptProfiles as any[] || []).map((p: any) => p.id);
+            }
+          }
           if (ptIds.length === 0) return { type: "include" as const, ids: new Set<string>() };
 
           const { data: ptSubs } = await supabase
@@ -801,23 +811,32 @@ export const MembersTable = ({
         return { type: "include" as const, ids: new Set((data as any[] || []).map((d: any) => d.member_id)) };
       }
 
-      // If trainerFilter (staff_id) is set, resolve to personal_trainer_id via phone
+      // If trainerFilter is set, resolve to personal_trainer_id
       if (trainerFilter) {
-        const { data: staffRecord } = await supabase
-          .from("staff")
-          .select("phone")
+        // First check if it's directly a personal_trainer_id
+        const { data: directPt } = await supabase
+          .from("personal_trainers")
+          .select("id")
           .eq("id", trainerFilter)
+          .eq("branch_id", currentBranch.id)
           .maybeSingle();
 
-        if (!staffRecord?.phone) return { type: "include" as const, ids: new Set<string>() };
-
-        const { data: ptProfiles } = await supabase
-          .from("personal_trainers" as any)
-          .select("id")
-          .eq("phone", staffRecord.phone)
-          .eq("branch_id", currentBranch.id);
-
-        const ptIds = (ptProfiles as any[] || []).map((p: any) => p.id);
+        let ptIds: string[] = [];
+        if (directPt) {
+          ptIds = [directPt.id];
+        } else {
+          // Resolve staff_id → phone via secure function
+          const { data: staffBasic } = await supabase.rpc("get_branch_staff_basic", { p_branch_id: currentBranch.id });
+          const staffRecord = (staffBasic as any[] || []).find((s: any) => s.staff_id === trainerFilter);
+          if (staffRecord?.phone) {
+            const { data: ptProfiles } = await supabase
+              .from("personal_trainers")
+              .select("id")
+              .eq("phone", staffRecord.phone)
+              .eq("branch_id", currentBranch.id);
+            ptIds = (ptProfiles as any[] || []).map((p: any) => p.id);
+          }
+        }
         if (ptIds.length === 0) return { type: "include" as const, ids: new Set<string>() };
 
         const { data: ptSubs } = await supabase
