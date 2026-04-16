@@ -355,6 +355,77 @@ const HealthDetailsForm = ({
             </div>
           )}
 
+          {/* Standalone Blood Group (when health_details is off but blood_group toggle is on) */}
+          {showBloodGroup && !showHealthDetails && (
+            <div className="space-y-1.5 animate-fade-in" style={{ animationDelay: "110ms" }}>
+              <Label className="text-xs">Blood Group {bloodGroupRequired && "*"}</Label>
+              <Select value={bloodGroup} onValueChange={setBloodGroup}>
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue placeholder="Select blood group" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BLOOD_GROUPS.map(bg => (
+                    <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Emergency Contact 1 (standalone) */}
+          {showEmergencyContact1 && !showHealthDetails && (
+            <div className="grid grid-cols-2 gap-3 animate-fade-in" style={{ animationDelay: "120ms" }}>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Emergency Contact 1 {emergencyContact1Required && "*"}</Label>
+                <Input
+                  value={emergencyContactName}
+                  onChange={e => setEmergencyContactName(e.target.value)}
+                  placeholder="Contact name"
+                  className="h-10 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Phone {emergencyContact1Required && "*"}</Label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-2 rounded-l-lg border border-r-0 border-input bg-muted text-muted-foreground text-xs">+91</span>
+                  <Input
+                    value={emergencyContactPhone}
+                    onChange={e => setEmergencyContactPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    placeholder="Phone"
+                    className="flex-1 rounded-l-none h-10 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Emergency Contact 2 */}
+          {showEmergencyContact2 && (
+            <div className="grid grid-cols-2 gap-3 animate-fade-in" style={{ animationDelay: "130ms" }}>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Emergency Contact 2 {emergencyContact2Required && "*"}</Label>
+                <Input
+                  value={emergency2Name}
+                  onChange={e => setEmergency2Name(e.target.value)}
+                  placeholder="Contact name"
+                  className="h-10 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Phone {emergencyContact2Required && "*"}</Label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-2 rounded-l-lg border border-r-0 border-input bg-muted text-muted-foreground text-xs">+91</span>
+                  <Input
+                    value={emergency2Phone}
+                    onChange={e => setEmergency2Phone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    placeholder="Phone"
+                    className="flex-1 rounded-l-none h-10 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Medical Records Upload */}
           {showMedicalUpload && (
             <div className="animate-fade-in" style={{ animationDelay: "150ms" }}>
