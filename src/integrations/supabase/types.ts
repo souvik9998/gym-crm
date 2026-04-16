@@ -3289,6 +3289,16 @@ export type Database = {
           subscription_id: string
         }[]
       }
+      get_staff_by_phone_in_tenant: {
+        Args: { p_phone: string; p_tenant_id: string }
+        Returns: {
+          full_name: string
+          is_active: boolean
+          phone: string
+          role: string
+          staff_id: string
+        }[]
+      }
       get_staff_id: { Args: { _user_id: string }; Returns: string }
       get_staff_id_from_session: { Args: never; Returns: string }
       get_tenant_current_usage: {
