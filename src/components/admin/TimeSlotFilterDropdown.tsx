@@ -293,31 +293,52 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
                   </div>
 
                   {/* Slots as horizontal chips */}
-                  <div className="flex flex-wrap gap-1 px-2.5 pb-1.5">
-                    {group.slots.map((slot) => {
+                  <div className="flex flex-wrap gap-1.5 px-2.5 pb-1.5">
+                    {group.slots.map((slot, sIdx) => {
                       const isSelected = value === slot.id;
                       const colorSet = slotColors[gIdx % slotColors.length];
                       const isFull = slot.members.length >= slot.capacity;
+                      const fillPercent = slot.capacity > 0 ? Math.round((slot.members.length / slot.capacity) * 100) : 0;
 
                       return (
                         <button
                           key={slot.id}
                           onClick={() => { onChange(isSelected ? null : slot.id); setOpen(false); }}
                           className={cn(
-                            "inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all",
+                            "group/chip relative inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold overflow-hidden",
+                            "transition-all duration-300 ease-out",
                             isSelected
-                              ? `${colorSet.activeBg} ${colorSet.border} border ${colorSet.text}`
-                              : "bg-muted/40 hover:bg-muted/70 text-foreground border border-transparent"
+                              ? `${colorSet.activeBg} ${colorSet.border} border shadow-sm ${colorSet.text} ring-1 ${colorSet.ring} scale-[1.02]`
+                              : `${colorSet.bg} border ${colorSet.border} ${colorSet.text} hover:shadow-md hover:scale-[1.04] hover:ring-1 hover:${colorSet.ring} active:scale-[0.97]`
                           )}
+                          style={{
+                            animationDelay: `${sIdx * 50}ms`,
+                          }}
                         >
-                          <span>{formatTime(slot.start_time)}–{formatTime(slot.end_time)}</span>
+                          {/* Fill bar background */}
+                          <div
+                            className={cn(
+                              "absolute inset-y-0 left-0 opacity-[0.08] transition-all duration-500 ease-out rounded-lg",
+                              colorSet.bar
+                            )}
+                            style={{ width: `${fillPercent}%` }}
+                          />
+                          <span className="relative z-10 tracking-wide">
+                            {formatTime(slot.start_time)}–{formatTime(slot.end_time)}
+                          </span>
                           <span className={cn(
-                            "text-[8px] tabular-nums",
-                            isFull ? "text-destructive" : "text-muted-foreground"
+                            "relative z-10 text-[8px] tabular-nums font-bold px-1 py-0.5 rounded-full min-w-[28px] text-center transition-colors duration-200",
+                            isFull
+                              ? "bg-destructive/15 text-destructive"
+                              : isSelected
+                                ? `${colorSet.activeBg} ${colorSet.text}`
+                                : "bg-background/60 text-muted-foreground"
                           )}>
                             {slot.members.length}/{slot.capacity}
                           </span>
-                          {isSelected && <Check className="w-2.5 h-2.5" />}
+                          {isSelected && (
+                            <Check className="relative z-10 w-3 h-3 animate-scale-in" />
+                          )}
                         </button>
                       );
                     })}
