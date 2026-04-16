@@ -134,13 +134,106 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
     const { error } = await supabase.from("time_slot_members").insert(inserts);
     if (error) { toast.error("Failed to add members", { description: error.message }); return; }
 
+    // Sync pt_subscriptions: resolve personal_trainer_id from staff (trainer) via phone
+    try {
+      const staffId = selectedTrainer;
+      const { data: staffRec } = await supabase
+        .from("staff" as any)
+        .select("phone")
+        .eq("id", staffId)
+        .maybeSingle();
+
+      if ((staffRec as any)?.phone) {
+        const { data: ptProfile } = await supabase
+          .from("personal_trainers")
+          .select("id, monthly_fee")
+          .eq("phone", (staffRec as any).phone)
+          .eq("branch_id", currentBranch.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (ptProfile) {
+          const today = new Date().toISOString().split("T")[0];
+
+          for (const m of selected) {
+            // Check if active pt_subscription already exists for this member + trainer
+            const { data: existingPt } = await supabase
+              .from("pt_subscriptions")
+              .select("id, time_slot_id")
+              .eq("member_id", m.id)
+              .eq("personal_trainer_id", ptProfile.id)
+              .eq("status", "active")
+              .gte("end_date", today)
+              .maybeSingle();
+
+            if (existingPt) {
+              // Update existing PT subscription with slot
+              if (!existingPt.time_slot_id) {
+                await supabase
+                  .from("pt_subscriptions")
+                  .update({ time_slot_id: selectedSlot })
+                  .eq("id", existingPt.id);
+              }
+            } else {
+              // Get member's gym membership end date for PT end date
+              const { data: memberSub } = await supabase
+                .from("subscriptions")
+                .select("end_date")
+                .eq("member_id", m.id)
+                .in("status", ["active", "expiring_soon"])
+                .order("end_date", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              const endDate = memberSub?.end_date || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
+              const startD = new Date(today);
+              const endD = new Date(endDate);
+              const months = Math.max(1, Math.ceil((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+
+              await supabase.from("pt_subscriptions").insert({
+                member_id: m.id,
+                personal_trainer_id: ptProfile.id,
+                branch_id: currentBranch.id,
+                start_date: today,
+                end_date: endDate,
+                monthly_fee: ptProfile.monthly_fee,
+                total_fee: months * ptProfile.monthly_fee,
+                status: "active",
+                time_slot_id: selectedSlot,
+              });
+            }
+          }
+        }
+      }
+    } catch (syncErr) {
+      console.error("PT subscription sync error (non-blocking):", syncErr);
+    }
+
     toast.success(`${selected.length} member(s) added`);
     setAddDialogOpen(false);
     fetchSlotMembers();
   };
 
   const handleRemoveMember = async (id: string, name: string) => {
+    // Get the member_id before deleting the record
+    const { data: tsmRecord } = await supabase
+      .from("time_slot_members")
+      .select("member_id")
+      .eq("id", id)
+      .maybeSingle();
+
     await supabase.from("time_slot_members").delete().eq("id", id);
+
+    // Clear time_slot_id from matching pt_subscriptions
+    if (tsmRecord?.member_id) {
+      await supabase
+        .from("pt_subscriptions")
+        .update({ time_slot_id: null } as any)
+        .eq("member_id", tsmRecord.member_id)
+        .eq("time_slot_id", selectedSlot)
+        .eq("status", "active");
+    }
+
     toast.success(`${name} removed from slot`);
     fetchSlotMembers();
   };
