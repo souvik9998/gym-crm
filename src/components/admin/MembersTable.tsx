@@ -1103,12 +1103,6 @@ export const MembersTable = ({
         </div>
       )}
       
-      {/* Filtered result count - inline, no extra space */}
-      {(trainerFilter || timeSlotFilter) && (
-        <p className="text-[10px] lg:text-xs text-muted-foreground px-1 -mb-1">
-          Showing <span className="font-semibold text-foreground">{sortedMembers.length}</span> of {totalCount}
-        </p>
-      )}
 
       {isCompact ? (
         <div className="rounded-xl border overflow-hidden bg-card shadow-sm">
@@ -1137,6 +1131,11 @@ export const MembersTable = ({
               )}
             </div>
             <div className="flex items-center gap-2">
+              {(trainerFilter || timeSlotFilter) && (
+                <span className="text-[10px] text-muted-foreground tabular-nums">
+                  {sortedMembers.length}/{totalCount}
+                </span>
+              )}
               <button
                 className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"
                 onClick={() => handleSort("expiry")}
@@ -1400,7 +1399,13 @@ export const MembersTable = ({
                       </span>
                     </Button>
                   </TableHead>
-                  <TableHead className="w-10"></TableHead>
+                  <TableHead className="w-10">
+                    {(trainerFilter || timeSlotFilter) && (
+                      <span className="text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
+                        {sortedMembers.length}/{totalCount}
+                      </span>
+                    )}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
