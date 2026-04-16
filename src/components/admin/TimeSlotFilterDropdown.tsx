@@ -79,11 +79,17 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
       if (error) throw error;
       if (!slots || slots.length === 0) return [];
 
-      // Get trainer names via secure function (staff RLS blocks reading other staff records)
-      const { data: staffBasic } = await supabase.rpc("get_branch_staff_basic", { p_branch_id: currentBranch.id });
+      // Get trainer names via direct query
+      const staffIds = (slots as any[]).map((s: any) => s.trainer_id).filter(Boolean);
       let staffMap: Record<string, string> = {};
-      for (const s of (staffBasic as any[] || [])) {
-        staffMap[s.staff_id] = s.full_name;
+      if (staffIds.length > 0) {
+        const { data: staffRecords } = await supabase
+          .from("staff")
+          .select("id, full_name")
+          .in("id", staffIds);
+        for (const s of (staffRecords || [])) {
+          staffMap[s.id] = s.full_name;
+        }
       }
 
       // Get members per slot from pt_subscriptions (single source of truth)
