@@ -162,25 +162,32 @@ export const StaffOtherTab = ({
         ? newStaff.selected_branches 
         : currentBranch?.id ? [currentBranch.id] : [];
 
-      // Check if staff with this phone exists GLOBALLY
-      const { data: existingStaffList } = await supabase
-        .from("staff")
-        .select("*, staff_permissions(*), staff_branch_assignments(*, branches(name))")
-        .eq("phone", cleanPhone);
+      // Check if staff with this phone exists within the same tenant
+      const tenantId = currentBranch?.tenant_id;
+      const { data: existingStaffList } = tenantId
+        ? await supabase.rpc("get_staff_by_phone_in_tenant", { p_phone: cleanPhone, p_tenant_id: tenantId })
+        : { data: [] };
 
       if (existingStaffList && existingStaffList.length > 0) {
-        const existing = existingStaffList[0];
-        const existingMapped: Staff = {
-          ...existing,
-          permissions: existing.staff_permissions?.[0] || undefined,
-          branch_assignments: (existing.staff_branch_assignments || []).map((a: any) => ({
-            ...a,
-            branch_name: a.branches?.name,
-          })),
-        } as Staff;
+        const { data: fullStaffData } = await supabase
+          .from("staff")
+          .select("*, staff_permissions(*), staff_branch_assignments(*, branches(name))")
+          .eq("id", (existingStaffList[0] as any).staff_id)
+          .single();
 
-        setExistingStaffDialog({ open: true, existingStaff: existingMapped });
-        return;
+        if (fullStaffData) {
+          const existingMapped: Staff = {
+            ...fullStaffData,
+            permissions: fullStaffData.staff_permissions?.[0] || undefined,
+            branch_assignments: (fullStaffData.staff_branch_assignments || []).map((a: any) => ({
+              ...a,
+              branch_name: a.branches?.name,
+            })),
+          } as Staff;
+
+          setExistingStaffDialog({ open: true, existingStaff: existingMapped });
+          return;
+        }
       }
 
       // Check for duplicate phone within selected branches (legacy safety)
@@ -330,15 +337,14 @@ export const StaffOtherTab = ({
     const member = staff.find((s) => s.id === id);
     const cleanPhone = editData.phone.replace(/\D/g, "").replace(/^0/, "");
 
-    // Check if phone is being changed and if new phone already exists
+    // Check if phone is being changed and if new phone already exists within tenant
     if (cleanPhone !== member?.phone) {
-      const { data: existingStaff } = await supabase
-        .from("staff")
-        .select("id")
-        .eq("phone", cleanPhone)
-        .neq("id", id)
-        .single();
+      const tenantId = currentBranch?.tenant_id;
+      const { data: existingStaffList } = tenantId
+        ? await supabase.rpc("get_staff_by_phone_in_tenant", { p_phone: cleanPhone, p_tenant_id: tenantId })
+        : { data: [] };
 
+      const existingStaff = (existingStaffList || []).find((s: any) => s.staff_id !== id);
       if (existingStaff) {
         toast.error("Phone number already in use", {
           description: "Another staff member is already registered with this phone number.",
