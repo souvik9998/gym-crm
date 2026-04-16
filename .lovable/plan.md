@@ -1,78 +1,102 @@
 
 
-# Unify Trainer-Member Data: Single Source of Truth
+# Assessment Configuration & Registration Field Toggles
 
-## Problem
+## What We're Building
 
-Two tables store "member assigned to trainer" data independently, causing inconsistent counts everywhere:
-
-| Table | Members | Description |
-|---|---|---|
-| `pt_subscriptions` (active, current) | **18** | Created by "Assign Trainer" dialog |
-| `time_slot_members` | **11** | Created by "Slot Members" tab |
-| In `time_slot_members` only (no PT record) | **5** | Orphaned — invisible to trainer filter |
-| In `pt_subscriptions` only (no slot entry) | **12** | Invisible to slot-based queries |
-
-The admin trainer filter queries `time_slot_members` → shows 11. The staff login queries `pt_subscriptions` → shows 18. Manual count shows 24 (union of both). The actual correct count should be **18** (active PT with current end_date).
-
-## Solution
-
-Make **`pt_subscriptions`** the single source of truth. Treat `time_slot_members` as a secondary sync table (kept in sync but never used as the primary query source for counts/filters).
+Two features:
+1. **Assessment Configuration in Settings** — A new "Assessment" tab in admin Settings where admins can configure which assessment fields to collect (based on the uploaded doc: health parameters, muscle strength, cardiovascular, body measurements, lifestyle, etc.)
+2. **Registration Field Toggles** — Add new toggleable fields (email, blood group, occupation, emergency contacts x2) to the existing Registration Fields Settings
 
 ---
 
-### Step 1: Data Migration — Sync orphaned records
+## Document Reference (Assessment Sheet 4.0)
 
-Create `pt_subscriptions` rows for the 5 members that exist only in `time_slot_members`. Resolve trainer identity via `staff.phone → personal_trainers.id`. Also insert `time_slot_members` rows for the 12 PT members that have a `time_slot_id` set but no slot entry.
-
-### Step 2: Fix Admin Trainer Filter (`MembersTable.tsx`)
-
-Replace lines 719-758 — instead of querying `time_slot_members`, query `pt_subscriptions` directly:
-- When `trainerFilter` (staff_id) is set → resolve to `personal_trainer_id` via phone → query `pt_subscriptions` where `status = 'active'` AND `end_date >= today`
-- When `timeSlotFilter` is set → query `pt_subscriptions` where `time_slot_id` matches, active + current
-
-### Step 3: Fix Trainer Dropdown Member Count (`TrainerFilterDropdown.tsx`)
-
-Replace lines 81-103 — instead of counting `time_slot_members`, count distinct `pt_subscriptions.member_id` per trainer (via `personal_trainer_id`), where `status = 'active'` AND `end_date >= today`.
-
-### Step 4: Fix Time Slot Filter Dropdown (`TimeSlotFilterDropdown.tsx`)
-
-Replace slot member lookup to query `pt_subscriptions` where `time_slot_id` matches, active + current, instead of `time_slot_members`.
-
-### Step 5: Simplify `useAssignedMembers.ts`
-
-Currently runs two separate queries (by slot IDs + by trainer profile IDs) and merges. Simplify to a single query: all active `pt_subscriptions` where `personal_trainer_id` IN resolved trainer profile IDs AND `end_date >= today`. This captures both slot-based and direct assignments in one query.
-
-### Step 6: Fix Attendance Trainer Filter (`SimpleAttendanceTab.tsx`)
-
-Currently filters by `activePT.time_slot_id` matching trainer's slots. Change to include members whose `activePT` exists for that trainer regardless of whether they have a `time_slot_id`, when filtering by trainer (not by specific slot).
-
-### Step 7: Remove edge function fallback (`protected-data/index.ts`)
-
-Remove the `tsmByMember` fallback (lines 686-739) since all members will now have proper `pt_subscriptions` records after the data migration. This eliminates the dual-source confusion.
-
-### Step 8: Ensure bidirectional sync going forward
-
-- **AssignTrainerDialog** (already syncs to `time_slot_members` — line 227) ✓
-- **SlotMembersTab** (already syncs to `pt_subscriptions` — recent fix) ✓
-- Verify both paths remain in sync after these changes
+The uploaded doc defines these assessment sections:
+- **Basic Info**: Weight, Height, Mode of Training, Diet (Vegan/Veg/NonVeg/Egg), Alcohol, Smoking
+- **Lifestyle**: Physical Activity (Current & Past), Deficiency, Medication
+- **Medical**: Health Conditions / Medical Procedures (Current & Past), Injuries/Pain
+- **Goals**: Member's Goals
+- **Health Parameters**: BP (Systolic/Diastolic), RHR, SpO2, Grip Strength (L/R)
+- **Muscle Strength**: Pushups, Landmine, Pull Ups, Squats, Sit to Stand, Glute Bridge, Leg Raises, Plank, Calf Raises
+- **Cardiovascular Strength**: Text field
+- **Body Measurements**: Neck, Chest, Arms (L/R), Upper Abdomen, Lower Abdomen, Hips, Upper Thighs (L/R), Lower Thighs (L/R), Calf (L/R)
+- **Notes**: Free text
 
 ---
 
-### Technical Details
+## Plan
 
-**Files to modify:**
-1. `src/components/admin/MembersTable.tsx` — Trainer filter query (lines 719-758)
-2. `src/components/admin/TrainerFilterDropdown.tsx` — Member count (lines 81-103)
-3. `src/components/admin/TimeSlotFilterDropdown.tsx` — Slot member lookup
-4. `src/hooks/useAssignedMembers.ts` — Simplify to single PT query
-5. `src/components/admin/attendance/SimpleAttendanceTab.tsx` — Trainer filter logic (lines 97-114)
-6. `supabase/functions/protected-data/index.ts` — Remove `tsmByMember` fallback
-7. **Database migration** — Sync orphaned records between tables
+### Step 1: Database — Add assessment config column to `gym_settings`
 
-**Identity resolution chain (used everywhere):**
-`staff.id` → `staff.phone` → `personal_trainers.phone` → `personal_trainers.id` → `pt_subscriptions.personal_trainer_id`
+Add a JSONB column `assessment_field_settings` to `gym_settings` to store which assessment sections/fields are enabled per branch. Structure:
 
-**Active PT definition (universal):**
-`pt_subscriptions.status = 'active' AND pt_subscriptions.end_date >= CURRENT_DATE`
+```json
+{
+  "basic_info": { "enabled": true, "fields": { "weight": true, "height": true, "mode_of_training": true, "diet_type": true, "alcohol": true, "smoking": true } },
+  "lifestyle": { "enabled": true, "fields": { "physical_activity_current": true, "physical_activity_past": true, "deficiency": true, "medication": true } },
+  "medical": { "enabled": true, "fields": { "health_conditions": true, "injuries_pain": true } },
+  "goals": { "enabled": true },
+  "health_parameters": { "enabled": true, "fields": { "bp": true, "rhr": true, "spo2": true, "grip_strength": true } },
+  "muscle_strength": { "enabled": true, "fields": { "pushups": true, "landmine": true, "pullups": true, "squats": true, "sit_to_stand": true, "glute_bridge": true, "leg_raises": true, "plank": true, "calf_raises": true } },
+  "cardiovascular": { "enabled": true },
+  "body_measurements": { "enabled": true, "fields": { "neck": true, "chest": true, "arms": true, "upper_abdomen": true, "lower_abdomen": true, "hips": true, "upper_thighs": true, "lower_thighs": true, "calf": true } },
+  "notes": { "enabled": true }
+}
+```
+
+### Step 2: Database — Restructure `member_assessments` table
+
+Add new columns to `member_assessments` to store all the assessment data from the doc (as a JSONB `assessment_data` column to keep it flexible and match the admin's configured fields).
+
+### Step 3: Registration Field Toggles
+
+Add these new fields to the existing `RegistrationFieldsSettings` component and `FIELD_CONFIG`:
+- `email` — Email ID (toggleable, not locked)
+- `blood_group` — Blood Group (toggleable)
+- `occupation` — Occupation (toggleable)
+- `emergency_contact_1` — Emergency Contact 1 (Name + Phone)
+- `emergency_contact_2` — Emergency Contact 2 (Name + Phone)
+
+These use the same `registration_field_settings` JSONB column in `gym_settings`. When enabled, they show in the public registration form (`MemberDetailsForm` / `HealthDetailsForm`).
+
+### Step 4: Create `AssessmentFieldsSettings` component
+
+New component at `src/components/admin/AssessmentFieldsSettings.tsx`:
+- Reads/writes `assessment_field_settings` from `gym_settings`
+- Renders each section as a collapsible card with a master toggle
+- Within each section, individual field toggles
+- Auto-saves on toggle (same pattern as `RegistrationFieldsSettings`)
+
+### Step 5: Add "Assessment" tab to Settings
+
+Add `{ value: "assessment", label: "Assessment" }` to `settingsTabs` in `Settings.tsx` and render the new `AssessmentFieldsSettings` component.
+
+### Step 6: Update `AssessmentSection` in Member Health Tab
+
+Modify `AssessmentSection.tsx` to:
+- Fetch the branch's `assessment_field_settings` to know which fields to show
+- Replace the current hardcoded fields (current_condition, injuries, mobility, allowed_exercises, notes) with the dynamic field set from config
+- Store assessment data in the new `assessment_data` JSONB column
+- Render input types appropriate to each field (numeric for measurements, text for notes, select for diet type, etc.)
+
+### Step 7: Update Registration Forms
+
+Modify `MemberDetailsForm.tsx` to conditionally show email, occupation fields based on registration settings. Modify `HealthDetailsForm.tsx` to show blood_group and dual emergency contacts based on settings.
+
+---
+
+### Files to Create/Modify
+
+| File | Action |
+|---|---|
+| `gym_settings` table | Migration: add `assessment_field_settings` JSONB column |
+| `member_assessments` table | Migration: add `assessment_data` JSONB column |
+| `src/components/admin/AssessmentFieldsSettings.tsx` | **Create** — Settings UI for assessment config |
+| `src/pages/admin/Settings.tsx` | Add "Assessment" tab |
+| `src/components/admin/RegistrationFieldsSettings.tsx` | Add email, blood_group, occupation, emergency_contact toggles |
+| `src/components/admin/health/AssessmentSection.tsx` | Dynamic fields from config |
+| `src/components/admin/health/MemberHealthTab.tsx` | Pass config to AssessmentSection |
+| `src/components/registration/MemberDetailsForm.tsx` | Add conditional email, occupation fields |
+| `src/components/registration/HealthDetailsForm.tsx` | Add blood_group, dual emergency contacts |
 
