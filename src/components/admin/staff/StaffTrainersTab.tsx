@@ -911,6 +911,15 @@ export const StaffTrainersTab = ({
                         </Button>
                         <Button
                           size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setConversionDialog({ open: true, staff: trainer })}
+                          title="Convert to Staff"
+                        >
+                          <ArrowsRightLeftIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="destructive"
                           className="h-8 w-8 p-0"
                           onClick={() => handleDelete(trainer.id, trainer.full_name)}
