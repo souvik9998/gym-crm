@@ -17,6 +17,8 @@ export interface HealthDetailsData {
   allergies?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
+  emergencyContact2Name?: string;
+  emergencyContact2Phone?: string;
   identityProofFiles?: UploadedFile[];
   medicalRecordFiles?: UploadedFile[];
 }
@@ -34,6 +36,12 @@ interface HealthDetailsFormProps {
   showHealthDetails: boolean;
   showIdentityUpload: boolean;
   showMedicalUpload: boolean;
+  showBloodGroup?: boolean;
+  bloodGroupRequired?: boolean;
+  showEmergencyContact1?: boolean;
+  emergencyContact1Required?: boolean;
+  showEmergencyContact2?: boolean;
+  emergencyContact2Required?: boolean;
   healthRequired: boolean;
   identityRequired: boolean;
   medicalRequired: boolean;
@@ -48,6 +56,12 @@ const HealthDetailsForm = ({
   showHealthDetails,
   showIdentityUpload,
   showMedicalUpload,
+  showBloodGroup = false,
+  bloodGroupRequired = false,
+  showEmergencyContact1 = false,
+  emergencyContact1Required = false,
+  showEmergencyContact2 = false,
+  emergencyContact2Required = false,
   healthRequired,
   identityRequired,
   medicalRequired,
