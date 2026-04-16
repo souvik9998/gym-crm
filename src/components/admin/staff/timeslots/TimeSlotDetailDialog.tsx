@@ -49,10 +49,10 @@ interface AvailableMember {
   name: string;
   phone: string;
   selected: boolean;
-  has_existing_pt: boolean;
+  pt_status: "same_trainer" | "other_trainer" | "no_pt";
   existing_trainer_name: string | null;
   existing_trainer_id: string | null;
-  is_same_trainer: boolean;
+  pt_subscription_id: string | null;
   subscription_end_date: string | null;
 }
 
@@ -88,32 +88,26 @@ export const TimeSlotDetailDialog = ({
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [searchFilter, setSearchFilter] = useState("");
 
-  // Add members state
   const [addMode, setAddMode] = useState(false);
   const [availableMembers, setAvailableMembers] = useState<AvailableMember[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
   const [isAddingMembers, setIsAddingMembers] = useState(false);
 
-  // Edit state
   const [editCapacity, setEditCapacity] = useState(10);
   const [editStartTime, setEditStartTime] = useState("06:00");
   const [editEndTime, setEditEndTime] = useState("07:00");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
-  // Remove confirmation
   const [removeConfirm, setRemoveConfirm] = useState<{ id: string; name: string; memberId: string } | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
 
-  // Transfer confirmation
   const [transferConfirm, setTransferConfirm] = useState<{ memberId: string; name: string; fromTrainer: string; fromTrainerId: string } | null>(null);
   const [isTransferring, setIsTransferring] = useState(false);
 
-  // Trainer PT profile
   const [trainerPtId, setTrainerPtId] = useState<string | null>(null);
 
   const { invalidatePtSubscriptions } = useInvalidateQueries();
 
-  // Resolve trainer's personal_trainer_id
   const resolveTrainerPtId = useCallback(async (staffTrainerId: string) => {
     const { data: staffRec } = await supabase
       .from("staff" as any)
@@ -190,11 +184,10 @@ export const TimeSlotDetailDialog = ({
 
     const memberIds = data.filter((m) => !existingIds.includes(m.id)).map((m) => m.id);
 
-    // Fetch active PT subscriptions for all non-existing members
     const [ptRes, subRes] = await Promise.all([
       supabase
         .from("pt_subscriptions")
-        .select("member_id, personal_trainer_id, personal_trainers(name)")
+        .select("id, member_id, personal_trainer_id, personal_trainers(name)")
         .in("member_id", memberIds.length > 0 ? memberIds : ["__none__"])
         .eq("status", "active"),
       supabase
@@ -205,12 +198,13 @@ export const TimeSlotDetailDialog = ({
         .order("end_date", { ascending: false }),
     ]);
 
-    const ptMap = new Map<string, { trainer_name: string; trainer_id: string }>();
+    const ptMap = new Map<string, { trainer_name: string; trainer_id: string; pt_sub_id: string }>();
     ptRes.data?.forEach((p: any) => {
       if (!ptMap.has(p.member_id)) {
         ptMap.set(p.member_id, {
           trainer_name: (p.personal_trainers as any)?.name || "Unknown",
           trainer_id: p.personal_trainer_id,
+          pt_sub_id: p.id,
         });
       }
     });
@@ -224,24 +218,23 @@ export const TimeSlotDetailDialog = ({
       .filter((m) => !existingIds.includes(m.id))
       .map((m) => {
         const ptInfo = ptMap.get(m.id);
-        const isSameTrainer = ptInfo?.trainer_id === trainerPtId;
+        let ptStatus: "same_trainer" | "other_trainer" | "no_pt" = "no_pt";
+        if (ptInfo) {
+          ptStatus = ptInfo.trainer_id === trainerPtId ? "same_trainer" : "other_trainer";
+        }
         return {
           ...m,
           selected: false,
-          has_existing_pt: !!ptInfo,
+          pt_status: ptStatus,
           existing_trainer_name: ptInfo?.trainer_name || null,
           existing_trainer_id: ptInfo?.trainer_id || null,
-          is_same_trainer: isSameTrainer,
+          pt_subscription_id: ptInfo?.pt_sub_id || null,
           subscription_end_date: subMap.get(m.id) || null,
         };
       })
-      // Sort: selectable first, then grayed (other trainer)
       .sort((a, b) => {
-        const aBlocked = a.has_existing_pt && !a.is_same_trainer;
-        const bBlocked = b.has_existing_pt && !b.is_same_trainer;
-        if (aBlocked && !bBlocked) return 1;
-        if (!aBlocked && bBlocked) return -1;
-        return a.name.localeCompare(b.name);
+        const order = { same_trainer: 0, no_pt: 1, other_trainer: 2 };
+        return order[a.pt_status] - order[b.pt_status] || a.name.localeCompare(b.name);
       });
 
     setAvailableMembers(available);
@@ -249,6 +242,7 @@ export const TimeSlotDetailDialog = ({
     setAddMode(true);
   };
 
+  // Only members with PT under the same trainer can be added
   const handleAddMembers = async () => {
     if (!slot) return;
     const selected = availableMembers.filter((m) => m.selected);
@@ -263,7 +257,6 @@ export const TimeSlotDetailDialog = ({
 
     setIsAddingMembers(true);
     try {
-      // 1. Insert into time_slot_members
       const inserts = selected.map((m) => ({
         time_slot_id: slot.id,
         member_id: m.id,
@@ -277,64 +270,13 @@ export const TimeSlotDetailDialog = ({
         return;
       }
 
-      // 2. Create/Update PT subscriptions if trainer has PT profile
-      if (trainerPtId) {
-        const today = new Date().toISOString().split("T")[0];
-        for (const m of selected) {
-          try {
-            // Check existing active PT for this member + trainer
-            const { data: existingPt } = await supabase
-              .from("pt_subscriptions")
-              .select("id, time_slot_id")
-              .eq("member_id", m.id)
-              .eq("personal_trainer_id", trainerPtId)
-              .eq("status", "active")
-              .gte("end_date", today)
-              .maybeSingle();
-
-            if (existingPt) {
-              await supabase
-                .from("pt_subscriptions")
-                .update({ time_slot_id: slot.id })
-                .eq("id", existingPt.id);
-            } else {
-              // Deactivate any existing active PT with other trainer
-              await supabase
-                .from("pt_subscriptions")
-                .update({ status: "inactive" } as any)
-                .eq("member_id", m.id)
-                .eq("status", "active")
-                .neq("personal_trainer_id", trainerPtId);
-
-              const endDate = m.subscription_end_date ||
-                new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
-              const startD = new Date(today);
-              const endD = new Date(endDate);
-              const months = Math.max(1, Math.ceil((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24 * 30)));
-
-              const { data: ptProfile } = await supabase
-                .from("personal_trainers")
-                .select("monthly_fee")
-                .eq("id", trainerPtId)
-                .maybeSingle();
-
-              const monthlyFee = ptProfile?.monthly_fee || 0;
-
-              await supabase.from("pt_subscriptions").insert({
-                member_id: m.id,
-                personal_trainer_id: trainerPtId,
-                branch_id: branchId,
-                start_date: today,
-                end_date: endDate,
-                monthly_fee: monthlyFee,
-                total_fee: months * monthlyFee,
-                status: "active",
-                time_slot_id: slot.id,
-              });
-            }
-          } catch (err) {
-            console.error(`PT sync failed for ${m.name}:`, err);
-          }
+      // Link PT subscriptions to this time slot
+      for (const m of selected) {
+        if (m.pt_subscription_id) {
+          await supabase
+            .from("pt_subscriptions")
+            .update({ time_slot_id: slot.id })
+            .eq("id", m.pt_subscription_id);
         }
       }
 
@@ -350,8 +292,8 @@ export const TimeSlotDetailDialog = ({
         branchId,
       });
 
-      toast.success(`${selected.length} member(s) added`, {
-        description: trainerPtId ? "PT subscriptions synced" : "No PT profile — subscriptions not created",
+      toast.success(`${selected.length} member(s) assigned to slot`, {
+        description: "Time slot linked to existing PT subscriptions",
       });
       setAddMode(false);
       fetchSlotMembers();
@@ -362,33 +304,25 @@ export const TimeSlotDetailDialog = ({
     }
   };
 
+  // Remove from slot only — PT stays active
   const handleRemoveMember = async () => {
     if (!removeConfirm || !slot) return;
     setIsRemoving(true);
     try {
-      // 1. Remove from time_slot_members
       await supabase.from("time_slot_members").delete().eq("id", removeConfirm.id);
 
-      // 2. Deactivate PT subscription
-      const { data: ptSub } = await supabase
+      // Clear time_slot_id from PT subscription but keep active
+      await supabase
         .from("pt_subscriptions")
-        .select("id")
+        .update({ time_slot_id: null } as any)
         .eq("member_id", removeConfirm.memberId)
         .eq("time_slot_id", slot.id)
-        .eq("status", "active")
-        .maybeSingle();
-
-      if (ptSub) {
-        await supabase
-          .from("pt_subscriptions")
-          .update({ status: "inactive", time_slot_id: null } as any)
-          .eq("id", ptSub.id);
-      }
+        .eq("status", "active");
 
       await logAdminActivity({
         category: "time_slots",
         type: "time_slot_member_removed",
-        description: `Removed ${removeConfirm.name} from ${slot.trainer_name}'s time slot. PT deactivated.`,
+        description: `Removed ${removeConfirm.name} from ${slot.trainer_name}'s time slot`,
         entityType: "time_slot",
         entityId: slot.id,
         entityName: slot.trainer_name,
@@ -396,7 +330,9 @@ export const TimeSlotDetailDialog = ({
         branchId,
       });
 
-      toast.success(`${removeConfirm.name} removed`, { description: "PT subscription deactivated" });
+      toast.success(`${removeConfirm.name} removed from slot`, {
+        description: "PT subscription remains active",
+      });
       setRemoveConfirm(null);
       fetchSlotMembers();
       onUpdated();
@@ -412,21 +348,21 @@ export const TimeSlotDetailDialog = ({
     try {
       const today = new Date().toISOString().split("T")[0];
 
-      // 1. Remove from old time_slot_members
+      // Remove from old slot
       await supabase
         .from("time_slot_members")
         .delete()
         .eq("member_id", transferConfirm.memberId)
         .eq("branch_id", branchId);
 
-      // 2. Deactivate old PT subscription
+      // Deactivate old PT
       await supabase
         .from("pt_subscriptions")
         .update({ status: "inactive", time_slot_id: null } as any)
         .eq("member_id", transferConfirm.memberId)
         .eq("status", "active");
 
-      // 3. Add to new time_slot_members
+      // Add to new slot
       await supabase.from("time_slot_members").insert({
         time_slot_id: slot.id,
         member_id: transferConfirm.memberId,
@@ -434,7 +370,7 @@ export const TimeSlotDetailDialog = ({
         assigned_by: "Admin",
       });
 
-      // 4. Create new PT subscription
+      // Create new PT subscription
       const { data: subData } = await supabase
         .from("subscriptions")
         .select("end_date")
@@ -584,11 +520,7 @@ export const TimeSlotDetailDialog = ({
               {slot.is_recurring && slot.recurring_days && (
                 <div className="flex gap-0.5">
                   {slot.recurring_days.sort().map((d) => (
-                    <Badge
-                      key={d}
-                      variant="secondary"
-                      className="text-[9px] px-1 py-0 h-4"
-                    >
+                    <Badge key={d} variant="secondary" className="text-[9px] px-1 py-0 h-4">
                       {DAY_LABELS[d]}
                     </Badge>
                   ))}
@@ -597,7 +529,6 @@ export const TimeSlotDetailDialog = ({
             </div>
           </div>
 
-          {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="px-5 pb-5 pt-3">
             <TabsList className="grid w-full grid-cols-2 h-8">
               <TabsTrigger value="members" className="text-xs gap-1 h-7">
@@ -608,10 +539,8 @@ export const TimeSlotDetailDialog = ({
               </TabsTrigger>
             </TabsList>
 
-            {/* Members Tab */}
             <TabsContent value="members" className="mt-3 space-y-3">
               {addMode ? (
-                /* Add members sub-view */
                 <div className="space-y-3 animate-fade-in">
                   <div className="relative">
                     <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -622,51 +551,57 @@ export const TimeSlotDetailDialog = ({
                       className="pl-9 h-9 text-sm"
                     />
                   </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Only members with active PT under {slot.trainer_name} can be selected
+                  </p>
                   <div className="max-h-52 overflow-y-auto space-y-1 rounded-lg border border-border/40 p-1.5">
                     {filteredAvailable.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-4">
-                        No members found
-                      </p>
+                      <p className="text-xs text-muted-foreground text-center py-4">No members found</p>
                     ) : (
                       filteredAvailable.map((m) => {
-                        const isBlocked = m.has_existing_pt && !m.is_same_trainer;
+                        const isSelectable = m.pt_status === "same_trainer";
+                        const isOtherTrainer = m.pt_status === "other_trainer";
+                        const isNoPt = m.pt_status === "no_pt";
+
                         return (
                           <div
                             key={m.id}
                             className={`flex items-center gap-3 p-2 rounded-md transition-colors ${
-                              isBlocked
-                                ? "opacity-50 bg-muted/30 cursor-not-allowed"
-                                : "hover:bg-muted/50 cursor-pointer"
+                              isSelectable
+                                ? "hover:bg-muted/50 cursor-pointer"
+                                : "opacity-50 bg-muted/30 cursor-not-allowed"
                             }`}
-                            onClick={() => !isBlocked && toggleSelection(m.id)}
+                            onClick={() => isSelectable && toggleSelection(m.id)}
                           >
-                            {isBlocked ? (
-                              <div className="w-4 h-4 rounded border border-muted-foreground/30 shrink-0" />
+                            {isSelectable ? (
+                              <Checkbox checked={m.selected} onCheckedChange={() => toggleSelection(m.id)} />
                             ) : (
-                              <Checkbox
-                                checked={m.selected}
-                                onCheckedChange={() => toggleSelection(m.id)}
-                              />
+                              <div className="w-4 h-4 rounded border border-muted-foreground/30 shrink-0" />
                             )}
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className={`text-sm font-medium truncate ${isBlocked ? "text-muted-foreground" : ""}`}>
+                                <p className={`text-sm font-medium truncate ${!isSelectable ? "text-muted-foreground" : ""}`}>
                                   {m.name}
                                 </p>
-                                {isBlocked && (
+                                {isOtherTrainer && (
                                   <Badge className="bg-orange-100 text-orange-700 text-[9px] border-0 shrink-0 px-1.5 py-0">
                                     With {m.existing_trainer_name}
                                   </Badge>
                                 )}
-                                {m.has_existing_pt && m.is_same_trainer && (
-                                  <Badge className="bg-blue-100 text-blue-700 text-[9px] border-0 shrink-0 px-1.5 py-0">
-                                    Same Trainer
+                                {isNoPt && (
+                                  <Badge className="bg-muted text-muted-foreground text-[9px] border-0 shrink-0 px-1.5 py-0">
+                                    No PT
+                                  </Badge>
+                                )}
+                                {isSelectable && (
+                                  <Badge className="bg-green-100 text-green-700 text-[9px] border-0 shrink-0 px-1.5 py-0">
+                                    PT Active
                                   </Badge>
                                 )}
                               </div>
                               <p className="text-xs text-muted-foreground">{m.phone}</p>
                             </div>
-                            {isBlocked && (
+                            {isOtherTrainer && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -691,16 +626,9 @@ export const TimeSlotDetailDialog = ({
                     )}
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">
-                      {selectedCount} selected
-                    </span>
+                    <span className="text-xs text-muted-foreground">{selectedCount} selected</span>
                     <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => setAddMode(false)}
-                      >
+                      <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setAddMode(false)}>
                         Cancel
                       </Button>
                       <Button
@@ -709,16 +637,13 @@ export const TimeSlotDetailDialog = ({
                         onClick={handleAddMembers}
                         disabled={isAddingMembers || selectedCount === 0}
                       >
-                        {isAddingMembers && (
-                          <Loader2 className="w-3 h-3 animate-spin mr-1" />
-                        )}
+                        {isAddingMembers && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
                         Add {selectedCount > 0 ? selectedCount : ""} Member{selectedCount !== 1 ? "s" : ""}
                       </Button>
                     </div>
                   </div>
                 </div>
               ) : (
-                /* Members list view */
                 <div className="space-y-3 animate-fade-in">
                   <div className="flex items-center justify-between gap-2">
                     <div className="relative flex-1">
@@ -730,12 +655,7 @@ export const TimeSlotDetailDialog = ({
                         className="h-7 text-xs pl-8"
                       />
                     </div>
-                    <Button
-                      size="sm"
-                      className="h-7 text-xs gap-1"
-                      onClick={handleOpenAddMode}
-                      disabled={isFull}
-                    >
+                    <Button size="sm" className="h-7 text-xs gap-1" onClick={handleOpenAddMode} disabled={isFull}>
                       <PlusIcon className="w-3 h-3" /> Add
                     </Button>
                   </div>
@@ -749,15 +669,11 @@ export const TimeSlotDetailDialog = ({
                   ) : filteredMembers.length === 0 ? (
                     <div className="text-center py-6">
                       <UserGroupIcon className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
-                      <p className="text-sm text-muted-foreground">
-                        No members in this slot
+                      <p className="text-sm text-muted-foreground">No members in this slot</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-1">
+                        Only PT members can be added
                       </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2 h-7 text-xs"
-                        onClick={handleOpenAddMode}
-                      >
+                      <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" onClick={handleOpenAddMode}>
                         Add Members
                       </Button>
                     </div>
@@ -767,33 +683,22 @@ export const TimeSlotDetailDialog = ({
                         <div
                           key={m.id}
                           className="flex items-center justify-between p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-all animate-fade-in"
-                          style={{
-                            animationDelay: `${index * 30}ms`,
-                            animationFillMode: "backwards",
-                          }}
+                          style={{ animationDelay: `${index * 30}ms`, animationFillMode: "backwards" }}
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5">
-                              <p className="text-sm font-medium truncate">
-                                {m.member_name}
-                              </p>
+                              <p className="text-sm font-medium truncate">{m.member_name}</p>
                               {m.has_pt && (
-                                <Badge className="bg-primary/10 text-primary text-[9px] px-1 py-0 h-3.5">
-                                  PT
-                                </Badge>
+                                <Badge className="bg-primary/10 text-primary text-[9px] px-1 py-0 h-3.5">PT</Badge>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                              {m.member_phone}
-                            </p>
+                            <p className="text-xs text-muted-foreground">{m.member_phone}</p>
                           </div>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0"
-                            onClick={() =>
-                              setRemoveConfirm({ id: m.id, name: m.member_name, memberId: m.member_id })
-                            }
+                            onClick={() => setRemoveConfirm({ id: m.id, name: m.member_name, memberId: m.member_id })}
                           >
                             <XMarkIcon className="w-3.5 h-3.5" />
                           </Button>
@@ -805,26 +710,15 @@ export const TimeSlotDetailDialog = ({
               )}
             </TabsContent>
 
-            {/* Edit Tab */}
             <TabsContent value="edit" className="mt-3 space-y-4 animate-fade-in">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Start Time</Label>
-                  <Input
-                    type="time"
-                    value={editStartTime}
-                    onChange={(e) => setEditStartTime(e.target.value)}
-                    className="h-9 text-sm"
-                  />
+                  <Input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} className="h-9 text-sm" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">End Time</Label>
-                  <Input
-                    type="time"
-                    value={editEndTime}
-                    onChange={(e) => setEditEndTime(e.target.value)}
-                    className="h-9 text-sm"
-                  />
+                  <Input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} className="h-9 text-sm" />
                 </div>
               </div>
               <div className="space-y-1.5">
@@ -833,28 +727,15 @@ export const TimeSlotDetailDialog = ({
                   type="number"
                   min={Math.max(1, members.length)}
                   value={editCapacity}
-                  onChange={(e) =>
-                    setEditCapacity(parseInt(e.target.value) || 1)
-                  }
+                  onChange={(e) => setEditCapacity(parseInt(e.target.value) || 1)}
                   className="h-9 text-sm"
                 />
                 {members.length > 0 && (
-                  <p className="text-[10px] text-muted-foreground">
-                    Min capacity: {members.length} (current members)
-                  </p>
+                  <p className="text-[10px] text-muted-foreground">Min capacity: {members.length} (current members)</p>
                 )}
               </div>
-              <Button
-                className="w-full gap-1.5"
-                size="sm"
-                onClick={handleSaveEdit}
-                disabled={isSavingEdit}
-              >
-                {isSavingEdit ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Save className="w-3.5 h-3.5" />
-                )}
+              <Button className="w-full gap-1.5" size="sm" onClick={handleSaveEdit} disabled={isSavingEdit}>
+                {isSavingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                 Save Changes
               </Button>
             </TabsContent>
@@ -866,10 +747,10 @@ export const TimeSlotDetailDialog = ({
       <AlertDialog open={!!removeConfirm} onOpenChange={(open) => !open && setRemoveConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-base">Remove {removeConfirm?.name}?</AlertDialogTitle>
+            <AlertDialogTitle className="text-base">Remove {removeConfirm?.name} from slot?</AlertDialogTitle>
             <AlertDialogDescription className="text-sm">
-              This will remove <strong>{removeConfirm?.name}</strong> from {slot.trainer_name}'s time slot and{" "}
-              <strong>deactivate their PT subscription</strong>. They will no longer have a personal trainer assigned.
+              <strong>{removeConfirm?.name}</strong> will be removed from this time slot.
+              Their PT subscription with {slot.trainer_name} will remain active but won't be linked to any slot.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -879,7 +760,7 @@ export const TimeSlotDetailDialog = ({
               disabled={isRemoving}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isRemoving ? "Removing..." : "Remove & Deactivate PT"}
+              {isRemoving ? "Removing..." : "Remove from Slot"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -895,16 +776,13 @@ export const TimeSlotDetailDialog = ({
               <strong>{transferConfirm?.fromTrainer}</strong> to <strong>{slot.trainer_name}</strong>.
               <br /><br />
               • Previous PT subscription will be deactivated<br />
-              • New PT subscription will be created<br />
-              • Member will be moved to this time slot
+              • New PT subscription created with {slot.trainer_name}<br />
+              • Member assigned to this time slot
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isTransferring}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleTransferMember}
-              disabled={isTransferring}
-            >
+            <AlertDialogAction onClick={handleTransferMember} disabled={isTransferring}>
               {isTransferring ? "Transferring..." : "Transfer Member"}
             </AlertDialogAction>
           </AlertDialogFooter>
