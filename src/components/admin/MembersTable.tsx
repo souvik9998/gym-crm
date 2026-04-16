@@ -1103,12 +1103,6 @@ export const MembersTable = ({
         </div>
       )}
       
-      {/* Filtered result count - inline, no extra space */}
-      {(trainerFilter || timeSlotFilter) && (
-        <p className="text-[10px] lg:text-xs text-muted-foreground px-1 -mb-1">
-          Showing <span className="font-semibold text-foreground">{sortedMembers.length}</span> of {totalCount}
-        </p>
-      )}
 
       {isCompact ? (
         <div className="rounded-xl border overflow-hidden bg-card shadow-sm">
