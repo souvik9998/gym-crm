@@ -17,6 +17,8 @@ export interface HealthDetailsData {
   allergies?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
+  emergencyContact2Name?: string;
+  emergencyContact2Phone?: string;
   identityProofFiles?: UploadedFile[];
   medicalRecordFiles?: UploadedFile[];
 }
@@ -34,6 +36,12 @@ interface HealthDetailsFormProps {
   showHealthDetails: boolean;
   showIdentityUpload: boolean;
   showMedicalUpload: boolean;
+  showBloodGroup?: boolean;
+  bloodGroupRequired?: boolean;
+  showEmergencyContact1?: boolean;
+  emergencyContact1Required?: boolean;
+  showEmergencyContact2?: boolean;
+  emergencyContact2Required?: boolean;
   healthRequired: boolean;
   identityRequired: boolean;
   medicalRequired: boolean;
@@ -48,6 +56,12 @@ const HealthDetailsForm = ({
   showHealthDetails,
   showIdentityUpload,
   showMedicalUpload,
+  showBloodGroup = false,
+  bloodGroupRequired = false,
+  showEmergencyContact1 = false,
+  emergencyContact1Required = false,
+  showEmergencyContact2 = false,
+  emergencyContact2Required = false,
   healthRequired,
   identityRequired,
   medicalRequired,
@@ -59,6 +73,8 @@ const HealthDetailsForm = ({
   const [allergies, setAllergies] = useState(initialData?.allergies || "");
   const [emergencyContactName, setEmergencyContactName] = useState(initialData?.emergencyContactName || "");
   const [emergencyContactPhone, setEmergencyContactPhone] = useState(initialData?.emergencyContactPhone || "");
+  const [emergency2Name, setEmergency2Name] = useState(initialData?.emergencyContact2Name || "");
+  const [emergency2Phone, setEmergency2Phone] = useState(initialData?.emergencyContact2Phone || "");
   
   const [identityFiles, setIdentityFiles] = useState<UploadedFile[]>(initialData?.identityProofFiles || []);
   const [medicalFiles, setMedicalFiles] = useState<UploadedFile[]>(initialData?.medicalRecordFiles || []);
@@ -126,6 +142,9 @@ const HealthDetailsForm = ({
     if (healthRequired && showHealthDetails) {
       if (!bloodGroup || !emergencyContactName || !emergencyContactPhone) return false;
     }
+    if (bloodGroupRequired && showBloodGroup && !bloodGroup) return false;
+    if (emergencyContact1Required && showEmergencyContact1 && (!emergencyContactName || !emergencyContactPhone)) return false;
+    if (emergencyContact2Required && showEmergencyContact2 && (!emergency2Name || !emergency2Phone)) return false;
     if (identityRequired && showIdentityUpload && identityFiles.length === 0) return false;
     if (medicalRequired && showMedicalUpload && medicalFiles.length === 0) return false;
     return true;
@@ -145,6 +164,8 @@ const HealthDetailsForm = ({
       allergies: allergies || undefined,
       emergencyContactName: emergencyContactName || undefined,
       emergencyContactPhone: emergencyContactPhone || undefined,
+      emergencyContact2Name: emergency2Name || undefined,
+      emergencyContact2Phone: emergency2Phone || undefined,
       identityProofFiles: identityFiles.length > 0 ? identityFiles : undefined,
       medicalRecordFiles: medicalFiles.length > 0 ? medicalFiles : undefined,
     });
@@ -329,6 +350,77 @@ const HealthDetailsForm = ({
                       className="flex-1 rounded-l-none h-10 text-sm"
                     />
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Standalone Blood Group (when health_details is off but blood_group toggle is on) */}
+          {showBloodGroup && !showHealthDetails && (
+            <div className="space-y-1.5 animate-fade-in" style={{ animationDelay: "110ms" }}>
+              <Label className="text-xs">Blood Group {bloodGroupRequired && "*"}</Label>
+              <Select value={bloodGroup} onValueChange={setBloodGroup}>
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue placeholder="Select blood group" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BLOOD_GROUPS.map(bg => (
+                    <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Emergency Contact 1 (standalone) */}
+          {showEmergencyContact1 && !showHealthDetails && (
+            <div className="grid grid-cols-2 gap-3 animate-fade-in" style={{ animationDelay: "120ms" }}>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Emergency Contact 1 {emergencyContact1Required && "*"}</Label>
+                <Input
+                  value={emergencyContactName}
+                  onChange={e => setEmergencyContactName(e.target.value)}
+                  placeholder="Contact name"
+                  className="h-10 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Phone {emergencyContact1Required && "*"}</Label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-2 rounded-l-lg border border-r-0 border-input bg-muted text-muted-foreground text-xs">+91</span>
+                  <Input
+                    value={emergencyContactPhone}
+                    onChange={e => setEmergencyContactPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    placeholder="Phone"
+                    className="flex-1 rounded-l-none h-10 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Emergency Contact 2 */}
+          {showEmergencyContact2 && (
+            <div className="grid grid-cols-2 gap-3 animate-fade-in" style={{ animationDelay: "130ms" }}>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Emergency Contact 2 {emergencyContact2Required && "*"}</Label>
+                <Input
+                  value={emergency2Name}
+                  onChange={e => setEmergency2Name(e.target.value)}
+                  placeholder="Contact name"
+                  className="h-10 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Phone {emergencyContact2Required && "*"}</Label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-2 rounded-l-lg border border-r-0 border-input bg-muted text-muted-foreground text-xs">+91</span>
+                  <Input
+                    value={emergency2Phone}
+                    onChange={e => setEmergency2Phone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    placeholder="Phone"
+                    className="flex-1 rounded-l-none h-10 text-sm"
+                  />
                 </div>
               </div>
             </div>

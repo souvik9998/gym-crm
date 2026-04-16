@@ -33,6 +33,11 @@ interface RegistrationFieldSettings {
   medical_records_upload?: FieldSetting;
   self_select_trainer?: FieldSetting;
   daily_pass_enabled?: FieldSetting;
+  email?: FieldSetting;
+  blood_group?: FieldSetting;
+  occupation?: FieldSetting;
+  emergency_contact_1?: FieldSetting;
+  emergency_contact_2?: FieldSetting;
 }
 
 const Register = () => {
@@ -53,7 +58,10 @@ const Register = () => {
   const needsHealthStep = fieldSettings && (
     fieldSettings.identity_proof_upload?.enabled ||
     fieldSettings.health_details?.enabled ||
-    fieldSettings.medical_records_upload?.enabled
+    fieldSettings.medical_records_upload?.enabled ||
+    fieldSettings.blood_group?.enabled ||
+    fieldSettings.emergency_contact_1?.enabled ||
+    fieldSettings.emergency_contact_2?.enabled
   );
 
   // Fetch branch info and field settings
@@ -333,6 +341,10 @@ const Register = () => {
             initialData={memberDetails}
             showPhotoId={fieldSettings?.photo_id?.enabled !== false}
             photoIdRequired={fieldSettings?.photo_id?.required || false}
+            showEmail={fieldSettings?.email?.enabled || false}
+            emailRequired={fieldSettings?.email?.required || false}
+            showOccupation={fieldSettings?.occupation?.enabled || false}
+            occupationRequired={fieldSettings?.occupation?.required || false}
           />
         )}
 
@@ -344,6 +356,12 @@ const Register = () => {
             showHealthDetails={fieldSettings.health_details?.enabled || false}
             showIdentityUpload={fieldSettings.identity_proof_upload?.enabled || false}
             showMedicalUpload={fieldSettings.medical_records_upload?.enabled || false}
+            showBloodGroup={fieldSettings.blood_group?.enabled || false}
+            bloodGroupRequired={fieldSettings.blood_group?.required || false}
+            showEmergencyContact1={fieldSettings.emergency_contact_1?.enabled || false}
+            emergencyContact1Required={fieldSettings.emergency_contact_1?.required || false}
+            showEmergencyContact2={fieldSettings.emergency_contact_2?.enabled || false}
+            emergencyContact2Required={fieldSettings.emergency_contact_2?.required || false}
             healthRequired={fieldSettings.health_details?.required || false}
             identityRequired={fieldSettings.identity_proof_upload?.required || false}
             medicalRequired={fieldSettings.medical_records_upload?.required || false}

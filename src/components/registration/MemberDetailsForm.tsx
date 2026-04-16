@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DobInput } from "@/components/ui/dob-input";
-import { ArrowRight, IdCard, MapPin, User, CalendarDays } from "lucide-react";
+import { ArrowRight, IdCard, MapPin, User, CalendarDays, Mail, Briefcase } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { ValidatedInput, InlineError } from "@/components/ui/validated-input";
 import {
   memberDetailsSchema,
@@ -25,6 +26,10 @@ interface MemberDetailsFormProps {
   initialData?: MemberDetailsData | null;
   showPhotoId?: boolean;
   photoIdRequired?: boolean;
+  showEmail?: boolean;
+  emailRequired?: boolean;
+  showOccupation?: boolean;
+  occupationRequired?: boolean;
 }
 
 export interface MemberDetailsData {
@@ -34,11 +39,13 @@ export interface MemberDetailsData {
   address: string;
   gender: string;
   dateOfBirth?: string;
+  email?: string;
+  occupation?: string;
 }
 
 const STORAGE_KEY = "member-details-form";
 
-const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, photoIdRequired = false }: MemberDetailsFormProps) => {
+const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, photoIdRequired = false, showEmail = false, emailRequired = false, showOccupation = false, occupationRequired = false }: MemberDetailsFormProps) => {
   const { branchId } = useParams<{ branchId?: string }>();
   const storageKey = `${STORAGE_KEY}-${branchId || "default"}`;
 
@@ -59,6 +66,8 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
   const [photoIdNumber, setPhotoIdNumber] = useState(initial?.photoIdNumber || "");
   const [address, setAddress] = useState(initial?.address || "");
   const [gender, setGender] = useState(initial?.gender || "");
+  const [email, setEmail] = useState(initial?.email || "");
+  const [occupation, setOccupation] = useState(initial?.occupation || "");
   const [dateOfBirth, setDateOfBirth] = useState<string | undefined>(
     initial?.dateOfBirth || undefined
   );
@@ -74,9 +83,11 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
       address,
       gender,
       dateOfBirth: dateOfBirth || undefined,
+      email: email || undefined,
+      occupation: occupation || undefined,
     };
     sessionStorage.setItem(storageKey, JSON.stringify(data));
-  }, [fullName, photoIdType, photoIdNumber, address, gender, dateOfBirth, storageKey]);
+  }, [fullName, photoIdType, photoIdNumber, address, gender, dateOfBirth, email, occupation, storageKey]);
 
   const validateSingleField = useCallback(
     (field: string, value: string) => {
@@ -139,6 +150,8 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
       address: sanitizedAddress,
       gender,
       dateOfBirth: dateOfBirth || undefined,
+      email: email || undefined,
+      occupation: occupation || undefined,
     });
   };
 
@@ -236,6 +249,39 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
             </Label>
             <DobInput value={dateOfBirth} onChange={setDateOfBirth} />
           </div>
+
+          {/* Email */}
+          {showEmail && (
+            <div className="space-y-2 animate-fade-in" style={{ animationDelay: "175ms" }}>
+              <Label className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-accent" />
+                Email {emailRequired ? "*" : ""}
+              </Label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email@example.com"
+                className="h-10"
+              />
+            </div>
+          )}
+
+          {/* Occupation */}
+          {showOccupation && (
+            <div className="space-y-2 animate-fade-in" style={{ animationDelay: "185ms" }}>
+              <Label className="flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-accent" />
+                Occupation {occupationRequired ? "*" : ""}
+              </Label>
+              <Input
+                value={occupation}
+                onChange={(e) => setOccupation(e.target.value)}
+                placeholder="e.g. Software Engineer"
+                className="h-10"
+              />
+            </div>
+          )}
 
           {/* Photo ID Type */}
           {showPhotoId && (

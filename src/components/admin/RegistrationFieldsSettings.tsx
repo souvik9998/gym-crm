@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
 import { ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
-import { Lock, User, Phone, Calendar, MapPin, IdCard, Upload, Heart, FileText, Dumbbell, Clock } from "lucide-react";
+import { Lock, User, Phone, Calendar, MapPin, IdCard, Upload, Heart, FileText, Dumbbell, Clock, Mail, Droplets, Briefcase, ShieldAlert } from "lucide-react";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 
 interface FieldSetting {
@@ -20,7 +20,12 @@ interface RegistrationFields {
   phone: FieldSetting;
   gender: FieldSetting;
   date_of_birth: FieldSetting;
+  email: FieldSetting;
+  blood_group: FieldSetting;
+  occupation: FieldSetting;
   address: FieldSetting;
+  emergency_contact_1: FieldSetting;
+  emergency_contact_2: FieldSetting;
   photo_id: FieldSetting;
   identity_proof_upload: FieldSetting;
   health_details: FieldSetting;
@@ -34,7 +39,12 @@ const DEFAULT_FIELDS: RegistrationFields = {
   phone: { enabled: true, required: true, locked: true },
   gender: { enabled: true, required: true, locked: true },
   date_of_birth: { enabled: true, required: true, locked: true },
+  email: { enabled: false, required: false, locked: false },
+  blood_group: { enabled: false, required: false, locked: false },
+  occupation: { enabled: false, required: false, locked: false },
   address: { enabled: true, required: false, locked: false },
+  emergency_contact_1: { enabled: false, required: false, locked: false },
+  emergency_contact_2: { enabled: false, required: false, locked: false },
   photo_id: { enabled: true, required: false, locked: false },
   identity_proof_upload: { enabled: false, required: false, locked: false },
   health_details: { enabled: false, required: false, locked: false },
@@ -48,13 +58,19 @@ const FIELD_CONFIG = [
   { key: "name", label: "Full Name", description: "Member's full name", icon: User, section: "personal" },
   { key: "phone", label: "Phone Number", description: "10-digit mobile number", icon: Phone, section: "personal" },
   { key: "gender", label: "Gender", description: "Male / Female / Other", icon: User, section: "personal" },
-  { key: "date_of_birth", label: "Date of Birth", description: "Member's date of birth", icon: Calendar, section: "personal" },
+  { key: "date_of_birth", label: "Date of Birth", description: "Member's date of birth (age auto-calculated)", icon: Calendar, section: "personal" },
+  { key: "email", label: "Email ID", description: "Member's email address", icon: Mail, section: "personal" },
+  { key: "blood_group", label: "Blood Group", description: "A+, B+, O+, AB+ etc.", icon: Droplets, section: "personal" },
+  { key: "occupation", label: "Occupation", description: "Member's occupation / profession", icon: Briefcase, section: "personal" },
   { key: "address", label: "Address", description: "Residential address", icon: MapPin, section: "personal" },
+  // Emergency Contacts
+  { key: "emergency_contact_1", label: "Emergency Contact 1", description: "Name + phone number of primary emergency contact", icon: ShieldAlert, section: "emergency" },
+  { key: "emergency_contact_2", label: "Emergency Contact 2", description: "Name + phone number of secondary emergency contact", icon: ShieldAlert, section: "emergency" },
   // Identity Verification
   { key: "photo_id", label: "Photo ID (Manual Entry)", description: "ID type dropdown and number input by user", icon: IdCard, section: "identity", group: "identity" },
   { key: "identity_proof_upload", label: "Identity Proof Upload", description: "Upload scan/photo of ID document (PDF/Image)", icon: Upload, section: "identity", group: "identity" },
   // Health & Medical
-  { key: "health_details", label: "Health Details", description: "Blood group, height, weight, medical conditions, allergies, emergency contact", icon: Heart, section: "health" },
+  { key: "health_details", label: "Health Details", description: "Height, weight, medical conditions, allergies", icon: Heart, section: "health" },
   { key: "medical_records_upload", label: "Medical Records Upload", description: "Upload medical certificates or health reports", icon: FileText, section: "health" },
   // Feature Controls
   { key: "self_select_trainer", label: "Member Self-Select Trainer", description: "Allow members to choose their own trainer during registration/renewal. If disabled, only admin can assign trainers.", icon: Dumbbell, section: "features" },
@@ -63,6 +79,7 @@ const FIELD_CONFIG = [
 
 const SECTION_HEADERS: Record<string, { title: string; subtitle?: string }> = {
   personal: { title: "Personal Information", subtitle: "Basic member details collected during registration" },
+  emergency: { title: "Emergency Contacts", subtitle: "Emergency contact details for safety" },
   identity: { title: "Identity Verification", subtitle: "Choose one verification method" },
   health: { title: "Health & Medical", subtitle: "Optional health information and document uploads" },
   features: { title: "Feature Controls", subtitle: "Toggle platform features for this branch" },

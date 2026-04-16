@@ -20,6 +20,7 @@ export interface MemberAssessment {
   mobility_limitations: string | null;
   allowed_exercises: string | null;
   notes: string | null;
+  assessment_data: any;
   created_at: string;
 }
 
