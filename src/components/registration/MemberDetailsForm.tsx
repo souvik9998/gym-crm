@@ -82,9 +82,11 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
       address,
       gender,
       dateOfBirth: dateOfBirth || undefined,
+      email: email || undefined,
+      occupation: occupation || undefined,
     };
     sessionStorage.setItem(storageKey, JSON.stringify(data));
-  }, [fullName, photoIdType, photoIdNumber, address, gender, dateOfBirth, storageKey]);
+  }, [fullName, photoIdType, photoIdNumber, address, gender, dateOfBirth, email, occupation, storageKey]);
 
   const validateSingleField = useCallback(
     (field: string, value: string) => {
