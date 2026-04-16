@@ -120,9 +120,70 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
     try {
-      // Skip role loading for staff emails - handled by StaffAuthContext
+      // For staff emails, skip role loading but STILL load tenant permissions
+      // so that tenant module flags (event_management, etc.) are available for sidebar filtering
       if (isStaffEmail(user.email)) {
+        // Get staff record to find their branch → tenant
+        let staffTenantPermissions = DEFAULT_PERMISSIONS;
+        let staffPlanExpired = false;
+        try {
+          const { data: staffList } = await supabase
+            .from("staff")
+            .select("id")
+            .eq("auth_user_id", user.id)
+            .eq("is_active", true)
+            .limit(1);
+          const staffId = staffList?.[0]?.id;
+          if (staffId) {
+            const { data: branchAssignment } = await supabase
+              .from("staff_branch_assignments")
+              .select("branch_id, branches(tenant_id)")
+              .eq("staff_id", staffId)
+              .limit(1)
+              .maybeSingle();
+            const tenantId = (branchAssignment?.branches as any)?.tenant_id;
+            if (tenantId) {
+              const { data: limits } = await supabase
+                .from("tenant_limits")
+                .select("features, plan_expiry_date")
+                .eq("tenant_id", tenantId)
+                .single();
+              if (limits) {
+                const features = limits.features as Record<string, boolean> | null;
+                if (features) {
+                  const attendanceEnabled = features.attendance ?? true;
+                  staffTenantPermissions = {
+                    members_management: features.members_management ?? true,
+                    attendance: attendanceEnabled,
+                    attendance_manual: attendanceEnabled && (features.attendance_manual ?? attendanceEnabled),
+                    attendance_qr: attendanceEnabled && (features.attendance_qr ?? false),
+                    attendance_biometric: attendanceEnabled && (features.attendance_biometric ?? false),
+                    payments_billing: features.payments_billing ?? true,
+                    staff_management: features.staff_management ?? true,
+                    reports_analytics: features.reports_analytics ?? true,
+                    branch_analytics: features.branch_analytics ?? false,
+                    event_management: features.event_management ?? false,
+                    workout_diet_plans: features.workout_diet_plans ?? false,
+                    notifications: features.notifications ?? true,
+                    integrations: features.integrations ?? true,
+                    leads_crm: features.leads_crm ?? false,
+                  };
+                }
+                if (limits.plan_expiry_date) {
+                  const expiry = new Date(limits.plan_expiry_date);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  staffPlanExpired = expiry < today;
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.warn("[AuthProvider] Failed to load tenant permissions for staff:", err);
+        }
+
         if (isMounted.current) {
+          lastLoadedUserId.current = user.id;
           setState(prev => ({
             ...prev,
             user,
@@ -131,8 +192,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             isSuperAdmin: false,
             isGymOwner: false,
             tenantId: null,
-            tenantPermissions: DEFAULT_PERMISSIONS,
-            planExpired: false,
+            tenantPermissions: staffTenantPermissions,
+            planExpired: staffPlanExpired,
             isAuthenticated: true,
             isLoading: false,
           }));
