@@ -24,6 +24,7 @@ import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown"
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
 import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
+import { useMembersQuery } from "@/hooks/queries/useMembers";
 
 type AttendanceStatus = "present" | "absent" | "late";
 
@@ -49,10 +50,10 @@ export const SlotAttendanceTab = () => {
   const [localAttendance, setLocalAttendance] = useState<Map<string, AttendanceStatus>>(new Map());
   const [hasChanges, setHasChanges] = useState(false);
   const { assignedMemberIds } = useAssignedMemberIds();
+  const { data: scopedMembers = [], isLoading: loadingMembers } = useMembersQuery();
 
   const isFutureDate = selectedDate > today;
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
-  const assignedScope = assignedMemberIds === null ? "all" : assignedMemberIds.join(",") || "none";
 
   const { allSlots } = useAttendanceFilters();
 
@@ -71,35 +72,38 @@ export const SlotAttendanceTab = () => {
       setSelectedSlotId(timeSlots[0].id);
   }, [timeSlots, selectedSlotId]);
 
-  const { data: slotMembers = [], isLoading: loadingMembers } = useQuery({
-    queryKey: ["slot-members-attendance", selectedSlotId, assignedScope],
+  const slotMembers = useMemo(() => {
+    if (!selectedSlotId) return [];
+
+    return scopedMembers.filter((member) => {
+      const subscriptionStatus = member.subscription?.status;
+      if (subscriptionStatus !== "active" && subscriptionStatus !== "expiring_soon") {
+        return false;
+      }
+
+      return member.activePT?.time_slot_id === selectedSlotId;
+    });
+  }, [scopedMembers, selectedSlotId]);
+
+  const { data: existingRecords = [], isLoading: loadingRecords } = useQuery({
+    queryKey: ["daily-attendance-slot", branchId, selectedDate, selectedSlotId, isLimitedAccess ? (assignedMemberIds ?? []).join(",") : "all"],
     queryFn: async () => {
-      if (!selectedSlotId) return [];
+      if (!branchId || !selectedSlotId) return [];
       if (assignedMemberIds !== null && assignedMemberIds.length === 0) return [];
-      let query = supabase.from("time_slot_members")
-        .select("member_id, members(id, name, phone)")
-        .eq("time_slot_id", selectedSlotId);
+
+      let query = supabase.from("daily_attendance")
+        .select("id, member_id, status").eq("branch_id", branchId)
+        .eq("date", selectedDate).eq("time_slot_id", selectedSlotId);
+
       if (assignedMemberIds !== null) {
         query = query.in("member_id", assignedMemberIds);
       }
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data || []).map((d: any) => d.members).filter(Boolean);
-    },
-    enabled: !!selectedSlotId && (!isLimitedAccess || assignedMemberIds !== undefined),
-  });
 
-  const { data: existingRecords = [], isLoading: loadingRecords } = useQuery({
-    queryKey: ["daily-attendance-slot", branchId, selectedDate, selectedSlotId],
-    queryFn: async () => {
-      if (!branchId || !selectedSlotId) return [];
-      const { data, error } = await supabase.from("daily_attendance")
-        .select("id, member_id, status").eq("branch_id", branchId)
-        .eq("date", selectedDate).eq("time_slot_id", selectedSlotId);
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
-    enabled: !!branchId && !!selectedSlotId,
+    enabled: !!branchId && !!selectedSlotId && (!isLimitedAccess || assignedMemberIds !== undefined),
   });
 
   useEffect(() => {
