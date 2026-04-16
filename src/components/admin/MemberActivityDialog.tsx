@@ -793,7 +793,7 @@ export const MemberActivityDialog = ({
                   existingPtId={activePT?.id}
                   existingTrainerId={activePT?.personal_trainer?.id}
                   membershipEndDate={subscriptions.find(s => s.status === "active" || s.status === "expiring_soon")?.end_date}
-                  onSuccess={fetchMemberData}
+                  onSuccess={() => { fetchMemberData(); invalidatePtSubscriptions(); }}
                 />
               )}
 
