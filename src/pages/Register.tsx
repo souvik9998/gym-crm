@@ -58,7 +58,10 @@ const Register = () => {
   const needsHealthStep = fieldSettings && (
     fieldSettings.identity_proof_upload?.enabled ||
     fieldSettings.health_details?.enabled ||
-    fieldSettings.medical_records_upload?.enabled
+    fieldSettings.medical_records_upload?.enabled ||
+    fieldSettings.blood_group?.enabled ||
+    fieldSettings.emergency_contact_1?.enabled ||
+    fieldSettings.emergency_contact_2?.enabled
   );
 
   // Fetch branch info and field settings
