@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { MemberHealthTab } from "./health/MemberHealthTab";
 import { AssignTrainerDialog } from "./AssignTrainerDialog";
 import {
@@ -130,6 +131,7 @@ export const MemberActivityDialog = ({
   const [availableSlots, setAvailableSlots] = useState<any[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState("");
   const [isSavingSlot, setIsSavingSlot] = useState(false);
+  const { invalidatePtSubscriptions } = useInvalidateQueries();
 
   useEffect(() => {
     if (open && memberId) {
@@ -452,6 +454,7 @@ export const MemberActivityDialog = ({
       toast.success("Time slot assigned successfully!");
       setAssigningSlotForPt(null);
       fetchMemberData();
+      invalidatePtSubscriptions();
     } catch (error: any) {
       console.error("Error assigning slot:", error);
       toast.error(error.message || "Failed to assign time slot");
@@ -791,7 +794,7 @@ export const MemberActivityDialog = ({
                   existingPtId={activePT?.id}
                   existingTrainerId={activePT?.personal_trainer?.id}
                   membershipEndDate={subscriptions.find(s => s.status === "active" || s.status === "expiring_soon")?.end_date}
-                  onSuccess={fetchMemberData}
+                  onSuccess={() => { fetchMemberData(); invalidatePtSubscriptions(); }}
                 />
               )}
 
