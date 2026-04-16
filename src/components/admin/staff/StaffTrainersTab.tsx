@@ -160,19 +160,26 @@ export const StaffTrainersTab = ({
         : { data: [] };
 
       if (existingStaffList && existingStaffList.length > 0) {
-        const existing = existingStaffList[0];
-        const existingMapped: Staff = {
-          ...existing,
-          permissions: existing.staff_permissions?.[0] || undefined,
-          branch_assignments: (existing.staff_branch_assignments || []).map((a: any) => ({
-            ...a,
-            branch_name: a.branches?.name,
-          })),
-        } as Staff;
+        // Fetch full staff record for the dialog
+        const { data: fullStaffData } = await supabase
+          .from("staff")
+          .select("*, staff_permissions(*), staff_branch_assignments(*, branches(name))")
+          .eq("id", (existingStaffList[0] as any).staff_id)
+          .single();
 
-        // Show dialog to redirect admin to branch assignment
-        setExistingStaffDialog({ open: true, existingStaff: existingMapped });
-        return;
+        if (fullStaffData) {
+          const existingMapped: Staff = {
+            ...fullStaffData,
+            permissions: fullStaffData.staff_permissions?.[0] || undefined,
+            branch_assignments: (fullStaffData.staff_branch_assignments || []).map((a: any) => ({
+              ...a,
+              branch_name: a.branches?.name,
+            })),
+          } as Staff;
+
+          setExistingStaffDialog({ open: true, existingStaff: existingMapped });
+          return;
+        }
       }
 
       // Check for duplicate phone within selected branches (legacy safety)
