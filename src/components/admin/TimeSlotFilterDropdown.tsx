@@ -227,181 +227,125 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-[420px] p-0 rounded-xl border-border/50 shadow-2xl overflow-hidden"
+        className="w-[300px] p-0 rounded-xl border-border/50 shadow-2xl overflow-hidden"
         sideOffset={6}
       >
         {isLoading ? (
-          <div className="p-4 space-y-4">
-            {[1, 2].map(i => (
-              <div key={i} className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Skeleton className="w-8 h-8 rounded-full" />
-                  <Skeleton className="h-4 w-24" />
-                </div>
-                <div className="ml-10 space-y-1.5">
-                  <Skeleton className="h-10 rounded-lg" />
-                  <Skeleton className="h-10 rounded-lg" />
-                </div>
-              </div>
+          <div className="p-3 space-y-2">
+            {[1, 2, 3].map(i => (
+              <Skeleton key={i} className="h-7 rounded-md" />
             ))}
           </div>
         ) : !hasSlots ? (
-          <div className="p-8 text-center">
-            <div className="w-12 h-12 mx-auto rounded-full bg-muted/60 flex items-center justify-center mb-3">
-              <Clock className="w-6 h-6 text-muted-foreground/40" />
-            </div>
-            <p className="text-sm font-medium text-muted-foreground">No time slots available</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">Create slots in Staff Management</p>
+          <div className="p-6 text-center">
+            <Clock className="w-5 h-5 mx-auto text-muted-foreground/40 mb-2" />
+            <p className="text-xs font-medium text-muted-foreground">No time slots</p>
           </div>
         ) : (
-          <div className="max-h-[420px] overflow-y-auto">
+          <div className="max-h-[360px] overflow-y-auto">
             {/* Header */}
-            <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b border-border/40 px-4 py-2.5">
+            <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b border-border/40 px-3 py-2">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-foreground">
-                  {trainerFilter && displayGroups.length === 1
-                    ? `${displayGroups[0].trainer_name}'s Slots`
-                    : "Filter by Time Slot"}
-                </p>
+                <p className="text-[11px] font-semibold text-foreground">Filter by Time Slot</p>
                 {isActive && (
                   <button
                     onClick={() => { onChange(null); setOpen(false); }}
-                    className="text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-0.5 rounded-md hover:bg-muted"
+                    className="text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded hover:bg-muted"
                   >
-                    Clear filter
+                    Clear
                   </button>
                 )}
               </div>
             </div>
 
-            {/* "No Slot" filter option */}
-            <div className="p-2 pb-0">
+            {/* "No Slot" option */}
+            <div className="px-1.5 pt-1.5">
               <button
-                onClick={() => {
-                  onChange(isNoSlotFilter ? null : NO_SLOT_FILTER);
-                  setOpen(false);
-                }}
+                onClick={() => { onChange(isNoSlotFilter ? null : NO_SLOT_FILTER); setOpen(false); }}
                 className={cn(
-                  "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-200",
-                  "hover:scale-[1.01] active:scale-[0.99]",
+                  "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md transition-all text-left",
                   isNoSlotFilter
-                    ? "bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-700 border shadow-sm ring-1 ring-orange-300/50"
-                    : "border border-transparent hover:bg-muted/50"
+                    ? "bg-orange-100 dark:bg-orange-900/40 border border-orange-300 dark:border-orange-700"
+                    : "hover:bg-muted/50"
                 )}
               >
-                <div className="w-7 h-7 rounded-full bg-orange-50 dark:bg-orange-950/30 flex items-center justify-center">
-                  <User className={cn("w-3.5 h-3.5", isNoSlotFilter ? "text-orange-700 dark:text-orange-300" : "text-orange-500")} />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className={cn("text-xs font-semibold", isNoSlotFilter ? "text-orange-700 dark:text-orange-300" : "text-foreground")}>
-                    No Time Slot
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">Members without any slot assigned</p>
-                </div>
-                {isNoSlotFilter && (
-                  <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center animate-scale-in">
-                    <Check className="w-3 h-3 text-white" />
-                  </div>
-                )}
+                <User className={cn("w-3 h-3 shrink-0", isNoSlotFilter ? "text-orange-600" : "text-orange-400")} />
+                <span className={cn("text-[11px] font-medium", isNoSlotFilter ? "text-orange-700 dark:text-orange-300" : "text-foreground")}>
+                  No Time Slot
+                </span>
+                {isNoSlotFilter && <Check className="w-3 h-3 ml-auto text-orange-600" />}
               </button>
             </div>
 
-            {/* Separator */}
-            <div className="mx-3 my-1 border-t border-border/30" />
+            <div className="mx-2.5 my-1 border-t border-border/30" />
 
-            {/* Flat slot list */}
-            <div className="p-2 space-y-1">
-              {allSlots.map((slot, sIdx) => {
-                const colorSet = slotColors[sIdx % slotColors.length];
-                const isSelected = value === slot.id;
-                const isFull = slot.members.length >= slot.capacity;
-                const fillPct = Math.min((slot.members.length / slot.capacity) * 100, 100);
+            {/* Grouped by trainer */}
+            <div className="px-1.5 pb-1.5 space-y-0.5">
+              {displayGroups.map((group, gIdx) => (
+                <div key={group.trainer_id}>
+                  {/* Trainer label */}
+                  <div className="flex items-center gap-1.5 px-2.5 pt-1.5 pb-0.5">
+                    <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", slotColors[gIdx % slotColors.length].bar)} />
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
+                      {group.trainer_name}
+                    </span>
+                    <span className="text-[9px] text-muted-foreground/60 ml-auto">{group.total_members} mbr</span>
+                  </div>
 
-                return (
-                  <button
-                    key={slot.id}
-                    onClick={() => {
-                      onChange(isSelected ? null : slot.id);
-                      setOpen(false);
-                    }}
-                    className={cn(
-                      "w-full text-left rounded-lg px-3 py-2.5 transition-all duration-200",
-                      "hover:scale-[1.01] active:scale-[0.99]",
-                      "animate-fade-in",
-                      isSelected
-                        ? `${colorSet.activeBg} ${colorSet.border} border shadow-sm ring-1 ${colorSet.ring}`
-                        : "border border-transparent hover:bg-muted/50"
-                    )}
-                    style={{ animationDelay: `${sIdx * 50}ms` }}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <Clock className={cn("w-3.5 h-3.5", isSelected ? colorSet.text : "text-muted-foreground")} />
-                        <span className={cn(
-                          "text-xs font-semibold",
-                          isSelected ? colorSet.text : "text-foreground"
-                        )}>
-                          {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
-                        </span>
-                        {isSelected && (
-                          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center animate-scale-in", colorSet.bar)}>
-                            <Check className="w-2.5 h-2.5 text-white" />
-                          </div>
-                        )}
-                      </div>
-                      <span className={cn(
-                        "text-[10px] font-medium tabular-nums px-1.5 py-0.5 rounded-md",
-                        isFull ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
-                      )}>
-                        {slot.members.length}/{slot.capacity}
-                      </span>
-                    </div>
+                  {/* Slots */}
+                  {group.slots.map((slot) => {
+                    const isSelected = value === slot.id;
+                    const colorSet = slotColors[gIdx % slotColors.length];
+                    const isFull = slot.members.length >= slot.capacity;
+                    const fillPct = Math.min((slot.members.length / slot.capacity) * 100, 100);
 
-                    {/* Capacity bar */}
-                    <div className="w-full h-1 bg-muted/60 rounded-full overflow-hidden mb-2">
-                      <div
+                    return (
+                      <button
+                        key={slot.id}
+                        onClick={() => { onChange(isSelected ? null : slot.id); setOpen(false); }}
                         className={cn(
-                          "h-full rounded-full transition-all duration-500",
-                          isFull ? "bg-destructive" : colorSet.bar
+                          "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md transition-all text-left",
+                          isSelected
+                            ? `${colorSet.activeBg} ${colorSet.border} border`
+                            : "hover:bg-muted/40"
                         )}
-                        style={{ width: `${fillPct}%` }}
-                      />
-                    </div>
-
-                    {/* Member avatars */}
-                    {slot.members.length > 0 && (
-                      <div className="flex items-center gap-1.5">
-                        <div className="flex -space-x-1.5">
-                          {slot.members.slice(0, 5).map((member, mIdx) => (
+                      >
+                        <Clock className={cn("w-3 h-3 shrink-0", isSelected ? colorSet.text : "text-muted-foreground")} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className={cn("text-[11px] font-medium", isSelected ? colorSet.text : "text-foreground")}>
+                              {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
+                            </span>
+                            <span className={cn(
+                              "text-[9px] font-medium tabular-nums ml-1",
+                              isFull ? "text-destructive" : "text-muted-foreground"
+                            )}>
+                              {slot.members.length}/{slot.capacity}
+                            </span>
+                          </div>
+                          {/* Thin capacity bar */}
+                          <div className="w-full h-0.5 bg-muted/50 rounded-full mt-0.5">
                             <div
-                              key={member.id}
-                              title={member.name}
-                              className={cn(
-                                "w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold ring-1 ring-background transition-transform duration-200 hover:scale-110 hover:z-10",
-                                colorSet.bg, colorSet.text
-                              )}
-                            >
-                              {member.name.charAt(0).toUpperCase()}
-                            </div>
-                          ))}
-                          {slot.members.length > 5 && (
-                            <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[7px] font-bold text-muted-foreground ring-1 ring-background">
-                              +{slot.members.length - 5}
-                            </div>
+                              className={cn("h-full rounded-full", isFull ? "bg-destructive" : colorSet.bar)}
+                              style={{ width: `${fillPct}%` }}
+                            />
+                          </div>
+                          {/* Compact member names */}
+                          {slot.members.length > 0 ? (
+                            <p className="text-[9px] text-muted-foreground mt-0.5 truncate">
+                              {slot.members.slice(0, 3).map(m => m.name.split(" ")[0]).join(", ")}
+                              {slot.members.length > 3 && ` +${slot.members.length - 3}`}
+                            </p>
+                          ) : (
+                            <p className="text-[9px] text-muted-foreground/40 italic mt-0.5">No members</p>
                           )}
                         </div>
-                        <span className="text-[10px] text-muted-foreground truncate">
-                          {slot.members.slice(0, 2).map(m => m.name.split(" ")[0]).join(", ")}
-                          {slot.members.length > 2 && ` +${slot.members.length - 2}`}
-                        </span>
-                      </div>
-                    )}
-                    {slot.members.length === 0 && (
-                      <p className="text-[10px] text-muted-foreground/50 italic">No members assigned</p>
-                    )}
-                  </button>
-                );
-              })}
+                        {isSelected && <Check className={cn("w-3 h-3 shrink-0", colorSet.text)} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </div>
         )}
