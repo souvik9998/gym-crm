@@ -57,6 +57,8 @@ const slotColors = [
   { bg: "bg-rose-50 dark:bg-rose-950/30", border: "border-rose-200 dark:border-rose-800", text: "text-rose-700 dark:text-rose-300", bar: "bg-rose-500", activeBg: "bg-rose-100 dark:bg-rose-900/50", ring: "ring-rose-300/50" },
 ];
 
+export const NO_SLOT_FILTER = "__no_slot__";
+
 export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, compact = false }: TimeSlotFilterDropdownProps) => {
   const [open, setOpen] = useState(false);
   const { currentBranch } = useBranch();
@@ -169,10 +171,13 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
   const selectedTrainer = displayGroups.find(g => g.slots.some(s => s.id === value));
   const hasSlots = allSlots.length > 0;
   const isActive = value !== null;
+  const isNoSlotFilter = value === NO_SLOT_FILTER;
 
-  const selectedLabel = selectedSlot
-    ? `${selectedTrainer?.trainer_name} · ${formatTime(selectedSlot.start_time)}`
-    : "Time Slot";
+  const selectedLabel = isNoSlotFilter
+    ? "No Slot"
+    : selectedSlot
+      ? `${selectedTrainer?.trainer_name} · ${formatTime(selectedSlot.start_time)}`
+      : "Time Slot";
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
