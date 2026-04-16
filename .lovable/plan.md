@@ -1,93 +1,78 @@
 
 
-# WhatsApp Auto-Send Preferences per Message Type
+# Unify Trainer-Member Data: Single Source of Truth
 
-## Overview
-Add a new "Auto-Send Preferences" section to the WhatsApp tab in Settings. This gives the gym admin toggle controls for each WhatsApp message type -- choosing whether messages are sent automatically after the corresponding action, or only manually. Promotional messages are always manual-only (no toggle).
+## Problem
 
-## Current State
-- WhatsApp messages are triggered automatically in several flows: Registration (`Register.tsx`), Renewal (`Renew.tsx`), PT Extension (`ExtendPT.tsx`), Admin Add Member (`AddMemberDialog.tsx`), Admin Add Payment (`AddPaymentDialog.tsx`)
-- The daily cron job (`daily-whatsapp-job`) auto-sends expiring-in-2-days and expiring-today notifications
-- There is no per-message-type auto/manual preference -- all are auto-sent when WhatsApp is enabled
-- Templates exist for: Promotional, Expiry Reminder, Expired Reminder (in WhatsAppTemplates component)
+Two tables store "member assigned to trainer" data independently, causing inconsistent counts everywhere:
 
-## Message Types and Auto-Send Toggles
-
-| Message Type | Default | Notes |
+| Table | Members | Description |
 |---|---|---|
-| New Member Registration | ON | Sent after a new member registers |
-| Member Renewal | ON | Sent after membership renewal |
-| Daily Pass | ON | Sent after daily pass purchase |
-| PT Extension | ON | Sent after personal training extension |
-| Expiring Soon (2 days) | ON | Daily cron job |
-| Expiring Today | ON | Daily cron job |
-| Expired Reminder | OFF | Not currently auto-sent, but available for manual |
-| Payment Receipt | OFF | Not currently auto-sent |
-| Admin Add Member | ON | When admin adds a member manually |
-| Promotional | N/A | Always manual only, no toggle shown |
+| `pt_subscriptions` (active, current) | **18** | Created by "Assign Trainer" dialog |
+| `time_slot_members` | **11** | Created by "Slot Members" tab |
+| In `time_slot_members` only (no PT record) | **5** | Orphaned — invisible to trainer filter |
+| In `pt_subscriptions` only (no slot entry) | **12** | Invisible to slot-based queries |
 
-## Database Changes
+The admin trainer filter queries `time_slot_members` → shows 11. The staff login queries `pt_subscriptions` → shows 18. Manual count shows 24 (union of both). The actual correct count should be **18** (active PT with current end_date).
 
-### Add `whatsapp_auto_send` JSONB column to `gym_settings`
-A new column storing per-type preferences:
+## Solution
 
-```text
-{
-  "new_registration": true,
-  "renewal": true,
-  "daily_pass": true,
-  "pt_extension": true,
-  "expiring_2days": true,
-  "expiring_today": true,
-  "expired_reminder": false,
-  "payment_details": false,
-  "admin_add_member": true
-}
-```
+Make **`pt_subscriptions`** the single source of truth. Treat `time_slot_members` as a secondary sync table (kept in sync but never used as the primary query source for counts/filters).
 
-Default: all true except `expired_reminder` and `payment_details`.
+---
 
-## Frontend Changes
+### Step 1: Data Migration — Sync orphaned records
 
-### 1. New component: `WhatsAppAutoSendSettings.tsx`
-A card with toggle switches for each message type listed above. Each toggle:
-- Shows the message type name and a short description
-- Saves immediately to `gym_settings.whatsapp_auto_send` via database update
-- Promotional is shown as a disabled row with "Manual Only" badge (no toggle)
+Create `pt_subscriptions` rows for the 5 members that exist only in `time_slot_members`. Resolve trainer identity via `staff.phone → personal_trainers.id`. Also insert `time_slot_members` rows for the 12 PT members that have a `time_slot_id` set but no slot entry.
 
-### 2. Integrate into Settings WhatsApp tab
-Place the new `WhatsAppAutoSendSettings` component between the WhatsApp enable/disable card and the `WhatsAppTemplates` component in `Settings.tsx`.
+### Step 2: Fix Admin Trainer Filter (`MembersTable.tsx`)
 
-### 3. Update auto-send call sites
-In each file that calls `send-whatsapp`, check the preference before sending:
+Replace lines 719-758 — instead of querying `time_slot_members`, query `pt_subscriptions` directly:
+- When `trainerFilter` (staff_id) is set → resolve to `personal_trainer_id` via phone → query `pt_subscriptions` where `status = 'active'` AND `end_date >= today`
+- When `timeSlotFilter` is set → query `pt_subscriptions` where `time_slot_id` matches, active + current
 
-- `Register.tsx` -- check `new_registration` (or `daily_pass`) preference before calling send-whatsapp
-- `Renew.tsx` -- check `renewal` preference
-- `ExtendPT.tsx` -- check `pt_extension` preference
-- `AddMemberDialog.tsx` -- check `admin_add_member` preference
-- `AddPaymentDialog.tsx` -- check `payment_details` preference (if applicable)
+### Step 3: Fix Trainer Dropdown Member Count (`TrainerFilterDropdown.tsx`)
 
-Each call site will fetch the `whatsapp_auto_send` from `gym_settings` for the branch, and skip the WhatsApp call if the relevant type is set to false.
+Replace lines 81-103 — instead of counting `time_slot_members`, count distinct `pt_subscriptions.member_id` per trainer (via `personal_trainer_id`), where `status = 'active'` AND `end_date >= today`.
 
-### 4. Update `daily-whatsapp-job` edge function
-Before sending expiring-in-2-days and expiring-today messages, read the `whatsapp_auto_send` JSONB from `gym_settings` for each branch. Skip sending if the corresponding type is disabled.
+### Step 4: Fix Time Slot Filter Dropdown (`TimeSlotFilterDropdown.tsx`)
 
-## Technical Details
+Replace slot member lookup to query `pt_subscriptions` where `time_slot_id` matches, active + current, instead of `time_slot_members`.
 
-### Files to Create
-- `src/components/admin/WhatsAppAutoSendSettings.tsx` -- Toggle switches UI component
+### Step 5: Simplify `useAssignedMembers.ts`
 
-### Files to Modify
-- Database migration -- Add `whatsapp_auto_send` JSONB column to `gym_settings`
-- `src/pages/admin/Settings.tsx` -- Insert the new component in WhatsApp tab
-- `src/pages/Register.tsx` -- Check auto-send preference before WhatsApp call
-- `src/pages/Renew.tsx` -- Check auto-send preference before WhatsApp call
-- `src/pages/ExtendPT.tsx` -- Check auto-send preference before WhatsApp call
-- `src/components/admin/AddMemberDialog.tsx` -- Check auto-send preference before WhatsApp call
-- `src/components/admin/AddPaymentDialog.tsx` -- Check auto-send preference before WhatsApp call
-- `supabase/functions/daily-whatsapp-job/index.ts` -- Check per-branch auto-send preferences
-- `src/integrations/supabase/types.ts` -- Will auto-update after migration
+Currently runs two separate queries (by slot IDs + by trainer profile IDs) and merges. Simplify to a single query: all active `pt_subscriptions` where `personal_trainer_id` IN resolved trainer profile IDs AND `end_date >= today`. This captures both slot-based and direct assignments in one query.
 
-### Helper function
-A shared utility `getWhatsAppAutoSendPreference(branchId, type)` that fetches `gym_settings.whatsapp_auto_send` for the branch and returns whether that type is enabled. This avoids duplicating the fetch logic in every call site.
+### Step 6: Fix Attendance Trainer Filter (`SimpleAttendanceTab.tsx`)
+
+Currently filters by `activePT.time_slot_id` matching trainer's slots. Change to include members whose `activePT` exists for that trainer regardless of whether they have a `time_slot_id`, when filtering by trainer (not by specific slot).
+
+### Step 7: Remove edge function fallback (`protected-data/index.ts`)
+
+Remove the `tsmByMember` fallback (lines 686-739) since all members will now have proper `pt_subscriptions` records after the data migration. This eliminates the dual-source confusion.
+
+### Step 8: Ensure bidirectional sync going forward
+
+- **AssignTrainerDialog** (already syncs to `time_slot_members` — line 227) ✓
+- **SlotMembersTab** (already syncs to `pt_subscriptions` — recent fix) ✓
+- Verify both paths remain in sync after these changes
+
+---
+
+### Technical Details
+
+**Files to modify:**
+1. `src/components/admin/MembersTable.tsx` — Trainer filter query (lines 719-758)
+2. `src/components/admin/TrainerFilterDropdown.tsx` — Member count (lines 81-103)
+3. `src/components/admin/TimeSlotFilterDropdown.tsx` — Slot member lookup
+4. `src/hooks/useAssignedMembers.ts` — Simplify to single PT query
+5. `src/components/admin/attendance/SimpleAttendanceTab.tsx` — Trainer filter logic (lines 97-114)
+6. `supabase/functions/protected-data/index.ts` — Remove `tsmByMember` fallback
+7. **Database migration** — Sync orphaned records between tables
+
+**Identity resolution chain (used everywhere):**
+`staff.id` → `staff.phone` → `personal_trainers.phone` → `personal_trainers.id` → `pt_subscriptions.personal_trainer_id`
+
+**Active PT definition (universal):**
+`pt_subscriptions.status = 'active' AND pt_subscriptions.end_date >= CURRENT_DATE`
 
