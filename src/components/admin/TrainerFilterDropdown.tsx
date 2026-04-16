@@ -265,6 +265,46 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
               </div>
             </div>
 
+            {/* "No Trainer" filter option */}
+            <div className="p-1.5 pb-0">
+              <button
+                onClick={() => {
+                  onChange(isNoTrainerFilter ? null : NO_TRAINER_FILTER);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-200",
+                  "hover:scale-[1.01] active:scale-[0.99]",
+                  isNoTrainerFilter
+                    ? "bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-700 border shadow-sm ring-1 ring-orange-300/50"
+                    : "border border-transparent hover:bg-muted/50"
+                )}
+              >
+                <Avatar className="w-8 h-8 ring-2 ring-background shadow-sm">
+                  <AvatarFallback className="text-[10px] font-bold bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400">
+                    <User className="w-3.5 h-3.5" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className={cn(
+                    "text-xs font-semibold",
+                    isNoTrainerFilter ? "text-orange-700 dark:text-orange-300" : "text-foreground"
+                  )}>
+                    No Trainer
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">Members without any active PT</p>
+                </div>
+                {isNoTrainerFilter && (
+                  <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center animate-scale-in">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                )}
+              </button>
+            </div>
+
+            {/* Separator */}
+            <div className="mx-3 my-1 border-t border-border/30" />
+
             {/* Trainer list */}
             <div className="p-1.5 space-y-0.5">
               {visibleTrainers.map((trainer, idx) => {
