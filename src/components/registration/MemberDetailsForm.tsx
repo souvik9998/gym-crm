@@ -149,6 +149,8 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
       address: sanitizedAddress,
       gender,
       dateOfBirth: dateOfBirth || undefined,
+      email: email || undefined,
+      occupation: occupation || undefined,
     });
   };
 
