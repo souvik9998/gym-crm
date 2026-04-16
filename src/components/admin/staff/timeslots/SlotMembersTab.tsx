@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { Staff } from "@/pages/admin/StaffManagement";
-import { PlusIcon, XMarkIcon, MagnifyingGlassIcon, UserGroupIcon, ExclamationTriangleIcon, CheckCircleIcon, ClockIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, XMarkIcon, MagnifyingGlassIcon, UserGroupIcon, ExclamationTriangleIcon, ClockIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/outline";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -44,10 +44,10 @@ interface AvailableMember {
   selected: boolean;
   subscription_end_date: string | null;
   subscription_status: string | null;
-  has_existing_pt: boolean;
+  pt_status: "same_trainer" | "other_trainer" | "no_pt";
   existing_trainer_name: string | null;
   existing_trainer_id: string | null;
-  is_same_trainer: boolean;
+  pt_subscription_id: string | null;
 }
 
 export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps) => {
@@ -67,12 +67,11 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
   const [trainerName, setTrainerName] = useState("");
 
   // Transfer state
-  const [transferConfirm, setTransferConfirm] = useState<{ memberId: string; name: string; fromTrainer: string; fromTrainerId: string } | null>(null);
+  const [transferConfirm, setTransferConfirm] = useState<{ memberId: string; name: string; fromTrainer: string; fromTrainerId: string; ptSubId: string } | null>(null);
   const [isTransferring, setIsTransferring] = useState(false);
 
   const { invalidatePtSubscriptions } = useInvalidateQueries();
 
-  // Resolve personal_trainer_id from staff phone
   const resolveTrainerPtId = useCallback(async (staffId: string) => {
     const { data: staffRec } = await supabase
       .from("staff" as any)
@@ -95,7 +94,6 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
     setTrainerPtId(ptProfile?.id || null);
   }, [currentBranch?.id]);
 
-  // Fetch slots when trainer changes
   useEffect(() => {
     if (!selectedTrainer || !currentBranch?.id) { setSlots([]); setSelectedSlot(""); setTrainerPtId(null); return; }
     resolveTrainerPtId(selectedTrainer);
@@ -111,7 +109,6 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
     })();
   }, [selectedTrainer, currentBranch?.id, resolveTrainerPtId]);
 
-  // Fetch slot members from pt_subscriptions (source of truth) + time_slot_members
   useEffect(() => {
     if (!selectedSlot) { setMembers([]); return; }
     const slot = slots.find(s => s.id === selectedSlot);
@@ -184,55 +181,59 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
     const available = data.filter(m => !existingIds.includes(m.id));
     const memberIds = available.map(m => m.id);
 
-    const [subRes, ptRes] = await Promise.all([
+    // Fetch active PT subscriptions and gym subscriptions
+    const [ptRes, subRes] = await Promise.all([
+      supabase
+        .from("pt_subscriptions")
+        .select("id, member_id, personal_trainer_id, personal_trainers(name)")
+        .in("member_id", memberIds.length > 0 ? memberIds : ["__none__"])
+        .eq("status", "active"),
       supabase
         .from("subscriptions")
         .select("member_id, end_date, status")
         .in("member_id", memberIds.length > 0 ? memberIds : ["__none__"])
         .in("status", ["active", "expiring_soon"])
         .order("end_date", { ascending: false }),
-      supabase
-        .from("pt_subscriptions")
-        .select("member_id, personal_trainer_id, personal_trainers(name)")
-        .in("member_id", memberIds.length > 0 ? memberIds : ["__none__"])
-        .eq("status", "active"),
     ]);
 
-    const subMap = new Map<string, { end_date: string; status: string }>();
-    subRes.data?.forEach((s: any) => { if (!subMap.has(s.member_id)) subMap.set(s.member_id, s); });
-
-    const ptMap = new Map<string, { trainer_name: string; trainer_id: string }>();
+    const ptMap = new Map<string, { trainer_name: string; trainer_id: string; pt_sub_id: string }>();
     ptRes.data?.forEach((p: any) => {
       if (!ptMap.has(p.member_id)) {
         ptMap.set(p.member_id, {
           trainer_name: (p.personal_trainers as any)?.name || "Unknown",
           trainer_id: p.personal_trainer_id,
+          pt_sub_id: p.id,
         });
       }
     });
+
+    const subMap = new Map<string, { end_date: string; status: string }>();
+    subRes.data?.forEach((s: any) => { if (!subMap.has(s.member_id)) subMap.set(s.member_id, s); });
 
     const mappedMembers = available
       .map(m => {
         const sub = subMap.get(m.id);
         const ptInfo = ptMap.get(m.id);
-        const isSameTrainer = ptInfo?.trainer_id === trainerPtId;
+        let ptStatus: "same_trainer" | "other_trainer" | "no_pt" = "no_pt";
+        if (ptInfo) {
+          ptStatus = ptInfo.trainer_id === trainerPtId ? "same_trainer" : "other_trainer";
+        }
         return {
           ...m,
           selected: false,
           subscription_end_date: sub?.end_date || null,
           subscription_status: sub?.status || null,
-          has_existing_pt: !!ptInfo,
+          pt_status: ptStatus,
           existing_trainer_name: ptInfo?.trainer_name || null,
           existing_trainer_id: ptInfo?.trainer_id || null,
-          is_same_trainer: isSameTrainer,
+          pt_subscription_id: ptInfo?.pt_sub_id || null,
         };
       })
-      // Sort: selectable first, then grayed (other trainer)
+      // Sort: same_trainer first (selectable), then no_pt (not selectable), then other_trainer (grayed)
       .sort((a, b) => {
-        const aBlocked = a.has_existing_pt && !a.is_same_trainer;
-        const bBlocked = b.has_existing_pt && !b.is_same_trainer;
-        if (aBlocked && !bBlocked) return 1;
-        if (!aBlocked && bBlocked) return -1;
+        const order = { same_trainer: 0, no_pt: 1, other_trainer: 2 };
+        const diff = order[a.pt_status] - order[b.pt_status];
+        if (diff !== 0) return diff;
         return a.name.localeCompare(b.name);
       });
 
@@ -241,6 +242,7 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
     setAddDialogOpen(true);
   };
 
+  // Only members with PT under the same trainer can be added (no PT creation)
   const handleAddMembers = async () => {
     const selected = availableMembers.filter(m => m.selected);
     if (selected.length === 0) { toast.error("Select at least one member"); return; }
@@ -251,6 +253,7 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
 
     setIsProcessing(true);
     try {
+      // Insert into time_slot_members
       const inserts = selected.map(m => ({
         time_slot_id: selectedSlot,
         member_id: m.id,
@@ -260,79 +263,19 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
       const { error } = await supabase.from("time_slot_members").insert(inserts);
       if (error) { toast.error("Failed to add members", { description: error.message }); return; }
 
-      if (trainerPtId) {
-        const today = new Date().toISOString().split("T")[0];
-        let successCount = 0;
-        let errorCount = 0;
-
-        for (const m of selected) {
-          try {
-            const { data: existingPt } = await supabase
-              .from("pt_subscriptions")
-              .select("id, time_slot_id")
-              .eq("member_id", m.id)
-              .eq("personal_trainer_id", trainerPtId)
-              .eq("status", "active")
-              .gte("end_date", today)
-              .maybeSingle();
-
-            if (existingPt) {
-              await supabase
-                .from("pt_subscriptions")
-                .update({ time_slot_id: selectedSlot })
-                .eq("id", existingPt.id);
-            } else {
-              await supabase
-                .from("pt_subscriptions")
-                .update({ status: "inactive" } as any)
-                .eq("member_id", m.id)
-                .eq("status", "active")
-                .neq("personal_trainer_id", trainerPtId);
-
-              const endDate = m.subscription_end_date || 
-                new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
-              
-              const startD = new Date(today);
-              const endD = new Date(endDate);
-              const months = Math.max(1, Math.ceil((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24 * 30)));
-
-              const { data: ptProfile } = await supabase
-                .from("personal_trainers")
-                .select("monthly_fee")
-                .eq("id", trainerPtId)
-                .maybeSingle();
-
-              const monthlyFee = ptProfile?.monthly_fee || 0;
-
-              await supabase.from("pt_subscriptions").insert({
-                member_id: m.id,
-                personal_trainer_id: trainerPtId,
-                branch_id: currentBranch.id,
-                start_date: today,
-                end_date: endDate,
-                monthly_fee: monthlyFee,
-                total_fee: months * monthlyFee,
-                status: "active",
-                time_slot_id: selectedSlot,
-              });
-            }
-            successCount++;
-          } catch (err) {
-            console.error(`PT sync failed for ${m.name}:`, err);
-            errorCount++;
-          }
+      // Update pt_subscriptions to link to this time slot
+      for (const m of selected) {
+        if (m.pt_subscription_id) {
+          await supabase
+            .from("pt_subscriptions")
+            .update({ time_slot_id: selectedSlot })
+            .eq("id", m.pt_subscription_id);
         }
-
-        if (errorCount > 0) {
-          toast.warning(`${successCount} member(s) assigned, ${errorCount} failed PT sync`);
-        } else {
-          toast.success(`${successCount} member(s) assigned to ${trainerName}'s slot with PT subscription created`, {
-            description: "PT records updated • Member profiles synced",
-          });
-        }
-      } else {
-        toast.warning(`${selected.length} member(s) added to slot but trainer has no PT profile. PT subscriptions not created.`);
       }
+
+      toast.success(`${selected.length} member(s) assigned to ${trainerName}'s slot`, {
+        description: "Time slot linked to existing PT subscriptions",
+      });
 
       setAddDialogOpen(false);
       fetchSlotMembers();
@@ -346,25 +289,19 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
     if (!removeConfirm) return;
     setIsProcessing(true);
     try {
+      // Remove from time_slot_members
       await supabase.from("time_slot_members").delete().eq("id", removeConfirm.id);
 
-      const { data: ptSub } = await supabase
+      // Clear time_slot_id from PT subscription (but keep PT active)
+      await supabase
         .from("pt_subscriptions")
-        .select("id")
+        .update({ time_slot_id: null } as any)
         .eq("member_id", removeConfirm.memberId)
         .eq("time_slot_id", selectedSlot)
-        .eq("status", "active")
-        .maybeSingle();
-
-      if (ptSub) {
-        await supabase
-          .from("pt_subscriptions")
-          .update({ status: "inactive", time_slot_id: null } as any)
-          .eq("id", ptSub.id);
-      }
+        .eq("status", "active");
 
       toast.success(`${removeConfirm.name} removed from slot`, {
-        description: "PT subscription deactivated",
+        description: "PT subscription remains active (no time slot assigned)",
       });
       setRemoveConfirm(null);
       fetchSlotMembers();
@@ -401,7 +338,7 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
         branch_id: currentBranch.id,
       });
 
-      // 4. Create new PT subscription
+      // 4. Create new PT subscription with this trainer
       const { data: subData } = await supabase
         .from("subscriptions")
         .select("end_date")
@@ -494,22 +431,19 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
       <div>
         <h3 className="text-base lg:text-lg font-semibold">Slot Member Management</h3>
         <p className="text-xs lg:text-sm text-muted-foreground">
-          Assign members to trainer time slots. This automatically creates PT subscriptions.
+          Assign PT members to trainer time slots. Only members with an active PT subscription can be added.
         </p>
       </div>
 
-      {/* Trainer PT warning */}
       {selectedTrainer && !trainerPtId && (
         <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800">
           <ExclamationTriangleIcon className="w-4 h-4 mt-0.5 shrink-0" />
           <p className="text-xs">
-            This trainer has no active Personal Trainer profile. Members added here won't have PT subscriptions created automatically. 
-            Please add a PT profile for this trainer first.
+            This trainer has no active Personal Trainer profile. Only members with an existing PT subscription under this trainer can be assigned to slots.
           </p>
         </div>
       )}
 
-      {/* Selectors */}
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">Select Trainer</label>
@@ -537,7 +471,6 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
         </div>
       </div>
 
-      {/* Members list */}
       {selectedSlot && (
         <Card className="border shadow-sm">
           <CardContent className="p-3 lg:p-4 space-y-3">
@@ -570,7 +503,7 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
               <div className="text-center py-8">
                 <UserGroupIcon className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
                 <p className="text-sm font-medium text-muted-foreground">No members assigned to this slot</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">Add members to automatically create PT subscriptions</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Only members with active PT can be added here</p>
               </div>
             ) : (
               <div className="space-y-1.5">
@@ -618,8 +551,8 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
               Assign Members to Time Slot
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Adding members here will automatically create PT subscriptions linked to <strong>{trainerName}</strong>. 
-              Members assigned to other trainers are shown grayed out — use Transfer to reassign.
+              Only members with an active PT subscription under <strong>{trainerName}</strong> can be assigned.
+              Members with other trainers can be transferred.
             </DialogDescription>
           </DialogHeader>
           <Separator />
@@ -638,43 +571,46 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
                 <p className="text-sm text-muted-foreground text-center py-4">No members found</p>
               ) : (
                 filteredAvailable.map(m => {
-                  const isBlocked = m.has_existing_pt && !m.is_same_trainer;
+                  const isSelectable = m.pt_status === "same_trainer";
+                  const isOtherTrainer = m.pt_status === "other_trainer";
+                  const isNoPt = m.pt_status === "no_pt";
+
                   return (
                     <div
                       key={m.id}
                       className={`flex items-center gap-3 p-2.5 rounded-lg border transition-colors ${
-                        isBlocked
-                          ? "opacity-50 bg-muted/30 border-border/30 cursor-not-allowed"
-                          : "border-transparent hover:border-border hover:bg-muted/50 cursor-pointer"
+                        isSelectable
+                          ? "border-transparent hover:border-border hover:bg-muted/50 cursor-pointer"
+                          : "opacity-50 bg-muted/30 border-border/30 cursor-not-allowed"
                       }`}
-                      onClick={() => !isBlocked && toggleMemberSelection(m.id)}
+                      onClick={() => isSelectable && toggleMemberSelection(m.id)}
                     >
-                      {isBlocked ? (
-                        <div className="w-4 h-4 rounded border border-muted-foreground/30 shrink-0" />
-                      ) : (
+                      {isSelectable ? (
                         <Checkbox checked={m.selected} onCheckedChange={() => toggleMemberSelection(m.id)} />
+                      ) : (
+                        <div className="w-4 h-4 rounded border border-muted-foreground/30 shrink-0" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className={`text-sm font-medium truncate ${isBlocked ? "text-muted-foreground" : ""}`}>{m.name}</p>
-                          {isBlocked && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className={`text-sm font-medium truncate ${!isSelectable ? "text-muted-foreground" : ""}`}>{m.name}</p>
+                          {isOtherTrainer && (
                             <Badge className="bg-orange-100 text-orange-700 text-[9px] border-0 shrink-0 px-1.5 py-0">
                               With {m.existing_trainer_name}
                             </Badge>
                           )}
-                          {m.has_existing_pt && m.is_same_trainer && (
-                            <Badge className="bg-blue-100 text-blue-700 text-[9px] border-0 shrink-0 px-1.5 py-0">
-                              Same Trainer
+                          {isNoPt && (
+                            <Badge className="bg-muted text-muted-foreground text-[9px] border-0 shrink-0 px-1.5 py-0">
+                              No PT
+                            </Badge>
+                          )}
+                          {isSelectable && (
+                            <Badge className="bg-green-100 text-green-700 text-[9px] border-0 shrink-0 px-1.5 py-0">
+                              PT Active
                             </Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-2">
                           <p className="text-xs text-muted-foreground">{m.phone}</p>
-                          {m.subscription_status && (
-                            <span className="text-[10px] text-muted-foreground">
-                              Gym: {m.subscription_status === "active" ? "✓ Active" : m.subscription_status === "expiring_soon" ? "⚠ Expiring" : m.subscription_status}
-                            </span>
-                          )}
                           {m.subscription_end_date && (
                             <span className="text-[10px] text-muted-foreground">
                               till {new Date(m.subscription_end_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
@@ -682,7 +618,7 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
                           )}
                         </div>
                       </div>
-                      {isBlocked && (
+                      {isOtherTrainer && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -694,6 +630,7 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
                               name: m.name,
                               fromTrainer: m.existing_trainer_name || "Unknown",
                               fromTrainerId: m.existing_trainer_id || "",
+                              ptSubId: m.pt_subscription_id || "",
                             });
                           }}
                         >
@@ -708,10 +645,9 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
             </div>
             {selectedCount > 0 && (
               <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
-                <CheckCircleIcon className="w-4 h-4 text-primary shrink-0" />
                 <p className="text-xs text-foreground">
-                  <strong>{selectedCount}</strong> member{selectedCount > 1 ? "s" : ""} selected — 
-                  PT subscriptions will be created for each
+                  <strong>{selectedCount}</strong> member{selectedCount > 1 ? "s" : ""} selected —
+                  will be assigned to this time slot
                 </p>
               </div>
             )}
@@ -731,10 +667,10 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
       <AlertDialog open={!!removeConfirm} onOpenChange={(open) => !open && setRemoveConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-base">Remove {removeConfirm?.name}?</AlertDialogTitle>
+            <AlertDialogTitle className="text-base">Remove {removeConfirm?.name} from slot?</AlertDialogTitle>
             <AlertDialogDescription className="text-sm">
-              This will remove <strong>{removeConfirm?.name}</strong> from {trainerName}'s time slot and{" "}
-              <strong>deactivate their PT subscription</strong>. They will no longer have a personal trainer assigned.
+              <strong>{removeConfirm?.name}</strong> will be removed from this time slot.
+              Their PT subscription with {trainerName} will remain active but won't be linked to any slot.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -744,7 +680,7 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
               disabled={isProcessing}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isProcessing ? "Removing..." : "Remove & Deactivate PT"}
+              {isProcessing ? "Removing..." : "Remove from Slot"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -760,8 +696,8 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
               <strong>{transferConfirm?.fromTrainer}</strong> to <strong>{trainerName}</strong>.
               <br /><br />
               • Previous PT subscription will be deactivated<br />
-              • New PT subscription will be created<br />
-              • Member will be moved to this time slot
+              • New PT subscription will be created with {trainerName}<br />
+              • Member will be assigned to this time slot
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
