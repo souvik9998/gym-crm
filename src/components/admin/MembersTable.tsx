@@ -1103,22 +1103,11 @@ export const MembersTable = ({
         </div>
       )}
       
-      {/* Filtered result count - shown when filters are active */}
+      {/* Filtered result count - inline, no extra space */}
       {(trainerFilter || timeSlotFilter) && (
-        <div className="flex items-center justify-between px-1">
-          <p className="text-[11px] lg:text-xs text-muted-foreground">
-            Showing <span className="font-semibold text-foreground">{sortedMembers.length}</span> of {totalCount} members
-          </p>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleExport}
-            className="h-6 lg:h-7 gap-1.5 text-[10px] lg:text-xs px-2"
-          >
-            <Download className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-            Export
-          </Button>
-        </div>
+        <p className="text-[10px] lg:text-xs text-muted-foreground px-1 -mb-1">
+          Showing <span className="font-semibold text-foreground">{sortedMembers.length}</span> of {totalCount}
+        </p>
       )}
 
       {isCompact ? (
