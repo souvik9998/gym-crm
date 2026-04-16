@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
-import { InformationCircleIcon } from "@heroicons/react/24/outline";
+import { InformationCircleIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +38,7 @@ import { StaffBranchAssignmentDialog } from "./StaffBranchAssignmentDialog";
 import { StaffCredentialsSection } from "./StaffCredentialsSection";
 import { StaffInlinePermissions, InlinePermissions, getDefaultPermissions } from "./StaffInlinePermissions";
 import { StaffWhatsAppButton, sendStaffCredentialsWhatsApp } from "./StaffWhatsAppButton";
+import { StaffRoleConversionDialog } from "./StaffRoleConversionDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface StaffTrainersTabProps {
@@ -58,6 +59,7 @@ export const StaffTrainersTab = ({
 }: StaffTrainersTabProps) => {
   const isCompact = useIsTabletOrBelow();
   const [infoDialog, setInfoDialog] = useState<{ open: boolean; trainer: Staff | null }>({ open: false, trainer: null });
+  const [conversionDialog, setConversionDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
   const [newTrainer, setNewTrainer] = useState({
     full_name: "",
     phone: "",
@@ -909,6 +911,15 @@ export const StaffTrainersTab = ({
                         </Button>
                         <Button
                           size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setConversionDialog({ open: true, staff: trainer })}
+                          title="Convert to Staff"
+                        >
+                          <ArrowsRightLeftIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="destructive"
                           className="h-8 w-8 p-0"
                           onClick={() => handleDelete(trainer.id, trainer.full_name)}
@@ -999,6 +1010,14 @@ export const StaffTrainersTab = ({
                           onClick={() => handleEdit(trainer)}
                         >
                           <PencilIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setConversionDialog({ open: true, staff: trainer })}
+                          title="Convert to Staff"
+                        >
+                          <ArrowsRightLeftIcon className="w-4 h-4" />
                         </Button>
                         <Switch
                           checked={trainer.is_active}
@@ -1216,6 +1235,15 @@ export const StaffTrainersTab = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <StaffRoleConversionDialog
+        open={conversionDialog.open}
+        onOpenChange={(open) => setConversionDialog({ ...conversionDialog, open })}
+        staff={conversionDialog.staff}
+        direction="to_staff"
+        branchId={currentBranch?.id}
+        branchName={currentBranch?.name}
+        onSuccess={onRefresh}
+      />
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
-import { InformationCircleIcon } from "@heroicons/react/24/outline";
+import { InformationCircleIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +38,7 @@ import { StaffBranchAssignmentDialog } from "./StaffBranchAssignmentDialog";
 import { StaffCredentialsSection } from "./StaffCredentialsSection";
 import { StaffInlinePermissions, InlinePermissions, getDefaultPermissions } from "./StaffInlinePermissions";
 import { StaffWhatsAppButton, sendStaffCredentialsWhatsApp } from "./StaffWhatsAppButton";
+import { StaffRoleConversionDialog } from "./StaffRoleConversionDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface StaffOtherTabProps {
@@ -113,6 +114,7 @@ export const StaffOtherTab = ({
     existingStaff: Staff | null;
   }>({ open: false, existingStaff: null });
   const addingRef = { current: false };
+  const [conversionDialog, setConversionDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
 
   // Update selected branches when currentBranch changes
   useEffect(() => {
@@ -746,6 +748,15 @@ export const StaffOtherTab = ({
                         </Button>
                         <Button
                           size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setConversionDialog({ open: true, staff: member })}
+                          title="Convert to Trainer"
+                        >
+                          <ArrowsRightLeftIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="destructive"
                           className="h-8 w-8 p-0"
                           onClick={() => handleDelete(member.id, member.full_name)}
@@ -832,6 +843,14 @@ export const StaffOtherTab = ({
                           onClick={() => handleEdit(member)}
                         >
                           <PencilIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setConversionDialog({ open: true, staff: member })}
+                          title="Convert to Trainer"
+                        >
+                          <ArrowsRightLeftIcon className="w-4 h-4" />
                         </Button>
                         <Switch
                           checked={member.is_active}
@@ -997,6 +1016,16 @@ export const StaffOtherTab = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <StaffRoleConversionDialog
+        open={conversionDialog.open}
+        onOpenChange={(open) => setConversionDialog({ ...conversionDialog, open })}
+        staff={conversionDialog.staff}
+        direction="to_trainer"
+        branchId={currentBranch?.id}
+        branchName={currentBranch?.name}
+        onSuccess={onRefresh}
+      />
     </div>
   );
 };
