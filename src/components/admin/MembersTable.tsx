@@ -1399,7 +1399,13 @@ export const MembersTable = ({
                       </span>
                     </Button>
                   </TableHead>
-                  <TableHead className="w-10"></TableHead>
+                  <TableHead className="w-10">
+                    {(trainerFilter || timeSlotFilter) && (
+                      <span className="text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">
+                        {sortedMembers.length}/{totalCount}
+                      </span>
+                    )}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
