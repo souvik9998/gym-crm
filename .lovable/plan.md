@@ -1,76 +1,102 @@
 
 
-## Problem
+# Assessment Configuration & Registration Field Toggles
 
-When adding a trainer/staff, the app checks if the phone number exists in the `staff` table **globally across all tenants**. This means a staff member registered under a different admin's gym triggers the "Staff Already Registered" dialog incorrectly. The check should only apply within the same admin's tenant (same gym account).
+## What We're Building
 
-**Root causes:**
-1. **Frontend queries** in `StaffTrainersTab.tsx` and `StaffOtherTab.tsx` query `staff` table by phone without tenant scoping
-2. **RLS on `staff` table** allows any admin to see all staff globally — no tenant isolation
-3. **DB trigger** `check_staff_phone_branch_uniqueness` only checks per-branch, not per-tenant (this is fine for branch-level, but the frontend global check is the real issue)
+Two features:
+1. **Assessment Configuration in Settings** — A new "Assessment" tab in admin Settings where admins can configure which assessment fields to collect (based on the uploaded doc: health parameters, muscle strength, cardiovascular, body measurements, lifestyle, etc.)
+2. **Registration Field Toggles** — Add new toggleable fields (email, blood group, occupation, emergency contacts x2) to the existing Registration Fields Settings
+
+---
+
+## Document Reference (Assessment Sheet 4.0)
+
+The uploaded doc defines these assessment sections:
+- **Basic Info**: Weight, Height, Mode of Training, Diet (Vegan/Veg/NonVeg/Egg), Alcohol, Smoking
+- **Lifestyle**: Physical Activity (Current & Past), Deficiency, Medication
+- **Medical**: Health Conditions / Medical Procedures (Current & Past), Injuries/Pain
+- **Goals**: Member's Goals
+- **Health Parameters**: BP (Systolic/Diastolic), RHR, SpO2, Grip Strength (L/R)
+- **Muscle Strength**: Pushups, Landmine, Pull Ups, Squats, Sit to Stand, Glute Bridge, Leg Raises, Plank, Calf Raises
+- **Cardiovascular Strength**: Text field
+- **Body Measurements**: Neck, Chest, Arms (L/R), Upper Abdomen, Lower Abdomen, Hips, Upper Thighs (L/R), Lower Thighs (L/R), Calf (L/R)
+- **Notes**: Free text
+
+---
 
 ## Plan
 
-### 1. Create a tenant-scoped DB function for staff phone lookup
+### Step 1: Database — Add assessment config column to `gym_settings`
 
-Create a `SECURITY DEFINER` function `get_staff_by_phone_in_tenant(p_phone text, p_tenant_id uuid)` that returns staff records only within the given tenant (via `staff_branch_assignments → branches.tenant_id`).
+Add a JSONB column `assessment_field_settings` to `gym_settings` to store which assessment sections/fields are enabled per branch. Structure:
 
-```sql
-CREATE OR REPLACE FUNCTION public.get_staff_by_phone_in_tenant(p_phone text, p_tenant_id uuid)
-RETURNS TABLE(staff_id uuid, full_name text, phone text, role text, is_active boolean)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
-AS $$
-  SELECT DISTINCT s.id, s.full_name, s.phone, s.role::text, s.is_active
-  FROM public.staff s
-  JOIN public.staff_branch_assignments sba ON s.id = sba.staff_id
-  JOIN public.branches b ON sba.branch_id = b.id
-  WHERE s.phone = p_phone AND b.tenant_id = p_tenant_id;
-$$;
+```json
+{
+  "basic_info": { "enabled": true, "fields": { "weight": true, "height": true, "mode_of_training": true, "diet_type": true, "alcohol": true, "smoking": true } },
+  "lifestyle": { "enabled": true, "fields": { "physical_activity_current": true, "physical_activity_past": true, "deficiency": true, "medication": true } },
+  "medical": { "enabled": true, "fields": { "health_conditions": true, "injuries_pain": true } },
+  "goals": { "enabled": true },
+  "health_parameters": { "enabled": true, "fields": { "bp": true, "rhr": true, "spo2": true, "grip_strength": true } },
+  "muscle_strength": { "enabled": true, "fields": { "pushups": true, "landmine": true, "pullups": true, "squats": true, "sit_to_stand": true, "glute_bridge": true, "leg_raises": true, "plank": true, "calf_raises": true } },
+  "cardiovascular": { "enabled": true },
+  "body_measurements": { "enabled": true, "fields": { "neck": true, "chest": true, "arms": true, "upper_abdomen": true, "lower_abdomen": true, "hips": true, "upper_thighs": true, "lower_thighs": true, "calf": true } },
+  "notes": { "enabled": true }
+}
 ```
 
-### 2. Update `StaffTrainersTab.tsx` — Add trainer flow
+### Step 2: Database — Restructure `member_assessments` table
 
-Replace the global `supabase.from("staff").select(...).eq("phone", cleanPhone)` check (line ~157) with an RPC call to `get_staff_by_phone_in_tenant` using `currentBranch.tenant_id`. Same for the edit phone uniqueness check (line ~367).
+Add new columns to `member_assessments` to store all the assessment data from the doc (as a JSONB `assessment_data` column to keep it flexible and match the admin's configured fields).
 
-### 3. Update `StaffOtherTab.tsx` — Add staff flow
+### Step 3: Registration Field Toggles
 
-Same change as above — replace global phone check (line ~166) and edit phone check (line ~335) with tenant-scoped RPC calls.
+Add these new fields to the existing `RegistrationFieldsSettings` component and `FIELD_CONFIG`:
+- `email` — Email ID (toggleable, not locked)
+- `blood_group` — Blood Group (toggleable)
+- `occupation` — Occupation (toggleable)
+- `emergency_contact_1` — Emergency Contact 1 (Name + Phone)
+- `emergency_contact_2` — Emergency Contact 2 (Name + Phone)
 
-### 4. Tighten RLS on `staff` table
+These use the same `registration_field_settings` JSONB column in `gym_settings`. When enabled, they show in the public registration form (`MemberDetailsForm` / `HealthDetailsForm`).
 
-Update the admin SELECT policy to scope to the admin's tenant:
+### Step 4: Create `AssessmentFieldsSettings` component
 
-```sql
-DROP POLICY "Admins and super admins can manage staff" ON public.staff;
-CREATE POLICY "Admins can manage own tenant staff" ON public.staff
-  FOR ALL TO authenticated
-  USING (
-    has_role(auth.uid(), 'super_admin'::app_role)
-    OR (
-      has_role(auth.uid(), 'admin'::app_role)
-      AND EXISTS (
-        SELECT 1 FROM public.staff_branch_assignments sba
-        JOIN public.branches b ON sba.branch_id = b.id
-        JOIN public.tenant_members tm ON b.tenant_id = tm.tenant_id
-        WHERE sba.staff_id = staff.id AND tm.user_id = auth.uid()
-      )
-    )
-  );
-```
+New component at `src/components/admin/AssessmentFieldsSettings.tsx`:
+- Reads/writes `assessment_field_settings` from `gym_settings`
+- Renders each section as a collapsible card with a master toggle
+- Within each section, individual field toggles
+- Auto-saves on toggle (same pattern as `RegistrationFieldsSettings`)
 
-Also update the staff self-view policy to include the same admin tenant scoping.
+### Step 5: Add "Assessment" tab to Settings
 
-### Files to modify
+Add `{ value: "assessment", label: "Assessment" }` to `settingsTabs` in `Settings.tsx` and render the new `AssessmentFieldsSettings` component.
 
-| File | Change |
-|------|--------|
-| New migration SQL | Add `get_staff_by_phone_in_tenant` function + update RLS policies on `staff` table |
-| `src/components/admin/staff/StaffTrainersTab.tsx` | Replace global phone checks with tenant-scoped RPC calls |
-| `src/components/admin/staff/StaffOtherTab.tsx` | Replace global phone checks with tenant-scoped RPC calls |
+### Step 6: Update `AssessmentSection` in Member Health Tab
 
-### Technical detail
+Modify `AssessmentSection.tsx` to:
+- Fetch the branch's `assessment_field_settings` to know which fields to show
+- Replace the current hardcoded fields (current_condition, injuries, mobility, allowed_exercises, notes) with the dynamic field set from config
+- Store assessment data in the new `assessment_data` JSONB column
+- Render input types appropriate to each field (numeric for measurements, text for notes, select for diet type, etc.)
 
-- The `currentBranch.tenant_id` is already available via `useBranch()` context in both components
-- RLS tightening ensures even if frontend code has bugs, cross-tenant staff data never leaks
-- The DB function uses `SECURITY DEFINER` to bypass RLS internally, ensuring consistent results regardless of the calling user's permissions
+### Step 7: Update Registration Forms
+
+Modify `MemberDetailsForm.tsx` to conditionally show email, occupation fields based on registration settings. Modify `HealthDetailsForm.tsx` to show blood_group and dual emergency contacts based on settings.
+
+---
+
+### Files to Create/Modify
+
+| File | Action |
+|---|---|
+| `gym_settings` table | Migration: add `assessment_field_settings` JSONB column |
+| `member_assessments` table | Migration: add `assessment_data` JSONB column |
+| `src/components/admin/AssessmentFieldsSettings.tsx` | **Create** — Settings UI for assessment config |
+| `src/pages/admin/Settings.tsx` | Add "Assessment" tab |
+| `src/components/admin/RegistrationFieldsSettings.tsx` | Add email, blood_group, occupation, emergency_contact toggles |
+| `src/components/admin/health/AssessmentSection.tsx` | Dynamic fields from config |
+| `src/components/admin/health/MemberHealthTab.tsx` | Pass config to AssessmentSection |
+| `src/components/registration/MemberDetailsForm.tsx` | Add conditional email, occupation fields |
+| `src/components/registration/HealthDetailsForm.tsx` | Add blood_group, dual emergency contacts |
 
