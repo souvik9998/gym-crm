@@ -47,6 +47,7 @@ import { ButtonSpinner } from "@/components/ui/button-spinner";
 const HolidayCalendarTab = lazy(() => import("@/components/admin/HolidayCalendarTab"));
 import { RegistrationFieldsSettings } from "@/components/admin/RegistrationFieldsSettings";
 import { CouponsDiscountsTab } from "@/components/admin/CouponsDiscountsTab";
+import { AssessmentFieldsSettings } from "@/components/admin/AssessmentFieldsSettings";
 
 interface CustomPackage {
   id: string;
