@@ -18,13 +18,16 @@ const PAGE_SIZE = 50;
  */
 export function useInfiniteMembersQuery() {
   const { currentBranch } = useBranch();
-  const { isStaffLoggedIn } = useStaffAuth();
+  const { isStaffLoggedIn, permissions, staffUser } = useStaffAuth();
   const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   const isAuthenticated = isAdmin || isStaffLoggedIn;
+  const accessScope = isStaffLoggedIn
+    ? `${staffUser?.id || "staff"}-${permissions?.member_access_type || "all"}`
+    : "admin";
 
   return useInfiniteQuery({
-    queryKey: [...queryKeys.members.all(branchId), "infinite"],
+    queryKey: [...queryKeys.members.all(branchId), accessScope, "infinite"],
     queryFn: ({ pageParam = 0 }) => membersApi.fetchMembersPaginated(branchId, pageParam, PAGE_SIZE),
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: 0,
@@ -40,13 +43,16 @@ export function useInfiniteMembersQuery() {
  */
 export function useMembersQuery() {
   const { currentBranch } = useBranch();
-  const { isStaffLoggedIn } = useStaffAuth();
+  const { isStaffLoggedIn, permissions, staffUser } = useStaffAuth();
   const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   const isAuthenticated = isAdmin || isStaffLoggedIn;
+  const accessScope = isStaffLoggedIn
+    ? `${staffUser?.id || "staff"}-${permissions?.member_access_type || "all"}`
+    : "admin";
 
   return useQuery({
-    queryKey: queryKeys.members.all(branchId),
+    queryKey: [...queryKeys.members.all(branchId), accessScope],
     queryFn: () => membersApi.fetchMembers(branchId),
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
@@ -58,8 +64,13 @@ export function useMembersQuery() {
  * Hook to fetch a single member by ID
  */
 export function useMemberQuery(memberId: string | undefined) {
+  const { isStaffLoggedIn, permissions, staffUser } = useStaffAuth();
+  const accessScope = isStaffLoggedIn
+    ? `${staffUser?.id || "staff"}-${permissions?.member_access_type || "all"}`
+    : "admin";
+
   return useQuery({
-    queryKey: queryKeys.members.detail(memberId || ''),
+    queryKey: [...queryKeys.members.detail(memberId || ''), accessScope],
     queryFn: () => membersApi.fetchMemberById(memberId!),
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
@@ -71,8 +82,13 @@ export function useMemberQuery(memberId: string | undefined) {
  * Hook to fetch member details
  */
 export function useMemberDetailsQuery(memberId: string | undefined) {
+  const { isStaffLoggedIn, permissions, staffUser } = useStaffAuth();
+  const accessScope = isStaffLoggedIn
+    ? `${staffUser?.id || "staff"}-${permissions?.member_access_type || "all"}`
+    : "admin";
+
   return useQuery({
-    queryKey: ['member-details', memberId],
+    queryKey: ['member-details', memberId, accessScope],
     queryFn: () => membersApi.fetchMemberDetails(memberId!),
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
