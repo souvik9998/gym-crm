@@ -73,6 +73,8 @@ const HealthDetailsForm = ({
   const [allergies, setAllergies] = useState(initialData?.allergies || "");
   const [emergencyContactName, setEmergencyContactName] = useState(initialData?.emergencyContactName || "");
   const [emergencyContactPhone, setEmergencyContactPhone] = useState(initialData?.emergencyContactPhone || "");
+  const [emergency2Name, setEmergency2Name] = useState(initialData?.emergencyContact2Name || "");
+  const [emergency2Phone, setEmergency2Phone] = useState(initialData?.emergencyContact2Phone || "");
   
   const [identityFiles, setIdentityFiles] = useState<UploadedFile[]>(initialData?.identityProofFiles || []);
   const [medicalFiles, setMedicalFiles] = useState<UploadedFile[]>(initialData?.medicalRecordFiles || []);
