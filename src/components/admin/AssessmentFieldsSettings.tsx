@@ -1,14 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, Activity, Heart, Brain, Target, Ruler, Dumbbell, Wind, StickyNote, Salad } from "lucide-react";
+import { ChevronDown, Activity, Heart, Brain, Target, Ruler, Dumbbell, Wind, StickyNote, Salad, Plus, Pencil, Trash2, Check, X } from "lucide-react";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { cn } from "@/lib/utils";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface FieldConfig {
   key: string;
@@ -126,18 +130,34 @@ const ASSESSMENT_SECTIONS: SectionConfig[] = [
   },
 ];
 
-type AssessmentSettings = Record<string, { enabled: boolean; fields?: Record<string, boolean> }>;
+interface CustomField {
+  key: string;
+  label: string;
+  enabled: boolean;
+  input_type: "text" | "number" | "textarea" | "select";
+  options?: string[];
+}
+
+type AssessmentSettings = Record<string, {
+  enabled: boolean;
+  fields?: Record<string, boolean>;
+  field_labels?: Record<string, string>;
+  custom_fields?: CustomField[];
+}>;
 
 const getDefaultSettings = (): AssessmentSettings => {
   const defaults: AssessmentSettings = {};
   ASSESSMENT_SECTIONS.forEach((section) => {
-    const entry: { enabled: boolean; fields?: Record<string, boolean> } = { enabled: true };
+    const entry: AssessmentSettings[string] = { enabled: true };
     if (section.fields) {
       entry.fields = {};
+      entry.field_labels = {};
       section.fields.forEach((f) => {
         entry.fields![f.key] = true;
+        entry.field_labels![f.key] = f.label;
       });
     }
+    entry.custom_fields = [];
     defaults[section.key] = entry;
   });
   return defaults;
@@ -148,6 +168,11 @@ export const AssessmentFieldsSettings = () => {
   const [settings, setSettings] = useState<AssessmentSettings>(getDefaultSettings());
   const [isLoading, setIsLoading] = useState(true);
   const [openSections, setOpenSections] = useState<string[]>([]);
+  const [editingField, setEditingField] = useState<{ section: string; key: string } | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [addingToSection, setAddingToSection] = useState<string | null>(null);
+  const [newFieldLabel, setNewFieldLabel] = useState("");
+  const [newFieldType, setNewFieldType] = useState<"text" | "number" | "textarea">("text");
 
   useEffect(() => {
     if (currentBranch?.id) fetchSettings();
@@ -168,7 +193,12 @@ export const AssessmentFieldsSettings = () => {
         const parsed = typeof data.assessment_field_settings === "string"
           ? JSON.parse(data.assessment_field_settings)
           : data.assessment_field_settings;
-        setSettings({ ...getDefaultSettings(), ...parsed });
+        // Merge with defaults to ensure all keys exist
+        const merged = getDefaultSettings();
+        Object.keys(parsed).forEach((key) => {
+          merged[key] = { ...merged[key], ...parsed[key] };
+        });
+        setSettings(merged);
       }
     } catch (err) {
       console.error("Error fetching assessment settings:", err);
@@ -211,12 +241,19 @@ export const AssessmentFieldsSettings = () => {
           disabledFields[k] = false;
         });
         updated[sectionKey] = { ...updated[sectionKey], fields: disabledFields };
+        // Also disable custom fields
+        if (updated[sectionKey].custom_fields) {
+          updated[sectionKey].custom_fields = updated[sectionKey].custom_fields!.map((cf) => ({ ...cf, enabled: false }));
+        }
       } else if (enabled && updated[sectionKey].fields) {
         const enabledFields: Record<string, boolean> = {};
         Object.keys(updated[sectionKey].fields!).forEach((k) => {
           enabledFields[k] = true;
         });
         updated[sectionKey] = { ...updated[sectionKey], fields: enabledFields };
+        if (updated[sectionKey].custom_fields) {
+          updated[sectionKey].custom_fields = updated[sectionKey].custom_fields!.map((cf) => ({ ...cf, enabled: true }));
+        }
       }
       saveSettings(updated);
       return updated;
@@ -228,8 +265,8 @@ export const AssessmentFieldsSettings = () => {
       const updated = { ...prev };
       const sectionFields = { ...updated[sectionKey].fields, [fieldKey]: enabled };
       updated[sectionKey] = { ...updated[sectionKey], fields: sectionFields };
-      // If all fields are disabled, disable the section
-      const allDisabled = Object.values(sectionFields).every((v) => !v);
+      const allDisabled = Object.values(sectionFields).every((v) => !v) &&
+        (!updated[sectionKey].custom_fields?.length || updated[sectionKey].custom_fields!.every((cf) => !cf.enabled));
       if (allDisabled) {
         updated[sectionKey] = { ...updated[sectionKey], enabled: false };
       } else if (!updated[sectionKey].enabled) {
@@ -238,6 +275,85 @@ export const AssessmentFieldsSettings = () => {
       saveSettings(updated);
       return updated;
     });
+  };
+
+  const startEditLabel = (sectionKey: string, fieldKey: string, currentLabel: string) => {
+    setEditingField({ section: sectionKey, key: fieldKey });
+    setEditLabel(currentLabel);
+  };
+
+  const saveFieldLabel = () => {
+    if (!editingField || !editLabel.trim()) return;
+    setSettings((prev) => {
+      const updated = { ...prev };
+      const section = updated[editingField.section];
+      // Check if it's a custom field
+      const customIdx = section.custom_fields?.findIndex((cf) => cf.key === editingField.key);
+      if (customIdx !== undefined && customIdx >= 0 && section.custom_fields) {
+        section.custom_fields[customIdx] = { ...section.custom_fields[customIdx], label: editLabel.trim() };
+      } else {
+        section.field_labels = { ...section.field_labels, [editingField.key]: editLabel.trim() };
+      }
+      updated[editingField.section] = { ...section };
+      saveSettings(updated);
+      return updated;
+    });
+    setEditingField(null);
+    setEditLabel("");
+  };
+
+  const addCustomField = (sectionKey: string) => {
+    if (!newFieldLabel.trim()) return;
+    const fieldKey = `custom_${Date.now()}`;
+    setSettings((prev) => {
+      const updated = { ...prev };
+      const section = updated[sectionKey];
+      const customFields = [...(section.custom_fields || [])];
+      customFields.push({
+        key: fieldKey,
+        label: newFieldLabel.trim(),
+        enabled: true,
+        input_type: newFieldType,
+      });
+      updated[sectionKey] = { ...section, custom_fields: customFields, enabled: true };
+      saveSettings(updated);
+      return updated;
+    });
+    setNewFieldLabel("");
+    setNewFieldType("text");
+    setAddingToSection(null);
+  };
+
+  const toggleCustomField = (sectionKey: string, fieldKey: string, enabled: boolean) => {
+    setSettings((prev) => {
+      const updated = { ...prev };
+      const section = updated[sectionKey];
+      if (section.custom_fields) {
+        section.custom_fields = section.custom_fields.map((cf) =>
+          cf.key === fieldKey ? { ...cf, enabled } : cf
+        );
+        updated[sectionKey] = { ...section };
+      }
+      saveSettings(updated);
+      return updated;
+    });
+  };
+
+  const deleteCustomField = (sectionKey: string, fieldKey: string) => {
+    setSettings((prev) => {
+      const updated = { ...prev };
+      const section = updated[sectionKey];
+      if (section.custom_fields) {
+        section.custom_fields = section.custom_fields.filter((cf) => cf.key !== fieldKey);
+        updated[sectionKey] = { ...section };
+      }
+      saveSettings(updated);
+      return updated;
+    });
+  };
+
+  const getFieldLabel = (sectionKey: string, fieldKey: string, defaultLabel: string) => {
+    return settings[sectionKey]?.field_labels?.[fieldKey] || defaultLabel;
   };
 
   if (isLoading) {
@@ -266,7 +382,7 @@ export const AssessmentFieldsSettings = () => {
           <div>
             <CardTitle className="text-base lg:text-xl">Assessment Fields Configuration</CardTitle>
             <CardDescription className="text-xs lg:text-sm">
-              Configure which sections and fields to collect during member assessments.
+              Configure sections, rename fields, or add custom fields for member assessments.
               <span className="ml-1 text-accent font-medium">{enabledCount}/{ASSESSMENT_SECTIONS.length} sections enabled</span>
             </CardDescription>
           </div>
@@ -277,14 +393,13 @@ export const AssessmentFieldsSettings = () => {
           const sectionSettings = settings[section.key] || { enabled: true };
           const Icon = section.icon;
           const isOpen = openSections.includes(section.key);
-          const hasFields = !!section.fields;
+          const hasFields = !!section.fields || (sectionSettings.custom_fields && sectionSettings.custom_fields.length > 0);
 
           return (
             <Collapsible
               key={section.key}
-              open={isOpen && hasFields}
+              open={isOpen}
               onOpenChange={(open) => {
-                if (!hasFields) return;
                 setOpenSections((prev) =>
                   open ? [...prev, section.key] : prev.filter((s) => s !== section.key)
                 );
@@ -314,18 +429,16 @@ export const AssessmentFieldsSettings = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                    {hasFields && (
-                      <CollapsibleTrigger asChild>
-                        <button className="p-1 rounded-md hover:bg-muted/50 transition-colors">
-                          <ChevronDown
-                            className={cn(
-                              "w-4 h-4 text-muted-foreground transition-transform duration-200",
-                              isOpen && "rotate-180"
-                            )}
-                          />
-                        </button>
-                      </CollapsibleTrigger>
-                    )}
+                    <CollapsibleTrigger asChild>
+                      <button className="p-1 rounded-md hover:bg-muted/50 transition-colors">
+                        <ChevronDown
+                          className={cn(
+                            "w-4 h-4 text-muted-foreground transition-transform duration-200",
+                            isOpen && "rotate-180"
+                          )}
+                        />
+                      </button>
+                    </CollapsibleTrigger>
                     <Switch
                       checked={sectionSettings.enabled}
                       onCheckedChange={(v) => toggleSection(section.key, v)}
@@ -333,30 +446,158 @@ export const AssessmentFieldsSettings = () => {
                   </div>
                 </div>
 
-                {hasFields && (
-                  <CollapsibleContent>
-                    <div className="px-3 lg:px-4 pb-3 lg:pb-4 space-y-1.5 border-t border-border/30 pt-2">
-                      {section.fields!.map((field) => {
-                        const fieldEnabled = sectionSettings.fields?.[field.key] ?? true;
-                        return (
-                          <div
-                            key={field.key}
-                            className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-muted/30 transition-colors"
-                          >
-                            <Label className="text-xs lg:text-sm text-muted-foreground cursor-pointer">
-                              {field.label}
-                            </Label>
-                            <Switch
-                              checked={fieldEnabled}
-                              onCheckedChange={(v) => toggleField(section.key, field.key, v)}
-                              className="scale-75"
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CollapsibleContent>
-                )}
+                <CollapsibleContent>
+                  <div className="px-3 lg:px-4 pb-3 lg:pb-4 space-y-1.5 border-t border-border/30 pt-2">
+                    {/* Built-in fields */}
+                    {section.fields?.map((field) => {
+                      const fieldEnabled = sectionSettings.fields?.[field.key] ?? true;
+                      const displayLabel = getFieldLabel(section.key, field.key, field.label);
+                      const isEditing = editingField?.section === section.key && editingField?.key === field.key;
+
+                      return (
+                        <div
+                          key={field.key}
+                          className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-muted/30 transition-colors group"
+                        >
+                          {isEditing ? (
+                            <div className="flex items-center gap-1.5 flex-1 mr-2">
+                              <Input
+                                value={editLabel}
+                                onChange={(e) => setEditLabel(e.target.value)}
+                                className="h-7 text-xs"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveFieldLabel();
+                                  if (e.key === "Escape") setEditingField(null);
+                                }}
+                              />
+                              <button onClick={saveFieldLabel} className="p-1 text-green-600 hover:bg-green-50 rounded">
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => setEditingField(null)} className="p-1 text-muted-foreground hover:bg-muted/50 rounded">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                              <Label className="text-xs lg:text-sm text-muted-foreground cursor-pointer truncate">
+                                {displayLabel}
+                              </Label>
+                              <button
+                                onClick={() => startEditLabel(section.key, field.key, displayLabel)}
+                                className="p-0.5 rounded text-muted-foreground/0 group-hover:text-muted-foreground/60 hover:!text-foreground transition-colors"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                          <Switch
+                            checked={fieldEnabled}
+                            onCheckedChange={(v) => toggleField(section.key, field.key, v)}
+                            className="scale-75"
+                          />
+                        </div>
+                      );
+                    })}
+
+                    {/* Custom fields */}
+                    {sectionSettings.custom_fields?.map((cf) => {
+                      const isEditing = editingField?.section === section.key && editingField?.key === cf.key;
+                      return (
+                        <div
+                          key={cf.key}
+                          className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-muted/30 transition-colors group"
+                        >
+                          {isEditing ? (
+                            <div className="flex items-center gap-1.5 flex-1 mr-2">
+                              <Input
+                                value={editLabel}
+                                onChange={(e) => setEditLabel(e.target.value)}
+                                className="h-7 text-xs"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveFieldLabel();
+                                  if (e.key === "Escape") setEditingField(null);
+                                }}
+                              />
+                              <button onClick={saveFieldLabel} className="p-1 text-green-600 hover:bg-green-50 rounded">
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => setEditingField(null)} className="p-1 text-muted-foreground hover:bg-muted/50 rounded">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                              <Label className="text-xs lg:text-sm text-muted-foreground cursor-pointer truncate">
+                                {cf.label}
+                              </Label>
+                              <span className="text-[9px] text-muted-foreground/50 bg-muted/40 px-1.5 py-0.5 rounded">custom</span>
+                              <button
+                                onClick={() => startEditLabel(section.key, cf.key, cf.label)}
+                                className="p-0.5 rounded text-muted-foreground/0 group-hover:text-muted-foreground/60 hover:!text-foreground transition-colors"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => deleteCustomField(section.key, cf.key)}
+                                className="p-0.5 rounded text-muted-foreground/0 group-hover:text-destructive/60 hover:!text-destructive transition-colors"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                          <Switch
+                            checked={cf.enabled}
+                            onCheckedChange={(v) => toggleCustomField(section.key, cf.key, v)}
+                            className="scale-75"
+                          />
+                        </div>
+                      );
+                    })}
+
+                    {/* Add custom field */}
+                    {addingToSection === section.key ? (
+                      <div className="flex items-center gap-2 pt-1 px-2">
+                        <Input
+                          value={newFieldLabel}
+                          onChange={(e) => setNewFieldLabel(e.target.value)}
+                          placeholder="Field name"
+                          className="h-7 text-xs flex-1"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") addCustomField(section.key);
+                            if (e.key === "Escape") setAddingToSection(null);
+                          }}
+                        />
+                        <Select value={newFieldType} onValueChange={(v: any) => setNewFieldType(v)}>
+                          <SelectTrigger className="h-7 text-xs w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="text">Text</SelectItem>
+                            <SelectItem value="number">Number</SelectItem>
+                            <SelectItem value="textarea">Long Text</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <button onClick={() => addCustomField(section.key)} className="p-1 text-green-600 hover:bg-green-50 rounded">
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => setAddingToSection(null)} className="p-1 text-muted-foreground hover:bg-muted/50 rounded">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setAddingToSection(section.key)}
+                        className="flex items-center gap-1.5 text-xs text-accent hover:text-accent/80 px-2 py-1.5 transition-colors"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Add Custom Field
+                      </button>
+                    )}
+                  </div>
+                </CollapsibleContent>
               </div>
             </Collapsible>
           );
@@ -367,4 +608,4 @@ export const AssessmentFieldsSettings = () => {
 };
 
 export { ASSESSMENT_SECTIONS };
-export type { AssessmentSettings };
+export type { AssessmentSettings, CustomField };
