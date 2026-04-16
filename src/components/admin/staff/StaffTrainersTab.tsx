@@ -1011,6 +1011,14 @@ export const StaffTrainersTab = ({
                         >
                           <PencilIcon className="w-4 h-4" />
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setConversionDialog({ open: true, staff: trainer })}
+                          title="Convert to Staff"
+                        >
+                          <ArrowsRightLeftIcon className="w-4 h-4" />
+                        </Button>
                         <Switch
                           checked={trainer.is_active}
                           onCheckedChange={(checked) => handleToggle(trainer.id, checked)}
@@ -1227,6 +1235,15 @@ export const StaffTrainersTab = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <StaffRoleConversionDialog
+        open={conversionDialog.open}
+        onOpenChange={(open) => setConversionDialog({ ...conversionDialog, open })}
+        staff={conversionDialog.staff}
+        direction="to_staff"
+        branchId={currentBranch?.id}
+        branchName={currentBranch?.name}
+        onSuccess={onRefresh}
+      />
     </div>
   );
 };
