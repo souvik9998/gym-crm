@@ -47,6 +47,7 @@ interface StaffOtherTabProps {
   currentBranch: any;
   onRefresh: () => void;
   isLoading: boolean;
+  onConversionSuccess?: () => void;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -62,6 +63,7 @@ export const StaffOtherTab = ({
   currentBranch,
   onRefresh,
   isLoading,
+  onConversionSuccess,
 }: StaffOtherTabProps) => {
   const isCompact = useIsTabletOrBelow();
   const [newStaff, setNewStaff] = useState({
@@ -1024,7 +1026,7 @@ export const StaffOtherTab = ({
         direction="to_trainer"
         branchId={currentBranch?.id}
         branchName={currentBranch?.name}
-        onSuccess={onRefresh}
+        onSuccess={() => { onConversionSuccess ? onConversionSuccess() : onRefresh(); }}
       />
     </div>
   );
