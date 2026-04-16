@@ -215,7 +215,25 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
   };
 
   const handleRemoveMember = async (id: string, name: string) => {
+    // Get the member_id before deleting the record
+    const { data: tsmRecord } = await supabase
+      .from("time_slot_members")
+      .select("member_id")
+      .eq("id", id)
+      .maybeSingle();
+
     await supabase.from("time_slot_members").delete().eq("id", id);
+
+    // Clear time_slot_id from matching pt_subscriptions
+    if (tsmRecord?.member_id) {
+      await supabase
+        .from("pt_subscriptions")
+        .update({ time_slot_id: null } as any)
+        .eq("member_id", tsmRecord.member_id)
+        .eq("time_slot_id", selectedSlot)
+        .eq("status", "active");
+    }
+
     toast.success(`${name} removed from slot`);
     fetchSlotMembers();
   };
