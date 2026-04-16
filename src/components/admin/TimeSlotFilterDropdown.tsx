@@ -79,11 +79,19 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
       if (error) throw error;
       if (!slots || slots.length === 0) return [];
 
-      // Get trainer names via secure function (staff RLS blocks reading other staff records)
-      const { data: staffBasic } = await supabase.rpc("get_branch_staff_basic", { p_branch_id: currentBranch.id });
+      // Get trainer names from staff table
+      const trainerIds = [...new Set((slots as any[]).map((s: any) => s.trainer_id).filter(Boolean))];
       let staffMap: Record<string, string> = {};
-      for (const s of (staffBasic as any[] || [])) {
-        staffMap[s.staff_id] = s.full_name;
+      if (trainerIds.length > 0) {
+        const { data: staffData } = await supabase
+          .from("staff")
+          .select("id, full_name")
+          .in("id", trainerIds);
+        if (staffData) {
+          for (const s of staffData) {
+            staffMap[s.id] = s.full_name;
+          }
+        }
       }
 
       // Get members per slot from pt_subscriptions (single source of truth)
@@ -285,7 +293,7 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
                   </div>
 
                   {/* Slots as horizontal chips */}
-                  <div className="flex flex-wrap gap-1.5 px-2.5 pb-1.5">
+                  <div className="flex flex-nowrap gap-1.5 px-2.5 pb-1.5 overflow-x-auto scrollbar-none">
                     {group.slots.map((slot, sIdx) => {
                       const isSelected = value === slot.id;
                       const colorSet = slotColors[gIdx % slotColors.length];
