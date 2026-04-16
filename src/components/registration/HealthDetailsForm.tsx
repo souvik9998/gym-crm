@@ -142,6 +142,9 @@ const HealthDetailsForm = ({
     if (healthRequired && showHealthDetails) {
       if (!bloodGroup || !emergencyContactName || !emergencyContactPhone) return false;
     }
+    if (bloodGroupRequired && showBloodGroup && !bloodGroup) return false;
+    if (emergencyContact1Required && showEmergencyContact1 && (!emergencyContactName || !emergencyContactPhone)) return false;
+    if (emergencyContact2Required && showEmergencyContact2 && (!emergency2Name || !emergency2Phone)) return false;
     if (identityRequired && showIdentityUpload && identityFiles.length === 0) return false;
     if (medicalRequired && showMedicalUpload && medicalFiles.length === 0) return false;
     return true;
@@ -161,6 +164,8 @@ const HealthDetailsForm = ({
       allergies: allergies || undefined,
       emergencyContactName: emergencyContactName || undefined,
       emergencyContactPhone: emergencyContactPhone || undefined,
+      emergencyContact2Name: emergency2Name || undefined,
+      emergencyContact2Phone: emergency2Phone || undefined,
       identityProofFiles: identityFiles.length > 0 ? identityFiles : undefined,
       medicalRecordFiles: medicalFiles.length > 0 ? medicalFiles : undefined,
     });
