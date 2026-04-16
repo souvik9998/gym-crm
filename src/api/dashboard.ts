@@ -21,8 +21,16 @@ export interface DashboardStats {
  * Fetch dashboard statistics via optimized database function
  * Uses single RPC call for all stats instead of multiple queries
  */
-export async function fetchDashboardStats(branchId?: string): Promise<DashboardStats> {
+export async function fetchDashboardStats(branchId?: string, forceEdgeFunction?: boolean): Promise<DashboardStats> {
   try {
+    // Skip RPC for staff with assigned-only access - edge function handles the filtering
+    if (forceEdgeFunction) {
+      return await protectedFetch<DashboardStats>({
+        action: "dashboard-stats",
+        params: { branchId },
+      });
+    }
+
     // Try optimized RPC function first (single query for all stats)
     const { data, error } = await supabase.rpc("get_dashboard_stats", {
       _branch_id: branchId || null,
