@@ -9,7 +9,7 @@ import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle } from "lucide-react";
 import type { MemberAssessment } from "./MemberHealthTab";
-import { ASSESSMENT_SECTIONS, type AssessmentSettings } from "@/components/admin/AssessmentFieldsSettings";
+import { ASSESSMENT_SECTIONS, type AssessmentSettings, type CustomField } from "@/components/admin/AssessmentFieldsSettings";
 
 interface AssessmentSectionProps {
   assessments: MemberAssessment[];
@@ -80,13 +80,16 @@ const FIELD_PLACEHOLDERS: Record<string, string> = {
 const getDefaultConfig = (): AssessmentSettings => {
   const defaults: AssessmentSettings = {};
   ASSESSMENT_SECTIONS.forEach((section) => {
-    const entry: { enabled: boolean; fields?: Record<string, boolean> } = { enabled: true };
+    const entry: AssessmentSettings[string] = { enabled: true };
     if (section.fields) {
       entry.fields = {};
+      entry.field_labels = {};
       section.fields.forEach((f) => {
         entry.fields![f.key] = true;
+        entry.field_labels![f.key] = f.label;
       });
     }
+    entry.custom_fields = [];
     defaults[section.key] = entry;
   });
   return defaults;
@@ -116,7 +119,11 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
         const parsed = typeof data.assessment_field_settings === "string"
           ? JSON.parse(data.assessment_field_settings)
           : data.assessment_field_settings;
-        setConfig({ ...getDefaultConfig(), ...parsed });
+        const merged = getDefaultConfig();
+        Object.keys(parsed).forEach((key) => {
+          merged[key] = { ...merged[key], ...parsed[key] };
+        });
+        setConfig(merged);
       }
     } catch (err) {
       console.error("Error fetching assessment config:", err);
@@ -127,11 +134,40 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     return ASSESSMENT_SECTIONS.filter((s) => config[s.key]?.enabled);
   };
 
-  const getEnabledFields = (sectionKey: string) => {
+  const getEnabledFields = (sectionKey: string): { key: string; label: string }[] => {
     const section = ASSESSMENT_SECTIONS.find((s) => s.key === sectionKey);
-    if (!section?.fields) return [];
     const sectionConfig = config[sectionKey];
-    return section.fields.filter((f) => sectionConfig?.fields?.[f.key] !== false);
+    const result: { key: string; label: string }[] = [];
+
+    // Built-in fields
+    if (section?.fields) {
+      section.fields.forEach((f) => {
+        if (sectionConfig?.fields?.[f.key] !== false) {
+          const label = sectionConfig?.field_labels?.[f.key] || f.label;
+          result.push({ key: f.key, label });
+        }
+      });
+    }
+
+    // Custom fields
+    if (sectionConfig?.custom_fields) {
+      sectionConfig.custom_fields.forEach((cf) => {
+        if (cf.enabled) {
+          result.push({ key: cf.key, label: cf.label });
+        }
+      });
+    }
+
+    return result;
+  };
+
+  const getCustomFieldInputType = (fieldKey: string): "text" | "number" | "textarea" | "select" => {
+    // Search through all sections for the custom field
+    for (const sectionKey of Object.keys(config)) {
+      const cf = config[sectionKey]?.custom_fields?.find((c) => c.key === fieldKey);
+      if (cf) return cf.input_type;
+    }
+    return "text";
   };
 
   const updateField = (key: string, value: string) => {
@@ -146,16 +182,15 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     setIsSaving(true);
     try {
       const { assessed_by, ...rest } = formData;
-      // Build assessment_data from form fields (excluding assessed_by)
       const assessmentData: Record<string, any> = {};
-      
+
       getEnabledSections().forEach((section) => {
-        if (section.fields) {
-          getEnabledFields(section.key).forEach((field) => {
+        const enabledFields = getEnabledFields(section.key);
+        if (section.fields || config[section.key]?.custom_fields?.length) {
+          enabledFields.forEach((field) => {
             if (rest[field.key]) assessmentData[field.key] = rest[field.key];
           });
         } else {
-          // Sections without fields (goals, cardiovascular, notes) use section key as field key
           if (rest[section.key]) assessmentData[section.key] = rest[section.key];
         }
       });
@@ -165,7 +200,6 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
         branch_id: branchId,
         assessed_by: assessed_by,
         assessment_data: assessmentData,
-        // Keep legacy fields for backward compatibility
         current_condition: assessmentData.health_conditions || null,
         injuries_health_issues: assessmentData.injuries_pain || null,
         mobility_limitations: null,
@@ -202,7 +236,9 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   const formatDate = (d: string) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
   const renderFieldInput = (fieldKey: string, label: string) => {
-    const inputType = FIELD_INPUT_TYPE[fieldKey] || "text";
+    // Check custom field type first, then fall back to built-in map
+    const isCustom = fieldKey.startsWith("custom_");
+    const inputType = isCustom ? getCustomFieldInputType(fieldKey) : (FIELD_INPUT_TYPE[fieldKey] || "text");
     const placeholder = FIELD_PLACEHOLDERS[fieldKey] || "";
 
     if (inputType === "select" && SELECT_OPTIONS[fieldKey]) {
@@ -255,18 +291,22 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     const data = a.assessment_data || {};
     const items: { label: string; value: string }[] = [];
 
-    // Build label map from ASSESSMENT_SECTIONS
+    // Build label map from config (includes custom labels & custom fields)
     const labelMap: Record<string, string> = {};
     ASSESSMENT_SECTIONS.forEach((section) => {
+      const sectionConfig = config[section.key];
       if (section.fields) {
         section.fields.forEach((f) => {
-          labelMap[f.key] = f.label;
+          labelMap[f.key] = sectionConfig?.field_labels?.[f.key] || f.label;
         });
       }
       labelMap[section.key] = section.label;
+      // Custom fields
+      sectionConfig?.custom_fields?.forEach((cf) => {
+        labelMap[cf.key] = cf.label;
+      });
     });
 
-    // Show assessment_data fields
     Object.entries(data).forEach(([key, value]) => {
       if (value && String(value).trim()) {
         items.push({ label: labelMap[key] || key, value: String(value) });
@@ -308,7 +348,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
           </div>
 
           {enabledSections.map((section) => {
-            const fields = section.fields ? getEnabledFields(section.key) : [];
+            const fields = getEnabledFields(section.key);
+            const hasFields = section.fields || config[section.key]?.custom_fields?.length;
             const Icon = section.icon;
 
             return (
@@ -317,7 +358,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
                   <Icon className="w-3.5 h-3.5 text-accent" />
                   <p className="text-xs font-semibold text-foreground">{section.label}</p>
                 </div>
-                {section.fields ? (
+                {hasFields ? (
                   <div className={fields.length <= 3 ? "space-y-2" : "grid grid-cols-2 gap-2"}>
                     {fields.map((f) => renderFieldInput(f.key, f.label))}
                   </div>
