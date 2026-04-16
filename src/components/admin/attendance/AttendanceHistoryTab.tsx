@@ -8,6 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import {
   MagnifyingGlassIcon,
   CalendarDaysIcon,
@@ -61,6 +62,7 @@ export const AttendanceHistoryTab = () => {
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
 
   const { trainers, allSlots, isLimitedAccess } = useAttendanceFilters();
+  const { assignedMemberIds } = useAssignedMemberIds();
   const filteredSlots = useMemo(() => {
     if (selectedTrainerId) return allSlots.filter(s => s.trainer_id === selectedTrainerId);
     return allSlots;
@@ -80,10 +82,10 @@ export const AttendanceHistoryTab = () => {
   };
 
   const { data: rawMonthRecords = [], isLoading, refetch } = useQuery({
-    queryKey: ["attendance-history", branchId, monthStart, monthEnd],
+    queryKey: ["attendance-history", branchId, monthStart, monthEnd, assignedMemberIds],
     queryFn: async () => {
       if (!branchId) return [];
-      const { data, error } = await supabase
+      let query = supabase
         .from("daily_attendance")
         .select("id, member_id, date, status, time_slot_id, marked_by_type, created_at, members(name, phone)")
         .eq("branch_id", branchId)
@@ -91,10 +93,17 @@ export const AttendanceHistoryTab = () => {
         .lte("date", monthEnd)
         .order("date", { ascending: false })
         .limit(5000);
+      // Filter by assigned members for staff with limited access
+      if (assignedMemberIds !== null && assignedMemberIds.length > 0) {
+        query = query.in("member_id", assignedMemberIds);
+      } else if (assignedMemberIds !== null && assignedMemberIds.length === 0) {
+        return [];
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
-    enabled: !!branchId,
+    enabled: !!branchId && (assignedMemberIds === null || assignedMemberIds !== undefined),
   });
 
   // Filter records by selected trainer/slot
