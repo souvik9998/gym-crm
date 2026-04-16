@@ -723,6 +723,34 @@ export const MembersTable = ({
       if (!currentBranch?.id) return null;
       const today = new Date().toISOString().split("T")[0];
 
+      // Special: "No Time Slot" — members with NO active PT that has a time_slot_id
+      if (timeSlotFilter === "__no_slot__") {
+        const { data: withSlots } = await supabase
+          .from("pt_subscriptions" as any)
+          .select("member_id")
+          .eq("branch_id", currentBranch.id)
+          .eq("status", "active")
+          .gte("end_date", today)
+          .not("time_slot_id", "is", null);
+
+        const withSlotSet = new Set((withSlots as any[] || []).map((d: any) => d.member_id));
+        // Return all member IDs NOT in the set — we'll invert in the filter step
+        return { type: "exclude" as const, ids: withSlotSet };
+      }
+
+      // Special: "No Trainer" — members with NO active PT subscription at all
+      if (trainerFilter === "__no_trainer__") {
+        const { data: withPT } = await supabase
+          .from("pt_subscriptions" as any)
+          .select("member_id")
+          .eq("branch_id", currentBranch.id)
+          .eq("status", "active")
+          .gte("end_date", today);
+
+        const withPTSet = new Set((withPT as any[] || []).map((d: any) => d.member_id));
+        return { type: "exclude" as const, ids: withPTSet };
+      }
+
       // If timeSlotFilter is set, get members with active PT in that slot
       if (timeSlotFilter) {
         const { data } = await supabase
@@ -731,7 +759,7 @@ export const MembersTable = ({
           .eq("time_slot_id", timeSlotFilter)
           .eq("status", "active")
           .gte("end_date", today);
-        return new Set((data as any[] || []).map((d: any) => d.member_id));
+        return { type: "include" as const, ids: new Set((data as any[] || []).map((d: any) => d.member_id)) };
       }
 
       // If trainerFilter (staff_id) is set, resolve to personal_trainer_id via phone
@@ -742,7 +770,7 @@ export const MembersTable = ({
           .eq("id", trainerFilter)
           .maybeSingle();
 
-        if (!staffRecord?.phone) return new Set<string>();
+        if (!staffRecord?.phone) return { type: "include" as const, ids: new Set<string>() };
 
         const { data: ptProfiles } = await supabase
           .from("personal_trainers" as any)
@@ -751,7 +779,7 @@ export const MembersTable = ({
           .eq("branch_id", currentBranch.id);
 
         const ptIds = (ptProfiles as any[] || []).map((p: any) => p.id);
-        if (ptIds.length === 0) return new Set<string>();
+        if (ptIds.length === 0) return { type: "include" as const, ids: new Set<string>() };
 
         const { data: ptSubs } = await supabase
           .from("pt_subscriptions" as any)
@@ -761,7 +789,7 @@ export const MembersTable = ({
           .gte("end_date", today)
           .in("personal_trainer_id", ptIds);
 
-        return new Set((ptSubs as any[] || []).map((d: any) => d.member_id));
+        return { type: "include" as const, ids: new Set((ptSubs as any[] || []).map((d: any) => d.member_id)) };
       }
 
       return null; // no filter active
@@ -771,9 +799,13 @@ export const MembersTable = ({
   });
 
   // Apply trainer/slot filter
-  const timeSlotFiltered = (trainerFilter || timeSlotFilter) && slotMemberIds
-    ? filteredMembers.filter((m) => slotMemberIds.has(m.id))
-    : filteredMembers;
+  const timeSlotFiltered = (() => {
+    if ((!trainerFilter && !timeSlotFilter) || !slotMemberIds) return filteredMembers;
+    if (slotMemberIds.type === "exclude") {
+      return filteredMembers.filter((m) => !slotMemberIds.ids.has(m.id));
+    }
+    return filteredMembers.filter((m) => slotMemberIds.ids.has(m.id));
+  })();
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
