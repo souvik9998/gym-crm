@@ -11,8 +11,29 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import * as membersApi from "@/api/members";
+import type { InfiniteData } from "@tanstack/react-query";
 
 const PAGE_SIZE = 50;
+
+function filterPaginatedMembersByScope(
+  data: InfiniteData<membersApi.PaginatedMembersResponse>,
+  assignedMemberIds: string[]
+) {
+  const allowedIds = new Set(assignedMemberIds);
+  const filteredPages = data.pages.map((page) => ({
+    ...page,
+    members: page.members.filter((member) => allowedIds.has(member.id)),
+  }));
+  const filteredTotalCount = filteredPages.reduce((total, page) => total + page.members.length, 0);
+
+  return {
+    ...data,
+    pages: filteredPages.map((page, index) => ({
+      ...page,
+      totalCount: index === 0 ? filteredTotalCount : page.totalCount,
+    })),
+  };
+}
 
 /**
  * Hook to fetch members with infinite scroll using useInfiniteQuery
@@ -31,6 +52,7 @@ export function useInfiniteMembersQuery() {
   const assignedScope = isLimitedAccess
     ? (assignedMemberIds === null ? "all" : assignedMemberIds.join(",") || "none")
     : "all";
+  const scopedAssignedIds = isLimitedAccess ? (assignedMemberIds ?? []) : [];
 
   return useInfiniteQuery({
     queryKey: [...queryKeys.members.all(branchId), accessScope, assignedScope, "infinite"],
@@ -40,6 +62,7 @@ export function useInfiniteMembersQuery() {
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
     enabled: isAuthenticated && (!isLimitedAccess || assignedMemberIds !== undefined),
+    select: (data) => (isLimitedAccess ? filterPaginatedMembersByScope(data, scopedAssignedIds) : data),
   });
 }
 

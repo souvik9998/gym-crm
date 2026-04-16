@@ -35,8 +35,18 @@ interface AuthResult {
   isStaff: boolean;
   userId?: string;
   staffId?: string;
-  permissions?: Record<string, boolean>;
+  permissions?: Record<string, unknown>;
   branchIds?: string[];
+}
+
+function normalizeMemberAccessType(value: unknown): "all" | "assigned" {
+  return typeof value === "string" && value.trim().toLowerCase() === "assigned"
+    ? "assigned"
+    : "all";
+}
+
+function isAssignedOnlyAccess(auth: AuthResult): boolean {
+  return auth.isStaff && normalizeMemberAccessType(auth.permissions?.member_access_type) === "assigned";
 }
 
 // Verify session via Supabase Auth and determine role
@@ -56,15 +66,23 @@ async function authenticateRequest(
   }
 
   let userId: string | null = null;
+  let jwtStaffId: string | null = null;
 
   const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
   if (!claimsError && claimsData?.claims?.sub) {
     userId = String(claimsData.claims.sub);
+    const claimMetadata = (claimsData.claims.user_metadata || claimsData.claims.app_metadata) as Record<string, unknown> | undefined;
+    jwtStaffId = typeof claimMetadata?.staff_id === "string" ? claimMetadata.staff_id : null;
   } else {
     console.warn("getClaims failed, trying getUser:", claimsError?.message);
     const { data: userData, error: userError } = await anonClient.auth.getUser(token);
     if (!userError && userData?.user?.id) {
       userId = userData.user.id;
+      jwtStaffId = typeof userData.user.user_metadata?.staff_id === "string"
+        ? userData.user.user_metadata.staff_id
+        : typeof userData.user.app_metadata?.staff_id === "string"
+          ? userData.user.app_metadata.staff_id
+          : null;
     } else {
       console.error("Both getClaims and getUser failed:", userError?.message);
       return { valid: false, isAdmin: false, isStaff: false };
@@ -94,20 +112,24 @@ async function authenticateRequest(
     .eq("auth_user_id", userId)
     .eq("is_active", true);
 
-  const staff = (staffList as { id: string }[] | null)?.[0];
+  const allStaffIds = (staffList || []).map((s: { id: string }) => s.id);
+  const staff = ((staffList as { id: string }[] | null)?.find((s) => s.id === jwtStaffId))
+    || (staffList as { id: string }[] | null)?.[0];
   if (!staff) {
     return { valid: false, isAdmin: false, isStaff: false };
   }
 
-  const allStaffIds = (staffList || []).map((s: { id: string }) => s.id);
-
   // Fetch permissions and assignments in parallel
   const [permResult, assignResult] = await Promise.all([
-    serviceClient.from("staff_permissions").select("*").eq("staff_id", staff.id).single(),
+    serviceClient.from("staff_permissions").select("*").eq("staff_id", staff.id).maybeSingle(),
     serviceClient.from("staff_branch_assignments").select("branch_id").in("staff_id", allStaffIds),
   ]);
 
   const branchIds = (assignResult.data || []).map((a: { branch_id: string }) => a.branch_id);
+  const permissions = {
+    ...(permResult.data || {}),
+    member_access_type: normalizeMemberAccessType((permResult.data as Record<string, unknown> | null | undefined)?.member_access_type),
+  };
 
   return {
     valid: true,
@@ -115,7 +137,7 @@ async function authenticateRequest(
     isStaff: true,
     userId,
     staffId: staff.id,
-    permissions: permResult.data || {},
+    permissions,
     branchIds,
   };
 }
@@ -132,8 +154,12 @@ async function resolveAssignedMemberIds(
   auth: AuthResult,
   allowedBranchIds: string[] | null,
 ): Promise<string[] | null> {
-  if (!auth.isStaff || !auth.staffId || auth.permissions?.member_access_type !== "assigned") {
+  if (!isAssignedOnlyAccess(auth)) {
     return null;
+  }
+
+  if (!auth.staffId) {
+    return [];
   }
 
   const today = new Date().toISOString().split("T")[0];
@@ -399,9 +425,18 @@ Deno.serve(async (req) => {
 
         // Refresh subscription statuses
         await supabase.rpc("refresh_subscription_statuses");
+        const assignedScopeRequired = isAssignedOnlyAccess(auth);
         const assignedMemberIds = await resolveAssignedMemberIds(supabase, auth, allowedBranchIds);
 
         if (Array.isArray(allowedBranchIds) && allowedBranchIds.length === 0) {
+          return jsonResponse({
+            totalMembers: 0, activeMembers: 0, expiringSoon: 0,
+            expiredMembers: 0, inactiveMembers: 0, monthlyRevenue: 0,
+            withPT: 0, dailyPassUsers: 0,
+          }, 30);
+        }
+
+        if (assignedScopeRequired && assignedMemberIds === null) {
           return jsonResponse({
             totalMembers: 0, activeMembers: 0, expiringSoon: 0,
             expiredMembers: 0, inactiveMembers: 0, monthlyRevenue: 0,
@@ -583,8 +618,12 @@ Deno.serve(async (req) => {
           return jsonResponse({ members: [], nextCursor: null, totalCount: 0 });
         }
 
+        const assignedScopeRequired = isAssignedOnlyAccess(auth);
         const assignedMemberIds = await resolveAssignedMemberIds(supabase, auth, allowedBranchIds);
         console.log("[members] auth:", { isStaff: auth.isStaff, staffId: auth.staffId, memberAccessType: auth.permissions?.member_access_type, assignedCount: assignedMemberIds?.length ?? "all" });
+        if (assignedScopeRequired && assignedMemberIds === null) {
+          return jsonResponse({ members: [], nextCursor: null, totalCount: 0 });
+        }
         if (assignedMemberIds !== null && assignedMemberIds.length === 0) {
           return jsonResponse({ members: [], nextCursor: null, totalCount: 0 });
         }
@@ -669,7 +708,11 @@ Deno.serve(async (req) => {
         }
         if (!memberId) return errorResponse("Member ID required", 400);
 
+        const assignedScopeRequired = isAssignedOnlyAccess(auth);
         const assignedMemberIds = await resolveAssignedMemberIds(supabase, auth, allowedBranchIds);
+        if (assignedScopeRequired && assignedMemberIds === null) {
+          return errorResponse("Access denied to this member", 403);
+        }
         if (assignedMemberIds !== null && !assignedMemberIds.includes(memberId)) {
           return errorResponse("Access denied to this member", 403);
         }
