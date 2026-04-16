@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle } from "lucide-react";
 import type { MemberAssessment } from "./MemberHealthTab";
+import { ASSESSMENT_SECTIONS, type AssessmentSettings } from "@/components/admin/AssessmentFieldsSettings";
 
 interface AssessmentSectionProps {
   assessments: MemberAssessment[];
@@ -16,41 +18,163 @@ interface AssessmentSectionProps {
   onRefresh: () => Promise<void>;
 }
 
+// Field metadata for rendering the right input type
+const FIELD_INPUT_TYPE: Record<string, "number" | "text" | "select" | "textarea"> = {
+  weight: "number",
+  height: "number",
+  mode_of_training: "text",
+  diet_type: "select",
+  alcohol: "select",
+  smoking: "select",
+  physical_activity_current: "textarea",
+  physical_activity_past: "textarea",
+  deficiency: "text",
+  medication: "text",
+  health_conditions: "textarea",
+  injuries_pain: "textarea",
+  bp: "text",
+  rhr: "number",
+  spo2: "number",
+  grip_strength: "text",
+  pushups: "number",
+  landmine: "number",
+  pullups: "number",
+  squats: "number",
+  sit_to_stand: "number",
+  glute_bridge: "number",
+  leg_raises: "number",
+  plank: "text",
+  calf_raises: "number",
+  neck: "number",
+  chest: "number",
+  arms: "text",
+  upper_abdomen: "number",
+  lower_abdomen: "number",
+  hips: "number",
+  upper_thighs: "text",
+  lower_thighs: "text",
+  calf: "text",
+};
+
+const SELECT_OPTIONS: Record<string, string[]> = {
+  diet_type: ["Vegetarian", "Non-Vegetarian", "Vegan", "Eggetarian"],
+  alcohol: ["None", "Occasional", "Regular"],
+  smoking: ["None", "Occasional", "Regular"],
+};
+
+const FIELD_PLACEHOLDERS: Record<string, string> = {
+  weight: "e.g. 70",
+  height: "e.g. 175",
+  mode_of_training: "e.g. Strength, Cardio",
+  bp: "e.g. 120/80",
+  rhr: "e.g. 72",
+  spo2: "e.g. 98",
+  grip_strength: "e.g. L:30 R:32 kg",
+  plank: "e.g. 60 sec",
+  arms: "e.g. L:12 R:12.5 in",
+  upper_thighs: "e.g. L:22 R:22 in",
+  lower_thighs: "e.g. L:16 R:16 in",
+  calf: "e.g. L:14 R:14 in",
+};
+
+const getDefaultConfig = (): AssessmentSettings => {
+  const defaults: AssessmentSettings = {};
+  ASSESSMENT_SECTIONS.forEach((section) => {
+    const entry: { enabled: boolean; fields?: Record<string, boolean> } = { enabled: true };
+    if (section.fields) {
+      entry.fields = {};
+      section.fields.forEach((f) => {
+        entry.fields![f.key] = true;
+      });
+    }
+    defaults[section.key] = entry;
+  });
+  return defaults;
+};
+
 export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }: AssessmentSectionProps) => {
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    assessed_by: "",
-    current_condition: "",
-    injuries_health_issues: "",
-    mobility_limitations: "",
-    allowed_exercises: "",
-    notes: "",
-  });
+  const [config, setConfig] = useState<AssessmentSettings>(getDefaultConfig());
+  const [formData, setFormData] = useState<Record<string, string>>({ assessed_by: "" });
+
+  useEffect(() => {
+    fetchConfig();
+  }, [branchId]);
+
+  const fetchConfig = async () => {
+    try {
+      const { data } = await supabase
+        .from("gym_settings")
+        .select("assessment_field_settings")
+        .eq("branch_id", branchId)
+        .maybeSingle();
+      if (data?.assessment_field_settings) {
+        const parsed = typeof data.assessment_field_settings === "string"
+          ? JSON.parse(data.assessment_field_settings)
+          : data.assessment_field_settings;
+        setConfig({ ...getDefaultConfig(), ...parsed });
+      }
+    } catch (err) {
+      console.error("Error fetching assessment config:", err);
+    }
+  };
+
+  const getEnabledSections = () => {
+    return ASSESSMENT_SECTIONS.filter((s) => config[s.key]?.enabled);
+  };
+
+  const getEnabledFields = (sectionKey: string) => {
+    const section = ASSESSMENT_SECTIONS.find((s) => s.key === sectionKey);
+    if (!section?.fields) return [];
+    const sectionConfig = config[sectionKey];
+    return section.fields.filter((f) => sectionConfig?.fields?.[f.key] !== false);
+  };
+
+  const updateField = (key: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+  };
 
   const handleSave = async () => {
-    if (!form.assessed_by.trim()) {
+    if (!formData.assessed_by?.trim()) {
       toast.error("Please enter assessor name");
       return;
     }
     setIsSaving(true);
     try {
+      const { assessed_by, ...rest } = formData;
+      // Build assessment_data from form fields (excluding assessed_by)
+      const assessmentData: Record<string, any> = {};
+      
+      getEnabledSections().forEach((section) => {
+        if (section.fields) {
+          getEnabledFields(section.key).forEach((field) => {
+            if (rest[field.key]) assessmentData[field.key] = rest[field.key];
+          });
+        } else {
+          // Sections without fields (goals, cardiovascular, notes) use section key as field key
+          if (rest[section.key]) assessmentData[section.key] = rest[section.key];
+        }
+      });
+
       const { error } = await supabase.from("member_assessments").insert({
         member_id: memberId,
         branch_id: branchId,
-        assessed_by: form.assessed_by,
-        current_condition: form.current_condition || null,
-        injuries_health_issues: form.injuries_health_issues || null,
-        mobility_limitations: form.mobility_limitations || null,
-        allowed_exercises: form.allowed_exercises || null,
-        notes: form.notes || null,
+        assessed_by: assessed_by,
+        assessment_data: assessmentData,
+        // Keep legacy fields for backward compatibility
+        current_condition: assessmentData.health_conditions || null,
+        injuries_health_issues: assessmentData.injuries_pain || null,
+        mobility_limitations: null,
+        allowed_exercises: null,
+        notes: assessmentData.notes || null,
       });
       if (error) throw error;
       toast.success("Assessment saved");
-      setForm({ assessed_by: "", current_condition: "", injuries_health_issues: "", mobility_limitations: "", allowed_exercises: "", notes: "" });
+      setFormData({ assessed_by: "" });
       setShowForm(false);
       await onRefresh();
     } catch (err: any) {
@@ -77,6 +201,92 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
+  const renderFieldInput = (fieldKey: string, label: string) => {
+    const inputType = FIELD_INPUT_TYPE[fieldKey] || "text";
+    const placeholder = FIELD_PLACEHOLDERS[fieldKey] || "";
+
+    if (inputType === "select" && SELECT_OPTIONS[fieldKey]) {
+      return (
+        <div key={fieldKey}>
+          <Label className="text-xs">{label}</Label>
+          <Select value={formData[fieldKey] || ""} onValueChange={(v) => updateField(fieldKey, v)}>
+            <SelectTrigger className="mt-1 h-8 text-sm">
+              <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+            </SelectTrigger>
+            <SelectContent>
+              {SELECT_OPTIONS[fieldKey].map((opt) => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      );
+    }
+
+    if (inputType === "textarea") {
+      return (
+        <div key={fieldKey}>
+          <Label className="text-xs">{label}</Label>
+          <Textarea
+            value={formData[fieldKey] || ""}
+            onChange={(e) => updateField(fieldKey, e.target.value)}
+            placeholder={placeholder || `Enter ${label.toLowerCase()}...`}
+            className="mt-1 text-sm min-h-[60px]"
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div key={fieldKey}>
+        <Label className="text-xs">{label}</Label>
+        <Input
+          type={inputType === "number" ? "number" : "text"}
+          value={formData[fieldKey] || ""}
+          onChange={(e) => updateField(fieldKey, e.target.value)}
+          placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+          className="mt-1 h-8 text-sm"
+        />
+      </div>
+    );
+  };
+
+  const getAssessmentDisplayData = (a: any): { label: string; value: string }[] => {
+    const data = a.assessment_data || {};
+    const items: { label: string; value: string }[] = [];
+
+    // Build label map from ASSESSMENT_SECTIONS
+    const labelMap: Record<string, string> = {};
+    ASSESSMENT_SECTIONS.forEach((section) => {
+      if (section.fields) {
+        section.fields.forEach((f) => {
+          labelMap[f.key] = f.label;
+        });
+      }
+      labelMap[section.key] = section.label;
+    });
+
+    // Show assessment_data fields
+    Object.entries(data).forEach(([key, value]) => {
+      if (value && String(value).trim()) {
+        items.push({ label: labelMap[key] || key, value: String(value) });
+      }
+    });
+
+    // Legacy fields fallback
+    if (items.length === 0) {
+      if (a.current_condition) items.push({ label: "Condition", value: a.current_condition });
+      if (a.injuries_health_issues) items.push({ label: "Injuries", value: a.injuries_health_issues });
+      if (a.mobility_limitations) items.push({ label: "Mobility", value: a.mobility_limitations });
+      if (a.allowed_exercises) items.push({ label: "Allowed Exercises", value: a.allowed_exercises });
+      if (a.notes) items.push({ label: "Notes", value: a.notes });
+    }
+
+    return items;
+  };
+
+  const enabledSections = getEnabledSections();
+
   return (
     <div className="space-y-3">
       {!showForm && (
@@ -86,32 +296,44 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       )}
 
       {showForm && (
-        <div className="space-y-3 rounded-xl border border-accent/20 bg-accent/5 p-3">
+        <div className="space-y-3 rounded-xl border border-accent/20 bg-accent/5 p-3 max-h-[60vh] overflow-y-auto">
           <div>
             <Label className="text-xs">Assessed By *</Label>
-            <Input value={form.assessed_by} onChange={e => setForm(f => ({ ...f, assessed_by: e.target.value }))} placeholder="Trainer / Admin name" className="mt-1 h-8 text-sm" />
+            <Input
+              value={formData.assessed_by || ""}
+              onChange={(e) => updateField("assessed_by", e.target.value)}
+              placeholder="Trainer / Admin name"
+              className="mt-1 h-8 text-sm"
+            />
           </div>
-          <div>
-            <Label className="text-xs">Current Condition</Label>
-            <Textarea value={form.current_condition} onChange={e => setForm(f => ({ ...f, current_condition: e.target.value }))} placeholder="Overall physical condition..." className="mt-1 text-sm min-h-[60px]" />
-          </div>
-          <div>
-            <Label className="text-xs">Injuries / Health Issues</Label>
-            <Textarea value={form.injuries_health_issues} onChange={e => setForm(f => ({ ...f, injuries_health_issues: e.target.value }))} placeholder="Any injuries or health concerns..." className="mt-1 text-sm min-h-[60px]" />
-          </div>
-          <div>
-            <Label className="text-xs">Mobility / Limitations</Label>
-            <Textarea value={form.mobility_limitations} onChange={e => setForm(f => ({ ...f, mobility_limitations: e.target.value }))} placeholder="Movement restrictions..." className="mt-1 text-sm min-h-[60px]" />
-          </div>
-          <div>
-            <Label className="text-xs">Allowed Exercises / Lifts</Label>
-            <Textarea value={form.allowed_exercises} onChange={e => setForm(f => ({ ...f, allowed_exercises: e.target.value }))} placeholder="Safe exercises..." className="mt-1 text-sm min-h-[60px]" />
-          </div>
-          <div>
-            <Label className="text-xs">Notes / Recommendations</Label>
-            <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Additional notes..." className="mt-1 text-sm min-h-[60px]" />
-          </div>
-          <div className="flex gap-2">
+
+          {enabledSections.map((section) => {
+            const fields = section.fields ? getEnabledFields(section.key) : [];
+            const Icon = section.icon;
+
+            return (
+              <div key={section.key} className="space-y-2">
+                <div className="flex items-center gap-2 pt-1 border-t border-border/30">
+                  <Icon className="w-3.5 h-3.5 text-accent" />
+                  <p className="text-xs font-semibold text-foreground">{section.label}</p>
+                </div>
+                {section.fields ? (
+                  <div className={fields.length <= 3 ? "space-y-2" : "grid grid-cols-2 gap-2"}>
+                    {fields.map((f) => renderFieldInput(f.key, f.label))}
+                  </div>
+                ) : (
+                  <Textarea
+                    value={formData[section.key] || ""}
+                    onChange={(e) => updateField(section.key, e.target.value)}
+                    placeholder={`Enter ${section.label.toLowerCase()}...`}
+                    className="text-sm min-h-[60px]"
+                  />
+                )}
+              </div>
+            );
+          })}
+
+          <div className="flex gap-2 pt-1">
             <Button size="sm" onClick={handleSave} disabled={isSaving} className="flex-1 rounded-lg">
               {isSaving ? <><ButtonSpinner /> Saving...</> : "Save Assessment"}
             </Button>
@@ -126,57 +348,63 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
           <p className="text-sm">No assessments added yet</p>
         </div>
       ) : (
-        assessments.map(a => (
-          <div key={a.id} className="rounded-xl border border-border/60 bg-card/50 p-3 hover:border-border transition-colors">
-            {/* Inline delete confirmation */}
-            {confirmDeleteId === a.id && (
-              <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg p-2.5 mb-2 animate-in fade-in duration-200">
-                <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0" />
-                <span className="text-xs text-destructive font-medium flex-1">Delete this assessment?</span>
-                <Button size="sm" variant="destructive" className="h-6 text-xs px-2 rounded-md" onClick={() => handleDelete(a.id)} disabled={deletingId === a.id}>
-                  {deletingId === a.id ? <ButtonSpinner /> : "Delete"}
-                </Button>
-                <Button size="sm" variant="outline" className="h-6 text-xs px-2 rounded-md" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <button onClick={() => setExpandedId(expandedId === a.id ? null : a.id)} className="flex items-center gap-2.5 text-left flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Calendar className="w-3 h-3" />
-                  {formatDate(a.assessment_date)}
+        assessments.map((a) => {
+          const displayData = getAssessmentDisplayData(a);
+          return (
+            <div key={a.id} className="rounded-xl border border-border/60 bg-card/50 p-3 hover:border-border transition-colors">
+              {confirmDeleteId === a.id && (
+                <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg p-2.5 mb-2 animate-in fade-in duration-200">
+                  <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0" />
+                  <span className="text-xs text-destructive font-medium flex-1">Delete this assessment?</span>
+                  <Button size="sm" variant="destructive" className="h-6 text-xs px-2 rounded-md" onClick={() => handleDelete(a.id)} disabled={deletingId === a.id}>
+                    {deletingId === a.id ? <ButtonSpinner /> : "Delete"}
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-6 text-xs px-2 rounded-md" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
                 </div>
-                <span className="text-xs text-muted-foreground">•</span>
-                <div className="flex items-center gap-1.5 text-xs font-medium">
-                  <User className="w-3 h-3" />
-                  {a.assessed_by}
-                </div>
-              </button>
-              <div className="flex items-center gap-0.5 flex-shrink-0">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => setConfirmDeleteId(confirmDeleteId === a.id ? null : a.id)}
-                  disabled={deletingId === a.id}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-                <button onClick={() => setExpandedId(expandedId === a.id ? null : a.id)} className="p-1">
-                  {expandedId === a.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+              )}
+              <div className="flex items-center justify-between">
+                <button onClick={() => setExpandedId(expandedId === a.id ? null : a.id)} className="flex items-center gap-2.5 text-left flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Calendar className="w-3 h-3" />
+                    {formatDate(a.assessment_date)}
+                  </div>
+                  <span className="text-xs text-muted-foreground">•</span>
+                  <div className="flex items-center gap-1.5 text-xs font-medium">
+                    <User className="w-3 h-3" />
+                    {a.assessed_by}
+                  </div>
+                  {displayData.length > 0 && (
+                    <span className="text-[10px] text-muted-foreground/70">{displayData.length} fields</span>
+                  )}
                 </button>
+                <div className="flex items-center gap-0.5 flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => setConfirmDeleteId(confirmDeleteId === a.id ? null : a.id)}
+                    disabled={deletingId === a.id}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                  <button onClick={() => setExpandedId(expandedId === a.id ? null : a.id)} className="p-1">
+                    {expandedId === a.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+                </div>
               </div>
+              {expandedId === a.id && (
+                <div className="mt-3 space-y-2 text-sm">
+                  {displayData.map((item, idx) => (
+                    <DetailRow key={idx} label={item.label} value={item.value} />
+                  ))}
+                  {displayData.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">No assessment data recorded</p>
+                  )}
+                </div>
+              )}
             </div>
-            {expandedId === a.id && (
-              <div className="mt-3 space-y-2 text-sm">
-                {a.current_condition && <DetailRow label="Condition" value={a.current_condition} />}
-                {a.injuries_health_issues && <DetailRow label="Injuries" value={a.injuries_health_issues} />}
-                {a.mobility_limitations && <DetailRow label="Mobility" value={a.mobility_limitations} />}
-                {a.allowed_exercises && <DetailRow label="Allowed Exercises" value={a.allowed_exercises} />}
-                {a.notes && <DetailRow label="Notes" value={a.notes} />}
-              </div>
-            )}
-          </div>
-        ))
+          );
+        })
       )}
     </div>
   );
