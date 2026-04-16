@@ -5,7 +5,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Dumbbell, ChevronDown, X, Check, Users } from "lucide-react";
+import { Dumbbell, ChevronDown, X, Check, Users, User } from "lucide-react";
 import {
   Popover,
   PopoverContent,
