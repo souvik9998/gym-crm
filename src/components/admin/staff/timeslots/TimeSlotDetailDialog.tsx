@@ -469,7 +469,7 @@ export const TimeSlotDetailDialog = ({
 
       await logAdminActivity({
         category: "time_slots",
-        type: "time_slot_member_transferred",
+        type: "time_slot_member_added",
         description: `Transferred ${transferConfirm.name} from ${transferConfirm.fromTrainer} to ${slot.trainer_name}`,
         entityType: "time_slot",
         entityId: slot.id,
