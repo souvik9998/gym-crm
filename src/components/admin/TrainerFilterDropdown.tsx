@@ -62,11 +62,17 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
       if (ptError) throw ptError;
       if (!ptData || ptData.length === 0) return [];
 
-      // Resolve personal_trainer → staff via secure function (staff RLS blocks reading other staff)
-      const { data: staffBasic } = await supabase.rpc("get_branch_staff_basic", { p_branch_id: currentBranch.id });
+      // Resolve personal_trainer → staff via direct query
+      const ptPhones = ptData.map(pt => pt.phone).filter(Boolean);
       let phoneToStaffId: Record<string, string> = {};
-      for (const s of (staffBasic as any[] || [])) {
-        if (s.phone) phoneToStaffId[s.phone] = s.staff_id;
+      if (ptPhones.length > 0) {
+        const { data: staffRecords } = await supabase
+          .from("staff")
+          .select("id, phone")
+          .in("phone", ptPhones);
+        for (const s of (staffRecords || [])) {
+          if (s.phone) phoneToStaffId[s.phone] = s.id;
+        }
       }
 
       // Get member counts via pt_subscriptions
