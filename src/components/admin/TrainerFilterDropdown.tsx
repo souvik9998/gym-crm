@@ -39,6 +39,8 @@ const trainerColors = [
   { bg: "bg-rose-50 dark:bg-rose-950/30", text: "text-rose-700 dark:text-rose-300", activeBg: "bg-rose-100 dark:bg-rose-900/50", border: "border-rose-200 dark:border-rose-800", ring: "ring-rose-300/50", dot: "bg-rose-500" },
 ];
 
+export const NO_TRAINER_FILTER = "__no_trainer__";
+
 export const TrainerFilterDropdown = ({ value, onChange, compact = false }: TrainerFilterDropdownProps) => {
   const [open, setOpen] = useState(false);
   const { currentBranch } = useBranch();
@@ -171,8 +173,9 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
   const selectedTrainer = visibleTrainers.find((t) => t.id === value);
   const hasTrainers = visibleTrainers.length > 0;
   const isActive = value !== null;
+  const isNoTrainerFilter = value === NO_TRAINER_FILTER;
 
-  const selectedLabel = selectedTrainer ? selectedTrainer.name : "Trainer";
+  const selectedLabel = isNoTrainerFilter ? "No Trainer" : selectedTrainer ? selectedTrainer.name : "Trainer";
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
