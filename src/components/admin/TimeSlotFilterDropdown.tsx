@@ -57,6 +57,8 @@ const slotColors = [
   { bg: "bg-rose-50 dark:bg-rose-950/30", border: "border-rose-200 dark:border-rose-800", text: "text-rose-700 dark:text-rose-300", bar: "bg-rose-500", activeBg: "bg-rose-100 dark:bg-rose-900/50", ring: "ring-rose-300/50" },
 ];
 
+export const NO_SLOT_FILTER = "__no_slot__";
+
 export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, compact = false }: TimeSlotFilterDropdownProps) => {
   const [open, setOpen] = useState(false);
   const { currentBranch } = useBranch();
@@ -169,10 +171,13 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
   const selectedTrainer = displayGroups.find(g => g.slots.some(s => s.id === value));
   const hasSlots = allSlots.length > 0;
   const isActive = value !== null;
+  const isNoSlotFilter = value === NO_SLOT_FILTER;
 
-  const selectedLabel = selectedSlot
-    ? `${selectedTrainer?.trainer_name} · ${formatTime(selectedSlot.start_time)}`
-    : "Time Slot";
+  const selectedLabel = isNoSlotFilter
+    ? "No Slot"
+    : selectedSlot
+      ? `${selectedTrainer?.trainer_name} · ${formatTime(selectedSlot.start_time)}`
+      : "Time Slot";
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -268,6 +273,41 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
                 )}
               </div>
             </div>
+
+            {/* "No Slot" filter option */}
+            <div className="p-2 pb-0">
+              <button
+                onClick={() => {
+                  onChange(isNoSlotFilter ? null : NO_SLOT_FILTER);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-200",
+                  "hover:scale-[1.01] active:scale-[0.99]",
+                  isNoSlotFilter
+                    ? "bg-orange-100 dark:bg-orange-900/40 border-orange-300 dark:border-orange-700 border shadow-sm ring-1 ring-orange-300/50"
+                    : "border border-transparent hover:bg-muted/50"
+                )}
+              >
+                <div className="w-7 h-7 rounded-full bg-orange-50 dark:bg-orange-950/30 flex items-center justify-center">
+                  <User className={cn("w-3.5 h-3.5", isNoSlotFilter ? "text-orange-700 dark:text-orange-300" : "text-orange-500")} />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className={cn("text-xs font-semibold", isNoSlotFilter ? "text-orange-700 dark:text-orange-300" : "text-foreground")}>
+                    No Time Slot
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">Members without any slot assigned</p>
+                </div>
+                {isNoSlotFilter && (
+                  <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center animate-scale-in">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                )}
+              </button>
+            </div>
+
+            {/* Separator */}
+            <div className="mx-3 my-1 border-t border-border/30" />
 
             {/* Flat slot list */}
             <div className="p-2 space-y-1">
