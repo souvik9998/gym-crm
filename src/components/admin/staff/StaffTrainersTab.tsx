@@ -153,11 +153,11 @@ export const StaffTrainersTab = ({
         ? newTrainer.selected_branches 
         : currentBranch?.id ? [currentBranch.id] : [];
 
-      // Check if staff with this phone exists GLOBALLY
-      const { data: existingStaffList } = await supabase
-        .from("staff")
-        .select("*, staff_permissions(*), staff_branch_assignments(*, branches(name))")
-        .eq("phone", cleanPhone);
+      // Check if staff with this phone exists within the same tenant
+      const tenantId = currentBranch?.tenant_id;
+      const { data: existingStaffList } = tenantId
+        ? await supabase.rpc("get_staff_by_phone_in_tenant", { p_phone: cleanPhone, p_tenant_id: tenantId })
+        : { data: [] };
 
       if (existingStaffList && existingStaffList.length > 0) {
         const existing = existingStaffList[0];
@@ -362,15 +362,14 @@ export const StaffTrainersTab = ({
     const trainer = trainers.find((t) => t.id === id);
     const cleanPhone = editData.phone.replace(/\D/g, "").replace(/^0/, "");
 
-    // Check if phone is being changed and if new phone already exists
+    // Check if phone is being changed and if new phone already exists within tenant
     if (cleanPhone !== trainer?.phone) {
-      const { data: existingStaff } = await supabase
-        .from("staff")
-        .select("id")
-        .eq("phone", cleanPhone)
-        .neq("id", id)
-        .single();
+      const tenantId = currentBranch?.tenant_id;
+      const { data: existingStaffList } = tenantId
+        ? await supabase.rpc("get_staff_by_phone_in_tenant", { p_phone: cleanPhone, p_tenant_id: tenantId })
+        : { data: [] };
 
+      const existingStaff = (existingStaffList || []).find((s: any) => s.staff_id !== id);
       if (existingStaff) {
         toast.error("Phone number already in use", {
           description: "Another staff member is already registered with this phone number.",
