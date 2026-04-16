@@ -52,104 +52,89 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
     queryFn: async () => {
       if (!currentBranch?.id) return [];
 
-      // Get trainers (staff who have time slots)
-      const { data: slots, error } = await supabase
-        .from("trainer_time_slots" as any)
-        .select("trainer_id")
+      // Get all active personal trainers for this branch
+      const { data: ptData, error: ptError } = await supabase
+        .from("personal_trainers")
+        .select("id, name, phone, specialization")
         .eq("branch_id", currentBranch.id)
-        .eq("status", "available");
+        .eq("is_active", true);
 
-      if (error) throw error;
-      if (!slots || slots.length === 0) return [];
+      if (ptError) throw ptError;
+      if (!ptData || ptData.length === 0) return [];
 
-      const trainerIds = [...new Set((slots as any[]).map((s: any) => s.trainer_id).filter(Boolean))];
-      if (trainerIds.length === 0) return [];
-
-      // Get staff info
-      const { data: staffData } = await supabase
-        .from("staff")
-        .select("id, full_name")
-        .in("id", trainerIds);
-
-      if (!staffData) return [];
-
-      // Get slot counts per trainer
-      const { data: allSlots } = await supabase
-        .from("trainer_time_slots" as any)
-        .select("id, trainer_id")
-        .eq("branch_id", currentBranch.id)
-        .eq("status", "available");
-
-      // Build slot count map
-      const slotCountMap: Record<string, number> = {};
-      for (const s of allSlots as any[]) {
-        slotCountMap[s.trainer_id] = (slotCountMap[s.trainer_id] || 0) + 1;
-      }
-
-      // Get member counts per trainer via pt_subscriptions (single source of truth)
-      // Resolve staff_id → phone → personal_trainer_id
-      const staffPhones = staffData.map(s => ({ id: s.id, phone: "" }));
-      const { data: staffPhoneData } = await supabase
-        .from("staff")
-        .select("id, phone")
-        .in("id", trainerIds);
-
-      const phoneToStaffId: Record<string, string> = {};
-      for (const sp of staffPhoneData || []) {
-        if (sp.phone) phoneToStaffId[sp.phone] = sp.id;
-      }
-
-      const phones = Object.keys(phoneToStaffId);
-      let memberCountMap: Record<string, number> = {};
-
+      // Resolve personal_trainer → staff via phone
+      const phones = ptData.map(pt => pt.phone).filter(Boolean) as string[];
+      let phoneToStaffId: Record<string, string> = {};
       if (phones.length > 0) {
-        const { data: ptProfiles } = await supabase
-          .from("personal_trainers" as any)
+        const { data: staffData } = await supabase
+          .from("staff")
           .select("id, phone")
           .in("phone", phones)
-          .eq("branch_id", currentBranch.id);
-
-        const ptIdToStaffId: Record<string, string> = {};
-        for (const pt of (ptProfiles as any[] || [])) {
-          const staffId = phoneToStaffId[pt.phone];
-          if (staffId) ptIdToStaffId[pt.id] = staffId;
-        }
-
-        const ptIds = Object.keys(ptIdToStaffId);
-        if (ptIds.length > 0) {
-          const today = new Date().toISOString().split("T")[0];
-          const { data: ptSubs } = await supabase
-            .from("pt_subscriptions" as any)
-            .select("member_id, personal_trainer_id")
-            .eq("branch_id", currentBranch.id)
-            .eq("status", "active")
-            .gte("end_date", today)
-            .in("personal_trainer_id", ptIds);
-
-          // Count unique members per staff_id
-          const staffMembers: Record<string, Set<string>> = {};
-          for (const sub of (ptSubs as any[] || [])) {
-            const staffId = ptIdToStaffId[sub.personal_trainer_id];
-            if (staffId) {
-              if (!staffMembers[staffId]) staffMembers[staffId] = new Set();
-              staffMembers[staffId].add(sub.member_id);
-            }
-          }
-          for (const [staffId, members] of Object.entries(staffMembers)) {
-            memberCountMap[staffId] = members.size;
-          }
+          .eq("is_active", true);
+        for (const s of staffData || []) {
+          if (s.phone) phoneToStaffId[s.phone] = s.id;
         }
       }
 
-      const result: TrainerInfo[] = staffData.map((s) => ({
-        id: s.id,
-        name: s.full_name,
-        specialization: null,
-        member_count: memberCountMap[s.id] || 0,
-        slot_count: slotCountMap[s.id] || 0,
-      }));
+      // Get member counts via pt_subscriptions
+      const today = new Date().toISOString().split("T")[0];
+      const ptIds = ptData.map(pt => pt.id);
+      let memberCountMap: Record<string, number> = {};
+      if (ptIds.length > 0) {
+        const { data: ptSubs } = await supabase
+          .from("pt_subscriptions")
+          .select("member_id, personal_trainer_id")
+          .eq("branch_id", currentBranch.id)
+          .eq("status", "active")
+          .gte("end_date", today)
+          .in("personal_trainer_id", ptIds);
 
-      return result.sort((a, b) => a.name.localeCompare(b.name));
+        const ptMembers: Record<string, Set<string>> = {};
+        for (const sub of (ptSubs as any[] || [])) {
+          if (!ptMembers[sub.personal_trainer_id]) ptMembers[sub.personal_trainer_id] = new Set();
+          ptMembers[sub.personal_trainer_id].add(sub.member_id);
+        }
+        for (const [ptId, members] of Object.entries(ptMembers)) {
+          memberCountMap[ptId] = members.size;
+        }
+      }
+
+      // Get slot counts per staff_id from trainer_time_slots
+      let slotCountMap: Record<string, number> = {};
+      const staffIds = Object.values(phoneToStaffId);
+      if (staffIds.length > 0) {
+        const { data: allSlots } = await supabase
+          .from("trainer_time_slots" as any)
+          .select("id, trainer_id")
+          .eq("branch_id", currentBranch.id)
+          .eq("status", "available")
+          .in("trainer_id", staffIds);
+
+        for (const s of (allSlots as any[] || [])) {
+          slotCountMap[s.trainer_id] = (slotCountMap[s.trainer_id] || 0) + 1;
+        }
+      }
+
+      const result: TrainerInfo[] = ptData.map((pt) => {
+        const staffId = pt.phone ? phoneToStaffId[pt.phone] : null;
+        return {
+          id: staffId || pt.id, // Use staff_id if available, else pt.id
+          name: pt.name,
+          specialization: pt.specialization,
+          member_count: memberCountMap[pt.id] || 0,
+          slot_count: staffId ? (slotCountMap[staffId] || 0) : 0,
+        };
+      });
+
+      // Deduplicate by id
+      const seen = new Set<string>();
+      const unique = result.filter(t => {
+        if (seen.has(t.id)) return false;
+        seen.add(t.id);
+        return true;
+      });
+
+      return unique.sort((a, b) => a.name.localeCompare(b.name));
     },
     enabled: !!currentBranch?.id,
     staleTime: 30000,
