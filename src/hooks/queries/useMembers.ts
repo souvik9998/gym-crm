@@ -9,6 +9,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
+import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import * as membersApi from "@/api/members";
 
 const PAGE_SIZE = 50;
@@ -22,18 +23,23 @@ export function useInfiniteMembersQuery() {
   const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   const isAuthenticated = isAdmin || isStaffLoggedIn;
+  const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
+  const { assignedMemberIds } = useAssignedMemberIds();
   const accessScope = isStaffLoggedIn
     ? `${staffUser?.id || "staff"}-${permissions?.member_access_type || "all"}`
     : "admin";
+  const assignedScope = isLimitedAccess
+    ? (assignedMemberIds === null ? "all" : assignedMemberIds.join(",") || "none")
+    : "all";
 
   return useInfiniteQuery({
-    queryKey: [...queryKeys.members.all(branchId), accessScope, "infinite"],
+    queryKey: [...queryKeys.members.all(branchId), accessScope, assignedScope, "infinite"],
     queryFn: ({ pageParam = 0 }) => membersApi.fetchMembersPaginated(branchId, pageParam, PAGE_SIZE),
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     initialPageParam: 0,
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && (!isLimitedAccess || assignedMemberIds !== undefined),
   });
 }
 
@@ -47,16 +53,21 @@ export function useMembersQuery() {
   const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   const isAuthenticated = isAdmin || isStaffLoggedIn;
+  const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
+  const { assignedMemberIds } = useAssignedMemberIds();
   const accessScope = isStaffLoggedIn
     ? `${staffUser?.id || "staff"}-${permissions?.member_access_type || "all"}`
     : "admin";
+  const assignedScope = isLimitedAccess
+    ? (assignedMemberIds === null ? "all" : assignedMemberIds.join(",") || "none")
+    : "all";
 
   return useQuery({
-    queryKey: [...queryKeys.members.all(branchId), accessScope],
+    queryKey: [...queryKeys.members.all(branchId), accessScope, assignedScope],
     queryFn: () => membersApi.fetchMembers(branchId),
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && (!isLimitedAccess || assignedMemberIds !== undefined),
   });
 }
 
@@ -65,16 +76,21 @@ export function useMembersQuery() {
  */
 export function useMemberQuery(memberId: string | undefined) {
   const { isStaffLoggedIn, permissions, staffUser } = useStaffAuth();
+  const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
+  const { assignedMemberIds } = useAssignedMemberIds();
   const accessScope = isStaffLoggedIn
     ? `${staffUser?.id || "staff"}-${permissions?.member_access_type || "all"}`
     : "admin";
+  const assignedScope = isLimitedAccess
+    ? (assignedMemberIds === null ? "all" : assignedMemberIds.join(",") || "none")
+    : "all";
 
   return useQuery({
-    queryKey: [...queryKeys.members.detail(memberId || ''), accessScope],
+    queryKey: [...queryKeys.members.detail(memberId || ''), accessScope, assignedScope],
     queryFn: () => membersApi.fetchMemberById(memberId!),
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
-    enabled: !!memberId,
+    enabled: !!memberId && (!isLimitedAccess || assignedMemberIds !== undefined),
   });
 }
 
@@ -83,16 +99,21 @@ export function useMemberQuery(memberId: string | undefined) {
  */
 export function useMemberDetailsQuery(memberId: string | undefined) {
   const { isStaffLoggedIn, permissions, staffUser } = useStaffAuth();
+  const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
+  const { assignedMemberIds } = useAssignedMemberIds();
   const accessScope = isStaffLoggedIn
     ? `${staffUser?.id || "staff"}-${permissions?.member_access_type || "all"}`
     : "admin";
+  const assignedScope = isLimitedAccess
+    ? (assignedMemberIds === null ? "all" : assignedMemberIds.join(",") || "none")
+    : "all";
 
   return useQuery({
-    queryKey: ['member-details', memberId, accessScope],
+    queryKey: ['member-details', memberId, accessScope, assignedScope],
     queryFn: () => membersApi.fetchMemberDetails(memberId!),
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
-    enabled: !!memberId,
+    enabled: !!memberId && (!isLimitedAccess || assignedMemberIds !== undefined),
   });
 }
 
