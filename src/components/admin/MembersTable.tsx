@@ -723,8 +723,10 @@ export const MembersTable = ({
       if (!currentBranch?.id) return null;
       const today = new Date().toISOString().split("T")[0];
 
-      // Special: "No Time Slot" — members with NO active PT that has a time_slot_id
+      // Special: "No Time Slot" — members with active PT but no time_slot_id
+      // If trainerFilter is also set, scope to that trainer's members only
       if (timeSlotFilter === "__no_slot__") {
+        // First get members who DO have a slot in their active PT
         const { data: withSlots } = await supabase
           .from("pt_subscriptions" as any)
           .select("member_id")
@@ -734,7 +736,44 @@ export const MembersTable = ({
           .not("time_slot_id", "is", null);
 
         const withSlotSet = new Set((withSlots as any[] || []).map((d: any) => d.member_id));
-        // Return all member IDs NOT in the set — we'll invert in the filter step
+
+        // If a trainer filter is also active, we need to get that trainer's members
+        // and then exclude those who have slots
+        if (trainerFilter && trainerFilter !== "__no_trainer__") {
+          const { data: staffRecord } = await supabase
+            .from("staff")
+            .select("phone")
+            .eq("id", trainerFilter)
+            .maybeSingle();
+
+          if (!staffRecord?.phone) return { type: "include" as const, ids: new Set<string>() };
+
+          const { data: ptProfiles } = await supabase
+            .from("personal_trainers" as any)
+            .select("id")
+            .eq("phone", staffRecord.phone)
+            .eq("branch_id", currentBranch.id);
+
+          const ptIds = (ptProfiles as any[] || []).map((p: any) => p.id);
+          if (ptIds.length === 0) return { type: "include" as const, ids: new Set<string>() };
+
+          const { data: ptSubs } = await supabase
+            .from("pt_subscriptions" as any)
+            .select("member_id, time_slot_id")
+            .eq("branch_id", currentBranch.id)
+            .eq("status", "active")
+            .gte("end_date", today)
+            .in("personal_trainer_id", ptIds);
+
+          // Members of this trainer who have NO slot
+          const noSlotMembers = new Set(
+            (ptSubs as any[] || [])
+              .filter((d: any) => !d.time_slot_id)
+              .map((d: any) => d.member_id)
+          );
+          return { type: "include" as const, ids: noSlotMembers };
+        }
+
         return { type: "exclude" as const, ids: withSlotSet };
       }
 
@@ -1064,21 +1103,23 @@ export const MembersTable = ({
         </div>
       )}
       
-      {/* Member count and export - Hidden on all screens */}
-      <div className="hidden">
-        <span>
-          Showing {sortedMembers.length} of {totalCount} members
-        </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleExport}
-          className="gap-2"
-        >
-          <Download className="w-4 h-4" />
-          Export
-        </Button>
-      </div>
+      {/* Filtered result count - shown when filters are active */}
+      {(trainerFilter || timeSlotFilter) && (
+        <div className="flex items-center justify-between px-1">
+          <p className="text-[11px] lg:text-xs text-muted-foreground">
+            Showing <span className="font-semibold text-foreground">{sortedMembers.length}</span> of {totalCount} members
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleExport}
+            className="h-6 lg:h-7 gap-1.5 text-[10px] lg:text-xs px-2"
+          >
+            <Download className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
+            Export
+          </Button>
+        </div>
+      )}
 
       {isCompact ? (
         <div className="rounded-xl border overflow-hidden bg-card shadow-sm">
