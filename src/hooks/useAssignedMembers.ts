@@ -2,6 +2,8 @@
  * Hook to resolve assigned member IDs for staff with limited access.
  * Returns null for admin users or staff with "all" access (meaning no filtering needed).
  * Returns string[] of member IDs for staff with "assigned" access type.
+ * 
+ * Single source of truth: pt_subscriptions table.
  */
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,67 +23,34 @@ export function useAssignedMemberIds() {
 
       const today = new Date().toISOString().split("T")[0];
 
-      const [{ data: staffRecord }, { data: slots }] = await Promise.all([
-        supabase
-          .from("staff" as any)
-          .select("phone")
-          .eq("id", staffUser.id)
-          .maybeSingle(),
-        supabase
-          .from("trainer_time_slots" as any)
-          .select("id")
-          .eq("trainer_id", staffUser.id)
-          .eq("branch_id", branchId)
-          .eq("status", "available"),
-      ]);
+      // Resolve staff_id → phone → personal_trainer_id(s)
+      const { data: staffRecord } = await supabase
+        .from("staff" as any)
+        .select("phone")
+        .eq("id", staffUser.id)
+        .maybeSingle();
 
-      const slotIds = (slots as any[] | null | undefined)?.map((slot: any) => slot.id) || [];
+      if (!(staffRecord as any)?.phone) return [];
 
-      let trainerProfileIds: string[] = [];
-      if ((staffRecord as any)?.phone) {
-        const { data: trainerProfiles } = await supabase
-          .from("personal_trainers" as any)
-          .select("id")
-          .eq("phone", (staffRecord as any).phone)
-          .eq("branch_id", branchId);
+      const { data: ptProfiles } = await supabase
+        .from("personal_trainers" as any)
+        .select("id")
+        .eq("phone", (staffRecord as any).phone)
+        .eq("branch_id", branchId);
 
-        trainerProfileIds = (trainerProfiles as any[] | null | undefined)?.map((trainer: any) => trainer.id) || [];
-      }
+      const ptIds = (ptProfiles as any[] | null)?.map((p: any) => p.id) || [];
+      if (ptIds.length === 0) return [];
 
-      const assignmentResults = await Promise.all([
-        ...(slotIds.length > 0
-          ? [
-              supabase
-                .from("pt_subscriptions" as any)
-                .select("member_id")
-                .eq("branch_id", branchId)
-                .eq("status", "active")
-                .gte("end_date", today)
-                .in("time_slot_id", slotIds),
-            ]
-          : []),
-        ...(trainerProfileIds.length > 0
-          ? [
-              supabase
-                .from("pt_subscriptions" as any)
-                .select("member_id")
-                .eq("branch_id", branchId)
-                .eq("status", "active")
-                .gte("end_date", today)
-                .in("personal_trainer_id", trainerProfileIds),
-            ]
-          : []),
-      ]);
+      // Single query: all active PT subscriptions for this trainer
+      const { data: ptSubs } = await supabase
+        .from("pt_subscriptions" as any)
+        .select("member_id")
+        .eq("branch_id", branchId)
+        .eq("status", "active")
+        .gte("end_date", today)
+        .in("personal_trainer_id", ptIds);
 
-      if (assignmentResults.length === 0) return [];
-
-      return [
-        ...new Set(
-          assignmentResults.flatMap((result) =>
-            (result.data || []).map((assignment: any) => assignment.member_id).filter(Boolean)
-          )
-        ),
-      ];
+      return [...new Set((ptSubs as any[] || []).map((s: any) => s.member_id).filter(Boolean))];
     },
     enabled: isLimitedAccess && !!staffUser?.id && !!branchId,
     staleTime: 60000,

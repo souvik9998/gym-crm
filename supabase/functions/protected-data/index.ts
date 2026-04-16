@@ -683,75 +683,17 @@ Deno.serve(async (req) => {
           }
         }
 
-        // For members with no PT sub, check time_slot_members as fallback
-        const membersWithoutPT = memberIds.filter((id: string) => !ptByMember.has(id));
-        const tsmByMember = new Map<string, any>();
-
-        if (membersWithoutPT.length > 0) {
-          const { data: tsmData } = await supabase
-            .from("time_slot_members")
-            .select("member_id, time_slot_id, trainer_time_slots(id, start_time, end_time, trainer_id)")
-            .in("member_id", membersWithoutPT);
-
-          if (tsmData && tsmData.length > 0) {
-            // Get unique trainer (staff) IDs
-            const staffIds = [...new Set(tsmData.map((t: any) => t.trainer_time_slots?.trainer_id).filter(Boolean))];
-            
-            // Resolve staff -> personal_trainers via phone
-            const trainerNameMap = new Map<string, string>();
-            if (staffIds.length > 0) {
-              const { data: staffPhones } = await supabase
-                .from("staff")
-                .select("id, phone")
-                .in("id", staffIds);
-              
-              if (staffPhones && staffPhones.length > 0) {
-                const phones = staffPhones.map((s: any) => s.phone).filter(Boolean);
-                const { data: ptProfiles } = await supabase
-                  .from("personal_trainers")
-                  .select("name, phone")
-                  .in("phone", phones)
-                  .eq("is_active", true);
-                
-                if (ptProfiles) {
-                  // Map staff_id -> trainer name
-                  for (const sp of staffPhones) {
-                    const profile = ptProfiles.find((p: any) => p.phone === sp.phone);
-                    if (profile) trainerNameMap.set(sp.id, profile.name);
-                  }
-                }
-              }
-            }
-
-            for (const tsm of tsmData) {
-              if (tsmByMember.has(tsm.member_id)) continue;
-              const slot = tsm.trainer_time_slots as any;
-              if (!slot) continue;
-              const trainerName = trainerNameMap.get(slot.trainer_id) || null;
-              if (trainerName) {
-                tsmByMember.set(tsm.member_id, {
-                  trainer_name: trainerName,
-                  time_slot_id: slot.id,
-                });
-              }
-            }
-          }
-        }
-
         const membersWithData = (members || []).map((member: any) => {
           const subData = subsByMember.get(member.id);
           const ptData = ptByMember.get(member.id);
           const trainerData = ptData?.personal_trainer as any;
-          const tsmFallback = tsmByMember.get(member.id);
 
           return {
             ...member,
             subscription: subData || undefined,
             activePT: ptData
               ? { trainer_name: trainerData?.name || "Unknown", end_date: ptData.end_date, time_slot_id: ptData.time_slot_id || null }
-              : tsmFallback
-                ? { trainer_name: tsmFallback.trainer_name, end_date: subData?.end_date || null, time_slot_id: tsmFallback.time_slot_id }
-                : null,
+              : null,
           };
         });
 

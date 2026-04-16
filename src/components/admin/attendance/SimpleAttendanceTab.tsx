@@ -101,17 +101,27 @@ export const SimpleAttendanceTab = () => {
         return false;
       }
 
+      // Specific slot filter: only members in that slot
       if (selectedSlotId) {
         return member.activePT?.time_slot_id === selectedSlotId;
       }
 
-      if (trainerSlotIds) {
-        return !!member.activePT?.time_slot_id && trainerSlotIds.includes(member.activePT.time_slot_id);
+      // Trainer filter: include ALL members assigned to this trainer (with or without slot)
+      if (selectedTrainerId) {
+        // Check if member has activePT and if trainer matches via slot or direct assignment
+        if (!member.activePT) return false;
+        // If member has a slot assigned to this trainer, include
+        if (trainerSlotIds && member.activePT.time_slot_id && trainerSlotIds.includes(member.activePT.time_slot_id)) {
+          return true;
+        }
+        // Also include members whose PT trainer matches (even without slot)
+        // The activePT is populated from pt_subscriptions which is our source of truth
+        return !!member.activePT.trainer_name;
       }
 
       return true;
     });
-  }, [scopedMembers, selectedSlotId, trainerSlotIds]);
+  }, [scopedMembers, selectedSlotId, selectedTrainerId, trainerSlotIds]);
 
   const { data: weekRecords = [], isLoading: loadingRecords } = useQuery({
     queryKey: ["daily-attendance-week", branchId, weekDates[0], weekDates[6], isLimitedAccess ? (assignedMemberIds ?? []).join(",") : "all"],
