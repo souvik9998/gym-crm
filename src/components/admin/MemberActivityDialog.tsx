@@ -131,6 +131,7 @@ export const MemberActivityDialog = ({
   const [availableSlots, setAvailableSlots] = useState<any[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState("");
   const [isSavingSlot, setIsSavingSlot] = useState(false);
+  const { invalidatePtSubscriptions } = useInvalidateQueries();
 
   useEffect(() => {
     if (open && memberId) {
