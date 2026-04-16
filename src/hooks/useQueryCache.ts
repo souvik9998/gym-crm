@@ -100,6 +100,7 @@ export function useInvalidateQueries() {
       forceInvalidate([CACHE_KEYS.TRAINERS]),
       forceInvalidate(["staff-page-data"]),
       forceInvalidate(["time-slot-members"]),
+      forceInvalidate(["trainer-filter-list"]),
     ]);
   }, [forceInvalidate]);
 
