@@ -748,6 +748,15 @@ export const StaffOtherTab = ({
                         </Button>
                         <Button
                           size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setConversionDialog({ open: true, staff: member })}
+                          title="Convert to Trainer"
+                        >
+                          <ArrowsRightLeftIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="destructive"
                           className="h-8 w-8 p-0"
                           onClick={() => handleDelete(member.id, member.full_name)}
@@ -834,6 +843,14 @@ export const StaffOtherTab = ({
                           onClick={() => handleEdit(member)}
                         >
                           <PencilIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setConversionDialog({ open: true, staff: member })}
+                          title="Convert to Trainer"
+                        >
+                          <ArrowsRightLeftIcon className="w-4 h-4" />
                         </Button>
                         <Switch
                           checked={member.is_active}
