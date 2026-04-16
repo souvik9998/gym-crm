@@ -59,6 +59,7 @@ export const StaffTrainersTab = ({
 }: StaffTrainersTabProps) => {
   const isCompact = useIsTabletOrBelow();
   const [infoDialog, setInfoDialog] = useState<{ open: boolean; trainer: Staff | null }>({ open: false, trainer: null });
+  const [conversionDialog, setConversionDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
   const [newTrainer, setNewTrainer] = useState({
     full_name: "",
     phone: "",
