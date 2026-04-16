@@ -9,6 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { AttendanceDatePicker } from "./AttendanceDatePicker";
 import { Progress } from "@/components/ui/progress";
+import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import {
   ExclamationTriangleIcon,
   UserGroupIcon,
@@ -30,6 +31,7 @@ export const AbsentAnalyticsTab = () => {
   const { currentBranch } = useBranch();
   const isMobile = useIsMobile();
   const branchId = currentBranch?.id;
+  const { assignedMemberIds } = useAssignedMemberIds();
 
   const today = new Date().toISOString().split("T")[0];
   const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
@@ -37,20 +39,27 @@ export const AbsentAnalyticsTab = () => {
   const [dateTo, setDateTo] = useState(today);
 
   const { data: records = [], isLoading, refetch } = useQuery({
-    queryKey: ["attendance-analytics", branchId, dateFrom, dateTo],
+    queryKey: ["attendance-analytics", branchId, dateFrom, dateTo, assignedMemberIds],
     queryFn: async () => {
       if (!branchId) return [];
-      const { data, error } = await supabase
+      let query = supabase
         .from("daily_attendance")
         .select("member_id, status, date, members(name, phone)")
         .eq("branch_id", branchId)
         .gte("date", dateFrom)
         .lte("date", dateTo)
         .is("time_slot_id", null);
+      // Filter by assigned members for staff with limited access
+      if (assignedMemberIds !== null && assignedMemberIds.length > 0) {
+        query = query.in("member_id", assignedMemberIds);
+      } else if (assignedMemberIds !== null && assignedMemberIds.length === 0) {
+        return [];
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
-    enabled: !!branchId,
+    enabled: !!branchId && (assignedMemberIds === null || assignedMemberIds !== undefined),
   });
 
   const memberStats = useMemo((): MemberAbsentStats[] => {
