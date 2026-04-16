@@ -100,7 +100,9 @@ export type ActivityType =
   | "event_status_changed"
   | "event_registration_added"
   | "event_registration_updated"
-  | "event_registration_deleted";
+  | "event_registration_deleted"
+  // Assessment
+  | "assessment_fields_updated";
 
 interface LogActivityParams {
   category: ActivityCategory;
