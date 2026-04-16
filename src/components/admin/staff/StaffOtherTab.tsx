@@ -1024,7 +1024,7 @@ export const StaffOtherTab = ({
         direction="to_trainer"
         branchId={currentBranch?.id}
         branchName={currentBranch?.name}
-        onSuccess={onRefresh}
+        onSuccess={() => { onConversionSuccess ? onConversionSuccess() : onRefresh(); }}
       />
     </div>
   );

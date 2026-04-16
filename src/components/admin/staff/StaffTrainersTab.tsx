@@ -47,6 +47,7 @@ interface StaffTrainersTabProps {
   currentBranch: any;
   onRefresh: () => void;
   isLoading: boolean;
+  onConversionSuccess?: () => void;
 }
 
 
@@ -56,6 +57,7 @@ export const StaffTrainersTab = ({
   currentBranch,
   onRefresh,
   isLoading,
+  onConversionSuccess,
 }: StaffTrainersTabProps) => {
   const isCompact = useIsTabletOrBelow();
   const [infoDialog, setInfoDialog] = useState<{ open: boolean; trainer: Staff | null }>({ open: false, trainer: null });
@@ -1242,7 +1244,7 @@ export const StaffTrainersTab = ({
         direction="to_staff"
         branchId={currentBranch?.id}
         branchName={currentBranch?.name}
-        onSuccess={onRefresh}
+        onSuccess={() => { onConversionSuccess ? onConversionSuccess() : onRefresh(); }}
       />
     </div>
   );
