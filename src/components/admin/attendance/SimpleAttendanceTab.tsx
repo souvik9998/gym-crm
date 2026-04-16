@@ -118,12 +118,20 @@ export const SimpleAttendanceTab = () => {
     queryFn: async () => {
       if (!branchId) return [];
       if (isLimitedAccess && staffUser?.id) {
-        const { data: staffData } = await supabase.from("staff").select("phone").eq("id", staffUser.id).single();
-        if (!staffData?.phone) return [];
-        const { data: trainer } = await supabase.from("personal_trainers").select("id").eq("phone", staffData.phone).eq("branch_id", branchId).eq("is_active", true).maybeSingle();
-        if (!trainer?.id) return [];
-        const { data: memberDetails } = await supabase.from("member_details").select("member_id").eq("personal_trainer_id", trainer.id);
-        const memberIds = (memberDetails || []).map((md: any) => md.member_id);
+        // Use time_slot_members (consistent with protected-data edge function)
+        const { data: staffSlots } = await supabase
+          .from("trainer_time_slots" as any)
+          .select("id")
+          .eq("trainer_id", staffUser.id)
+          .eq("branch_id", branchId)
+          .eq("status", "available");
+        const slotIds = (staffSlots as any[] || []).map((s: any) => s.id);
+        if (slotIds.length === 0) return [];
+        const { data: slotMembers } = await supabase
+          .from("time_slot_members" as any)
+          .select("member_id")
+          .in("time_slot_id", slotIds);
+        const memberIds = [...new Set((slotMembers as any[] || []).map((sm: any) => sm.member_id))];
         if (memberIds.length === 0) return [];
         const { data, error } = await supabase.from("members").select("id, name, phone, subscriptions!inner(status)").eq("branch_id", branchId).in("id", memberIds).in("subscriptions.status", ["active", "expiring_soon"]).order("name");
         if (error) throw error;
