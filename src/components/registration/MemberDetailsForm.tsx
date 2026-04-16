@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DobInput } from "@/components/ui/dob-input";
-import { ArrowRight, IdCard, MapPin, User, CalendarDays } from "lucide-react";
+import { ArrowRight, IdCard, MapPin, User, CalendarDays, Mail, Briefcase } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { ValidatedInput, InlineError } from "@/components/ui/validated-input";
 import {
   memberDetailsSchema,
@@ -248,6 +249,39 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
             </Label>
             <DobInput value={dateOfBirth} onChange={setDateOfBirth} />
           </div>
+
+          {/* Email */}
+          {showEmail && (
+            <div className="space-y-2 animate-fade-in" style={{ animationDelay: "175ms" }}>
+              <Label className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-accent" />
+                Email {emailRequired ? "*" : ""}
+              </Label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email@example.com"
+                className="h-10"
+              />
+            </div>
+          )}
+
+          {/* Occupation */}
+          {showOccupation && (
+            <div className="space-y-2 animate-fade-in" style={{ animationDelay: "185ms" }}>
+              <Label className="flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-accent" />
+                Occupation {occupationRequired ? "*" : ""}
+              </Label>
+              <Input
+                value={occupation}
+                onChange={(e) => setOccupation(e.target.value)}
+                placeholder="e.g. Software Engineer"
+                className="h-10"
+              />
+            </div>
+          )}
 
           {/* Photo ID Type */}
           {showPhotoId && (
