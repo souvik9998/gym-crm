@@ -1241,6 +1241,7 @@ export type Database = {
       }
       gym_settings: {
         Row: {
+          assessment_field_settings: Json
           branch_id: string | null
           gym_address: string | null
           gym_email: string | null
@@ -1262,6 +1263,7 @@ export type Database = {
           whatsapp_enabled: boolean | null
         }
         Insert: {
+          assessment_field_settings?: Json
           branch_id?: string | null
           gym_address?: string | null
           gym_email?: string | null
@@ -1283,6 +1285,7 @@ export type Database = {
           whatsapp_enabled?: boolean | null
         }
         Update: {
+          assessment_field_settings?: Json
           branch_id?: string | null
           gym_address?: string | null
           gym_email?: string | null
@@ -1551,6 +1554,7 @@ export type Database = {
         Row: {
           allowed_exercises: string | null
           assessed_by: string
+          assessment_data: Json | null
           assessment_date: string
           branch_id: string
           created_at: string
@@ -1565,6 +1569,7 @@ export type Database = {
         Insert: {
           allowed_exercises?: string | null
           assessed_by?: string
+          assessment_data?: Json | null
           assessment_date?: string
           branch_id: string
           created_at?: string
@@ -1579,6 +1584,7 @@ export type Database = {
         Update: {
           allowed_exercises?: string | null
           assessed_by?: string
+          assessment_data?: Json | null
           assessment_date?: string
           branch_id?: string
           created_at?: string
