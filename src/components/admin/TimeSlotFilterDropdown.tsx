@@ -293,7 +293,7 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
                   </div>
 
                   {/* Slots as horizontal chips */}
-                  <div className="flex flex-nowrap gap-1.5 px-2.5 pb-1.5 overflow-x-auto scrollbar-none">
+                  <div className="flex flex-wrap gap-1.5 px-2.5 pb-1.5">
                     {group.slots.map((slot, sIdx) => {
                       const isSelected = value === slot.id;
                       const colorSet = slotColors[gIdx % slotColors.length];
