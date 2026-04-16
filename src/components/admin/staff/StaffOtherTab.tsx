@@ -114,6 +114,7 @@ export const StaffOtherTab = ({
     existingStaff: Staff | null;
   }>({ open: false, existingStaff: null });
   const addingRef = { current: false };
+  const [conversionDialog, setConversionDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
 
   // Update selected branches when currentBranch changes
   useEffect(() => {
