@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.get_branch_staff_basic(uuid);

@@ -3259,14 +3259,6 @@ export type Database = {
       }
       generate_invoice_number: { Args: { _branch_id: string }; Returns: string }
       generate_slug: { Args: { input_text: string }; Returns: string }
-      get_branch_staff_basic: {
-        Args: { p_branch_id: string }
-        Returns: {
-          full_name: string
-          phone: string
-          staff_id: string
-        }[]
-      }
       get_dashboard_stats: {
         Args: { _branch_id?: string }
         Returns: {
@@ -3287,6 +3279,16 @@ export type Database = {
           start_date: string
           status: string
           subscription_id: string
+        }[]
+      }
+      get_staff_by_phone_in_tenant: {
+        Args: { p_phone: string; p_tenant_id: string }
+        Returns: {
+          full_name: string
+          is_active: boolean
+          phone: string
+          role: string
+          staff_id: string
         }[]
       }
       get_staff_id: { Args: { _user_id: string }; Returns: string }

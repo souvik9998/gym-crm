@@ -753,9 +753,12 @@ export const MembersTable = ({
           if (directPt) {
             ptIds = [directPt.id];
           } else {
-            // Resolve staff_id → phone via secure function
-            const { data: staffBasic } = await supabase.rpc("get_branch_staff_basic", { p_branch_id: currentBranch.id });
-            const staffRecord = (staffBasic as any[] || []).find((s: any) => s.staff_id === trainerFilter);
+            // Resolve staff_id → phone via staff table
+            const { data: staffRecord } = await supabase
+              .from("staff")
+              .select("phone")
+              .eq("id", trainerFilter)
+              .maybeSingle();
             if (staffRecord?.phone) {
               const { data: ptProfiles } = await supabase
                 .from("personal_trainers")
@@ -825,9 +828,12 @@ export const MembersTable = ({
         if (directPt) {
           ptIds = [directPt.id];
         } else {
-          // Resolve staff_id → phone via secure function
-          const { data: staffBasic } = await supabase.rpc("get_branch_staff_basic", { p_branch_id: currentBranch.id });
-          const staffRecord = (staffBasic as any[] || []).find((s: any) => s.staff_id === trainerFilter);
+          // Resolve staff_id → phone via staff table
+          const { data: staffRecord } = await supabase
+            .from("staff")
+            .select("phone")
+            .eq("id", trainerFilter)
+            .maybeSingle();
           if (staffRecord?.phone) {
             const { data: ptProfiles } = await supabase
               .from("personal_trainers")
