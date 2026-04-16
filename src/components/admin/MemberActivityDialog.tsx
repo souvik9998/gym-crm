@@ -182,9 +182,54 @@ export const MemberActivityDialog = ({
         .order("created_at", { ascending: false });
 
       if (ptData) {
-        setPtSubscriptions(ptData as any);
+        // For PT subs without time_slot_id, look up from time_slot_members
+        const ptsMissingSlot = ptData.filter(pt => !pt.time_slot_id && pt.status === "active");
+        let slotLookup: Record<string, { id: string; start_time: string; end_time: string }> = {};
+
+        if (ptsMissingSlot.length > 0) {
+          // Get all time_slot_members for this member
+          const { data: tsmData } = await supabase
+            .from("time_slot_members" as any)
+            .select("time_slot_id, time_slot:trainer_time_slots(id, start_time, end_time, trainer_id)")
+            .eq("member_id", memberId);
+
+          if (tsmData && (tsmData as any[]).length > 0) {
+            // For each PT sub missing a slot, find a matching slot via trainer
+            for (const pt of ptsMissingSlot) {
+              if (!pt.personal_trainer) continue;
+              // Resolve staff_id from personal_trainer phone
+              const { data: ptTrainer } = await supabase
+                .from("personal_trainers")
+                .select("phone")
+                .eq("id", (pt.personal_trainer as any).id)
+                .maybeSingle();
+              if (!ptTrainer?.phone) continue;
+              const { data: staffRec } = await supabase
+                .from("staff" as any)
+                .select("id")
+                .eq("phone", ptTrainer.phone)
+                .maybeSingle();
+              if (!staffRec) continue;
+              const matchedSlot = (tsmData as any[]).find(
+                (tsm: any) => tsm.time_slot?.trainer_id === (staffRec as any).id
+              );
+              if (matchedSlot?.time_slot) {
+                slotLookup[pt.id] = matchedSlot.time_slot;
+              }
+            }
+          }
+        }
+
+        const enrichedPtData = ptData.map(pt => {
+          if (!pt.time_slot_id && slotLookup[pt.id]) {
+            return { ...pt, time_slot: slotLookup[pt.id], time_slot_id: slotLookup[pt.id].id };
+          }
+          return pt;
+        });
+
+        setPtSubscriptions(enrichedPtData as any);
         const today = new Date().toISOString().split("T")[0];
-        const active = ptData.find(pt => pt.end_date >= today && pt.status === "active");
+        const active = enrichedPtData.find(pt => pt.end_date >= today && pt.status === "active");
         setActivePT((active as any) || null);
       }
     } catch (error) {
