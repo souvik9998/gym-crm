@@ -454,6 +454,7 @@ export const MemberActivityDialog = ({
       toast.success("Time slot assigned successfully!");
       setAssigningSlotForPt(null);
       fetchMemberData();
+      invalidatePtSubscriptions();
     } catch (error: any) {
       console.error("Error assigning slot:", error);
       toast.error(error.message || "Failed to assign time slot");
