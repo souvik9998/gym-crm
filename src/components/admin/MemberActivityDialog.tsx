@@ -227,9 +227,59 @@ export const MemberActivityDialog = ({
           return pt;
         });
 
-        setPtSubscriptions(enrichedPtData as any);
+        let finalPtData = enrichedPtData as any[];
+
+        // If no PT subscriptions exist, check time_slot_members for slot-only assignments
+        if (finalPtData.length === 0 && memberId) {
+          const { data: tsmData } = await supabase
+            .from("time_slot_members" as any)
+            .select("time_slot_id, time_slot:trainer_time_slots(id, start_time, end_time, trainer_id, branch_id)")
+            .eq("member_id", memberId);
+
+          if (tsmData && (tsmData as any[]).length > 0) {
+            for (const tsm of tsmData as any[]) {
+              if (!tsm.time_slot) continue;
+              // Resolve trainer from staff -> personal_trainers via phone
+              const { data: staffRec } = await supabase
+                .from("staff" as any)
+                .select("phone")
+                .eq("id", tsm.time_slot.trainer_id)
+                .maybeSingle();
+              if (!(staffRec as any)?.phone) continue;
+              const { data: ptProfile } = await supabase
+                .from("personal_trainers")
+                .select("id, name, specialization, monthly_fee")
+                .eq("phone", (staffRec as any).phone)
+                .eq("branch_id", tsm.time_slot.branch_id || member?.branch_id || "")
+                .eq("is_active", true)
+                .maybeSingle();
+              if (!ptProfile) continue;
+
+              // Get member's subscription end date
+              const activeSub = subscriptions.find(s => s.status === "active" || s.status === "expiring_soon");
+              const today = new Date().toISOString().split("T")[0];
+              const endDate = activeSub?.end_date || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
+
+              finalPtData.push({
+                id: `virtual-${tsm.time_slot_id}`,
+                start_date: today,
+                end_date: endDate,
+                monthly_fee: ptProfile.monthly_fee,
+                total_fee: ptProfile.monthly_fee,
+                status: "active",
+                personal_trainer: { id: ptProfile.id, name: ptProfile.name, specialization: ptProfile.specialization },
+                time_slot: { id: tsm.time_slot.id, start_time: tsm.time_slot.start_time, end_time: tsm.time_slot.end_time },
+                time_slot_id: tsm.time_slot.id,
+                branch_id: tsm.time_slot.branch_id || member?.branch_id,
+                _isVirtual: true,
+              });
+            }
+          }
+        }
+
+        setPtSubscriptions(finalPtData as any);
         const today = new Date().toISOString().split("T")[0];
-        const active = enrichedPtData.find(pt => pt.end_date >= today && pt.status === "active");
+        const active = finalPtData.find((pt: any) => pt.end_date >= today && pt.status === "active");
         setActivePT((active as any) || null);
       }
     } catch (error) {
