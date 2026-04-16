@@ -16,17 +16,19 @@ export type { DashboardStats } from "@/api/dashboard";
 
 /**
  * Hook to fetch dashboard statistics
+ * For staff with assigned-only access, forces edge function path to filter by assigned members
  */
 export function useDashboardStats() {
   const { currentBranch } = useBranch();
-  const { isStaffLoggedIn } = useStaffAuth();
+  const { isStaffLoggedIn, permissions } = useStaffAuth();
   const { isAdmin } = useAuth();
   const branchId = currentBranch?.id;
   const isAuthenticated = isAdmin || isStaffLoggedIn;
+  const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
 
   return useQuery({
-    queryKey: queryKeys.dashboardStats(branchId),
-    queryFn: () => dashboardApi.fetchDashboardStats(branchId),
+    queryKey: [...queryKeys.dashboardStats(branchId), isLimitedAccess ? "assigned" : "all"],
+    queryFn: () => dashboardApi.fetchDashboardStats(branchId, isLimitedAccess),
     staleTime: STALE_TIMES.REAL_TIME,
     gcTime: GC_TIME,
     enabled: isAuthenticated,
