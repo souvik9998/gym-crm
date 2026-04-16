@@ -92,17 +92,20 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
         }
       }
 
-      // Get members per slot
+      // Get members per slot from pt_subscriptions (single source of truth)
       const slotIds = (slots as any[]).map((s: any) => s.id);
       let slotMembers: Record<string, SlotMember[]> = {};
       if (slotIds.length > 0) {
-        const { data: tsmData } = await supabase
-          .from("time_slot_members" as any)
+        const today = new Date().toISOString().split("T")[0];
+        const { data: ptData } = await supabase
+          .from("pt_subscriptions" as any)
           .select("time_slot_id, member_id")
-          .in("time_slot_id", slotIds);
+          .in("time_slot_id", slotIds)
+          .eq("status", "active")
+          .gte("end_date", today);
 
-        if (tsmData && (tsmData as any[]).length > 0) {
-          const memberIds = [...new Set((tsmData as any[]).map((t: any) => t.member_id))];
+        if (ptData && (ptData as any[]).length > 0) {
+          const memberIds = [...new Set((ptData as any[]).map((t: any) => t.member_id))];
           const { data: membersData } = await supabase
             .from("members")
             .select("id, name")
@@ -115,11 +118,11 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
             }
           }
 
-          for (const tsm of tsmData as any[]) {
-            if (!slotMembers[tsm.time_slot_id]) slotMembers[tsm.time_slot_id] = [];
-            slotMembers[tsm.time_slot_id].push({
-              id: tsm.member_id,
-              name: memberMap[tsm.member_id] || "Unknown",
+          for (const pt of ptData as any[]) {
+            if (!slotMembers[pt.time_slot_id]) slotMembers[pt.time_slot_id] = [];
+            slotMembers[pt.time_slot_id].push({
+              id: pt.member_id,
+              name: memberMap[pt.member_id] || "Unknown",
             });
           }
         }
