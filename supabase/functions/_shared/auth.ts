@@ -24,6 +24,7 @@ export interface StaffPermissions {
   can_access_payments: boolean;
   can_access_analytics: boolean;
   can_change_settings: boolean;
+  member_access_type?: string;
 }
 
 export interface AuthResult {
@@ -183,7 +184,7 @@ export async function checkStaffAccess(
   // Get permissions
   const { data: permissionsData } = await serviceClient
     .from("staff_permissions")
-    .select("can_view_members, can_manage_members, can_access_ledger, can_access_payments, can_access_analytics, can_change_settings")
+    .select("can_view_members, can_manage_members, can_access_ledger, can_access_payments, can_access_analytics, can_change_settings, member_access_type")
     .eq("staff_id", staffId)
     .single();
 
@@ -205,6 +206,7 @@ export async function checkStaffAccess(
       can_access_payments: false,
       can_access_analytics: false,
       can_change_settings: false,
+      member_access_type: "all",
     },
     branchIds,
   };

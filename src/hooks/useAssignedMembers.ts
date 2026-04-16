@@ -48,35 +48,32 @@ export function useAssignedMemberIds() {
         trainerProfileIds = (trainerProfiles as any[] | null | undefined)?.map((trainer: any) => trainer.id) || [];
       }
 
-      const assignmentQueries: Promise<{ data: any[] | null; error: any }>[] = [];
+      const assignmentResults = await Promise.all([
+        ...(slotIds.length > 0
+          ? [
+              supabase
+                .from("pt_subscriptions" as any)
+                .select("member_id")
+                .eq("branch_id", branchId)
+                .eq("status", "active")
+                .gte("end_date", today)
+                .in("time_slot_id", slotIds),
+            ]
+          : []),
+        ...(trainerProfileIds.length > 0
+          ? [
+              supabase
+                .from("pt_subscriptions" as any)
+                .select("member_id")
+                .eq("branch_id", branchId)
+                .eq("status", "active")
+                .gte("end_date", today)
+                .in("personal_trainer_id", trainerProfileIds),
+            ]
+          : []),
+      ]);
 
-      if (slotIds.length > 0) {
-        assignmentQueries.push(
-          supabase
-            .from("pt_subscriptions" as any)
-            .select("member_id")
-            .eq("branch_id", branchId)
-            .eq("status", "active")
-            .gte("end_date", today)
-            .in("time_slot_id", slotIds)
-        );
-      }
-
-      if (trainerProfileIds.length > 0) {
-        assignmentQueries.push(
-          supabase
-            .from("pt_subscriptions" as any)
-            .select("member_id")
-            .eq("branch_id", branchId)
-            .eq("status", "active")
-            .gte("end_date", today)
-            .in("personal_trainer_id", trainerProfileIds)
-        );
-      }
-
-      if (assignmentQueries.length === 0) return [];
-
-      const assignmentResults = await Promise.all(assignmentQueries);
+      if (assignmentResults.length === 0) return [];
 
       return [
         ...new Set(
