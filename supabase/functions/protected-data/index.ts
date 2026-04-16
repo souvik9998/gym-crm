@@ -524,6 +524,7 @@ Deno.serve(async (req) => {
         }
 
         const assignedMemberIds = await resolveAssignedMemberIds(supabase, auth, allowedBranchIds);
+        console.log("[members] auth:", { isStaff: auth.isStaff, staffId: auth.staffId, memberAccessType: auth.permissions?.member_access_type, assignedCount: assignedMemberIds?.length ?? "all" });
         if (assignedMemberIds !== null && assignedMemberIds.length === 0) {
           return jsonResponse({ members: [], nextCursor: null, totalCount: 0 });
         }
