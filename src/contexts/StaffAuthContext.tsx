@@ -43,6 +43,8 @@ function getStaffEmailFromPhone(phone: string): string {
 interface StaffAuthContextType {
   staffUser: StaffUser | null;
   permissions: StaffPermissions | null;
+  enabledModules: Record<string, boolean> | null;
+  planExpired: boolean;
   branches: StaffBranch[];
   isLoading: boolean;
   isStaffLoggedIn: boolean;
@@ -64,6 +66,8 @@ function isStaffEmail(email: string | undefined): boolean {
 export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [staffUser, setStaffUser] = useState<StaffUser | null>(null);
   const [permissions, setPermissions] = useState<StaffPermissions | null>(null);
+  const [enabledModules, setEnabledModules] = useState<Record<string, boolean> | null>(null);
+  const [planExpired, setPlanExpired] = useState(false);
   const [branches, setBranches] = useState<StaffBranch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -78,6 +82,8 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
   const clearStaffState = useCallback(() => {
     setStaffUser(null);
     setPermissions(null);
+    setEnabledModules(null);
+    setPlanExpired(false);
     setBranches([]);
     branchRestrictionCallbackRef.current?.(null);
   }, []);
@@ -130,6 +136,8 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
         console.log("[Staff Auth] Branches:", response.branches);
         setStaffUser(response.staff);
         setPermissions(response.permissions);
+        setEnabledModules(response.enabledModules || null);
+        setPlanExpired(response.planExpired === true);
         const staffBranches = response.branches || [];
         setBranches(staffBranches);
         // Apply branch restrictions for staff
@@ -289,6 +297,8 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
   const value: StaffAuthContextType = {
     staffUser,
     permissions,
+    enabledModules,
+    planExpired,
     branches,
     isLoading,
     isStaffLoggedIn: !!staffUser,

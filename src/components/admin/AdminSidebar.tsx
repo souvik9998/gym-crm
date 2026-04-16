@@ -184,18 +184,30 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
   const location = useLocation();
   const navigate = useNavigate();
   const { currentBranch, branches } = useBranch();
-  const { permissions, staffUser } = useStaffAuth();
+  const { permissions, staffUser, enabledModules, planExpired } = useStaffAuth();
   const { isModuleEnabled } = useTenantPermissions();
   const [expandedItems, setExpandedItems] = useState<string[]>(["Activity Logs"]);
 
   // Get branch name dynamically from currentBranch
   const gymName = currentBranch?.name || "Pro Plus Fitness";
 
+  const isTenantModuleVisible = (module?: string) => {
+    if (!module) return true;
+
+    if (isStaffUser) {
+      if (planExpired) return false;
+      if (!enabledModules) return true;
+      return enabledModules[module] !== false;
+    }
+
+    return isModuleEnabled(module as any);
+  };
+
   // Filter nav items based on permissions
   const filterNavItems = (items: NavItem[]): NavItem[] => {
     return items.filter((item) => {
       // Check tenant module permission first
-      if (item.tenantModule && !isModuleEnabled(item.tenantModule as any)) return false;
+      if (item.tenantModule && !isTenantModuleVisible(item.tenantModule)) return false;
       
       // Hide branch analytics for single-branch tenants
       if (item.tenantModule === "branch_analytics" && (branches?.length || 0) <= 1) return false;
@@ -215,11 +227,9 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
         if (Array.isArray(item.requiresPermission)) {
           // OR logic - need at least one of the permissions
           const hasPermission = item.requiresPermission.some(perm => permissions?.[perm] === true);
-          console.log("[Sidebar] Item:", item.title, "requires one of:", item.requiresPermission, "hasPermission:", hasPermission);
           return hasPermission;
         } else {
           const hasPermission = permissions?.[item.requiresPermission] === true;
-          console.log("[Sidebar] Item:", item.title, "requires:", item.requiresPermission, "hasPermission:", hasPermission);
           return hasPermission;
         }
       }

@@ -36,6 +36,8 @@ export const ProtectedRoute = ({
   const { 
     isStaffLoggedIn, 
     permissions, 
+    enabledModules,
+    planExpired: staffPlanExpired,
     isLoading: staffLoading,
     staffUser 
   } = useStaffAuth();
@@ -56,6 +58,7 @@ export const ProtectedRoute = ({
 
   const isStaffSession = isStaffEmail(auth.user?.email);
   const isAdminSession = !isStaffSession;
+  const isEffectivelyStaff = isStaffLoggedIn || isStaffSession;
 
   // For admin users (non-staff), verify they have valid roles
   if (isAdminSession && !isStaffSession) {
@@ -83,18 +86,7 @@ export const ProtectedRoute = ({
     return <AccessDenied message="This section is only accessible to administrators." />;
   }
 
-  // Tenant module permission check (skip for super admins)
-  if (requiredModule && !auth.isSuperAdmin) {
-    if (auth.planExpired) {
-      return <AccessDenied message="Your plan has expired. Contact the platform admin to renew." showLogout />;
-    }
-    if (!auth.isModuleEnabled(requiredModule)) {
-      return <AccessDenied message="This module is not available on your current plan. Contact the platform admin to enable it." />;
-    }
-  }
-
   // Staff permission check
-  const isEffectivelyStaff = isStaffLoggedIn || isStaffSession;
   if (isEffectivelyStaff && !isAdminSession && requiredPermission && requiredPermission !== "admin_only" && requiredPermission !== "super_admin_only") {
     const permissionsToCheck = Array.isArray(requiredPermission) 
       ? requiredPermission 
@@ -109,6 +101,25 @@ export const ProtectedRoute = ({
           staffUser={staffUser}
         />
       );
+    }
+  }
+
+  // Tenant module permission check (skip for super admins)
+  if (requiredModule) {
+    if (isEffectivelyStaff && !isAdminSession) {
+      if (staffPlanExpired) {
+        return <AccessDenied message="Your plan has expired. Contact the platform admin to renew." showLogout />;
+      }
+      if (enabledModules && enabledModules[requiredModule] === false) {
+        return <AccessDenied message="This module is not available on your current plan. Contact the platform admin to enable it." />;
+      }
+    } else if (!auth.isSuperAdmin) {
+      if (auth.planExpired) {
+        return <AccessDenied message="Your plan has expired. Contact the platform admin to renew." showLogout />;
+      }
+      if (!auth.isModuleEnabled(requiredModule)) {
+        return <AccessDenied message="This module is not available on your current plan. Contact the platform admin to enable it." />;
+      }
     }
   }
 

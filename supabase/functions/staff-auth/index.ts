@@ -42,6 +42,39 @@ function getStaffEmail(phone: string): string {
   return `staff_${phone}@gym.local`;
 }
 
+async function getStaffTenantAccess(
+  // deno-lint-ignore no-explicit-any
+  supabaseAdmin: any,
+  // deno-lint-ignore no-explicit-any
+  branchAssignments: any[] | null | undefined,
+) {
+  const tenantId = (branchAssignments?.find((branch) => branch?.branches?.tenant_id)?.branches as { tenant_id?: string } | undefined)?.tenant_id
+    || (branchAssignments?.[0]?.branches as { tenant_id?: string } | undefined)?.tenant_id;
+
+  if (!tenantId) {
+    return { enabledModules: {}, planExpired: false };
+  }
+
+  const { data: limits, error } = await supabaseAdmin
+    .from("tenant_limits")
+    .select("features, plan_expiry_date")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+
+  if (error || !limits) {
+    console.warn("staff-auth: failed to resolve tenant limits", error?.message || "No tenant limits found");
+    return { enabledModules: {}, planExpired: false };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return {
+    enabledModules: (limits.features || {}) as Record<string, boolean>,
+    planExpired: Boolean(limits.plan_expiry_date) && new Date(limits.plan_expiry_date) < today,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -219,8 +252,10 @@ Deno.serve(async (req) => {
         // Get branch assignments
         const { data: branchAssignments } = await supabaseAdmin
           .from("staff_branch_assignments")
-          .select("branch_id, is_primary, branches(id, name)")
+          .select("branch_id, is_primary, branches(id, name, tenant_id)")
           .eq("staff_id", staff.id);
+
+        const { enabledModules, planExpired } = await getStaffTenantAccess(supabaseAdmin, branchAssignments);
 
         // Update login attempt to success
         await updateLoginAttempt(supabaseAdmin, phone, null, true);
@@ -286,6 +321,8 @@ Deno.serve(async (req) => {
               can_assign_members_to_slots: false,
               can_view_slot_members: false,
             },
+            enabledModules,
+            planExpired,
             branches: branchAssignments?.map(b => ({
               id: b.branch_id,
               name: (b.branches as unknown as { name: string })?.name,
@@ -352,8 +389,10 @@ Deno.serve(async (req) => {
         const allStaffIds = staffList!.map(s => s.id);
         const { data: branchAssignments } = await supabaseAdmin
           .from("staff_branch_assignments")
-          .select("branch_id, is_primary, branches(id, name)")
+          .select("branch_id, is_primary, branches(id, name, tenant_id)")
           .in("staff_id", allStaffIds);
+
+        const { enabledModules, planExpired } = await getStaffTenantAccess(supabaseAdmin, branchAssignments);
 
         // Log login activity if this is a fresh login (source=login)
         const source = url.searchParams.get("source");
@@ -413,6 +452,8 @@ Deno.serve(async (req) => {
               can_assign_members_to_slots: false,
               can_view_slot_members: false,
             },
+            enabledModules,
+            planExpired,
             branches: branchAssignments?.map(b => ({
               id: b.branch_id,
               name: (b.branches as unknown as { name: string })?.name,

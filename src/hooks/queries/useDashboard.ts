@@ -9,6 +9,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
+import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import * as dashboardApi from "@/api/dashboard";
 
 // Re-export types
@@ -25,13 +26,17 @@ export function useDashboardStats() {
   const branchId = currentBranch?.id;
   const isAuthenticated = isAdmin || isStaffLoggedIn;
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
+  const { assignedMemberIds } = useAssignedMemberIds();
+  const assignedScope = isLimitedAccess
+    ? (assignedMemberIds === null ? "all" : assignedMemberIds.join(",") || "none")
+    : "all";
 
   return useQuery({
-    queryKey: [...queryKeys.dashboardStats(branchId), isLimitedAccess ? "assigned" : "all", staffUser?.id || "admin"],
+    queryKey: [...queryKeys.dashboardStats(branchId), isLimitedAccess ? "assigned" : "all", staffUser?.id || "admin", assignedScope],
     queryFn: () => dashboardApi.fetchDashboardStats(branchId, isLimitedAccess),
     staleTime: STALE_TIMES.REAL_TIME,
     gcTime: GC_TIME,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && (!isLimitedAccess || assignedMemberIds !== undefined),
   });
 }
 
