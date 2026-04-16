@@ -3259,6 +3259,14 @@ export type Database = {
       }
       generate_invoice_number: { Args: { _branch_id: string }; Returns: string }
       generate_slug: { Args: { input_text: string }; Returns: string }
+      get_branch_staff_basic: {
+        Args: { p_branch_id: string }
+        Returns: {
+          full_name: string
+          phone: string
+          staff_id: string
+        }[]
+      }
       get_dashboard_stats: {
         Args: { _branch_id?: string }
         Returns: {
