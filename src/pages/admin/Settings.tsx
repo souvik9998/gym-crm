@@ -966,6 +966,7 @@ const AdminSettings = () => {
   const settingsTabs = [
     { value: "packages", label: "Packages" },
     { value: "registration", label: "Registration" },
+    { value: "assessment", label: "Assessment" },
     { value: "branches", label: "Branches" },
     { value: "holidays", label: "Holidays" },
     { value: "whatsapp", label: "WhatsApp" },
@@ -1052,6 +1053,11 @@ const AdminSettings = () => {
           {/* Registration Fields Tab */}
           <TabsContent value="registration" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
             <RegistrationFieldsSettings />
+          </TabsContent>
+
+          {/* Assessment Fields Tab */}
+          <TabsContent value="assessment" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
+            <AssessmentFieldsSettings />
           </TabsContent>
 
           {/* Packages Tab */}
