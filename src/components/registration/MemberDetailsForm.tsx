@@ -25,6 +25,10 @@ interface MemberDetailsFormProps {
   initialData?: MemberDetailsData | null;
   showPhotoId?: boolean;
   photoIdRequired?: boolean;
+  showEmail?: boolean;
+  emailRequired?: boolean;
+  showOccupation?: boolean;
+  occupationRequired?: boolean;
 }
 
 export interface MemberDetailsData {
@@ -34,11 +38,13 @@ export interface MemberDetailsData {
   address: string;
   gender: string;
   dateOfBirth?: string;
+  email?: string;
+  occupation?: string;
 }
 
 const STORAGE_KEY = "member-details-form";
 
-const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, photoIdRequired = false }: MemberDetailsFormProps) => {
+const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, photoIdRequired = false, showEmail = false, emailRequired = false, showOccupation = false, occupationRequired = false }: MemberDetailsFormProps) => {
   const { branchId } = useParams<{ branchId?: string }>();
   const storageKey = `${STORAGE_KEY}-${branchId || "default"}`;
 
