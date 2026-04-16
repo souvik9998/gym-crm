@@ -677,12 +677,7 @@ Deno.serve(async (req) => {
         }
 
         const ptByMember = new Map<string, any>();
-        const ptData = ptResult.data || [];
-        if (ptData.length > 0) {
-          console.log("[members] PT sample:", JSON.stringify(ptData[0]));
-        }
-        console.log("[members] PT count:", ptData.length, "error:", ptResult.error?.message || "none");
-        for (const pt of ptData) {
+        for (const pt of ptResult.data || []) {
           if (!ptByMember.has(pt.member_id)) {
             ptByMember.set(pt.member_id, pt);
           }
