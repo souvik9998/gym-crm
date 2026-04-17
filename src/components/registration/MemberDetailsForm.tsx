@@ -9,10 +9,8 @@ import { ArrowRight, IdCard, MapPin, User, CalendarDays, Mail, Briefcase } from 
 import { Input } from "@/components/ui/input";
 import { ValidatedInput, InlineError } from "@/components/ui/validated-input";
 import {
-  memberDetailsSchema,
   getPhotoIdSchema,
   validateField,
-  validateForm,
   nameSchema,
   addressSchema,
   sanitize,
@@ -30,6 +28,10 @@ interface MemberDetailsFormProps {
   emailRequired?: boolean;
   showOccupation?: boolean;
   occupationRequired?: boolean;
+  showAddress?: boolean;
+  addressRequired?: boolean;
+  showDateOfBirth?: boolean;
+  dateOfBirthRequired?: boolean;
 }
 
 export interface MemberDetailsData {
@@ -45,7 +47,7 @@ export interface MemberDetailsData {
 
 const STORAGE_KEY = "member-details-form";
 
-const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, photoIdRequired = false, showEmail = false, emailRequired = false, showOccupation = false, occupationRequired = false }: MemberDetailsFormProps) => {
+const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, photoIdRequired = false, showEmail = false, emailRequired = false, showOccupation = false, occupationRequired = false, showAddress = true, addressRequired = true, showDateOfBirth = true, dateOfBirthRequired = true }: MemberDetailsFormProps) => {
   const { branchId } = useParams<{ branchId?: string }>();
   const storageKey = `${STORAGE_KEY}-${branchId || "default"}`;
 
@@ -120,27 +122,66 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
     const sanitizedName = sanitize(fullName);
     const sanitizedAddress = sanitize(address);
 
-    const result = validateForm(memberDetailsSchema, {
-      fullName: sanitizedName,
-      gender,
-      photoIdType,
-      photoIdNumber,
-      address: sanitizedAddress,
-    });
+    const newErrors: FieldErrors = {};
+    const newTouched: Record<string, boolean> = { fullName: true, gender: true };
 
-    if (!result.success) {
-      setErrors(result.errors);
-      setTouched({ fullName: true, gender: true, photoIdType: true, photoIdNumber: true, address: true });
-      return;
+    // Name (always required - locked)
+    const nameErr = validateField(nameSchema, sanitizedName);
+    if (nameErr) newErrors.fullName = nameErr;
+
+    // Gender (always required - locked)
+    if (!gender) newErrors.gender = "Gender is required";
+
+    // Address (conditional)
+    if (showAddress && addressRequired) {
+      newTouched.address = true;
+      const addrErr = validateField(addressSchema, sanitizedAddress);
+      if (addrErr) newErrors.address = addrErr;
     }
 
-    if (photoIdType) {
+    // DOB (conditional)
+    if (showDateOfBirth && dateOfBirthRequired && !dateOfBirth) {
+      newTouched.dateOfBirth = true;
+      newErrors.dateOfBirth = "Date of birth is required";
+    }
+
+    // Email (conditional)
+    if (showEmail && emailRequired) {
+      newTouched.email = true;
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        newErrors.email = "Valid email is required";
+      }
+    }
+
+    // Occupation (conditional)
+    if (showOccupation && occupationRequired && !occupation.trim()) {
+      newTouched.occupation = true;
+      newErrors.occupation = "Occupation is required";
+    }
+
+    // Photo ID (conditional)
+    if (showPhotoId && photoIdRequired) {
+      newTouched.photoIdType = true;
+      newTouched.photoIdNumber = true;
+      if (!photoIdType) {
+        newErrors.photoIdType = "Photo ID type is required";
+      } else {
+        const idError = validateField(getPhotoIdSchema(photoIdType), photoIdNumber);
+        if (idError) newErrors.photoIdNumber = idError;
+      }
+    } else if (showPhotoId && photoIdType) {
+      // Optional but user picked a type — still validate the number they entered
       const idError = validateField(getPhotoIdSchema(photoIdType), photoIdNumber);
       if (idError) {
-        setErrors((prev) => ({ ...prev, photoIdNumber: idError }));
-        setTouched((prev) => ({ ...prev, photoIdNumber: true }));
-        return;
+        newErrors.photoIdNumber = idError;
+        newTouched.photoIdNumber = true;
       }
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setTouched((prev) => ({ ...prev, ...newTouched }));
+      return;
     }
 
     onSubmit({
@@ -170,11 +211,17 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
 
 
 
+  const emailIsValidShape = !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
   const isFormValid =
     fullName.trim().length >= 2 &&
     gender !== "" &&
-    (!showPhotoId || (photoIdType !== "" && photoIdNumber.trim().length > 0)) &&
-    address.trim().length >= 3;
+    (!showPhotoId || !photoIdRequired || (photoIdType !== "" && photoIdNumber.trim().length > 0)) &&
+    (!showAddress || !addressRequired || address.trim().length >= 3) &&
+    (!showDateOfBirth || !dateOfBirthRequired || !!dateOfBirth) &&
+    (!showEmail || !emailRequired || (!!email && emailIsValidShape)) &&
+    emailIsValidShape &&
+    (!showOccupation || !occupationRequired || occupation.trim().length > 0);
 
   const genderOptions = [
     { value: "male", label: "Male" },
@@ -242,13 +289,16 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
           </div>
 
           {/* Date of Birth */}
-          <div className="space-y-2 animate-fade-in" style={{ animationDelay: "150ms" }}>
-            <Label className="flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-accent" />
-              Date of Birth
-            </Label>
-            <DobInput value={dateOfBirth} onChange={setDateOfBirth} />
-          </div>
+          {showDateOfBirth && (
+            <div className="space-y-2 animate-fade-in" style={{ animationDelay: "150ms" }}>
+              <Label className="flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-accent" />
+                Date of Birth {dateOfBirthRequired ? "*" : ""}
+              </Label>
+              <DobInput value={dateOfBirth} onChange={setDateOfBirth} />
+              <InlineError message={touched.dateOfBirth ? errors.dateOfBirth : undefined} />
+            </div>
+          )}
 
           {/* Email */}
           {showEmail && (
@@ -341,25 +391,27 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
           )}
 
           {/* Address */}
-          <div className="space-y-2 animate-fade-in" style={{ animationDelay: "250ms" }}>
-            <Label className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-accent" />
-              Address *
-            </Label>
-            <ValidatedInput
-              value={address}
-              onChange={(e) => {
-                setAddress(e.target.value);
-                if (touched.address) validateSingleField("address", e.target.value);
-              }}
-              onValidate={(v) => {
-                markTouched("address");
-                validateSingleField("address", v);
-              }}
-              placeholder="Enter your full address"
-              error={touched.address ? errors.address : undefined}
-            />
-          </div>
+          {showAddress && (
+            <div className="space-y-2 animate-fade-in" style={{ animationDelay: "250ms" }}>
+              <Label className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-accent" />
+                Address {addressRequired ? "*" : ""}
+              </Label>
+              <ValidatedInput
+                value={address}
+                onChange={(e) => {
+                  setAddress(e.target.value);
+                  if (touched.address) validateSingleField("address", e.target.value);
+                }}
+                onValidate={(v) => {
+                  markTouched("address");
+                  validateSingleField("address", v);
+                }}
+                placeholder="Enter your full address"
+                error={touched.address ? errors.address : undefined}
+              />
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onBack} className="flex-1">
