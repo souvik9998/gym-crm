@@ -223,7 +223,7 @@ export const StaffPermissionsDialog = ({
 
         await logAdminActivity({
           category: "staff",
-          type: "staff_login_granted",
+          type: "staff_password_set",
           description: `Granted login access to "${staff.full_name}"`,
           entityType: "staff",
           entityId: staff.id,
