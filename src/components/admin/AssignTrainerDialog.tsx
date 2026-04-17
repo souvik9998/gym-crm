@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { createMembershipIncomeEntry, calculateTrainerPercentageExpense } from "@/hooks/useLedger";
@@ -78,6 +79,7 @@ export const AssignTrainerDialog = ({
   const [notifyWhatsApp, setNotifyWhatsApp] = useState(false);
   const [isFetchingTrainers, setIsFetchingTrainers] = useState(true);
   const [isFetchingSlots, setIsFetchingSlots] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (open) {
@@ -244,6 +246,22 @@ export const AssignTrainerDialog = ({
         });
       }
 
+      // Record the cash payment so it appears in the Payments tab
+      try {
+        await supabase.from("payments").insert({
+          member_id: memberId,
+          subscription_id: null,
+          amount: totalFee,
+          payment_mode: "cash",
+          status: "success",
+          payment_type: "pt_subscription",
+          branch_id: branchId,
+          notes: `PT subscription cash payment via admin${memberName ? ` for ${memberName}` : ""}`,
+        });
+      } catch (payErr) {
+        console.error("Payment record (PT assign) failed:", payErr);
+      }
+
       // Ledger: PT subscription income + (optional) trainer percentage expense
       try {
         const trainerForLedger = trainers.find(t => t.id === selectedTrainerId);
@@ -325,6 +343,8 @@ export const AssignTrainerDialog = ({
           ? "Trainer assigned successfully"
           : "Trainer replaced successfully"
       );
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
