@@ -717,12 +717,35 @@ export const StaffTrainersTab = ({
             <p className="text-muted-foreground text-center py-8">No trainers added yet</p>
           ) : (
             <div className="space-y-3">
-              {trainers.map((trainer) => (
+              {trainers.map((trainer, idx) => {
+                // Color palette rotated per-trainer for visual variety
+                const palettes = [
+                  { ring: "from-violet-500 to-fuchsia-500", chip: "bg-violet-500/10 text-violet-600 dark:text-violet-300 border-violet-500/20" },
+                  { ring: "from-sky-500 to-cyan-500", chip: "bg-sky-500/10 text-sky-600 dark:text-sky-300 border-sky-500/20" },
+                  { ring: "from-emerald-500 to-teal-500", chip: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-500/20" },
+                  { ring: "from-amber-500 to-orange-500", chip: "bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/20" },
+                  { ring: "from-rose-500 to-pink-500", chip: "bg-rose-500/10 text-rose-600 dark:text-rose-300 border-rose-500/20" },
+                ];
+                const palette = palettes[idx % palettes.length];
+                const initials = trainer.full_name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .join("")
+                  .toUpperCase();
+
+                return (
                 <div
                   key={trainer.id}
-                  className={`p-3 lg:p-4 bg-muted/50 rounded-lg transition-colors duration-150 hover:bg-muted/70 ${isCompact ? '' : 'flex items-center justify-between'}`}
+                  className="group relative overflow-hidden rounded-xl border border-border/60 bg-card hover:border-border hover:shadow-md transition-all duration-300 ease-out hover:-translate-y-0.5 animate-fade-in"
+                  style={{ animationDelay: `${idx * 40}ms`, animationFillMode: "backwards" }}
                 >
+                  {/* Decorative gradient strip */}
+                  <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${palette.ring}`} />
+
                   {editingId === trainer.id ? (
+                    <div className="p-4 lg:p-5 pl-5 lg:pl-6">
                     <div className="flex-1 space-y-3 mr-0 lg:mr-4">
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
