@@ -356,6 +356,7 @@ export const SimpleAttendanceTab = () => {
   };
 
   return (
+    <TooltipProvider delayDuration={150}>
     <div className="space-y-4 animate-fade-in">
       {/* Desktop: Week Nav + Filters + Stats in one row */}
       <div className="hidden lg:flex items-center gap-4">
