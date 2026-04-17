@@ -3257,10 +3257,8 @@ export type Database = {
           member_phone: string
         }[]
       }
-      current_staff_has_all_member_access: { Args: never; Returns: boolean }
       generate_invoice_number: { Args: { _branch_id: string }; Returns: string }
       generate_slug: { Args: { input_text: string }; Returns: string }
-      get_current_staff_branch_ids: { Args: never; Returns: string[] }
       get_dashboard_stats: {
         Args: { _branch_id?: string }
         Returns: {
@@ -3283,25 +3281,8 @@ export type Database = {
           subscription_id: string
         }[]
       }
-      get_staff_by_phone_in_tenant: {
-        Args: { p_phone: string; p_tenant_id: string }
-        Returns: {
-          full_name: string
-          is_active: boolean
-          phone: string
-          role: string
-          staff_id: string
-        }[]
-      }
       get_staff_id: { Args: { _user_id: string }; Returns: string }
       get_staff_id_from_session: { Args: never; Returns: string }
-      get_staff_names_for_branch: {
-        Args: { _branch_id: string }
-        Returns: {
-          full_name: string
-          id: string
-        }[]
-      }
       get_tenant_current_usage: {
         Args: { _tenant_id: string }
         Returns: {
