@@ -275,6 +275,27 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
         } catch (ledgerErr) {
           console.error("Ledger entry (event registration) failed:", ledgerErr);
         }
+
+        // Record the cash payment so it appears in the Payments tab
+        try {
+          const { data: payRow } = await supabase.from("payments").insert({
+            member_id: foundMember?.id || null,
+            amount: amountToPay,
+            payment_mode: "cash",
+            status: "success",
+            payment_type: "event_registration",
+            branch_id: event.branch_id,
+            notes: `Event registration cash payment via admin — ${event.title} (${name.trim()})`,
+          }).select("id").single();
+
+          if (payRow?.id) {
+            await supabase.from("event_registrations")
+              .update({ payment_id: payRow.id })
+              .eq("id", reg.id);
+          }
+        } catch (payErr) {
+          console.error("Payment record (event registration) failed:", payErr);
+        }
       }
     },
     onSuccess: () => {
