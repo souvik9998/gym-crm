@@ -65,6 +65,9 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
       // Resolve personal_trainer → staff via PHONE ONLY.
       // Phone is the single source of truth — name is never used as an identifier.
       // ChangePhoneDialog keeps personal_trainers.phone in sync when staff phone changes.
+      // Resolve trainer→staff mapping. Staff RLS limits direct visibility to self,
+      // so for staff users we fall back to matching personal_trainers.name → staff name
+      // returned by the SECURITY DEFINER RPC. Phone match remains the primary path for admins.
       const ptPhones = ptData.map(pt => pt.phone).filter(Boolean);
       let phoneToStaffId: Record<string, string> = {};
       if (ptPhones.length > 0) {
@@ -76,6 +79,14 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
         for (const s of (staffRows as any[] || [])) {
           if (s.phone) phoneToStaffId[s.phone] = s.id;
         }
+      }
+
+      // Build a name→staff_id fallback map from the RPC (covers colleagues invisible via RLS)
+      const { data: branchStaffNames } = await supabase
+        .rpc("get_staff_names_for_branch" as any, { _branch_id: currentBranch.id });
+      const nameToStaffId: Record<string, string> = {};
+      for (const s of ((branchStaffNames as any[]) || [])) {
+        if (s.full_name) nameToStaffId[s.full_name.trim().toLowerCase()] = s.id;
       }
 
       const resolveStaffId = (pt: { phone: string | null }): string | null =>

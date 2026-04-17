@@ -56,17 +56,16 @@ export function useAttendanceFilters() {
       if (error) throw error;
       if (!data || data.length === 0) return [];
 
-      // Get trainer names from staff table
-      const trainerIds = [...new Set((data as any[]).map((s: any) => s.trainer_id).filter(Boolean))];
+      // Get trainer names via SECURITY DEFINER RPC so staff with all-member access
+      // can see colleague trainer names (RLS on staff table only exposes self).
+      const trainerIds = new Set((data as any[]).map((s: any) => s.trainer_id).filter(Boolean));
       let staffMap: Record<string, string> = {};
-      if (trainerIds.length > 0) {
+      if (trainerIds.size > 0) {
         const { data: staffData } = await supabase
-          .from("staff")
-          .select("id, full_name")
-          .in("id", trainerIds);
+          .rpc("get_staff_names_for_branch" as any, { _branch_id: branchId });
         if (staffData) {
-          for (const s of staffData) {
-            staffMap[s.id] = s.full_name;
+          for (const s of (staffData as any[])) {
+            if (trainerIds.has(s.id)) staffMap[s.id] = s.full_name;
           }
         }
       }

@@ -79,16 +79,15 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
       if (error) throw error;
       if (!slots || slots.length === 0) return [];
 
-      // Get trainer names via direct query
-      const staffIds = (slots as any[]).map((s: any) => s.trainer_id).filter(Boolean);
+      // Get trainer names via SECURITY DEFINER RPC so staff with all-member access
+      // can see colleague trainer names (RLS on staff table only exposes self).
+      const staffIds = new Set((slots as any[]).map((s: any) => s.trainer_id).filter(Boolean));
       let staffMap: Record<string, string> = {};
-      if (staffIds.length > 0) {
+      if (staffIds.size > 0) {
         const { data: staffRecords } = await supabase
-          .from("staff")
-          .select("id, full_name")
-          .in("id", staffIds);
-        for (const s of (staffRecords || [])) {
-          staffMap[s.id] = s.full_name;
+          .rpc("get_staff_names_for_branch" as any, { _branch_id: currentBranch.id });
+        for (const s of ((staffRecords as any[]) || [])) {
+          if (staffIds.has(s.id)) staffMap[s.id] = s.full_name;
         }
       }
 
