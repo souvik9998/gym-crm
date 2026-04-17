@@ -734,14 +734,6 @@ export const StaffTrainersTab = ({
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Phone</Label>
-                          <Input
-                            value={editData.phone}
-                            onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-                            className="h-9"
-                          />
-                        </div>
-                        <div className="space-y-1">
                           <Label className="text-xs">Specialization</Label>
                           <Input
                             value={editData.specialization}
