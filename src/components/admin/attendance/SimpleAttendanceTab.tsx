@@ -170,17 +170,15 @@ export const SimpleAttendanceTab = () => {
     return activeMembers.map((m: any) => ({ memberId: m.id, memberName: m.name, memberPhone: m.phone }));
   }, [activeMembers]);
 
-  const filteredList = useMemo(() => {
-    let list = memberList;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter((m) => m.memberName.toLowerCase().includes(q) || m.memberPhone.includes(q));
-    }
-    return list;
+  // Base list (search applied) — used for stats so cards reflect totals regardless of active filter
+  const searchedList = useMemo(() => {
+    if (!search.trim()) return memberList;
+    const q = search.toLowerCase();
+    return memberList.filter((m) => m.memberName.toLowerCase().includes(q) || m.memberPhone.includes(q));
   }, [memberList, search]);
 
   const stats = useMemo(() => {
-    const source = filteredList;
+    const source = searchedList;
     const total = source.length;
     let present = 0, late = 0, absent = 0;
     source.forEach((m) => {
@@ -190,7 +188,16 @@ export const SimpleAttendanceTab = () => {
       else absent++;
     });
     return { total, present, late, absent };
-  }, [filteredList, localAttendance]);
+  }, [searchedList, localAttendance]);
+
+  // Visible list — applies the status filter card on top of search
+  const filteredList = useMemo(() => {
+    if (statusFilter === "all") return searchedList;
+    return searchedList.filter((m) => {
+      const s = localAttendance.get(m.memberId) || "absent";
+      return s === statusFilter;
+    });
+  }, [searchedList, statusFilter, localAttendance]);
 
   const toggleStatus = useCallback((memberId: string, newStatus: AttendanceStatus) => {
     if (isFutureDate) return;
