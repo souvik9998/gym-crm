@@ -285,13 +285,16 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
           </div>
 
           {/* Date of Birth */}
-          <div className="space-y-2 animate-fade-in" style={{ animationDelay: "150ms" }}>
-            <Label className="flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-accent" />
-              Date of Birth
-            </Label>
-            <DobInput value={dateOfBirth} onChange={setDateOfBirth} />
-          </div>
+          {showDateOfBirth && (
+            <div className="space-y-2 animate-fade-in" style={{ animationDelay: "150ms" }}>
+              <Label className="flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-accent" />
+                Date of Birth {dateOfBirthRequired ? "*" : ""}
+              </Label>
+              <DobInput value={dateOfBirth} onChange={setDateOfBirth} />
+              <InlineError message={touched.dateOfBirth ? errors.dateOfBirth : undefined} />
+            </div>
+          )}
 
           {/* Email */}
           {showEmail && (
@@ -384,25 +387,27 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
           )}
 
           {/* Address */}
-          <div className="space-y-2 animate-fade-in" style={{ animationDelay: "250ms" }}>
-            <Label className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-accent" />
-              Address *
-            </Label>
-            <ValidatedInput
-              value={address}
-              onChange={(e) => {
-                setAddress(e.target.value);
-                if (touched.address) validateSingleField("address", e.target.value);
-              }}
-              onValidate={(v) => {
-                markTouched("address");
-                validateSingleField("address", v);
-              }}
-              placeholder="Enter your full address"
-              error={touched.address ? errors.address : undefined}
-            />
-          </div>
+          {showAddress && (
+            <div className="space-y-2 animate-fade-in" style={{ animationDelay: "250ms" }}>
+              <Label className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-accent" />
+                Address {addressRequired ? "*" : ""}
+              </Label>
+              <ValidatedInput
+                value={address}
+                onChange={(e) => {
+                  setAddress(e.target.value);
+                  if (touched.address) validateSingleField("address", e.target.value);
+                }}
+                onValidate={(v) => {
+                  markTouched("address");
+                  validateSingleField("address", v);
+                }}
+                placeholder="Enter your full address"
+                error={touched.address ? errors.address : undefined}
+              />
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onBack} className="flex-1">
