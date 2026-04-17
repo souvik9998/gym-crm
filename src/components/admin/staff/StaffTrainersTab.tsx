@@ -721,15 +721,6 @@ export const StaffTrainersTab = ({
           ) : (
             <div className="space-y-3">
               {trainers.map((trainer, idx) => {
-                // Color palette rotated per-trainer for visual variety
-                const palettes = [
-                  { ring: "from-violet-500 to-fuchsia-500", chip: "bg-violet-500/10 text-violet-600 dark:text-violet-300 border-violet-500/20" },
-                  { ring: "from-sky-500 to-cyan-500", chip: "bg-sky-500/10 text-sky-600 dark:text-sky-300 border-sky-500/20" },
-                  { ring: "from-emerald-500 to-teal-500", chip: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-500/20" },
-                  { ring: "from-amber-500 to-orange-500", chip: "bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/20" },
-                  { ring: "from-rose-500 to-pink-500", chip: "bg-rose-500/10 text-rose-600 dark:text-rose-300 border-rose-500/20" },
-                ];
-                const palette = palettes[idx % palettes.length];
                 const initials = trainer.full_name
                   .split(" ")
                   .map((n) => n[0])
@@ -737,18 +728,17 @@ export const StaffTrainersTab = ({
                   .slice(0, 2)
                   .join("")
                   .toUpperCase();
+                const isExpanded = expandedId === trainer.id;
+                const isEditing = editingId === trainer.id;
 
                 return (
                 <div
                   key={trainer.id}
-                  className="group relative overflow-hidden rounded-xl border border-border/60 bg-card hover:border-border hover:shadow-md transition-all duration-300 ease-out hover:-translate-y-0.5 animate-fade-in"
+                  className="group rounded-xl border border-border/60 bg-card hover:border-border hover:shadow-sm transition-all duration-200 ease-out animate-fade-in overflow-hidden"
                   style={{ animationDelay: `${idx * 40}ms`, animationFillMode: "backwards" }}
                 >
-                  {/* Decorative gradient strip */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${palette.ring}`} />
-
-                  {editingId === trainer.id ? (
-                    <div className="p-4 lg:p-5 pl-5 lg:pl-6">
+                  {isEditing ? (
+                    <div className="p-4 lg:p-5">
                     <div className="flex-1 space-y-3 mr-0 lg:mr-4">
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
@@ -848,82 +838,90 @@ export const StaffTrainersTab = ({
                     </div>
                     </div>
                   ) : (
-                    /* Modern unified layout (responsive) */
-                    <div className="p-4 lg:p-5 pl-5 lg:pl-6">
-                      <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                        {/* Identity block */}
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <div
-                            className={`flex-shrink-0 w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-gradient-to-br ${palette.ring} text-white font-semibold text-base lg:text-lg flex items-center justify-center shadow-sm ring-2 ring-background transition-transform duration-300 group-hover:scale-105`}
-                          >
+                    <Collapsible open={isExpanded} onOpenChange={(open) => setExpandedId(open ? trainer.id : null)}>
+                      {/* Compact header — always visible */}
+                      <CollapsibleTrigger asChild>
+                        <div className="flex items-center gap-3 p-3 lg:p-4 cursor-pointer hover:bg-muted/40 transition-colors">
+                          {/* Avatar */}
+                          <div className="flex-shrink-0 w-11 h-11 lg:w-12 lg:h-12 rounded-full bg-primary/10 text-primary font-semibold text-sm lg:text-base flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
                             {initials || "T"}
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+
+                          {/* Name + quick badges */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="font-semibold text-foreground text-sm lg:text-base truncate">
                                 {trainer.full_name}
                               </h3>
                               <Badge variant="secondary" className="text-[10px] h-5 px-1.5">Trainer</Badge>
-                              {trainer.auth_user_id && (
-                                <Badge variant="outline" className="text-[10px] h-5 px-1.5 text-primary border-primary/30 bg-primary/5">
-                                  Has Login
-                                </Badge>
-                              )}
                               {!trainer.is_active && (
                                 <Badge className="text-[10px] h-5 px-1.5 bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/10">
                                   Inactive
                                 </Badge>
                               )}
                             </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              {trainer.phone && (
-                                <span className={`inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-0.5 rounded-md border ${palette.chip} font-medium`}>
-                                  📱 {trainer.phone}
-                                </span>
-                              )}
-                              {trainer.specialization && (
-                                <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-0.5 rounded-md border bg-pink-500/10 text-pink-600 dark:text-pink-300 border-pink-500/20 font-medium">
-                                  🎯 {trainer.specialization}
-                                </span>
-                              )}
-                              {trainer.salary_type === "both" && (
-                                <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-0.5 rounded-md border bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/20 font-medium">
-                                  💰 ₹{trainer.monthly_salary}/mo + {trainer.percentage_fee}%
-                                </span>
-                              )}
-                              {trainer.salary_type === "session_based" && trainer.session_fee > 0 && (
-                                <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-0.5 rounded-md border bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/20 font-medium">
-                                  💰 ₹{trainer.session_fee}/session
-                                </span>
-                              )}
-                              {trainer.branch_assignments && trainer.branch_assignments.length > 0 && (
-                                <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-0.5 rounded-md border bg-rose-500/10 text-rose-600 dark:text-rose-300 border-rose-500/20 font-medium">
-                                  📍 {trainer.branch_assignments.map((a) => a.branch_name).join(", ")}
-                                </span>
-                              )}
-                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                              {trainer.phone || "No phone"}
+                              {trainer.specialization && ` · ${trainer.specialization}`}
+                            </p>
                           </div>
-                        </div>
 
-                        {/* Action toolbar */}
-                        <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap lg:flex-shrink-0">
-                          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-muted/60 border border-border/40">
+                          {/* Right cluster: status + chevron */}
+                          <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                             <Switch
                               checked={trainer.is_active}
                               onCheckedChange={(checked) => handleToggle(trainer.id, checked)}
-                              className="data-[state=checked]:bg-emerald-500"
+                              className="data-[state=checked]:bg-primary"
                             />
-                            <span className="text-[11px] font-medium text-muted-foreground hidden sm:inline">
-                              {trainer.is_active ? "Active" : "Off"}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1 p-1 rounded-lg bg-muted/40 border border-border/40">
-                            <StaffWhatsAppButton staff={trainer} />
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-8 w-8 p-0 hover:bg-sky-500/10 hover:text-sky-600 transition-all duration-200 hover:scale-110"
+                              className="h-8 w-8 p-0 hover:bg-muted"
+                              onClick={() => setExpandedId(isExpanded ? null : trainer.id)}
+                              aria-label={isExpanded ? "Collapse" : "Expand"}
+                            >
+                              <ChevronDownIcon
+                                className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+                              />
+                            </Button>
+                          </div>
+                        </div>
+                      </CollapsibleTrigger>
+
+                      {/* Expanded details + actions */}
+                      <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+                        <div className="px-3 lg:px-4 pb-4 pt-1 space-y-3 border-t border-border/40">
+                          {/* Detail chips */}
+                          <div className="flex flex-wrap gap-1.5 pt-3">
+                            {trainer.auth_user_id && (
+                              <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-1 rounded-md border bg-primary/5 text-primary border-primary/20 font-medium">
+                                🔐 Has Login
+                              </span>
+                            )}
+                            {trainer.salary_type === "both" && (
+                              <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-1 rounded-md border bg-muted text-foreground border-border font-medium">
+                                💰 ₹{trainer.monthly_salary}/mo + {trainer.percentage_fee}%
+                              </span>
+                            )}
+                            {trainer.salary_type === "session_based" && trainer.session_fee > 0 && (
+                              <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-1 rounded-md border bg-muted text-foreground border-border font-medium">
+                                💰 ₹{trainer.session_fee}/session
+                              </span>
+                            )}
+                            {trainer.branch_assignments && trainer.branch_assignments.length > 0 && (
+                              <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-1 rounded-md border bg-muted text-foreground border-border font-medium">
+                                📍 {trainer.branch_assignments.map((a) => a.branch_name).join(", ")}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Action toolbar */}
+                          <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                            <StaffWhatsAppButton staff={trainer} />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
                               onClick={() => setBranchAssignmentDialog({ open: true, staff: trainer })}
                               title="Manage Branch Assignments"
                             >
@@ -931,8 +929,8 @@ export const StaffTrainersTab = ({
                             </Button>
                             <Button
                               size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 hover:bg-amber-500/10 hover:text-amber-600 transition-all duration-200 hover:scale-110"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
                               onClick={async () => {
                                 const { data: activities } = await supabase
                                   .from("admin_activity_logs")
@@ -955,8 +953,8 @@ export const StaffTrainersTab = ({
                             </Button>
                             <Button
                               size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 hover:bg-emerald-500/10 hover:text-emerald-600 transition-all duration-200 hover:scale-110"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
                               onClick={() => setPermissionsDialog({ open: true, staff: trainer })}
                               title="Manage Permissions"
                             >
@@ -964,8 +962,8 @@ export const StaffTrainersTab = ({
                             </Button>
                             <Button
                               size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 hover:bg-violet-500/10 hover:text-violet-600 transition-all duration-200 hover:scale-110"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
                               onClick={() => handleEdit(trainer)}
                               title="Edit details"
                             >
@@ -973,8 +971,8 @@ export const StaffTrainersTab = ({
                             </Button>
                             <Button
                               size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 hover:bg-cyan-500/10 hover:text-cyan-600 transition-all duration-200 hover:scale-110"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
                               onClick={() => setChangePhoneDialog({ open: true, staff: trainer })}
                               title="Change mobile number"
                             >
@@ -982,27 +980,28 @@ export const StaffTrainersTab = ({
                             </Button>
                             <Button
                               size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 hover:bg-fuchsia-500/10 hover:text-fuchsia-600 transition-all duration-200 hover:scale-110"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
                               onClick={() => setConversionDialog({ open: true, staff: trainer })}
                               title="Convert to Staff"
                             >
                               <ArrowsRightLeftIcon className="w-4 h-4" />
                             </Button>
+                            <div className="ml-auto">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-105"
+                                onClick={() => handleDelete(trainer.id, trainer.full_name)}
+                                title="Delete trainer"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
-
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-9 w-9 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-110"
-                            onClick={() => handleDelete(trainer.id, trainer.full_name)}
-                            title="Delete trainer"
-                          >
-                            <TrashIcon className="w-4 h-4" />
-                          </Button>
                         </div>
-                      </div>
-                    </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   )}
                 </div>
                 );
