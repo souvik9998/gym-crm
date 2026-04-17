@@ -62,9 +62,23 @@ export const StaffTrainersTab = ({
   isLoading,
   onConversionSuccess,
 }: StaffTrainersTabProps) => {
+  const queryClient = useQueryClient();
   const isCompact = useIsTabletOrBelow();
   const [infoDialog, setInfoDialog] = useState<{ open: boolean; trainer: Staff | null }>({ open: false, trainer: null });
   const [conversionDialog, setConversionDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
+  const [changePhoneDialog, setChangePhoneDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
+
+  // Hard cache bust + refetch — ensures mutations are reflected even when data is cached
+  const refreshAll = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["staff-page-data"], refetchType: "all" }),
+      queryClient.invalidateQueries({ queryKey: ["trainer-filter-list"], refetchType: "all" }),
+      queryClient.invalidateQueries({ queryKey: ["time-slot-members"], refetchType: "all" }),
+      queryClient.invalidateQueries({ queryKey: ["assigned-members"], refetchType: "all" }),
+    ]);
+    onRefresh();
+  };
+
   const [newTrainer, setNewTrainer] = useState({
     full_name: "",
     phone: "",
