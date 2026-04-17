@@ -91,10 +91,20 @@ export const SimpleAttendanceTab = () => {
   const navigateWeek = (dir: "prev" | "next") => {
     const d = new Date(selectedDate + "T00:00:00");
     d.setDate(d.getDate() + (dir === "prev" ? -7 : 7));
-    const iso = d.toISOString().split("T")[0];
-    if (iso > today) return;
+    let iso = d.toISOString().split("T")[0];
+    // Clamp to today so the user always lands on a valid (selectable) date
+    if (iso > today) iso = today;
+    if (iso === selectedDate) return;
     setSelectedDate(iso);
   };
+
+  // Disable "next" only when the next week's Monday is already in the future
+  const canGoNext = (() => {
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() + 7);
+    const nextMonday = getWeekDates(d.toISOString().split("T")[0])[0];
+    return nextMonday <= today;
+  })();
 
   const activeMembers = useMemo(() => {
     return scopedMembers.filter((member) => {
@@ -409,7 +419,7 @@ export const SimpleAttendanceTab = () => {
               );
             })}
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("next")} disabled={weekDates[6] >= today}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("next")} disabled={!canGoNext}>
             <ChevronRightIcon className="w-4 h-4" />
           </Button>
         </div>
@@ -554,7 +564,7 @@ export const SimpleAttendanceTab = () => {
               );
             })}
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("next")} disabled={weekDates[6] >= today}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("next")} disabled={!canGoNext}>
             <ChevronRightIcon className="w-4 h-4" />
           </Button>
         </div>
