@@ -876,6 +876,15 @@ export const StaffTrainersTab = ({
 
                           {/* Inline action toolbar */}
                           <div className="flex items-center gap-1.5 flex-wrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 hover:border-blue-500/50 hover:text-blue-600"
+                              onClick={() => setBranchAssignmentDialog({ open: true, staff: trainer })}
+                              title="Manage Branch Assignments"
+                            >
+                              <BuildingOfficeIcon className="w-4 h-4" />
+                            </Button>
                             {trainer.auth_user_id ? (
                               <>
                                 <StaffWhatsAppButton staff={trainer} />
