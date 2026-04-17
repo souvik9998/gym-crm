@@ -79,7 +79,14 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
   taxSettings?: PublicTaxSettings;
   allowSelfSelectTrainer?: boolean;
 }> {
-  const cacheKey = `public-packages-${branchId || "all"}`;
+  // SECURITY / DATA ISOLATION:
+  // Calling without a branchId would return data across ALL tenants/branches.
+  // Refuse the call to enforce strict tenant isolation in public flows.
+  if (!branchId) {
+    console.warn("[fetchPublicPackages] called without branchId — returning empty result to preserve tenant isolation");
+    return { monthlyPackages: [], customPackages: [] };
+  }
+  const cacheKey = `public-packages-${branchId}`;
   const cached = getCached<{ monthlyPackages: PublicMonthlyPackage[]; customPackages: PublicCustomPackage[]; taxSettings?: PublicTaxSettings; allowSelfSelectTrainer?: boolean }>(cacheKey);
   if (cached) return cached;
 
@@ -123,7 +130,13 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
  * Fetch trainers for public registration (name and fee only)
  */
 export async function fetchPublicTrainers(branchId?: string): Promise<PublicTrainer[]> {
-  const cacheKey = `public-trainers-${branchId || "all"}`;
+  // SECURITY / DATA ISOLATION:
+  // Without branchId the edge function would leak trainers across all gyms.
+  if (!branchId) {
+    console.warn("[fetchPublicTrainers] called without branchId — returning empty result to preserve tenant isolation");
+    return [];
+  }
+  const cacheKey = `public-trainers-${branchId}`;
   const cached = getCached<PublicTrainer[]>(cacheKey);
   if (cached) return cached;
 

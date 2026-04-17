@@ -240,7 +240,7 @@ const Renew = () => {
           ptStartDate={existingPTEndDate && ptStartDate ? ptStartDate : undefined}
           existingMembershipEndDate={existingMembershipEndDate || undefined}
           existingPTEndDate={existingPTEndDate || undefined}
-          branchId={member.branch_id || undefined}
+          branchId={branchId || undefined}
           allowSelfSelectTrainer={allowSelfSelectTrainer}
           allowDailyPass={allowDailyPass}
         />
