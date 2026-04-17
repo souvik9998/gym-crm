@@ -604,17 +604,30 @@ export const StaffOtherTab = ({
         </CardHeader>
         <CardContent className="p-4 lg:p-6 pt-2 lg:pt-0">
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading...</div>
+            <StaffCardSkeleton count={3} />
           ) : staff.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">No staff members added yet</p>
           ) : (
             <div className="space-y-3">
-              {staff.map((member) => (
+              {staff.map((member, idx) => {
+                const initials = member.full_name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .join("")
+                  .toUpperCase();
+                const isExpanded = expandedId === member.id;
+                const isEditing = editingId === member.id;
+
+                return (
                 <div
                   key={member.id}
-                  className={`p-3 lg:p-4 bg-muted/50 rounded-lg transition-colors duration-150 hover:bg-muted/70 ${isCompact ? '' : 'flex items-center justify-between'}`}
+                  className="group rounded-xl border border-border/60 bg-card hover:border-border hover:shadow-sm transition-all duration-200 ease-out animate-fade-in overflow-hidden"
+                  style={{ animationDelay: `${idx * 40}ms`, animationFillMode: "backwards" }}
                 >
-                  {editingId === member.id ? (
+                  {isEditing ? (
+                    <div className="p-4 lg:p-5">
                     <div className="flex-1 space-y-3 mr-0 lg:mr-4">
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
@@ -671,209 +684,164 @@ export const StaffOtherTab = ({
                         </Button>
                       </div>
                     </div>
-                  ) : isCompact ? (
-                    /* Mobile/Tablet compact layout */
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                          <p className="font-medium text-sm truncate">{member.full_name}</p>
-                          <Badge className={`text-[10px] shrink-0 ${getRoleBadgeColor(member.role)}`}>
-                            {ROLE_LABELS[member.role] || member.role}
-                          </Badge>
-                          {!member.is_active && (
-                            <Badge variant="secondary" className="text-[10px] bg-destructive/10 text-destructive shrink-0">Inactive</Badge>
-                          )}
-                          {member.auth_user_id && (
-                            <Badge variant="outline" className="text-[10px] text-primary shrink-0">Has Login</Badge>
-                          )}
-                        </div>
-                        <Switch
-                          checked={member.is_active}
-                          onCheckedChange={(checked) => handleToggle(member.id, checked)}
-                        />
-                      </div>
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                        {member.phone && <span>📱 {member.phone}</span>}
-                        {member.monthly_salary > 0 && <span>💰 ₹{member.monthly_salary}/month</span>}
-                        {member.branch_assignments && member.branch_assignments.length > 0 && (
-                          <span>📍 {member.branch_assignments.map((a) => a.branch_name).join(", ")}</span>
-                        )}
-                      </div>
-                      {/* Action buttons row */}
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <StaffWhatsAppButton staff={member} />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => setBranchAssignmentDialog({ open: true, staff: member })}
-                          title="Manage Branch Assignments"
-                        >
-                          <BuildingOfficeIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={async () => {
-                            const { data: activities } = await supabase
-                              .from("admin_activity_logs")
-                              .select("metadata")
-                              .eq("entity_type", "staff")
-                              .eq("entity_id", member.id)
-                              .eq("activity_type", "staff_password_set")
-                              .order("created_at", { ascending: false })
-                              .limit(1)
-                              .maybeSingle();
-                            if (activities?.metadata && (activities.metadata as any).password) {
-                              setViewPasswordDialog({ open: true, staff: member, password: (activities.metadata as any).password });
-                            } else {
-                              setPasswordDialog({ open: true, staff: member });
-                            }
-                          }}
-                          title={member.auth_user_id ? "View/Update Password" : "Set Password"}
-                        >
-                          <KeyIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => setPermissionsDialog({ open: true, staff: member })}
-                          title="Manage Permissions"
-                        >
-                          <ShieldCheckIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleEdit(member)}
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => setConversionDialog({ open: true, staff: member })}
-                          title="Convert to Trainer"
-                        >
-                          <ArrowsRightLeftIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleDelete(member.id, member.full_name)}
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </Button>
-                      </div>
                     </div>
                   ) : (
-                    /* Desktop layout */
-                    <>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{member.full_name}</p>
-                          <Badge className={`text-xs ${getRoleBadgeColor(member.role)}`}>
-                            {ROLE_LABELS[member.role] || member.role}
-                          </Badge>
-                          {!member.is_active && (
-                            <Badge variant="secondary" className="text-xs">Inactive</Badge>
-                          )}
-                          {member.auth_user_id && (
-                            <Badge variant="outline" className="text-xs text-green-600">Has Login</Badge>
-                          )}
+                    <Collapsible open={isExpanded} onOpenChange={(open) => setExpandedId(open ? member.id : null)}>
+                      {/* Compact header — always visible */}
+                      <CollapsibleTrigger asChild>
+                        <div className="flex items-center gap-3 p-3 lg:p-4 cursor-pointer hover:bg-muted/40 transition-colors">
+                          {/* Avatar */}
+                          <div className="flex-shrink-0 w-11 h-11 lg:w-12 lg:h-12 rounded-full bg-primary/10 text-primary font-semibold text-sm lg:text-base flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
+                            {initials || "S"}
+                          </div>
+
+                          {/* Name + role + quick info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-semibold text-foreground text-sm lg:text-base truncate">
+                                {member.full_name}
+                              </h3>
+                              <Badge className={`text-[10px] h-5 px-1.5 ${getRoleBadgeColor(member.role)}`}>
+                                {ROLE_LABELS[member.role] || member.role}
+                              </Badge>
+                              {!member.is_active && (
+                                <Badge className="text-[10px] h-5 px-1.5 bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/10">
+                                  Inactive
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                              {member.phone || "No phone"}
+                              {member.monthly_salary > 0 && ` · ₹${member.monthly_salary}/mo`}
+                            </p>
+                          </div>
+
+                          {/* Right cluster: status + chevron */}
+                          <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <Switch
+                              checked={member.is_active}
+                              onCheckedChange={(checked) => handleToggle(member.id, checked)}
+                              className="data-[state=checked]:bg-primary"
+                            />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 hover:bg-muted"
+                              onClick={() => setExpandedId(isExpanded ? null : member.id)}
+                              aria-label={isExpanded ? "Collapse" : "Expand"}
+                            >
+                              <ChevronDownIcon
+                                className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+                              />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
-                          {member.phone && <span>📱 {member.phone}</span>}
-                          {member.monthly_salary > 0 && <span>💰 ₹{member.monthly_salary}/month</span>}
-                          {member.branch_assignments && member.branch_assignments.length > 0 && (
-                            <span>
-                              📍 {member.branch_assignments.map((a) => a.branch_name).join(", ")}
-                            </span>
-                          )}
+                      </CollapsibleTrigger>
+
+                      {/* Expanded details + actions */}
+                      <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+                        <div className="px-3 lg:px-4 pb-4 pt-1 space-y-3 border-t border-border/40">
+                          {/* Detail chips */}
+                          <div className="flex flex-wrap gap-1.5 pt-3">
+                            {member.auth_user_id && (
+                              <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-1 rounded-md border bg-primary/5 text-primary border-primary/20 font-medium">
+                                🔐 Has Login
+                              </span>
+                            )}
+                            {member.monthly_salary > 0 && (
+                              <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-1 rounded-md border bg-muted text-foreground border-border font-medium">
+                                💰 ₹{member.monthly_salary}/month
+                              </span>
+                            )}
+                            {member.branch_assignments && member.branch_assignments.length > 0 && (
+                              <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-1 rounded-md border bg-muted text-foreground border-border font-medium">
+                                📍 {member.branch_assignments.map((a) => a.branch_name).join(", ")}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Action toolbar */}
+                          <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                            <StaffWhatsAppButton staff={member} />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
+                              onClick={() => setBranchAssignmentDialog({ open: true, staff: member })}
+                              title="Manage Branch Assignments"
+                            >
+                              <BuildingOfficeIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
+                              onClick={async () => {
+                                const { data: activities } = await supabase
+                                  .from("admin_activity_logs")
+                                  .select("metadata")
+                                  .eq("entity_type", "staff")
+                                  .eq("entity_id", member.id)
+                                  .eq("activity_type", "staff_password_set")
+                                  .order("created_at", { ascending: false })
+                                  .limit(1)
+                                  .maybeSingle();
+                                if (activities?.metadata && (activities.metadata as any).password) {
+                                  setViewPasswordDialog({ open: true, staff: member, password: (activities.metadata as any).password });
+                                } else {
+                                  setPasswordDialog({ open: true, staff: member });
+                                }
+                              }}
+                              title={member.auth_user_id ? "View/Update Password" : "Set Password"}
+                            >
+                              <KeyIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
+                              onClick={() => setPermissionsDialog({ open: true, staff: member })}
+                              title="Manage Permissions"
+                            >
+                              <ShieldCheckIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
+                              onClick={() => handleEdit(member)}
+                              title="Edit details"
+                            >
+                              <PencilIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
+                              onClick={() => setConversionDialog({ open: true, staff: member })}
+                              title="Convert to Trainer"
+                            >
+                              <ArrowsRightLeftIcon className="w-4 h-4" />
+                            </Button>
+                            <div className="ml-auto">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-105"
+                                onClick={() => handleDelete(member.id, member.full_name)}
+                                title="Delete staff"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <StaffWhatsAppButton staff={member} />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setBranchAssignmentDialog({ open: true, staff: member })}
-                          title="Manage Branch Assignments"
-                        >
-                          <BuildingOfficeIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={async () => {
-                            const { data: activities } = await supabase
-                              .from("admin_activity_logs")
-                              .select("metadata")
-                              .eq("entity_type", "staff")
-                              .eq("entity_id", member.id)
-                              .eq("activity_type", "staff_password_set")
-                              .order("created_at", { ascending: false })
-                              .limit(1)
-                              .maybeSingle();
-                            
-                            if (activities?.metadata && (activities.metadata as any).password) {
-                              setViewPasswordDialog({
-                                open: true,
-                                staff: member,
-                                password: (activities.metadata as any).password,
-                              });
-                            } else {
-                              setPasswordDialog({ open: true, staff: member });
-                            }
-                          }}
-                          title={member.auth_user_id ? "View/Update Password" : "Set Password"}
-                        >
-                          <KeyIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setPermissionsDialog({ open: true, staff: member })}
-                          title="Manage Permissions"
-                        >
-                          <ShieldCheckIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEdit(member)}
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setConversionDialog({ open: true, staff: member })}
-                          title="Convert to Trainer"
-                        >
-                          <ArrowsRightLeftIcon className="w-4 h-4" />
-                        </Button>
-                        <Switch
-                          checked={member.is_active}
-                          onCheckedChange={(checked) => handleToggle(member.id, checked)}
-                        />
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDelete(member.id, member.full_name)}
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </>
+                      </CollapsibleContent>
+                    </Collapsible>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
