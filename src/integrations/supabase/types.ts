@@ -3293,6 +3293,13 @@ export type Database = {
       }
       get_staff_id: { Args: { _user_id: string }; Returns: string }
       get_staff_id_from_session: { Args: never; Returns: string }
+      get_staff_names_for_branch: {
+        Args: { _branch_id: string }
+        Returns: {
+          full_name: string
+          id: string
+        }[]
+      }
       get_tenant_current_usage: {
         Args: { _tenant_id: string }
         Returns: {
