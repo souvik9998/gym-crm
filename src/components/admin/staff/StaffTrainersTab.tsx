@@ -103,6 +103,7 @@ export const StaffTrainersTab = ({
   const [isAddingTrainer, setIsAddingTrainer] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<any>({});
+  const [originalEditData, setOriginalEditData] = useState<any>({});
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     title: string;
@@ -359,7 +360,7 @@ export const StaffTrainersTab = ({
     setEditingId(trainer.id);
     // Determine payment_category from salary_type
     const paymentCategory = trainer.salary_type === "session_based" ? "session_basis" : "monthly_percentage";
-    setEditData({
+    const snapshot = {
       full_name: trainer.full_name,
       specialization: trainer.specialization || "",
       id_type: trainer.id_type || "aadhaar",
@@ -369,7 +370,16 @@ export const StaffTrainersTab = ({
       monthly_salary: String(trainer.monthly_salary || 0),
       percentage_fee: String(trainer.percentage_fee || 0),
       session_fee: String(trainer.session_fee || 0),
-    });
+    };
+    setEditData(snapshot);
+    setOriginalEditData(snapshot);
+  };
+
+  // Detect whether any field changed compared to original snapshot
+  const isEditDirty = (): boolean => {
+    if (!editingId) return false;
+    const keys = Object.keys(originalEditData);
+    return keys.some((k) => String(editData?.[k] ?? "") !== String(originalEditData?.[k] ?? ""));
   };
 
   const handleSave = async (id: string) => {
@@ -739,104 +749,141 @@ export const StaffTrainersTab = ({
                   style={{ animationDelay: `${idx * 40}ms`, animationFillMode: "backwards" }}
                 >
                   {isEditing ? (
-                    <div className="p-4 lg:p-5">
-                    <div className="flex-1 space-y-3 mr-0 lg:mr-4">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Name *</Label>
-                          <Input
-                            value={editData.full_name}
-                            onChange={(e) => setEditData({ ...editData, full_name: e.target.value })}
-                            className="h-9"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Specialization</Label>
-                          <Input
-                            value={editData.specialization}
-                            onChange={(e) => setEditData({ ...editData, specialization: e.target.value })}
-                            className="h-9"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Monthly Fee (₹) * (Member charge)</Label>
-                          <Input
-                            type="number"
-                            value={editData.monthly_fee}
-                            onChange={(e) => setEditData({ ...editData, monthly_fee: e.target.value })}
-                            className="h-9"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs">Payment Category *</Label>
-                        <div className="flex gap-4">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              checked={editData.payment_category === "monthly_percentage"}
-                              onChange={() => setEditData({ ...editData, payment_category: "monthly_percentage" })}
-                              className="accent-primary"
-                            />
-                            <span className="text-sm">Monthly + Percentage</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              checked={editData.payment_category === "session_basis"}
-                              onChange={() => setEditData({ ...editData, payment_category: "session_basis" })}
-                              className="accent-primary"
-                            />
-                            <span className="text-sm">Session Basis</span>
-                          </label>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                        {editData.payment_category === "monthly_percentage" && (
-                          <>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Monthly Salary (₹)</Label>
-                              <Input
-                                type="number"
-                                value={editData.monthly_salary}
-                                onChange={(e) => setEditData({ ...editData, monthly_salary: e.target.value })}
-                                className="h-9"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Percentage Fee (%)</Label>
-                              <Input
-                                type="number"
-                                value={editData.percentage_fee}
-                                onChange={(e) => setEditData({ ...editData, percentage_fee: e.target.value })}
-                                className="h-9"
-                              />
-                            </div>
-                          </>
-                        )}
-                        {editData.payment_category === "session_basis" && (
-                          <div className="space-y-1">
-                            <Label className="text-xs">Session Fee (₹) *</Label>
+                    <div className="p-4 lg:p-5 bg-gradient-to-b from-muted/30 to-transparent animate-fade-in">
+                      <div className="flex-1 space-y-4 mr-0 lg:mr-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="space-y-1.5 animate-fade-in" style={{ animationDelay: "0ms", animationFillMode: "backwards" }}>
+                            <Label className="text-xs font-medium text-foreground/80">Name *</Label>
                             <Input
-                              type="number"
-                              value={editData.session_fee}
-                              onChange={(e) => setEditData({ ...editData, session_fee: e.target.value })}
-                              className="h-9"
+                              value={editData.full_name}
+                              onChange={(e) => setEditData({ ...editData, full_name: e.target.value })}
+                              className="h-9 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/40 hover:border-primary/40"
+                              placeholder="Full name"
                             />
                           </div>
-                        )}
+                          <div className="space-y-1.5 animate-fade-in" style={{ animationDelay: "40ms", animationFillMode: "backwards" }}>
+                            <Label className="text-xs font-medium text-foreground/80">Specialization</Label>
+                            <Input
+                              value={editData.specialization}
+                              onChange={(e) => setEditData({ ...editData, specialization: e.target.value })}
+                              className="h-9 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/40 hover:border-primary/40"
+                              placeholder="e.g., Cardio"
+                            />
+                          </div>
+                          <div className="space-y-1.5 animate-fade-in md:col-span-2" style={{ animationDelay: "80ms", animationFillMode: "backwards" }}>
+                            <Label className="text-xs font-medium text-foreground/80">Monthly Fee (₹) * <span className="text-muted-foreground font-normal">(Member charge)</span></Label>
+                            <Input
+                              type="number"
+                              value={editData.monthly_fee}
+                              onChange={(e) => setEditData({ ...editData, monthly_fee: e.target.value })}
+                              className="h-9 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/40 hover:border-primary/40"
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 animate-fade-in" style={{ animationDelay: "120ms", animationFillMode: "backwards" }}>
+                          <Label className="text-xs font-medium text-foreground/80">Payment Category *</Label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { value: "monthly_percentage", label: "Monthly + Percentage" },
+                              { value: "session_basis", label: "Session Basis" },
+                            ].map((opt) => {
+                              const active = editData.payment_category === opt.value;
+                              return (
+                                <button
+                                  type="button"
+                                  key={opt.value}
+                                  onClick={() => setEditData({ ...editData, payment_category: opt.value })}
+                                  className={`relative flex items-center gap-2 rounded-lg border px-3 py-2.5 text-left transition-all duration-200 ease-out hover-scale ${
+                                    active
+                                      ? "border-primary/60 bg-primary/5 shadow-sm ring-1 ring-primary/20"
+                                      : "border-border/60 hover:border-primary/30 hover:bg-muted/40"
+                                  }`}
+                                >
+                                  <span
+                                    className={`flex h-4 w-4 items-center justify-center rounded-full border-2 transition-all duration-200 ${
+                                      active ? "border-primary" : "border-muted-foreground/40"
+                                    }`}
+                                  >
+                                    <span
+                                      className={`h-2 w-2 rounded-full bg-primary transition-all duration-200 ${
+                                        active ? "scale-100 opacity-100" : "scale-0 opacity-0"
+                                      }`}
+                                    />
+                                  </span>
+                                  <span className="text-sm font-medium">{opt.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-fade-in" style={{ animationDelay: "160ms", animationFillMode: "backwards" }} key={editData.payment_category}>
+                          {editData.payment_category === "monthly_percentage" && (
+                            <>
+                              <div className="space-y-1.5 animate-fade-in">
+                                <Label className="text-xs font-medium text-foreground/80">Monthly Salary (₹)</Label>
+                                <Input
+                                  type="number"
+                                  value={editData.monthly_salary}
+                                  onChange={(e) => setEditData({ ...editData, monthly_salary: e.target.value })}
+                                  className="h-9 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/40 hover:border-primary/40"
+                                  placeholder="0"
+                                />
+                              </div>
+                              <div className="space-y-1.5 animate-fade-in" style={{ animationDelay: "60ms", animationFillMode: "backwards" }}>
+                                <Label className="text-xs font-medium text-foreground/80">Percentage Fee (%)</Label>
+                                <Input
+                                  type="number"
+                                  value={editData.percentage_fee}
+                                  onChange={(e) => setEditData({ ...editData, percentage_fee: e.target.value })}
+                                  className="h-9 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/40 hover:border-primary/40"
+                                  placeholder="0"
+                                />
+                              </div>
+                            </>
+                          )}
+                          {editData.payment_category === "session_basis" && (
+                            <div className="space-y-1.5 animate-fade-in">
+                              <Label className="text-xs font-medium text-foreground/80">Session Fee (₹) *</Label>
+                              <Input
+                                type="number"
+                                value={editData.session_fee}
+                                onChange={(e) => setEditData({ ...editData, session_fee: e.target.value })}
+                                className="h-9 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/40 hover:border-primary/40"
+                                placeholder="0"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1 animate-fade-in" style={{ animationDelay: "200ms", animationFillMode: "backwards" }}>
+                          <Button
+                            size="sm"
+                            onClick={() => handleSave(trainer.id)}
+                            disabled={!isEditDirty()}
+                            className="gap-1.5 transition-all duration-200 ease-out hover-scale disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                          >
+                            <CheckIcon className="w-4 h-4" />
+                            Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => { setEditingId(null); setOriginalEditData({}); }}
+                            className="gap-1.5 transition-all duration-200 hover-scale"
+                          >
+                            <XMarkIcon className="w-4 h-4" />
+                            Cancel
+                          </Button>
+                          {isEditDirty() && (
+                            <span className="ml-auto text-[11px] text-amber-600 dark:text-amber-400 animate-fade-in">
+                              Unsaved changes
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => handleSave(trainer.id)} className="gap-1">
-                          <CheckIcon className="w-4 h-4" />
-                          Save
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setEditingId(null)} className="gap-1">
-                          <XMarkIcon className="w-4 h-4" />
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
                     </div>
                   ) : (
                     <Collapsible open={isExpanded} onOpenChange={(open) => setExpandedId(open ? trainer.id : null)}>
