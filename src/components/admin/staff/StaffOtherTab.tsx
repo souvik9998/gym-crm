@@ -415,10 +415,7 @@ export const StaffOtherTab = ({
       branchId: currentBranch?.id,
     });
 
-    onRefresh();
-  };
-
-  const handleDelete = (id: string, name: string) => {
+    await refreshAll();
     setConfirmDialog({
       open: true,
       title: "Delete Staff",
