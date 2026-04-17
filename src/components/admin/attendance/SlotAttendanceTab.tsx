@@ -48,7 +48,7 @@ export const SlotAttendanceTab = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [localAttendance, setLocalAttendance] = useState<Map<string, AttendanceStatus>>(new Map());
-  const [hasChanges, setHasChanges] = useState(false);
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const { assignedMemberIds } = useAssignedMemberIds();
   const { data: scopedMembers = [], isLoading: loadingMembers } = useMembersQuery();
 
@@ -110,7 +110,6 @@ export const SlotAttendanceTab = () => {
     const map = new Map<string, AttendanceStatus>();
     existingRecords.forEach((r: any) => { map.set(r.member_id, r.status as AttendanceStatus); });
     setLocalAttendance(map);
-    setHasChanges(false);
   }, [existingRecords]);
 
   const memberList = useMemo(() => {
@@ -137,55 +136,70 @@ export const SlotAttendanceTab = () => {
     absent: memberList.filter((m) => m.status === "absent").length,
   }), [memberList]);
 
+  // Auto-save a single member status
+  const persistStatus = useCallback(async (memberId: string, status: AttendanceStatus) => {
+    if (!branchId || !selectedSlotId || isFutureDate) return;
+    setSavingIds((prev) => { const n = new Set(prev); n.add(memberId); return n; });
+    try {
+      await supabase
+        .from("daily_attendance").delete()
+        .eq("branch_id", branchId).eq("date", selectedDate).eq("time_slot_id", selectedSlotId)
+        .eq("member_id", memberId);
+      const { error } = await supabase.from("daily_attendance").insert({
+        member_id: memberId, branch_id: branchId, date: selectedDate,
+        status, time_slot_id: selectedSlotId,
+        marked_by: staffUser?.id || null,
+        marked_by_type: isStaffLoggedIn ? "staff" : "admin",
+      });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["daily-attendance-slot", branchId, selectedDate, selectedSlotId] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-history"] });
+    } catch (err: any) {
+      toast({ title: "Couldn't save", description: err.message || "Try again", variant: "destructive" });
+    } finally {
+      setSavingIds((prev) => { const n = new Set(prev); n.delete(memberId); return n; });
+    }
+  }, [branchId, selectedSlotId, selectedDate, isFutureDate, staffUser?.id, isStaffLoggedIn, queryClient]);
+
   const toggleStatus = useCallback((memberId: string, newStatus: AttendanceStatus) => {
     if (isFutureDate) return;
+    const cur = localAttendance.get(memberId) || "absent";
+    const finalStatus: AttendanceStatus = cur === newStatus ? "absent" : newStatus;
+    setLocalAttendance((prev) => { const next = new Map(prev); next.set(memberId, finalStatus); return next; });
+    persistStatus(memberId, finalStatus);
+  }, [isFutureDate, localAttendance, persistStatus]);
+
+  const markAll = useCallback(async (status: AttendanceStatus) => {
+    if (isFutureDate || !branchId || !selectedSlotId) return;
+    const ids = slotMembers.map((m: any) => m.id);
+    if (ids.length === 0) return;
     setLocalAttendance((prev) => {
       const next = new Map(prev);
-      const cur = next.get(memberId) || "absent";
-      next.set(memberId, cur === newStatus ? "absent" : newStatus);
+      ids.forEach((id) => next.set(id, status));
       return next;
     });
-    setHasChanges(true);
-  }, [isFutureDate]);
-
-  const markAll = useCallback((status: AttendanceStatus) => {
-    if (isFutureDate) return;
-    setLocalAttendance((prev) => {
-      const next = new Map(prev);
-      slotMembers.forEach((m: any) => next.set(m.id, status));
-      return next;
-    });
-    setHasChanges(true);
-  }, [slotMembers, isFutureDate]);
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      if (!branchId || !selectedSlotId) throw new Error("No branch/slot selected");
-      if (isFutureDate) throw new Error("Cannot mark attendance for future dates");
-      const { error: deleteError } = await supabase
+    setSavingIds((prev) => { const n = new Set(prev); ids.forEach((id) => n.add(id)); return n; });
+    try {
+      await supabase
         .from("daily_attendance").delete()
         .eq("branch_id", branchId).eq("date", selectedDate).eq("time_slot_id", selectedSlotId);
-      if (deleteError) throw deleteError;
-      const records = memberList.map((m) => ({
-        member_id: m.memberId, branch_id: branchId, date: selectedDate,
-        status: localAttendance.get(m.memberId) || "absent",
+      const records = ids.map((id) => ({
+        member_id: id, branch_id: branchId, date: selectedDate, status,
         time_slot_id: selectedSlotId,
         marked_by: staffUser?.id || null,
         marked_by_type: isStaffLoggedIn ? "staff" : "admin",
       }));
-      const { error: insertError } = await supabase.from("daily_attendance").insert(records);
-      if (insertError) throw insertError;
-    },
-    onSuccess: () => {
-      toast({ title: "Attendance saved", description: `Slot attendance for ${selectedDate} saved.` });
-      setHasChanges(false);
+      const { error } = await supabase.from("daily_attendance").insert(records);
+      if (error) throw error;
+      toast({ title: "Marked all", description: `${ids.length} members marked ${status}.` });
       queryClient.invalidateQueries({ queryKey: ["daily-attendance-slot", branchId, selectedDate, selectedSlotId] });
       queryClient.invalidateQueries({ queryKey: ["attendance-history"] });
-    },
-    onError: (err: any) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    },
-  });
+    } catch (err: any) {
+      toast({ title: "Couldn't mark all", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingIds((prev) => { const n = new Set(prev); ids.forEach((id) => n.delete(id)); return n; });
+    }
+  }, [slotMembers, isFutureDate, branchId, selectedSlotId, selectedDate, staffUser?.id, isStaffLoggedIn, queryClient]);
 
   const isLoading = loadingMembers || loadingRecords;
   const MobileMemberCard = ({ member, idx }: { member: any; idx: number }) => (
@@ -411,23 +425,12 @@ export const SlotAttendanceTab = () => {
             </Card>
           )}
 
-          {/* Save Button */}
-          {filteredList.length > 0 && !isFutureDate && (
-            <div className="sticky bottom-2 z-20 px-1">
-              <Button
-                className={cn(
-                  "w-full h-11 rounded-xl text-sm font-semibold shadow-lg transition-all duration-300 active:scale-[0.98]",
-                  hasChanges ? "bg-primary text-primary-foreground shadow-primary/20" : "bg-muted text-muted-foreground"
-                )}
-                disabled={!hasChanges || saveMutation.isPending}
-                onClick={() => saveMutation.mutate()}
-              >
-                {saveMutation.isPending ? (
-                  <span className="flex items-center gap-2"><ButtonSpinner /> Saving...</span>
-                ) : hasChanges ? (
-                  <span>Save ({stats.present}P · {stats.late}L · {stats.absent}A)</span>
-                ) : "No changes to save"}
-              </Button>
+          {/* Auto-save indicator */}
+          {savingIds.size > 0 && (
+            <div className="sticky bottom-2 z-20 px-1 pointer-events-none">
+              <div className="mx-auto w-fit flex items-center gap-2 px-3 py-1.5 rounded-full bg-foreground/90 text-background text-xs shadow-lg backdrop-blur animate-fade-in">
+                <ButtonSpinner /> Saving…
+              </div>
             </div>
           )}
         </>

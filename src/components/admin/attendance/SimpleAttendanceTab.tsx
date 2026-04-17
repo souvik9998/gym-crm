@@ -68,7 +68,7 @@ export const SimpleAttendanceTab = () => {
   const [selectedDate, setSelectedDate] = useState(today);
   const [search, setSearch] = useState("");
   const [localAttendance, setLocalAttendance] = useState<Map<string, AttendanceStatus>>(new Map());
-  const [hasChanges, setHasChanges] = useState(false);
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "all">("all");
@@ -177,7 +177,6 @@ export const SimpleAttendanceTab = () => {
     const map = new Map<string, AttendanceStatus>();
     existingRecords.forEach((r: any) => { map.set(r.member_id, r.status as AttendanceStatus); });
     setLocalAttendance(map);
-    setHasChanges(false);
   }, [existingRecords]);
 
   const memberList = useMemo((): MemberAttendance[] => {
@@ -213,59 +212,73 @@ export const SimpleAttendanceTab = () => {
     });
   }, [searchedList, statusFilter, localAttendance]);
 
-  const toggleStatus = useCallback((memberId: string, newStatus: AttendanceStatus) => {
-    if (isFutureDate) return;
-    setLocalAttendance((prev) => {
-      const next = new Map(prev);
-      const cur = next.get(memberId) || "absent";
-      next.set(memberId, cur === newStatus ? "absent" : newStatus);
-      return next;
-    });
-    setHasChanges(true);
-  }, [isFutureDate]);
-
-  const markAll = useCallback((status: AttendanceStatus) => {
-    if (isFutureDate) return;
-    setLocalAttendance((prev) => {
-      const next = new Map(prev);
-      filteredList.forEach((member) => next.set(member.memberId, status));
-      return next;
-    });
-    setHasChanges(true);
-  }, [filteredList, isFutureDate]);
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      if (!branchId) throw new Error("No branch selected");
-      if (isFutureDate) throw new Error("Cannot mark attendance for future dates");
-      const targetMemberIds = filteredList.map((member) => member.memberId);
-      if (targetMemberIds.length === 0) return;
-
-      const { error: deleteError } = await supabase
+  // ── Persist a single member's status immediately (auto-save) ──
+  const persistStatus = useCallback(async (memberId: string, status: AttendanceStatus) => {
+    if (!branchId || isFutureDate) return;
+    setSavingIds((prev) => { const n = new Set(prev); n.add(memberId); return n; });
+    try {
+      // Remove existing record (if any) for this member/date/branch with no slot, then insert
+      await supabase
         .from("daily_attendance").delete()
         .eq("branch_id", branchId).eq("date", selectedDate).is("time_slot_id", null)
-        .in("member_id", targetMemberIds);
-      if (deleteError) throw deleteError;
-      const records = filteredList.map((m) => ({
-        member_id: m.memberId, branch_id: branchId, date: selectedDate,
-        status: localAttendance.get(m.memberId) || "absent",
+        .eq("member_id", memberId);
+      const { error } = await supabase.from("daily_attendance").insert({
+        member_id: memberId, branch_id: branchId, date: selectedDate,
+        status, time_slot_id: null,
+        marked_by: staffUser?.id || null,
+        marked_by_type: isStaffLoggedIn ? "staff" : "admin",
+      });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["daily-attendance-week", branchId] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-history"] });
+    } catch (err: any) {
+      toast({ title: "Couldn't save", description: err.message || "Try again", variant: "destructive" });
+    } finally {
+      setSavingIds((prev) => { const n = new Set(prev); n.delete(memberId); return n; });
+    }
+  }, [branchId, isFutureDate, selectedDate, staffUser?.id, isStaffLoggedIn, queryClient]);
+
+  const toggleStatus = useCallback((memberId: string, newStatus: AttendanceStatus) => {
+    if (isFutureDate) return;
+    const cur = localAttendance.get(memberId) || "absent";
+    const finalStatus: AttendanceStatus = cur === newStatus ? "absent" : newStatus;
+    setLocalAttendance((prev) => { const next = new Map(prev); next.set(memberId, finalStatus); return next; });
+    persistStatus(memberId, finalStatus);
+  }, [isFutureDate, localAttendance, persistStatus]);
+
+  const markAll = useCallback(async (status: AttendanceStatus) => {
+    if (isFutureDate || !branchId) return;
+    const ids = filteredList.map((m) => m.memberId);
+    if (ids.length === 0) return;
+    // Optimistic local state
+    setLocalAttendance((prev) => {
+      const next = new Map(prev);
+      ids.forEach((id) => next.set(id, status));
+      return next;
+    });
+    setSavingIds((prev) => { const n = new Set(prev); ids.forEach((id) => n.add(id)); return n; });
+    try {
+      await supabase
+        .from("daily_attendance").delete()
+        .eq("branch_id", branchId).eq("date", selectedDate).is("time_slot_id", null)
+        .in("member_id", ids);
+      const records = ids.map((id) => ({
+        member_id: id, branch_id: branchId, date: selectedDate, status,
         time_slot_id: null as string | null,
         marked_by: staffUser?.id || null,
         marked_by_type: isStaffLoggedIn ? "staff" : "admin",
       }));
-      const { error: insertError } = await supabase.from("daily_attendance").insert(records);
-      if (insertError) throw insertError;
-    },
-    onSuccess: () => {
-      toast({ title: "Attendance saved", description: `Attendance for ${formatShortDate(selectedDate)} saved.` });
-      setHasChanges(false);
+      const { error } = await supabase.from("daily_attendance").insert(records);
+      if (error) throw error;
+      toast({ title: "Marked all", description: `${ids.length} members marked ${status}.` });
       queryClient.invalidateQueries({ queryKey: ["daily-attendance-week", branchId] });
       queryClient.invalidateQueries({ queryKey: ["attendance-history"] });
-    },
-    onError: (err: any) => {
-      toast({ title: "Error saving attendance", description: err.message, variant: "destructive" });
-    },
-  });
+    } catch (err: any) {
+      toast({ title: "Couldn't mark all", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingIds((prev) => { const n = new Set(prev); ids.forEach((id) => n.delete(id)); return n; });
+    }
+  }, [filteredList, isFutureDate, branchId, selectedDate, staffUser?.id, isStaffLoggedIn, queryClient]);
 
   const isLoading = loadingMembers || loadingRecords;
   const formatShortDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
@@ -741,28 +754,12 @@ export const SimpleAttendanceTab = () => {
         </Card>
       )}
 
-      {/* Sticky Save Button */}
-      {filteredList.length > 0 && !isFutureDate && (
-        <div className="sticky bottom-2 z-20 px-1">
-          <Button
-            className={cn(
-              "w-full h-11 lg:h-12 rounded-xl text-sm font-semibold shadow-lg transition-all duration-300 active:scale-[0.98]",
-              hasChanges
-                ? "bg-foreground text-background hover:bg-foreground/90 shadow-foreground/20"
-                : "bg-muted text-muted-foreground"
-            )}
-            disabled={!hasChanges || saveMutation.isPending}
-            onClick={() => saveMutation.mutate()}
-          >
-            {saveMutation.isPending ? (
-              <span className="flex items-center gap-2"><ButtonSpinner /> Saving...</span>
-            ) : hasChanges ? (
-              <span className="flex items-center gap-1.5">
-                Save <span className="hidden sm:inline">Attendance</span>
-                <span className="text-xs opacity-75">({stats.present}P · {stats.late}L · {stats.absent}A)</span>
-              </span>
-            ) : "No changes to save"}
-          </Button>
+      {/* Auto-save status indicator */}
+      {savingIds.size > 0 && (
+        <div className="sticky bottom-2 z-20 px-1 pointer-events-none">
+          <div className="mx-auto w-fit flex items-center gap-2 px-3 py-1.5 rounded-full bg-foreground/90 text-background text-xs shadow-lg backdrop-blur animate-fade-in">
+            <ButtonSpinner /> Saving…
+          </div>
         </div>
       )}
     </div>
