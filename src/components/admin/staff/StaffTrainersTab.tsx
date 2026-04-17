@@ -435,13 +435,12 @@ export const StaffTrainersTab = ({
       branchId: currentBranch?.id,
     });
 
-    // Sync updates to personal_trainers table
-    if (trainer) {
+    // Sync updates to personal_trainers table (matched by stable phone — phone isn't editable here)
+    if (trainer?.phone) {
       await supabase
         .from("personal_trainers")
         .update({
           name: editData.full_name,
-          phone: cleanPhone || null,
           specialization: editData.specialization || null,
           monthly_fee: Number(editData.monthly_fee) || 0,
           monthly_salary: Number(editData.monthly_salary) || 0,
@@ -454,7 +453,7 @@ export const StaffTrainersTab = ({
 
     toast.success("Trainer updated");
     setEditingId(null);
-    onRefresh();
+    await refreshAll();
   };
 
   const handleToggle = async (id: string, isActive: boolean) => {
