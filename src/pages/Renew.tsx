@@ -10,6 +10,7 @@ import PackageSelectionForm, { type PackageSelectionData } from "@/components/re
 import { fetchPublicBranch } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 import PoweredByBadge from "@/components/PoweredByBadge";
+import RegistrationPageSkeleton from "@/components/registration/RegistrationPageSkeleton";
 
 interface Member {
   id: string;
@@ -185,6 +186,11 @@ const Renew = () => {
   };
 
   if (!member) return null;
+
+  // Show skeleton until branch + subscription data resolves
+  if (branchId && !branchInfo) {
+    return <RegistrationPageSkeleton variant="package" />;
+  }
 
   return (
     <div className="min-h-screen bg-background">
