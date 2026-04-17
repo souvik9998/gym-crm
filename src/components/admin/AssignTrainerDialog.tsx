@@ -194,6 +194,13 @@ export const AssignTrainerDialog = ({
       return;
     }
 
+    if (membershipEndDate && new Date(endDate) > new Date(membershipEndDate)) {
+      toast.error("Trainer end date cannot exceed membership end date", {
+        description: `Membership ends on ${new Date(membershipEndDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`,
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       if (mode === "replace" && existingPtId) {
@@ -400,17 +407,53 @@ export const AssignTrainerDialog = ({
           {/* Date & Fee Fields */}
           {showFormFields && (
             <>
+              {membershipEndDate && (
+                <div
+                  className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs animate-fade-in"
+                  style={{ animationDelay: "75ms", animationFillMode: "backwards" }}
+                >
+                  <span className="text-muted-foreground">Member's gym membership ends on </span>
+                  <span className="font-semibold text-amber-700 dark:text-amber-400">
+                    {new Date(membershipEndDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </span>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Trainer end date cannot exceed this.
+                  </p>
+                </div>
+              )}
+
               <div
                 className="grid grid-cols-2 gap-3 animate-fade-in"
                 style={{ animationDelay: "100ms", animationFillMode: "backwards" }}
               >
                 <div className="space-y-1.5">
                   <Label className="text-sm">Start Date</Label>
-                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="transition-all duration-200" />
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    max={membershipEndDate || undefined}
+                    className="transition-all duration-200"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-sm">End Date</Label>
-                  <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="transition-all duration-200" />
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (membershipEndDate && val && new Date(val) > new Date(membershipEndDate)) {
+                        setEndDate(membershipEndDate);
+                        toast.warning("End date capped to membership end date");
+                      } else {
+                        setEndDate(val);
+                      }
+                    }}
+                    min={startDate || undefined}
+                    max={membershipEndDate || undefined}
+                    className="transition-all duration-200"
+                  />
                 </div>
               </div>
 
