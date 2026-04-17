@@ -131,7 +131,7 @@ export const SimpleAttendanceTab = () => {
       if (assignedMemberIds !== null && assignedMemberIds.length === 0) return [];
 
       let query = supabase
-        .from("daily_attendance").select("id, member_id, date, status")
+        .from("daily_attendance").select("id, member_id, date, status, created_at, updated_at")
         .eq("branch_id", branchId)
         .gte("date", weekDates[0])
         .lte("date", weekDates[6])
@@ -149,10 +149,13 @@ export const SimpleAttendanceTab = () => {
   });
 
   const weekLookup = useMemo(() => {
-    const map: Record<string, Record<string, AttendanceStatus>> = {};
+    const map: Record<string, Record<string, { status: AttendanceStatus; markedAt: string | null }>> = {};
     weekRecords.forEach((r: any) => {
       if (!map[r.date]) map[r.date] = {};
-      map[r.date][r.member_id] = r.status as AttendanceStatus;
+      map[r.date][r.member_id] = {
+        status: r.status as AttendanceStatus,
+        markedAt: r.updated_at || r.created_at || null,
+      };
     });
     return map;
   }, [weekRecords]);
