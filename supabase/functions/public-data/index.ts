@@ -101,6 +101,70 @@ Deno.serve(async (req) => {
     const resolvedBranchId = resolvedBranch?.id || (isUUID(branchRef) ? branchRef : null);
 
     switch (action) {
+      case "bootstrap": {
+        // Unified endpoint for registration flow — returns branch + packages + trainers + settings
+        // in ONE round trip instead of 3 separate calls. Used by PackageSelectionForm and Register.
+        if (!branchRef || !resolvedBranch) {
+          return new Response(
+            JSON.stringify({ error: "Branch not found" }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+          );
+        }
+
+        const branchId = resolvedBranch.id;
+
+        const [monthlyRes, customRes, trainersRes, settings] = await Promise.all([
+          supabase
+            .from("monthly_packages")
+            .select("id, months, price, joining_fee")
+            .eq("is_active", true)
+            .eq("branch_id", branchId)
+            .order("months"),
+          supabase
+            .from("custom_packages")
+            .select("id, name, duration_days, price")
+            .eq("is_active", true)
+            .eq("branch_id", branchId)
+            .order("duration_days"),
+          supabase
+            .from("personal_trainers")
+            .select("id, name, monthly_fee")
+            .eq("is_active", true)
+            .eq("branch_id", branchId),
+          getBranchSettings(branchId),
+        ]);
+
+        if (monthlyRes.error || customRes.error || trainersRes.error) {
+          console.error("Bootstrap query error:", monthlyRes.error || customRes.error || trainersRes.error);
+          throw new Error("Failed to fetch registration data");
+        }
+
+        return new Response(
+          JSON.stringify({
+            branch: {
+              id: branchId,
+              name: resolvedBranch.name,
+              logo_url: resolvedBranch.logo_url,
+              slug: resolvedBranch.slug,
+              registrationFieldSettings: settings.registrationFieldSettings,
+              allowSelfSelectTrainer: settings.allowSelfSelectTrainer,
+              allowDailyPass: settings.allowDailyPass,
+            },
+            monthlyPackages: monthlyRes.data || [],
+            customPackages: customRes.data || [],
+            trainers: trainersRes.data || [],
+            taxSettings: {
+              taxRate: settings.taxRate,
+              taxEnabled: settings.taxEnabled,
+              gymGst: settings.gymGst,
+            },
+            allowSelfSelectTrainer: settings.allowSelfSelectTrainer,
+            allowDailyPass: settings.allowDailyPass,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       case "packages": {
         if (!resolvedBranchId) {
           return new Response(
