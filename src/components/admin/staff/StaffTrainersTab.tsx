@@ -478,6 +478,9 @@ export const StaffTrainersTab = ({
     });
 
     await refreshAll();
+  };
+
+  const handleDelete = (id: string, name: string) => {
     setConfirmDialog({
       open: true,
       title: "Delete Trainer",
@@ -502,7 +505,7 @@ export const StaffTrainersTab = ({
         });
 
         toast.success("Trainer deleted");
-        onRefresh();
+        await refreshAll();
       },
     });
   };
