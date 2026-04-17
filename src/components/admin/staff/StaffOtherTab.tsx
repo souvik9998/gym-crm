@@ -416,6 +416,9 @@ export const StaffOtherTab = ({
     });
 
     await refreshAll();
+  };
+
+  const handleDelete = (id: string, name: string) => {
     setConfirmDialog({
       open: true,
       title: "Delete Staff",
@@ -423,7 +426,7 @@ export const StaffOtherTab = ({
       variant: "destructive",
       onConfirm: async () => {
         await supabase.from("staff").delete().eq("id", id);
-        
+
         await logAdminActivity({
           category: "staff",
           type: "staff_deleted",
@@ -435,7 +438,7 @@ export const StaffOtherTab = ({
         });
 
         toast.success("Staff member deleted");
-        onRefresh();
+        await refreshAll();
       },
     });
   };
