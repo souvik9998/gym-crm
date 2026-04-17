@@ -330,6 +330,11 @@ const ExtendPT = () => {
 
   if (!member || !membershipEndDate) return null;
 
+  // Full-page skeleton during initial branch + trainers + PT subscription fetch
+  if (isLoadingData) {
+    return <RegistrationPageSkeleton variant="package" />;
+  }
+
   const validOptionsCount = ptDurationOptions.filter((opt) => opt.isValid).length;
 
   return (

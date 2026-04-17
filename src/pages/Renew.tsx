@@ -187,6 +187,11 @@ const Renew = () => {
 
   if (!member) return null;
 
+  // Show skeleton until branch + subscription data resolves
+  if (branchId && !branchInfo) {
+    return <RegistrationPageSkeleton variant="package" />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Payment Processing Overlay */}
