@@ -188,6 +188,17 @@ const PackageSelectionForm = ({
   }, [branchId]);
 
   const fetchData = async () => {
+    // CRITICAL: Without a branchId we MUST NOT fetch — otherwise the public
+    // edge function would return packages/trainers for ALL branches/tenants,
+    // breaking data isolation across gyms.
+    if (!branchId) {
+      setMonthlyPackages([]);
+      setCustomPackages([]);
+      setTrainers([]);
+      setTaxSettings(null);
+      setIsDataLoading(false);
+      return;
+    }
     setIsDataLoading(true);
     try {
       const [packagesResult, trainersResult] = await Promise.all([
