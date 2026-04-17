@@ -5,9 +5,9 @@
  * No authentication required, but data is strictly limited and read-only.
  * 
  * Endpoints:
- * - GET ?action=packages&branchId=xxx - Get active packages (name, price, duration only)
- * - GET ?action=trainers&branchId=xxx - Get active trainers (name only, no phone/specialization)
- * - GET ?action=branch&branchId=xxx - Get branch info (name only)
+ * - GET ?action=packages&branchId=xxx - Get active packages (supports slug or UUID)
+ * - GET ?action=trainers&branchId=xxx - Get active trainers (supports slug or UUID)
+ * - GET ?action=branch&branchId=xxx - Get branch info + public registration settings (supports slug or UUID)
  */
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -18,17 +18,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUUID(value: string | null): value is string {
+  return !!value && UUID_REGEX.test(value);
+}
+
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Rate limit: 30 requests per minute per IP
   const rateLimited = enforceRateLimit(req, "public-data", 30, 60, corsHeaders);
   if (rateLimited) return rateLimited;
 
-  // Only allow GET requests for public data
   if (req.method !== "GET") {
     return new Response(
       JSON.stringify({ error: "Method not allowed" }),
@@ -39,15 +42,7 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
-    const branchId = url.searchParams.get("branchId");
-
-    // Validate branchId format if provided (UUID format)
-    if (branchId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(branchId)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid branch ID format" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
-    }
+    const branchRef = url.searchParams.get("branchId") || url.searchParams.get("branch") || url.searchParams.get("identifier");
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -58,99 +53,120 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    const resolveBranch = async (identifier: string) => {
+      const column = isUUID(identifier) ? "id" : "slug";
+      const { data, error } = await supabase
+        .from("branches")
+        .select("id, name, logo_url, slug")
+        .eq(column, identifier)
+        .eq("is_active", true)
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error resolving branch:", error);
+        throw new Error("Failed to resolve branch");
+      }
+
+      return data;
+    };
+
+    const getBranchSettings = async (branchId: string) => {
+      const { data, error } = await supabase
+        .from("gym_settings")
+        .select("invoice_tax_rate, invoice_show_gst, gym_gst, registration_field_settings")
+        .eq("branch_id", branchId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching gym settings:", error);
+        throw new Error("Failed to fetch branch settings");
+      }
+
+      const registrationFieldSettings = data?.registration_field_settings && typeof data.registration_field_settings === "object"
+        ? data.registration_field_settings
+        : {};
+
+      return {
+        taxRate: data?.invoice_tax_rate || 0,
+        taxEnabled: data?.invoice_show_gst === true && (data?.invoice_tax_rate || 0) > 0,
+        gymGst: data?.gym_gst || "",
+        registrationFieldSettings,
+        allowSelfSelectTrainer: registrationFieldSettings?.self_select_trainer?.enabled !== false,
+        allowDailyPass: registrationFieldSettings?.daily_pass_enabled?.enabled !== false,
+      };
+    };
+
+    const resolvedBranch = branchRef ? await resolveBranch(branchRef).catch(() => null) : null;
+    const resolvedBranchId = resolvedBranch?.id || (isUUID(branchRef) ? branchRef : null);
+
     switch (action) {
       case "packages": {
-        // Get monthly packages - only safe fields
-        let monthlyQuery = supabase
-          .from("monthly_packages")
-          .select("id, months, price, joining_fee")
-          .eq("is_active", true);
-
-        if (branchId) {
-          monthlyQuery = monthlyQuery.eq("branch_id", branchId);
+        if (!resolvedBranchId) {
+          return new Response(
+            JSON.stringify({ error: "Valid branch identifier required" }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+          );
         }
 
-        const { data: monthlyPackages, error: monthlyError } = await monthlyQuery.order("months");
+        const { data: monthlyPackages, error: monthlyError } = await supabase
+          .from("monthly_packages")
+          .select("id, months, price, joining_fee")
+          .eq("is_active", true)
+          .eq("branch_id", resolvedBranchId)
+          .order("months");
 
         if (monthlyError) {
           console.error("Error fetching monthly packages:", monthlyError);
           throw new Error("Failed to fetch packages");
         }
 
-        // Get custom packages - only safe fields
-        let customQuery = supabase
+        const { data: customPackages, error: customError } = await supabase
           .from("custom_packages")
           .select("id, name, duration_days, price")
-          .eq("is_active", true);
-
-        if (branchId) {
-          customQuery = customQuery.eq("branch_id", branchId);
-        }
-
-        const { data: customPackages, error: customError } = await customQuery.order("duration_days");
+          .eq("is_active", true)
+          .eq("branch_id", resolvedBranchId)
+          .order("duration_days");
 
         if (customError) {
           console.error("Error fetching custom packages:", customError);
           throw new Error("Failed to fetch packages");
         }
 
-        // Also fetch tax settings and trainer self-select setting for this branch
-        let taxRate = 0;
-        let taxEnabled = false;
-        let gymGst = "";
-        let allowSelfSelectTrainer = true;
-
-        if (branchId) {
-          const { data: gymSettings } = await supabase
-            .from("gym_settings")
-            .select("invoice_tax_rate, invoice_show_gst, gym_gst, registration_field_settings")
-            .eq("branch_id", branchId)
-            .maybeSingle();
-
-          if (gymSettings) {
-            taxRate = gymSettings.invoice_tax_rate || 0;
-            taxEnabled = gymSettings.invoice_show_gst === true && taxRate > 0;
-            gymGst = gymSettings.gym_gst || "";
-            
-            // Parse self_select_trainer from registration_field_settings
-            const fieldSettings = gymSettings.registration_field_settings;
-            if (fieldSettings && typeof fieldSettings === "object" && fieldSettings.self_select_trainer) {
-              allowSelfSelectTrainer = fieldSettings.self_select_trainer.enabled !== false;
-            }
-          }
-        }
+        const settings = await getBranchSettings(resolvedBranchId);
 
         return new Response(
           JSON.stringify({
             monthlyPackages: monthlyPackages || [],
             customPackages: customPackages || [],
-            taxSettings: { taxRate, taxEnabled, gymGst },
-            allowSelfSelectTrainer,
+            taxSettings: {
+              taxRate: settings.taxRate,
+              taxEnabled: settings.taxEnabled,
+              gymGst: settings.gymGst,
+            },
+            allowSelfSelectTrainer: settings.allowSelfSelectTrainer,
+            allowDailyPass: settings.allowDailyPass,
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       case "tax-settings": {
-        if (!branchId) {
+        if (!resolvedBranchId) {
           return new Response(
             JSON.stringify({ taxSettings: { taxRate: 0, taxEnabled: false, gymGst: "" } }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
 
-        const { data: taxData } = await supabase
-          .from("gym_settings")
-          .select("invoice_tax_rate, invoice_show_gst, gym_gst")
-          .eq("branch_id", branchId)
-          .maybeSingle();
+        const settings = await getBranchSettings(resolvedBranchId);
 
         return new Response(
           JSON.stringify({
             taxSettings: {
-              taxRate: taxData?.invoice_tax_rate || 0,
-              taxEnabled: (taxData?.invoice_show_gst === true) && (taxData?.invoice_tax_rate || 0) > 0,
-              gymGst: taxData?.gym_gst || "",
+              taxRate: settings.taxRate,
+              taxEnabled: settings.taxEnabled,
+              gymGst: settings.gymGst,
             },
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -158,26 +174,25 @@ Deno.serve(async (req) => {
       }
 
       case "trainers": {
-        // Get trainers - ONLY name, id, and monthly_fee for public registration
-        // NO phone, specialization, or other sensitive info
-        let trainersQuery = supabase
-          .from("personal_trainers")
-          .select("id, name, monthly_fee")
-          .eq("is_active", true);
-
-        if (branchId) {
-          trainersQuery = trainersQuery.eq("branch_id", branchId);
+        if (!resolvedBranchId) {
+          return new Response(
+            JSON.stringify({ error: "Valid branch identifier required" }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+          );
         }
 
-        const { data: trainers, error: trainersError } = await trainersQuery;
+        const { data: trainers, error: trainersError } = await supabase
+          .from("personal_trainers")
+          .select("id, name, monthly_fee")
+          .eq("is_active", true)
+          .eq("branch_id", resolvedBranchId);
 
         if (trainersError) {
           console.error("Error fetching trainers:", trainersError);
           throw new Error("Failed to fetch trainers");
         }
 
-        // Return sanitized trainer data
-        const safeTrainers = (trainers || []).map(t => ({
+        const safeTrainers = (trainers || []).map((t) => ({
           id: t.id,
           name: t.name,
           monthly_fee: t.monthly_fee,
@@ -190,45 +205,35 @@ Deno.serve(async (req) => {
       }
 
       case "branch": {
-        if (!branchId) {
-          return new Response(
-            JSON.stringify({ error: "Branch ID required" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-          );
-        }
-
-        // Get branch info - ONLY name for public display
-        const { data: branch, error: branchError } = await supabase
-          .from("branches")
-          .select("id, name, logo_url")
-          .eq("id", branchId)
-          .eq("is_active", true)
-          .is("deleted_at", null)
-          .maybeSingle();
-
-        if (branchError) {
-          console.error("Error fetching branch:", branchError);
-          throw new Error("Failed to fetch branch info");
-        }
-
-        if (!branch) {
+        if (!branchRef || !resolvedBranch) {
           return new Response(
             JSON.stringify({ error: "Branch not found" }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
           );
         }
 
+        const settings = await getBranchSettings(resolvedBranch.id);
+
         return new Response(
-          JSON.stringify({ branch: { id: branch.id, name: branch.name, logo_url: branch.logo_url } }),
+          JSON.stringify({
+            branch: {
+              id: resolvedBranch.id,
+              name: resolvedBranch.name,
+              logo_url: resolvedBranch.logo_url,
+              slug: resolvedBranch.slug,
+              registrationFieldSettings: settings.registrationFieldSettings,
+              allowSelfSelectTrainer: settings.allowSelfSelectTrainer,
+              allowDailyPass: settings.allowDailyPass,
+            },
+          }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       case "default-branch": {
-        // Get the default branch for redirects
         const { data: branch, error: branchError } = await supabase
           .from("branches")
-          .select("id, name, logo_url")
+          .select("id, name, logo_url, slug")
           .eq("is_active", true)
           .is("deleted_at", null)
           .order("is_default", { ascending: false })
@@ -249,7 +254,7 @@ Deno.serve(async (req) => {
         }
 
         return new Response(
-          JSON.stringify({ branch: { id: branch.id, name: branch.name, logo_url: branch.logo_url } }),
+          JSON.stringify({ branch: { id: branch.id, name: branch.name, logo_url: branch.logo_url, slug: branch.slug } }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }

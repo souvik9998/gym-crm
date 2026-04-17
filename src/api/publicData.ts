@@ -6,7 +6,7 @@
  * Includes sessionStorage caching to avoid redundant API calls.
  */
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
+import { SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
 
 export interface PublicMonthlyPackage {
   id: string;
@@ -32,18 +32,33 @@ export interface PublicBranch {
   id: string;
   name: string;
   logo_url?: string | null;
+  slug?: string | null;
+  registrationFieldSettings?: Record<string, any>;
+  allowSelfSelectTrainer?: boolean;
+  allowDailyPass?: boolean;
 }
 
-// Cache duration: 5 minutes
 const CACHE_TTL = 5 * 60 * 1000;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// One-time cleanup: purge previously-poisoned cache entries that mixed
-// data across all branches (cache key suffix "-all"). These were caused
-// by callers invoking fetch helpers without a branchId.
 try {
-  if (typeof window !== "undefined" && !sessionStorage.getItem("__public-data-cache-purged-v1")) {
+  if (typeof window !== "undefined" && !sessionStorage.getItem("__public-data-cache-purged-v2")) {
     ["public-packages-all", "public-trainers-all"].forEach((k) => sessionStorage.removeItem(k));
-    sessionStorage.setItem("__public-data-cache-purged-v1", "1");
+    Object.keys(sessionStorage)
+      .filter((key) => key.startsWith("branch-info-"))
+      .forEach((key) => {
+        try {
+          const raw = sessionStorage.getItem(key);
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          if (!parsed?.id || !UUID_REGEX.test(parsed.id)) {
+            sessionStorage.removeItem(key);
+          }
+        } catch {
+          sessionStorage.removeItem(key);
+        }
+      });
+    sessionStorage.setItem("__public-data-cache-purged-v2", "1");
   }
 } catch { /* ignore */ }
 
@@ -80,41 +95,38 @@ export interface PublicTaxSettings {
   gymGst: string;
 }
 
-/**
- * Fetch packages for public registration (minimal data only)
- */
 export async function fetchPublicPackages(branchId?: string): Promise<{
   monthlyPackages: PublicMonthlyPackage[];
   customPackages: PublicCustomPackage[];
   taxSettings?: PublicTaxSettings;
   allowSelfSelectTrainer?: boolean;
+  allowDailyPass?: boolean;
 }> {
-  // SECURITY / DATA ISOLATION:
-  // Calling without a branchId would return data across ALL tenants/branches.
-  // Refuse the call to enforce strict tenant isolation in public flows.
   if (!branchId) {
     console.warn("[fetchPublicPackages] called without branchId — returning empty result to preserve tenant isolation");
     return { monthlyPackages: [], customPackages: [] };
   }
   const cacheKey = `public-packages-${branchId}`;
-  const cached = getCached<{ monthlyPackages: PublicMonthlyPackage[]; customPackages: PublicCustomPackage[]; taxSettings?: PublicTaxSettings; allowSelfSelectTrainer?: boolean }>(cacheKey);
+  const cached = getCached<{
+    monthlyPackages: PublicMonthlyPackage[];
+    customPackages: PublicCustomPackage[];
+    taxSettings?: PublicTaxSettings;
+    allowSelfSelectTrainer?: boolean;
+    allowDailyPass?: boolean;
+  }>(cacheKey);
   if (cached) return cached;
 
   try {
-    const params = new URLSearchParams({ action: "packages" });
-    if (branchId) params.append("branchId", branchId);
+    const params = new URLSearchParams({ action: "packages", branchId });
 
-    const response = await fetch(
-      `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      }
-    );
+    const response = await fetch(`${getEdgeFunctionUrl("public-data")}?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -127,6 +139,7 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
       customPackages: data.customPackages || [],
       taxSettings: data.taxSettings || undefined,
       allowSelfSelectTrainer: data.allowSelfSelectTrainer !== false,
+      allowDailyPass: data.allowDailyPass !== false,
     };
     setCache(cacheKey, result);
     return result;
@@ -136,12 +149,7 @@ export async function fetchPublicPackages(branchId?: string): Promise<{
   }
 }
 
-/**
- * Fetch trainers for public registration (name and fee only)
- */
 export async function fetchPublicTrainers(branchId?: string): Promise<PublicTrainer[]> {
-  // SECURITY / DATA ISOLATION:
-  // Without branchId the edge function would leak trainers across all gyms.
   if (!branchId) {
     console.warn("[fetchPublicTrainers] called without branchId — returning empty result to preserve tenant isolation");
     return [];
@@ -151,20 +159,16 @@ export async function fetchPublicTrainers(branchId?: string): Promise<PublicTrai
   if (cached) return cached;
 
   try {
-    const params = new URLSearchParams({ action: "trainers" });
-    if (branchId) params.append("branchId", branchId);
+    const params = new URLSearchParams({ action: "trainers", branchId });
 
-    const response = await fetch(
-      `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      }
-    );
+    const response = await fetch(`${getEdgeFunctionUrl("public-data")}?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -181,28 +185,22 @@ export async function fetchPublicTrainers(branchId?: string): Promise<PublicTrai
   }
 }
 
-/**
- * Fetch branch info for public display (name only)
- */
-export async function fetchPublicBranch(branchId: string): Promise<PublicBranch | null> {
-  const cacheKey = `public-branch-${branchId}`;
+export async function fetchPublicBranch(branchIdentifier: string): Promise<PublicBranch | null> {
+  const cacheKey = `public-branch-${branchIdentifier}`;
   const cached = getCached<PublicBranch>(cacheKey);
   if (cached) return cached;
 
   try {
-    const params = new URLSearchParams({ action: "branch", branchId });
+    const params = new URLSearchParams({ action: "branch", branchId: branchIdentifier });
 
-    const response = await fetch(
-      `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      }
-    );
+    const response = await fetch(`${getEdgeFunctionUrl("public-data")}?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    });
 
     if (!response.ok) {
       if (response.status === 404) return null;
@@ -220,9 +218,6 @@ export async function fetchPublicBranch(branchId: string): Promise<PublicBranch 
   }
 }
 
-/**
- * Fetch default branch for redirects
- */
 export async function fetchDefaultBranch(): Promise<PublicBranch | null> {
   const cacheKey = "public-default-branch";
   const cached = getCached<PublicBranch>(cacheKey);
@@ -231,17 +226,14 @@ export async function fetchDefaultBranch(): Promise<PublicBranch | null> {
   try {
     const params = new URLSearchParams({ action: "default-branch" });
 
-    const response = await fetch(
-      `${getEdgeFunctionUrl("public-data")}?${params.toString()}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      }
-    );
+    const response = await fetch(`${getEdgeFunctionUrl("public-data")}?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    });
 
     if (!response.ok) {
       if (response.status === 404) return null;
