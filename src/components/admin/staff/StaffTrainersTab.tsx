@@ -895,8 +895,18 @@ export const StaffTrainersTab = ({
                           variant="outline"
                           className="h-8 w-8 p-0"
                           onClick={() => handleEdit(trainer)}
+                          title="Edit details"
                         >
                           <PencilIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setChangePhoneDialog({ open: true, staff: trainer })}
+                          title="Change mobile number"
+                        >
+                          <DevicePhoneMobileIcon className="w-4 h-4" />
                         </Button>
                         <Button
                           size="sm"
