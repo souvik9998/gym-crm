@@ -357,7 +357,6 @@ export const StaffTrainersTab = ({
     const paymentCategory = trainer.salary_type === "session_based" ? "session_basis" : "monthly_percentage";
     setEditData({
       full_name: trainer.full_name,
-      phone: trainer.phone,
       specialization: trainer.specialization || "",
       id_type: trainer.id_type || "aadhaar",
       id_number: trainer.id_number || "",
@@ -376,30 +375,11 @@ export const StaffTrainersTab = ({
     }
 
     const trainer = trainers.find((t) => t.id === id);
-    const cleanPhone = editData.phone.replace(/\D/g, "").replace(/^0/, "");
-
-    // Check if phone is being changed and if new phone already exists
-    if (cleanPhone !== trainer?.phone) {
-      const { data: existingStaff } = await supabase
-        .from("staff")
-        .select("id")
-        .eq("phone", cleanPhone)
-        .neq("id", id)
-        .maybeSingle();
-
-      if (existingStaff) {
-        toast.error("Phone number already in use", {
-          description: "Another staff member is already registered with this phone number.",
-        });
-        return;
-      }
-    }
 
     const { error } = await supabase
       .from("staff")
       .update({
         full_name: editData.full_name,
-        phone: cleanPhone,
         specialization: editData.specialization || null,
         id_type: editData.id_type || null,
         id_number: editData.id_number || null,
@@ -416,7 +396,7 @@ export const StaffTrainersTab = ({
     }
 
     // Filter out metadata fields and only include fields that are being updated
-    const fieldsToLog = ['full_name', 'phone', 'specialization', 'id_type', 'id_number', 'salary_type', 'monthly_salary', 'session_fee', 'percentage_fee'];
+    const fieldsToLog = ['full_name', 'specialization', 'id_type', 'id_number', 'salary_type', 'monthly_salary', 'session_fee', 'percentage_fee'];
     const oldValueFiltered = trainer 
       ? Object.fromEntries(
           fieldsToLog
