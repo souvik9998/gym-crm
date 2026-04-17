@@ -103,6 +103,7 @@ export const StaffTrainersTab = ({
   const [isAddingTrainer, setIsAddingTrainer] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<any>({});
+  const [originalEditData, setOriginalEditData] = useState<any>({});
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     title: string;
@@ -359,7 +360,7 @@ export const StaffTrainersTab = ({
     setEditingId(trainer.id);
     // Determine payment_category from salary_type
     const paymentCategory = trainer.salary_type === "session_based" ? "session_basis" : "monthly_percentage";
-    setEditData({
+    const snapshot = {
       full_name: trainer.full_name,
       specialization: trainer.specialization || "",
       id_type: trainer.id_type || "aadhaar",
@@ -369,7 +370,16 @@ export const StaffTrainersTab = ({
       monthly_salary: String(trainer.monthly_salary || 0),
       percentage_fee: String(trainer.percentage_fee || 0),
       session_fee: String(trainer.session_fee || 0),
-    });
+    };
+    setEditData(snapshot);
+    setOriginalEditData(snapshot);
+  };
+
+  // Detect whether any field changed compared to original snapshot
+  const isEditDirty = (): boolean => {
+    if (!editingId) return false;
+    const keys = Object.keys(originalEditData);
+    return keys.some((k) => String(editData?.[k] ?? "") !== String(originalEditData?.[k] ?? ""));
   };
 
   const handleSave = async (id: string) => {
