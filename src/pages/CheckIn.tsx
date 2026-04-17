@@ -14,7 +14,8 @@ import {
 } from "@/api/attendance";
 import { supabase } from "@/integrations/supabase/client";
 import PoweredByBadge from "@/components/PoweredByBadge";
-import { resolveBranch, isUUID } from "@/lib/slugResolver";
+import { fetchPublicBranch } from "@/api/publicData";
+import { isUUID } from "@/lib/slugResolver";
 
 type CheckInStatus = "loading" | "login" | "success" | "checked_out" | "expired" | "duplicate" | "device_mismatch" | "not_found" | "error";
 
@@ -34,13 +35,11 @@ const CheckIn = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
 
-  // Resolve slug to UUID if needed
   useEffect(() => {
-    if (branchParam && !isUUID(branchParam)) {
-      resolveBranch(branchParam).then((b) => {
-        if (b) setBranchId(b.id);
-      });
-    }
+    if (!branchParam || isUUID(branchParam)) return;
+    fetchPublicBranch(branchParam).then((branch) => {
+      if (branch?.id) setBranchId(branch.id);
+    });
   }, [branchParam]);
 
   const processResult = useCallback((result: any) => {
