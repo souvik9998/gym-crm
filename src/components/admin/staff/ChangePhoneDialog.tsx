@@ -119,8 +119,8 @@ export const ChangePhoneDialog = ({
 
       await logAdminActivity({
         category: "staff",
-        type: "staff_phone_changed",
-        description: `Changed mobile number for "${staff.full_name}"`,
+        type: "staff_updated",
+        description: `Changed mobile number for "${staff.full_name}" (${oldPhone} → ${cleaned})`,
         entityType: "staff",
         entityId: staff.id,
         entityName: staff.full_name,
