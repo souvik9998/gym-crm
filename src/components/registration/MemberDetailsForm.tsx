@@ -140,9 +140,21 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
     }
 
     // DOB (conditional)
-    if (showDateOfBirth && dateOfBirthRequired && !dateOfBirth) {
+    if (showDateOfBirth) {
       newTouched.dateOfBirth = true;
-      newErrors.dateOfBirth = "Date of birth is required";
+      if (dateOfBirthRequired && !dateOfBirth) {
+        newErrors.dateOfBirth = "Date of birth is required";
+      } else if (dateOfBirth) {
+        const [y, m, d] = dateOfBirth.split("-").map((s) => parseInt(s, 10));
+        const maxYear = new Date().getFullYear() - 10;
+        if (!y || !m || !d) {
+          newErrors.dateOfBirth = "Enter a valid date in DD/MM/YYYY format";
+        } else if (y < 1925) {
+          newErrors.dateOfBirth = "Year must be 1925 or later";
+        } else if (y > maxYear) {
+          newErrors.dateOfBirth = "You must be at least 10 years old";
+        }
+      }
     }
 
     // Email (conditional)

@@ -92,7 +92,6 @@ export const DobInput = ({ value, onChange, className, error, onValidityChange }
     if (clean.length === 2 && (num < 1 || num > 31)) return;
     const next = { ...parts, day: clean };
     setParts(next);
-    if (touched) setInternalError(validateParts(next.day, next.month, next.year));
     emitChange(next.day, next.month, next.year);
     if (clean.length === 2) monthRef.current?.focus();
   };
@@ -103,7 +102,6 @@ export const DobInput = ({ value, onChange, className, error, onValidityChange }
     if (clean.length === 2 && (num < 1 || num > 12)) return;
     const next = { ...parts, month: clean };
     setParts(next);
-    if (touched) setInternalError(validateParts(next.day, next.month, next.year));
     emitChange(next.day, next.month, next.year);
     if (clean.length === 2) yearRef.current?.focus();
   };
@@ -112,7 +110,6 @@ export const DobInput = ({ value, onChange, className, error, onValidityChange }
     const clean = val.replace(/\D/g, "").slice(0, 4);
     const next = { ...parts, year: clean };
     setParts(next);
-    if (touched) setInternalError(validateParts(next.day, next.month, next.year));
     emitChange(next.day, next.month, next.year);
   };
 
@@ -136,12 +133,10 @@ export const DobInput = ({ value, onChange, className, error, onValidityChange }
   const handleBlur = (field: "day" | "month" | "year") => {
     setFocused(null);
     // Auto-pad single-digit day/month on blur (e.g. "2" → "02")
-    let next = parts;
     if (field === "day" || field === "month") {
-      next = padField(field);
+      padField(field);
     }
-    setTouched(true);
-    setInternalError(validateParts(next.day, next.month, next.year));
+    // Do NOT show internal error on blur — only on submit (via external `error` prop)
   };
 
   const handleKeyDown = (
