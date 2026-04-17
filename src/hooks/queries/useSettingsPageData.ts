@@ -57,9 +57,12 @@ export function useSettingsPageData() {
   });
 
   return {
-    settings: data?.settings || null,
-    monthlyPackages: data?.monthlyPackages || [],
-    customPackages: data?.customPackages || [],
+    settings: data?.settings ?? null,
+    // Return undefined when data hasn't loaded yet so consumers can distinguish
+    // "not loaded" from "loaded but empty". Returning [] would let one-time
+    // sync effects mistakenly capture an empty array before real data arrives.
+    monthlyPackages: data?.monthlyPackages,
+    customPackages: data?.customPackages,
     isLoading,
     refetch,
   };
