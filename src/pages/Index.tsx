@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Phone, ArrowRight, Shield, Clock, CreditCard, Dumbbell, UserPlus, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
-import { fetchPublicBranch, fetchDefaultBranch } from "@/api/publicData";
+import { fetchPublicBranch, fetchDefaultBranch, fetchRegistrationBootstrap } from "@/api/publicData";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import { phoneSchema, validateField, validateForm } from "@/lib/validation";
 import { z } from "zod";
@@ -68,7 +68,11 @@ const Index = () => {
 
     const resolve = async () => {
       setIsBranchLoading(true);
-      const branch = await fetchPublicBranch(branchSlug);
+      // Use the unified bootstrap call — fetches branch + packages + trainers
+      // in one round trip and warms caches for downstream pages (Register,
+      // PackageSelectionForm) so they render instantly.
+      const bootstrap = await fetchRegistrationBootstrap(branchSlug);
+      const branch = bootstrap?.branch ?? (await fetchPublicBranch(branchSlug));
       if (cancelled) return;
 
       if (branch?.id && UUID_REGEX.test(branch.id)) {
