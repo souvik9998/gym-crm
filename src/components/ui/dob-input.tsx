@@ -136,12 +136,10 @@ export const DobInput = ({ value, onChange, className, error, onValidityChange }
   const handleBlur = (field: "day" | "month" | "year") => {
     setFocused(null);
     // Auto-pad single-digit day/month on blur (e.g. "2" → "02")
-    let next = parts;
     if (field === "day" || field === "month") {
-      next = padField(field);
+      padField(field);
     }
-    setTouched(true);
-    setInternalError(validateParts(next.day, next.month, next.year));
+    // Do NOT show internal error on blur — only on submit (via external `error` prop)
   };
 
   const handleKeyDown = (
