@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
+import { createMembershipIncomeEntry, calculateTrainerPercentageExpense } from "@/hooks/useLedger";
 import {
   Dialog,
   DialogContent,
@@ -391,7 +392,7 @@ export const TimeSlotDetailDialog = ({
 
       const monthlyFee = ptProfile?.monthly_fee || 0;
 
-      await supabase.from("pt_subscriptions").insert({
+      const { data: insertedPt } = await supabase.from("pt_subscriptions").insert({
         member_id: transferConfirm.memberId,
         personal_trainer_id: trainerPtId,
         branch_id: branchId,
@@ -401,7 +402,31 @@ export const TimeSlotDetailDialog = ({
         total_fee: months * monthlyFee,
         status: "active",
         time_slot_id: slot.id,
-      });
+      }).select("id").single();
+
+      // Ledger: PT subscription income + trainer percentage expense
+      try {
+        await createMembershipIncomeEntry(
+          months * monthlyFee,
+          "pt_subscription",
+          `PT subscription — ${slot.trainer_name} for ${transferConfirm.name} (transferred)`,
+          transferConfirm.memberId,
+          undefined,
+          undefined,
+          branchId,
+        );
+        await calculateTrainerPercentageExpense(
+          trainerPtId,
+          months * monthlyFee,
+          transferConfirm.memberId,
+          undefined,
+          insertedPt?.id,
+          transferConfirm.name,
+          branchId,
+        );
+      } catch (ledgerErr) {
+        console.error("Ledger entry (PT transfer) failed:", ledgerErr);
+      }
 
       await logAdminActivity({
         category: "time_slots",
