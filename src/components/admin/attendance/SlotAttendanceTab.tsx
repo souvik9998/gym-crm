@@ -48,7 +48,7 @@ export const SlotAttendanceTab = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [localAttendance, setLocalAttendance] = useState<Map<string, AttendanceStatus>>(new Map());
-  const [hasChanges, setHasChanges] = useState(false);
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const { assignedMemberIds } = useAssignedMemberIds();
   const { data: scopedMembers = [], isLoading: loadingMembers } = useMembersQuery();
 
