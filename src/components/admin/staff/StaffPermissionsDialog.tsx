@@ -9,8 +9,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/sonner";
 import { Staff } from "@/pages/admin/StaffManagement";
@@ -19,6 +21,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   EyeIcon,
+  EyeSlashIcon,
   PencilSquareIcon,
   BookOpenIcon,
   CurrencyRupeeIcon,
@@ -28,7 +31,18 @@ import {
   UserGroupIcon,
   ChatBubbleLeftRightIcon,
   CalendarDaysIcon,
+  KeyIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
+
+const generatePassword = (length = 8): string => {
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let password = "";
+  for (let i = 0; i < length; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+};
 
 interface StaffPermissionsDialogProps {
   open: boolean;
@@ -103,6 +117,22 @@ export const StaffPermissionsDialog = ({
     can_view_slot_members: false,
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [grantMode, setGrantMode] = useState(false);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [sendWhatsApp, setSendWhatsApp] = useState(true);
+
+  const hasLoginAccess = !!(staff as any)?.auth_user_id;
+  const showGrantGate = !!staff && !hasLoginAccess && !grantMode;
+
+  useEffect(() => {
+    if (open) {
+      setGrantMode(false);
+      setPassword("");
+      setShowPassword(false);
+      setSendWhatsApp(true);
+    }
+  }, [open, staff?.id]);
 
   useEffect(() => {
     if (staff?.permissions) {
@@ -147,11 +177,67 @@ export const StaffPermissionsDialog = ({
     }
   }, [staff]);
 
+  const handleGeneratePassword = () => {
+    setPassword(generatePassword());
+    setShowPassword(true);
+  };
+
   const handleSave = async () => {
     if (!staff) return;
+
+    if (grantMode && !hasLoginAccess) {
+      if (!password) {
+        toast.error("Please enter or generate a password");
+        return;
+      }
+      if (password.length < 6) {
+        toast.error("Password must be at least 6 characters");
+        return;
+      }
+      if (sendWhatsApp && !staff.phone) {
+        toast.error("Cannot send via WhatsApp — staff has no phone number");
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
+      // Step 1: Provision login if granting access
+      if (grantMode && !hasLoginAccess) {
+        const { data: authData, error: authError } = await supabase.functions.invoke(
+          "staff-auth?action=set-password",
+          {
+            body: {
+              staffId: staff.id,
+              password,
+              sendWhatsApp: sendWhatsApp && !!staff.phone,
+            },
+          }
+        );
+        if (authError) throw authError;
+        const authResp = typeof authData === "string" ? JSON.parse(authData) : authData;
+        if (!authResp?.success) {
+          throw new Error(authResp?.error || "Failed to grant login access");
+        }
+
+        await logAdminActivity({
+          category: "staff",
+          type: "staff_password_set",
+          description: `Granted login access to "${staff.full_name}"`,
+          entityType: "staff",
+          entityId: staff.id,
+          entityName: staff.full_name,
+          metadata: {
+            phone: staff.phone,
+            role: staff.role,
+            credentials_sent_via_whatsapp: sendWhatsApp && !!staff.phone,
+          },
+          branchId: currentBranch?.id,
+        });
+      }
+
+      // Step 2: Save permissions
       const { data: existing } = await supabase
         .from("staff_permissions")
         .select("id")
@@ -181,11 +267,20 @@ export const StaffPermissionsDialog = ({
         branchId: currentBranch?.id,
       });
 
-      toast.success("Permissions updated successfully");
+      if (grantMode && !hasLoginAccess) {
+        toast.success("Login access granted", {
+          description: sendWhatsApp && staff.phone
+            ? "Credentials sent via WhatsApp and permissions saved"
+            : "Permissions saved — share the password with the staff member",
+        });
+      } else {
+        toast.success("Permissions updated successfully");
+      }
+
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {
-      toast.error("Failed to update permissions", { description: error.message });
+      toast.error("Failed to save", { description: error.message });
     } finally {
       setIsLoading(false);
     }
@@ -199,13 +294,57 @@ export const StaffPermissionsDialog = ({
     }));
   };
 
+  // GATE: Trainer/staff without login access — show "Grant Access" CTA first
+  if (showGrantGate) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md p-4">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-base flex items-center gap-2">
+              <LockClosedIcon className="w-4 h-4 text-muted-foreground" />
+              Login Access Required
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {staff?.full_name} doesn't have login access yet. Grant access to configure permissions.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-1">
+              <p><strong>Name:</strong> {staff?.full_name}</p>
+              <p><strong>Phone:</strong> {staff?.phone || "—"}</p>
+              <p><strong>Role:</strong> {staff?.role}</p>
+            </div>
+
+            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-700 dark:text-amber-400">
+              Without login access, permission toggles have no effect. Grant access to set a password,
+              configure permissions, and optionally notify the staff member via WhatsApp.
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button onClick={() => setGrantMode(true)} className="gap-2">
+              <KeyIcon className="w-4 h-4" />
+              Grant Access
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg p-4 max-h-[85vh] overflow-y-auto">
         <DialogHeader className="pb-2">
-          <DialogTitle className="text-base">Staff Permissions</DialogTitle>
+          <DialogTitle className="text-base">
+            {grantMode && !hasLoginAccess ? "Grant Login Access & Permissions" : "Staff Permissions"}
+          </DialogTitle>
           <DialogDescription className="text-xs">
-            Configure what {staff?.full_name} can access and manage
+            {grantMode && !hasLoginAccess
+              ? `Set credentials and configure what ${staff?.full_name} can access`
+              : `Configure what ${staff?.full_name} can access and manage`}
           </DialogDescription>
         </DialogHeader>
 
@@ -214,6 +353,60 @@ export const StaffPermissionsDialog = ({
             <p><strong>Name:</strong> {staff?.full_name}</p>
             <p><strong>Role:</strong> {staff?.role}</p>
           </div>
+
+          {/* Login Provisioning (only when granting fresh access) */}
+          {grantMode && !hasLoginAccess && (
+            <>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Login Credentials</p>
+              <div className="space-y-3 p-3 bg-muted/30 rounded-lg border border-dashed">
+                <div className="space-y-2">
+                  <Label htmlFor="grant-password" className="text-sm">Password *</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        id="grant-password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter or generate password"
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={handleGeneratePassword}>
+                      Generate
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">Minimum 6 characters. Staff will log in with their phone number.</p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="grant-send-wa"
+                    checked={sendWhatsApp}
+                    onCheckedChange={(c) => setSendWhatsApp(c === true)}
+                    disabled={!staff?.phone}
+                  />
+                  <Label htmlFor="grant-send-wa" className="text-sm cursor-pointer flex items-center gap-1.5">
+                    <ChatBubbleLeftRightIcon className="w-4 h-4 text-emerald-600" />
+                    Notify via WhatsApp
+                  </Label>
+                </div>
+                {!staff?.phone && (
+                  <p className="text-[11px] text-destructive">No phone number on file — WhatsApp delivery unavailable.</p>
+                )}
+              </div>
+
+              <Separator />
+            </>
+          )}
 
           {/* Core Permissions */}
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Core Permissions</p>
@@ -276,9 +469,17 @@ export const StaffPermissionsDialog = ({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          {grantMode && !hasLoginAccess ? (
+            <Button variant="outline" onClick={() => setGrantMode(false)}>Back</Button>
+          ) : (
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          )}
           <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading ? "Saving..." : "Save Permissions"}
+            {isLoading
+              ? "Saving..."
+              : grantMode && !hasLoginAccess
+                ? "Grant Access & Save"
+                : "Save Permissions"}
           </Button>
         </DialogFooter>
       </DialogContent>
