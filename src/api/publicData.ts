@@ -214,6 +214,8 @@ export async function fetchPublicBranch(branchIdentifier: string): Promise<Publi
     return branch;
   } catch (error) {
     console.error("Error fetching public branch:", error);
+    return null;
+  }
 }
 
 export interface RegistrationBootstrap {
@@ -269,8 +271,8 @@ export async function fetchRegistrationBootstrap(branchIdentifier: string): Prom
 
     setCache(cacheKey, result);
 
-    // Also warm individual caches so older callers (e.g. Index page using
-    // fetchPublicBranch by slug) instantly get the data without an extra request.
+    // Warm individual caches so older callers (Index page, Register page) get
+    // instant hits without firing additional requests.
     setCache(`public-branch-${branchIdentifier}`, result.branch);
     if (result.branch.id && result.branch.id !== branchIdentifier) {
       setCache(`public-branch-${result.branch.id}`, result.branch);
@@ -290,6 +292,8 @@ export async function fetchRegistrationBootstrap(branchIdentifier: string): Prom
     return null;
   }
 }
+
+export async function fetchDefaultBranch(): Promise<PublicBranch | null> {
   const cacheKey = "public-default-branch";
   const cached = getCached<PublicBranch>(cacheKey);
   if (cached) return cached;
