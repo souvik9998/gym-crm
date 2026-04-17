@@ -38,6 +38,8 @@ interface RegistrationFieldSettings {
   occupation?: FieldSetting;
   emergency_contact_1?: FieldSetting;
   emergency_contact_2?: FieldSetting;
+  address?: FieldSetting;
+  date_of_birth?: FieldSetting;
 }
 
 const Register = () => {
@@ -345,6 +347,10 @@ const Register = () => {
             emailRequired={fieldSettings?.email?.required || false}
             showOccupation={fieldSettings?.occupation?.enabled || false}
             occupationRequired={fieldSettings?.occupation?.required || false}
+            showAddress={fieldSettings?.address?.enabled !== false}
+            addressRequired={fieldSettings?.address?.required ?? false}
+            showDateOfBirth={fieldSettings?.date_of_birth?.enabled !== false}
+            dateOfBirthRequired={fieldSettings?.date_of_birth?.required ?? true}
           />
         )}
 
