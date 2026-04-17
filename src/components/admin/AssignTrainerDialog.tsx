@@ -343,6 +343,8 @@ export const AssignTrainerDialog = ({
           ? "Trainer assigned successfully"
           : "Trainer replaced successfully"
       );
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
