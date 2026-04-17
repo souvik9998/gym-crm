@@ -283,6 +283,25 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Ledger: record event registration income
+    try {
+      if (amount > 0) {
+        await supabase.from("ledger_entries").insert({
+          entry_type: "income",
+          category: "event_registration",
+          description: `Event registration: ${name} (online payment)`,
+          amount,
+          entry_date: new Date().toISOString().split("T")[0],
+          member_id: memberId || null,
+          payment_id: paymentRecordId,
+          branch_id: branchId,
+          is_auto_generated: true,
+        });
+      }
+    } catch (ledgerErr) {
+      console.error("Ledger entry (event payment) failed:", ledgerErr);
+    }
+
     // Send WhatsApp notification
     try {
       const { data: eventData } = await supabase

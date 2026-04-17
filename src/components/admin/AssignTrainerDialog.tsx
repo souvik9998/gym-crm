@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { createMembershipIncomeEntry, calculateTrainerPercentageExpense } from "@/hooks/useLedger";
 import {
   Dialog,
   DialogContent,
@@ -227,7 +228,11 @@ export const AssignTrainerDialog = ({
         insertData.time_slot_id = selectedTimeSlotId;
       }
 
-      const { error } = await supabase.from("pt_subscriptions").insert(insertData);
+      const { data: insertedPt, error } = await supabase
+        .from("pt_subscriptions")
+        .insert(insertData)
+        .select("id")
+        .single();
       if (error) throw error;
 
       if (selectedTimeSlotId) {
@@ -237,6 +242,32 @@ export const AssignTrainerDialog = ({
           branch_id: branchId,
           assigned_by: "admin",
         });
+      }
+
+      // Ledger: PT subscription income + (optional) trainer percentage expense
+      try {
+        const trainerForLedger = trainers.find(t => t.id === selectedTrainerId);
+        const trainerLabel = trainerForLedger?.name || "Trainer";
+        await createMembershipIncomeEntry(
+          totalFee,
+          "pt_subscription",
+          `PT subscription — ${trainerLabel}${memberName ? ` for ${memberName}` : ""}`,
+          memberId,
+          undefined,
+          undefined,
+          branchId,
+        );
+        await calculateTrainerPercentageExpense(
+          selectedTrainerId,
+          totalFee,
+          memberId,
+          undefined,
+          insertedPt?.id,
+          memberName,
+          branchId,
+        );
+      } catch (ledgerErr) {
+        console.error("Ledger entry (PT assign) failed:", ledgerErr);
       }
 
       if (notifyWhatsApp && memberName) {

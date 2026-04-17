@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
+import { createMembershipIncomeEntry, calculateTrainerPercentageExpense } from "@/hooks/useLedger";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -359,7 +360,7 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
 
       const monthlyFee = ptProfile?.monthly_fee || 0;
 
-      await supabase.from("pt_subscriptions").insert({
+      const { data: insertedPt } = await supabase.from("pt_subscriptions").insert({
         member_id: transferConfirm.memberId,
         personal_trainer_id: trainerPtId,
         branch_id: currentBranch.id,
@@ -369,7 +370,31 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
         total_fee: months * monthlyFee,
         status: "active",
         time_slot_id: selectedSlot,
-      });
+      }).select("id").single();
+
+      // Ledger: PT subscription income + trainer percentage expense
+      try {
+        await createMembershipIncomeEntry(
+          months * monthlyFee,
+          "pt_subscription",
+          `PT subscription — ${trainerName} for ${transferConfirm.name} (transferred)`,
+          transferConfirm.memberId,
+          undefined,
+          undefined,
+          currentBranch.id,
+        );
+        await calculateTrainerPercentageExpense(
+          trainerPtId,
+          months * monthlyFee,
+          transferConfirm.memberId,
+          undefined,
+          insertedPt?.id,
+          transferConfirm.name,
+          currentBranch.id,
+        );
+      } catch (ledgerErr) {
+        console.error("Ledger entry (PT transfer) failed:", ledgerErr);
+      }
 
       toast.success(`${transferConfirm.name} transferred to ${trainerName}`, {
         description: `Previous PT with ${transferConfirm.fromTrainer} deactivated`,
