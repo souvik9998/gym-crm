@@ -2411,27 +2411,6 @@ export type Database = {
         }
         Relationships: []
       }
-      staff_auth_lookup: {
-        Row: {
-          auth_user_id: string | null
-          is_active: boolean
-          staff_id: string
-          updated_at: string
-        }
-        Insert: {
-          auth_user_id?: string | null
-          is_active?: boolean
-          staff_id: string
-          updated_at?: string
-        }
-        Update: {
-          auth_user_id?: string | null
-          is_active?: boolean
-          staff_id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       staff_branch_assignments: {
         Row: {
           branch_id: string
@@ -3278,12 +3257,8 @@ export type Database = {
           member_phone: string
         }[]
       }
-      current_staff_has_all_member_access: { Args: never; Returns: boolean }
       generate_invoice_number: { Args: { _branch_id: string }; Returns: string }
       generate_slug: { Args: { input_text: string }; Returns: string }
-      get_current_staff_branch_ids: { Args: never; Returns: string[] }
-      get_current_staff_id: { Args: never; Returns: string }
-      get_current_staff_tenant_id: { Args: never; Returns: string }
       get_dashboard_stats: {
         Args: { _branch_id?: string }
         Returns: {
