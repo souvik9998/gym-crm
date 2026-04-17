@@ -614,17 +614,29 @@ export const SimpleAttendanceTab = () => {
                   {weekDates.map((d, i) => {
                     const isSelected = d === selectedDate;
                     const isToday = d === today;
+                    const isFuture = d > today;
                     return (
-                      <th key={d} className={cn("text-center text-[11px] font-medium px-1 py-2 min-w-[60px]",
+                      <th key={d} className={cn("text-center text-[11px] font-medium px-1 py-2 min-w-[60px] transition-colors",
                         isSelected ? "text-primary bg-primary/5" : "text-muted-foreground"
                       )}>
-                        <div className="flex flex-col items-center">
+                        <button
+                          type="button"
+                          disabled={isFuture}
+                          onClick={() => { if (!isFuture) setSelectedDate(d); }}
+                          title={isFuture ? "Future date" : `Select ${formatFullDate(d)}`}
+                          className={cn(
+                            "flex flex-col items-center w-full rounded-md py-1 transition-all duration-200",
+                            !isFuture && "hover:bg-primary/10 hover:text-primary cursor-pointer active:scale-95",
+                            isFuture && "opacity-40 cursor-not-allowed",
+                            isSelected && "bg-primary/10"
+                          )}
+                        >
                           <span className="uppercase text-[10px]">{DAY_LABELS_FULL[i]}</span>
-                          <span className={cn("text-xs font-bold mt-0.5 w-5 h-5 rounded-full flex items-center justify-center",
+                          <span className={cn("text-xs font-bold mt-0.5 w-5 h-5 rounded-full flex items-center justify-center transition-colors",
                             isToday && !isSelected ? "bg-primary/10 text-primary" : "",
-                            isSelected ? "bg-primary text-primary-foreground" : ""
+                            isSelected ? "bg-primary text-primary-foreground shadow-sm" : ""
                           )}>{formatDayNum(d)}</span>
-                        </div>
+                        </button>
                       </th>
                     );
                   })}
