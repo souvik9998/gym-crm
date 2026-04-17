@@ -69,6 +69,7 @@ export const StaffTrainersTab = ({
   const [infoDialog, setInfoDialog] = useState<{ open: boolean; trainer: Staff | null }>({ open: false, trainer: null });
   const [conversionDialog, setConversionDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
   const [changePhoneDialog, setChangePhoneDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Hard cache bust + refetch — ensures mutations are reflected even when data is cached
   const refreshAll = async () => {
