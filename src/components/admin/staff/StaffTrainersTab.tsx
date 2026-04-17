@@ -477,10 +477,7 @@ export const StaffTrainersTab = ({
       branchId: currentBranch?.id,
     });
 
-    onRefresh();
-  };
-
-  const handleDelete = (id: string, name: string) => {
+    await refreshAll();
     setConfirmDialog({
       open: true,
       title: "Delete Trainer",
