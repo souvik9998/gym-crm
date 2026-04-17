@@ -70,6 +70,7 @@ export const SimpleAttendanceTab = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "all">("all");
   const { assignedMemberIds } = useAssignedMemberIds();
   const { allSlots } = useAttendanceFilters();
   const { data: scopedMembers = [], isLoading: loadingMembers } = useMembersQuery();
