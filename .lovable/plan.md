@@ -1,76 +1,75 @@
 
+## Goal
+Allow staff with `member_access_type = 'all'` to read other staff rows (so trainer filters & time slot dropdowns show colleagues), without breaking the existing restrictive RLS that prevents recursion or data leakage.
 
-## Problem
+## Investigation Summary
+- Current `staff` SELECT RLS limits visibility to self (`auth_user_id = auth.uid()`).
+- The previous attempt at a colleague-visibility policy caused infinite recursion (`staff` policy referenced `staff` again).
+- We already have `get_current_staff_branch_ids()` pattern available — a `SECURITY DEFINER` function bypasses RLS and avoids recursion.
+- Permission flag lives in `staff_permissions.member_access_type` (`'all'` vs `'assigned'`).
 
-When adding a trainer/staff, the app checks if the phone number exists in the `staff` table **globally across all tenants**. This means a staff member registered under a different admin's gym triggers the "Staff Already Registered" dialog incorrectly. The check should only apply within the same admin's tenant (same gym account).
+## Approach
+Add a **recursion-safe SECURITY DEFINER helper** + a **narrow, additive RLS policy** on `public.staff` that grants SELECT only to staff who:
+1. Are active, AND
+2. Have `member_access_type = 'all'` in `staff_permissions`, AND
+3. Share at least one branch with the target staff row.
 
-**Root causes:**
-1. **Frontend queries** in `StaffTrainersTab.tsx` and `StaffOtherTab.tsx` query `staff` table by phone without tenant scoping
-2. **RLS on `staff` table** allows any admin to see all staff globally — no tenant isolation
-3. **DB trigger** `check_staff_phone_branch_uniqueness` only checks per-branch, not per-tenant (this is fine for branch-level, but the frontend global check is the real issue)
+This is purely additive — existing policies (self-view, super_admin, gym owner) remain untouched.
 
-## Plan
-
-### 1. Create a tenant-scoped DB function for staff phone lookup
-
-Create a `SECURITY DEFINER` function `get_staff_by_phone_in_tenant(p_phone text, p_tenant_id uuid)` that returns staff records only within the given tenant (via `staff_branch_assignments → branches.tenant_id`).
-
+### Migration
 ```sql
-CREATE OR REPLACE FUNCTION public.get_staff_by_phone_in_tenant(p_phone text, p_tenant_id uuid)
-RETURNS TABLE(staff_id uuid, full_name text, phone text, role text, is_active boolean)
+-- Helper: branches the current auth user's staff record is assigned to
+CREATE OR REPLACE FUNCTION public.get_current_staff_branch_ids()
+RETURNS SETOF uuid
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
 AS $$
-  SELECT DISTINCT s.id, s.full_name, s.phone, s.role::text, s.is_active
+  SELECT sba.branch_id
   FROM public.staff s
-  JOIN public.staff_branch_assignments sba ON s.id = sba.staff_id
-  JOIN public.branches b ON sba.branch_id = b.id
-  WHERE s.phone = p_phone AND b.tenant_id = p_tenant_id;
+  JOIN public.staff_branch_assignments sba ON sba.staff_id = s.id
+  WHERE s.auth_user_id = auth.uid() AND s.is_active = true
 $$;
+
+-- Helper: does the current auth user's staff record have member_access_type = 'all'?
+CREATE OR REPLACE FUNCTION public.current_staff_has_all_member_access()
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.staff s
+    JOIN public.staff_permissions sp ON sp.staff_id = s.id
+    WHERE s.auth_user_id = auth.uid()
+      AND s.is_active = true
+      AND sp.member_access_type = 'all'
+  )
+$$;
+
+-- Additive policy: staff with all-access can see colleagues in shared branches
+CREATE POLICY "Staff with all-access can view branch colleagues"
+ON public.staff
+FOR SELECT
+TO authenticated
+USING (
+  public.current_staff_has_all_member_access()
+  AND EXISTS (
+    SELECT 1
+    FROM public.staff_branch_assignments tb
+    WHERE tb.staff_id = staff.id
+      AND tb.branch_id IN (SELECT public.get_current_staff_branch_ids())
+  )
+);
 ```
 
-### 2. Update `StaffTrainersTab.tsx` — Add trainer flow
+### Why this is safe
+- Both helpers are `SECURITY DEFINER` → they bypass RLS internally, so no recursion when the policy on `staff` queries `staff`.
+- Policy is **additive** — does not weaken existing self-only policy or admin/super_admin policies.
+- Restricted to staff with explicit `'all'` access; assigned-only staff remain limited.
+- Limited to shared branches → no cross-tenant leakage.
 
-Replace the global `supabase.from("staff").select(...).eq("phone", cleanPhone)` check (line ~157) with an RPC call to `get_staff_by_phone_in_tenant` using `currentBranch.tenant_id`. Same for the edit phone uniqueness check (line ~367).
+### Frontend
+No changes required. Existing `TrainerFilterDropdown`, `TimeSlotFilterDropdown`, and `useAttendanceFilters` already query `staff` by phone and gracefully fall back to the RPC. With colleague rows now visible, the phone-based path will succeed for all-access staff, returning correct staff IDs and slot counts.
 
-### 3. Update `StaffOtherTab.tsx` — Add staff flow
+## Files Touched
+- New migration: `supabase/migrations/<timestamp>_staff_all_access_colleague_view.sql`
 
-Same change as above — replace global phone check (line ~166) and edit phone check (line ~335) with tenant-scoped RPC calls.
-
-### 4. Tighten RLS on `staff` table
-
-Update the admin SELECT policy to scope to the admin's tenant:
-
-```sql
-DROP POLICY "Admins and super admins can manage staff" ON public.staff;
-CREATE POLICY "Admins can manage own tenant staff" ON public.staff
-  FOR ALL TO authenticated
-  USING (
-    has_role(auth.uid(), 'super_admin'::app_role)
-    OR (
-      has_role(auth.uid(), 'admin'::app_role)
-      AND EXISTS (
-        SELECT 1 FROM public.staff_branch_assignments sba
-        JOIN public.branches b ON sba.branch_id = b.id
-        JOIN public.tenant_members tm ON b.tenant_id = tm.tenant_id
-        WHERE sba.staff_id = staff.id AND tm.user_id = auth.uid()
-      )
-    )
-  );
-```
-
-Also update the staff self-view policy to include the same admin tenant scoping.
-
-### Files to modify
-
-| File | Change |
-|------|--------|
-| New migration SQL | Add `get_staff_by_phone_in_tenant` function + update RLS policies on `staff` table |
-| `src/components/admin/staff/StaffTrainersTab.tsx` | Replace global phone checks with tenant-scoped RPC calls |
-| `src/components/admin/staff/StaffOtherTab.tsx` | Replace global phone checks with tenant-scoped RPC calls |
-
-### Technical detail
-
-- The `currentBranch.tenant_id` is already available via `useBranch()` context in both components
-- RLS tightening ensures even if frontend code has bugs, cross-tenant staff data never leaks
-- The DB function uses `SECURITY DEFINER` to bypass RLS internally, ensuring consistent results regardless of the calling user's permissions
-
+No frontend file changes.
