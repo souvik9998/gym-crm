@@ -244,6 +244,22 @@ export const AssignTrainerDialog = ({
         });
       }
 
+      // Record the cash payment so it appears in the Payments tab
+      try {
+        await supabase.from("payments").insert({
+          member_id: memberId,
+          subscription_id: null,
+          amount: totalFee,
+          payment_mode: "cash",
+          status: "success",
+          payment_type: "pt_subscription",
+          branch_id: branchId,
+          notes: `PT subscription cash payment via admin${memberName ? ` for ${memberName}` : ""}`,
+        });
+      } catch (payErr) {
+        console.error("Payment record (PT assign) failed:", payErr);
+      }
+
       // Ledger: PT subscription income + (optional) trainer percentage expense
       try {
         const trainerForLedger = trainers.find(t => t.id === selectedTrainerId);
