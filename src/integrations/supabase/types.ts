@@ -3257,8 +3257,10 @@ export type Database = {
           member_phone: string
         }[]
       }
+      current_staff_has_all_member_access: { Args: never; Returns: boolean }
       generate_invoice_number: { Args: { _branch_id: string }; Returns: string }
       generate_slug: { Args: { input_text: string }; Returns: string }
+      get_current_staff_branch_ids: { Args: never; Returns: string[] }
       get_dashboard_stats: {
         Args: { _branch_id?: string }
         Returns: {
