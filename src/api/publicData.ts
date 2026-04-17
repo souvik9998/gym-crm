@@ -37,6 +37,16 @@ export interface PublicBranch {
 // Cache duration: 5 minutes
 const CACHE_TTL = 5 * 60 * 1000;
 
+// One-time cleanup: purge previously-poisoned cache entries that mixed
+// data across all branches (cache key suffix "-all"). These were caused
+// by callers invoking fetch helpers without a branchId.
+try {
+  if (typeof window !== "undefined" && !sessionStorage.getItem("__public-data-cache-purged-v1")) {
+    ["public-packages-all", "public-trainers-all"].forEach((k) => sessionStorage.removeItem(k));
+    sessionStorage.setItem("__public-data-cache-purged-v1", "1");
+  }
+} catch { /* ignore */ }
+
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
