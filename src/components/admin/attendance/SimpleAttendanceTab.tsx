@@ -68,7 +68,7 @@ export const SimpleAttendanceTab = () => {
   const [selectedDate, setSelectedDate] = useState(today);
   const [search, setSearch] = useState("");
   const [localAttendance, setLocalAttendance] = useState<Map<string, AttendanceStatus>>(new Map());
-  const [hasChanges, setHasChanges] = useState(false);
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "all">("all");
