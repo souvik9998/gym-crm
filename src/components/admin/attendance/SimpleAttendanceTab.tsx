@@ -419,7 +419,7 @@ export const SimpleAttendanceTab = () => {
               );
             })}
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("next")} disabled={weekDates[6] >= today}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("next")} disabled={!canGoNext}>
             <ChevronRightIcon className="w-4 h-4" />
           </Button>
         </div>
