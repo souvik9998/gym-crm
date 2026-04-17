@@ -79,6 +79,7 @@ export const AssignTrainerDialog = ({
   const [notifyWhatsApp, setNotifyWhatsApp] = useState(false);
   const [isFetchingTrainers, setIsFetchingTrainers] = useState(true);
   const [isFetchingSlots, setIsFetchingSlots] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (open) {
