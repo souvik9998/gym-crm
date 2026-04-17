@@ -213,11 +213,17 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
 
 
 
+  const emailIsValidShape = !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
   const isFormValid =
     fullName.trim().length >= 2 &&
     gender !== "" &&
-    (!showPhotoId || (photoIdType !== "" && photoIdNumber.trim().length > 0)) &&
-    address.trim().length >= 3;
+    (!showPhotoId || !photoIdRequired || (photoIdType !== "" && photoIdNumber.trim().length > 0)) &&
+    (!showAddress || !addressRequired || address.trim().length >= 3) &&
+    (!showDateOfBirth || !dateOfBirthRequired || !!dateOfBirth) &&
+    (!showEmail || !emailRequired || (!!email && emailIsValidShape)) &&
+    emailIsValidShape &&
+    (!showOccupation || !occupationRequired || occupation.trim().length > 0);
 
   const genderOptions = [
     { value: "male", label: "Male" },
