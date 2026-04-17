@@ -101,6 +101,7 @@ const INCOME_CATEGORIES = [
   { value: "daily_pass", label: "Daily Pass" },
   { value: "pt_subscription", label: "PT Subscription" },
   { value: "joining_fee", label: "Joining Fee" },
+  { value: "event_registration", label: "Event Registration" },
   { value: "misc_income", label: "Miscellaneous Income" },
 ];
 
