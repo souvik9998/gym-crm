@@ -919,7 +919,16 @@ export const StaffOtherTab = ({
         open={passwordDialog.open}
         onOpenChange={(open) => setPasswordDialog({ ...passwordDialog, open })}
         staff={passwordDialog.staff}
-        onSuccess={onRefresh}
+        onSuccess={refreshAll}
+      />
+
+      <ChangePhoneDialog
+        open={changePhoneDialog.open}
+        onOpenChange={(open) => setChangePhoneDialog({ ...changePhoneDialog, open })}
+        staff={changePhoneDialog.staff}
+        branchId={currentBranch?.id}
+        branchName={currentBranch?.name}
+        onSuccess={refreshAll}
       />
       
       {/* View Password Dialog */}
@@ -980,7 +989,7 @@ export const StaffOtherTab = ({
         open={permissionsDialog.open}
         onOpenChange={(open) => setPermissionsDialog({ ...permissionsDialog, open })}
         staff={permissionsDialog.staff}
-        onSuccess={onRefresh}
+        onSuccess={refreshAll}
       />
 
       <StaffBranchAssignmentDialog
@@ -988,7 +997,7 @@ export const StaffOtherTab = ({
         onOpenChange={(open) => setBranchAssignmentDialog({ ...branchAssignmentDialog, open })}
         staff={branchAssignmentDialog.staff}
         branches={branches}
-        onSuccess={onRefresh}
+        onSuccess={refreshAll}
       />
 
       {/* Existing Staff Found Dialog */}
@@ -1057,7 +1066,7 @@ export const StaffOtherTab = ({
         direction="to_trainer"
         branchId={currentBranch?.id}
         branchName={currentBranch?.name}
-        onSuccess={() => { onConversionSuccess ? onConversionSuccess() : onRefresh(); }}
+        onSuccess={() => { onConversionSuccess ? onConversionSuccess() : refreshAll(); }}
       />
     </div>
   );
