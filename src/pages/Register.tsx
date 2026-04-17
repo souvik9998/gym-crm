@@ -56,7 +56,6 @@ const Register = () => {
   const [branchInfo, setBranchInfo] = useState<BranchInfo | null>(null);
   const [fieldSettings, setFieldSettings] = useState<RegistrationFieldSettings | null>(null);
 
-  // Check if health step is needed
   const needsHealthStep = fieldSettings && (
     fieldSettings.identity_proof_upload?.enabled ||
     fieldSettings.health_details?.enabled ||
@@ -66,32 +65,26 @@ const Register = () => {
     fieldSettings.emergency_contact_2?.enabled
   );
 
-  // Fetch branch info and field settings
   useEffect(() => {
-    if (branchId) {
-      if (!stateBranchName) {
-        fetchPublicBranch(branchId).then((branch) => {
-          if (branch) setBranchInfo(branch);
-        });
-      } else {
+    if (!branchId) return;
+
+    let cancelled = false;
+
+    (async () => {
+      const branch = await fetchPublicBranch(branchId);
+      if (cancelled) return;
+
+      if (branch) {
+        setBranchInfo({ id: branch.id, name: stateBranchName || branch.name });
+        setFieldSettings((branch.registrationFieldSettings || null) as RegistrationFieldSettings | null);
+      } else if (stateBranchName) {
         setBranchInfo({ id: branchId, name: stateBranchName });
       }
-      
-      // Fetch registration field settings
-      supabase
-        .from("gym_settings")
-        .select("registration_field_settings")
-        .eq("branch_id", branchId)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data?.registration_field_settings) {
-            const parsed = typeof data.registration_field_settings === "string"
-              ? JSON.parse(data.registration_field_settings)
-              : data.registration_field_settings;
-            setFieldSettings(parsed);
-          }
-        });
-    }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [branchId, stateBranchName]);
 
   useEffect(() => {

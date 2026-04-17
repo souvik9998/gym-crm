@@ -39,79 +39,65 @@ const Renew = () => {
       return;
     }
 
-    // Set branch info from state or fetch it using secure public API
-    if (stateBranchName && branchId) {
-      setBranchInfo({ id: branchId, name: stateBranchName });
-    } else if (branchId) {
-      fetchPublicBranch(branchId).then((branch) => {
+    let cancelled = false;
+
+    (async () => {
+      if (branchId) {
+        const branch = await fetchPublicBranch(branchId);
+        if (cancelled) return;
+
         if (branch) {
-          setBranchInfo(branch);
+          setBranchInfo({ id: branch.id, name: stateBranchName || branch.name });
+          setAllowSelfSelectTrainer(branch.allowSelfSelectTrainer !== false);
+          setAllowDailyPass(branch.allowDailyPass !== false);
+        } else if (stateBranchName) {
+          setBranchInfo({ id: branchId, name: stateBranchName });
         }
-      });
-    }
-
-    // Fetch trainer self-select setting
-    supabase
-      .from("gym_settings")
-      .select("registration_field_settings")
-      .eq("branch_id", branchId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.registration_field_settings) {
-          const parsed = typeof data.registration_field_settings === "string"
-            ? JSON.parse(data.registration_field_settings)
-            : data.registration_field_settings;
-          if (parsed?.self_select_trainer?.enabled === false) {
-            setAllowSelfSelectTrainer(false);
-          }
-          if (parsed?.daily_pass_enabled?.enabled === false) {
-            setAllowDailyPass(false);
-          }
-        }
-      });
-
-    const fetchMemberData = async () => {
-      const today = new Date().toISOString().split("T")[0];
-      
-      // Fetch existing active gym subscription to get membership end date
-      const { data: activeSubscription } = await supabase
-        .from("subscriptions")
-        .select("end_date")
-        .eq("member_id", member.id)
-        .eq("status", "active")
-        .gte("end_date", today)
-        .order("end_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (activeSubscription) {
-        setExistingMembershipEndDate(activeSubscription.end_date);
       }
 
-      // Fetch existing active PT subscription to determine PT start date
-      const { data: activePT } = await supabase
-        .from("pt_subscriptions")
-        .select("end_date")
-        .eq("member_id", member.id)
-        .eq("status", "active")
-        .gte("end_date", today)
-        .order("end_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const fetchMemberData = async () => {
+        const today = new Date().toISOString().split("T")[0];
+        
+        const { data: activeSubscription } = await supabase
+          .from("subscriptions")
+          .select("end_date")
+          .eq("member_id", member.id)
+          .eq("status", "active")
+          .gte("end_date", today)
+          .order("end_date", { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      if (activePT) {
-        setExistingPTEndDate(activePT.end_date);
-        // PT start date should be existing end_date + 1
-        const existingEndDate = new Date(activePT.end_date);
-        existingEndDate.setDate(existingEndDate.getDate() + 1);
-        setPtStartDate(existingEndDate.toISOString().split("T")[0]);
-      } else {
-        // No active PT, start from current date
-        setPtStartDate(today);
-      }
+        if (activeSubscription) {
+          setExistingMembershipEndDate(activeSubscription.end_date);
+        }
+
+        const { data: activePT } = await supabase
+          .from("pt_subscriptions")
+          .select("end_date")
+          .eq("member_id", member.id)
+          .eq("status", "active")
+          .gte("end_date", today)
+          .order("end_date", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (activePT) {
+          setExistingPTEndDate(activePT.end_date);
+          const existingEndDate = new Date(activePT.end_date);
+          existingEndDate.setDate(existingEndDate.getDate() + 1);
+          setPtStartDate(existingEndDate.toISOString().split("T")[0]);
+        } else {
+          setPtStartDate(today);
+        }
+      };
+
+      await fetchMemberData();
+    })();
+
+    return () => {
+      cancelled = true;
     };
-
-    fetchMemberData();
   }, [member, navigate, branchId, stateBranchName]);
 
   const handlePackageSubmit = (packageData: PackageSelectionData) => {
