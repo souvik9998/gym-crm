@@ -715,7 +715,7 @@ export const StaffTrainersTab = ({
         </CardHeader>
         <CardContent className="p-4 lg:p-6 pt-2 lg:pt-0">
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading...</div>
+            <StaffCardSkeleton count={3} />
           ) : trainers.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">No trainers added yet</p>
           ) : (
