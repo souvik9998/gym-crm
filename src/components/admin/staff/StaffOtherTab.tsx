@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
-import { InformationCircleIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/outline";
+import { InformationCircleIcon, ArrowsRightLeftIcon, DevicePhoneMobileIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { StaffCardSkeleton } from "./StaffCardSkeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChangePhoneDialog } from "./ChangePhoneDialog";
+import { DetailItem } from "./StaffDetailItem";
 
 interface StaffOtherTabProps {
   staff: Staff[];
@@ -68,7 +71,18 @@ export const StaffOtherTab = ({
   isLoading,
   onConversionSuccess,
 }: StaffOtherTabProps) => {
+  const queryClient = useQueryClient();
   const isCompact = useIsTabletOrBelow();
+
+  // Hard cache bust + refetch — ensures mutations are reflected even when data is cached
+  const refreshAll = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["staff-page-data"], refetchType: "all" }),
+      queryClient.invalidateQueries({ queryKey: ["trainer-filter-list"], refetchType: "all" }),
+    ]);
+    onRefresh();
+  };
+
   const [newStaff, setNewStaff] = useState({
     full_name: "",
     phone: "",
@@ -120,6 +134,7 @@ export const StaffOtherTab = ({
   }>({ open: false, existingStaff: null });
   const addingRef = { current: false };
   const [conversionDialog, setConversionDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
+  const [changePhoneDialog, setChangePhoneDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Update selected branches when currentBranch changes
@@ -306,7 +321,7 @@ export const StaffOtherTab = ({
         permissions: getDefaultPermissions("reception"),
         sendWhatsApp: true,
       });
-      onRefresh();
+      await refreshAll();
     } finally {
       setIsAddingStaff(false);
       addingRef.current = false;
@@ -317,7 +332,6 @@ export const StaffOtherTab = ({
     setEditingId(member.id);
     setEditData({
       full_name: member.full_name,
-      phone: member.phone,
       role: member.role,
       id_type: member.id_type || "aadhaar",
       id_number: member.id_number || "",
@@ -332,30 +346,11 @@ export const StaffOtherTab = ({
     }
 
     const member = staff.find((s) => s.id === id);
-    const cleanPhone = editData.phone.replace(/\D/g, "").replace(/^0/, "");
-
-    // Check if phone is being changed and if new phone already exists
-    if (cleanPhone !== member?.phone) {
-      const { data: existingStaff } = await supabase
-        .from("staff")
-        .select("id")
-        .eq("phone", cleanPhone)
-        .neq("id", id)
-        .maybeSingle();
-
-      if (existingStaff) {
-        toast.error("Phone number already in use", {
-          description: "Another staff member is already registered with this phone number.",
-        });
-        return;
-      }
-    }
 
     const { error } = await supabase
       .from("staff")
       .update({
         full_name: editData.full_name,
-        phone: cleanPhone,
         role: editData.role,
         id_type: editData.id_type || null,
         id_number: editData.id_number || null,
@@ -369,15 +364,15 @@ export const StaffOtherTab = ({
     }
 
     // Filter out metadata fields and only include fields that are being updated
-    const fieldsToLog = ['full_name', 'phone', 'role', 'id_type', 'id_number', 'monthly_salary'];
-    const oldValueFiltered = member 
+    const fieldsToLog = ['full_name', 'role', 'id_type', 'id_number', 'monthly_salary'];
+    const oldValueFiltered = member
       ? Object.fromEntries(
           fieldsToLog
             .filter(key => key in member)
             .map(key => [key, (member as any)[key]])
         )
       : null;
-    
+
     const newValueFiltered = Object.fromEntries(
       fieldsToLog.map(key => {
         if (key === 'monthly_salary') {
@@ -401,7 +396,7 @@ export const StaffOtherTab = ({
 
     toast.success("Staff updated");
     setEditingId(null);
-    onRefresh();
+    await refreshAll();
   };
 
   const handleToggle = async (id: string, isActive: boolean) => {
@@ -420,7 +415,7 @@ export const StaffOtherTab = ({
       branchId: currentBranch?.id,
     });
 
-    onRefresh();
+    await refreshAll();
   };
 
   const handleDelete = (id: string, name: string) => {
@@ -431,7 +426,7 @@ export const StaffOtherTab = ({
       variant: "destructive",
       onConfirm: async () => {
         await supabase.from("staff").delete().eq("id", id);
-        
+
         await logAdminActivity({
           category: "staff",
           type: "staff_deleted",
@@ -443,18 +438,18 @@ export const StaffOtherTab = ({
         });
 
         toast.success("Staff member deleted");
-        onRefresh();
+        await refreshAll();
       },
     });
   };
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case "admin": return "bg-red-100 text-red-800";
-      case "manager": return "bg-blue-100 text-blue-800";
-      case "accountant": return "bg-green-100 text-green-800";
-      case "reception": return "bg-yellow-100 text-yellow-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "admin": return "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20";
+      case "manager": return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
+      case "accountant": return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
+      case "reception": return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
+      default: return "bg-muted text-foreground border-border";
     }
   };
 
@@ -639,14 +634,6 @@ export const StaffOtherTab = ({
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Phone</Label>
-                          <Input
-                            value={editData.phone}
-                            onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-                            className="h-9"
-                          />
-                        </div>
-                        <div className="space-y-1">
                           <Label className="text-xs">Role</Label>
                           <Select
                             value={editData.role}
@@ -664,6 +651,30 @@ export const StaffOtherTab = ({
                           </Select>
                         </div>
                         <div className="space-y-1">
+                          <Label className="text-xs">ID Type</Label>
+                          <Select
+                            value={editData.id_type}
+                            onValueChange={(value) => setEditData({ ...editData, id_type: value })}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="aadhaar">Aadhaar</SelectItem>
+                              <SelectItem value="pan">PAN</SelectItem>
+                              <SelectItem value="voter">Voter ID</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">ID Number</Label>
+                          <Input
+                            value={editData.id_number}
+                            onChange={(e) => setEditData({ ...editData, id_number: e.target.value })}
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1 col-span-2">
                           <Label className="text-xs">Monthly Salary (₹)</Label>
                           <Input
                             type="number"
@@ -673,6 +684,9 @@ export const StaffOtherTab = ({
                           />
                         </div>
                       </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        To change mobile number, close this and use the phone icon.
+                      </p>
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => handleSave(member.id)} className="gap-1">
                           <CheckIcon className="w-4 h-4" />
@@ -688,10 +702,10 @@ export const StaffOtherTab = ({
                   ) : (
                     <Collapsible open={isExpanded} onOpenChange={(open) => setExpandedId(open ? member.id : null)}>
                       {/* Compact header — always visible */}
-                      <CollapsibleTrigger asChild>
-                        <div className="flex items-center gap-3 p-3 lg:p-4 cursor-pointer hover:bg-muted/40 transition-colors">
-                          {/* Avatar */}
-                          <div className="flex-shrink-0 w-11 h-11 lg:w-12 lg:h-12 rounded-full bg-primary/10 text-primary font-semibold text-sm lg:text-base flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
+                      <div className="p-3 lg:p-4">
+                        <div className="flex items-center gap-3">
+                          {/* Avatar with subtle gradient */}
+                          <div className="flex-shrink-0 w-11 h-11 lg:w-12 lg:h-12 rounded-full bg-gradient-to-br from-primary/15 to-primary/5 text-primary font-semibold text-sm lg:text-base flex items-center justify-center ring-1 ring-primary/10 transition-transform duration-200 group-hover:scale-105">
                             {initials || "S"}
                           </div>
 
@@ -701,9 +715,14 @@ export const StaffOtherTab = ({
                               <h3 className="font-semibold text-foreground text-sm lg:text-base truncate">
                                 {member.full_name}
                               </h3>
-                              <Badge className={`text-[10px] h-5 px-1.5 ${getRoleBadgeColor(member.role)}`}>
+                              <Badge className={`text-[10px] h-5 px-1.5 border ${getRoleBadgeColor(member.role)} hover:bg-opacity-100`}>
                                 {ROLE_LABELS[member.role] || member.role}
                               </Badge>
+                              {member.auth_user_id && (
+                                <Badge className="text-[10px] h-5 px-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10">
+                                  Login
+                                </Badge>
+                              )}
                               {!member.is_active && (
                                 <Badge className="text-[10px] h-5 px-1.5 bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/10">
                                   Inactive
@@ -716,124 +735,164 @@ export const StaffOtherTab = ({
                             </p>
                           </div>
 
-                          {/* Right cluster: status + chevron */}
-                          <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                          {/* Right cluster: status + expand */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
                             <Switch
                               checked={member.is_active}
                               onCheckedChange={(checked) => handleToggle(member.id, checked)}
-                              className="data-[state=checked]:bg-primary"
+                              className="data-[state=checked]:bg-emerald-500"
                             />
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 hover:bg-muted"
-                              onClick={() => setExpandedId(isExpanded ? null : member.id)}
-                              aria-label={isExpanded ? "Collapse" : "Expand"}
-                            >
-                              <ChevronDownIcon
-                                className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
-                              />
-                            </Button>
-                          </div>
-                        </div>
-                      </CollapsibleTrigger>
-
-                      {/* Expanded details + actions */}
-                      <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
-                        <div className="px-3 lg:px-4 pb-4 pt-1 space-y-3 border-t border-border/40">
-                          {/* Detail chips */}
-                          <div className="flex flex-wrap gap-1.5 pt-3">
-                            {member.auth_user_id && (
-                              <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-1 rounded-md border bg-primary/5 text-primary border-primary/20 font-medium">
-                                🔐 Has Login
-                              </span>
-                            )}
-                            {member.monthly_salary > 0 && (
-                              <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-1 rounded-md border bg-muted text-foreground border-border font-medium">
-                                💰 ₹{member.monthly_salary}/month
-                              </span>
-                            )}
-                            {member.branch_assignments && member.branch_assignments.length > 0 && (
-                              <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-1 rounded-md border bg-muted text-foreground border-border font-medium">
-                                📍 {member.branch_assignments.map((a) => a.branch_name).join(", ")}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Action toolbar */}
-                          <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                            <StaffWhatsAppButton staff={member} />
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
-                              onClick={() => setBranchAssignmentDialog({ open: true, staff: member })}
-                              title="Manage Branch Assignments"
-                            >
-                              <BuildingOfficeIcon className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
-                              onClick={async () => {
-                                const { data: activities } = await supabase
-                                  .from("admin_activity_logs")
-                                  .select("metadata")
-                                  .eq("entity_type", "staff")
-                                  .eq("entity_id", member.id)
-                                  .eq("activity_type", "staff_password_set")
-                                  .order("created_at", { ascending: false })
-                                  .limit(1)
-                                  .maybeSingle();
-                                if (activities?.metadata && (activities.metadata as any).password) {
-                                  setViewPasswordDialog({ open: true, staff: member, password: (activities.metadata as any).password });
-                                } else {
-                                  setPasswordDialog({ open: true, staff: member });
-                                }
-                              }}
-                              title={member.auth_user_id ? "View/Update Password" : "Set Password"}
-                            >
-                              <KeyIcon className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
-                              onClick={() => setPermissionsDialog({ open: true, staff: member })}
-                              title="Manage Permissions"
-                            >
-                              <ShieldCheckIcon className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
-                              onClick={() => handleEdit(member)}
-                              title="Edit details"
-                            >
-                              <PencilIcon className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
-                              onClick={() => setConversionDialog({ open: true, staff: member })}
-                              title="Convert to Trainer"
-                            >
-                              <ArrowsRightLeftIcon className="w-4 h-4" />
-                            </Button>
-                            <div className="ml-auto">
+                            <CollapsibleTrigger asChild>
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-105"
-                                onClick={() => handleDelete(member.id, member.full_name)}
-                                title="Delete staff"
+                                className="h-8 w-8 p-0 hover:bg-muted"
+                                aria-label={isExpanded ? "Collapse" : "Expand"}
                               >
-                                <TrashIcon className="w-4 h-4" />
+                                <ChevronDownIcon
+                                  className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+                                />
                               </Button>
-                            </div>
+                            </CollapsibleTrigger>
+                          </div>
+                        </div>
+
+                        {/* Action toolbar — always visible in main card */}
+                        <div className="flex items-center gap-1.5 flex-wrap mt-3 pt-3 border-t border-border/40">
+                          <StaffWhatsAppButton staff={member} />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 hover:border-blue-500/50 hover:text-blue-600"
+                            onClick={() => setBranchAssignmentDialog({ open: true, staff: member })}
+                            title="Manage Branch Assignments"
+                          >
+                            <BuildingOfficeIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10 hover:border-amber-500/50 hover:text-amber-600"
+                            onClick={async () => {
+                              const { data: activities } = await supabase
+                                .from("admin_activity_logs")
+                                .select("metadata")
+                                .eq("entity_type", "staff")
+                                .eq("entity_id", member.id)
+                                .eq("activity_type", "staff_password_set")
+                                .order("created_at", { ascending: false })
+                                .limit(1)
+                                .maybeSingle();
+                              if (activities?.metadata && (activities.metadata as any).password) {
+                                setViewPasswordDialog({ open: true, staff: member, password: (activities.metadata as any).password });
+                              } else {
+                                setPasswordDialog({ open: true, staff: member });
+                              }
+                            }}
+                            title={member.auth_user_id ? "View/Update Password" : "Set Password"}
+                          >
+                            <KeyIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-violet-600 dark:text-violet-400 border-violet-500/30 hover:bg-violet-500/10 hover:border-violet-500/50 hover:text-violet-600"
+                            onClick={() => setPermissionsDialog({ open: true, staff: member })}
+                            title="Manage Permissions"
+                          >
+                            <ShieldCheckIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-cyan-600 dark:text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10 hover:border-cyan-500/50 hover:text-cyan-600"
+                            onClick={() => handleEdit(member)}
+                            title="Edit details"
+                          >
+                            <PencilIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-500/10 hover:border-teal-500/50 hover:text-teal-600"
+                            onClick={() => setChangePhoneDialog({ open: true, staff: member })}
+                            title="Change mobile number"
+                          >
+                            <DevicePhoneMobileIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/30 hover:bg-fuchsia-500/10 hover:border-fuchsia-500/50 hover:text-fuchsia-600"
+                            onClick={() => setConversionDialog({ open: true, staff: member })}
+                            title="Convert to Trainer"
+                          >
+                            <ArrowsRightLeftIcon className="w-4 h-4" />
+                          </Button>
+                          <div className="ml-auto">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-105"
+                              onClick={() => handleDelete(member.id, member.full_name)}
+                              title="Delete staff"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expanded details — populated info */}
+                      <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+                        <div className="px-3 lg:px-4 pb-4 pt-3 border-t border-border/40 bg-muted/20">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                            <DetailItem label="Phone" value={member.phone || "—"} accent="teal" />
+                            <DetailItem label="Role" value={ROLE_LABELS[member.role] || member.role} accent="violet" />
+                            <DetailItem
+                              label="Monthly Salary"
+                              value={member.monthly_salary > 0 ? `₹${member.monthly_salary}` : "—"}
+                              accent="emerald"
+                            />
+                            <DetailItem label="ID Type" value={member.id_type ? member.id_type.toUpperCase() : "—"} accent="amber" />
+                            <DetailItem label="ID Number" value={member.id_number || "—"} accent="amber" />
+                            <DetailItem
+                              label="Branches"
+                              value={
+                                member.branch_assignments && member.branch_assignments.length > 0
+                                  ? member.branch_assignments.map((a) => a.branch_name).join(", ")
+                                  : "Unassigned"
+                              }
+                              accent="blue"
+                            />
+                            <DetailItem
+                              label="Login Access"
+                              value={member.auth_user_id ? "Enabled" : "Disabled"}
+                              accent={member.auth_user_id ? "emerald" : "rose"}
+                            />
+                            <DetailItem
+                              label="Last Login"
+                              value={
+                                member.last_login_at
+                                  ? new Date(member.last_login_at).toLocaleString("en-IN", {
+                                      day: "2-digit",
+                                      month: "short",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })
+                                  : "Never"
+                              }
+                              accent="blue"
+                            />
+                            <DetailItem
+                              label="Joined"
+                              value={new Date(member.created_at).toLocaleDateString("en-IN", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                              accent="blue"
+                            />
                           </div>
                         </div>
                       </CollapsibleContent>
@@ -860,7 +919,16 @@ export const StaffOtherTab = ({
         open={passwordDialog.open}
         onOpenChange={(open) => setPasswordDialog({ ...passwordDialog, open })}
         staff={passwordDialog.staff}
-        onSuccess={onRefresh}
+        onSuccess={refreshAll}
+      />
+
+      <ChangePhoneDialog
+        open={changePhoneDialog.open}
+        onOpenChange={(open) => setChangePhoneDialog({ ...changePhoneDialog, open })}
+        staff={changePhoneDialog.staff}
+        branchId={currentBranch?.id}
+        branchName={currentBranch?.name}
+        onSuccess={refreshAll}
       />
       
       {/* View Password Dialog */}
@@ -921,7 +989,7 @@ export const StaffOtherTab = ({
         open={permissionsDialog.open}
         onOpenChange={(open) => setPermissionsDialog({ ...permissionsDialog, open })}
         staff={permissionsDialog.staff}
-        onSuccess={onRefresh}
+        onSuccess={refreshAll}
       />
 
       <StaffBranchAssignmentDialog
@@ -929,7 +997,7 @@ export const StaffOtherTab = ({
         onOpenChange={(open) => setBranchAssignmentDialog({ ...branchAssignmentDialog, open })}
         staff={branchAssignmentDialog.staff}
         branches={branches}
-        onSuccess={onRefresh}
+        onSuccess={refreshAll}
       />
 
       {/* Existing Staff Found Dialog */}
@@ -998,7 +1066,7 @@ export const StaffOtherTab = ({
         direction="to_trainer"
         branchId={currentBranch?.id}
         branchName={currentBranch?.name}
-        onSuccess={() => { onConversionSuccess ? onConversionSuccess() : onRefresh(); }}
+        onSuccess={() => { onConversionSuccess ? onConversionSuccess() : refreshAll(); }}
       />
     </div>
   );

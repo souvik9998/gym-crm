@@ -45,6 +45,7 @@ import { ChangePhoneDialog } from "./ChangePhoneDialog";
 import { DevicePhoneMobileIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import { StaffCardSkeleton } from "./StaffCardSkeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { DetailItem } from "./StaffDetailItem";
 
 interface StaffTrainersTabProps {
   trainers: Staff[];
@@ -840,10 +841,10 @@ export const StaffTrainersTab = ({
                   ) : (
                     <Collapsible open={isExpanded} onOpenChange={(open) => setExpandedId(open ? trainer.id : null)}>
                       {/* Compact header — always visible */}
-                      <CollapsibleTrigger asChild>
-                        <div className="flex items-center gap-3 p-3 lg:p-4 cursor-pointer hover:bg-muted/40 transition-colors">
-                          {/* Avatar */}
-                          <div className="flex-shrink-0 w-11 h-11 lg:w-12 lg:h-12 rounded-full bg-primary/10 text-primary font-semibold text-sm lg:text-base flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
+                      <div className="p-3 lg:p-4">
+                        <div className="flex items-center gap-3">
+                          {/* Avatar with subtle gradient */}
+                          <div className="flex-shrink-0 w-11 h-11 lg:w-12 lg:h-12 rounded-full bg-gradient-to-br from-primary/15 to-primary/5 text-primary font-semibold text-sm lg:text-base flex items-center justify-center ring-1 ring-primary/10 transition-transform duration-200 group-hover:scale-105">
                             {initials || "T"}
                           </div>
 
@@ -853,7 +854,14 @@ export const StaffTrainersTab = ({
                               <h3 className="font-semibold text-foreground text-sm lg:text-base truncate">
                                 {trainer.full_name}
                               </h3>
-                              <Badge variant="secondary" className="text-[10px] h-5 px-1.5">Trainer</Badge>
+                              <Badge className="text-[10px] h-5 px-1.5 bg-primary/10 text-primary border-primary/20 hover:bg-primary/10">
+                                Trainer
+                              </Badge>
+                              {trainer.auth_user_id && (
+                                <Badge className="text-[10px] h-5 px-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10">
+                                  Login
+                                </Badge>
+                              )}
                               {!trainer.is_active && (
                                 <Badge className="text-[10px] h-5 px-1.5 bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/10">
                                   Inactive
@@ -866,138 +874,173 @@ export const StaffTrainersTab = ({
                             </p>
                           </div>
 
-                          {/* Right cluster: status + chevron */}
-                          <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                          {/* Right cluster: status + expand */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
                             <Switch
                               checked={trainer.is_active}
                               onCheckedChange={(checked) => handleToggle(trainer.id, checked)}
-                              className="data-[state=checked]:bg-primary"
+                              className="data-[state=checked]:bg-emerald-500"
                             />
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 hover:bg-muted"
-                              onClick={() => setExpandedId(isExpanded ? null : trainer.id)}
-                              aria-label={isExpanded ? "Collapse" : "Expand"}
-                            >
-                              <ChevronDownIcon
-                                className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
-                              />
-                            </Button>
-                          </div>
-                        </div>
-                      </CollapsibleTrigger>
-
-                      {/* Expanded details + actions */}
-                      <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
-                        <div className="px-3 lg:px-4 pb-4 pt-1 space-y-3 border-t border-border/40">
-                          {/* Detail chips */}
-                          <div className="flex flex-wrap gap-1.5 pt-3">
-                            {trainer.auth_user_id && (
-                              <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-1 rounded-md border bg-primary/5 text-primary border-primary/20 font-medium">
-                                🔐 Has Login
-                              </span>
-                            )}
-                            {trainer.salary_type === "both" && (
-                              <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-1 rounded-md border bg-muted text-foreground border-border font-medium">
-                                💰 ₹{trainer.monthly_salary}/mo + {trainer.percentage_fee}%
-                              </span>
-                            )}
-                            {trainer.salary_type === "session_based" && trainer.session_fee > 0 && (
-                              <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-1 rounded-md border bg-muted text-foreground border-border font-medium">
-                                💰 ₹{trainer.session_fee}/session
-                              </span>
-                            )}
-                            {trainer.branch_assignments && trainer.branch_assignments.length > 0 && (
-                              <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-1 rounded-md border bg-muted text-foreground border-border font-medium">
-                                📍 {trainer.branch_assignments.map((a) => a.branch_name).join(", ")}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Action toolbar */}
-                          <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                            <StaffWhatsAppButton staff={trainer} />
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
-                              onClick={() => setBranchAssignmentDialog({ open: true, staff: trainer })}
-                              title="Manage Branch Assignments"
-                            >
-                              <BuildingOfficeIcon className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
-                              onClick={async () => {
-                                const { data: activities } = await supabase
-                                  .from("admin_activity_logs")
-                                  .select("metadata")
-                                  .eq("entity_type", "staff")
-                                  .eq("entity_id", trainer.id)
-                                  .eq("activity_type", "staff_password_set")
-                                  .order("created_at", { ascending: false })
-                                  .limit(1)
-                                  .maybeSingle();
-                                if (activities?.metadata && (activities.metadata as any).password) {
-                                  setViewPasswordDialog({ open: true, staff: trainer, password: (activities.metadata as any).password });
-                                } else {
-                                  setPasswordDialog({ open: true, staff: trainer });
-                                }
-                              }}
-                              title={trainer.auth_user_id ? "View/Update Password" : "Set Password"}
-                            >
-                              <KeyIcon className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
-                              onClick={() => setPermissionsDialog({ open: true, staff: trainer })}
-                              title="Manage Permissions"
-                            >
-                              <ShieldCheckIcon className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
-                              onClick={() => handleEdit(trainer)}
-                              title="Edit details"
-                            >
-                              <PencilIcon className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
-                              onClick={() => setChangePhoneDialog({ open: true, staff: trainer })}
-                              title="Change mobile number"
-                            >
-                              <DevicePhoneMobileIcon className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105"
-                              onClick={() => setConversionDialog({ open: true, staff: trainer })}
-                              title="Convert to Staff"
-                            >
-                              <ArrowsRightLeftIcon className="w-4 h-4" />
-                            </Button>
-                            <div className="ml-auto">
+                            <CollapsibleTrigger asChild>
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-105"
-                                onClick={() => handleDelete(trainer.id, trainer.full_name)}
-                                title="Delete trainer"
+                                className="h-8 w-8 p-0 hover:bg-muted"
+                                aria-label={isExpanded ? "Collapse" : "Expand"}
                               >
-                                <TrashIcon className="w-4 h-4" />
+                                <ChevronDownIcon
+                                  className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+                                />
                               </Button>
-                            </div>
+                            </CollapsibleTrigger>
+                          </div>
+                        </div>
+
+                        {/* Action toolbar — always visible in main card */}
+                        <div className="flex items-center gap-1.5 flex-wrap mt-3 pt-3 border-t border-border/40">
+                          <StaffWhatsAppButton staff={trainer} />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 hover:border-blue-500/50 hover:text-blue-600"
+                            onClick={() => setBranchAssignmentDialog({ open: true, staff: trainer })}
+                            title="Manage Branch Assignments"
+                          >
+                            <BuildingOfficeIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10 hover:border-amber-500/50 hover:text-amber-600"
+                            onClick={async () => {
+                              const { data: activities } = await supabase
+                                .from("admin_activity_logs")
+                                .select("metadata")
+                                .eq("entity_type", "staff")
+                                .eq("entity_id", trainer.id)
+                                .eq("activity_type", "staff_password_set")
+                                .order("created_at", { ascending: false })
+                                .limit(1)
+                                .maybeSingle();
+                              if (activities?.metadata && (activities.metadata as any).password) {
+                                setViewPasswordDialog({ open: true, staff: trainer, password: (activities.metadata as any).password });
+                              } else {
+                                setPasswordDialog({ open: true, staff: trainer });
+                              }
+                            }}
+                            title={trainer.auth_user_id ? "View/Update Password" : "Set Password"}
+                          >
+                            <KeyIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-violet-600 dark:text-violet-400 border-violet-500/30 hover:bg-violet-500/10 hover:border-violet-500/50 hover:text-violet-600"
+                            onClick={() => setPermissionsDialog({ open: true, staff: trainer })}
+                            title="Manage Permissions"
+                          >
+                            <ShieldCheckIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-cyan-600 dark:text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10 hover:border-cyan-500/50 hover:text-cyan-600"
+                            onClick={() => handleEdit(trainer)}
+                            title="Edit details"
+                          >
+                            <PencilIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-500/10 hover:border-teal-500/50 hover:text-teal-600"
+                            onClick={() => setChangePhoneDialog({ open: true, staff: trainer })}
+                            title="Change mobile number"
+                          >
+                            <DevicePhoneMobileIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/30 hover:bg-fuchsia-500/10 hover:border-fuchsia-500/50 hover:text-fuchsia-600"
+                            onClick={() => setConversionDialog({ open: true, staff: trainer })}
+                            title="Convert to Staff"
+                          >
+                            <ArrowsRightLeftIcon className="w-4 h-4" />
+                          </Button>
+                          <div className="ml-auto">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-105"
+                              onClick={() => handleDelete(trainer.id, trainer.full_name)}
+                              title="Delete trainer"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expanded details — populated info only */}
+                      <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+                        <div className="px-3 lg:px-4 pb-4 pt-3 border-t border-border/40 bg-muted/20">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                            <DetailItem label="Phone" value={trainer.phone || "—"} accent="teal" />
+                            <DetailItem label="Specialization" value={trainer.specialization || "—"} accent="cyan" />
+                            <DetailItem
+                              label="Payment Type"
+                              value={trainer.salary_type === "session_based" ? "Session Basis" : "Monthly + %"}
+                              accent="violet"
+                            />
+                            {trainer.salary_type === "both" ? (
+                              <>
+                                <DetailItem label="Monthly Salary" value={`₹${trainer.monthly_salary || 0}`} accent="emerald" />
+                                <DetailItem label="Percentage" value={`${trainer.percentage_fee || 0}%`} accent="emerald" />
+                                <DetailItem label="Member Charge" value={`₹${(trainer as any).monthly_fee || 0}/mo`} accent="emerald" />
+                              </>
+                            ) : (
+                              <DetailItem label="Session Fee" value={`₹${trainer.session_fee || 0}`} accent="emerald" />
+                            )}
+                            <DetailItem label="ID Type" value={trainer.id_type ? trainer.id_type.toUpperCase() : "—"} accent="amber" />
+                            <DetailItem label="ID Number" value={trainer.id_number || "—"} accent="amber" />
+                            <DetailItem
+                              label="Branches"
+                              value={
+                                trainer.branch_assignments && trainer.branch_assignments.length > 0
+                                  ? trainer.branch_assignments.map((a) => a.branch_name).join(", ")
+                                  : "Unassigned"
+                              }
+                              accent="blue"
+                            />
+                            <DetailItem
+                              label="Login Access"
+                              value={trainer.auth_user_id ? "Enabled" : "Disabled"}
+                              accent={trainer.auth_user_id ? "emerald" : "rose"}
+                            />
+                            <DetailItem
+                              label="Last Login"
+                              value={
+                                trainer.last_login_at
+                                  ? new Date(trainer.last_login_at).toLocaleString("en-IN", {
+                                      day: "2-digit",
+                                      month: "short",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })
+                                  : "Never"
+                              }
+                              accent="blue"
+                            />
+                            <DetailItem
+                              label="Joined"
+                              value={new Date(trainer.created_at).toLocaleDateString("en-IN", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                              accent="blue"
+                            />
                           </div>
                         </div>
                       </CollapsibleContent>
