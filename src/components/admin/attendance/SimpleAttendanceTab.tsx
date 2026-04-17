@@ -431,13 +431,53 @@ export const SimpleAttendanceTab = () => {
         </div>
       </div>
 
-      {/* Filter Pills — segmented, compact, semantic */}
-      <div className="flex items-center gap-1.5 p-1 rounded-lg bg-muted/40 border border-border/40 overflow-x-auto scrollbar-hide animate-fade-in">
+      {/* Filter Pills — colorful segmented filters */}
+      <div className="flex items-center gap-1.5 lg:gap-2 p-1 rounded-xl bg-gradient-to-r from-muted/40 via-muted/20 to-muted/40 border border-border/40 overflow-x-auto scrollbar-hide animate-fade-in">
         {([
-          { key: "all", label: "All", count: stats.total, dot: "bg-foreground/60", activeBg: "bg-background text-foreground shadow-sm", activeText: "text-foreground" },
-          { key: "present", label: "Present", count: stats.present, dot: "bg-green-500", activeBg: "bg-background shadow-sm", activeText: "text-green-600 dark:text-green-400" },
-          { key: "late", label: "Late", count: stats.late, dot: "bg-amber-500", activeBg: "bg-background shadow-sm", activeText: "text-amber-600 dark:text-amber-400" },
-          { key: "absent", label: "Absent", count: stats.absent, dot: "bg-red-500", activeBg: "bg-background shadow-sm", activeText: "text-red-600 dark:text-red-400" },
+          {
+            key: "all",
+            label: "All",
+            count: stats.total,
+            inactive: "text-muted-foreground hover:text-foreground hover:bg-background/60",
+            active: "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-md shadow-primary/30",
+            badgeActive: "bg-primary-foreground/20 text-primary-foreground",
+            badgeInactive: "bg-foreground/10 text-foreground",
+            dot: "bg-foreground/60",
+            dotActive: "bg-primary-foreground",
+          },
+          {
+            key: "present",
+            label: "Present",
+            count: stats.present,
+            inactive: "text-green-700 dark:text-green-400 hover:bg-green-500/10",
+            active: "bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-md shadow-green-500/30",
+            badgeActive: "bg-white/20 text-white",
+            badgeInactive: "bg-green-500/15 text-green-700 dark:text-green-400",
+            dot: "bg-green-500",
+            dotActive: "bg-white",
+          },
+          {
+            key: "late",
+            label: "Late",
+            count: stats.late,
+            inactive: "text-amber-700 dark:text-amber-400 hover:bg-amber-500/10",
+            active: "bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30",
+            badgeActive: "bg-white/20 text-white",
+            badgeInactive: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+            dot: "bg-amber-500",
+            dotActive: "bg-white",
+          },
+          {
+            key: "absent",
+            label: "Absent",
+            count: stats.absent,
+            inactive: "text-red-700 dark:text-red-400 hover:bg-red-500/10",
+            active: "bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-md shadow-red-500/30",
+            badgeActive: "bg-white/20 text-white",
+            badgeInactive: "bg-red-500/15 text-red-700 dark:text-red-400",
+            dot: "bg-red-500",
+            dotActive: "bg-white",
+          },
         ] as const).map((pill) => {
           const isActive = statusFilter === pill.key;
           return (
@@ -446,17 +486,16 @@ export const SimpleAttendanceTab = () => {
               type="button"
               onClick={() => setStatusFilter(isActive ? "all" : pill.key as any)}
               className={cn(
-                "flex-1 min-w-[80px] flex items-center justify-center gap-1.5 lg:gap-2 px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-md text-xs lg:text-sm font-medium transition-all duration-200 whitespace-nowrap",
-                isActive
-                  ? cn(pill.activeBg, pill.activeText, "ring-1 ring-border/60")
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                "flex-1 min-w-[80px] flex items-center justify-center gap-1.5 lg:gap-2 px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all duration-300 whitespace-nowrap",
+                "active:scale-95",
+                isActive ? cn(pill.active, "scale-[1.03]") : pill.inactive
               )}
             >
-              <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", pill.dot)} />
+              <span className={cn("w-1.5 h-1.5 rounded-full shrink-0 transition-colors", isActive ? pill.dotActive : pill.dot)} />
               <span>{pill.label}</span>
               <span className={cn(
-                "text-[10px] lg:text-xs px-1.5 py-0.5 rounded-full font-semibold tabular-nums",
-                isActive ? "bg-muted/60" : "bg-muted/40 text-muted-foreground"
+                "text-[10px] lg:text-xs px-1.5 py-0.5 rounded-full font-bold tabular-nums transition-colors",
+                isActive ? pill.badgeActive : pill.badgeInactive
               )}>
                 {pill.count}
               </span>
