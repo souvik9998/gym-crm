@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { InformationCircleIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/outline";
@@ -40,6 +41,8 @@ import { StaffInlinePermissions, InlinePermissions, getDefaultPermissions } from
 import { StaffWhatsAppButton, sendStaffCredentialsWhatsApp } from "./StaffWhatsAppButton";
 import { StaffRoleConversionDialog } from "./StaffRoleConversionDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChangePhoneDialog } from "./ChangePhoneDialog";
+import { DevicePhoneMobileIcon } from "@heroicons/react/24/outline";
 
 interface StaffTrainersTabProps {
   trainers: Staff[];
@@ -59,9 +62,23 @@ export const StaffTrainersTab = ({
   isLoading,
   onConversionSuccess,
 }: StaffTrainersTabProps) => {
+  const queryClient = useQueryClient();
   const isCompact = useIsTabletOrBelow();
   const [infoDialog, setInfoDialog] = useState<{ open: boolean; trainer: Staff | null }>({ open: false, trainer: null });
   const [conversionDialog, setConversionDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
+  const [changePhoneDialog, setChangePhoneDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
+
+  // Hard cache bust + refetch — ensures mutations are reflected even when data is cached
+  const refreshAll = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["staff-page-data"], refetchType: "all" }),
+      queryClient.invalidateQueries({ queryKey: ["trainer-filter-list"], refetchType: "all" }),
+      queryClient.invalidateQueries({ queryKey: ["time-slot-members"], refetchType: "all" }),
+      queryClient.invalidateQueries({ queryKey: ["assigned-members"], refetchType: "all" }),
+    ]);
+    onRefresh();
+  };
+
   const [newTrainer, setNewTrainer] = useState({
     full_name: "",
     phone: "",
@@ -327,7 +344,7 @@ export const StaffTrainersTab = ({
         permissions: getDefaultPermissions("trainer"),
         sendWhatsApp: true,
       });
-      onRefresh();
+      await refreshAll();
     } finally {
       setIsAddingTrainer(false);
       addingRef.current = false;
@@ -340,7 +357,6 @@ export const StaffTrainersTab = ({
     const paymentCategory = trainer.salary_type === "session_based" ? "session_basis" : "monthly_percentage";
     setEditData({
       full_name: trainer.full_name,
-      phone: trainer.phone,
       specialization: trainer.specialization || "",
       id_type: trainer.id_type || "aadhaar",
       id_number: trainer.id_number || "",
@@ -359,30 +375,11 @@ export const StaffTrainersTab = ({
     }
 
     const trainer = trainers.find((t) => t.id === id);
-    const cleanPhone = editData.phone.replace(/\D/g, "").replace(/^0/, "");
-
-    // Check if phone is being changed and if new phone already exists
-    if (cleanPhone !== trainer?.phone) {
-      const { data: existingStaff } = await supabase
-        .from("staff")
-        .select("id")
-        .eq("phone", cleanPhone)
-        .neq("id", id)
-        .maybeSingle();
-
-      if (existingStaff) {
-        toast.error("Phone number already in use", {
-          description: "Another staff member is already registered with this phone number.",
-        });
-        return;
-      }
-    }
 
     const { error } = await supabase
       .from("staff")
       .update({
         full_name: editData.full_name,
-        phone: cleanPhone,
         specialization: editData.specialization || null,
         id_type: editData.id_type || null,
         id_number: editData.id_number || null,
@@ -399,7 +396,7 @@ export const StaffTrainersTab = ({
     }
 
     // Filter out metadata fields and only include fields that are being updated
-    const fieldsToLog = ['full_name', 'phone', 'specialization', 'id_type', 'id_number', 'salary_type', 'monthly_salary', 'session_fee', 'percentage_fee'];
+    const fieldsToLog = ['full_name', 'specialization', 'id_type', 'id_number', 'salary_type', 'monthly_salary', 'session_fee', 'percentage_fee'];
     const oldValueFiltered = trainer 
       ? Object.fromEntries(
           fieldsToLog
@@ -438,13 +435,12 @@ export const StaffTrainersTab = ({
       branchId: currentBranch?.id,
     });
 
-    // Sync updates to personal_trainers table
-    if (trainer) {
+    // Sync updates to personal_trainers table (matched by stable phone — phone isn't editable here)
+    if (trainer?.phone) {
       await supabase
         .from("personal_trainers")
         .update({
           name: editData.full_name,
-          phone: cleanPhone || null,
           specialization: editData.specialization || null,
           monthly_fee: Number(editData.monthly_fee) || 0,
           monthly_salary: Number(editData.monthly_salary) || 0,
@@ -457,7 +453,7 @@ export const StaffTrainersTab = ({
 
     toast.success("Trainer updated");
     setEditingId(null);
-    onRefresh();
+    await refreshAll();
   };
 
   const handleToggle = async (id: string, isActive: boolean) => {
@@ -481,7 +477,7 @@ export const StaffTrainersTab = ({
       branchId: currentBranch?.id,
     });
 
-    onRefresh();
+    await refreshAll();
   };
 
   const handleDelete = (id: string, name: string) => {
@@ -509,7 +505,7 @@ export const StaffTrainersTab = ({
         });
 
         toast.success("Trainer deleted");
-        onRefresh();
+        await refreshAll();
       },
     });
   };
@@ -738,14 +734,6 @@ export const StaffTrainersTab = ({
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">Phone</Label>
-                          <Input
-                            value={editData.phone}
-                            onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-                            className="h-9"
-                          />
-                        </div>
-                        <div className="space-y-1">
                           <Label className="text-xs">Specialization</Label>
                           <Input
                             value={editData.specialization}
@@ -907,8 +895,18 @@ export const StaffTrainersTab = ({
                           variant="outline"
                           className="h-8 w-8 p-0"
                           onClick={() => handleEdit(trainer)}
+                          title="Edit details"
                         >
                           <PencilIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setChangePhoneDialog({ open: true, staff: trainer })}
+                          title="Change mobile number"
+                        >
+                          <DevicePhoneMobileIcon className="w-4 h-4" />
                         </Button>
                         <Button
                           size="sm"
@@ -1009,8 +1007,17 @@ export const StaffTrainersTab = ({
                           size="sm"
                           variant="outline"
                           onClick={() => handleEdit(trainer)}
+                          title="Edit details"
                         >
                           <PencilIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setChangePhoneDialog({ open: true, staff: trainer })}
+                          title="Change mobile number"
+                        >
+                          <DevicePhoneMobileIcon className="w-4 h-4" />
                         </Button>
                         <Button
                           size="sm"
@@ -1106,7 +1113,7 @@ export const StaffTrainersTab = ({
         open={passwordDialog.open}
         onOpenChange={(open) => setPasswordDialog({ ...passwordDialog, open })}
         staff={passwordDialog.staff}
-        onSuccess={onRefresh}
+        onSuccess={refreshAll}
       />
       
       {/* View Password Dialog */}
@@ -1167,7 +1174,7 @@ export const StaffTrainersTab = ({
         open={permissionsDialog.open}
         onOpenChange={(open) => setPermissionsDialog({ ...permissionsDialog, open })}
         staff={permissionsDialog.staff}
-        onSuccess={onRefresh}
+        onSuccess={refreshAll}
       />
 
       <StaffBranchAssignmentDialog
@@ -1175,7 +1182,7 @@ export const StaffTrainersTab = ({
         onOpenChange={(open) => setBranchAssignmentDialog({ ...branchAssignmentDialog, open })}
         staff={branchAssignmentDialog.staff}
         branches={branches}
-        onSuccess={onRefresh}
+        onSuccess={refreshAll}
       />
 
       {/* Existing Staff Found Dialog */}
@@ -1243,7 +1250,15 @@ export const StaffTrainersTab = ({
         direction="to_staff"
         branchId={currentBranch?.id}
         branchName={currentBranch?.name}
-        onSuccess={() => { onConversionSuccess ? onConversionSuccess() : onRefresh(); }}
+        onSuccess={async () => { if (onConversionSuccess) { onConversionSuccess(); } await refreshAll(); }}
+      />
+      <ChangePhoneDialog
+        open={changePhoneDialog.open}
+        onOpenChange={(open) => setChangePhoneDialog({ ...changePhoneDialog, open })}
+        staff={changePhoneDialog.staff}
+        branchId={currentBranch?.id}
+        branchName={currentBranch?.name}
+        onSuccess={refreshAll}
       />
     </div>
   );
