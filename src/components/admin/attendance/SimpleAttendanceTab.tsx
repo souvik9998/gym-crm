@@ -687,5 +687,6 @@ export const SimpleAttendanceTab = () => {
         </div>
       )}
     </div>
+    </TooltipProvider>
   );
 };
