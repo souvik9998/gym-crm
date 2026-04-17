@@ -9,8 +9,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/sonner";
 import { Staff } from "@/pages/admin/StaffManagement";
@@ -19,6 +21,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   EyeIcon,
+  EyeSlashIcon,
   PencilSquareIcon,
   BookOpenIcon,
   CurrencyRupeeIcon,
@@ -28,7 +31,18 @@ import {
   UserGroupIcon,
   ChatBubbleLeftRightIcon,
   CalendarDaysIcon,
+  KeyIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
+
+const generatePassword = (length = 8): string => {
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let password = "";
+  for (let i = 0; i < length; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+};
 
 interface StaffPermissionsDialogProps {
   open: boolean;
