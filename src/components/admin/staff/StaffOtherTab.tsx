@@ -321,7 +321,7 @@ export const StaffOtherTab = ({
         permissions: getDefaultPermissions("reception"),
         sendWhatsApp: true,
       });
-      onRefresh();
+      await refreshAll();
     } finally {
       setIsAddingStaff(false);
       addingRef.current = false;
