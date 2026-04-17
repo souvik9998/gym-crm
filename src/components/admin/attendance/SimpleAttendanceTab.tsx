@@ -177,7 +177,6 @@ export const SimpleAttendanceTab = () => {
     const map = new Map<string, AttendanceStatus>();
     existingRecords.forEach((r: any) => { map.set(r.member_id, r.status as AttendanceStatus); });
     setLocalAttendance(map);
-    setHasChanges(false);
   }, [existingRecords]);
 
   const memberList = useMemo((): MemberAttendance[] => {
