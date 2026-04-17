@@ -303,6 +303,8 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
       queryClient.invalidateQueries({ queryKey: ["event-reg-counts", event.id] });
       queryClient.invalidateQueries({ queryKey: ["event-detail", event.id] });
       queryClient.invalidateQueries({ queryKey: ["events"] });
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast.success("Member registered successfully!");
 
       const desc = `${isStaffLoggedIn ? `Staff "${staffUser?.fullName}"` : "Admin"} registered "${name}" for event "${event.title}"`;
