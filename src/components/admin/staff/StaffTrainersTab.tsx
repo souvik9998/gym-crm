@@ -842,7 +842,7 @@ export const StaffTrainersTab = ({
                     <Collapsible open={isExpanded} onOpenChange={(open) => setExpandedId(open ? trainer.id : null)}>
                       {/* Compact header — always visible */}
                       <div className="p-3 lg:p-4">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 lg:gap-3 flex-wrap lg:flex-nowrap">
                           {/* Avatar with subtle gradient */}
                           <div className="flex-shrink-0 w-11 h-11 lg:w-12 lg:h-12 rounded-full bg-gradient-to-br from-primary/15 to-primary/5 text-primary font-semibold text-sm lg:text-base flex items-center justify-center ring-1 ring-primary/10 transition-transform duration-200 group-hover:scale-105">
                             {initials || "T"}
@@ -874,8 +874,88 @@ export const StaffTrainersTab = ({
                             </p>
                           </div>
 
-                          {/* Right cluster: status + expand */}
-                          <div className="flex items-center gap-2 flex-shrink-0">
+                          {/* Inline action toolbar */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <StaffWhatsAppButton staff={trainer} />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 hover:border-blue-500/50 hover:text-blue-600"
+                              onClick={() => setBranchAssignmentDialog({ open: true, staff: trainer })}
+                              title="Manage Branch Assignments"
+                            >
+                              <BuildingOfficeIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10 hover:border-amber-500/50 hover:text-amber-600"
+                              onClick={async () => {
+                                const { data: activities } = await supabase
+                                  .from("admin_activity_logs")
+                                  .select("metadata")
+                                  .eq("entity_type", "staff")
+                                  .eq("entity_id", trainer.id)
+                                  .eq("activity_type", "staff_password_set")
+                                  .order("created_at", { ascending: false })
+                                  .limit(1)
+                                  .maybeSingle();
+                                if (activities?.metadata && (activities.metadata as any).password) {
+                                  setViewPasswordDialog({ open: true, staff: trainer, password: (activities.metadata as any).password });
+                                } else {
+                                  setPasswordDialog({ open: true, staff: trainer });
+                                }
+                              }}
+                              title={trainer.auth_user_id ? "View/Update Password" : "Set Password"}
+                            >
+                              <KeyIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-violet-600 dark:text-violet-400 border-violet-500/30 hover:bg-violet-500/10 hover:border-violet-500/50 hover:text-violet-600"
+                              onClick={() => setPermissionsDialog({ open: true, staff: trainer })}
+                              title="Manage Permissions"
+                            >
+                              <ShieldCheckIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-cyan-600 dark:text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10 hover:border-cyan-500/50 hover:text-cyan-600"
+                              onClick={() => handleEdit(trainer)}
+                              title="Edit details"
+                            >
+                              <PencilIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-500/10 hover:border-teal-500/50 hover:text-teal-600"
+                              onClick={() => setChangePhoneDialog({ open: true, staff: trainer })}
+                              title="Change mobile number"
+                            >
+                              <DevicePhoneMobileIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/30 hover:bg-fuchsia-500/10 hover:border-fuchsia-500/50 hover:text-fuchsia-600"
+                              onClick={() => setConversionDialog({ open: true, staff: trainer })}
+                              title="Convert to Staff"
+                            >
+                              <ArrowsRightLeftIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-105"
+                              onClick={() => handleDelete(trainer.id, trainer.full_name)}
+                              title="Delete trainer"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </Button>
+                            <div className="h-6 w-px bg-border/60 mx-1" />
                             <Switch
                               checked={trainer.is_active}
                               onCheckedChange={(checked) => handleToggle(trainer.id, checked)}
@@ -893,91 +973,6 @@ export const StaffTrainersTab = ({
                                 />
                               </Button>
                             </CollapsibleTrigger>
-                          </div>
-                        </div>
-
-                        {/* Action toolbar — always visible in main card */}
-                        <div className="flex items-center gap-1.5 flex-wrap mt-3 pt-3 border-t border-border/40">
-                          <StaffWhatsAppButton staff={trainer} />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 hover:border-blue-500/50 hover:text-blue-600"
-                            onClick={() => setBranchAssignmentDialog({ open: true, staff: trainer })}
-                            title="Manage Branch Assignments"
-                          >
-                            <BuildingOfficeIcon className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10 hover:border-amber-500/50 hover:text-amber-600"
-                            onClick={async () => {
-                              const { data: activities } = await supabase
-                                .from("admin_activity_logs")
-                                .select("metadata")
-                                .eq("entity_type", "staff")
-                                .eq("entity_id", trainer.id)
-                                .eq("activity_type", "staff_password_set")
-                                .order("created_at", { ascending: false })
-                                .limit(1)
-                                .maybeSingle();
-                              if (activities?.metadata && (activities.metadata as any).password) {
-                                setViewPasswordDialog({ open: true, staff: trainer, password: (activities.metadata as any).password });
-                              } else {
-                                setPasswordDialog({ open: true, staff: trainer });
-                              }
-                            }}
-                            title={trainer.auth_user_id ? "View/Update Password" : "Set Password"}
-                          >
-                            <KeyIcon className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-violet-600 dark:text-violet-400 border-violet-500/30 hover:bg-violet-500/10 hover:border-violet-500/50 hover:text-violet-600"
-                            onClick={() => setPermissionsDialog({ open: true, staff: trainer })}
-                            title="Manage Permissions"
-                          >
-                            <ShieldCheckIcon className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-cyan-600 dark:text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10 hover:border-cyan-500/50 hover:text-cyan-600"
-                            onClick={() => handleEdit(trainer)}
-                            title="Edit details"
-                          >
-                            <PencilIcon className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-500/10 hover:border-teal-500/50 hover:text-teal-600"
-                            onClick={() => setChangePhoneDialog({ open: true, staff: trainer })}
-                            title="Change mobile number"
-                          >
-                            <DevicePhoneMobileIcon className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/30 hover:bg-fuchsia-500/10 hover:border-fuchsia-500/50 hover:text-fuchsia-600"
-                            onClick={() => setConversionDialog({ open: true, staff: trainer })}
-                            title="Convert to Staff"
-                          >
-                            <ArrowsRightLeftIcon className="w-4 h-4" />
-                          </Button>
-                          <div className="ml-auto">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-105"
-                              onClick={() => handleDelete(trainer.id, trainer.full_name)}
-                              title="Delete trainer"
-                            >
-                              <TrashIcon className="w-4 h-4" />
-                            </Button>
                           </div>
                         </div>
                       </div>
