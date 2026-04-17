@@ -117,6 +117,22 @@ export const StaffPermissionsDialog = ({
     can_view_slot_members: false,
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [grantMode, setGrantMode] = useState(false);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [sendWhatsApp, setSendWhatsApp] = useState(true);
+
+  const hasLoginAccess = !!(staff as any)?.auth_user_id;
+  const showGrantGate = !!staff && !hasLoginAccess && !grantMode;
+
+  useEffect(() => {
+    if (open) {
+      setGrantMode(false);
+      setPassword("");
+      setShowPassword(false);
+      setSendWhatsApp(true);
+    }
+  }, [open, staff?.id]);
 
   useEffect(() => {
     if (staff?.permissions) {
