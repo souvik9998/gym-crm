@@ -699,6 +699,132 @@ Deno.serve(async (req) => {
         );
       }
 
+      case "change-phone": {
+        // Admin-authenticated: update staff phone AND keep auth.users email in sync.
+        // Without this, staff cannot log in with the new phone (email-derived auth).
+        const authHeader = req.headers.get("authorization");
+        if (!authHeader) {
+          return errorResponse("Admin authentication required", 401);
+        }
+        const token = authHeader.replace("Bearer ", "").trim();
+
+        const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+        if (userError || !user) {
+          return errorResponse("Invalid admin token", 401);
+        }
+
+        // Allow admin OR super_admin
+        const { data: roles } = await supabaseAdmin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .in("role", ["admin", "super_admin"]);
+        if (!roles || roles.length === 0) {
+          return errorResponse("Admin access required", 403);
+        }
+
+        const staffId = typeof body.staffId === "string" ? body.staffId : "";
+        const newPhoneRaw = typeof body.newPhone === "string" ? body.newPhone : "";
+        const newPhone = newPhoneRaw.replace(/\D/g, "").replace(/^0/, "").slice(-10);
+
+        if (!staffId) return errorResponse("staffId required", 400);
+        if (!/^[6-9]\d{9}$/.test(newPhone)) {
+          return errorResponse("Invalid 10-digit Indian mobile number", 400);
+        }
+
+        // Load staff
+        const { data: staff, error: staffErr } = await supabaseAdmin
+          .from("staff")
+          .select("id, phone, auth_user_id, full_name")
+          .eq("id", staffId)
+          .single();
+        if (staffErr || !staff) return errorResponse("Staff not found", 404);
+
+        const oldPhone: string | null = staff.phone;
+        if (oldPhone === newPhone) {
+          return errorResponse("New number must be different from current", 400);
+        }
+
+        // Uniqueness check: no other staff (different phone) using this number
+        const { data: clash } = await supabaseAdmin
+          .from("staff")
+          .select("id")
+          .eq("phone", newPhone)
+          .neq("id", staffId)
+          .limit(1);
+        if (clash && clash.length > 0) {
+          return errorResponse("Phone number already in use by another staff", 409);
+        }
+
+        const newEmail = getStaffEmail(newPhone);
+
+        // Update Supabase Auth email FIRST (this is the source of truth for login)
+        if (staff.auth_user_id) {
+          // Make sure no other auth user already has this email
+          const { data: usersList } = await supabaseAdmin.auth.admin.listUsers();
+          const conflict = usersList?.users?.find(
+            (u) => u.email === newEmail && u.id !== staff.auth_user_id,
+          );
+          if (conflict) {
+            return errorResponse(
+              "An auth account already exists for this phone. Contact support to merge.",
+              409,
+            );
+          }
+
+          const { error: emailErr } = await supabaseAdmin.auth.admin.updateUserById(
+            staff.auth_user_id,
+            { email: newEmail, email_confirm: true },
+          );
+          if (emailErr) {
+            console.error("change-phone: failed to update auth email", emailErr);
+            return errorResponse("Failed to update login email: " + emailErr.message, 500);
+          }
+        }
+
+        // Update ALL staff rows sharing the old phone (multi-branch case)
+        if (oldPhone) {
+          const { error: updErr } = await supabaseAdmin
+            .from("staff")
+            .update({ phone: newPhone })
+            .eq("phone", oldPhone);
+          if (updErr) {
+            console.error("change-phone: failed to update staff rows", updErr);
+            return errorResponse("Failed to update staff record: " + updErr.message, 500);
+          }
+
+          // Sync personal_trainers
+          await supabaseAdmin
+            .from("personal_trainers")
+            .update({ phone: newPhone })
+            .eq("phone", oldPhone);
+        } else {
+          await supabaseAdmin
+            .from("staff")
+            .update({ phone: newPhone })
+            .eq("id", staffId);
+        }
+
+        // Revoke all existing sessions so the user must re-authenticate with the new phone
+        if (staff.auth_user_id) {
+          try {
+            await supabaseAdmin.auth.admin.signOut(staff.auth_user_id, "global");
+          } catch (e) {
+            console.warn("change-phone: signOut failed (non-fatal)", e);
+          }
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            oldPhone,
+            newPhone,
+            authEmailUpdated: !!staff.auth_user_id,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
       default:
         console.warn("Invalid staff-auth action", {
           action,
