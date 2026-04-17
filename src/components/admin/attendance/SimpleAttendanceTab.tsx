@@ -400,48 +400,35 @@ export const SimpleAttendanceTab = () => {
         </div>
       </div>
 
-      {/* Filter Cards — clickable, shared between desktop & mobile */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3 animate-fade-in">
+      {/* Filter Pills — segmented, compact, semantic */}
+      <div className="flex items-center gap-1.5 p-1 rounded-lg bg-muted/40 border border-border/40 overflow-x-auto scrollbar-hide animate-fade-in">
         {([
-          { key: "all", label: "Total", count: stats.total, accent: "border-foreground/20 bg-foreground/5", activeAccent: "border-foreground bg-foreground/10 ring-1 ring-foreground/30", iconBg: "bg-foreground/10 text-foreground", text: "text-foreground" },
-          { key: "present", label: "Present", count: stats.present, accent: "border-green-500/20 bg-green-500/5", activeAccent: "border-green-500 bg-green-500/10 ring-1 ring-green-500/40", iconBg: "bg-green-500/15 text-green-600 dark:text-green-400", text: "text-green-600 dark:text-green-400" },
-          { key: "late", label: "Late", count: stats.late, accent: "border-amber-500/20 bg-amber-500/5", activeAccent: "border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/40", iconBg: "bg-amber-500/15 text-amber-600 dark:text-amber-400", text: "text-amber-600 dark:text-amber-400" },
-          { key: "absent", label: "Absent", count: stats.absent, accent: "border-red-500/20 bg-red-500/5", activeAccent: "border-red-500 bg-red-500/10 ring-1 ring-red-500/40", iconBg: "bg-red-500/15 text-red-600 dark:text-red-400", text: "text-red-600 dark:text-red-400" },
-        ] as const).map((card) => {
-          const isActive = statusFilter === card.key;
+          { key: "all", label: "All", count: stats.total, dot: "bg-foreground/60", activeBg: "bg-background text-foreground shadow-sm", activeText: "text-foreground" },
+          { key: "present", label: "Present", count: stats.present, dot: "bg-green-500", activeBg: "bg-background shadow-sm", activeText: "text-green-600 dark:text-green-400" },
+          { key: "late", label: "Late", count: stats.late, dot: "bg-amber-500", activeBg: "bg-background shadow-sm", activeText: "text-amber-600 dark:text-amber-400" },
+          { key: "absent", label: "Absent", count: stats.absent, dot: "bg-red-500", activeBg: "bg-background shadow-sm", activeText: "text-red-600 dark:text-red-400" },
+        ] as const).map((pill) => {
+          const isActive = statusFilter === pill.key;
           return (
             <button
-              key={card.key}
+              key={pill.key}
               type="button"
-              onClick={() => setStatusFilter(isActive ? "all" : card.key as any)}
+              onClick={() => setStatusFilter(isActive ? "all" : pill.key as any)}
               className={cn(
-                "relative rounded-xl border px-3 py-2.5 text-left transition-all duration-200",
-                "hover:scale-[1.02] active:scale-[0.98] hover:shadow-md",
-                isActive ? card.activeAccent + " shadow-sm" : card.accent + " hover:border-opacity-60"
+                "flex-1 min-w-[80px] flex items-center justify-center gap-1.5 lg:gap-2 px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-md text-xs lg:text-sm font-medium transition-all duration-200 whitespace-nowrap",
+                isActive
+                  ? cn(pill.activeBg, pill.activeText, "ring-1 ring-border/60")
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
               )}
             >
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-[10px] lg:text-[11px] uppercase tracking-wider text-muted-foreground font-medium truncate">
-                    {card.label}
-                  </p>
-                  <p className={cn("text-lg lg:text-2xl font-bold mt-0.5 transition-colors", card.text)}>
-                    {card.count}
-                  </p>
-                </div>
-                <div className={cn(
-                  "w-7 h-7 lg:w-9 lg:h-9 rounded-full flex items-center justify-center shrink-0 transition-transform duration-200",
-                  card.iconBg,
-                  isActive && "scale-110"
-                )}>
-                  <span className="text-xs lg:text-sm font-bold">
-                    {card.key === "all" ? "T" : card.key === "present" ? "P" : card.key === "late" ? "L" : "A"}
-                  </span>
-                </div>
-              </div>
-              {isActive && (
-                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-background animate-fade-in" />
-              )}
+              <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", pill.dot)} />
+              <span>{pill.label}</span>
+              <span className={cn(
+                "text-[10px] lg:text-xs px-1.5 py-0.5 rounded-full font-semibold tabular-nums",
+                isActive ? "bg-muted/60" : "bg-muted/40 text-muted-foreground"
+              )}>
+                {pill.count}
+              </span>
             </button>
           );
         })}
