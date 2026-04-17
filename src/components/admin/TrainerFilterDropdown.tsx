@@ -89,8 +89,12 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
         if (s.full_name) nameToStaffId[s.full_name.trim().toLowerCase()] = s.id;
       }
 
-      const resolveStaffId = (pt: { phone: string | null }): string | null =>
-        pt.phone ? phoneToStaffId[pt.phone] || null : null;
+      const resolveStaffId = (pt: { phone: string | null; name: string }): string | null => {
+        if (pt.phone && phoneToStaffId[pt.phone]) return phoneToStaffId[pt.phone];
+        // Fallback: match by name when staff RLS hides phone of colleagues
+        if (pt.name) return nameToStaffId[pt.name.trim().toLowerCase()] || null;
+        return null;
+      };
 
       // Get member counts via pt_subscriptions
       const today = new Date().toISOString().split("T")[0];
