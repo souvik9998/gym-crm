@@ -11,6 +11,7 @@ import { ValidatedInput } from "@/components/ui/validated-input";
 import { phoneSchema, validateField, validateForm } from "@/lib/validation";
 import { z } from "zod";
 import PoweredByBadge from "@/components/PoweredByBadge";
+import RegistrationPageSkeleton from "@/components/registration/RegistrationPageSkeleton";
 
 const formSchema = z.object({
   phone: phoneSchema,
@@ -224,6 +225,10 @@ const Index = () => {
     setPhoneError(undefined);
     
   };
+
+  if (isBranchLoading && !branchInfo) {
+    return <RegistrationPageSkeleton variant="landing" />;
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

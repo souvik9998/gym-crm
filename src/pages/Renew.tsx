@@ -10,6 +10,7 @@ import PackageSelectionForm, { type PackageSelectionData } from "@/components/re
 import { fetchPublicBranch } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 import PoweredByBadge from "@/components/PoweredByBadge";
+import RegistrationPageSkeleton from "@/components/registration/RegistrationPageSkeleton";
 
 interface Member {
   id: string;

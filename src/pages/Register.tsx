@@ -12,6 +12,7 @@ import PackageSelectionForm, { type PackageSelectionData } from "@/components/re
 import { fetchPublicBranch } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference, type WhatsAppAutoSendType } from "@/utils/whatsappAutoSend";
 import PoweredByBadge from "@/components/PoweredByBadge";
+import RegistrationPageSkeleton from "@/components/registration/RegistrationPageSkeleton";
 
 type Step = "details" | "health" | "package";
 
@@ -279,6 +280,12 @@ const Register = () => {
   };
 
   if (!phone) return null;
+
+  // Show full-page skeleton until branch + field settings are ready
+  // to prevent field-visibility flicker once settings arrive.
+  if (branchId && (!branchInfo || !fieldSettings)) {
+    return <RegistrationPageSkeleton variant="form" />;
+  }
 
   const totalSteps = needsHealthStep ? 3 : 2;
   const currentStepIndex = step === "details" ? 0 : step === "health" ? 1 : needsHealthStep ? 2 : 1;

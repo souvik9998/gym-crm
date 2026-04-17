@@ -11,6 +11,7 @@ import { addDays, addMonths, differenceInDays, format, isBefore, isAfter, parseI
 import { fetchPublicBranch, fetchPublicTrainers, fetchPublicPackages } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 import PoweredByBadge from "@/components/PoweredByBadge";
+import RegistrationPageSkeleton from "@/components/registration/RegistrationPageSkeleton";
 
 interface Trainer {
   id: string;
