@@ -30,6 +30,10 @@ interface MemberDetailsFormProps {
   emailRequired?: boolean;
   showOccupation?: boolean;
   occupationRequired?: boolean;
+  showAddress?: boolean;
+  addressRequired?: boolean;
+  showDateOfBirth?: boolean;
+  dateOfBirthRequired?: boolean;
 }
 
 export interface MemberDetailsData {
