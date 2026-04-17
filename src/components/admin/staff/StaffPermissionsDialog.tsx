@@ -294,13 +294,57 @@ export const StaffPermissionsDialog = ({
     }));
   };
 
+  // GATE: Trainer/staff without login access — show "Grant Access" CTA first
+  if (showGrantGate) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md p-4">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-base flex items-center gap-2">
+              <LockClosedIcon className="w-4 h-4 text-muted-foreground" />
+              Login Access Required
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {staff?.full_name} doesn't have login access yet. Grant access to configure permissions.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-1">
+              <p><strong>Name:</strong> {staff?.full_name}</p>
+              <p><strong>Phone:</strong> {staff?.phone || "—"}</p>
+              <p><strong>Role:</strong> {staff?.role}</p>
+            </div>
+
+            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-700 dark:text-amber-400">
+              Without login access, permission toggles have no effect. Grant access to set a password,
+              configure permissions, and optionally notify the staff member via WhatsApp.
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button onClick={() => setGrantMode(true)} className="gap-2">
+              <KeyIcon className="w-4 h-4" />
+              Grant Access
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg p-4 max-h-[85vh] overflow-y-auto">
         <DialogHeader className="pb-2">
-          <DialogTitle className="text-base">Staff Permissions</DialogTitle>
+          <DialogTitle className="text-base">
+            {grantMode && !hasLoginAccess ? "Grant Login Access & Permissions" : "Staff Permissions"}
+          </DialogTitle>
           <DialogDescription className="text-xs">
-            Configure what {staff?.full_name} can access and manage
+            {grantMode && !hasLoginAccess
+              ? `Set credentials and configure what ${staff?.full_name} can access`
+              : `Configure what ${staff?.full_name} can access and manage`}
           </DialogDescription>
         </DialogHeader>
 
@@ -309,6 +353,60 @@ export const StaffPermissionsDialog = ({
             <p><strong>Name:</strong> {staff?.full_name}</p>
             <p><strong>Role:</strong> {staff?.role}</p>
           </div>
+
+          {/* Login Provisioning (only when granting fresh access) */}
+          {grantMode && !hasLoginAccess && (
+            <>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Login Credentials</p>
+              <div className="space-y-3 p-3 bg-muted/30 rounded-lg border border-dashed">
+                <div className="space-y-2">
+                  <Label htmlFor="grant-password" className="text-sm">Password *</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        id="grant-password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter or generate password"
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={handleGeneratePassword}>
+                      Generate
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">Minimum 6 characters. Staff will log in with their phone number.</p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="grant-send-wa"
+                    checked={sendWhatsApp}
+                    onCheckedChange={(c) => setSendWhatsApp(c === true)}
+                    disabled={!staff?.phone}
+                  />
+                  <Label htmlFor="grant-send-wa" className="text-sm cursor-pointer flex items-center gap-1.5">
+                    <ChatBubbleLeftRightIcon className="w-4 h-4 text-emerald-600" />
+                    Notify via WhatsApp
+                  </Label>
+                </div>
+                {!staff?.phone && (
+                  <p className="text-[11px] text-destructive">No phone number on file — WhatsApp delivery unavailable.</p>
+                )}
+              </div>
+
+              <Separator />
+            </>
+          )}
 
           {/* Core Permissions */}
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Core Permissions</p>
@@ -371,9 +469,17 @@ export const StaffPermissionsDialog = ({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          {grantMode && !hasLoginAccess ? (
+            <Button variant="outline" onClick={() => setGrantMode(false)}>Back</Button>
+          ) : (
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          )}
           <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading ? "Saving..." : "Save Permissions"}
+            {isLoading
+              ? "Saving..."
+              : grantMode && !hasLoginAccess
+                ? "Grant Access & Save"
+                : "Save Permissions"}
           </Button>
         </DialogFooter>
       </DialogContent>
