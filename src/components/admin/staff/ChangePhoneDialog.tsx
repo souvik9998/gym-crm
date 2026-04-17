@@ -130,7 +130,8 @@ export const ChangePhoneDialog = ({
           `✅ *Mobile Number Confirmed*\n\n` +
           `Hi ${staff.full_name},\n\n` +
           `Your new mobile number has been registered at *${gym}*.\n\n` +
-          `Please use this number for all future logins and communication.\n\n` +
+          `From now on, please log in using this new number — your existing password remains unchanged.\n\n` +
+          `Any active sessions have been signed out for security; you'll need to log in again with the new number.\n\n` +
           `— Team ${gym}`;
 
         if (oldPhone) await sendNotification(formatPhoneForWA(oldPhone), oldMsg);
