@@ -1113,7 +1113,7 @@ export const StaffTrainersTab = ({
         open={passwordDialog.open}
         onOpenChange={(open) => setPasswordDialog({ ...passwordDialog, open })}
         staff={passwordDialog.staff}
-        onSuccess={onRefresh}
+        onSuccess={refreshAll}
       />
       
       {/* View Password Dialog */}
@@ -1174,7 +1174,7 @@ export const StaffTrainersTab = ({
         open={permissionsDialog.open}
         onOpenChange={(open) => setPermissionsDialog({ ...permissionsDialog, open })}
         staff={permissionsDialog.staff}
-        onSuccess={onRefresh}
+        onSuccess={refreshAll}
       />
 
       <StaffBranchAssignmentDialog
@@ -1182,7 +1182,7 @@ export const StaffTrainersTab = ({
         onOpenChange={(open) => setBranchAssignmentDialog({ ...branchAssignmentDialog, open })}
         staff={branchAssignmentDialog.staff}
         branches={branches}
-        onSuccess={onRefresh}
+        onSuccess={refreshAll}
       />
 
       {/* Existing Staff Found Dialog */}
