@@ -397,6 +397,7 @@ export const SimpleAttendanceTab = () => {
             onChange={setSelectedSlotId}
             trainerFilter={selectedTrainerId}
           />
+        </div>
       </div>
 
       {/* Filter Cards — clickable, shared between desktop & mobile */}
@@ -503,20 +504,6 @@ export const SimpleAttendanceTab = () => {
         <div className="flex items-center gap-1.5 justify-start">
           <TrainerFilterDropdown value={selectedTrainerId} onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }} compact />
           <TimeSlotFilterDropdown value={selectedSlotId} onChange={setSelectedSlotId} trainerFilter={selectedTrainerId} compact />
-        </div>
-        <div className="flex items-center justify-start gap-3">
-          {[
-            { label: "Present", count: stats.present, color: "text-green-600", dot: "bg-green-500" },
-            { label: "Late", count: stats.late, color: "text-amber-600", dot: "bg-amber-500" },
-            { label: "Absent", count: stats.absent, color: "text-red-500", dot: "bg-red-500" },
-            { label: "Total", count: stats.total, color: "text-foreground", dot: "bg-muted-foreground" },
-          ].map((s) => (
-            <div key={s.label} className="flex items-center gap-1.5 text-[11px]">
-              <div className={cn("w-2 h-2 rounded-full shrink-0", s.dot)} />
-              <span className="text-muted-foreground">{s.label}</span>
-              <span className={cn("font-bold", s.color)}>{s.count}</span>
-            </div>
-          ))}
         </div>
       </div>
 
