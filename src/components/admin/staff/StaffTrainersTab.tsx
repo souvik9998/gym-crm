@@ -344,7 +344,7 @@ export const StaffTrainersTab = ({
         permissions: getDefaultPermissions("trainer"),
         sendWhatsApp: true,
       });
-      onRefresh();
+      await refreshAll();
     } finally {
       setIsAddingTrainer(false);
       addingRef.current = false;
