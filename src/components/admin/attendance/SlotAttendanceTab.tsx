@@ -425,23 +425,12 @@ export const SlotAttendanceTab = () => {
             </Card>
           )}
 
-          {/* Save Button */}
-          {filteredList.length > 0 && !isFutureDate && (
-            <div className="sticky bottom-2 z-20 px-1">
-              <Button
-                className={cn(
-                  "w-full h-11 rounded-xl text-sm font-semibold shadow-lg transition-all duration-300 active:scale-[0.98]",
-                  hasChanges ? "bg-primary text-primary-foreground shadow-primary/20" : "bg-muted text-muted-foreground"
-                )}
-                disabled={!hasChanges || saveMutation.isPending}
-                onClick={() => saveMutation.mutate()}
-              >
-                {saveMutation.isPending ? (
-                  <span className="flex items-center gap-2"><ButtonSpinner /> Saving...</span>
-                ) : hasChanges ? (
-                  <span>Save ({stats.present}P · {stats.late}L · {stats.absent}A)</span>
-                ) : "No changes to save"}
-              </Button>
+          {/* Auto-save indicator */}
+          {savingIds.size > 0 && (
+            <div className="sticky bottom-2 z-20 px-1 pointer-events-none">
+              <div className="mx-auto w-fit flex items-center gap-2 px-3 py-1.5 rounded-full bg-foreground/90 text-background text-xs shadow-lg backdrop-blur animate-fade-in">
+                <ButtonSpinner /> Saving…
+              </div>
             </div>
           )}
         </>
