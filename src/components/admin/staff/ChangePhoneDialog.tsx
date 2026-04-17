@@ -175,9 +175,9 @@ export const ChangePhoneDialog = ({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="flex items-start gap-2 p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900">
-            <ExclamationTriangleIcon className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-900 dark:text-amber-200">
+          <div className="flex items-start gap-2 p-3 rounded-md bg-muted border border-border">
+            <ExclamationTriangleIcon className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground">
               Mobile number is used for login and communication. This is a sensitive
               change — verify the new number with the staff member before saving.
             </p>
