@@ -49,7 +49,7 @@ const ExtendPT = () => {
   const [taxEnabled, setTaxEnabled] = useState(false);
 
   useEffect(() => {
-    const fallback = branchId ? `/b/${branchId}` : "/admin/login";
+    const fallback = stateBranchSlug ? `/b/${stateBranchSlug}` : (branchId ? `/b/${branchId}` : "/admin/login");
     if (!member) {
       toast.error("Access Denied", {
         description: "Please access this page from the home page.",

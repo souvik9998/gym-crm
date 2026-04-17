@@ -64,66 +64,85 @@ const Index = () => {
         if (data?.slug) {
           navigate(`/b/${data.slug}`, { replace: true });
         } else {
+          // No default slug — try edge function (returns UUID), then resolve to slug
           const fallback = await fetchDefaultBranch();
-          if (fallback) navigate(`/b/${fallback.id}`, { replace: true });
+          if (fallback) {
+            const { data: slugRow } = await supabase
+              .from("branches")
+              .select("slug")
+              .eq("id", fallback.id)
+              .maybeSingle();
+            navigate(`/b/${slugRow?.slug || fallback.id}`, { replace: true });
+          }
         }
       })();
     }
   }, [branchSlug, navigate, isRedirecting]);
 
-  // Resolve slug to branch ID and info
+  // Resolve slug -> branch info. Depends ONLY on branchSlug to avoid re-runs
+  // with stale/null branchId (which previously caused `branch_id=eq.null`
+  // queries returning 22P02 invalid-uuid errors).
   useEffect(() => {
     if (!branchSlug) return;
-    if (branchInfo) {
-      setIsBranchLoading(false);
-      setResolvedBranchId(branchInfo.id);
-    }
-    
+    let cancelled = false;
+
     const resolve = async () => {
+      // 1. Try direct DB resolver (handles both slug and UUID)
       try {
         const branch = await resolveBranch(branchSlug);
-        if (branch) {
+        if (branch && !cancelled) {
           const info = { id: branch.id, name: branch.name, logo_url: branch.logo_url };
           setBranchInfo(info);
           setResolvedBranchId(branch.id);
           sessionStorage.setItem(`branch-info-${branchSlug}`, JSON.stringify(info));
           setIsBranchLoading(false);
-          return;
+          return branch.id;
         }
       } catch { /* fall through */ }
-      
-      // Fallback to edge function
-      try {
-        const branch = await fetchPublicBranch(branchSlug);
-        if (branch) {
-          const info = { id: branch.id, name: branch.name };
-          setBranchInfo(info);
-          setResolvedBranchId(branch.id);
-          sessionStorage.setItem(`branch-info-${branchSlug}`, JSON.stringify(info));
-        }
-      } catch { /* ignore */ }
-      setIsBranchLoading(false);
-    };
-    
-    resolve();
 
-    // Fetch trainer self-select setting
-    supabase
-      .from("gym_settings")
-      .select("registration_field_settings")
-      .eq("branch_id", branchId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.registration_field_settings) {
-          const parsed = typeof data.registration_field_settings === "string"
-            ? JSON.parse(data.registration_field_settings)
-            : data.registration_field_settings;
-          if (parsed?.self_select_trainer?.enabled === false) {
-            setAllowSelfSelectTrainer(false);
+      // 2. Fallback: only call edge function if param looks like a UUID
+      //    (edge function rejects non-UUID branchId with 400)
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (UUID_RE.test(branchSlug)) {
+        try {
+          const branch = await fetchPublicBranch(branchSlug);
+          if (branch && !cancelled) {
+            const info = { id: branch.id, name: branch.name, logo_url: branch.logo_url ?? null };
+            setBranchInfo(info);
+            setResolvedBranchId(branch.id);
+            sessionStorage.setItem(`branch-info-${branchSlug}`, JSON.stringify(info));
+            if (!cancelled) setIsBranchLoading(false);
+            return branch.id;
           }
+        } catch { /* ignore */ }
+      }
+      if (!cancelled) setIsBranchLoading(false);
+      return null;
+    };
+
+    (async () => {
+      const resolvedId = await resolve();
+      if (cancelled || !resolvedId) return;
+
+      // Fetch trainer self-select setting using the RESOLVED UUID
+      const { data } = await supabase
+        .from("gym_settings")
+        .select("registration_field_settings")
+        .eq("branch_id", resolvedId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (data?.registration_field_settings) {
+        const parsed = typeof data.registration_field_settings === "string"
+          ? JSON.parse(data.registration_field_settings)
+          : data.registration_field_settings;
+        if (parsed?.self_select_trainer?.enabled === false) {
+          setAllowSelfSelectTrainer(false);
         }
-      });
-  }, [branchId]);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [branchSlug]);
 
   // Handle return from Renew/ExtendPT pages
   useEffect(() => {
