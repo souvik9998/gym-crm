@@ -843,229 +843,167 @@ export const StaffTrainersTab = ({
                         </Button>
                       </div>
                     </div>
-                  ) : isCompact ? (
-                    /* Mobile/Tablet compact layout */
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <p className="font-medium text-sm truncate">{trainer.full_name}</p>
-                          <Badge variant="secondary" className="text-[10px] shrink-0">Trainer</Badge>
-                          {!trainer.is_active && (
-                            <Badge variant="secondary" className="text-[10px] bg-destructive/10 text-destructive shrink-0">Inactive</Badge>
-                          )}
-                        </div>
-                        <Switch
-                          checked={trainer.is_active}
-                          onCheckedChange={(checked) => handleToggle(trainer.id, checked)}
-                        />
-                      </div>
-                      {/* Action buttons row */}
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => setInfoDialog({ open: true, trainer })}
-                          title="View Details"
-                        >
-                          <InformationCircleIcon className="w-4 h-4" />
-                        </Button>
-                        <StaffWhatsAppButton staff={trainer} />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => setBranchAssignmentDialog({ open: true, staff: trainer })}
-                          title="Manage Branch Assignments"
-                        >
-                          <BuildingOfficeIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={async () => {
-                            const { data: activities } = await supabase
-                              .from("admin_activity_logs")
-                              .select("metadata")
-                              .eq("entity_type", "staff")
-                              .eq("entity_id", trainer.id)
-                              .eq("activity_type", "staff_password_set")
-                              .order("created_at", { ascending: false })
-                              .limit(1)
-                              .maybeSingle();
-                            if (activities?.metadata && (activities.metadata as any).password) {
-                              setViewPasswordDialog({ open: true, staff: trainer, password: (activities.metadata as any).password });
-                            } else {
-                              setPasswordDialog({ open: true, staff: trainer });
-                            }
-                          }}
-                          title={trainer.auth_user_id ? "View/Update Password" : "Set Password"}
-                        >
-                          <KeyIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => setPermissionsDialog({ open: true, staff: trainer })}
-                          title="Manage Permissions"
-                        >
-                          <ShieldCheckIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleEdit(trainer)}
-                          title="Edit details"
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => setChangePhoneDialog({ open: true, staff: trainer })}
-                          title="Change mobile number"
-                        >
-                          <DevicePhoneMobileIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => setConversionDialog({ open: true, staff: trainer })}
-                          title="Convert to Staff"
-                        >
-                          <ArrowsRightLeftIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleDelete(trainer.id, trainer.full_name)}
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </Button>
-                      </div>
                     </div>
                   ) : (
-                    /* Desktop layout */
-                    <>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{trainer.full_name}</p>
-                          <Badge variant="secondary" className="text-xs">Trainer</Badge>
-                          {!trainer.is_active && (
-                            <Badge variant="secondary" className="text-xs bg-destructive/10 text-destructive">Inactive</Badge>
-                          )}
-                          {trainer.auth_user_id && (
-                            <Badge variant="outline" className="text-xs text-primary">Has Login</Badge>
-                          )}
+                    /* Modern unified layout (responsive) */
+                    <div className="p-4 lg:p-5 pl-5 lg:pl-6">
+                      <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                        {/* Identity block */}
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div
+                            className={`flex-shrink-0 w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-gradient-to-br ${palette.ring} text-white font-semibold text-base lg:text-lg flex items-center justify-center shadow-sm ring-2 ring-background transition-transform duration-300 group-hover:scale-105`}
+                          >
+                            {initials || "T"}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                              <h3 className="font-semibold text-foreground text-sm lg:text-base truncate">
+                                {trainer.full_name}
+                              </h3>
+                              <Badge variant="secondary" className="text-[10px] h-5 px-1.5">Trainer</Badge>
+                              {trainer.auth_user_id && (
+                                <Badge variant="outline" className="text-[10px] h-5 px-1.5 text-primary border-primary/30 bg-primary/5">
+                                  Has Login
+                                </Badge>
+                              )}
+                              {!trainer.is_active && (
+                                <Badge className="text-[10px] h-5 px-1.5 bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/10">
+                                  Inactive
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {trainer.phone && (
+                                <span className={`inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-0.5 rounded-md border ${palette.chip} font-medium`}>
+                                  📱 {trainer.phone}
+                                </span>
+                              )}
+                              {trainer.specialization && (
+                                <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-0.5 rounded-md border bg-pink-500/10 text-pink-600 dark:text-pink-300 border-pink-500/20 font-medium">
+                                  🎯 {trainer.specialization}
+                                </span>
+                              )}
+                              {trainer.salary_type === "both" && (
+                                <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-0.5 rounded-md border bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/20 font-medium">
+                                  💰 ₹{trainer.monthly_salary}/mo + {trainer.percentage_fee}%
+                                </span>
+                              )}
+                              {trainer.salary_type === "session_based" && trainer.session_fee > 0 && (
+                                <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-0.5 rounded-md border bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/20 font-medium">
+                                  💰 ₹{trainer.session_fee}/session
+                                </span>
+                              )}
+                              {trainer.branch_assignments && trainer.branch_assignments.length > 0 && (
+                                <span className="inline-flex items-center gap-1 text-[11px] lg:text-xs px-2 py-0.5 rounded-md border bg-rose-500/10 text-rose-600 dark:text-rose-300 border-rose-500/20 font-medium">
+                                  📍 {trainer.branch_assignments.map((a) => a.branch_name).join(", ")}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
-                          {trainer.phone && <span>📱 {trainer.phone}</span>}
-                          {trainer.specialization && <span>🎯 {trainer.specialization}</span>}
-                          {trainer.salary_type === "both" && (
-                            <span>💰 ₹{trainer.monthly_salary}/mo + {trainer.percentage_fee}% of PT fees</span>
-                          )}
-                          {trainer.salary_type === "session_based" && trainer.session_fee > 0 && (
-                            <span>💰 ₹{trainer.session_fee}/session</span>
-                          )}
-                          {trainer.branch_assignments && trainer.branch_assignments.length > 0 && (
-                            <span>
-                              📍 {trainer.branch_assignments.map((a) => a.branch_name).join(", ")}
+
+                        {/* Action toolbar */}
+                        <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap lg:flex-shrink-0">
+                          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-muted/60 border border-border/40">
+                            <Switch
+                              checked={trainer.is_active}
+                              onCheckedChange={(checked) => handleToggle(trainer.id, checked)}
+                              className="data-[state=checked]:bg-emerald-500"
+                            />
+                            <span className="text-[11px] font-medium text-muted-foreground hidden sm:inline">
+                              {trainer.is_active ? "Active" : "Off"}
                             </span>
-                          )}
+                          </div>
+
+                          <div className="flex items-center gap-1 p-1 rounded-lg bg-muted/40 border border-border/40">
+                            <StaffWhatsAppButton staff={trainer} />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 hover:bg-sky-500/10 hover:text-sky-600 transition-all duration-200 hover:scale-110"
+                              onClick={() => setBranchAssignmentDialog({ open: true, staff: trainer })}
+                              title="Manage Branch Assignments"
+                            >
+                              <BuildingOfficeIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 hover:bg-amber-500/10 hover:text-amber-600 transition-all duration-200 hover:scale-110"
+                              onClick={async () => {
+                                const { data: activities } = await supabase
+                                  .from("admin_activity_logs")
+                                  .select("metadata")
+                                  .eq("entity_type", "staff")
+                                  .eq("entity_id", trainer.id)
+                                  .eq("activity_type", "staff_password_set")
+                                  .order("created_at", { ascending: false })
+                                  .limit(1)
+                                  .maybeSingle();
+                                if (activities?.metadata && (activities.metadata as any).password) {
+                                  setViewPasswordDialog({ open: true, staff: trainer, password: (activities.metadata as any).password });
+                                } else {
+                                  setPasswordDialog({ open: true, staff: trainer });
+                                }
+                              }}
+                              title={trainer.auth_user_id ? "View/Update Password" : "Set Password"}
+                            >
+                              <KeyIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 hover:bg-emerald-500/10 hover:text-emerald-600 transition-all duration-200 hover:scale-110"
+                              onClick={() => setPermissionsDialog({ open: true, staff: trainer })}
+                              title="Manage Permissions"
+                            >
+                              <ShieldCheckIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 hover:bg-violet-500/10 hover:text-violet-600 transition-all duration-200 hover:scale-110"
+                              onClick={() => handleEdit(trainer)}
+                              title="Edit details"
+                            >
+                              <PencilIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 hover:bg-cyan-500/10 hover:text-cyan-600 transition-all duration-200 hover:scale-110"
+                              onClick={() => setChangePhoneDialog({ open: true, staff: trainer })}
+                              title="Change mobile number"
+                            >
+                              <DevicePhoneMobileIcon className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 hover:bg-fuchsia-500/10 hover:text-fuchsia-600 transition-all duration-200 hover:scale-110"
+                              onClick={() => setConversionDialog({ open: true, staff: trainer })}
+                              title="Convert to Staff"
+                            >
+                              <ArrowsRightLeftIcon className="w-4 h-4" />
+                            </Button>
+                          </div>
+
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-9 w-9 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-110"
+                            onClick={() => handleDelete(trainer.id, trainer.full_name)}
+                            title="Delete trainer"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <StaffWhatsAppButton staff={trainer} />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setBranchAssignmentDialog({ open: true, staff: trainer })}
-                          title="Manage Branch Assignments"
-                        >
-                          <BuildingOfficeIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={async () => {
-                            const { data: activities } = await supabase
-                              .from("admin_activity_logs")
-                              .select("metadata")
-                              .eq("entity_type", "staff")
-                              .eq("entity_id", trainer.id)
-                              .eq("activity_type", "staff_password_set")
-                              .order("created_at", { ascending: false })
-                              .limit(1)
-                              .maybeSingle();
-                            
-                            if (activities?.metadata && (activities.metadata as any).password) {
-                              setViewPasswordDialog({
-                                open: true,
-                                staff: trainer,
-                                password: (activities.metadata as any).password,
-                              });
-                            } else {
-                              setPasswordDialog({ open: true, staff: trainer });
-                            }
-                          }}
-                          title={trainer.auth_user_id ? "View/Update Password" : "Set Password"}
-                        >
-                          <KeyIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setPermissionsDialog({ open: true, staff: trainer })}
-                          title="Manage Permissions"
-                        >
-                          <ShieldCheckIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEdit(trainer)}
-                          title="Edit details"
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setChangePhoneDialog({ open: true, staff: trainer })}
-                          title="Change mobile number"
-                        >
-                          <DevicePhoneMobileIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setConversionDialog({ open: true, staff: trainer })}
-                          title="Convert to Staff"
-                        >
-                          <ArrowsRightLeftIcon className="w-4 h-4" />
-                        </Button>
-                        <Switch
-                          checked={trainer.is_active}
-                          onCheckedChange={(checked) => handleToggle(trainer.id, checked)}
-                        />
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDelete(trainer.id, trainer.full_name)}
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </>
+                    </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
