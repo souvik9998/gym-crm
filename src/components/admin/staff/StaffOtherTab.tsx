@@ -737,7 +737,6 @@ export const StaffOtherTab = ({
 
                           {/* Inline action toolbar */}
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <StaffWhatsAppButton staff={member} />
                             <Button
                               size="sm"
                               variant="outline"
@@ -747,39 +746,55 @@ export const StaffOtherTab = ({
                             >
                               <BuildingOfficeIcon className="w-4 h-4" />
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10 hover:border-amber-500/50 hover:text-amber-600"
-                              onClick={async () => {
-                                const { data: activities } = await supabase
-                                  .from("admin_activity_logs")
-                                  .select("metadata")
-                                  .eq("entity_type", "staff")
-                                  .eq("entity_id", member.id)
-                                  .eq("activity_type", "staff_password_set")
-                                  .order("created_at", { ascending: false })
-                                  .limit(1)
-                                  .maybeSingle();
-                                if (activities?.metadata && (activities.metadata as any).password) {
-                                  setViewPasswordDialog({ open: true, staff: member, password: (activities.metadata as any).password });
-                                } else {
-                                  setPasswordDialog({ open: true, staff: member });
-                                }
-                              }}
-                              title={member.auth_user_id ? "View/Update Password" : "Set Password"}
-                            >
-                              <KeyIcon className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-violet-600 dark:text-violet-400 border-violet-500/30 hover:bg-violet-500/10 hover:border-violet-500/50 hover:text-violet-600"
-                              onClick={() => setPermissionsDialog({ open: true, staff: member })}
-                              title="Manage Permissions"
-                            >
-                              <ShieldCheckIcon className="w-4 h-4" />
-                            </Button>
+                            {member.auth_user_id ? (
+                              <>
+                                <StaffWhatsAppButton staff={member} />
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10 hover:border-amber-500/50 hover:text-amber-600"
+                                  onClick={async () => {
+                                    const { data: activities } = await supabase
+                                      .from("admin_activity_logs")
+                                      .select("metadata")
+                                      .eq("entity_type", "staff")
+                                      .eq("entity_id", member.id)
+                                      .eq("activity_type", "staff_password_set")
+                                      .order("created_at", { ascending: false })
+                                      .limit(1)
+                                      .maybeSingle();
+                                    if (activities?.metadata && (activities.metadata as any).password) {
+                                      setViewPasswordDialog({ open: true, staff: member, password: (activities.metadata as any).password });
+                                    } else {
+                                      setPasswordDialog({ open: true, staff: member });
+                                    }
+                                  }}
+                                  title="View/Update Password"
+                                >
+                                  <KeyIcon className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 w-8 p-0 transition-all duration-200 hover:scale-105 text-violet-600 dark:text-violet-400 border-violet-500/30 hover:bg-violet-500/10 hover:border-violet-500/50 hover:text-violet-600"
+                                  onClick={() => setPermissionsDialog({ open: true, staff: member })}
+                                  title="Manage Permissions"
+                                >
+                                  <ShieldCheckIcon className="w-4 h-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 gap-1.5 px-2.5 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 hover:border-emerald-500/50 hover:text-emerald-600 transition-all duration-200 hover:scale-105"
+                                onClick={() => setPermissionsDialog({ open: true, staff: member })}
+                                title="Grant login access, set password & permissions"
+                              >
+                                <LockClosedIcon className="w-4 h-4" />
+                                <span className="text-xs font-medium">Grant Access</span>
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"
