@@ -9,10 +9,8 @@ import { ArrowRight, IdCard, MapPin, User, CalendarDays, Mail, Briefcase } from 
 import { Input } from "@/components/ui/input";
 import { ValidatedInput, InlineError } from "@/components/ui/validated-input";
 import {
-  memberDetailsSchema,
   getPhotoIdSchema,
   validateField,
-  validateForm,
   nameSchema,
   addressSchema,
   sanitize,
