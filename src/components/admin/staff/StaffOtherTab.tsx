@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
-import { InformationCircleIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/outline";
+import { InformationCircleIcon, ArrowsRightLeftIcon, DevicePhoneMobileIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { StaffCardSkeleton } from "./StaffCardSkeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChangePhoneDialog } from "./ChangePhoneDialog";
+import { DetailItem } from "./StaffDetailItem";
 
 interface StaffOtherTabProps {
   staff: Staff[];
@@ -68,7 +71,18 @@ export const StaffOtherTab = ({
   isLoading,
   onConversionSuccess,
 }: StaffOtherTabProps) => {
+  const queryClient = useQueryClient();
   const isCompact = useIsTabletOrBelow();
+
+  // Hard cache bust + refetch — ensures mutations are reflected even when data is cached
+  const refreshAll = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["staff-page-data"], refetchType: "all" }),
+      queryClient.invalidateQueries({ queryKey: ["trainer-filter-list"], refetchType: "all" }),
+    ]);
+    onRefresh();
+  };
+
   const [newStaff, setNewStaff] = useState({
     full_name: "",
     phone: "",
@@ -120,6 +134,7 @@ export const StaffOtherTab = ({
   }>({ open: false, existingStaff: null });
   const addingRef = { current: false };
   const [conversionDialog, setConversionDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
+  const [changePhoneDialog, setChangePhoneDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Update selected branches when currentBranch changes
