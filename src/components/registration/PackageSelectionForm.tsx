@@ -13,8 +13,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { 
-  fetchPublicPackages, 
-  fetchPublicTrainers, 
+  fetchRegistrationBootstrap,
   type PublicMonthlyPackage,
   type PublicCustomPackage,
   type PublicTrainer,
@@ -201,25 +200,31 @@ const PackageSelectionForm = ({
     }
     setIsDataLoading(true);
     try {
-      const [packagesResult, trainersResult] = await Promise.all([
-        fetchPublicPackages(branchId),
-        fetchPublicTrainers(branchId),
-      ]);
+      // Single unified call — fetches packages + trainers + tax settings together.
+      // Cached aggressively in sessionStorage and warmed by Index page on mount.
+      const bootstrap = await fetchRegistrationBootstrap(branchId);
 
-      if (packagesResult.monthlyPackages.length > 0) {
-        setMonthlyPackages(packagesResult.monthlyPackages);
+      if (!bootstrap) {
+        setMonthlyPackages([]);
+        setCustomPackages([]);
+        setTrainers([]);
+        setTaxSettings(null);
+        return;
+      }
+
+      if (bootstrap.monthlyPackages.length > 0) {
+        setMonthlyPackages(bootstrap.monthlyPackages);
         // Auto-select most popular (3 months) or first
-        const defaultPkg = packagesResult.monthlyPackages.find((p) => p.months === 3) || packagesResult.monthlyPackages[0];
+        const defaultPkg = bootstrap.monthlyPackages.find((p) => p.months === 3) || bootstrap.monthlyPackages[0];
         setSelectedMonthlyPackage(defaultPkg);
       }
 
-      // Set tax settings from packages response
-      if (packagesResult.taxSettings) {
-        setTaxSettings(packagesResult.taxSettings);
+      if (bootstrap.taxSettings) {
+        setTaxSettings(bootstrap.taxSettings);
       }
 
-      if (trainersResult.length > 0) {
-        const mapped = trainersResult.map(t => ({
+      if (bootstrap.trainers.length > 0) {
+        const mapped = bootstrap.trainers.map(t => ({
           id: t.id,
           name: t.name,
           specialization: null,
@@ -228,8 +233,8 @@ const PackageSelectionForm = ({
         setTrainers(mapped);
       }
 
-      if (packagesResult.customPackages.length > 0) {
-        setCustomPackages(packagesResult.customPackages);
+      if (bootstrap.customPackages.length > 0) {
+        setCustomPackages(bootstrap.customPackages);
       }
     } catch (error) {
       console.error("Error fetching registration data:", error);
