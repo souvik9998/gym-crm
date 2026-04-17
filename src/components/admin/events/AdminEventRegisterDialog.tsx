@@ -5,6 +5,7 @@ import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { logStaffActivity } from "@/hooks/useStaffActivityLog";
+import { createEventRegistrationIncomeEntry } from "@/hooks/useLedger";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -259,6 +260,21 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
             .update({ usage_count: (appliedCoupon as any).usage_count ? (appliedCoupon as any).usage_count + 1 : 1 })
             .eq("id", appliedCoupon.id);
         } catch { /* non-critical */ }
+      }
+
+      // Ledger: record event registration income (only when payment is recorded as success)
+      if (effectivePaymentStatus === "success" && amountToPay > 0) {
+        try {
+          await createEventRegistrationIncomeEntry({
+            amount: amountToPay,
+            eventTitle: event.title,
+            registrantName: name.trim(),
+            memberId: foundMember?.id || undefined,
+            branchId: event.branch_id,
+          });
+        } catch (ledgerErr) {
+          console.error("Ledger entry (event registration) failed:", ledgerErr);
+        }
       }
     },
     onSuccess: () => {
