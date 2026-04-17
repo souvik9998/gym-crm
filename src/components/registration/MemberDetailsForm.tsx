@@ -295,8 +295,11 @@ const MemberDetailsForm = ({ onSubmit, onBack, initialData, showPhotoId = true, 
                 <CalendarDays className="w-4 h-4 text-accent" />
                 Date of Birth {dateOfBirthRequired ? "*" : ""}
               </Label>
-              <DobInput value={dateOfBirth} onChange={setDateOfBirth} />
-              <InlineError message={touched.dateOfBirth ? errors.dateOfBirth : undefined} />
+              <DobInput
+                value={dateOfBirth}
+                onChange={setDateOfBirth}
+                error={touched.dateOfBirth ? errors.dateOfBirth : undefined}
+              />
             </div>
           )}
 
