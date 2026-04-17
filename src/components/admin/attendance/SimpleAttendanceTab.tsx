@@ -397,26 +397,53 @@ export const SimpleAttendanceTab = () => {
             onChange={setSelectedSlotId}
             trainerFilter={selectedTrainerId}
           />
-        </div>
+      </div>
 
-        {/* Divider */}
-        <div className="w-px h-8 bg-border/60 shrink-0" />
-
-        {/* Stats */}
-        <div className="flex items-center gap-3">
-          {[
-            { label: "Present", count: stats.present, color: "text-green-600", dot: "bg-green-500" },
-            { label: "Late", count: stats.late, color: "text-amber-600", dot: "bg-amber-500" },
-            { label: "Absent", count: stats.absent, color: "text-red-500", dot: "bg-red-500" },
-            { label: "Total", count: stats.total, color: "text-foreground", dot: "bg-muted-foreground" },
-          ].map((s) => (
-            <div key={s.label} className="flex items-center gap-1 text-xs">
-              <div className={cn("w-2 h-2 rounded-full", s.dot)} />
-              <span className="text-muted-foreground">{s.label}</span>
-              <span className={cn("font-bold", s.color)}>{s.count}</span>
-            </div>
-          ))}
-        </div>
+      {/* Filter Cards — clickable, shared between desktop & mobile */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3 animate-fade-in">
+        {([
+          { key: "all", label: "Total", count: stats.total, accent: "border-foreground/20 bg-foreground/5", activeAccent: "border-foreground bg-foreground/10 ring-1 ring-foreground/30", iconBg: "bg-foreground/10 text-foreground", text: "text-foreground" },
+          { key: "present", label: "Present", count: stats.present, accent: "border-green-500/20 bg-green-500/5", activeAccent: "border-green-500 bg-green-500/10 ring-1 ring-green-500/40", iconBg: "bg-green-500/15 text-green-600 dark:text-green-400", text: "text-green-600 dark:text-green-400" },
+          { key: "late", label: "Late", count: stats.late, accent: "border-amber-500/20 bg-amber-500/5", activeAccent: "border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/40", iconBg: "bg-amber-500/15 text-amber-600 dark:text-amber-400", text: "text-amber-600 dark:text-amber-400" },
+          { key: "absent", label: "Absent", count: stats.absent, accent: "border-red-500/20 bg-red-500/5", activeAccent: "border-red-500 bg-red-500/10 ring-1 ring-red-500/40", iconBg: "bg-red-500/15 text-red-600 dark:text-red-400", text: "text-red-600 dark:text-red-400" },
+        ] as const).map((card) => {
+          const isActive = statusFilter === card.key;
+          return (
+            <button
+              key={card.key}
+              type="button"
+              onClick={() => setStatusFilter(isActive ? "all" : card.key as any)}
+              className={cn(
+                "relative rounded-xl border px-3 py-2.5 text-left transition-all duration-200",
+                "hover:scale-[1.02] active:scale-[0.98] hover:shadow-md",
+                isActive ? card.activeAccent + " shadow-sm" : card.accent + " hover:border-opacity-60"
+              )}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[10px] lg:text-[11px] uppercase tracking-wider text-muted-foreground font-medium truncate">
+                    {card.label}
+                  </p>
+                  <p className={cn("text-lg lg:text-2xl font-bold mt-0.5 transition-colors", card.text)}>
+                    {card.count}
+                  </p>
+                </div>
+                <div className={cn(
+                  "w-7 h-7 lg:w-9 lg:h-9 rounded-full flex items-center justify-center shrink-0 transition-transform duration-200",
+                  card.iconBg,
+                  isActive && "scale-110"
+                )}>
+                  <span className="text-xs lg:text-sm font-bold">
+                    {card.key === "all" ? "T" : card.key === "present" ? "P" : card.key === "late" ? "L" : "A"}
+                  </span>
+                </div>
+              </div>
+              {isActive && (
+                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-background animate-fade-in" />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Mobile: Stacked layout */}
