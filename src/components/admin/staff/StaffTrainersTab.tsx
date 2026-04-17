@@ -42,7 +42,7 @@ import { StaffWhatsAppButton, sendStaffCredentialsWhatsApp } from "./StaffWhatsA
 import { StaffRoleConversionDialog } from "./StaffRoleConversionDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChangePhoneDialog } from "./ChangePhoneDialog";
-import { DevicePhoneMobileIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import { DevicePhoneMobileIcon, ChevronDownIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { StaffCardSkeleton } from "./StaffCardSkeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DetailItem } from "./StaffDetailItem";

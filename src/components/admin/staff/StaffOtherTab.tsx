@@ -41,7 +41,7 @@ import { StaffInlinePermissions, InlinePermissions, getDefaultPermissions } from
 import { StaffWhatsAppButton, sendStaffCredentialsWhatsApp } from "./StaffWhatsAppButton";
 import { StaffRoleConversionDialog } from "./StaffRoleConversionDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { StaffCardSkeleton } from "./StaffCardSkeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChangePhoneDialog } from "./ChangePhoneDialog";
