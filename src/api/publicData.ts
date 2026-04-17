@@ -214,11 +214,82 @@ export async function fetchPublicBranch(branchIdentifier: string): Promise<Publi
     return branch;
   } catch (error) {
     console.error("Error fetching public branch:", error);
+}
+
+export interface RegistrationBootstrap {
+  branch: PublicBranch;
+  monthlyPackages: PublicMonthlyPackage[];
+  customPackages: PublicCustomPackage[];
+  trainers: PublicTrainer[];
+  taxSettings?: PublicTaxSettings;
+  allowSelfSelectTrainer: boolean;
+  allowDailyPass: boolean;
+}
+
+/**
+ * Unified endpoint that fetches branch info + packages + trainers + tax settings
+ * in a SINGLE network round trip. Use this for the registration flow instead of
+ * calling fetchPublicBranch + fetchPublicPackages + fetchPublicTrainers separately.
+ */
+export async function fetchRegistrationBootstrap(branchIdentifier: string): Promise<RegistrationBootstrap | null> {
+  const cacheKey = `public-bootstrap-${branchIdentifier}`;
+  const cached = getCached<RegistrationBootstrap>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const params = new URLSearchParams({ action: "bootstrap", branchId: branchIdentifier });
+
+    const response = await fetch(`${getEdgeFunctionUrl("public-data")}?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || "Failed to fetch registration data");
+    }
+
+    const data = await response.json();
+    if (!data.branch) return null;
+
+    const result: RegistrationBootstrap = {
+      branch: data.branch,
+      monthlyPackages: data.monthlyPackages || [],
+      customPackages: data.customPackages || [],
+      trainers: data.trainers || [],
+      taxSettings: data.taxSettings,
+      allowSelfSelectTrainer: data.allowSelfSelectTrainer !== false,
+      allowDailyPass: data.allowDailyPass !== false,
+    };
+
+    setCache(cacheKey, result);
+
+    // Also warm individual caches so older callers (e.g. Index page using
+    // fetchPublicBranch by slug) instantly get the data without an extra request.
+    setCache(`public-branch-${branchIdentifier}`, result.branch);
+    if (result.branch.id && result.branch.id !== branchIdentifier) {
+      setCache(`public-branch-${result.branch.id}`, result.branch);
+    }
+    setCache(`public-packages-${result.branch.id}`, {
+      monthlyPackages: result.monthlyPackages,
+      customPackages: result.customPackages,
+      taxSettings: result.taxSettings,
+      allowSelfSelectTrainer: result.allowSelfSelectTrainer,
+      allowDailyPass: result.allowDailyPass,
+    });
+    setCache(`public-trainers-${result.branch.id}`, result.trainers);
+
+    return result;
+  } catch (error) {
+    console.error("Error fetching registration bootstrap:", error);
     return null;
   }
 }
-
-export async function fetchDefaultBranch(): Promise<PublicBranch | null> {
   const cacheKey = "public-default-branch";
   const cached = getCached<PublicBranch>(cacheKey);
   if (cached) return cached;
