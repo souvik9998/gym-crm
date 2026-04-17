@@ -332,7 +332,6 @@ export const StaffOtherTab = ({
     setEditingId(member.id);
     setEditData({
       full_name: member.full_name,
-      phone: member.phone,
       role: member.role,
       id_type: member.id_type || "aadhaar",
       id_number: member.id_number || "",
@@ -347,30 +346,11 @@ export const StaffOtherTab = ({
     }
 
     const member = staff.find((s) => s.id === id);
-    const cleanPhone = editData.phone.replace(/\D/g, "").replace(/^0/, "");
-
-    // Check if phone is being changed and if new phone already exists
-    if (cleanPhone !== member?.phone) {
-      const { data: existingStaff } = await supabase
-        .from("staff")
-        .select("id")
-        .eq("phone", cleanPhone)
-        .neq("id", id)
-        .maybeSingle();
-
-      if (existingStaff) {
-        toast.error("Phone number already in use", {
-          description: "Another staff member is already registered with this phone number.",
-        });
-        return;
-      }
-    }
 
     const { error } = await supabase
       .from("staff")
       .update({
         full_name: editData.full_name,
-        phone: cleanPhone,
         role: editData.role,
         id_type: editData.id_type || null,
         id_number: editData.id_number || null,
@@ -384,15 +364,15 @@ export const StaffOtherTab = ({
     }
 
     // Filter out metadata fields and only include fields that are being updated
-    const fieldsToLog = ['full_name', 'phone', 'role', 'id_type', 'id_number', 'monthly_salary'];
-    const oldValueFiltered = member 
+    const fieldsToLog = ['full_name', 'role', 'id_type', 'id_number', 'monthly_salary'];
+    const oldValueFiltered = member
       ? Object.fromEntries(
           fieldsToLog
             .filter(key => key in member)
             .map(key => [key, (member as any)[key]])
         )
       : null;
-    
+
     const newValueFiltered = Object.fromEntries(
       fieldsToLog.map(key => {
         if (key === 'monthly_salary') {
@@ -416,7 +396,7 @@ export const StaffOtherTab = ({
 
     toast.success("Staff updated");
     setEditingId(null);
-    onRefresh();
+    await refreshAll();
   };
 
   const handleToggle = async (id: string, isActive: boolean) => {
