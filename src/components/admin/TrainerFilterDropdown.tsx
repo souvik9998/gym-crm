@@ -62,34 +62,24 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
       if (ptError) throw ptError;
       if (!ptData || ptData.length === 0) return [];
 
-      // Resolve personal_trainer → staff via phone match, with name fallback
-      // (handles data inconsistencies where phone numbers don't match between tables)
+      // Resolve personal_trainer → staff via PHONE ONLY.
+      // Phone is the single source of truth — name is never used as an identifier.
+      // ChangePhoneDialog keeps personal_trainers.phone in sync when staff phone changes.
       const ptPhones = ptData.map(pt => pt.phone).filter(Boolean);
-      const ptNamesLower = ptData.map(pt => pt.name?.trim().toLowerCase()).filter(Boolean);
       let phoneToStaffId: Record<string, string> = {};
-      let nameToStaffId: Record<string, string> = {};
-      if (ptPhones.length > 0 || ptNamesLower.length > 0) {
-        // Fetch staff in this branch via assignments (so name match is scoped correctly)
-        const { data: staffAssignments } = await supabase
-          .from("staff_branch_assignments")
-          .select("staff_id, staff:staff_id(id, full_name, phone)")
-          .eq("branch_id", currentBranch.id);
+      if (ptPhones.length > 0) {
+        const { data: staffRows } = await supabase
+          .from("staff")
+          .select("id, phone")
+          .in("phone", ptPhones as string[]);
 
-        for (const row of (staffAssignments as any[] || [])) {
-          const s = row.staff;
-          if (!s) continue;
+        for (const s of (staffRows as any[] || [])) {
           if (s.phone) phoneToStaffId[s.phone] = s.id;
-          if (s.full_name) nameToStaffId[s.full_name.trim().toLowerCase()] = s.id;
         }
       }
 
-      // Resolver that tries phone first, then name
-      const resolveStaffId = (pt: { phone: string | null; name: string }): string | null => {
-        if (pt.phone && phoneToStaffId[pt.phone]) return phoneToStaffId[pt.phone];
-        const key = pt.name?.trim().toLowerCase();
-        if (key && nameToStaffId[key]) return nameToStaffId[key];
-        return null;
-      };
+      const resolveStaffId = (pt: { phone: string | null }): string | null =>
+        pt.phone ? phoneToStaffId[pt.phone] || null : null;
 
       // Get member counts via pt_subscriptions
       const today = new Date().toISOString().split("T")[0];
@@ -116,10 +106,7 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
 
       // Get slot counts per staff_id from trainer_time_slots
       let slotCountMap: Record<string, number> = {};
-      const staffIds = Array.from(new Set([
-        ...Object.values(phoneToStaffId),
-        ...Object.values(nameToStaffId),
-      ]));
+      const staffIds = Array.from(new Set(Object.values(phoneToStaffId)));
       if (staffIds.length > 0) {
         const { data: allSlots } = await supabase
           .from("trainer_time_slots" as any)
