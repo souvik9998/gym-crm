@@ -1,75 +1,80 @@
 
+
+Looking at the registration flow to understand current loading states.
+<lov-tool-use id="toolu_vrtx_01PuJYSdqJs8dCf4q9dYMS2K" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/Index.tsx\"}">
+</lov-tool-use>
+
+<lov-tool-use id="toolu_vrtx_01DkHbApmVsu3RVqQAP7aZeo" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/Register.tsx\"}">
+</lov-tool-use>
+
+<lov-tool-use id="toolu_vrtx_012cyVZUT64tJ9NyG2mQS468" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/Index.tsx\"}">
+</lov-tool-use>
+
+<lov-tool-use id="toolu_vrtx_01Gvgz3DM9FhNE12kXoosuT5" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/Register.tsx\"}">
+</lov-tool-use>
+
+<lov-tool-use id="toolu_vrtx_01FAbqfY49dLV8VKfoi3HUiJ" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/registration/PackageSelectionForm.tsx\", \"lines\": \"1-100\"}">
+</lov-tool-use>
+
+<lov-tool-use id="toolu_vrtx_01A4CqRkpx24H4YPzvWkRZTh" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/registration/MemberDetailsForm.tsx\", \"lines\": \"1-80\"}">
+</lov-tool-use>
+
+<lov-tool-use id="toolu_vrtx_01BQFuZ3WRSyEXCs5m5QGUEe" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/Renew.tsx\", \"lines\": \"1-100\"}">
+</lov-tool-use>
+
+<lov-tool-use id="toolu_vrtx_01NXE6K45na7qdvtgY3iMrnj" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/ExtendPT.tsx\", \"lines\": \"1-100\"}">
+</lov-tool-use>
+I have enough context. Let me present the plan.
+
+<lov-plan>
+
 ## Goal
-Allow staff with `member_access_type = 'all'` to read other staff rows (so trainer filters & time slot dropdowns show colleagues), without breaking the existing restrictive RLS that prevents recursion or data leakage.
+Add proper, full-page loading skeletons to public registration pages so users see a polished placeholder UI while branch/package/trainer data is being fetched — instead of the current partial pulse on header only.
 
-## Investigation Summary
-- Current `staff` SELECT RLS limits visibility to self (`auth_user_id = auth.uid()`).
-- The previous attempt at a colleague-visibility policy caused infinite recursion (`staff` policy referenced `staff` again).
-- We already have `get_current_staff_branch_ids()` pattern available — a `SECURITY DEFINER` function bypasses RLS and avoids recursion.
-- Permission flag lives in `staff_permissions.member_access_type` (`'all'` vs `'assigned'`).
+## Current state
+- **Index.tsx** (`/b/:slug`): Only the header title shows a skeleton. The phone-input card renders immediately with "Gym Portal" as fallback name — looks broken if branch hasn't loaded.
+- **Register.tsx** (`/b/:slug/register`): No skeleton while `branchInfo` / `fieldSettings` load — form mounts with default field visibility, can flicker once settings arrive.
+- **Renew.tsx** & **ExtendPT.tsx**: No skeleton during branch + subscription fetch.
+- **PackageSelectionForm.tsx**: Has a small `PackageSkeleton` but only for the package grid, not the whole card stack.
 
-## Approach
-Add a **recursion-safe SECURITY DEFINER helper** + a **narrow, additive RLS policy** on `public.staff` that grants SELECT only to staff who:
-1. Are active, AND
-2. Have `member_access_type = 'all'` in `staff_permissions`, AND
-3. Share at least one branch with the target staff row.
+## Plan
 
-This is purely additive — existing policies (self-view, super_admin, gym owner) remain untouched.
+### 1. Create a shared `RegistrationPageSkeleton` component
+File: `src/components/registration/RegistrationPageSkeleton.tsx`
 
-### Migration
-```sql
--- Helper: branches the current auth user's staff record is assigned to
-CREATE OR REPLACE FUNCTION public.get_current_staff_branch_ids()
-RETURNS SETOF uuid
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
-AS $$
-  SELECT sba.branch_id
-  FROM public.staff s
-  JOIN public.staff_branch_assignments sba ON sba.staff_id = s.id
-  WHERE s.auth_user_id = auth.uid() AND s.is_active = true
-$$;
+A full-page skeleton matching the registration layout:
+- Hero area: 64×64 logo block, title bar (h-9 w-48), subtitle bar (h-5 w-56)
+- Card placeholder (max-w-md): header lines + form field group + button
+- 3-column feature grid skeleton (Secure / Instant / Easy)
+- Variants via prop: `variant: "landing" | "form" | "package"` to match Index, Register, and PackageSelectionForm shapes
+- Uses existing `Skeleton` primitive + `animate-fade-in` (per loading-states memory)
 
--- Helper: does the current auth user's staff record have member_access_type = 'all'?
-CREATE OR REPLACE FUNCTION public.current_staff_has_all_member_access()
-RETURNS boolean
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.staff s
-    JOIN public.staff_permissions sp ON sp.staff_id = s.id
-    WHERE s.auth_user_id = auth.uid()
-      AND s.is_active = true
-      AND sp.member_access_type = 'all'
-  )
-$$;
+### 2. Wire into `Index.tsx`
+- While `isBranchLoading && !branchInfo`, render `<RegistrationPageSkeleton variant="landing" />` for the entire main content (replace the current header-only skeleton + show the form card placeholder too).
+- Keep the redirect-to-default-branch path unchanged.
 
--- Additive policy: staff with all-access can see colleagues in shared branches
-CREATE POLICY "Staff with all-access can view branch colleagues"
-ON public.staff
-FOR SELECT
-TO authenticated
-USING (
-  public.current_staff_has_all_member_access()
-  AND EXISTS (
-    SELECT 1
-    FROM public.staff_branch_assignments tb
-    WHERE tb.staff_id = staff.id
-      AND tb.branch_id IN (SELECT public.get_current_staff_branch_ids())
-  )
-);
-```
+### 3. Wire into `Register.tsx`
+- Add an `isBootstrapping` state, true until the bootstrap-warmed cache is read or `fetchPublicBranch` returns.
+- While bootstrapping (no `branchInfo` AND no `fieldSettings`), render `<RegistrationPageSkeleton variant="form" />`.
+- This eliminates the field-visibility flicker.
 
-### Why this is safe
-- Both helpers are `SECURITY DEFINER` → they bypass RLS internally, so no recursion when the policy on `staff` queries `staff`.
-- Policy is **additive** — does not weaken existing self-only policy or admin/super_admin policies.
-- Restricted to staff with explicit `'all'` access; assigned-only staff remain limited.
-- Limited to shared branches → no cross-tenant leakage.
+### 4. Wire into `Renew.tsx` and `ExtendPT.tsx`
+- Add `isInitializing` state; show `<RegistrationPageSkeleton variant="package" />` until branch + subscription fetches resolve.
+- ExtendPT already has `isLoadingData` — replace the current "no UI until trainers load" gap with the skeleton.
 
-### Frontend
-No changes required. Existing `TrainerFilterDropdown`, `TimeSlotFilterDropdown`, and `useAttendanceFilters` already query `staff` by phone and gracefully fall back to the RPC. With colleague rows now visible, the phone-based path will succeed for all-access staff, returning correct staff IDs and slot counts.
+### 5. Improve `PackageSelectionForm.tsx`
+- Expand current `PackageSkeleton` to also include trainer-section and summary-row skeletons so the entire card looks intentional during the first 200-500ms before bootstrap cache hydrates.
 
-## Files Touched
-- New migration: `supabase/migrations/<timestamp>_staff_all_access_colleague_view.sql`
+## Files to edit
+| File | Change |
+|---|---|
+| `src/components/registration/RegistrationPageSkeleton.tsx` | NEW — shared skeleton with 3 variants |
+| `src/pages/Index.tsx` | Render skeleton when `isBranchLoading && !branchInfo` |
+| `src/pages/Register.tsx` | Render skeleton until branch + fieldSettings ready |
+| `src/pages/Renew.tsx` | Render skeleton until branch + sub data ready |
+| `src/pages/ExtendPT.tsx` | Render skeleton during `isLoadingData` |
+| `src/components/registration/PackageSelectionForm.tsx` | Expand existing skeleton to full card |
 
-No frontend file changes.
+## Outcome
+Users hitting a fresh registration QR/link see an instant, branded placeholder layout (logo block, title bar, form card, features) with `animate-fade-in` micro-anim — instead of a flash of "Gym Portal" text or empty white space. Layout stays stable when real data swaps in (no CLS).
+
