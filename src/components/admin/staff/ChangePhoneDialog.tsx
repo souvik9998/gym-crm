@@ -85,36 +85,21 @@ export const ChangePhoneDialog = ({
 
     setIsSaving(true);
     try {
-      // Check uniqueness
-      const { data: existing } = await supabase
-        .from("staff")
-        .select("id")
-        .eq("phone", cleaned)
-        .neq("id", staff.id)
-        .maybeSingle();
-
-      if (existing) {
-        toast.error("Phone number already in use", {
-          description: "Another staff member is already registered with this number.",
-        });
-        return;
-      }
-
       const oldPhone = staff.phone;
 
-      // Update staff
-      const { error: staffErr } = await supabase
-        .from("staff")
-        .update({ phone: cleaned })
-        .eq("id", staff.id);
-      if (staffErr) throw staffErr;
+      // Call edge function — keeps auth.users email in sync with phone, otherwise login breaks.
+      const { data, error: fnErr } = await supabase.functions.invoke("staff-auth", {
+        body: {
+          action: "change-phone",
+          staffId: staff.id,
+          newPhone: cleaned,
+        },
+      });
 
-      // Sync to personal_trainers (matched by old phone)
-      if (oldPhone) {
-        await supabase
-          .from("personal_trainers")
-          .update({ phone: cleaned })
-          .eq("phone", oldPhone);
+      if (fnErr || (data && data.success === false)) {
+        const msg = (data && (data.error || data.message)) || fnErr?.message || "Update failed";
+        toast.error("Failed to update mobile number", { description: msg });
+        return;
       }
 
       await logAdminActivity({
