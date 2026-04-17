@@ -308,23 +308,46 @@ export const SimpleAttendanceTab = () => {
             ))}
           </div>
         </div>
-        {/* Mini week dots */}
+        {/* Mini week dots — clickable, with tooltip showing details */}
         <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/20">
           {weekDates.map((d, i) => {
-            const st = d === selectedDate
+            const isFuture = d > today;
+            const isSel = d === selectedDate;
+            const rec = weekLookup[d]?.[member.memberId] || null;
+            const st = isSel
               ? localAttendance.get(member.memberId) || null
-              : weekLookup[d]?.[member.memberId] || null;
+              : rec?.status || null;
+            const markedAt = isSel ? null : rec?.markedAt || null;
             return (
-              <div key={d} className="flex flex-col items-center flex-1">
-                <span className="text-[8px] text-muted-foreground">{DAY_LABELS[i]}</span>
-                <div className={cn(
-                  "w-4 h-4 rounded-full mt-0.5 transition-colors duration-300",
-                  st === "present" ? "bg-green-500" :
-                  st === "late" ? "bg-amber-500" :
-                  st === "absent" ? "bg-red-400" :
-                  "bg-muted/60"
-                )} />
-              </div>
+              <Tooltip key={d} delayDuration={150}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={isFuture}
+                    onClick={(e) => { e.stopPropagation(); if (!isFuture) setSelectedDate(d); }}
+                    className={cn(
+                      "flex flex-col items-center flex-1 rounded-md py-1 transition-all duration-200",
+                      !isFuture && "active:scale-90 hover:bg-muted/50",
+                      isSel && "bg-primary/10 ring-1 ring-primary/30",
+                      isFuture && "opacity-40 cursor-not-allowed"
+                    )}
+                  >
+                    <span className="text-[8px] text-muted-foreground">{DAY_LABELS[i]}</span>
+                    <div className={cn(
+                      "w-4 h-4 rounded-full mt-0.5 transition-colors duration-300",
+                      st === "present" ? "bg-green-500" :
+                      st === "late" ? "bg-amber-500" :
+                      st === "absent" ? "bg-red-400" :
+                      "bg-muted/60"
+                    )} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  <div className="font-semibold">{formatFullDate(d)}</div>
+                  <div className="text-muted-foreground">{statusLabel(st)}{markedAt ? ` · ${formatTime(markedAt)}` : ""}</div>
+                  {!isFuture && !isSel && <div className="text-[10px] text-primary mt-0.5">Click to view this day</div>}
+                </TooltipContent>
+              </Tooltip>
             );
           })}
         </div>
