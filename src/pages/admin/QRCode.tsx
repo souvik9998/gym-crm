@@ -22,7 +22,7 @@ const QRCodePage = () => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"registration" | "attendance">("registration");
-  const { branches, currentBranch } = useBranch();
+  const { branches, currentBranch, isLoading: branchesLoading } = useBranch();
 
   const getPortalUrl = () => {
     if (!currentBranch || typeof window === "undefined") return "";
@@ -73,6 +73,27 @@ const QRCodePage = () => {
     img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
     toast.success("QR Code downloaded!");
   };
+
+  // Show skeleton while branch data is loading to avoid a blank page flash
+  if (branchesLoading && !currentBranch) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-6 lg:space-y-8 animate-fade-in">
+        <div className="flex gap-3">
+          <div className="flex-1 h-20 rounded-2xl bg-muted/40 animate-pulse" />
+          <div className="flex-1 h-20 rounded-2xl bg-muted/30 animate-pulse" />
+        </div>
+        <Card className="border border-border/60 shadow-sm overflow-hidden">
+          <CardContent className="flex flex-col items-center space-y-6 py-10">
+            <div className="h-6 w-48 rounded-md bg-muted/40 animate-pulse" />
+            <div className="h-4 w-64 rounded-md bg-muted/30 animate-pulse" />
+            <div className="w-[240px] h-[240px] lg:w-[300px] lg:h-[300px] rounded-2xl bg-muted/40 animate-pulse" />
+            <div className="h-10 w-full max-w-sm rounded-xl bg-muted/30 animate-pulse" />
+            <div className="h-11 w-44 rounded-xl bg-muted/40 animate-pulse" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (branches.length === 0 || !currentBranch) {
     return (
