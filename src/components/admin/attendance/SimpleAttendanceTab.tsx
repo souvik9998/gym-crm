@@ -616,24 +616,42 @@ export const SimpleAttendanceTab = () => {
                         </div>
                       </td>
                       {weekDates.map((d) => {
-                        const status = d === selectedDate
-                          ? localAttendance.get(member.memberId) || null
-                          : weekLookup[d]?.[member.memberId] || null;
                         const isSel = d === selectedDate;
+                        const isFuture = d > today;
+                        const rec = weekLookup[d]?.[member.memberId] || null;
+                        const status: AttendanceStatus | null = isSel
+                          ? localAttendance.get(member.memberId) || null
+                          : rec?.status || null;
+                        const markedAt = isSel ? null : rec?.markedAt || null;
                         return (
                           <td key={d} className={cn("text-center px-1 py-2", isSel && "bg-primary/[0.02]")}>
-                            {status ? (
-                              <div className={cn(
-                                "w-6 h-6 rounded-md mx-auto flex items-center justify-center text-[9px] font-bold transition-all duration-200",
-                                status === "present" ? "bg-green-500/20 text-green-700 dark:text-green-400" :
-                                status === "late" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" :
-                                "bg-red-500/20 text-red-600 dark:text-red-400"
-                              )}>
-                                {status === "present" ? "P" : status === "late" ? "L" : "A"}
-                              </div>
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground/30">—</span>
-                            )}
+                            <Tooltip delayDuration={150}>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  disabled={isFuture}
+                                  onClick={() => { if (!isFuture) setSelectedDate(d); }}
+                                  className={cn(
+                                    "w-7 h-7 rounded-md mx-auto flex items-center justify-center text-[10px] font-bold transition-all duration-200",
+                                    !isFuture && "hover:scale-110 active:scale-95 cursor-pointer",
+                                    isSel && "ring-1 ring-primary/40",
+                                    isFuture && "opacity-40 cursor-not-allowed",
+                                    status === "present" ? "bg-green-500/20 text-green-700 dark:text-green-400" :
+                                    status === "late" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" :
+                                    status === "absent" ? "bg-red-500/20 text-red-600 dark:text-red-400" :
+                                    "bg-transparent text-muted-foreground/40 hover:bg-muted/50"
+                                  )}
+                                >
+                                  {status === "present" ? "P" : status === "late" ? "L" : status === "absent" ? "A" : "—"}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                <div className="font-semibold">{member.memberName}</div>
+                                <div className="text-muted-foreground">{formatFullDate(d)}</div>
+                                <div className="mt-0.5">{statusLabel(status)}{markedAt ? ` · ${formatTime(markedAt)}` : ""}</div>
+                                {!isFuture && !isSel && <div className="text-[10px] text-primary mt-0.5">Click to view this day</div>}
+                              </TooltipContent>
+                            </Tooltip>
                           </td>
                         );
                       })}
