@@ -1250,7 +1250,15 @@ export const StaffTrainersTab = ({
         direction="to_staff"
         branchId={currentBranch?.id}
         branchName={currentBranch?.name}
-        onSuccess={() => { onConversionSuccess ? onConversionSuccess() : onRefresh(); }}
+        onSuccess={async () => { if (onConversionSuccess) { onConversionSuccess(); } await refreshAll(); }}
+      />
+      <ChangePhoneDialog
+        open={changePhoneDialog.open}
+        onOpenChange={(open) => setChangePhoneDialog({ ...changePhoneDialog, open })}
+        staff={changePhoneDialog.staff}
+        branchId={currentBranch?.id}
+        branchName={currentBranch?.name}
+        onSuccess={refreshAll}
       />
     </div>
   );
