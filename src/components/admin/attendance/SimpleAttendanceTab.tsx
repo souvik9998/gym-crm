@@ -754,28 +754,12 @@ export const SimpleAttendanceTab = () => {
         </Card>
       )}
 
-      {/* Sticky Save Button */}
-      {filteredList.length > 0 && !isFutureDate && (
-        <div className="sticky bottom-2 z-20 px-1">
-          <Button
-            className={cn(
-              "w-full h-11 lg:h-12 rounded-xl text-sm font-semibold shadow-lg transition-all duration-300 active:scale-[0.98]",
-              hasChanges
-                ? "bg-foreground text-background hover:bg-foreground/90 shadow-foreground/20"
-                : "bg-muted text-muted-foreground"
-            )}
-            disabled={!hasChanges || saveMutation.isPending}
-            onClick={() => saveMutation.mutate()}
-          >
-            {saveMutation.isPending ? (
-              <span className="flex items-center gap-2"><ButtonSpinner /> Saving...</span>
-            ) : hasChanges ? (
-              <span className="flex items-center gap-1.5">
-                Save <span className="hidden sm:inline">Attendance</span>
-                <span className="text-xs opacity-75">({stats.present}P · {stats.late}L · {stats.absent}A)</span>
-              </span>
-            ) : "No changes to save"}
-          </Button>
+      {/* Auto-save status indicator */}
+      {savingIds.size > 0 && (
+        <div className="sticky bottom-2 z-20 px-1 pointer-events-none">
+          <div className="mx-auto w-fit flex items-center gap-2 px-3 py-1.5 rounded-full bg-foreground/90 text-background text-xs shadow-lg backdrop-blur animate-fade-in">
+            <ButtonSpinner /> Saving…
+          </div>
         </div>
       )}
     </div>
