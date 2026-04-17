@@ -177,11 +177,67 @@ export const StaffPermissionsDialog = ({
     }
   }, [staff]);
 
+  const handleGeneratePassword = () => {
+    setPassword(generatePassword());
+    setShowPassword(true);
+  };
+
   const handleSave = async () => {
     if (!staff) return;
+
+    if (grantMode && !hasLoginAccess) {
+      if (!password) {
+        toast.error("Please enter or generate a password");
+        return;
+      }
+      if (password.length < 6) {
+        toast.error("Password must be at least 6 characters");
+        return;
+      }
+      if (sendWhatsApp && !staff.phone) {
+        toast.error("Cannot send via WhatsApp — staff has no phone number");
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
+      // Step 1: Provision login if granting access
+      if (grantMode && !hasLoginAccess) {
+        const { data: authData, error: authError } = await supabase.functions.invoke(
+          "staff-auth?action=set-password",
+          {
+            body: {
+              staffId: staff.id,
+              password,
+              sendWhatsApp: sendWhatsApp && !!staff.phone,
+            },
+          }
+        );
+        if (authError) throw authError;
+        const authResp = typeof authData === "string" ? JSON.parse(authData) : authData;
+        if (!authResp?.success) {
+          throw new Error(authResp?.error || "Failed to grant login access");
+        }
+
+        await logAdminActivity({
+          category: "staff",
+          type: "staff_login_granted",
+          description: `Granted login access to "${staff.full_name}"`,
+          entityType: "staff",
+          entityId: staff.id,
+          entityName: staff.full_name,
+          metadata: {
+            phone: staff.phone,
+            role: staff.role,
+            credentials_sent_via_whatsapp: sendWhatsApp && !!staff.phone,
+          },
+          branchId: currentBranch?.id,
+        });
+      }
+
+      // Step 2: Save permissions
       const { data: existing } = await supabase
         .from("staff_permissions")
         .select("id")
@@ -211,11 +267,20 @@ export const StaffPermissionsDialog = ({
         branchId: currentBranch?.id,
       });
 
-      toast.success("Permissions updated successfully");
+      if (grantMode && !hasLoginAccess) {
+        toast.success("Login access granted", {
+          description: sendWhatsApp && staff.phone
+            ? "Credentials sent via WhatsApp and permissions saved"
+            : "Permissions saved — share the password with the staff member",
+        });
+      } else {
+        toast.success("Permissions updated successfully");
+      }
+
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {
-      toast.error("Failed to update permissions", { description: error.message });
+      toast.error("Failed to save", { description: error.message });
     } finally {
       setIsLoading(false);
     }
