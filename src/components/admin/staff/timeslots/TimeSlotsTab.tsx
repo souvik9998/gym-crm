@@ -134,6 +134,7 @@ export const TimeSlotsTab = ({
   };
 
   const handleCardClick = (slot: TimeSlot) => {
+    if (!canViewMembers) return;
     setDetailSlot(slot);
     setDetailOpen(true);
   };
