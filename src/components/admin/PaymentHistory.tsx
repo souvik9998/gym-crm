@@ -36,6 +36,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
 import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
 import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 type PaymentMode = Database["public"]["Enums"]["payment_mode"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
@@ -48,6 +50,9 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const isMobile = useIsMobile();
   const isCompact = useIsTabletOrBelow();
   const { currentBranch } = useBranch();
+  const { isStaffLoggedIn, permissions } = useStaffAuth();
+  const { isAdmin } = useIsAdmin();
+  const canSendWhatsApp = isAdmin || (isStaffLoggedIn && (permissions as any)?.can_send_whatsapp === true);
   const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null);
   
   // Use infinite query for paginated data fetching
@@ -270,6 +275,10 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const waOverlay = useWhatsAppOverlay();
 
   const handleSendInvoice = async (paymentId: string) => {
+    if (!canSendWhatsApp) {
+      toast.error("You don't have permission to send WhatsApp messages");
+      return;
+    }
     // Find the payment to get member name
     const payment = filteredPayments.find(p => p.id === paymentId);
     const recipientName = payment?.member?.name || payment?.daily_pass_user?.name || undefined;
@@ -628,10 +637,12 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                             <Copy className="w-3.5 h-3.5 mr-2" />
                             Copy Link
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleSendInvoice(payment.id)} disabled={sendingInvoiceId === payment.id}>
-                            <FileText className="w-3.5 h-3.5 mr-2" />
-                            {sendingInvoiceId === payment.id ? "Sending..." : "Send via WhatsApp"}
-                          </DropdownMenuItem>
+                          {canSendWhatsApp && (
+                            <DropdownMenuItem onClick={() => handleSendInvoice(payment.id)} disabled={sendingInvoiceId === payment.id}>
+                              <FileText className="w-3.5 h-3.5 mr-2" />
+                              {sendingInvoiceId === payment.id ? "Sending..." : "Send via WhatsApp"}
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -742,10 +753,12 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                             <Copy className="w-3.5 h-3.5 mr-2" />
                             Copy Link
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleSendInvoice(payment.id)} disabled={sendingInvoiceId === payment.id}>
-                            <FileText className="w-3.5 h-3.5 mr-2" />
-                            {sendingInvoiceId === payment.id ? "Sending..." : "Send Invoice to WhatsApp"}
-                          </DropdownMenuItem>
+                          {canSendWhatsApp && (
+                            <DropdownMenuItem onClick={() => handleSendInvoice(payment.id)} disabled={sendingInvoiceId === payment.id}>
+                              <FileText className="w-3.5 h-3.5 mr-2" />
+                              {sendingInvoiceId === payment.id ? "Sending..." : "Send Invoice to WhatsApp"}
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
