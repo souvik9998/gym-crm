@@ -76,7 +76,21 @@ export const MembersTable = ({
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn, permissions, staffUser } = useStaffAuth();
   const { isAdmin } = useIsAdmin();
+  const { isModuleEnabled } = useAuth();
   const { invalidateMembers } = useInvalidateQueries();
+
+  const biometricEnabled = isModuleEnabled("attendance_biometric");
+
+  // Check if biometric devices exist for this branch (only when feature is enabled)
+  const { data: biometricDevicesData } = useQuery({
+    queryKey: ["biometric-devices", currentBranch?.id],
+    queryFn: () => fetchBiometricDevices(currentBranch?.id),
+    enabled: !!currentBranch?.id && biometricEnabled,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const hasBiometricDevices = (biometricDevicesData?.length ?? 0) > 0;
+  const canEnrollBiometric = biometricEnabled && hasBiometricDevices;
   
   // Use infinite query for paginated data fetching
   const {
