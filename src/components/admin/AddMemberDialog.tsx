@@ -108,6 +108,33 @@ interface AddMemberDialogProps {
   onSuccess: () => void;
 }
 
+interface FieldSetting {
+  enabled: boolean;
+  required: boolean;
+  locked?: boolean;
+}
+
+interface RegistrationFieldSettings {
+  gender?: FieldSetting;
+  date_of_birth?: FieldSetting;
+  email?: FieldSetting;
+  blood_group?: FieldSetting;
+  occupation?: FieldSetting;
+  address?: FieldSetting;
+  emergency_contact_1?: FieldSetting;
+  emergency_contact_2?: FieldSetting;
+  photo_id?: FieldSetting;
+  identity_proof_upload?: FieldSetting;
+  health_details?: FieldSetting;
+  medical_records_upload?: FieldSetting;
+}
+
+interface UploadedDoc {
+  name: string;
+  url: string;
+  size: number;
+}
+
 const STEPS = [
   { id: 1, title: "Contact", icon: Phone },
   { id: 2, title: "Personal", icon: IdCard },
