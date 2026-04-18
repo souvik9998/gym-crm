@@ -1182,6 +1182,8 @@ Deno.serve(async (req) => {
           packageSalesData,
           packageList,
           totals: { totalRevenue, totalMembers, activeMembers, avgRevenue },
+          granularity,
+          intervalMeta,
         }, 30);
       }
 
