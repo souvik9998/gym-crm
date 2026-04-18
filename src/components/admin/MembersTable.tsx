@@ -1099,27 +1099,31 @@ export const MembersTable = ({
             >
               Clear
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleBulkWhatsApp("promotional")}
-              disabled={bulkActionType !== null}
-              className="gap-1 md:gap-2 h-7 md:h-8 text-[10px] md:text-xs px-2 md:px-3"
-            >
-              <MessageCircle className="w-3 h-3 md:w-4 md:h-4" />
-              {bulkActionType === "promotional" ? "Sending..." : "Promotional"}
-            </Button>
-            {hasExpiringOrExpiredSelected() && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleBulkWhatsApp("expiry_reminder")}
-                disabled={bulkActionType !== null}
-                className="gap-1 md:gap-2 h-7 md:h-8 text-[10px] md:text-xs px-2 md:px-3"
-              >
-                <Clock className="w-3 h-3 md:w-4 md:h-4" />
-                {bulkActionType === "expiry_reminder" ? "Sending..." : "Expiry Reminder"}
-              </Button>
+            {canSendWhatsApp && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBulkWhatsApp("promotional")}
+                  disabled={bulkActionType !== null}
+                  className="gap-1 md:gap-2 h-7 md:h-8 text-[10px] md:text-xs px-2 md:px-3"
+                >
+                  <MessageCircle className="w-3 h-3 md:w-4 md:h-4" />
+                  {bulkActionType === "promotional" ? "Sending..." : "Promotional"}
+                </Button>
+                {hasExpiringOrExpiredSelected() && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkWhatsApp("expiry_reminder")}
+                    disabled={bulkActionType !== null}
+                    className="gap-1 md:gap-2 h-7 md:h-8 text-[10px] md:text-xs px-2 md:px-3"
+                  >
+                    <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                    {bulkActionType === "expiry_reminder" ? "Sending..." : "Expiry Reminder"}
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>
