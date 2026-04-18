@@ -410,7 +410,7 @@ const AdminSettings = () => {
     if (error) {
       toast.error("Error", { description: error.message });
     } else {
-      await logAdminActivity({
+      await logActivity({
         category: "settings", type: "gym_info_updated",
         description: `Updated gym information for ${currentBranch?.name || "branch"}`,
         entityType: "gym_settings", entityId: settings.id,
@@ -441,7 +441,7 @@ const AdminSettings = () => {
     if (error) {
       toast.error("Error", { description: error.message });
     } else {
-      await logAdminActivity({
+      await logActivity({
         category: "settings", type: "gym_info_updated",
         description: `Updated GST settings for ${currentBranch?.name || "branch"}`,
         entityType: "gym_settings", entityId: settings.id,
@@ -473,7 +473,7 @@ const AdminSettings = () => {
     if (error) {
       toast.error("Error", { description: error.message });
     } else {
-      await logAdminActivity({
+      await logActivity({
         category: "settings", type: "gym_info_updated",
         description: `Updated invoice settings for ${currentBranch?.name || "branch"}`,
         entityType: "gym_settings", entityId: settings.id,
@@ -550,7 +550,7 @@ const AdminSettings = () => {
         description: error.message,
       });
     } else {
-      await logAdminActivity({
+      await logActivity({
         category: "packages",
         type: "monthly_package_added",
         description: `Added ${months} month package at ₹${newMonthlyPackage.price}`,
@@ -622,7 +622,7 @@ const AdminSettings = () => {
         description: error.message,
       });
     } else {
-      await logAdminActivity({
+      await logActivity({
         category: "packages",
         type: "monthly_package_updated",
         description: `Updated ${pkg?.months} month package pricing`,
@@ -667,7 +667,7 @@ const AdminSettings = () => {
           failed = true;
           toast.error("Failed to update package", { description: error.message });
         } else {
-          await logAdminActivity({
+          await logActivity({
             category: "packages",
             type: "monthly_package_toggled",
             description: `${isActive ? "Activated" : "Deactivated"} ${pkg?.months} month package`,
@@ -717,7 +717,7 @@ const AdminSettings = () => {
 
         // Admin flow
         await supabase.from("monthly_packages").delete().eq("id", id);
-        await logAdminActivity({
+        await logActivity({
           category: "packages",
           type: "monthly_package_deleted",
           description: `Deleted ${months} month package`,
@@ -801,7 +801,7 @@ const AdminSettings = () => {
         });
       }
     } else {
-      await logAdminActivity({
+      await logActivity({
         category: "packages",
         type: "custom_package_added",
         description: `Added daily pass "${newPackage.name}" (${durationDays} days) at ₹${newPackage.price}`,
@@ -878,7 +878,7 @@ const AdminSettings = () => {
         description: error.message,
       });
     } else {
-      await logAdminActivity({
+      await logActivity({
         category: "packages",
         type: "custom_package_updated",
         description: `Updated daily pass "${editPackageData.name}"`,
@@ -923,7 +923,7 @@ const AdminSettings = () => {
           failed = true;
           toast.error("Failed to update package", { description: error.message });
         } else {
-          await logAdminActivity({
+          await logActivity({
             category: "packages",
             type: "custom_package_toggled",
             description: `${isActive ? "Activated" : "Deactivated"} daily pass "${pkg?.name}"`,
@@ -976,7 +976,7 @@ const AdminSettings = () => {
 
         // Admin flow
         await supabase.from("custom_packages").delete().eq("id", id);
-        await logAdminActivity({
+        await logActivity({
           category: "packages",
           type: "custom_package_deleted",
           description: `Deleted daily pass "${name}"`,
@@ -1503,7 +1503,7 @@ const AdminSettings = () => {
                             
                             settingsId = newSettings.id;
                             setSettings({ ...settings, id: settingsId } as GymSettings);
-                            await logAdminActivity({
+                            await logActivity({
                               category: "settings",
                               type: "whatsapp_toggled",
                               description: `${checked ? "Enabled" : "Disabled"} WhatsApp messaging for ${currentBranch?.name || "branch"}`,
@@ -1551,7 +1551,7 @@ const AdminSettings = () => {
                             setWhatsappEnabled(!checked); // revert
                             toast.error("Error", { description: error.message });
                           } else {
-                            await logAdminActivity({
+                            await logActivity({
                               category: "settings",
                               type: "whatsapp_toggled",
                               description: `${checked ? "Enabled" : "Disabled"} WhatsApp messaging for ${currentBranch?.name || "branch"}`,
