@@ -158,24 +158,39 @@ export const StaffOtherTab = ({
   };
 
   const handleAddStaff = async () => {
-    if (!newStaff.full_name) {
-      toast.error("Please enter staff name");
+    // Validate using shared schemas
+    const nameResult = nameSchema.safeParse(newStaff.full_name);
+    if (!nameResult.success) {
+      toast.error(nameResult.error.errors[0]?.message || "Invalid name");
       return;
     }
-    if (!newStaff.phone) {
-      toast.error("Please enter phone number");
+    const phoneResult = phoneSchema.safeParse(newStaff.phone);
+    if (!phoneResult.success) {
+      toast.error(phoneResult.error.errors[0]?.message || "Invalid phone number");
       return;
     }
-    const cleanPhone = newStaff.phone.replace(/\D/g, "").replace(/^0/, "");
-    if (cleanPhone.length !== 10) {
-      toast.error("Phone number must be exactly 10 digits", {
-        description: "Enter a valid 10-digit mobile number without country code.",
-      });
+    const cleanPhone = phoneResult.data;
+
+    // Validate ID number against the selected ID type (only if user entered something)
+    if (newStaff.id_number?.trim()) {
+      const idResult = getPhotoIdSchema(newStaff.id_type).safeParse(newStaff.id_number);
+      if (!idResult.success) {
+        toast.error(idResult.error.errors[0]?.message || "Invalid ID number");
+        return;
+      }
+    }
+
+    if (newStaff.monthly_salary && Number(newStaff.monthly_salary) < 0) {
+      toast.error("Monthly salary cannot be negative");
       return;
     }
-    if (newStaff.enableLogin && !newStaff.password) {
-      toast.error("Please enter a password or disable login access");
-      return;
+
+    if (newStaff.enableLogin) {
+      const pwdResult = passwordSchema.safeParse(newStaff.password);
+      if (!pwdResult.success) {
+        toast.error(pwdResult.error.errors[0]?.message || "Invalid password");
+        return;
+      }
     }
 
     if (addingRef.current) return;
