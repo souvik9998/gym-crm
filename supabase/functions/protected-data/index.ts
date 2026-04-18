@@ -1024,22 +1024,25 @@ Deno.serve(async (req) => {
         const dateToParam = url.searchParams.get("dateTo");
         if (!dateFromParam || !dateToParam) return errorResponse("dateFrom and dateTo required", 400);
 
+        const rangeStartISO = `${dateFromParam}T00:00:00.000Z`;
+        const rangeEndISO = `${dateToParam}T23:59:59.999Z`;
+
         // Fetch all data in parallel
         const [paymentsRes, membersInRangeRes, membersBeforeRes, totalMembersRes, activeMembersRes, trainersRes, ptSubsRes, monthlyPkgsRes, subsInRangeRes] = await Promise.all([
           supabase.from("payments").select("amount, created_at").eq("branch_id", branchId).eq("status", "success")
-            .gte("created_at", `${dateFromParam}T00:00:00`).lte("created_at", `${dateToParam}T23:59:59`).order("created_at", { ascending: true }),
+            .gte("created_at", rangeStartISO).lte("created_at", rangeEndISO).order("created_at", { ascending: true }),
           supabase.from("members").select("created_at").eq("branch_id", branchId)
-            .gte("created_at", `${dateFromParam}T00:00:00`).lte("created_at", `${dateToParam}T23:59:59`).order("created_at", { ascending: true }),
+            .gte("created_at", rangeStartISO).lte("created_at", rangeEndISO).order("created_at", { ascending: true }),
           supabase.from("members").select("*", { count: "exact", head: true }).eq("branch_id", branchId)
-            .lt("created_at", `${dateFromParam}T00:00:00`),
+            .lt("created_at", rangeStartISO),
           supabase.from("members").select("*", { count: "exact", head: true }).eq("branch_id", branchId),
           supabase.from("subscriptions").select("*", { count: "exact", head: true }).eq("branch_id", branchId).eq("status", "active"),
           supabase.from("personal_trainers").select("id, name").eq("branch_id", branchId).eq("is_active", true),
           supabase.from("pt_subscriptions").select("personal_trainer_id, member_id, total_fee, created_at, status").eq("branch_id", branchId)
-            .gte("created_at", `${dateFromParam}T00:00:00`).lte("created_at", `${dateToParam}T23:59:59`),
+            .gte("created_at", rangeStartISO).lte("created_at", rangeEndISO),
           supabase.from("monthly_packages").select("id, months, price").eq("branch_id", branchId).eq("is_active", true).order("months", { ascending: true }),
           supabase.from("subscriptions").select("plan_months, created_at, is_custom_package").eq("branch_id", branchId)
-            .gte("created_at", `${dateFromParam}T00:00:00`).lte("created_at", `${dateToParam}T23:59:59`),
+            .gte("created_at", rangeStartISO).lte("created_at", rangeEndISO),
         ]);
 
         // === SERVER-SIDE AGGREGATION ===
@@ -1053,9 +1056,37 @@ Deno.serve(async (req) => {
         const monthlyPkgs = monthlyPkgsRes.data || [];
         const subsInRange = subsInRangeRes.data || [];
 
-        const startDate = new Date(`${dateFromParam}T00:00:00Z`);
-        const endDate = new Date(`${dateToParam}T23:59:59Z`);
-        const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const DAY_MS = 1000 * 60 * 60 * 24;
+        const startDate = new Date(rangeStartISO);
+        const endDate = new Date(rangeEndISO);
+        const daysDiff = Math.floor((endDate.getTime() - startDate.getTime()) / DAY_MS) + 1;
+
+        const utcDayStart = (date: Date) => new Date(Date.UTC(
+          date.getUTCFullYear(),
+          date.getUTCMonth(),
+          date.getUTCDate(),
+          0, 0, 0, 0,
+        ));
+        const utcDayEnd = (date: Date) => new Date(Date.UTC(
+          date.getUTCFullYear(),
+          date.getUTCMonth(),
+          date.getUTCDate(),
+          23, 59, 59, 999,
+        ));
+        const formatAxisLabel = (start: Date, end: Date, intervalGranularity: "day" | "week" | "month") => {
+          if (intervalGranularity === "day") {
+            return start.toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" });
+          }
+          if (intervalGranularity === "week") {
+            const startDay = start.toLocaleDateString("en-GB", { day: "2-digit", timeZone: "UTC" });
+            const endSameMonth = start.getUTCMonth() === end.getUTCMonth() && start.getUTCFullYear() === end.getUTCFullYear();
+            if (endSameMonth) {
+              return `${startDay} – ${end.toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" })}`;
+            }
+            return `${start.toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" })} – ${end.toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" })}`;
+          }
+          return start.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+        };
 
         // Generate time intervals
         type Interval = { label: string; start: Date; end: Date };
@@ -1065,35 +1096,35 @@ Deno.serve(async (req) => {
         let granularity: "day" | "week" | "month" = "day";
         if (daysDiff <= 14) {
           granularity = "day";
-          for (let d = new Date(startDate); d <= endDate; d = new Date(d.getTime() + 86400000)) {
-            const dayEnd = new Date(d.getTime() + 86400000 - 1);
-            const label = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
-            intervals.push({ label, start: new Date(d), end: dayEnd > endDate ? new Date(endDate) : dayEnd });
+          for (let d = new Date(startDate); d <= endDate; d = new Date(d.getTime() + DAY_MS)) {
+            const bucketStart = utcDayStart(d);
+            const bucketEnd = utcDayEnd(d);
+            const actualEnd = bucketEnd > endDate ? new Date(endDate) : bucketEnd;
+            const label = formatAxisLabel(bucketStart, actualEnd, "day");
+            intervals.push({ label, start: bucketStart, end: actualEnd });
           }
         } else if (daysDiff <= 90) {
           granularity = "week";
-          // Weekly intervals — align to Monday but clamp to actual range
-          const d = new Date(startDate);
-          const dayOfWeek = d.getDay();
+          const alignedWeekStart = utcDayStart(startDate);
+          const dayOfWeek = alignedWeekStart.getUTCDay();
           const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-          d.setDate(d.getDate() + mondayOffset);
-          while (d <= endDate) {
-            const weekEnd = new Date(d.getTime() + 6 * 86400000);
-            const actualStart = d < startDate ? new Date(startDate) : new Date(d);
-            const actualEnd = weekEnd > endDate ? new Date(endDate) : weekEnd;
-            // Use the actual visible start of the week as the label so it matches the data range
-            const label = actualStart.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+          for (let d = new Date(alignedWeekStart.getTime() + mondayOffset * DAY_MS); d <= endDate; d = new Date(d.getTime() + 7 * DAY_MS)) {
+            const bucketStart = utcDayStart(d);
+            const bucketEnd = utcDayEnd(new Date(d.getTime() + 6 * DAY_MS));
+            const actualStart = bucketStart < startDate ? new Date(startDate) : bucketStart;
+            const actualEnd = bucketEnd > endDate ? new Date(endDate) : bucketEnd;
+            const label = formatAxisLabel(actualStart, actualEnd, "week");
             intervals.push({ label, start: actualStart, end: actualEnd });
-            d.setDate(d.getDate() + 7);
           }
         } else {
           granularity = "month";
-          const d = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-          while (d <= endDate) {
-            const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
-            const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
-            intervals.push({ label, start: new Date(d), end: monthEnd > endDate ? new Date(endDate) : monthEnd });
-            d.setMonth(d.getMonth() + 1);
+          for (let d = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1)); d <= endDate; d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))) {
+            const bucketStart = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0, 0));
+            const bucketEnd = utcDayEnd(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0, 0, 0, 0, 0)));
+            const actualStart = bucketStart < startDate ? new Date(startDate) : bucketStart;
+            const actualEnd = bucketEnd > endDate ? new Date(endDate) : bucketEnd;
+            const label = formatAxisLabel(actualStart, actualEnd, "month");
+            intervals.push({ label, start: actualStart, end: actualEnd });
           }
         }
 
@@ -1107,11 +1138,6 @@ Deno.serve(async (req) => {
           const date = new Date(dateStr);
           for (let i = intervals.length - 1; i >= 0; i--) {
             if (date >= intervals[i].start && date <= intervals[i].end) return intervals[i].label;
-          }
-          // Fallback: find closest
-          if (intervals.length > 0) {
-            if (date < intervals[0].start) return intervals[0].label;
-            return intervals[intervals.length - 1].label;
           }
           return null;
         };
