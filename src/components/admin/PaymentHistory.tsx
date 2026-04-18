@@ -50,6 +50,9 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const isMobile = useIsMobile();
   const isCompact = useIsTabletOrBelow();
   const { currentBranch } = useBranch();
+  const { isStaffLoggedIn, permissions } = useStaffAuth();
+  const { isAdmin } = useIsAdmin();
+  const canSendWhatsApp = isAdmin || (isStaffLoggedIn && (permissions as any)?.can_send_whatsapp === true);
   const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null);
   
   // Use infinite query for paginated data fetching
