@@ -584,7 +584,7 @@ export const TimeSlotsTab = ({
                     <CardHeader className="p-5 pb-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <CardTitle className={cn("text-lg font-semibold truncate flex items-center gap-1.5", accent.text)}>
+                          <CardTitle className="text-lg font-semibold truncate flex items-center gap-1.5 text-foreground">
                             <UserGroupIcon className={cn("w-4 h-4 shrink-0", accent.icon)} />
                             {slot.trainer_name}
                           </CardTitle>
