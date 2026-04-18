@@ -177,21 +177,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Rewrite the action_link host to the GymKloud domain so the email link
-    // opens our branded /reset-password page instead of the Supabase site URL.
-    const APP_DOMAIN = "https://app.gymkloud.in";
-    let resetUrl = linkData.properties.action_link;
-    try {
-      const original = new URL(resetUrl);
-      const target = new URL(APP_DOMAIN);
-      // Preserve the recovery token query + hash; replace the origin only.
-      target.pathname = "/reset-password";
-      target.search = original.search;
-      target.hash = original.hash;
-      resetUrl = target.toString();
-    } catch (e) {
-      console.warn("Failed to rewrite reset URL host:", (e as Error).message);
-    }
+    // The action_link verifies the token on Supabase and then redirects the
+    // user to `redirectTo` (https://app.gymkloud.in/reset-password) where our
+    // branded reset page handles the recovery session.
+    const resetUrl = linkData.properties.action_link;
 
     const resendResponse = await fetch(RESEND_API_URL, {
       method: "POST",
