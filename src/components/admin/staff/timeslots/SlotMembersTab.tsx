@@ -513,6 +513,125 @@ export const SlotMembersTab = ({
         </div>
       </div>
 
+      {/* Empty state when nothing is selected — colorful, informative panel */}
+      {!selectedSlot && (
+        <Card className="border-0 overflow-hidden bg-gradient-to-br from-primary/5 via-background to-purple-500/5">
+          <CardContent className="p-6 lg:p-8">
+            <div className="grid gap-6 lg:grid-cols-[1fr_auto] items-center">
+              {/* Left: heading + steps */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center shadow-lg shadow-primary/20">
+                    <UserGroupIcon className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="text-base lg:text-lg font-semibold">
+                      {!selectedTrainer ? "Get Started" : "Pick a Time Slot"}
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      {!selectedTrainer
+                        ? "Select a trainer above to view their available time slots"
+                        : "Choose a slot to manage its assigned members"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step indicators */}
+                <div className="grid sm:grid-cols-3 gap-2.5">
+                  <div className={`flex items-center gap-2.5 p-3 rounded-lg border transition-all ${
+                    selectedTrainer ? "bg-green-50 border-green-200" : "bg-card border-primary/30 ring-2 ring-primary/10"
+                  }`}>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                      selectedTrainer ? "bg-green-500 text-white" : "bg-primary text-primary-foreground"
+                    }`}>
+                      {selectedTrainer ? "✓" : "1"}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold">Choose Trainer</p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {selectedTrainer ? trainerName || "Selected" : "Pick from list"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={`flex items-center gap-2.5 p-3 rounded-lg border transition-all ${
+                    selectedSlot ? "bg-green-50 border-green-200" :
+                    selectedTrainer ? "bg-card border-primary/30 ring-2 ring-primary/10" :
+                    "bg-muted/30 border-border opacity-60"
+                  }`}>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                      selectedSlot ? "bg-green-500 text-white" :
+                      selectedTrainer ? "bg-primary text-primary-foreground" : "bg-muted-foreground/30 text-muted-foreground"
+                    }`}>
+                      {selectedSlot ? "✓" : "2"}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold">Pick Slot</p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {selectedTrainer
+                          ? slots.length > 0 ? `${slots.length} slot${slots.length > 1 ? "s" : ""} available` : "No slots yet"
+                          : "Awaiting trainer"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 p-3 rounded-lg border bg-muted/30 border-border opacity-60">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-muted-foreground/30 text-muted-foreground">
+                      3
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold">Assign Members</p>
+                      <p className="text-[10px] text-muted-foreground truncate">Active PT only</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tip strip */}
+                <div className="flex items-start gap-2.5 p-3 rounded-lg bg-blue-50 border border-blue-200">
+                  <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="text-white text-[10px] font-bold">i</span>
+                  </div>
+                  <p className="text-xs text-blue-900">
+                    <span className="font-semibold">Tip:</span> Members need an active PT subscription with the same trainer to join a slot. Use transfer to move them between trainers.
+                  </p>
+                </div>
+              </div>
+
+              {/* Right: decorative info chips */}
+              <div className="hidden lg:flex flex-col gap-2.5 min-w-[180px]">
+                <div className="flex items-center gap-2.5 p-3 rounded-lg bg-card border shadow-sm">
+                  <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center">
+                    <UserGroupIcon className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Same Trainer</p>
+                    <p className="text-xs font-semibold">Add directly</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5 p-3 rounded-lg bg-card border shadow-sm">
+                  <div className="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center">
+                    <ArrowsRightLeftIcon className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Other Trainer</p>
+                    <p className="text-xs font-semibold">Transfer over</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5 p-3 rounded-lg bg-card border shadow-sm">
+                  <div className="w-9 h-9 rounded-lg bg-yellow-100 flex items-center justify-center">
+                    <ClockIcon className="w-5 h-5 text-yellow-600" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Capacity</p>
+                    <p className="text-xs font-semibold">Per slot limit</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {selectedSlot && (
         <Card className="border shadow-sm">
           <CardContent className="p-3 lg:p-4 space-y-3">
