@@ -26,7 +26,18 @@ import {
   RefreshCw,
   UserCheck,
   Loader2,
+  Mail,
+  Briefcase,
+  Droplets,
+  ShieldAlert,
+  Heart,
+  Upload,
+  FileText,
+  X,
+  MessageCircle,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DobInput } from "@/components/ui/dob-input";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -97,6 +108,33 @@ interface AddMemberDialogProps {
   onSuccess: () => void;
 }
 
+interface FieldSetting {
+  enabled: boolean;
+  required: boolean;
+  locked?: boolean;
+}
+
+interface RegistrationFieldSettings {
+  gender?: FieldSetting;
+  date_of_birth?: FieldSetting;
+  email?: FieldSetting;
+  blood_group?: FieldSetting;
+  occupation?: FieldSetting;
+  address?: FieldSetting;
+  emergency_contact_1?: FieldSetting;
+  emergency_contact_2?: FieldSetting;
+  photo_id?: FieldSetting;
+  identity_proof_upload?: FieldSetting;
+  health_details?: FieldSetting;
+  medical_records_upload?: FieldSetting;
+}
+
+interface UploadedDoc {
+  name: string;
+  url: string;
+  size: number;
+}
+
 const STEPS = [
   { id: 1, title: "Contact", icon: Phone },
   { id: 2, title: "Personal", icon: IdCard },
@@ -129,6 +167,28 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const [photoIdType, setPhotoIdType] = useState("");
   const [photoIdNumber, setPhotoIdNumber] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState<string | undefined>(undefined);
+  const [email, setEmail] = useState("");
+  const [occupation, setOccupation] = useState("");
+  
+  // Health details (optional, mirrors public registration)
+  const [bloodGroup, setBloodGroup] = useState("");
+  const [heightCm, setHeightCm] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [medicalConditions, setMedicalConditions] = useState("");
+  const [allergies, setAllergies] = useState("");
+  const [emergencyContact1Name, setEmergencyContact1Name] = useState("");
+  const [emergencyContact1Phone, setEmergencyContact1Phone] = useState("");
+  const [emergencyContact2Name, setEmergencyContact2Name] = useState("");
+  const [emergencyContact2Phone, setEmergencyContact2Phone] = useState("");
+  const [identityFiles, setIdentityFiles] = useState<UploadedDoc[]>([]);
+  const [medicalFiles, setMedicalFiles] = useState<UploadedDoc[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  
+  // Field settings - mirrors public registration portal
+  const [fieldSettings, setFieldSettings] = useState<RegistrationFieldSettings | null>(null);
+  
+  // Notify member via WhatsApp on submit
+  const [notifyWhatsApp, setNotifyWhatsApp] = useState(true);
   
   // Package selection
   const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
@@ -230,9 +290,27 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       fetchPackages();
       fetchTrainers();
       fetchTaxSettings();
+      fetchFieldSettings();
       setCurrentStep(1);
     }
   }, [open, currentBranch]);
+
+  const fetchFieldSettings = async () => {
+    if (!currentBranch) return;
+    const { data } = await supabase
+      .from("gym_settings")
+      .select("registration_field_settings")
+      .eq("branch_id", currentBranch.id)
+      .maybeSingle();
+    if (data?.registration_field_settings) {
+      const parsed = typeof data.registration_field_settings === "string"
+        ? JSON.parse(data.registration_field_settings)
+        : data.registration_field_settings;
+      setFieldSettings(parsed as RegistrationFieldSettings);
+    } else {
+      setFieldSettings({});
+    }
+  };
 
   const fetchTaxSettings = async () => {
     if (!currentBranch) return;
@@ -387,13 +465,89 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     return cleaned;
   };
 
+  // File upload handler (mirrors public registration)
+  const handleFileUpload = async (file: File, type: "identity" | "medical") => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File too large", { description: "Maximum file size is 5MB" });
+      return;
+    }
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type", { description: "Only JPG, PNG, WebP, and PDF are allowed" });
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${type}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from("member-documents").upload(path, file);
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from("member-documents").getPublicUrl(path);
+      const uploaded: UploadedDoc = { name: file.name, url: publicUrl, size: file.size };
+      if (type === "identity") setIdentityFiles((p) => [...p, uploaded]);
+      else setMedicalFiles((p) => [...p, uploaded]);
+      toast.success("File uploaded");
+    } catch (err: any) {
+      toast.error("Upload failed", { description: err.message });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Helpers to read settings (defaults match public registration behavior)
+  const fs = fieldSettings || {};
+  const showGender = fs.gender?.enabled !== false; // locked, default true
+  const showDOB = fs.date_of_birth?.enabled !== false;
+  const dobRequired = fs.date_of_birth?.required ?? true;
+  const showAddress = fs.address?.enabled !== false;
+  const addressRequired = fs.address?.required ?? false;
+  const showPhotoId = fs.photo_id?.enabled !== false;
+  const photoIdRequired = fs.photo_id?.required ?? false;
+  const showEmail = fs.email?.enabled === true;
+  const emailRequired = fs.email?.required === true;
+  const showOccupation = fs.occupation?.enabled === true;
+  const occupationRequired = fs.occupation?.required === true;
+  const showBloodGroup = fs.blood_group?.enabled === true;
+  const bloodGroupRequired = fs.blood_group?.required === true;
+  const showHealth = fs.health_details?.enabled === true;
+  const healthRequired = fs.health_details?.required === true;
+  const showEC1 = fs.emergency_contact_1?.enabled === true;
+  const ec1Required = fs.emergency_contact_1?.required === true;
+  const showEC2 = fs.emergency_contact_2?.enabled === true;
+  const ec2Required = fs.emergency_contact_2?.required === true;
+  const showIdentityUpload = fs.identity_proof_upload?.enabled === true;
+  const identityRequired = fs.identity_proof_upload?.required === true;
+  const showMedicalUpload = fs.medical_records_upload?.enabled === true;
+  const medicalRequired = fs.medical_records_upload?.required === true;
+
+  const emailValid = !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
   // Step validation - Step 1 only has phone
-  // Ensure debounce has settled and phone check is complete before allowing Continue
   const isPhoneSettled = phone.length === 10 && debouncedPhone === phone && !isCheckingPhone;
   const isStep1Valid = isPhoneSettled && !existingMember;
-  // Step 2 has name + personal details
-  const isStep2Valid = name.trim().length >= 2 && !!gender && !!photoIdType && photoIdNumber.trim().length > 0 && address.trim().length >= 3;
+
+  // Step 2 - dynamic based on field settings (mirrors public registration)
+  const isStep2Valid = (() => {
+    if (name.trim().length < 2) return false;
+    if (showGender && !gender) return false;
+    if (showDOB && dobRequired && !dateOfBirth) return false;
+    if (showPhotoId && photoIdRequired && (!photoIdType || !photoIdNumber.trim())) return false;
+    if (showPhotoId && photoIdType && !photoIdNumber.trim()) return false; // if type chosen, number required
+    if (showAddress && addressRequired && address.trim().length < 3) return false;
+    if (showEmail && emailRequired && !email) return false;
+    if (showEmail && !emailValid) return false;
+    if (showOccupation && occupationRequired && !occupation.trim()) return false;
+    if (showBloodGroup && bloodGroupRequired && !bloodGroup) return false;
+    if (showHealth && healthRequired && (!bloodGroup || !emergencyContact1Name || !emergencyContact1Phone)) return false;
+    if (showEC1 && ec1Required && (!emergencyContact1Name || !emergencyContact1Phone)) return false;
+    if (showEC2 && ec2Required && (!emergencyContact2Name || !emergencyContact2Phone)) return false;
+    if (showIdentityUpload && identityRequired && identityFiles.length === 0) return false;
+    if (showMedicalUpload && medicalRequired && medicalFiles.length === 0) return false;
+    return true;
+  })();
+
   const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptFee > 0 && ptMonthOptions.length > 0) : !!selectedPackageId;
+
 
   const goToStep = (step: number) => {
     if (step > currentStep) {
@@ -415,10 +569,19 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       if (currentStep === 2 && !isStep2Valid) {
         const missing: string[] = [];
         if (name.trim().length < 2) missing.push("Full Name");
-        if (!gender) missing.push("Gender");
-        if (!photoIdType) missing.push("Photo ID Type");
-        if (photoIdType && !photoIdNumber.trim()) missing.push("Photo ID Number");
-        if (address.trim().length < 3) missing.push("Address");
+        if (showGender && !gender) missing.push("Gender");
+        if (showDOB && dobRequired && !dateOfBirth) missing.push("Date of Birth");
+        if (showPhotoId && photoIdRequired && !photoIdType) missing.push("Photo ID Type");
+        if (showPhotoId && photoIdType && !photoIdNumber.trim()) missing.push("Photo ID Number");
+        if (showAddress && addressRequired && address.trim().length < 3) missing.push("Address");
+        if (showEmail && emailRequired && !email) missing.push("Email");
+        if (showEmail && email && !emailValid) missing.push("Valid Email");
+        if (showOccupation && occupationRequired && !occupation.trim()) missing.push("Occupation");
+        if (showBloodGroup && bloodGroupRequired && !bloodGroup) missing.push("Blood Group");
+        if (showEC1 && ec1Required && (!emergencyContact1Name || !emergencyContact1Phone)) missing.push("Emergency Contact 1");
+        if (showEC2 && ec2Required && (!emergencyContact2Name || !emergencyContact2Phone)) missing.push("Emergency Contact 2");
+        if (showIdentityUpload && identityRequired && identityFiles.length === 0) missing.push("Identity Proof Upload");
+        if (showMedicalUpload && medicalRequired && medicalFiles.length === 0) missing.push("Medical Records Upload");
         toast.error("Please fill all required fields", {
           description: missing.join(", "),
         });
@@ -467,12 +630,15 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
       const { data: member, error: memberError } = await supabase
         .from("members")
-        .insert({ name, phone, branch_id: currentBranch?.id || "" })
+        .insert({ name, phone, email: email || null, branch_id: currentBranch?.id || "" })
         .select()
         .single();
       if (memberError) throw memberError;
 
-      if (gender || address || photoIdType || photoIdNumber || dateOfBirth) {
+      const hasDetails = gender || address || photoIdType || photoIdNumber || dateOfBirth ||
+        bloodGroup || heightCm || weightKg || medicalConditions || allergies ||
+        emergencyContact1Name || emergencyContact1Phone || wantsPT;
+      if (hasDetails) {
         const { error: detailsError } = await supabase.from("member_details").insert({
           member_id: member.id,
           gender: gender || null,
@@ -481,8 +647,33 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           photo_id_number: photoIdNumber || null,
           date_of_birth: dateOfBirth || null,
           personal_trainer_id: wantsPT ? selectedTrainerId : null,
+          blood_group: bloodGroup || null,
+          height_cm: heightCm ? Number(heightCm) : null,
+          weight_kg: weightKg ? Number(weightKg) : null,
+          medical_conditions: medicalConditions || null,
+          allergies: allergies || null,
+          emergency_contact_name: emergencyContact1Name || null,
+          emergency_contact_phone: emergencyContact1Phone || null,
         });
         if (detailsError) throw detailsError;
+      }
+
+      // Save uploaded documents (mirrors public registration flow)
+      const docsToInsert = [
+        ...identityFiles.map((f) => ({ ...f, type: "identity_proof" })),
+        ...medicalFiles.map((f) => ({ ...f, type: "medical_record" })),
+      ];
+      if (docsToInsert.length > 0) {
+        await supabase.from("member_documents").insert(
+          docsToInsert.map((d) => ({
+            member_id: member.id,
+            document_type: d.type,
+            file_url: d.url,
+            file_name: d.name,
+            file_size: d.size,
+            uploaded_by: "admin",
+          }))
+        );
       }
 
       const gymStartDate = new Date(startDate);
@@ -579,9 +770,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         const { data: { session } } = await supabase.auth.getSession();
         const adminUserId = session?.user?.id || null;
         
-        // Send welcome/registration message if admin_add_member is enabled
-        const shouldAutoSend = await getWhatsAppAutoSendPreference(currentBranch?.id, "admin_add_member");
-        if (shouldAutoSend) {
+        // Send welcome/registration message — gated by the dialog checkbox
+        // (overrides the admin_add_member auto-send pref so admin can opt-out per member)
+        if (notifyWhatsApp) {
           await supabase.functions.invoke("send-whatsapp", {
             body: {
               phone, name, endDate: endDate.toISOString().split("T")[0], type: "new_registration",
@@ -780,8 +971,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           : addMonths(new Date(startDate), selectedPackage?.months || 1).toISOString().split("T")[0];
         
         const notificationType = selectedAction === "add_pt" ? "pt_extension" : "renewal";
-        const shouldAutoSend = await getWhatsAppAutoSendPreference(currentBranch?.id, notificationType);
-        if (shouldAutoSend) {
+        if (notifyWhatsApp) {
           await supabase.functions.invoke("send-whatsapp", {
             body: {
               phone: existingMember.phone, name: existingMember.name, endDate: endDateStr,
@@ -823,6 +1013,12 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setJoiningFee(0); setWantsPT(false); setSelectedTrainerId("");
     setPtMonths(1); setPtFee(0); setCurrentStep(1); setPaymentMode("cash");
     setExistingMember(null); setSelectedAction(null); setIsCheckingPhone(false);
+    setEmail(""); setOccupation("");
+    setBloodGroup(""); setHeightCm(""); setWeightKg(""); setMedicalConditions(""); setAllergies("");
+    setEmergencyContact1Name(""); setEmergencyContact1Phone("");
+    setEmergencyContact2Name(""); setEmergencyContact2Phone("");
+    setIdentityFiles([]); setMedicalFiles([]);
+    setNotifyWhatsApp(true);
     const today = new Date(); today.setHours(0, 0, 0, 0); setStartDate(today);
   };
 
@@ -1085,58 +1281,114 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     />
                   </div>
 
-                  <div className="space-y-2.5">
-                    <Label className="text-sm font-medium">Gender <span className="text-destructive">*</span></Label>
-                    <div className="flex gap-2">
-                      {[
-                        { value: "male", label: "Male" },
-                        { value: "female", label: "Female" },
-                        { value: "other", label: "Other" },
-                      ].map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setGender(opt.value)}
-                          className={cn(
-                            "flex-1 py-2.5 px-3 rounded-xl border-2 text-sm font-medium transition-all duration-200 active:scale-95",
-                            gender === opt.value
-                              ? "border-foreground bg-foreground/5 text-foreground shadow-sm"
-                              : "border-border bg-card text-muted-foreground hover:border-foreground/30"
-                          )}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
+                  {showGender && (
+                    <div className="space-y-2.5">
+                      <Label className="text-sm font-medium">Gender {fs.gender?.required !== false && <span className="text-destructive">*</span>}</Label>
+                      <div className="flex gap-2">
+                        {[
+                          { value: "male", label: "Male" },
+                          { value: "female", label: "Female" },
+                          { value: "other", label: "Other" },
+                        ].map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setGender(opt.value)}
+                            className={cn(
+                              "flex-1 py-2.5 px-3 rounded-xl border-2 text-sm font-medium transition-all duration-200 active:scale-95",
+                              gender === opt.value
+                                ? "border-foreground bg-foreground/5 text-foreground shadow-sm"
+                                : "border-border bg-card text-muted-foreground hover:border-foreground/30"
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-sm font-medium">
-                      <CalendarDays className="w-4 h-4 text-accent" />
-                      Date of Birth
-                    </Label>
-                    <DobInput value={dateOfBirth} onChange={setDateOfBirth} />
-                  </div>
+                  {showDOB && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <CalendarDays className="w-4 h-4 text-accent" />
+                        Date of Birth {dobRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <DobInput value={dateOfBirth} onChange={setDateOfBirth} />
+                    </div>
+                  )}
 
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-sm font-medium">
-                      <IdCard className="w-4 h-4 text-accent" />
-                      Photo ID Type <span className="text-destructive">*</span>
-                    </Label>
-                    <Select value={photoIdType} onValueChange={(val) => { setPhotoIdType(val); setPhotoIdNumber(""); }}>
-                      <SelectTrigger className="h-11 text-sm rounded-xl">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        <SelectItem value="aadhaar">Aadhaar</SelectItem>
-                        <SelectItem value="pan">PAN</SelectItem>
-                        <SelectItem value="voter">Voter ID</SelectItem>
-                        <SelectItem value="driving">Driving License</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {showEmail && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <Mail className="w-4 h-4 text-accent" />
+                        Email {emailRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <Input
+                        type="email"
+                        placeholder="member@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="h-11 text-sm rounded-xl"
+                      />
+                    </div>
+                  )}
 
-                  {photoIdType && (
+                  {showOccupation && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <Briefcase className="w-4 h-4 text-accent" />
+                        Occupation {occupationRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <Input
+                        placeholder="e.g. Software Engineer"
+                        value={occupation}
+                        onChange={(e) => setOccupation(e.target.value)}
+                        className="h-11 text-sm rounded-xl"
+                      />
+                    </div>
+                  )}
+
+                  {showBloodGroup && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <Droplets className="w-4 h-4 text-accent" />
+                        Blood Group {bloodGroupRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <Select value={bloodGroup} onValueChange={setBloodGroup}>
+                        <SelectTrigger className="h-11 text-sm rounded-xl">
+                          <SelectValue placeholder="Select blood group" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map((bg) => (
+                            <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {showPhotoId && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <IdCard className="w-4 h-4 text-accent" />
+                        Photo ID Type {photoIdRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <Select value={photoIdType} onValueChange={(val) => { setPhotoIdType(val); setPhotoIdNumber(""); }}>
+                        <SelectTrigger className="h-11 text-sm rounded-xl">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="aadhaar">Aadhaar</SelectItem>
+                          <SelectItem value="pan">PAN</SelectItem>
+                          <SelectItem value="voter">Voter ID</SelectItem>
+                          <SelectItem value="driving">Driving License</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {showPhotoId && photoIdType && (
                     <div className="space-y-2 animate-fade-in">
                       <Label className="text-sm font-medium">
                         {photoIdType === "aadhaar" ? "Aadhaar" : photoIdType === "pan" ? "PAN" : photoIdType === "voter" ? "Voter ID" : "DL"} Number <span className="text-destructive">*</span>
@@ -1151,18 +1403,110 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-sm font-medium">
-                      <MapPin className="w-4 h-4 text-accent" />
-                      Address <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      placeholder="Enter address"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      className="h-11 text-sm rounded-xl"
-                    />
-                  </div>
+                  {showAddress && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <MapPin className="w-4 h-4 text-accent" />
+                        Address {addressRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <Input
+                        placeholder="Enter address"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        className="h-11 text-sm rounded-xl"
+                      />
+                    </div>
+                  )}
+
+                  {showHealth && (
+                    <div className="rounded-xl border border-border/50 bg-muted/20 p-3.5 space-y-3 animate-fade-in">
+                      <p className="text-sm font-medium flex items-center gap-2"><Heart className="w-4 h-4 text-accent" /> Health Details {healthRequired && <span className="text-destructive">*</span>}</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Height (cm)</Label>
+                          <Input type="number" value={heightCm} onChange={(e) => setHeightCm(e.target.value)} className="h-10 text-sm rounded-xl" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Weight (kg)</Label>
+                          <Input type="number" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} className="h-10 text-sm rounded-xl" />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Medical Conditions</Label>
+                        <Textarea value={medicalConditions} onChange={(e) => setMedicalConditions(e.target.value)} placeholder="Any medical conditions" className="text-sm rounded-xl min-h-[60px]" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Allergies</Label>
+                        <Textarea value={allergies} onChange={(e) => setAllergies(e.target.value)} placeholder="Any allergies" className="text-sm rounded-xl min-h-[60px]" />
+                      </div>
+                    </div>
+                  )}
+
+                  {showEC1 && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <ShieldAlert className="w-4 h-4 text-accent" />
+                        Emergency Contact {ec1Required && <span className="text-destructive">*</span>}
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input placeholder="Name" value={emergencyContact1Name} onChange={(e) => setEmergencyContact1Name(e.target.value)} className="h-11 text-sm rounded-xl" />
+                        <Input placeholder="Phone" value={emergencyContact1Phone} onChange={(e) => setEmergencyContact1Phone(e.target.value.replace(/\D/g, "").slice(0, 10))} className="h-11 text-sm rounded-xl" />
+                      </div>
+                    </div>
+                  )}
+
+                  {showEC2 && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <ShieldAlert className="w-4 h-4 text-accent" />
+                        Emergency Contact 2 {ec2Required && <span className="text-destructive">*</span>}
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input placeholder="Name" value={emergencyContact2Name} onChange={(e) => setEmergencyContact2Name(e.target.value)} className="h-11 text-sm rounded-xl" />
+                        <Input placeholder="Phone" value={emergencyContact2Phone} onChange={(e) => setEmergencyContact2Phone(e.target.value.replace(/\D/g, "").slice(0, 10))} className="h-11 text-sm rounded-xl" />
+                      </div>
+                    </div>
+                  )}
+
+                  {showIdentityUpload && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <Upload className="w-4 h-4 text-accent" />
+                        Identity Proof Upload {identityRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <label className="flex items-center justify-center gap-2 h-11 rounded-xl border-2 border-dashed border-border hover:border-foreground/30 cursor-pointer text-sm text-muted-foreground transition-colors">
+                        <Upload className="w-4 h-4" />
+                        {isUploading ? "Uploading..." : "Click to upload (PDF/Image, max 5MB)"}
+                        <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], "identity")} />
+                      </label>
+                      {identityFiles.map((f, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs bg-muted rounded-lg p-2">
+                          <span className="flex items-center gap-1.5 truncate"><FileText className="w-3.5 h-3.5 shrink-0" />{f.name}</span>
+                          <button type="button" onClick={() => setIdentityFiles((p) => p.filter((_, idx) => idx !== i))}><X className="w-3.5 h-3.5" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {showMedicalUpload && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <FileText className="w-4 h-4 text-accent" />
+                        Medical Records Upload {medicalRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <label className="flex items-center justify-center gap-2 h-11 rounded-xl border-2 border-dashed border-border hover:border-foreground/30 cursor-pointer text-sm text-muted-foreground transition-colors">
+                        <Upload className="w-4 h-4" />
+                        {isUploading ? "Uploading..." : "Click to upload (PDF/Image, max 5MB)"}
+                        <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], "medical")} />
+                      </label>
+                      {medicalFiles.map((f, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs bg-muted rounded-lg p-2">
+                          <span className="flex items-center gap-1.5 truncate"><FileText className="w-3.5 h-3.5 shrink-0" />{f.name}</span>
+                          <button type="button" onClick={() => setMedicalFiles((p) => p.filter((_, idx) => idx !== i))}><X className="w-3.5 h-3.5" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1390,6 +1734,24 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                       <span className="text-foreground tabular-nums">₹{totalAmount.toLocaleString("en-IN")}</span>
                     </div>
                   </div>
+
+                  {/* Notify member via WhatsApp */}
+                  <label className="flex items-start gap-3 p-3 rounded-xl border border-border/60 bg-card hover:bg-muted/30 cursor-pointer transition-colors">
+                    <Checkbox
+                      checked={notifyWhatsApp}
+                      onCheckedChange={(v) => setNotifyWhatsApp(v === true)}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium flex items-center gap-1.5">
+                        <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        Notify member via WhatsApp
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Sends a registration confirmation to the member's phone after submit.
+                      </p>
+                    </div>
+                  </label>
                 </div>
               )}
             </div>
