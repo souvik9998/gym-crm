@@ -19,14 +19,20 @@ import {
   axisTickStyleMobile,
   gridProps,
   formatCompact,
+  formatBucketRange,
+  granularityLabel,
+  type Granularity,
+  type IntervalMeta,
 } from "./chartUtils";
 
 interface NewMembersChartProps {
   data: MemberGrowth[];
   isLoading?: boolean;
+  granularity?: Granularity;
+  intervalMeta?: Record<string, IntervalMeta>;
 }
 
-const NewMembersChart = memo(({ data, isLoading }: NewMembersChartProps) => {
+const NewMembersChart = memo(({ data, isLoading, granularity, intervalMeta }: NewMembersChartProps) => {
   const isMobile = useIsMobile();
 
   const stats = useMemo(() => {
@@ -35,10 +41,12 @@ const NewMembersChart = memo(({ data, isLoading }: NewMembersChartProps) => {
     const total = values.reduce((s, v) => s + v, 0);
     const peak = Math.max(...values);
     const peakIdx = values.indexOf(peak);
+    const peakLabel = data[peakIdx]?.month;
+    const peakRange = formatBucketRange(peakLabel ?? "", intervalMeta?.[peakLabel ?? ""], granularity);
     const nonZero = values.filter((v) => v > 0);
     const avg = nonZero.length ? total / nonZero.length : 0;
-    return { total, peak, peakLabel: data[peakIdx]?.month, avg };
-  }, [data]);
+    return { total, peak, peakLabel, peakRange, avg };
+  }, [data, intervalMeta, granularity]);
 
   if (isLoading) {
     return (
@@ -66,8 +74,8 @@ const NewMembersChart = memo(({ data, isLoading }: NewMembersChartProps) => {
         <ChartSummary
           stats={[
             { label: "Total joined", value: stats.total.toLocaleString("en-IN"), tone: "success" },
-            { label: "Best interval", value: `${stats.peak} · ${stats.peakLabel ?? "-"}` },
-            { label: "Avg / interval", value: stats.avg.toFixed(1) },
+            { label: `Best ${granularityLabel(granularity)}`, value: `${stats.peak} · ${stats.peakRange ?? stats.peakLabel ?? "-"}` },
+            { label: `Avg / ${granularityLabel(granularity)}`, value: stats.avg.toFixed(1) },
           ]}
         />
       )}
@@ -107,7 +115,24 @@ const NewMembersChart = memo(({ data, isLoading }: NewMembersChartProps) => {
             />
             <ChartTooltip
               cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
-              content={<PremiumTooltip formatter={(v) => `${v.toLocaleString("en-IN")} new`} />}
+              content={({ active, payload, label }) => {
+                if (!active || !payload?.length) return null;
+                const row = payload[0].payload as MemberGrowth;
+                const range = formatBucketRange(String(label ?? ""), intervalMeta?.[String(label ?? "")], granularity);
+                return (
+                  <div className="rounded-xl border border-border/70 bg-popover/95 backdrop-blur-md shadow-lg px-3 py-2 min-w-[180px] animate-fade-in">
+                    {range && <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{range}</p>}
+                    <p className="text-[11px] font-semibold mb-1.5">{label}</p>
+                    <div className="flex items-center justify-between gap-3 text-[11px]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-sm bg-success" />
+                        <span className="text-muted-foreground">New sign-ups</span>
+                      </div>
+                      <span className="font-semibold tabular-nums">{Number(row.newMembers) || 0}</span>
+                    </div>
+                  </div>
+                );
+              }}
             />
             <Bar
               dataKey="newMembers"

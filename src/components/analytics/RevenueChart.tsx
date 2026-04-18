@@ -21,26 +21,35 @@ import {
   axisTickStyle,
   axisTickStyleMobile,
   gridProps,
+  formatBucketRange,
+  granularityLabel,
+  type Granularity,
+  type IntervalMeta,
 } from "./chartUtils";
 
 interface RevenueChartProps {
   data: MonthlyRevenue[];
   isLoading?: boolean;
+  granularity?: Granularity;
+  intervalMeta?: Record<string, IntervalMeta>;
 }
 
-const RevenueChart = memo(({ data, isLoading }: RevenueChartProps) => {
+const RevenueChart = memo(({ data, isLoading, granularity, intervalMeta }: RevenueChartProps) => {
   const isMobile = useIsMobile();
 
   const stats = useMemo(() => {
     if (!data?.length) return null;
     const values = data.map((d) => Number(d.revenue) || 0);
     const total = values.reduce((s, v) => s + v, 0);
+    const totalPayments = data.reduce((s, d) => s + (Number(d.payments) || 0), 0);
     const peak = Math.max(...values);
     const peakIdx = values.indexOf(peak);
+    const peakLabel = data[peakIdx]?.month;
+    const peakRange = formatBucketRange(peakLabel ?? "", intervalMeta?.[peakLabel ?? ""], granularity);
     const nonZero = values.filter((v) => v > 0);
     const avg = nonZero.length ? total / nonZero.length : 0;
-    return { total, peak, peakLabel: data[peakIdx]?.month, avg, count: nonZero.length };
-  }, [data]);
+    return { total, totalPayments, peak, peakLabel, peakRange, avg, count: nonZero.length };
+  }, [data, intervalMeta, granularity]);
 
   if (isLoading) {
     return (
@@ -67,10 +76,10 @@ const RevenueChart = memo(({ data, isLoading }: RevenueChartProps) => {
       {stats && (
         <ChartSummary
           stats={[
-            { label: "Total", value: formatINRFull(stats.total), tone: "accent" },
-            { label: "Peak", value: `${formatINR(stats.peak)} · ${stats.peakLabel ?? "-"}` },
-            { label: "Avg / interval", value: formatINR(stats.avg) },
-            { label: "Active intervals", value: `${stats.count}` },
+            { label: "Total revenue", value: formatINRFull(stats.total), tone: "accent" },
+            { label: "Payments", value: stats.totalPayments.toLocaleString("en-IN") },
+            { label: `Peak ${granularityLabel(granularity)}`, value: `${formatINR(stats.peak)} · ${stats.peakRange ?? stats.peakLabel ?? "-"}` },
+            { label: `Avg / ${granularityLabel(granularity)}`, value: formatINR(stats.avg) },
           ]}
         />
       )}
@@ -109,11 +118,30 @@ const RevenueChart = memo(({ data, isLoading }: RevenueChartProps) => {
             />
             <ChartTooltip
               cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
-              content={
-                <PremiumTooltip
-                  formatter={(v) => formatINRFull(v)}
-                />
-              }
+              content={({ active, payload, label }) => {
+                if (!active || !payload?.length) return null;
+                const row = payload[0].payload as MonthlyRevenue;
+                const range = formatBucketRange(String(label ?? ""), intervalMeta?.[String(label ?? "")], granularity);
+                return (
+                  <div className="rounded-xl border border-border/70 bg-popover/95 backdrop-blur-md shadow-lg px-3 py-2 min-w-[180px] animate-fade-in">
+                    {range && <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{range}</p>}
+                    <p className="text-[11px] font-semibold mb-1.5">{label}</p>
+                    <div className="space-y-1 text-[11px]">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-sm bg-accent" />
+                          <span className="text-muted-foreground">Revenue</span>
+                        </div>
+                        <span className="font-semibold tabular-nums">{formatINRFull(Number(row.revenue) || 0)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-muted-foreground pl-3.5">Payments</span>
+                        <span className="font-semibold tabular-nums">{Number(row.payments) || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }}
             />
             <Bar
               dataKey="revenue"

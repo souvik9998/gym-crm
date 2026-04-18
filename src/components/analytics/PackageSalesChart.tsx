@@ -17,12 +17,18 @@ import {
   axisTickStyleMobile,
   gridProps,
   formatCompact,
+  formatBucketRange,
+  granularityLabel,
+  type Granularity,
+  type IntervalMeta,
 } from "./chartUtils";
 
 interface PackageSalesChartProps {
   data: PackageSalesData[];
   packageList: PackageInfo[];
   isLoading?: boolean;
+  granularity?: Granularity;
+  intervalMeta?: Record<string, IntervalMeta>;
 }
 
 const PACKAGE_COLORS = [
@@ -34,7 +40,7 @@ const PACKAGE_COLORS = [
   "hsl(199 89% 48%)",
 ];
 
-const PackageSalesChart = memo(({ data, packageList, isLoading }: PackageSalesChartProps) => {
+const PackageSalesChart = memo(({ data, packageList, isLoading, granularity, intervalMeta }: PackageSalesChartProps) => {
   const isMobile = useIsMobile();
 
   const stats = useMemo(() => {
@@ -125,11 +131,13 @@ const PackageSalesChart = memo(({ data, packageList, isLoading }: PackageSalesCh
               content={({ active, payload, label }) => {
                 if (!active || !payload?.length) return null;
                 const total = payload.reduce((s, p) => s + (Number(p.value) || 0), 0);
+                const range = formatBucketRange(String(label ?? ""), intervalMeta?.[String(label ?? "")], granularity);
                 return (
-                  <div className="rounded-xl border border-border/70 bg-popover/95 backdrop-blur-md shadow-lg px-3 py-2 min-w-[160px] animate-fade-in">
+                  <div className="rounded-xl border border-border/70 bg-popover/95 backdrop-blur-md shadow-lg px-3 py-2 min-w-[180px] animate-fade-in">
+                    {range && <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{range}</p>}
                     <div className="flex items-center justify-between mb-1.5 pb-1.5 border-b border-border/50">
                       <p className="text-[11px] font-semibold">{label}</p>
-                      <p className="text-[11px] font-bold tabular-nums">{total}</p>
+                      <p className="text-[11px] font-bold tabular-nums">{total} sold</p>
                     </div>
                     <div className="space-y-1">
                       {payload
@@ -144,6 +152,9 @@ const PackageSalesChart = memo(({ data, packageList, isLoading }: PackageSalesCh
                             <span className="font-semibold tabular-nums">{p.value}</span>
                           </div>
                         ))}
+                      {total === 0 && (
+                        <p className="text-[11px] text-muted-foreground">No sales</p>
+                      )}
                     </div>
                   </div>
                 );

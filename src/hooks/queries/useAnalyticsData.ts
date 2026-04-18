@@ -48,6 +48,13 @@ export interface AnalyticsTotals {
   avgRevenue: number;
 }
 
+export type AnalyticsGranularity = "day" | "week" | "month";
+
+export interface IntervalMeta {
+  startISO: string;
+  endISO: string;
+}
+
 export interface AnalyticsData {
   revenueData: MonthlyRevenue[];
   memberGrowth: MemberGrowth[];
@@ -55,6 +62,8 @@ export interface AnalyticsData {
   packageSalesData: PackageSalesData[];
   packageList: PackageInfo[];
   totals: AnalyticsTotals;
+  granularity?: AnalyticsGranularity;
+  intervalMeta?: Record<string, IntervalMeta>;
 }
 
 export const useAggregatedAnalyticsQuery = (
@@ -95,14 +104,24 @@ export const useAggregatedAnalyticsRevenue = (
   period: PeriodType, customDateFrom: string, customDateTo: string, enabled = true
 ) => {
   const query = useAggregatedAnalyticsQuery(period, customDateFrom, customDateTo, enabled);
-  return { ...query, data: query.data?.revenueData };
+  return {
+    ...query,
+    data: query.data?.revenueData,
+    granularity: query.data?.granularity,
+    intervalMeta: query.data?.intervalMeta,
+  };
 };
 
 export const useAggregatedAnalyticsMemberGrowth = (
   period: PeriodType, customDateFrom: string, customDateTo: string, enabled = true
 ) => {
   const query = useAggregatedAnalyticsQuery(period, customDateFrom, customDateTo, enabled);
-  return { ...query, data: query.data?.memberGrowth };
+  return {
+    ...query,
+    data: query.data?.memberGrowth,
+    granularity: query.data?.granularity,
+    intervalMeta: query.data?.intervalMeta,
+  };
 };
 
 export const useAggregatedAnalyticsTrainerStats = (
@@ -116,5 +135,10 @@ export const useAggregatedAnalyticsPackageSales = (
   period: PeriodType, customDateFrom: string, customDateTo: string, enabled = true
 ) => {
   const query = useAggregatedAnalyticsQuery(period, customDateFrom, customDateTo, enabled);
-  return { ...query, data: { packageSalesData: query.data?.packageSalesData, packageList: query.data?.packageList } };
+  return {
+    ...query,
+    data: { packageSalesData: query.data?.packageSalesData, packageList: query.data?.packageList },
+    granularity: query.data?.granularity,
+    intervalMeta: query.data?.intervalMeta,
+  };
 };

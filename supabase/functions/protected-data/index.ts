@@ -1061,26 +1061,33 @@ Deno.serve(async (req) => {
         type Interval = { label: string; start: Date; end: Date };
         const intervals: Interval[] = [];
         
+        // Granularity decides how labels look + which fields the client uses for full-date tooltips
+        let granularity: "day" | "week" | "month" = "day";
         if (daysDiff <= 14) {
+          granularity = "day";
           for (let d = new Date(startDate); d <= endDate; d = new Date(d.getTime() + 86400000)) {
+            const dayEnd = new Date(d.getTime() + 86400000 - 1);
             const label = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
-            intervals.push({ label, start: new Date(d), end: new Date(d.getTime() + 86400000 - 1) });
+            intervals.push({ label, start: new Date(d), end: dayEnd > endDate ? new Date(endDate) : dayEnd });
           }
         } else if (daysDiff <= 90) {
-          // Weekly intervals
+          granularity = "week";
+          // Weekly intervals — align to Monday but clamp to actual range
           const d = new Date(startDate);
-          // Align to Monday
           const dayOfWeek = d.getDay();
           const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
           d.setDate(d.getDate() + mondayOffset);
           while (d <= endDate) {
             const weekEnd = new Date(d.getTime() + 6 * 86400000);
-            const label = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
-            intervals.push({ label, start: new Date(d), end: weekEnd > endDate ? new Date(endDate) : weekEnd });
+            const actualStart = d < startDate ? new Date(startDate) : new Date(d);
+            const actualEnd = weekEnd > endDate ? new Date(endDate) : weekEnd;
+            // Use the actual visible start of the week as the label so it matches the data range
+            const label = actualStart.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+            intervals.push({ label, start: actualStart, end: actualEnd });
             d.setDate(d.getDate() + 7);
           }
         } else {
-          // Monthly intervals
+          granularity = "month";
           const d = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
           while (d <= endDate) {
             const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
@@ -1089,6 +1096,12 @@ Deno.serve(async (req) => {
             d.setMonth(d.getMonth() + 1);
           }
         }
+
+        // Build a lookup so the client can render full date ranges in tooltips
+        const intervalMeta: Record<string, { startISO: string; endISO: string }> = {};
+        intervals.forEach(i => {
+          intervalMeta[i.label] = { startISO: i.start.toISOString(), endISO: i.end.toISOString() };
+        });
 
         const findInterval = (dateStr: string): string | null => {
           const date = new Date(dateStr);
@@ -1169,6 +1182,8 @@ Deno.serve(async (req) => {
           packageSalesData,
           packageList,
           totals: { totalRevenue, totalMembers, activeMembers, avgRevenue },
+          granularity,
+          intervalMeta,
         }, 30);
       }
 

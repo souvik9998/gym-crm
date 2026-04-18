@@ -270,7 +270,7 @@ function OverviewSection() {
 function RevenueChartSection() {
   const { analyticsPeriod, analyticsCustomDateFrom, analyticsCustomDateTo } = useAnalyticsStore();
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
-  const { data, isLoading } = useAggregatedAnalyticsRevenue(
+  const { data, isLoading, granularity, intervalMeta } = useAggregatedAnalyticsRevenue(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
@@ -286,7 +286,7 @@ function RevenueChartSection() {
       accent="accent"
     >
       <Suspense fallback={<ChartSkeleton height="h-[200px] sm:h-[clamp(240px,36vh,380px)] md:h-[clamp(280px,36vh,440px)]" />}>
-        <RevenueChart data={data || []} isLoading={isLoading} />
+        <RevenueChart data={data || []} isLoading={isLoading} granularity={granularity} intervalMeta={intervalMeta} />
       </Suspense>
     </SectionCard>
   );
@@ -295,7 +295,7 @@ function RevenueChartSection() {
 function MemberGrowthSection() {
   const { analyticsPeriod, analyticsCustomDateFrom, analyticsCustomDateTo } = useAnalyticsStore();
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
-  const { data, isLoading } = useAggregatedAnalyticsMemberGrowth(
+  const { data, isLoading, granularity, intervalMeta } = useAggregatedAnalyticsMemberGrowth(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
@@ -311,7 +311,7 @@ function MemberGrowthSection() {
         accent="primary"
       >
         <Suspense fallback={<ChartSkeleton height="h-[180px] sm:h-[clamp(220px,32vh,340px)]" />}>
-          <MemberGrowthChart data={data || []} isLoading={isLoading} />
+          <MemberGrowthChart data={data || []} isLoading={isLoading} granularity={granularity} intervalMeta={intervalMeta} />
         </Suspense>
       </SectionCard>
 
@@ -322,7 +322,7 @@ function MemberGrowthSection() {
         accent="success"
       >
         <Suspense fallback={<ChartSkeleton height="h-[180px] sm:h-[clamp(220px,32vh,340px)]" />}>
-          <NewMembersChart data={data || []} isLoading={isLoading} />
+          <NewMembersChart data={data || []} isLoading={isLoading} granularity={granularity} intervalMeta={intervalMeta} />
         </Suspense>
       </SectionCard>
     </div>
@@ -360,7 +360,7 @@ function TrainerPerformanceSection() {
 function PackageSalesSection() {
   const { analyticsPeriod, analyticsCustomDateFrom, analyticsCustomDateTo } = useAnalyticsStore();
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
-  const { data, isLoading } = useAggregatedAnalyticsPackageSales(
+  const { data, isLoading, granularity, intervalMeta } = useAggregatedAnalyticsPackageSales(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
@@ -383,6 +383,8 @@ function PackageSalesSection() {
           data={data?.packageSalesData || []}
           packageList={data?.packageList || []}
           isLoading={isLoading}
+          granularity={granularity}
+          intervalMeta={intervalMeta}
         />
       </Suspense>
     </SectionCard>
