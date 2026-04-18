@@ -163,7 +163,7 @@ export const axisTickStyle = {
 };
 
 export const axisTickStyleMobile = {
-  fontSize: 9,
+  fontSize: 10,
   fill: "hsl(var(--muted-foreground))",
 };
 
@@ -176,3 +176,56 @@ export function gridProps() {
     vertical: false as const,
   };
 }
+
+// ---------- Mobile X-axis label shortener ----------
+/**
+ * Compact a bucket label for narrow mobile X-axes.
+ * Keeps it readable: "06 Apr", "Apr", "W14", "12/04" etc.
+ */
+export function shortenAxisLabel(label: string, granularity: Granularity | undefined): string {
+  if (!label) return "";
+  // Day buckets: "06 Apr 2024" or "Apr 06" → "06 Apr"
+  if (granularity === "day") {
+    // strip trailing year
+    return label.replace(/,?\s*\d{4}$/, "").trim();
+  }
+  // Week buckets: "W14 2024" → "W14"
+  if (granularity === "week") {
+    const m = label.match(/W\d+/i);
+    if (m) return m[0];
+    return label.replace(/\s*\d{4}$/, "").trim();
+  }
+  // Month buckets: "Apr 2024" → "Apr"
+  if (granularity === "month") {
+    return label.replace(/\s*\d{4}$/, "").trim();
+  }
+  return label;
+}
+
+// ---------- Recharts-friendly XAxis props for date buckets ----------
+export interface DateAxisOptions {
+  isMobile: boolean;
+  granularity?: Granularity;
+  dataLength: number;
+}
+export function dateAxisProps({ isMobile, granularity, dataLength }: DateAxisOptions) {
+  // On mobile pick a sensible interval so labels never overlap
+  let interval: number | "preserveStartEnd" | "preserveEnd" = 0;
+  if (isMobile) {
+    if (dataLength <= 6) interval = 0;
+    else if (dataLength <= 10) interval = 1;
+    else if (dataLength <= 16) interval = 2;
+    else interval = Math.ceil(dataLength / 6);
+  }
+  return {
+    tickLine: false,
+    axisLine: false,
+    tick: isMobile ? axisTickStyleMobile : axisTickStyle,
+    minTickGap: isMobile ? 4 : 8,
+    interval,
+    tickMargin: 6,
+    height: isMobile ? 28 : 32,
+    tickFormatter: (v: string) => (isMobile ? shortenAxisLabel(String(v), granularity) : String(v)),
+  } as const;
+}
+
