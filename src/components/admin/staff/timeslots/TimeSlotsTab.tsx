@@ -631,10 +631,24 @@ export const TimeSlotsTab = ({
                       )}
                       {canEditDelete && (
                         <div className="flex gap-2 pt-1">
-                          <Button variant="ghost" size="sm" className={cn("flex-1 text-xs h-8 bg-white/60 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border-0", accent.text)} onClick={(e) => handleOpenEdit(slot, e)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn(
+                              "flex-1 text-xs h-8 bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/15",
+                              accent.border,
+                              accent.text
+                            )}
+                            onClick={(e) => handleOpenEdit(slot, e)}
+                          >
                             <PencilIcon className="w-3 h-3 mr-1" /> Edit
                           </Button>
-                          <Button variant="ghost" size="sm" className="text-xs h-8 bg-white/60 dark:bg-white/5 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-500 hover:text-rose-600 border-0" onClick={(e) => handleDelete(slot, e)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs h-8 bg-white/80 dark:bg-white/10 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-500 hover:text-rose-600 border-rose-200 dark:border-rose-900/50"
+                            onClick={(e) => handleDelete(slot, e)}
+                          >
                             <TrashIcon className="w-3 h-3" />
                           </Button>
                         </div>
