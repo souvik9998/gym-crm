@@ -335,6 +335,9 @@ export const TimeSlotsTab = ({
         } : null}
         branchId={currentBranch?.id || ""}
         onUpdated={fetchSlots}
+        canEditSlot={canEditDelete}
+        canAssignMembers={canCreate || canEditDelete}
+        canRemoveMembers={canEditDelete}
       />
 
       {/* Create/Edit Dialog */}
