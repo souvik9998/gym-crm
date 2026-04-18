@@ -120,6 +120,8 @@ export const MembersTable = ({
   
   // Check if user can manage members (admin or staff with can_manage_members permission)
   const canManageMembers = isAdmin || (isStaffLoggedIn && permissions?.can_manage_members === true);
+  // Check if user can send WhatsApp (admin or staff with can_send_whatsapp permission)
+  const canSendWhatsApp = isAdmin || (isStaffLoggedIn && (permissions as any)?.can_send_whatsapp === true);
   
   // Map external sortBy to internal sortField
   const mapSortByToField = (sortBy?: "name" | "join_date" | "end_date"): SortField => {
