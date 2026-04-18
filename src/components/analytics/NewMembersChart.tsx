@@ -41,10 +41,12 @@ const NewMembersChart = memo(({ data, isLoading, granularity, intervalMeta }: Ne
     const total = values.reduce((s, v) => s + v, 0);
     const peak = Math.max(...values);
     const peakIdx = values.indexOf(peak);
+    const peakLabel = data[peakIdx]?.month;
+    const peakRange = formatBucketRange(peakLabel ?? "", intervalMeta?.[peakLabel ?? ""], granularity);
     const nonZero = values.filter((v) => v > 0);
     const avg = nonZero.length ? total / nonZero.length : 0;
-    return { total, peak, peakLabel: data[peakIdx]?.month, avg };
-  }, [data]);
+    return { total, peak, peakLabel, peakRange, avg };
+  }, [data, intervalMeta, granularity]);
 
   if (isLoading) {
     return (
