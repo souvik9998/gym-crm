@@ -1606,7 +1606,7 @@ export const MembersTable = ({
                               </DropdownMenuItem>
                             </>
                           )}
-                          {canManageMembers && (
+                          {canManageMembers && canEnrollBiometric && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
