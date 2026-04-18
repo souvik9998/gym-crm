@@ -2495,7 +2495,6 @@ export type Database = {
           can_manage_time_slots: boolean
           can_send_whatsapp: boolean
           can_view_members: boolean
-          can_view_settings: boolean
           can_view_slot_members: boolean
           can_view_time_slots: boolean
           created_at: string
@@ -2518,7 +2517,6 @@ export type Database = {
           can_manage_time_slots?: boolean
           can_send_whatsapp?: boolean
           can_view_members?: boolean
-          can_view_settings?: boolean
           can_view_slot_members?: boolean
           can_view_time_slots?: boolean
           created_at?: string
@@ -2541,7 +2539,6 @@ export type Database = {
           can_manage_time_slots?: boolean
           can_send_whatsapp?: boolean
           can_view_members?: boolean
-          can_view_settings?: boolean
           can_view_slot_members?: boolean
           can_view_time_slots?: boolean
           created_at?: string
