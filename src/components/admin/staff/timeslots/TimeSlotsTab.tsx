@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,11 +10,17 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 import { Staff } from "@/pages/admin/StaffManagement";
-import { PlusIcon, PencilIcon, TrashIcon, ClockIcon } from "@heroicons/react/24/outline";
+import {
+  PlusIcon, PencilIcon, TrashIcon, ClockIcon,
+  MagnifyingGlassIcon, UserGroupIcon, SparklesIcon,
+  CheckCircleIcon, ExclamationCircleIcon,
+} from "@heroicons/react/24/outline";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { TimeSlotDetailDialog } from "./TimeSlotDetailDialog";
+import { cn } from "@/lib/utils";
 
 interface TimeSlot {
   id: string;
@@ -69,6 +75,13 @@ export const TimeSlotsTab = ({
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean; title: string; description: string; onConfirm: () => void;
   }>({ open: false, title: "", description: "", onConfirm: () => {} });
+
+  // Filters
+  const [filterTrainer, setFilterTrainer] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "available" | "full" | "empty">("all");
+  const [filterTime, setFilterTime] = useState<"all" | "morning" | "afternoon" | "evening">("all");
+  const [filterRecurring, setFilterRecurring] = useState<"all" | "recurring" | "one_time">("all");
+  const [search, setSearch] = useState("");
 
   const [form, setForm] = useState({
     trainer_id: "",
@@ -240,6 +253,82 @@ export const TimeSlotsTab = ({
     return `${h12}:${m} ${ampm}`;
   };
 
+  // Derived: filtered slots
+  const filteredSlots = useMemo(() => {
+    return slots.filter(s => {
+      if (filterTrainer !== "all" && s.trainer_id !== filterTrainer) return false;
+      const filled = s.member_count || 0;
+      const isFull = filled >= s.capacity;
+      if (filterStatus === "full" && !isFull) return false;
+      if (filterStatus === "available" && isFull) return false;
+      if (filterStatus === "empty" && filled !== 0) return false;
+      if (filterRecurring === "recurring" && !s.is_recurring) return false;
+      if (filterRecurring === "one_time" && s.is_recurring) return false;
+      if (filterTime !== "all") {
+        const startHour = parseInt(s.start_time.split(":")[0]);
+        if (filterTime === "morning" && (startHour < 5 || startHour >= 12)) return false;
+        if (filterTime === "afternoon" && (startHour < 12 || startHour >= 17)) return false;
+        if (filterTime === "evening" && (startHour < 17 || startHour >= 23)) return false;
+      }
+      if (search) {
+        const q = search.toLowerCase();
+        if (!(s.trainer_name || "").toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [slots, filterTrainer, filterStatus, filterRecurring, filterTime, search]);
+
+  // Summary stats across all slots (not just filtered)
+  const summary = useMemo(() => {
+    const total = slots.length;
+    const totalCapacity = slots.reduce((sum, s) => sum + s.capacity, 0);
+    const totalFilled = slots.reduce((sum, s) => sum + (s.member_count || 0), 0);
+    const fullSlots = slots.filter(s => (s.member_count || 0) >= s.capacity).length;
+    const availableSeats = totalCapacity - totalFilled;
+    const utilization = totalCapacity > 0 ? Math.round((totalFilled / totalCapacity) * 100) : 0;
+    const trainersWithSlots = new Set(slots.map(s => s.trainer_id)).size;
+    return { total, totalCapacity, totalFilled, fullSlots, availableSeats, utilization, trainersWithSlots };
+  }, [slots]);
+
+  // Skeleton component
+  const SkeletonGrid = () => (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Card
+          key={i}
+          className="border-0 shadow-sm animate-fade-in"
+          style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
+        >
+          <CardHeader className="p-3 lg:p-4 pb-2">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-3 lg:p-4 pt-0 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-3 w-10" />
+            </div>
+            <Skeleton className="h-1.5 w-full rounded-full" />
+            <div className="flex gap-1">
+              {Array.from({ length: 4 }).map((_, j) => (
+                <Skeleton key={j} className="h-4 w-8 rounded" />
+              ))}
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Skeleton className="h-7 flex-1 rounded-md" />
+              <Skeleton className="h-7 w-9 rounded-md" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -254,78 +343,272 @@ export const TimeSlotsTab = ({
         )}
       </div>
 
+      {/* Loading skeleton */}
       {isLoading ? (
-        <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div>
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="border-0 shadow-sm">
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2.5">
+                    <Skeleton className="h-9 w-9 rounded-lg" />
+                    <div className="space-y-1.5 flex-1">
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-5 w-12" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Skeleton className="h-9 w-full sm:w-64 rounded-md" />
+            <Skeleton className="h-9 w-32 rounded-md" />
+            <Skeleton className="h-9 w-32 rounded-md" />
+            <Skeleton className="h-9 w-32 rounded-md" />
+            <Skeleton className="h-9 w-32 rounded-md" />
+          </div>
+          <SkeletonGrid />
+        </>
       ) : slots.length === 0 ? (
-        <Card className="border-0 shadow-sm">
-          <CardContent className="py-8 text-center">
-            <ClockIcon className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">No time slots created yet</p>
+        <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 via-background to-purple-500/5 animate-fade-in">
+          <CardContent className="py-10 text-center">
+            <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center shadow-lg shadow-primary/20">
+              <ClockIcon className="w-7 h-7 text-white" />
+            </div>
+            <p className="text-sm font-medium">No time slots created yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Start by creating slots to organize trainer schedules</p>
             {canCreate && (
-              <Button variant="outline" size="sm" className="mt-3" onClick={handleOpenCreate}>Create First Slot</Button>
+              <Button variant="outline" size="sm" className="mt-4 gap-1" onClick={handleOpenCreate}>
+                <SparklesIcon className="w-3.5 h-3.5" /> Create First Slot
+              </Button>
             )}
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {slots.map((slot, index) => {
-            const isFull = (slot.member_count || 0) >= slot.capacity;
-            return (
-              <Card
-                key={slot.id}
-                className="border-0 shadow-sm cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200 animate-fade-in"
-                style={{ animationDelay: `${index * 40}ms`, animationFillMode: "backwards" }}
-                onClick={() => handleCardClick(slot)}
+        <>
+          {/* Summary stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 animate-fade-in">
+            <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/10 to-primary/5 hover:shadow-md hover:scale-[1.02] transition-all duration-200">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                    <ClockIcon className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Total Slots</p>
+                    <p className="text-lg font-bold leading-tight">{summary.total}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 hover:shadow-md hover:scale-[1.02] transition-all duration-200">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-500/15 flex items-center justify-center shrink-0">
+                    <CheckCircleIcon className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Open Seats</p>
+                    <p className="text-lg font-bold leading-tight text-emerald-700">{summary.availableSeats}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm bg-gradient-to-br from-rose-500/10 to-rose-500/5 hover:shadow-md hover:scale-[1.02] transition-all duration-200">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-rose-500/15 flex items-center justify-center shrink-0">
+                    <ExclamationCircleIcon className="w-5 h-5 text-rose-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Full Slots</p>
+                    <p className="text-lg font-bold leading-tight text-rose-700">{summary.fullSlots}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm bg-gradient-to-br from-purple-500/10 to-purple-500/5 hover:shadow-md hover:scale-[1.02] transition-all duration-200">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-purple-500/15 flex items-center justify-center shrink-0">
+                    <UserGroupIcon className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Utilization</p>
+                    <p className="text-lg font-bold leading-tight text-purple-700">{summary.utilization}%</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap gap-2 items-center animate-fade-in">
+            <div className="relative flex-1 min-w-[200px]">
+              <MagnifyingGlassIcon className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search trainer..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-9 pl-8 text-sm"
+              />
+            </div>
+            {!restrictedTrainerId && (
+              <Select value={filterTrainer} onValueChange={setFilterTrainer}>
+                <SelectTrigger className="h-9 w-auto min-w-[140px] text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Trainers</SelectItem>
+                  {trainers.filter(t => t.is_active).map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as any)}>
+              <SelectTrigger className="h-9 w-auto min-w-[120px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="available">Available</SelectItem>
+                <SelectItem value="full">Full</SelectItem>
+                <SelectItem value="empty">Empty</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterTime} onValueChange={(v) => setFilterTime(v as any)}>
+              <SelectTrigger className="h-9 w-auto min-w-[120px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Times</SelectItem>
+                <SelectItem value="morning">Morning (5–12)</SelectItem>
+                <SelectItem value="afternoon">Afternoon (12–17)</SelectItem>
+                <SelectItem value="evening">Evening (17–23)</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterRecurring} onValueChange={(v) => setFilterRecurring(v as any)}>
+              <SelectTrigger className="h-9 w-auto min-w-[120px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="recurring">Recurring</SelectItem>
+                <SelectItem value="one_time">One-time</SelectItem>
+              </SelectContent>
+            </Select>
+            {(filterTrainer !== "all" || filterStatus !== "all" || filterTime !== "all" || filterRecurring !== "all" || search) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 text-xs"
+                onClick={() => {
+                  setFilterTrainer("all"); setFilterStatus("all"); setFilterTime("all"); setFilterRecurring("all"); setSearch("");
+                }}
               >
-                <CardHeader className="p-3 lg:p-4 pb-2">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-sm lg:text-base">{slot.trainer_name}</CardTitle>
-                      <CardDescription className="text-xs">
-                        {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
-                      </CardDescription>
-                    </div>
-                    <Badge className={isFull
-                      ? "bg-destructive/10 text-destructive text-[10px]"
-                      : "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]"
-                    }>
-                      {isFull ? "Full" : "Available"}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-3 lg:p-4 pt-0 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Capacity</span>
-                    <span className="font-medium">{slot.member_count}/{slot.capacity}</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-1.5">
-                    <div
-                      className={`h-1.5 rounded-full transition-all duration-500 ${isFull ? "bg-destructive" : "bg-primary"}`}
-                      style={{ width: `${Math.min(((slot.member_count || 0) / slot.capacity) * 100, 100)}%` }}
-                    />
-                  </div>
-                  {slot.is_recurring && slot.recurring_days && (
-                    <div className="flex flex-wrap gap-1">
-                      {slot.recurring_days.sort().map(d => (
-                        <Badge key={d} variant="secondary" className="text-[10px] px-1.5 py-0">{DAY_LABELS[d]}</Badge>
-                      ))}
-                    </div>
-                  )}
-                  {canEditDelete && (
-                    <div className="flex gap-2 pt-1">
-                      <Button variant="outline" size="sm" className="flex-1 text-xs h-7" onClick={(e) => handleOpenEdit(slot, e)}>
-                        <PencilIcon className="w-3 h-3 mr-1" /> Edit
-                      </Button>
-                      <Button variant="outline" size="sm" className="text-xs h-7 text-destructive hover:text-destructive" onClick={(e) => handleDelete(slot, e)}>
-                        <TrashIcon className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                Clear
+              </Button>
+            )}
+            <div className="ml-auto text-xs text-muted-foreground">
+              Showing <span className="font-semibold text-foreground">{filteredSlots.length}</span> of {slots.length}
+            </div>
+          </div>
+
+          {/* Empty filtered state */}
+          {filteredSlots.length === 0 ? (
+            <Card className="border-0 shadow-sm animate-fade-in">
+              <CardContent className="py-10 text-center">
+                <ClockIcon className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
+                <p className="text-sm font-medium text-muted-foreground">No slots match your filters</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Try adjusting or clearing filters</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredSlots.map((slot, index) => {
+                const filled = slot.member_count || 0;
+                const isFull = filled >= slot.capacity;
+                const isEmpty = filled === 0;
+                const fillPct = Math.min((filled / slot.capacity) * 100, 100);
+                const accent = isFull
+                  ? { bar: "bg-rose-500", grad: "from-rose-500/10 to-background", ring: "hover:ring-rose-200", badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300" }
+                  : fillPct >= 70
+                  ? { bar: "bg-amber-500", grad: "from-amber-500/10 to-background", ring: "hover:ring-amber-200", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" }
+                  : isEmpty
+                  ? { bar: "bg-slate-400", grad: "from-slate-500/5 to-background", ring: "hover:ring-slate-200", badge: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" }
+                  : { bar: "bg-emerald-500", grad: "from-emerald-500/10 to-background", ring: "hover:ring-emerald-200", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" };
+
+                return (
+                  <Card
+                    key={slot.id}
+                    className={cn(
+                      "border-0 shadow-sm cursor-pointer transition-all duration-300 animate-fade-in group overflow-hidden",
+                      "hover:shadow-lg hover:-translate-y-0.5 hover:ring-2",
+                      accent.ring,
+                      "bg-gradient-to-br",
+                      accent.grad
+                    )}
+                    style={{ animationDelay: `${index * 40}ms`, animationFillMode: "backwards" }}
+                    onClick={() => handleCardClick(slot)}
+                  >
+                    <CardHeader className="p-3 lg:p-4 pb-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <CardTitle className="text-sm lg:text-base truncate flex items-center gap-1.5">
+                            <UserGroupIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
+                            {slot.trainer_name}
+                          </CardTitle>
+                          <CardDescription className="text-xs flex items-center gap-1 mt-0.5">
+                            <ClockIcon className="w-3 h-3 shrink-0" />
+                            {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
+                          </CardDescription>
+                        </div>
+                        <Badge className={cn("text-[10px] border-0 shrink-0", accent.badge)}>
+                          {isFull ? "Full" : isEmpty ? "Empty" : "Available"}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-3 lg:p-4 pt-0 space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground text-xs">Capacity</span>
+                        <span className="font-semibold text-sm tabular-nums">
+                          {filled}<span className="text-muted-foreground font-normal">/{slot.capacity}</span>
+                        </span>
+                      </div>
+                      <div className="w-full bg-muted/60 rounded-full h-2 overflow-hidden">
+                        <div
+                          className={cn("h-full rounded-full transition-all duration-700 ease-out", accent.bar)}
+                          style={{ width: `${fillPct}%` }}
+                        />
+                      </div>
+                      {slot.is_recurring && slot.recurring_days && slot.recurring_days.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-0.5">
+                          {DAY_LABELS.map((label, d) => (
+                            <span
+                              key={d}
+                              className={cn(
+                                "text-[10px] px-1.5 py-0.5 rounded font-medium transition-colors",
+                                slot.recurring_days?.includes(d)
+                                  ? "bg-primary/15 text-primary"
+                                  : "bg-muted text-muted-foreground/40"
+                              )}
+                            >
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {canEditDelete && (
+                        <div className="flex gap-2 pt-1">
+                          <Button variant="outline" size="sm" className="flex-1 text-xs h-7 hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-colors" onClick={(e) => handleOpenEdit(slot, e)}>
+                            <PencilIcon className="w-3 h-3 mr-1" /> Edit
+                          </Button>
+                          <Button variant="outline" size="sm" className="text-xs h-7 text-destructive hover:bg-destructive/5 hover:text-destructive hover:border-destructive/30 transition-colors" onClick={(e) => handleDelete(slot, e)}>
+                            <TrashIcon className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
       {/* Detail Dialog */}
