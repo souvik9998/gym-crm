@@ -40,7 +40,7 @@ const PACKAGE_COLORS = [
   "hsl(199 89% 48%)",
 ];
 
-const PackageSalesChart = memo(({ data, packageList, isLoading }: PackageSalesChartProps) => {
+const PackageSalesChart = memo(({ data, packageList, isLoading, granularity, intervalMeta }: PackageSalesChartProps) => {
   const isMobile = useIsMobile();
 
   const stats = useMemo(() => {
