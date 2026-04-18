@@ -597,8 +597,8 @@ export const TimeSlotsTab = ({
                               className={cn(
                                 "text-[10px] px-1.5 py-0.5 rounded font-medium transition-colors",
                                 slot.recurring_days?.includes(d)
-                                  ? "bg-primary/15 text-primary"
-                                  : "bg-muted text-muted-foreground/40"
+                                  ? cn(accent.numBg, accent.text)
+                                  : "bg-white/50 dark:bg-white/5 text-muted-foreground/50"
                               )}
                             >
                               {label}
@@ -608,10 +608,10 @@ export const TimeSlotsTab = ({
                       )}
                       {canEditDelete && (
                         <div className="flex gap-2 pt-1">
-                          <Button variant="outline" size="sm" className="flex-1 text-xs h-7 hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-colors" onClick={(e) => handleOpenEdit(slot, e)}>
+                          <Button variant="ghost" size="sm" className={cn("flex-1 text-xs h-8 bg-white/60 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border-0", accent.text)} onClick={(e) => handleOpenEdit(slot, e)}>
                             <PencilIcon className="w-3 h-3 mr-1" /> Edit
                           </Button>
-                          <Button variant="outline" size="sm" className="text-xs h-7 text-destructive hover:bg-destructive/5 hover:text-destructive hover:border-destructive/30 transition-colors" onClick={(e) => handleDelete(slot, e)}>
+                          <Button variant="ghost" size="sm" className="text-xs h-8 bg-white/60 dark:bg-white/5 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-500 hover:text-rose-600 border-0" onClick={(e) => handleDelete(slot, e)}>
                             <TrashIcon className="w-3 h-3" />
                           </Button>
                         </div>
