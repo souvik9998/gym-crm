@@ -237,7 +237,7 @@ export const MembersAttendanceTab = () => {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div>
+          <MembersAttendanceSkeleton isMobile={isMobile} />
         ) : logs.length === 0 ? (
           <div className="text-center py-10 lg:py-12 space-y-2">
             <CalendarDaysIcon className="w-10 h-10 lg:w-12 lg:h-12 mx-auto text-muted-foreground/30" />
