@@ -155,9 +155,13 @@ const AdminSettings = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { currentBranch } = useBranch();
-  const { isStaffLoggedIn } = useStaffAuth();
+  const { isStaffLoggedIn, permissions: staffPermissions } = useStaffAuth();
   const { isAdmin, isSuperAdmin } = useIsAdmin();
   const staffOps = useStaffOperations();
+
+  // View-only mode: staff has view permission but NOT edit permission
+  // Admin/super_admin always have full edit access
+  const canEdit = isAdmin || isSuperAdmin || !isStaffLoggedIn || staffPermissions?.can_change_settings === true;
   const [user, setUser] = useState<User | null>(null);
   const [isSavingGymInfo, setIsSavingGymInfo] = useState(false);
   const [isSavingGst, setIsSavingGst] = useState(false);
@@ -997,6 +1001,16 @@ const AdminSettings = () => {
   return (
     <Fragment>
       <div className="w-full px-1 sm:px-0">
+        {!canEdit && (
+          <div className="mb-4 flex items-center gap-3 p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm">
+            <EyeIcon className="w-4 h-4 text-warning flex-shrink-0" />
+            <p className="text-foreground">
+              <span className="font-medium">View-only access.</span>{" "}
+              <span className="text-muted-foreground">You can view settings but cannot modify them. Contact your admin to request edit access.</span>
+            </p>
+          </div>
+        )}
+        <fieldset disabled={!canEdit} className="border-0 p-0 m-0 min-w-0 disabled:opacity-95">
         <Tabs value={activeTab} onValueChange={(val) => { setSearchParams({ tab: val }); setMobileMenuOpen(false); }}>
 
           {/* Mobile: dropdown tab selector */}
