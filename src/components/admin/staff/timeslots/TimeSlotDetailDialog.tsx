@@ -73,6 +73,10 @@ interface TimeSlotDetailDialogProps {
   } | null;
   branchId: string;
   onUpdated: () => void;
+  /** Permission flags. Default true (admin behaviour). */
+  canEditSlot?: boolean;
+  canAssignMembers?: boolean;
+  canRemoveMembers?: boolean;
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -83,6 +87,9 @@ export const TimeSlotDetailDialog = ({
   slot,
   branchId,
   onUpdated,
+  canEditSlot = true,
+  canAssignMembers = true,
+  canRemoveMembers = true,
 }: TimeSlotDetailDialogProps) => {
   const [activeTab, setActiveTab] = useState("members");
   const [members, setMembers] = useState<SlotMember[]>([]);
@@ -555,13 +562,15 @@ export const TimeSlotDetailDialog = ({
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="px-5 pb-5 pt-3">
-            <TabsList className="grid w-full grid-cols-2 h-8">
+            <TabsList className={canEditSlot ? "grid w-full grid-cols-2 h-8" : "grid w-full grid-cols-1 h-8"}>
               <TabsTrigger value="members" className="text-xs gap-1 h-7">
                 <UserGroupIcon className="w-3.5 h-3.5" /> Members
               </TabsTrigger>
-              <TabsTrigger value="edit" className="text-xs gap-1 h-7">
-                <PencilIcon className="w-3.5 h-3.5" /> Edit Slot
-              </TabsTrigger>
+              {canEditSlot && (
+                <TabsTrigger value="edit" className="text-xs gap-1 h-7">
+                  <PencilIcon className="w-3.5 h-3.5" /> Edit Slot
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="members" className="mt-3 space-y-3">
@@ -680,9 +689,11 @@ export const TimeSlotDetailDialog = ({
                         className="h-7 text-xs pl-8"
                       />
                     </div>
-                    <Button size="sm" className="h-7 text-xs gap-1" onClick={handleOpenAddMode} disabled={isFull}>
-                      <PlusIcon className="w-3 h-3" /> Add
-                    </Button>
+                    {canAssignMembers && (
+                      <Button size="sm" className="h-7 text-xs gap-1" onClick={handleOpenAddMode} disabled={isFull}>
+                        <PlusIcon className="w-3 h-3" /> Add
+                      </Button>
+                    )}
                   </div>
 
                   {isLoadingMembers ? (
@@ -698,9 +709,11 @@ export const TimeSlotDetailDialog = ({
                       <p className="text-[10px] text-muted-foreground/60 mt-1">
                         Only PT members can be added
                       </p>
-                      <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" onClick={handleOpenAddMode}>
-                        Add Members
-                      </Button>
+                      {canAssignMembers && (
+                        <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" onClick={handleOpenAddMode}>
+                          Add Members
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-1.5">
@@ -719,14 +732,16 @@ export const TimeSlotDetailDialog = ({
                             </div>
                             <p className="text-xs text-muted-foreground">{m.member_phone}</p>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0"
-                            onClick={() => setRemoveConfirm({ id: m.id, name: m.member_name, memberId: m.member_id })}
-                          >
-                            <XMarkIcon className="w-3.5 h-3.5" />
-                          </Button>
+                          {canRemoveMembers && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0"
+                              onClick={() => setRemoveConfirm({ id: m.id, name: m.member_name, memberId: m.member_id })}
+                            >
+                              <XMarkIcon className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -735,35 +750,37 @@ export const TimeSlotDetailDialog = ({
               )}
             </TabsContent>
 
-            <TabsContent value="edit" className="mt-3 space-y-4 animate-fade-in">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Start Time</Label>
-                  <Input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} className="h-9 text-sm" />
+            {canEditSlot && (
+              <TabsContent value="edit" className="mt-3 space-y-4 animate-fade-in">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Start Time</Label>
+                    <Input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} className="h-9 text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">End Time</Label>
+                    <Input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} className="h-9 text-sm" />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">End Time</Label>
-                  <Input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} className="h-9 text-sm" />
+                  <Label className="text-xs">Capacity</Label>
+                  <Input
+                    type="number"
+                    min={Math.max(1, members.length)}
+                    value={editCapacity}
+                    onChange={(e) => setEditCapacity(parseInt(e.target.value) || 1)}
+                    className="h-9 text-sm"
+                  />
+                  {members.length > 0 && (
+                    <p className="text-[10px] text-muted-foreground">Min capacity: {members.length} (current members)</p>
+                  )}
                 </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Capacity</Label>
-                <Input
-                  type="number"
-                  min={Math.max(1, members.length)}
-                  value={editCapacity}
-                  onChange={(e) => setEditCapacity(parseInt(e.target.value) || 1)}
-                  className="h-9 text-sm"
-                />
-                {members.length > 0 && (
-                  <p className="text-[10px] text-muted-foreground">Min capacity: {members.length} (current members)</p>
-                )}
-              </div>
-              <Button className="w-full gap-1.5" size="sm" onClick={handleSaveEdit} disabled={isSavingEdit}>
-                {isSavingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                Save Changes
-              </Button>
-            </TabsContent>
+                <Button className="w-full gap-1.5" size="sm" onClick={handleSaveEdit} disabled={isSavingEdit}>
+                  {isSavingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  Save Changes
+                </Button>
+              </TabsContent>
+            )}
           </Tabs>
         </DialogContent>
       </Dialog>

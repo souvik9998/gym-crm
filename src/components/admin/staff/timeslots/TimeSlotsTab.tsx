@@ -34,11 +34,24 @@ interface TimeSlot {
 interface TimeSlotsTabProps {
   trainers: Staff[];
   currentBranch: any;
+  /** Restrict listing to a single trainer (staff.id). Used for "assigned only" trainers. */
+  restrictedTrainerId?: string | null;
+  /** Permission flags (defaults true → admin behaviour). */
+  canCreate?: boolean;
+  canEditDelete?: boolean;
+  canViewMembers?: boolean;
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => {
+export const TimeSlotsTab = ({
+  trainers,
+  currentBranch,
+  restrictedTrainerId = null,
+  canCreate = true,
+  canEditDelete = true,
+  canViewMembers = true,
+}: TimeSlotsTabProps) => {
   const isCompact = useIsTabletOrBelow();
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,11 +76,12 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
     if (!currentBranch?.id) return;
     setIsLoading(true);
     try {
-      const { data: slotsData } = await supabase
+      let query = supabase
         .from("trainer_time_slots")
         .select("*")
-        .eq("branch_id", currentBranch.id)
-        .order("start_time");
+        .eq("branch_id", currentBranch.id);
+      if (restrictedTrainerId) query = query.eq("trainer_id", restrictedTrainerId);
+      const { data: slotsData } = await query.order("start_time");
 
       if (slotsData) {
         const slotIds = slotsData.map(s => s.id);
@@ -96,7 +110,7 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
     }
   };
 
-  useEffect(() => { fetchSlots(); }, [currentBranch?.id, trainers]);
+  useEffect(() => { fetchSlots(); }, [currentBranch?.id, trainers, restrictedTrainerId]);
 
   const resetForm = () => {
     setForm({ trainer_id: "", start_time: "06:00", end_time: "07:00", capacity: 10, is_recurring: false, recurring_days: [] });
@@ -120,6 +134,7 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
   };
 
   const handleCardClick = (slot: TimeSlot) => {
+    if (!canViewMembers) return;
     setDetailSlot(slot);
     setDetailOpen(true);
   };
@@ -222,9 +237,11 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
           <h3 className="text-base lg:text-lg font-semibold">Time Slots</h3>
           <p className="text-xs lg:text-sm text-muted-foreground">Manage trainer time slots and capacity</p>
         </div>
-        <Button size="sm" onClick={handleOpenCreate} className="gap-1">
-          <PlusIcon className="w-4 h-4" /> Add Slot
-        </Button>
+        {canCreate && (
+          <Button size="sm" onClick={handleOpenCreate} className="gap-1">
+            <PlusIcon className="w-4 h-4" /> Add Slot
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -234,7 +251,9 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
           <CardContent className="py-8 text-center">
             <ClockIcon className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">No time slots created yet</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={handleOpenCreate}>Create First Slot</Button>
+            {canCreate && (
+              <Button variant="outline" size="sm" className="mt-3" onClick={handleOpenCreate}>Create First Slot</Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -282,14 +301,16 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
                       ))}
                     </div>
                   )}
-                  <div className="flex gap-2 pt-1">
-                    <Button variant="outline" size="sm" className="flex-1 text-xs h-7" onClick={(e) => handleOpenEdit(slot, e)}>
-                      <PencilIcon className="w-3 h-3 mr-1" /> Edit
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7 text-destructive hover:text-destructive" onClick={(e) => handleDelete(slot, e)}>
-                      <TrashIcon className="w-3 h-3" />
-                    </Button>
-                  </div>
+                  {canEditDelete && (
+                    <div className="flex gap-2 pt-1">
+                      <Button variant="outline" size="sm" className="flex-1 text-xs h-7" onClick={(e) => handleOpenEdit(slot, e)}>
+                        <PencilIcon className="w-3 h-3 mr-1" /> Edit
+                      </Button>
+                      <Button variant="outline" size="sm" className="text-xs h-7 text-destructive hover:text-destructive" onClick={(e) => handleDelete(slot, e)}>
+                        <TrashIcon className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
@@ -314,6 +335,9 @@ export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => 
         } : null}
         branchId={currentBranch?.id || ""}
         onUpdated={fetchSlots}
+        canEditSlot={canEditDelete}
+        canAssignMembers={canCreate || canEditDelete}
+        canRemoveMembers={canEditDelete}
       />
 
       {/* Create/Edit Dialog */}

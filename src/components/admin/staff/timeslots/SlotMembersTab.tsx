@@ -18,6 +18,12 @@ import { Separator } from "@/components/ui/separator";
 interface SlotMembersTabProps {
   trainers: Staff[];
   currentBranch: any;
+  /** Restrict trainer dropdown to a single staff trainer ID. */
+  restrictedTrainerId?: string | null;
+  /** Permission flag — show "Assign Members" button. */
+  canAssign?: boolean;
+  /** Permission flag — show "Remove" button. */
+  canRemove?: boolean;
 }
 
 interface TimeSlot {
@@ -51,7 +57,13 @@ interface AvailableMember {
   pt_subscription_id: string | null;
 }
 
-export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps) => {
+export const SlotMembersTab = ({
+  trainers,
+  currentBranch,
+  restrictedTrainerId = null,
+  canAssign = true,
+  canRemove = true,
+}: SlotMembersTabProps) => {
   const [selectedTrainer, setSelectedTrainer] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
   const [slots, setSlots] = useState<TimeSlot[]>([]);
@@ -72,6 +84,11 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
   const [isTransferring, setIsTransferring] = useState(false);
 
   const { invalidatePtSubscriptions } = useInvalidateQueries();
+
+  // Auto-select & lock trainer when restricted (staff with assigned-only access).
+  useEffect(() => {
+    if (restrictedTrainerId) setSelectedTrainer(restrictedTrainerId);
+  }, [restrictedTrainerId]);
 
   const resolveTrainerPtId = useCallback(async (staffId: string) => {
     const { data: staffRec } = await supabase
@@ -472,7 +489,7 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">Select Trainer</label>
-          <Select value={selectedTrainer} onValueChange={setSelectedTrainer}>
+          <Select value={selectedTrainer} onValueChange={setSelectedTrainer} disabled={!!restrictedTrainerId}>
             <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Choose trainer..." /></SelectTrigger>
             <SelectContent>
               {trainers.filter(t => t.is_active).map(t => (
@@ -516,9 +533,11 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
                     className="h-7 text-xs pl-8 w-36"
                   />
                 </div>
-                <Button size="sm" className="h-7 text-xs gap-1" onClick={handleOpenAddMembers} disabled={isFull}>
-                  <PlusIcon className="w-3 h-3" /> Assign Members
-                </Button>
+                {canAssign && (
+                  <Button size="sm" className="h-7 text-xs gap-1" onClick={handleOpenAddMembers} disabled={isFull}>
+                    <PlusIcon className="w-3 h-3" /> Assign Members
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -550,15 +569,17 @@ export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps)
                         )}
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1"
-                      onClick={() => setRemoveConfirm({ id: m.id, name: m.member_name, memberId: m.member_id })}
-                    >
-                      <XMarkIcon className="w-3.5 h-3.5" />
-                      Remove
-                    </Button>
+                    {canRemove && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1"
+                        onClick={() => setRemoveConfirm({ id: m.id, name: m.member_name, memberId: m.member_id })}
+                      >
+                        <XMarkIcon className="w-3.5 h-3.5" />
+                        Remove
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
