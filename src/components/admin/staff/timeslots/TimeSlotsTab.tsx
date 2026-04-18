@@ -107,7 +107,10 @@ export const TimeSlotsTab = ({
 
         const enriched = slotsData.map(slot => ({
           ...slot,
-          trainer_name: trainers.find(t => t.id === slot.trainer_id)?.full_name || "Unknown",
+          trainer_name:
+            trainers.find(t => t.id === slot.trainer_id)?.full_name ||
+            trainerNameMap?.[slot.trainer_id] ||
+            "Unknown",
           member_count: memberCounts[slot.id] || 0,
         }));
         setSlots(enriched);
