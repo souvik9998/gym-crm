@@ -77,9 +77,17 @@ const ResetPassword = () => {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       setDone(true);
-      toast.success("Password updated", { description: "You can now sign in with your new password." });
-      await supabase.auth.signOut();
-      setTimeout(() => navigate("/admin/login", { replace: true }), 1500);
+      toast.success("Password updated", { description: "Redirecting to sign in..." });
+      // Sign out the recovery session so user must log in fresh with new password
+      try {
+        await supabase.auth.signOut();
+      } catch (signOutErr) {
+        console.warn("Sign out after reset failed (non-critical):", signOutErr);
+      }
+      // Hard redirect ensures all auth state is cleared and login page loads cleanly
+      setTimeout(() => {
+        window.location.replace("/admin/login");
+      }, 1500);
     } catch (err: any) {
       toast.error("Couldn't update password", {
         description: err?.message || "The reset link may have expired. Request a new one.",
