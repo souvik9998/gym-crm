@@ -46,7 +46,7 @@ import { StaffCardSkeleton } from "./StaffCardSkeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChangePhoneDialog } from "./ChangePhoneDialog";
 import { DetailItem } from "./StaffDetailItem";
-import { nameSchema, phoneSchema, passwordSchema, getPhotoIdSchema } from "@/lib/validation";
+import { nameSchema, phoneSchema, passwordSchema, getPhotoIdSchema, formatPhotoIdInput, getPhotoIdPlaceholder } from "@/lib/validation";
 
 interface StaffOtherTabProps {
   staff: Staff[];
@@ -546,8 +546,8 @@ export const StaffOtherTab = ({
               <Label className="text-xs lg:text-sm">ID Number</Label>
               <Input
                 value={newStaff.id_number}
-                onChange={(e) => setNewStaff({ ...newStaff, id_number: e.target.value })}
-                placeholder="ID number"
+                onChange={(e) => setNewStaff({ ...newStaff, id_number: formatPhotoIdInput(e.target.value, newStaff.id_type) })}
+                placeholder={getPhotoIdPlaceholder(newStaff.id_type)}
                 className="h-9 lg:h-12 text-sm"
               />
             </div>

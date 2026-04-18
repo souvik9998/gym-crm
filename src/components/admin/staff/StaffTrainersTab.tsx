@@ -46,7 +46,7 @@ import { DevicePhoneMobileIcon, ChevronDownIcon, LockClosedIcon } from "@heroico
 import { StaffCardSkeleton } from "./StaffCardSkeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DetailItem } from "./StaffDetailItem";
-import { nameSchema, phoneSchema, passwordSchema, getPhotoIdSchema } from "@/lib/validation";
+import { nameSchema, phoneSchema, passwordSchema, getPhotoIdSchema, formatPhotoIdInput, getPhotoIdPlaceholder } from "@/lib/validation";
 
 interface StaffTrainersTabProps {
   trainers: Staff[];
@@ -610,8 +610,8 @@ export const StaffTrainersTab = ({
               <Label className="text-xs lg:text-sm">ID Number</Label>
               <Input
                 value={newTrainer.id_number}
-                onChange={(e) => setNewTrainer({ ...newTrainer, id_number: e.target.value })}
-                placeholder="ID number"
+                onChange={(e) => setNewTrainer({ ...newTrainer, id_number: formatPhotoIdInput(e.target.value, newTrainer.id_type) })}
+                placeholder={getPhotoIdPlaceholder(newTrainer.id_type)}
                 className="h-9 lg:h-12 text-sm"
               />
             </div>
