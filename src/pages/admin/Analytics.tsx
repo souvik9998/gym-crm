@@ -295,7 +295,7 @@ function RevenueChartSection() {
 function MemberGrowthSection() {
   const { analyticsPeriod, analyticsCustomDateFrom, analyticsCustomDateTo } = useAnalyticsStore();
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
-  const { data, isLoading } = useAggregatedAnalyticsMemberGrowth(
+  const { data, isLoading, granularity, intervalMeta } = useAggregatedAnalyticsMemberGrowth(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
@@ -311,7 +311,7 @@ function MemberGrowthSection() {
         accent="primary"
       >
         <Suspense fallback={<ChartSkeleton height="h-[180px] sm:h-[clamp(220px,32vh,340px)]" />}>
-          <MemberGrowthChart data={data || []} isLoading={isLoading} />
+          <MemberGrowthChart data={data || []} isLoading={isLoading} granularity={granularity} intervalMeta={intervalMeta} />
         </Suspense>
       </SectionCard>
 
@@ -322,7 +322,7 @@ function MemberGrowthSection() {
         accent="success"
       >
         <Suspense fallback={<ChartSkeleton height="h-[180px] sm:h-[clamp(220px,32vh,340px)]" />}>
-          <NewMembersChart data={data || []} isLoading={isLoading} />
+          <NewMembersChart data={data || []} isLoading={isLoading} granularity={granularity} intervalMeta={intervalMeta} />
         </Suspense>
       </SectionCard>
     </div>
