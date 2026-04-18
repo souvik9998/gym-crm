@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth, useStaffPermission } from "@/contexts/StaffAuthContext";
 import { useTenantPermissions } from "@/hooks/useTenantPermissions";
-import { CalendarDaysIcon } from "@heroicons/react/24/outline";
+import { CalendarDaysIcon, ClockIcon } from "@heroicons/react/24/outline";
 import {
   HomeIcon,
   ChartBarIcon,
