@@ -236,9 +236,11 @@ export const TimeSlotsTab = ({
           <h3 className="text-base lg:text-lg font-semibold">Time Slots</h3>
           <p className="text-xs lg:text-sm text-muted-foreground">Manage trainer time slots and capacity</p>
         </div>
-        <Button size="sm" onClick={handleOpenCreate} className="gap-1">
-          <PlusIcon className="w-4 h-4" /> Add Slot
-        </Button>
+        {canCreate && (
+          <Button size="sm" onClick={handleOpenCreate} className="gap-1">
+            <PlusIcon className="w-4 h-4" /> Add Slot
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -248,7 +250,9 @@ export const TimeSlotsTab = ({
           <CardContent className="py-8 text-center">
             <ClockIcon className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">No time slots created yet</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={handleOpenCreate}>Create First Slot</Button>
+            {canCreate && (
+              <Button variant="outline" size="sm" className="mt-3" onClick={handleOpenCreate}>Create First Slot</Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -296,14 +300,16 @@ export const TimeSlotsTab = ({
                       ))}
                     </div>
                   )}
-                  <div className="flex gap-2 pt-1">
-                    <Button variant="outline" size="sm" className="flex-1 text-xs h-7" onClick={(e) => handleOpenEdit(slot, e)}>
-                      <PencilIcon className="w-3 h-3 mr-1" /> Edit
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7 text-destructive hover:text-destructive" onClick={(e) => handleDelete(slot, e)}>
-                      <TrashIcon className="w-3 h-3" />
-                    </Button>
-                  </div>
+                  {canEditDelete && (
+                    <div className="flex gap-2 pt-1">
+                      <Button variant="outline" size="sm" className="flex-1 text-xs h-7" onClick={(e) => handleOpenEdit(slot, e)}>
+                        <PencilIcon className="w-3 h-3 mr-1" /> Edit
+                      </Button>
+                      <Button variant="outline" size="sm" className="text-xs h-7 text-destructive hover:text-destructive" onClick={(e) => handleDelete(slot, e)}>
+                        <TrashIcon className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
