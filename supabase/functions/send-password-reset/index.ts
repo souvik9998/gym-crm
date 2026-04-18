@@ -1,18 +1,46 @@
-// Send password reset email via Resend with GymKloud branding
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
+const RESEND_API_URL = "https://api.resend.com/emails";
 const FROM_ADDRESS = "GymKloud <hello@gymkloud.in>";
 
+interface ApiResponse<T> {
+  ok: boolean;
+  data?: T;
+  error?: string;
+  diagnostics?: {
+    error_stage?: string;
+    provider_status?: number;
+  };
+}
+
+function respond<T>(ok: boolean, payload: Omit<ApiResponse<T>, "ok">) {
+  return new Response(JSON.stringify({ ok, ...payload }), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function buildEmailHtml(resetUrl: string, email: string) {
+  const safeEmail = escapeHtml(email);
+  const safeResetUrl = escapeHtml(resetUrl);
   const year = new Date().getFullYear();
+
   return `<!DOCTYPE html>
 <html>
   <head>
@@ -39,13 +67,13 @@ function buildEmailHtml(resetUrl: string, email: string) {
                 </p>
                 <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#334155;">
                   We received a request to reset the password for the GymKloud account associated with
-                  <strong style="color:#0f172a;">${email}</strong>.
+                  <strong style="color:#0f172a;">${safeEmail}</strong>.
                 </p>
                 <p style="margin:0 0 24px 0;font-size:15px;line-height:1.6;color:#334155;">
                   Click the button below to choose a new password. This link will expire in 1 hour.
                 </p>
                 <div style="text-align:center;margin:28px 0;">
-                  <a href="${resetUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:600;font-size:15px;">
+                  <a href="${safeResetUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:600;font-size:15px;">
                     Reset password
                   </a>
                 </div>
@@ -53,7 +81,7 @@ function buildEmailHtml(resetUrl: string, email: string) {
                   Or copy and paste this URL into your browser:
                 </p>
                 <p style="margin:0 0 24px 0;font-size:12px;word-break:break-all;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;color:#475569;">
-                  ${resetUrl}
+                  ${safeResetUrl}
                 </p>
                 <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;" />
                 <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">
@@ -81,64 +109,80 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY_1") ?? Deno.env.get("RESEND_API_KEY");
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-    if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
-    if (!SUPABASE_URL || !SERVICE_ROLE) throw new Error("Supabase env not configured");
+    if (!RESEND_API_KEY) {
+      throw new Error("RESEND_API_KEY is not configured");
+    }
+    if (!SUPABASE_URL || !SERVICE_ROLE) {
+      throw new Error("Supabase env not configured");
+    }
 
     const raw = await req.text();
-    let body: any = {};
-    try { body = raw ? JSON.parse(raw) : {}; } catch { /* ignore */ }
+    let body: Record<string, unknown> = {};
+    try {
+      body = raw ? JSON.parse(raw) : {};
+    } catch {
+      return respond(false, {
+        error: "Invalid request payload.",
+        diagnostics: { error_stage: "invalid_json" },
+      });
+    }
 
     const email = String(body.email || "").trim().toLowerCase();
-    const redirectTo = String(body.redirectTo || "");
-
+    const redirectTo = String(body.redirectTo || "").trim();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email || !emailRegex.test(email)) {
-      return new Response(
-        JSON.stringify({ error: "Please enter a valid email address" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+
+    if (!email) {
+      return respond(false, {
+        error: "Please enter your email address.",
+        diagnostics: { error_stage: "missing_email" },
+      });
     }
+
+    if (!emailRegex.test(email)) {
+      return respond(false, {
+        error: "Please enter a valid email address.",
+        diagnostics: { error_stage: "invalid_email" },
+      });
+    }
+
     if (!redirectTo) {
-      return new Response(
-        JSON.stringify({ error: "Missing redirectTo" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return respond(false, {
+        error: "Missing password reset redirect.",
+        diagnostics: { error_stage: "missing_redirect" },
+      });
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    // Generate a recovery link without sending Supabase's default email
-    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
-      type: "recovery",
-      email,
-      options: { redirectTo },
-    });
+    const { data: linkData, error: linkErr } = await admin.auth.admin
+      .generateLink({
+        type: "recovery",
+        email,
+        options: { redirectTo },
+      });
 
-    // To avoid user enumeration, always return success even if user not found.
     if (linkErr || !linkData?.properties?.action_link) {
       console.warn("generateLink issue:", linkErr?.message);
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return respond(true, {
+        data: {
+          message:
+            "If an account exists, a reset link has been sent to the email.",
+        },
       });
     }
 
     const resetUrl = linkData.properties.action_link;
-
-    const resp = await fetch(`${GATEWAY_URL}/emails`, {
+    const resendResponse = await fetch(RESEND_API_URL, {
       method: "POST",
       headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
         "Content-Type": "application/json",
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": RESEND_API_KEY,
       },
       body: JSON.stringify({
         from: FROM_ADDRESS,
@@ -148,25 +192,28 @@ Deno.serve(async (req) => {
       }),
     });
 
-    const respBody = await resp.text();
-    if (!resp.ok) {
-      console.error("Resend send failed", resp.status, respBody);
-      return new Response(
-        JSON.stringify({ error: "Could not send reset email. Please try again later." }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    const resendBody = await resendResponse.text();
+
+    if (!resendResponse.ok) {
+      console.error("Resend send failed", resendResponse.status, resendBody);
+      return respond(false, {
+        error: "Could not send reset email. Please try again later.",
+        diagnostics: {
+          error_stage: "email_sending_failed",
+          provider_status: resendResponse.status,
+        },
+      });
     }
 
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return respond(true, {
+      data: { message: "Reset link sent to your email" },
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("send-password-reset error:", msg);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return respond(false, {
+      error: "Could not send reset email. Please try again later.",
+      diagnostics: { error_stage: "unexpected_runtime_error" },
     });
   }
 });
