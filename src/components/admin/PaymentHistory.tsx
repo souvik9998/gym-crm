@@ -275,6 +275,10 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const waOverlay = useWhatsAppOverlay();
 
   const handleSendInvoice = async (paymentId: string) => {
+    if (!canSendWhatsApp) {
+      toast.error("You don't have permission to send WhatsApp messages");
+      return;
+    }
     // Find the payment to get member name
     const payment = filteredPayments.find(p => p.id === paymentId);
     const recipientName = payment?.member?.name || payment?.daily_pass_user?.name || undefined;
