@@ -311,27 +311,25 @@ const AdminLogin = () => {
               className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 rounded-br-lg animate-pulse"
               style={{ borderColor: BRAND_RED, animationDuration: "3s", animationDelay: "2.25s" }}
             />
-            {/* Travelling shimmer line — top edge */}
-            <div className="absolute top-0 left-10 right-10 h-px overflow-hidden">
-              <div
-                className="absolute inset-y-0 w-1/3 animate-[shimmer_4s_linear_infinite]"
-                style={{
-                  background:
-                    "linear-gradient(90deg, transparent, hsl(0 85% 55% / 0.8), transparent)",
-                }}
-              />
-            </div>
-            {/* Travelling shimmer line — bottom edge */}
-            <div className="absolute bottom-0 left-10 right-10 h-px overflow-hidden">
-              <div
-                className="absolute inset-y-0 w-1/3 animate-[shimmer_4s_linear_infinite]"
-                style={{
-                  background:
-                    "linear-gradient(90deg, transparent, hsl(0 85% 55% / 0.8), transparent)",
-                  animationDelay: "2s",
-                }}
-              />
-            </div>
+            {/* Pulsing accent line — top edge */}
+            <div
+              className="absolute top-0 left-12 right-12 h-px animate-pulse"
+              style={{
+                background:
+                  "linear-gradient(90deg, transparent, hsl(0 85% 55% / 0.6), transparent)",
+                animationDuration: "4s",
+              }}
+            />
+            {/* Pulsing accent line — bottom edge */}
+            <div
+              className="absolute bottom-0 left-12 right-12 h-px animate-pulse"
+              style={{
+                background:
+                  "linear-gradient(90deg, transparent, hsl(0 85% 55% / 0.6), transparent)",
+                animationDuration: "4s",
+                animationDelay: "2s",
+              }}
+            />
           </div>
 
           <div className="relative z-10 flex flex-col justify-between w-full p-12 xl:p-16">
