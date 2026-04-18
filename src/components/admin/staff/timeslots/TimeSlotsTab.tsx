@@ -554,8 +554,8 @@ export const TimeSlotsTab = ({
                   <Card
                     key={slot.id}
                     className={cn(
-                      "shadow-sm cursor-pointer transition-all duration-300 animate-fade-in group overflow-hidden relative",
-                      "hover:shadow-xl hover:-translate-y-0.5 hover:ring-2",
+                      "shadow-sm cursor-pointer transition-all duration-300 animate-fade-in group overflow-hidden relative rounded-xl",
+                      "hover:shadow-xl hover:-translate-y-0.5 hover:ring-1",
                       accent.ring,
                       accent.shadow,
                       "border",
@@ -566,9 +566,24 @@ export const TimeSlotsTab = ({
                     style={{ animationDelay: `${index * 40}ms`, animationFillMode: "backwards" }}
                     onClick={() => handleCardClick(slot)}
                   >
-                    {/* Left accent stripe */}
-                    <div className={cn("absolute left-0 top-0 bottom-0 w-1", accent.accentDot)} />
-                    <CardHeader className="p-3 lg:p-4 pb-2 pl-4 lg:pl-5">
+                    {/* Top gradient accent bar — subtle, premium */}
+                    <div
+                      className={cn(
+                        "absolute inset-x-0 top-0 h-[3px] opacity-80 group-hover:opacity-100 transition-opacity",
+                        accent.accentDot
+                      )}
+                      style={{
+                        maskImage: "linear-gradient(to right, transparent, black 15%, black 85%, transparent)",
+                        WebkitMaskImage: "linear-gradient(to right, transparent, black 15%, black 85%, transparent)",
+                      }}
+                    />
+                    {/* Soft inner glow on hover */}
+                    <div className={cn(
+                      "pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
+                      "bg-gradient-to-br", accent.grad
+                    )} />
+
+                    <CardHeader className="p-3 lg:p-4 pb-2 relative">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <CardTitle className="text-sm lg:text-base truncate flex items-center gap-1.5">
