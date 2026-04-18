@@ -64,12 +64,17 @@ const AdminLogin = () => {
 
     setIsResetting(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { data, error } = await supabase.functions.invoke("send-password-reset", {
+        body: {
+          email: trimmed,
+          redirectTo: `${window.location.origin}/reset-password`,
+        },
       });
       if (error) throw error;
-      toast.success("Reset link sent to your email", {
-        description: "Check your inbox for instructions to reset your password.",
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      toast.success("Reset link sent", {
+        description: "Check your inbox (and spam folder) for the GymKloud password reset email.",
       });
     } catch (error: any) {
       toast.error("Couldn't send reset link", {
