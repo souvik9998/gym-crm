@@ -57,6 +57,7 @@ export const TimeSlotsTab = ({
   canCreate = true,
   canEditDelete = true,
   canViewMembers = true,
+  trainerNameMap,
 }: TimeSlotsTabProps) => {
   const isCompact = useIsTabletOrBelow();
   const [slots, setSlots] = useState<TimeSlot[]>([]);
