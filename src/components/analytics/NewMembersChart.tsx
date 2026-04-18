@@ -19,14 +19,20 @@ import {
   axisTickStyleMobile,
   gridProps,
   formatCompact,
+  formatBucketRange,
+  granularityLabel,
+  type Granularity,
+  type IntervalMeta,
 } from "./chartUtils";
 
 interface NewMembersChartProps {
   data: MemberGrowth[];
   isLoading?: boolean;
+  granularity?: Granularity;
+  intervalMeta?: Record<string, IntervalMeta>;
 }
 
-const NewMembersChart = memo(({ data, isLoading }: NewMembersChartProps) => {
+const NewMembersChart = memo(({ data, isLoading, granularity, intervalMeta }: NewMembersChartProps) => {
   const isMobile = useIsMobile();
 
   const stats = useMemo(() => {
