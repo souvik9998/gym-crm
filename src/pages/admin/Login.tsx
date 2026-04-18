@@ -67,7 +67,7 @@ const AdminLogin = () => {
       const { data, error } = await supabase.functions.invoke("send-password-reset", {
         body: {
           email: trimmed,
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: "https://app.gymkloud.in/reset-password",
         },
       });
       if (error) throw error;
