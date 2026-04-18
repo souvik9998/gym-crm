@@ -76,6 +76,13 @@ export const TimeSlotsTab = ({
     open: boolean; title: string; description: string; onConfirm: () => void;
   }>({ open: false, title: "", description: "", onConfirm: () => {} });
 
+  // Filters
+  const [filterTrainer, setFilterTrainer] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "available" | "full" | "empty">("all");
+  const [filterTime, setFilterTime] = useState<"all" | "morning" | "afternoon" | "evening">("all");
+  const [filterRecurring, setFilterRecurring] = useState<"all" | "recurring" | "one_time">("all");
+  const [search, setSearch] = useState("");
+
   const [form, setForm] = useState({
     trainer_id: "",
     start_time: "06:00",
