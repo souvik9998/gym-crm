@@ -121,7 +121,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
        // coerced to the string "[object Object]" in some runtimes.
        // Pass action via querystring to avoid body parsing issues entirely.
        const queryParams = options?.source === "login" ? "action=verify-session&source=login" : "action=verify-session";
-       const { data } = await supabase.functions.invoke(`staff-auth?${queryParams}`, {
+       const { data, error: invokeError } = await supabase.functions.invoke(`staff-auth?${queryParams}`, {
          headers: {
            Authorization: `Bearer ${session.access_token}`,
          },
@@ -144,12 +144,22 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
         applyBranchRestrictions(staffBranches);
         return true;
       }
+
+      // Session is invalid/expired on the server (e.g. revoked, password changed,
+      // refresh token rotated out). Clear local Supabase session so the user lands
+      // on the login screen instead of getting stuck on a blank protected route.
+      const errMsg = String(response?.error || invokeError?.message || "");
+      if (errMsg.toLowerCase().includes("invalid") || errMsg.toLowerCase().includes("expired") || errMsg.toLowerCase().includes("session")) {
+        console.warn("[Staff Auth] Stale session detected, signing out:", errMsg);
+        clearStaffState();
+        await supabase.auth.signOut().catch(() => {});
+      }
       return false;
     } catch (error) {
       console.error("Session verification failed:", error);
       return false;
     }
-  }, [applyBranchRestrictions]);
+  }, [applyBranchRestrictions, clearStaffState]);
 
   useEffect(() => {
     let isMounted = true;
