@@ -58,11 +58,11 @@ function SectionCard({ title, description, icon, children, className, innerRef, 
         className
       )}
     >
-      <div className="flex items-start gap-3 p-4 sm:p-6 pb-2 sm:pb-3">
+      <div className="flex items-start gap-2.5 sm:gap-3 p-3 sm:p-6 pb-2 sm:pb-3">
         {icon && (
           <div
             className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center ring-1 flex-shrink-0 transition-transform duration-300 group-hover:scale-105",
+              "w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center ring-1 flex-shrink-0 transition-transform duration-300 group-hover:scale-105",
               accentMap[accent]
             )}
           >
@@ -76,7 +76,7 @@ function SectionCard({ title, description, icon, children, className, innerRef, 
           )}
         </div>
       </div>
-      <div className="p-3 sm:p-6 pt-0 sm:pt-0">{children}</div>
+      <div className="px-3 pb-3 sm:px-6 sm:pb-6">{children}</div>
     </div>
   );
 }
