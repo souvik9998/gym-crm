@@ -57,7 +57,6 @@ interface Permissions {
   can_access_ledger: boolean;
   can_access_payments: boolean;
   can_access_analytics: boolean;
-  can_view_settings: boolean;
   can_change_settings: boolean;
   can_send_whatsapp: boolean;
   can_access_attendance: boolean;
@@ -77,8 +76,7 @@ const CORE_PERMISSIONS: Array<{ key: keyof Permissions; label: string; descripti
   { key: "can_access_ledger", label: "Ledger Access", description: "Can access income and expense ledger", icon: BookOpenIcon },
   { key: "can_access_payments", label: "Payment Logs", description: "Can view payment history and records", icon: CurrencyRupeeIcon },
   { key: "can_access_analytics", label: "Analytics Access", description: "Can view analytics and statistics dashboards", icon: ChartBarIcon },
-  { key: "can_view_settings", label: "View Settings", description: "Can open settings page in read-only mode", icon: EyeIcon },
-  { key: "can_change_settings", label: "Edit Settings", description: "Can modify gym settings (auto-includes view)", icon: Cog6ToothIcon },
+  { key: "can_change_settings", label: "Settings Access", description: "Can add/modify everything in settings", icon: Cog6ToothIcon },
   { key: "can_send_whatsapp", label: "WhatsApp Access", description: "Can send WhatsApp messages to members", icon: ChatBubbleLeftRightIcon },
   { key: "can_access_attendance", label: "Attendance Access", description: "Can mark and view attendance records", icon: ClockIcon },
   { key: "can_manage_events", label: "Events Access", description: "Create and manage events & registrations", icon: CalendarDaysIcon },
@@ -106,7 +104,6 @@ export const StaffPermissionsDialog = ({
     can_access_ledger: false,
     can_access_payments: false,
     can_access_analytics: false,
-    can_view_settings: false,
     can_change_settings: false,
     can_send_whatsapp: false,
     can_access_attendance: true,
@@ -146,7 +143,6 @@ export const StaffPermissionsDialog = ({
         can_access_ledger: p.can_access_ledger ?? false,
         can_access_payments: p.can_access_payments ?? false,
         can_access_analytics: p.can_access_analytics ?? false,
-        can_view_settings: p.can_view_settings ?? (p.can_change_settings === true),
         can_change_settings: p.can_change_settings ?? false,
         can_send_whatsapp: p.can_send_whatsapp ?? false,
         can_access_attendance: p.can_access_attendance ?? true,
@@ -166,7 +162,6 @@ export const StaffPermissionsDialog = ({
         can_access_ledger: staff?.role === "accountant",
         can_access_payments: staff?.role === "accountant" || staff?.role === "manager",
         can_access_analytics: staff?.role === "manager",
-        can_view_settings: false,
         can_change_settings: false,
         can_send_whatsapp: staff?.role === "manager",
         can_access_attendance: true,
@@ -293,18 +288,7 @@ export const StaffPermissionsDialog = ({
 
   const togglePermission = (key: keyof Permissions) => {
     if (key === "member_access_type") return;
-    setPermissions((prev) => {
-      const next = !prev[key];
-      const updated: Permissions = { ...prev, [key]: next };
-      // Mutual logic: enabling Edit auto-enables View; disabling View auto-disables Edit
-      if (key === "can_change_settings" && next) {
-        updated.can_view_settings = true;
-      }
-      if (key === "can_view_settings" && !next) {
-        updated.can_change_settings = false;
-      }
-      return updated;
-    });
+    setPermissions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   // GATE: Trainer/staff without login access — show "Grant Access" CTA first

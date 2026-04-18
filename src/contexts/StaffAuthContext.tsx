@@ -16,7 +16,6 @@ export interface StaffPermissions {
   can_access_ledger: boolean;
   can_access_payments: boolean;
   can_access_analytics: boolean;
-  can_view_settings: boolean;
   can_change_settings: boolean;
   can_send_whatsapp: boolean;
   can_access_attendance: boolean;
