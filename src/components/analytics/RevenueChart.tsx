@@ -23,12 +23,16 @@ import {
   gridProps,
 } from "./chartUtils";
 
+import { formatBucketRange, granularityLabel, type Granularity, type IntervalMeta } from "./chartUtils";
+
 interface RevenueChartProps {
   data: MonthlyRevenue[];
   isLoading?: boolean;
+  granularity?: Granularity;
+  intervalMeta?: Record<string, IntervalMeta>;
 }
 
-const RevenueChart = memo(({ data, isLoading }: RevenueChartProps) => {
+const RevenueChart = memo(({ data, isLoading, granularity, intervalMeta }: RevenueChartProps) => {
   const isMobile = useIsMobile();
 
   const stats = useMemo(() => {
