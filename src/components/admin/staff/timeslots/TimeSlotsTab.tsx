@@ -524,27 +524,50 @@ export const TimeSlotsTab = ({
                 const isFull = filled >= slot.capacity;
                 const isEmpty = filled === 0;
                 const fillPct = Math.min((filled / slot.capacity) * 100, 100);
+
+                // Rotating palette so "Available" cards aren't all green.
+                // Deterministic per-slot via id hash → stable across renders.
+                const palettes = [
+                  { bar: "bg-emerald-500", grad: "from-emerald-500/10 via-emerald-500/[0.04] to-background", ring: "hover:ring-emerald-300/60", border: "border-emerald-200/60 dark:border-emerald-900/40", shadow: "hover:shadow-emerald-500/15", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300", icon: "text-emerald-600", accentDot: "bg-emerald-500" },
+                  { bar: "bg-sky-500", grad: "from-sky-500/10 via-sky-500/[0.04] to-background", ring: "hover:ring-sky-300/60", border: "border-sky-200/60 dark:border-sky-900/40", shadow: "hover:shadow-sky-500/15", badge: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300", icon: "text-sky-600", accentDot: "bg-sky-500" },
+                  { bar: "bg-violet-500", grad: "from-violet-500/10 via-violet-500/[0.04] to-background", ring: "hover:ring-violet-300/60", border: "border-violet-200/60 dark:border-violet-900/40", shadow: "hover:shadow-violet-500/15", badge: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300", icon: "text-violet-600", accentDot: "bg-violet-500" },
+                  { bar: "bg-teal-500", grad: "from-teal-500/10 via-teal-500/[0.04] to-background", ring: "hover:ring-teal-300/60", border: "border-teal-200/60 dark:border-teal-900/40", shadow: "hover:shadow-teal-500/15", badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300", icon: "text-teal-600", accentDot: "bg-teal-500" },
+                  { bar: "bg-indigo-500", grad: "from-indigo-500/10 via-indigo-500/[0.04] to-background", ring: "hover:ring-indigo-300/60", border: "border-indigo-200/60 dark:border-indigo-900/40", shadow: "hover:shadow-indigo-500/15", badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300", icon: "text-indigo-600", accentDot: "bg-indigo-500" },
+                  { bar: "bg-pink-500", grad: "from-pink-500/10 via-pink-500/[0.04] to-background", ring: "hover:ring-pink-300/60", border: "border-pink-200/60 dark:border-pink-900/40", shadow: "hover:shadow-pink-500/15", badge: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300", icon: "text-pink-600", accentDot: "bg-pink-500" },
+                  { bar: "bg-cyan-500", grad: "from-cyan-500/10 via-cyan-500/[0.04] to-background", ring: "hover:ring-cyan-300/60", border: "border-cyan-200/60 dark:border-cyan-900/40", shadow: "hover:shadow-cyan-500/15", badge: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300", icon: "text-cyan-600", accentDot: "bg-cyan-500" },
+                ];
+                const hash = Array.from(slot.id).reduce((a, c) => a + c.charCodeAt(0), 0);
+                const rotated = palettes[hash % palettes.length];
+
+                // Status (full / nearly-full) overrides the rotation with a clear signal color.
                 const accent = isFull
-                  ? { bar: "bg-rose-500", grad: "from-rose-500/10 to-background", ring: "hover:ring-rose-200", badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300" }
+                  ? { bar: "bg-rose-500", grad: "from-rose-500/10 via-rose-500/[0.04] to-background", ring: "hover:ring-rose-300/60", border: "border-rose-200/60 dark:border-rose-900/40", shadow: "hover:shadow-rose-500/20", badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300", icon: "text-rose-600", accentDot: "bg-rose-500" }
                   : fillPct >= 70
-                  ? { bar: "bg-amber-500", grad: "from-amber-500/10 to-background", ring: "hover:ring-amber-200", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" }
+                  ? { bar: "bg-amber-500", grad: "from-amber-500/10 via-amber-500/[0.04] to-background", ring: "hover:ring-amber-300/60", border: "border-amber-200/60 dark:border-amber-900/40", shadow: "hover:shadow-amber-500/20", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300", icon: "text-amber-600", accentDot: "bg-amber-500" }
                   : isEmpty
-                  ? { bar: "bg-slate-400", grad: "from-slate-500/5 to-background", ring: "hover:ring-slate-200", badge: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" }
-                  : { bar: "bg-emerald-500", grad: "from-emerald-500/10 to-background", ring: "hover:ring-emerald-200", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" };
+                  ? { ...rotated, badge: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" }
+                  : rotated;
+
+                const statusLabel = isFull ? "Full" : isEmpty ? "Empty" : fillPct >= 70 ? "Filling" : "Available";
 
                 return (
                   <Card
                     key={slot.id}
                     className={cn(
-                      "border-0 shadow-sm cursor-pointer transition-all duration-300 animate-fade-in group overflow-hidden",
-                      "hover:shadow-lg hover:-translate-y-0.5 hover:ring-2",
+                      "shadow-sm cursor-pointer transition-all duration-300 animate-fade-in group overflow-hidden relative",
+                      "hover:shadow-xl hover:-translate-y-0.5 hover:ring-2",
                       accent.ring,
+                      accent.shadow,
+                      "border",
+                      accent.border,
                       "bg-gradient-to-br",
                       accent.grad
                     )}
                     style={{ animationDelay: `${index * 40}ms`, animationFillMode: "backwards" }}
                     onClick={() => handleCardClick(slot)}
                   >
+                    {/* Left accent stripe */}
+                    <div className={cn("absolute left-0 top-0 bottom-0 w-1", accent.accentDot)} />
                     <CardHeader className="p-3 lg:p-4 pb-2">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
