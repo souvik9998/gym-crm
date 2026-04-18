@@ -518,7 +518,7 @@ export const TimeSlotsTab = ({
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 pt-2">
               {filteredSlots.map((slot, index) => {
                 const filled = slot.member_count || 0;
                 const isFull = filled >= slot.capacity;
@@ -555,28 +555,15 @@ export const TimeSlotsTab = ({
                     key={slot.id}
                     className={cn(
                       "shadow-sm cursor-pointer transition-all duration-300 animate-fade-in group overflow-hidden relative rounded-xl",
-                      "hover:shadow-xl hover:-translate-y-0.5 hover:ring-1",
-                      accent.ring,
+                      "hover:shadow-lg hover:-translate-y-0.5",
                       accent.shadow,
-                      "border",
-                      accent.border,
+                      "border border-border/40",
                       "bg-gradient-to-br",
                       accent.grad
                     )}
                     style={{ animationDelay: `${index * 40}ms`, animationFillMode: "backwards" }}
                     onClick={() => handleCardClick(slot)}
                   >
-                    {/* Top gradient accent bar — subtle, premium */}
-                    <div
-                      className={cn(
-                        "absolute inset-x-0 top-0 h-[3px] opacity-80 group-hover:opacity-100 transition-opacity",
-                        accent.accentDot
-                      )}
-                      style={{
-                        maskImage: "linear-gradient(to right, transparent, black 15%, black 85%, transparent)",
-                        WebkitMaskImage: "linear-gradient(to right, transparent, black 15%, black 85%, transparent)",
-                      }}
-                    />
                     {/* Soft inner glow on hover */}
                     <div className={cn(
                       "pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
