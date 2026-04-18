@@ -19,6 +19,7 @@ import {
   formatCompact,
   formatBucketRange,
   granularityLabel,
+  dateAxisProps,
   type Granularity,
   type IntervalMeta,
 } from "./chartUtils";
@@ -111,12 +112,7 @@ const PackageSalesChart = memo(({ data, packageList, isLoading, granularity, int
             <CartesianGrid {...gridProps()} />
             <XAxis
               dataKey="month"
-              tickLine={false}
-              axisLine={false}
-              tick={isMobile ? axisTickStyleMobile : axisTickStyle}
-              minTickGap={isMobile ? 24 : 8}
-              interval={isMobile ? "preserveStartEnd" : 0}
-              tickMargin={8}
+              {...dateAxisProps({ isMobile, granularity, dataLength: data.length })}
             />
             <YAxis
               tickLine={false}
