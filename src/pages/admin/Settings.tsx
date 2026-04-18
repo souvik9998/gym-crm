@@ -1010,8 +1010,8 @@ const AdminSettings = () => {
             </p>
           </div>
         )}
-        <fieldset disabled={!canEdit} className="border-0 p-0 m-0 min-w-0 disabled:opacity-95">
         <Tabs value={activeTab} onValueChange={(val) => { setSearchParams({ tab: val }); setMobileMenuOpen(false); }}>
+
 
           {/* Mobile: dropdown tab selector */}
           <div className="lg:hidden relative mb-4" ref={menuRef}>
