@@ -118,11 +118,30 @@ const RevenueChart = memo(({ data, isLoading, granularity, intervalMeta }: Reven
             />
             <ChartTooltip
               cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
-              content={
-                <PremiumTooltip
-                  formatter={(v) => formatINRFull(v)}
-                />
-              }
+              content={({ active, payload, label }) => {
+                if (!active || !payload?.length) return null;
+                const row = payload[0].payload as MonthlyRevenue;
+                const range = formatBucketRange(String(label ?? ""), intervalMeta?.[String(label ?? "")], granularity);
+                return (
+                  <div className="rounded-xl border border-border/70 bg-popover/95 backdrop-blur-md shadow-lg px-3 py-2 min-w-[180px] animate-fade-in">
+                    {range && <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{range}</p>}
+                    <p className="text-[11px] font-semibold mb-1.5">{label}</p>
+                    <div className="space-y-1 text-[11px]">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-sm bg-accent" />
+                          <span className="text-muted-foreground">Revenue</span>
+                        </div>
+                        <span className="font-semibold tabular-nums">{formatINRFull(Number(row.revenue) || 0)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-muted-foreground pl-3.5">Payments</span>
+                        <span className="font-semibold tabular-nums">{Number(row.payments) || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }}
             />
             <Bar
               dataKey="revenue"
