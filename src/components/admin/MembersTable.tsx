@@ -41,7 +41,8 @@ import type { MemberWithSubscription } from "@/api/members";
 import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
 import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 import { BiometricEnrollDialog } from "./BiometricEnrollDialog";
-import { checkMemberBiometricStatus } from "@/api/biometric";
+import { checkMemberBiometricStatus, fetchBiometricDevices } from "@/api/biometric";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Use MemberWithSubscription from the API
 type Member = MemberWithSubscription;
@@ -75,7 +76,21 @@ export const MembersTable = ({
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn, permissions, staffUser } = useStaffAuth();
   const { isAdmin } = useIsAdmin();
+  const { isModuleEnabled } = useAuth();
   const { invalidateMembers } = useInvalidateQueries();
+
+  const biometricEnabled = isModuleEnabled("attendance_biometric");
+
+  // Check if biometric devices exist for this branch (only when feature is enabled)
+  const { data: biometricDevicesData } = useQuery({
+    queryKey: ["biometric-devices", currentBranch?.id],
+    queryFn: () => fetchBiometricDevices(currentBranch?.id),
+    enabled: !!currentBranch?.id && biometricEnabled,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const hasBiometricDevices = (biometricDevicesData?.length ?? 0) > 0;
+  const canEnrollBiometric = biometricEnabled && hasBiometricDevices;
   
   // Use infinite query for paginated data fetching
   const {
@@ -1292,7 +1307,7 @@ export const MembersTable = ({
                         </DropdownMenuItem>
                       </>
                     )}
-                    {canManageMembers && (
+                    {canManageMembers && canEnrollBiometric && (
                       <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
@@ -1591,7 +1606,7 @@ export const MembersTable = ({
                               </DropdownMenuItem>
                             </>
                           )}
-                          {canManageMembers && (
+                          {canManageMembers && canEnrollBiometric && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
