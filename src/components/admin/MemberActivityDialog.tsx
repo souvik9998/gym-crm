@@ -85,6 +85,7 @@ interface MemberDetails {
   address: string | null;
   photo_id_type: string | null;
   photo_id_number: string | null;
+  date_of_birth: string | null;
   personal_trainer?: { name: string } | null;
 }
 
@@ -554,6 +555,17 @@ export const MemberActivityDialog = ({
                         <span className="text-sm">
                           <span className="text-muted-foreground">Gender: </span>
                           <span className="font-medium capitalize">{details?.gender || "Not provided"}</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-muted/80">
+                          <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                        </div>
+                        <span className="text-sm">
+                          <span className="text-muted-foreground">Date of Birth: </span>
+                          <span className="font-medium">
+                            {details?.date_of_birth ? formatDate(details.date_of_birth) : "Not provided"}
+                          </span>
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
