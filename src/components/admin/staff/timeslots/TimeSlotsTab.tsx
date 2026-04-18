@@ -554,15 +554,15 @@ export const TimeSlotsTab = ({
                       ring: "ring-amber-200/50 dark:ring-amber-900/40",
                     }
                   : {
-                      bar: "bg-slate-400 dark:bg-slate-500",
-                      bg: "bg-card",
-                      text: "text-foreground",
-                      icon: "text-muted-foreground",
-                      numBg: "bg-muted",
-                      badge: "bg-muted text-muted-foreground",
-                      border: "border-border",
-                      borderHover: "hover:border-foreground/30",
-                      ring: "ring-border/50",
+                      bar: "bg-emerald-500",
+                      bg: "bg-emerald-50/60 dark:bg-emerald-950/20",
+                      text: "text-emerald-800 dark:text-emerald-300",
+                      icon: "text-emerald-600 dark:text-emerald-400",
+                      numBg: "bg-emerald-100 dark:bg-emerald-900/40",
+                      badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+                      border: "border-emerald-200/80 dark:border-emerald-900/50",
+                      borderHover: "hover:border-emerald-300 dark:hover:border-emerald-800",
+                      ring: "ring-emerald-200/50 dark:ring-emerald-900/40",
                     };
 
                 const statusLabel = isFull ? "Full" : isEmpty ? "Empty" : fillPct >= 70 ? "Filling" : "Available";
