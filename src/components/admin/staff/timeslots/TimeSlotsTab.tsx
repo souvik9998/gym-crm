@@ -34,11 +34,24 @@ interface TimeSlot {
 interface TimeSlotsTabProps {
   trainers: Staff[];
   currentBranch: any;
+  /** Restrict listing to a single trainer (staff.id). Used for "assigned only" trainers. */
+  restrictedTrainerId?: string | null;
+  /** Permission flags (defaults true → admin behaviour). */
+  canCreate?: boolean;
+  canEditDelete?: boolean;
+  canViewMembers?: boolean;
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export const TimeSlotsTab = ({ trainers, currentBranch }: TimeSlotsTabProps) => {
+export const TimeSlotsTab = ({
+  trainers,
+  currentBranch,
+  restrictedTrainerId = null,
+  canCreate = true,
+  canEditDelete = true,
+  canViewMembers = true,
+}: TimeSlotsTabProps) => {
   const isCompact = useIsTabletOrBelow();
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
