@@ -26,7 +26,18 @@ import {
   RefreshCw,
   UserCheck,
   Loader2,
+  Mail,
+  Briefcase,
+  Droplets,
+  ShieldAlert,
+  Heart,
+  Upload,
+  FileText,
+  X,
+  MessageCircle,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DobInput } from "@/components/ui/dob-input";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
