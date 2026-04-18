@@ -17,20 +17,22 @@ export function formatBucketRange(
   if (!meta) return undefined;
   const start = new Date(meta.startISO);
   const end = new Date(meta.endISO);
-  const sameDay = start.toDateString() === end.toDateString();
-  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+  const sameDay =
+    start.getUTCFullYear() === end.getUTCFullYear() &&
+    start.getUTCMonth() === end.getUTCMonth() &&
+    start.getUTCDate() === end.getUTCDate();
+  const sameMonth =
+    start.getUTCMonth() === end.getUTCMonth() &&
+    start.getUTCFullYear() === end.getUTCFullYear();
 
   if (granularity === "day" || sameDay) {
-    return start.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
+    return start.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
   }
-  if (granularity === "month") {
-    return start.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  }
-  // week / generic range
+
   if (sameMonth) {
-    return `${start.toLocaleDateString("en-GB", { day: "2-digit" })} – ${end.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}`;
+    return `${start.toLocaleDateString("en-GB", { day: "2-digit", timeZone: "UTC" })} – ${end.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })}`;
   }
-  return `${start.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} – ${end.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}`;
+  return `${start.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })} – ${end.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })}`;
 }
 
 export function granularityLabel(g: Granularity | undefined): string {

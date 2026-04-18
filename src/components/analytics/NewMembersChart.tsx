@@ -74,7 +74,7 @@ const NewMembersChart = memo(({ data, isLoading, granularity, intervalMeta }: Ne
         <ChartSummary
           stats={[
             { label: "Total joined", value: stats.total.toLocaleString("en-IN"), tone: "success" },
-            { label: `Best ${granularityLabel(granularity)}`, value: `${stats.peak} · ${stats.peakRange ?? stats.peakLabel ?? "-"}` },
+            { label: "Peak interval", value: `${stats.peak} · ${stats.peakRange ?? stats.peakLabel ?? "-"}` },
             { label: `Avg / ${granularityLabel(granularity)}`, value: stats.avg.toFixed(1) },
           ]}
         />
