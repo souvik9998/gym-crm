@@ -572,9 +572,11 @@ export const TimeSlotsTab = ({
                     key={slot.id}
                     className={cn(
                       "cursor-pointer transition-all duration-300 animate-fade-in group relative rounded-2xl",
-                      "border border-border/60 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06),0_4px_16px_-4px_rgba(0,0,0,0.04)]",
-                      "hover:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.12),0_4px_12px_-4px_rgba(0,0,0,0.06)] hover:-translate-y-1 hover:border-border",
-                      accent.bg
+                      "border-2 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06),0_4px_16px_-4px_rgba(0,0,0,0.04)]",
+                      "hover:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.12),0_4px_12px_-4px_rgba(0,0,0,0.06)] hover:-translate-y-1",
+                      accent.bg,
+                      accent.border,
+                      accent.borderHover
                     )}
                     style={{ animationDelay: `${index * 40}ms`, animationFillMode: "backwards" }}
                     onClick={() => handleCardClick(slot)}
