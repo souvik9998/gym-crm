@@ -131,11 +131,13 @@ const PackageSalesChart = memo(({ data, packageList, isLoading, granularity, int
               content={({ active, payload, label }) => {
                 if (!active || !payload?.length) return null;
                 const total = payload.reduce((s, p) => s + (Number(p.value) || 0), 0);
+                const range = formatBucketRange(String(label ?? ""), intervalMeta?.[String(label ?? "")], granularity);
                 return (
-                  <div className="rounded-xl border border-border/70 bg-popover/95 backdrop-blur-md shadow-lg px-3 py-2 min-w-[160px] animate-fade-in">
+                  <div className="rounded-xl border border-border/70 bg-popover/95 backdrop-blur-md shadow-lg px-3 py-2 min-w-[180px] animate-fade-in">
+                    {range && <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{range}</p>}
                     <div className="flex items-center justify-between mb-1.5 pb-1.5 border-b border-border/50">
                       <p className="text-[11px] font-semibold">{label}</p>
-                      <p className="text-[11px] font-bold tabular-nums">{total}</p>
+                      <p className="text-[11px] font-bold tabular-nums">{total} sold</p>
                     </div>
                     <div className="space-y-1">
                       {payload
@@ -150,6 +152,9 @@ const PackageSalesChart = memo(({ data, packageList, isLoading, granularity, int
                             <span className="font-semibold tabular-nums">{p.value}</span>
                           </div>
                         ))}
+                      {total === 0 && (
+                        <p className="text-[11px] text-muted-foreground">No sales</p>
+                      )}
                     </div>
                   </div>
                 );
