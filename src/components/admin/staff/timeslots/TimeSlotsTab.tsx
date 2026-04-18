@@ -76,11 +76,12 @@ export const TimeSlotsTab = ({
     if (!currentBranch?.id) return;
     setIsLoading(true);
     try {
-      const { data: slotsData } = await supabase
+      let query = supabase
         .from("trainer_time_slots")
         .select("*")
-        .eq("branch_id", currentBranch.id)
-        .order("start_time");
+        .eq("branch_id", currentBranch.id);
+      if (restrictedTrainerId) query = query.eq("trainer_id", restrictedTrainerId);
+      const { data: slotsData } = await query.order("start_time");
 
       if (slotsData) {
         const slotIds = slotsData.map(s => s.id);
@@ -109,7 +110,7 @@ export const TimeSlotsTab = ({
     }
   };
 
-  useEffect(() => { fetchSlots(); }, [currentBranch?.id, trainers]);
+  useEffect(() => { fetchSlots(); }, [currentBranch?.id, trainers, restrictedTrainerId]);
 
   const resetForm = () => {
     setForm({ trainer_id: "", start_time: "06:00", end_time: "07:00", capacity: 10, is_recurring: false, recurring_days: [] });
