@@ -38,10 +38,12 @@ import { ManualAutomationTriggers } from "@/components/admin/ManualAutomationTri
 import { SubscriptionPlanTab } from "@/components/admin/SubscriptionPlanTab";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useStaffOperations } from "@/hooks/useStaffOperations";
 import { useSettingsPageData } from "@/hooks/queries/useSettingsPageData";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
+import { EyeIcon } from "@heroicons/react/24/outline";
 
 // Lazy load HolidayCalendarTab for code splitting
 const HolidayCalendarTab = lazy(() => import("@/components/admin/HolidayCalendarTab"));
