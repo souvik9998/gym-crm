@@ -8,6 +8,7 @@ import { SimpleAttendanceTab } from "@/components/admin/attendance/SimpleAttenda
 import { SlotAttendanceTab } from "@/components/admin/attendance/SlotAttendanceTab";
 import { AttendanceHistoryTab } from "@/components/admin/attendance/AttendanceHistoryTab";
 import { AbsentAnalyticsTab } from "@/components/admin/attendance/AbsentAnalyticsTab";
+import { AttendanceSkeleton } from "@/components/admin/attendance/AttendanceSkeleton";
 import {
   UsersIcon,
   ChartBarIcon,
