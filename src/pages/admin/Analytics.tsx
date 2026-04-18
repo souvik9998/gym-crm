@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SmartMetricCard } from "@/components/analytics/SmartMetricCard";
 import { InsightsPanel, Insight } from "@/components/analytics/InsightsPanel";
 import { cn } from "@/lib/utils";
+import { formatBucketRange, granularityLabel } from "@/components/analytics/chartUtils";
 
 // Lazy load chart components
 const RevenueChart = lazy(() => import("@/components/analytics/RevenueChart").then((m) => ({ default: m.default })));
@@ -114,6 +115,12 @@ function OverviewSection() {
     analyticsCustomDateTo,
     true
   );
+  const { granularity, intervalMeta } = useAggregatedAnalyticsRevenue(
+    analyticsPeriod,
+    analyticsCustomDateFrom,
+    analyticsCustomDateTo,
+    true
+  );
   const { data: growth } = useAggregatedAnalyticsMemberGrowth(
     analyticsPeriod,
     analyticsCustomDateFrom,
@@ -167,13 +174,14 @@ function OverviewSection() {
       const peakIdx = sparks.revenue.indexOf(Math.max(...sparks.revenue));
       const peakLabel = revenue?.[peakIdx]?.month;
       const peakVal = sparks.revenue[peakIdx];
+      const peakRange = peakLabel ? formatBucketRange(peakLabel, intervalMeta?.[peakLabel], granularity) : undefined;
       if (peakLabel && peakVal > 0) {
         out.push({
           id: "rev-peak",
           tone: "neutral",
           icon: "award",
-          title: `Peak revenue in ${peakLabel}`,
-          detail: `₹${peakVal.toLocaleString("en-IN")} earned in your best interval.`,
+          title: `Peak ${granularityLabel(granularity)}: ${peakRange ?? peakLabel}`,
+          detail: `₹${peakVal.toLocaleString("en-IN")} earned in this highest-performing interval.`,
         });
       }
     }
@@ -201,7 +209,7 @@ function OverviewSection() {
     }
 
     return out.slice(0, 4);
-  }, [totals, deltas, sparks, revenue]);
+  }, [totals, deltas, sparks, revenue, intervalMeta, granularity]);
 
   if (totalsLoading && !totals) {
     return (
