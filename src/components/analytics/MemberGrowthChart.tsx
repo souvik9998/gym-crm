@@ -1,18 +1,24 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
+  CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
 import type { MemberGrowth } from "@/hooks/queries";
+import {
+  PremiumTooltip,
+  ChartSummary,
+  ChartEmpty,
+  axisTickStyle,
+  axisTickStyleMobile,
+  gridProps,
+  formatCompact,
+} from "./chartUtils";
 
 interface MemberGrowthChartProps {
   data: MemberGrowth[];
@@ -22,66 +28,101 @@ interface MemberGrowthChartProps {
 const MemberGrowthChart = memo(({ data, isLoading }: MemberGrowthChartProps) => {
   const isMobile = useIsMobile();
 
+  const stats = useMemo(() => {
+    if (!data?.length) return null;
+    const values = data.map((d) => Number(d.members) || 0);
+    const start = values[0] ?? 0;
+    const end = values[values.length - 1] ?? 0;
+    const growth = end - start;
+    const growthPct = start > 0 ? (growth / start) * 100 : null;
+    return { current: end, start, growth, growthPct };
+  }, [data]);
+
   if (isLoading) {
     return (
-      <div className="h-[180px] sm:h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)] flex items-center justify-center">
-        <div className="w-full h-full flex flex-col gap-2 p-4">
-          <div className="flex items-end justify-between h-full gap-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex-1 bg-muted animate-pulse rounded-t"
-                style={{ height: `${30 + Math.random() * 60}%` }}
-              />
-            ))}
-          </div>
-        </div>
+      <div className="h-[180px] sm:h-[clamp(220px,32vh,340px)] flex items-end gap-2 p-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex-1 bg-muted animate-pulse rounded-t"
+            style={{ height: `${30 + Math.random() * 60}%` }}
+          />
+        ))}
       </div>
     );
   }
 
-  const chartConfig = {
-    members: { label: "Members", color: "hsl(var(--primary))" },
-  };
+  if (!data?.length) {
+    return <ChartEmpty message="No member data available" />;
+  }
 
   return (
-    <ChartContainer
-      config={chartConfig}
-      className="h-[180px] sm:h-[clamp(210px,30vh,320px)] md:h-[clamp(230px,30vh,360px)] overflow-hidden"
-    >
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={data}
-          margin={isMobile ? { top: 4, right: 8, left: -10, bottom: 4 } : undefined}
-        >
-          <XAxis
-            dataKey="month"
-            tickLine={false}
-            axisLine={false}
-            tick={isMobile ? { fontSize: 9, textAnchor: "end" } : undefined}
-            minTickGap={isMobile ? 24 : undefined}
-            interval={isMobile ? "preserveStartEnd" : undefined}
-            tickMargin={isMobile ? 8 : undefined}
-            padding={isMobile ? { left: 4, right: 16 } : undefined}
-          />
-          <YAxis
-            tickLine={false}
-            axisLine={false}
-            tick={isMobile ? { fontSize: 9 } : undefined}
-            width={isMobile ? 24 : undefined}
-          />
-          <ChartTooltip content={<ChartTooltipContent />} />
-          <Line
-            type="monotone"
-            dataKey="members"
-            stroke="hsl(var(--primary))"
-            strokeWidth={2}
-            dot={isMobile ? { r: 2, fill: "hsl(var(--primary))" } : { fill: "hsl(var(--primary))" }}
-            activeDot={isMobile ? { r: 3 } : undefined}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </ChartContainer>
+    <div className="space-y-1">
+      {stats && (
+        <ChartSummary
+          stats={[
+            { label: "Current total", value: stats.current.toLocaleString("en-IN"), tone: "primary" },
+            { label: "Period start", value: stats.start.toLocaleString("en-IN") },
+            {
+              label: "Net change",
+              value: `${stats.growth >= 0 ? "+" : ""}${stats.growth.toLocaleString("en-IN")}${stats.growthPct !== null ? ` (${stats.growthPct >= 0 ? "+" : ""}${stats.growthPct.toFixed(1)}%)` : ""}`,
+              tone: stats.growth >= 0 ? "success" : "warning",
+            },
+          ]}
+        />
+      )}
+      <ChartContainer
+        config={{ members: { label: "Members", color: "hsl(var(--primary))" } }}
+        className="h-[180px] sm:h-[clamp(220px,32vh,340px)] overflow-hidden"
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 10, right: 12, left: isMobile ? -16 : -8, bottom: 4 }}>
+            <defs>
+              <linearGradient id="memberGrowthGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid {...gridProps()} />
+            <XAxis
+              dataKey="month"
+              tickLine={false}
+              axisLine={false}
+              tick={isMobile ? axisTickStyleMobile : axisTickStyle}
+              minTickGap={isMobile ? 24 : 8}
+              interval={isMobile ? "preserveStartEnd" : 0}
+              tickMargin={8}
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tick={isMobile ? axisTickStyleMobile : axisTickStyle}
+              width={isMobile ? 30 : 44}
+              tickFormatter={(v) => formatCompact(Number(v))}
+              allowDecimals={false}
+            />
+            <ChartTooltip
+              cursor={{ stroke: "hsl(var(--primary))", strokeWidth: 1, strokeOpacity: 0.4 }}
+              content={
+                <PremiumTooltip
+                  formatter={(v) => `${v.toLocaleString("en-IN")} members`}
+                />
+              }
+            />
+            <Area
+              type="monotone"
+              dataKey="members"
+              stroke="hsl(var(--primary))"
+              strokeWidth={2.25}
+              fill="url(#memberGrowthGrad)"
+              dot={{ r: 2.5, fill: "hsl(var(--primary))", strokeWidth: 0 }}
+              activeDot={{ r: 4, fill: "hsl(var(--primary))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+              animationDuration={700}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartContainer>
+    </div>
   );
 });
 

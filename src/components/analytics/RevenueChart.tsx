@@ -1,18 +1,27 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import {
-  BarChart,
+  ComposedChart,
   Bar,
+  Line,
   XAxis,
   YAxis,
+  CartesianGrid,
   ResponsiveContainer,
+  Cell,
 } from "recharts";
 import type { MonthlyRevenue } from "@/hooks/queries";
+import {
+  formatINR,
+  formatINRFull,
+  PremiumTooltip,
+  ChartSummary,
+  ChartEmpty,
+  axisTickStyle,
+  axisTickStyleMobile,
+  gridProps,
+} from "./chartUtils";
 
 interface RevenueChartProps {
   data: MonthlyRevenue[];
@@ -22,60 +31,119 @@ interface RevenueChartProps {
 const RevenueChart = memo(({ data, isLoading }: RevenueChartProps) => {
   const isMobile = useIsMobile();
 
+  const stats = useMemo(() => {
+    if (!data?.length) return null;
+    const values = data.map((d) => Number(d.revenue) || 0);
+    const total = values.reduce((s, v) => s + v, 0);
+    const peak = Math.max(...values);
+    const peakIdx = values.indexOf(peak);
+    const nonZero = values.filter((v) => v > 0);
+    const avg = nonZero.length ? total / nonZero.length : 0;
+    return { total, peak, peakLabel: data[peakIdx]?.month, avg, count: nonZero.length };
+  }, [data]);
+
   if (isLoading) {
     return (
-      <div className="h-[180px] sm:h-[clamp(220px,34vh,360px)] md:h-[clamp(260px,34vh,420px)] flex items-center justify-center">
-        <div className="w-full h-full flex flex-col gap-2 p-4">
-          <div className="flex items-end justify-between h-full gap-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex-1 bg-muted animate-pulse rounded-t"
-                style={{ height: `${30 + Math.random() * 60}%` }}
-              />
-            ))}
-          </div>
-        </div>
+      <div className="h-[200px] sm:h-[clamp(240px,36vh,380px)] md:h-[clamp(280px,36vh,440px)] flex items-end gap-2 p-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex-1 bg-muted animate-pulse rounded-t"
+            style={{ height: `${30 + Math.random() * 60}%` }}
+          />
+        ))}
       </div>
     );
   }
 
-  const chartConfig = {
-    revenue: { label: "Revenue", color: "hsl(var(--accent))" },
-  };
+  if (!data?.length || stats?.total === 0) {
+    return <ChartEmpty message="No revenue recorded for this period" />;
+  }
+
+  const peakValue = stats?.peak ?? 0;
 
   return (
-    <ChartContainer
-      config={chartConfig}
-      className="h-[180px] sm:h-[clamp(220px,34vh,360px)] md:h-[clamp(260px,34vh,420px)] overflow-hidden"
-    >
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={data}
-          margin={isMobile ? { top: 4, right: 8, left: -10, bottom: 4 } : undefined}
-        >
-          <XAxis
-            dataKey="month"
-            tickLine={false}
-            axisLine={false}
-            tick={isMobile ? { fontSize: 9, textAnchor: "end" } : undefined}
-            minTickGap={isMobile ? 24 : undefined}
-            interval={isMobile ? "preserveStartEnd" : undefined}
-            tickMargin={isMobile ? 8 : undefined}
-            padding={isMobile ? { left: 4, right: 16 } : undefined}
-          />
-          <YAxis
-            tickLine={false}
-            axisLine={false}
-            tick={isMobile ? { fontSize: 9 } : undefined}
-            width={isMobile ? 32 : undefined}
-            tickFormatter={(v) => `₹${v >= 1000 ? `${v / 1000}k` : v}`}
-          />
-          <ChartTooltip content={<ChartTooltipContent />} />
-          <Bar dataKey="revenue" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} maxBarSize={isMobile ? 20 : 40} />
-        </BarChart>
-      </ResponsiveContainer>
-    </ChartContainer>
+    <div className="space-y-1">
+      {stats && (
+        <ChartSummary
+          stats={[
+            { label: "Total", value: formatINRFull(stats.total), tone: "accent" },
+            { label: "Peak", value: `${formatINR(stats.peak)} · ${stats.peakLabel ?? "-"}` },
+            { label: "Avg / interval", value: formatINR(stats.avg) },
+            { label: "Active intervals", value: `${stats.count}` },
+          ]}
+        />
+      )}
+      <ChartContainer
+        config={{ revenue: { label: "Revenue", color: "hsl(var(--accent))" } }}
+        className="h-[200px] sm:h-[clamp(240px,36vh,380px)] md:h-[clamp(280px,36vh,440px)] overflow-hidden"
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={data} margin={{ top: 10, right: 12, left: isMobile ? -12 : 0, bottom: 4 }}>
+            <defs>
+              <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity={0.95} />
+                <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity={0.55} />
+              </linearGradient>
+              <linearGradient id="revenuePeakGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity={1} />
+                <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity={0.7} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid {...gridProps()} />
+            <XAxis
+              dataKey="month"
+              tickLine={false}
+              axisLine={false}
+              tick={isMobile ? axisTickStyleMobile : axisTickStyle}
+              minTickGap={isMobile ? 24 : 8}
+              interval={isMobile ? "preserveStartEnd" : 0}
+              tickMargin={8}
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tick={isMobile ? axisTickStyleMobile : axisTickStyle}
+              width={isMobile ? 38 : 56}
+              tickFormatter={(v) => formatINR(Number(v)).replace("₹", "₹")}
+            />
+            <ChartTooltip
+              cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
+              content={
+                <PremiumTooltip
+                  formatter={(v) => formatINRFull(v)}
+                />
+              }
+            />
+            <Bar
+              dataKey="revenue"
+              radius={[6, 6, 0, 0]}
+              maxBarSize={isMobile ? 22 : 44}
+              animationDuration={600}
+            >
+              {data.map((entry, i) => (
+                <Cell
+                  key={i}
+                  fill={Number(entry.revenue) === peakValue ? "url(#revenuePeakGrad)" : "url(#revenueGrad)"}
+                />
+              ))}
+            </Bar>
+            {/* Trend line over bars for context */}
+            <Line
+              type="monotone"
+              dataKey="revenue"
+              stroke="hsl(var(--accent))"
+              strokeWidth={1.5}
+              strokeOpacity={0.55}
+              dot={false}
+              activeDot={false}
+              isAnimationActive={false}
+              legendType="none"
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </ChartContainer>
+    </div>
   );
 });
 
