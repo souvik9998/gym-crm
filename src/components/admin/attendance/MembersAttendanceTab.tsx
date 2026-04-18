@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAttendanceLogs } from "@/hooks/queries/useAttendance";
 import { useBranch } from "@/contexts/BranchContext";
 import { ArrowPathIcon, DevicePhoneMobileIcon, ClockIcon, CalendarDaysIcon } from "@heroicons/react/24/outline";
@@ -11,6 +12,92 @@ import { AttendanceDatePicker } from "./AttendanceDatePicker";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+
+/**
+ * Pixel-true loading skeleton for the Members Attendance list.
+ * Mirrors the desktop table (11 cols) and mobile card layout so the
+ * transition into real data is jitter-free.
+ */
+const MembersAttendanceSkeleton = ({ isMobile }: { isMobile: boolean }) => {
+  if (isMobile) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className="bg-card border border-border/50 rounded-xl p-3 space-y-2.5 animate-fade-in"
+            style={{ animationDelay: `${i * 50}ms`, animationFillMode: "backwards" }}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-32" />
+                <Skeleton className="h-2.5 w-24" />
+              </div>
+              <Skeleton className="h-5 w-20 rounded-full shrink-0" />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {Array.from({ length: 3 }).map((_, j) => (
+                <div key={j} className="space-y-1">
+                  <Skeleton className="h-2.5 w-8" />
+                  <Skeleton className="h-3 w-12" />
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-border/30">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-3 w-10" />
+                <Skeleton className="h-4 w-14 rounded-full" />
+              </div>
+              <Skeleton className="h-6 w-14 rounded-md" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {["Date", "Name", "Phone", "Email", "In", "Out", "Hrs", "Sub", "Device", "Status", "Actions"].map((h) => (
+              <TableHead key={h} className="text-xs">
+                <Skeleton className="h-3 w-12" />
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <TableRow
+              key={i}
+              style={{ animationDelay: `${i * 40}ms`, animationFillMode: "backwards" }}
+              className="animate-fade-in"
+            >
+              <TableCell><Skeleton className="h-3 w-14" /></TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-7 w-7 rounded-full shrink-0" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </TableCell>
+              <TableCell><Skeleton className="h-3 w-20" /></TableCell>
+              <TableCell className="hidden xl:table-cell"><Skeleton className="h-3 w-28" /></TableCell>
+              <TableCell><Skeleton className="h-3 w-12" /></TableCell>
+              <TableCell><Skeleton className="h-3 w-12" /></TableCell>
+              <TableCell><Skeleton className="h-3 w-8" /></TableCell>
+              <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+              <TableCell className="hidden lg:table-cell"><Skeleton className="h-3 w-16" /></TableCell>
+              <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+              <TableCell><Skeleton className="h-7 w-16 rounded-md" /></TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+};
 
 export const MembersAttendanceTab = () => {
   const { currentBranch } = useBranch();
@@ -150,7 +237,7 @@ export const MembersAttendanceTab = () => {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div>
+          <MembersAttendanceSkeleton isMobile={isMobile} />
         ) : logs.length === 0 ? (
           <div className="text-center py-10 lg:py-12 space-y-2">
             <CalendarDaysIcon className="w-10 h-10 lg:w-12 lg:h-12 mx-auto text-muted-foreground/30" />
