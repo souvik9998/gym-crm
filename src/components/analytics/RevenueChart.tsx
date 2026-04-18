@@ -41,12 +41,15 @@ const RevenueChart = memo(({ data, isLoading, granularity, intervalMeta }: Reven
     if (!data?.length) return null;
     const values = data.map((d) => Number(d.revenue) || 0);
     const total = values.reduce((s, v) => s + v, 0);
+    const totalPayments = data.reduce((s, d) => s + (Number(d.payments) || 0), 0);
     const peak = Math.max(...values);
     const peakIdx = values.indexOf(peak);
+    const peakLabel = data[peakIdx]?.month;
+    const peakRange = formatBucketRange(peakLabel ?? "", intervalMeta?.[peakLabel ?? ""], granularity);
     const nonZero = values.filter((v) => v > 0);
     const avg = nonZero.length ? total / nonZero.length : 0;
-    return { total, peak, peakLabel: data[peakIdx]?.month, avg, count: nonZero.length };
-  }, [data]);
+    return { total, totalPayments, peak, peakLabel, peakRange, avg, count: nonZero.length };
+  }, [data, intervalMeta, granularity]);
 
   if (isLoading) {
     return (
