@@ -46,6 +46,7 @@ import { StaffCardSkeleton } from "./StaffCardSkeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChangePhoneDialog } from "./ChangePhoneDialog";
 import { DetailItem } from "./StaffDetailItem";
+import { nameSchema, phoneSchema, passwordSchema, getPhotoIdSchema } from "@/lib/validation";
 
 interface StaffOtherTabProps {
   staff: Staff[];
