@@ -167,6 +167,28 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const [photoIdType, setPhotoIdType] = useState("");
   const [photoIdNumber, setPhotoIdNumber] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState<string | undefined>(undefined);
+  const [email, setEmail] = useState("");
+  const [occupation, setOccupation] = useState("");
+  
+  // Health details (optional, mirrors public registration)
+  const [bloodGroup, setBloodGroup] = useState("");
+  const [heightCm, setHeightCm] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [medicalConditions, setMedicalConditions] = useState("");
+  const [allergies, setAllergies] = useState("");
+  const [emergencyContact1Name, setEmergencyContact1Name] = useState("");
+  const [emergencyContact1Phone, setEmergencyContact1Phone] = useState("");
+  const [emergencyContact2Name, setEmergencyContact2Name] = useState("");
+  const [emergencyContact2Phone, setEmergencyContact2Phone] = useState("");
+  const [identityFiles, setIdentityFiles] = useState<UploadedDoc[]>([]);
+  const [medicalFiles, setMedicalFiles] = useState<UploadedDoc[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  
+  // Field settings - mirrors public registration portal
+  const [fieldSettings, setFieldSettings] = useState<RegistrationFieldSettings | null>(null);
+  
+  // Notify member via WhatsApp on submit
+  const [notifyWhatsApp, setNotifyWhatsApp] = useState(true);
   
   // Package selection
   const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
