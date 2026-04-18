@@ -1063,8 +1063,8 @@ const AdminSettings = () => {
             </TabsList>
           </div>
 
-          {/* Content Area */}
-          <div className="min-w-0">
+          {/* Content Area — wrapped in fieldset to enforce read-only mode for view-only staff */}
+          <fieldset disabled={!canEdit} className={cn("min-w-0 border-0 p-0 m-0", !canEdit && "opacity-95")}>
 
           {/* Registration Fields Tab */}
           <TabsContent value="registration" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
@@ -1822,7 +1822,7 @@ const AdminSettings = () => {
           <TabsContent value="subscription" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
             <SubscriptionPlanTab />
           </TabsContent>
-          </div>{/* end content area */}
+          </fieldset>{/* end content area */}
         </Tabs>
       </div>
 
