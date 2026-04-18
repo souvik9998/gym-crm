@@ -8,6 +8,7 @@ import { SimpleAttendanceTab } from "@/components/admin/attendance/SimpleAttenda
 import { SlotAttendanceTab } from "@/components/admin/attendance/SlotAttendanceTab";
 import { AttendanceHistoryTab } from "@/components/admin/attendance/AttendanceHistoryTab";
 import { AbsentAnalyticsTab } from "@/components/admin/attendance/AbsentAnalyticsTab";
+import { AttendanceSkeleton } from "@/components/admin/attendance/AttendanceSkeleton";
 import {
   UsersIcon,
   ChartBarIcon,
@@ -30,7 +31,7 @@ const Attendance = () => {
   const { currentBranch } = useBranch();
   const { tenantPermissions, isSuperAdmin } = useAuth();
 
-  const { data: attendanceMode = "simple" } = useQuery({
+  const { data: attendanceMode = "simple", isLoading: isModeLoading } = useQuery({
     queryKey: ["attendance-mode", currentBranch?.id],
     queryFn: async () => {
       if (!currentBranch?.id) return "simple";
@@ -43,6 +44,11 @@ const Attendance = () => {
     },
     enabled: !!currentBranch?.id,
   });
+
+  // Show full-page skeleton while branch context or attendance mode is loading
+  if (!currentBranch?.id || isModeLoading) {
+    return <AttendanceSkeleton />;
+  }
 
   const isSlotMode = attendanceMode === "time_slot";
 
