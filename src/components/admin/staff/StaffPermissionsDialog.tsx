@@ -336,8 +336,8 @@ export const StaffPermissionsDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg p-4 max-h-[85vh] overflow-y-auto">
-        <DialogHeader className="pb-2">
+      <DialogContent className="sm:max-w-lg p-0 max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogHeader className="px-4 pt-4 pb-2 flex-shrink-0">
           <DialogTitle className="text-base">
             {grantMode && !hasLoginAccess ? "Grant Login Access & Permissions" : "Staff Permissions"}
           </DialogTitle>
@@ -348,7 +348,7 @@ export const StaffPermissionsDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 py-2">
+        <div className="space-y-3 px-4 py-2 flex-1 min-h-0 overflow-y-auto">
           <div className="p-3 bg-muted/50 rounded-lg text-sm">
             <p><strong>Name:</strong> {staff?.full_name}</p>
             <p><strong>Role:</strong> {staff?.role}</p>
