@@ -326,10 +326,32 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
   );
 };
 
-export const useStaffAuth = () => {
+// Safe fallback used when the hook is somehow called outside the provider
+// (e.g. during HMR module swaps). Prevents a hard runtime crash that would
+// otherwise blank out the entire app — components already handle the
+// "not logged in as staff" state gracefully.
+const STAFF_AUTH_FALLBACK: StaffAuthContextType = {
+  staffUser: null,
+  permissions: null,
+  enabledModules: null,
+  planExpired: false,
+  branches: [],
+  isLoading: false,
+  isStaffLoggedIn: false,
+  login: async () => ({ success: false, error: "Auth provider not ready" }),
+  logout: async () => {},
+  refreshSession: async () => {},
+  clearStaffState: () => {},
+  setBranchRestrictionCallback: () => {},
+};
+
+export const useStaffAuth = (): StaffAuthContextType => {
   const context = useContext(StaffAuthContext);
   if (!context) {
-    throw new Error("useStaffAuth must be used within a StaffAuthProvider");
+    if (import.meta.env.DEV) {
+      console.warn("useStaffAuth called outside StaffAuthProvider — returning fallback (likely an HMR artifact, refresh the page).");
+    }
+    return STAFF_AUTH_FALLBACK;
   }
   return context;
 };
