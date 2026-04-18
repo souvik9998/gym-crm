@@ -1252,7 +1252,11 @@ export const MembersTable = ({
                             Move to Inactive
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    {canSendWhatsApp && (
+                      <>
+                        {canManageMembers && <DropdownMenuSeparator />}
                         <DropdownMenuItem
                           onClick={(e) => handleSendPromotional(member, e)}
                           disabled={sendingWhatsApp === member.id}
@@ -1286,6 +1290,10 @@ export const MembersTable = ({
                           <Receipt className="w-4 h-4 mr-2" />
                           Send Payment Details
                         </DropdownMenuItem>
+                      </>
+                    )}
+                    {canManageMembers && (
+                      <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={(e) => {
@@ -1298,7 +1306,7 @@ export const MembersTable = ({
                         </DropdownMenuItem>
                       </>
                     )}
-                    {!canManageMembers && (
+                    {!canManageMembers && !canSendWhatsApp && (
                       <DropdownMenuItem disabled>
                         <span className="text-muted-foreground text-sm">View only - No edit permissions</span>
                       </DropdownMenuItem>
