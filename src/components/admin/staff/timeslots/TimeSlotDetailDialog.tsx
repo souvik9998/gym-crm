@@ -562,13 +562,15 @@ export const TimeSlotDetailDialog = ({
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="px-5 pb-5 pt-3">
-            <TabsList className="grid w-full grid-cols-2 h-8">
+            <TabsList className={canEditSlot ? "grid w-full grid-cols-2 h-8" : "grid w-full grid-cols-1 h-8"}>
               <TabsTrigger value="members" className="text-xs gap-1 h-7">
                 <UserGroupIcon className="w-3.5 h-3.5" /> Members
               </TabsTrigger>
-              <TabsTrigger value="edit" className="text-xs gap-1 h-7">
-                <PencilIcon className="w-3.5 h-3.5" /> Edit Slot
-              </TabsTrigger>
+              {canEditSlot && (
+                <TabsTrigger value="edit" className="text-xs gap-1 h-7">
+                  <PencilIcon className="w-3.5 h-3.5" /> Edit Slot
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="members" className="mt-3 space-y-3">
