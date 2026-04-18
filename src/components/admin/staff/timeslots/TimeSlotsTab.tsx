@@ -525,25 +525,45 @@ export const TimeSlotsTab = ({
                 const isEmpty = filled === 0;
                 const fillPct = Math.min((filled / slot.capacity) * 100, 100);
 
-                // Soft pastel palette inspired by reference cards: solid tinted bg + matching darker text/icon.
-                const palettes = [
-                  { bar: "bg-sky-500",     bg: "bg-sky-50 dark:bg-sky-950/30",         text: "text-sky-700 dark:text-sky-300",         icon: "text-sky-500",     numBg: "bg-sky-100 dark:bg-sky-900/40",         badge: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300" },
-                  { bar: "bg-violet-500",  bg: "bg-violet-50 dark:bg-violet-950/30",   text: "text-violet-700 dark:text-violet-300",   icon: "text-violet-500",  numBg: "bg-violet-100 dark:bg-violet-900/40",   badge: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300" },
-                  { bar: "bg-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-700 dark:text-emerald-300", icon: "text-emerald-500", numBg: "bg-emerald-100 dark:bg-emerald-900/40", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
-                  { bar: "bg-pink-500",    bg: "bg-pink-50 dark:bg-pink-950/30",       text: "text-pink-700 dark:text-pink-300",       icon: "text-pink-500",    numBg: "bg-pink-100 dark:bg-pink-900/40",       badge: "bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300" },
-                  { bar: "bg-amber-500",   bg: "bg-amber-50 dark:bg-amber-950/30",     text: "text-amber-700 dark:text-amber-300",     icon: "text-amber-500",   numBg: "bg-amber-100 dark:bg-amber-900/40",     badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
-                  { bar: "bg-teal-500",    bg: "bg-teal-50 dark:bg-teal-950/30",       text: "text-teal-700 dark:text-teal-300",       icon: "text-teal-500",    numBg: "bg-teal-100 dark:bg-teal-900/40",       badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300" },
-                  { bar: "bg-indigo-500",  bg: "bg-indigo-50 dark:bg-indigo-950/30",   text: "text-indigo-700 dark:text-indigo-300",   icon: "text-indigo-500",  numBg: "bg-indigo-100 dark:bg-indigo-900/40",   badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300" },
-                ];
-                const hash = Array.from(slot.id).reduce((a, c) => a + c.charCodeAt(0), 0);
-                const rotated = palettes[hash % palettes.length];
-
-                // Status overrides: full → rose, near-full → amber.
+                // Status-driven palette:
+                //  - Full       → strong danger (red/rose)
+                //  - Filling    → warning (amber/orange)
+                //  - Available  → neutral (slate) blends with background
                 const accent = isFull
-                  ? { bar: "bg-rose-500", bg: "bg-rose-50 dark:bg-rose-950/30", text: "text-rose-700 dark:text-rose-300", icon: "text-rose-500", numBg: "bg-rose-100 dark:bg-rose-900/40", badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" }
+                  ? {
+                      bar: "bg-red-500",
+                      bg: "bg-red-50/80 dark:bg-red-950/30",
+                      text: "text-red-700 dark:text-red-300",
+                      icon: "text-red-600 dark:text-red-400",
+                      numBg: "bg-red-100 dark:bg-red-900/40",
+                      badge: "bg-red-500 text-white dark:bg-red-600",
+                      border: "border-red-300/80 dark:border-red-800/60",
+                      borderHover: "hover:border-red-400 dark:hover:border-red-700",
+                      ring: "ring-red-200/50 dark:ring-red-900/40",
+                    }
                   : fillPct >= 70
-                  ? { bar: "bg-amber-500", bg: "bg-amber-50 dark:bg-amber-950/30", text: "text-amber-700 dark:text-amber-300", icon: "text-amber-500", numBg: "bg-amber-100 dark:bg-amber-900/40", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" }
-                  : rotated;
+                  ? {
+                      bar: "bg-amber-500",
+                      bg: "bg-amber-50/70 dark:bg-amber-950/25",
+                      text: "text-amber-800 dark:text-amber-300",
+                      icon: "text-amber-600 dark:text-amber-400",
+                      numBg: "bg-amber-100 dark:bg-amber-900/40",
+                      badge: "bg-amber-500 text-white dark:bg-amber-600",
+                      border: "border-amber-300/70 dark:border-amber-800/50",
+                      borderHover: "hover:border-amber-400 dark:hover:border-amber-700",
+                      ring: "ring-amber-200/50 dark:ring-amber-900/40",
+                    }
+                  : {
+                      bar: "bg-slate-400 dark:bg-slate-500",
+                      bg: "bg-card",
+                      text: "text-foreground",
+                      icon: "text-muted-foreground",
+                      numBg: "bg-muted",
+                      badge: "bg-muted text-muted-foreground",
+                      border: "border-border",
+                      borderHover: "hover:border-foreground/30",
+                      ring: "ring-border/50",
+                    };
 
                 const statusLabel = isFull ? "Full" : isEmpty ? "Empty" : fillPct >= 70 ? "Filling" : "Available";
 
@@ -552,9 +572,11 @@ export const TimeSlotsTab = ({
                     key={slot.id}
                     className={cn(
                       "cursor-pointer transition-all duration-300 animate-fade-in group relative rounded-2xl",
-                      "border border-border/60 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06),0_4px_16px_-4px_rgba(0,0,0,0.04)]",
-                      "hover:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.12),0_4px_12px_-4px_rgba(0,0,0,0.06)] hover:-translate-y-1 hover:border-border",
-                      accent.bg
+                      "border-2 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06),0_4px_16px_-4px_rgba(0,0,0,0.04)]",
+                      "hover:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.12),0_4px_12px_-4px_rgba(0,0,0,0.06)] hover:-translate-y-1",
+                      accent.bg,
+                      accent.border,
+                      accent.borderHover
                     )}
                     style={{ animationDelay: `${index * 40}ms`, animationFillMode: "backwards" }}
                     onClick={() => handleCardClick(slot)}
