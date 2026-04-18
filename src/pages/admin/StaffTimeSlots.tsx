@@ -200,6 +200,7 @@ const StaffTimeSlots = () => {
               canCreate={canCreate}
               canEditDelete={canEditDelete}
               canViewMembers={canViewMembers}
+              trainerNameMap={trainerNameMap}
             />
           </TabsContent>
 
@@ -221,6 +222,7 @@ const StaffTimeSlots = () => {
           canCreate={canCreate}
           canEditDelete={canEditDelete}
           canViewMembers={false}
+          trainerNameMap={trainerNameMap}
         />
       )}
     </div>
