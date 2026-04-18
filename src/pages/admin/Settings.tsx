@@ -1064,8 +1064,8 @@ const AdminSettings = () => {
             </TabsList>
           </div>
 
-          {/* Content Area */}
-
+          {/* Content Area - disabled wrapper keeps tabs clickable but blocks edits */}
+          <fieldset disabled={!canEdit} className="border-0 p-0 m-0 min-w-0 disabled:opacity-95">
 
           {/* Registration Fields Tab */}
           <TabsContent value="registration" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
