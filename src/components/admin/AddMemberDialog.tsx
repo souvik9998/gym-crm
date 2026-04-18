@@ -770,9 +770,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         const { data: { session } } = await supabase.auth.getSession();
         const adminUserId = session?.user?.id || null;
         
-        // Send welcome/registration message if admin_add_member is enabled
-        const shouldAutoSend = await getWhatsAppAutoSendPreference(currentBranch?.id, "admin_add_member");
-        if (shouldAutoSend) {
+        // Send welcome/registration message — gated by the dialog checkbox
+        // (overrides the admin_add_member auto-send pref so admin can opt-out per member)
+        if (notifyWhatsApp) {
           await supabase.functions.invoke("send-whatsapp", {
             body: {
               phone, name, endDate: endDate.toISOString().split("T")[0], type: "new_registration",
