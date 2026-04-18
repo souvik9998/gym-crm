@@ -36,7 +36,7 @@ import {
 
 export const BranchManagement = () => {
   const { branches, allBranches, currentBranch, setCurrentBranch, refreshBranches, isStaffRestricted, tenantId } = useBranch();
-  const { isStaffLoggedIn } = useStaffAuth();
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
   const { isAdmin, isGymOwner } = useIsAdmin();
   const staffOps = useStaffOperations();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -217,6 +217,31 @@ export const BranchManagement = () => {
           }
 
           toast.success("Branch updated successfully");
+
+          if (staffUser) {
+            await logStaffActivity({
+              category: "settings", type: "branch_updated" as any,
+              description: `Staff "${staffUser.fullName}" updated branch: ${formData.name.trim()}`,
+              entityType: "branches", entityId: editingBranch.id,
+              entityName: formData.name.trim(),
+              oldValue: {
+                name: editingBranch.name,
+                address: editingBranch.address || null,
+                phone: editingBranch.phone || null,
+                email: editingBranch.email || null,
+              },
+              newValue: {
+                name: formData.name.trim(),
+                address: formData.address.trim() || null,
+                phone: formData.phone.trim() || null,
+                email: formData.email.trim() || null,
+              },
+              branchId: editingBranch.id,
+              staffId: staffUser.id,
+              staffName: staffUser.fullName,
+              staffPhone: staffUser.phone,
+            });
+          }
           
           if (editingBranch.id === currentBranch?.id) {
             setCurrentBranch({
