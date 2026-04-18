@@ -999,6 +999,17 @@ const AdminSettings = () => {
   return (
     <Fragment>
       <div className="w-full px-1 sm:px-0">
+        {!canEdit && (
+          <div className="mb-4 flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-3">
+            <EyeIcon className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">View-only access</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                You can review settings but cannot make changes. Ask your admin to grant Edit Settings permission to modify any values.
+              </p>
+            </div>
+          </div>
+        )}
         <Tabs value={activeTab} onValueChange={(val) => { setSearchParams({ tab: val }); setMobileMenuOpen(false); }}>
 
           {/* Mobile: dropdown tab selector */}
