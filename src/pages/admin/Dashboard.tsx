@@ -438,63 +438,6 @@ const AdminDashboard = () => {
                   
                   {/* Action Buttons - Right side (Desktop) */}
                   <div className="flex items-center gap-2 flex-wrap ml-auto">
-                    {/* Sort Button with Popover */}
-                    <Popover open={sortOpen} onOpenChange={setSortOpen}>
-                      <PopoverTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="icon"
-                          className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
-                          title="Sort"
-                        >
-                          {sortOrder === "asc" ? (
-                            <BarsArrowUpIcon className="w-4 h-4" />
-                          ) : (
-                            <BarsArrowDownIcon className="w-4 h-4" />
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-56 p-0" align="end">
-                        <div className="p-3 border-b border-border">
-                          <p className="text-sm font-medium text-foreground">Sort by</p>
-                        </div>
-                        <RadioGroup 
-                          value={sortBy} 
-                          onValueChange={(value) => setSortBy(value as typeof sortBy)}
-                          className="p-2"
-                        >
-                          <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                            <RadioGroupItem value="name" id="sort-name" />
-                            <Label htmlFor="sort-name" className="cursor-pointer flex-1 text-sm">Name</Label>
-                          </div>
-                          <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                            <RadioGroupItem value="join_date" id="sort-join" />
-                            <Label htmlFor="sort-join" className="cursor-pointer flex-1 text-sm">Join Date</Label>
-                          </div>
-                          <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                            <RadioGroupItem value="end_date" id="sort-expiry" />
-                            <Label htmlFor="sort-expiry" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
-                          </div>
-                        </RadioGroup>
-                        <Separator />
-                        <div className="p-2 space-y-1">
-                          <button
-                            onClick={() => setSortOrder("asc")}
-                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "asc" ? "bg-muted font-medium" : ""}`}
-                          >
-                            <BarsArrowUpIcon className="w-4 h-4" />
-                            Oldest first
-                          </button>
-                          <button
-                            onClick={() => setSortOrder("desc")}
-                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "desc" ? "bg-muted font-medium" : ""}`}
-                          >
-                            <BarsArrowDownIcon className="w-4 h-4" />
-                            Newest first
-                          </button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
                     
                     {/* Download/Export Button */}
                     <Button 
@@ -566,62 +509,6 @@ const AdminDashboard = () => {
                     </div>
                     {/* Tablet-only inline action buttons next to search */}
                     <div className="hidden md:flex lg:hidden items-center gap-1.5">
-                      <Popover open={sortOpen} onOpenChange={setSortOpen}>
-                        <PopoverTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="icon"
-                            className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
-                            title="Sort"
-                          >
-                            {sortOrder === "asc" ? (
-                              <BarsArrowUpIcon className="w-4 h-4" />
-                            ) : (
-                              <BarsArrowDownIcon className="w-4 h-4" />
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-56 p-0" align="end">
-                          <div className="p-3 border-b border-border">
-                            <p className="text-sm font-medium text-foreground">Sort by</p>
-                          </div>
-                          <RadioGroup 
-                            value={sortBy} 
-                            onValueChange={(value) => setSortBy(value as typeof sortBy)}
-                            className="p-2"
-                          >
-                            <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                              <RadioGroupItem value="name" id="sort-name-tablet" />
-                              <Label htmlFor="sort-name-tablet" className="cursor-pointer flex-1 text-sm">Name</Label>
-                            </div>
-                            <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                              <RadioGroupItem value="join_date" id="sort-join-tablet" />
-                              <Label htmlFor="sort-join-tablet" className="cursor-pointer flex-1 text-sm">Join Date</Label>
-                            </div>
-                            <div className="flex items-center space-x-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                              <RadioGroupItem value="end_date" id="sort-expiry-tablet" />
-                              <Label htmlFor="sort-expiry-tablet" className="cursor-pointer flex-1 text-sm">Expiry Date</Label>
-                            </div>
-                          </RadioGroup>
-                          <Separator />
-                          <div className="p-2 space-y-1">
-                            <button
-                              onClick={() => setSortOrder("asc")}
-                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "asc" ? "bg-muted font-medium" : ""}`}
-                            >
-                              <BarsArrowUpIcon className="w-4 h-4" />
-                              Oldest first
-                            </button>
-                            <button
-                              onClick={() => setSortOrder("desc")}
-                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted ${sortOrder === "desc" ? "bg-muted font-medium" : ""}`}
-                            >
-                              <BarsArrowDownIcon className="w-4 h-4" />
-                              Newest first
-                            </button>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
                       <Button 
                         variant="outline" 
                         size="icon"
