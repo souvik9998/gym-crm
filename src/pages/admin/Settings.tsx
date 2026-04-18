@@ -1823,7 +1823,7 @@ const AdminSettings = () => {
           <TabsContent value="subscription" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
             <SubscriptionPlanTab />
           </TabsContent>
-          
+          </fieldset>
        </Tabs>
 
       </div>
