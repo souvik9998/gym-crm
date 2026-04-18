@@ -1013,6 +1013,12 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setJoiningFee(0); setWantsPT(false); setSelectedTrainerId("");
     setPtMonths(1); setPtFee(0); setCurrentStep(1); setPaymentMode("cash");
     setExistingMember(null); setSelectedAction(null); setIsCheckingPhone(false);
+    setEmail(""); setOccupation("");
+    setBloodGroup(""); setHeightCm(""); setWeightKg(""); setMedicalConditions(""); setAllergies("");
+    setEmergencyContact1Name(""); setEmergencyContact1Phone("");
+    setEmergencyContact2Name(""); setEmergencyContact2Phone("");
+    setIdentityFiles([]); setMedicalFiles([]);
+    setNotifyWhatsApp(true);
     const today = new Date(); today.setHours(0, 0, 0, 0); setStartDate(today);
   };
 
