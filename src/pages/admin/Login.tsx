@@ -271,12 +271,13 @@ const AdminLogin = () => {
                 "radial-gradient(ellipse at top left, hsl(0 85% 55% / 0.18), transparent 55%), radial-gradient(ellipse at bottom right, hsl(0 85% 45% / 0.12), transparent 50%)",
             }}
           />
-          {/* Subtle diagonal lines */}
+          {/* Subtle grid pattern (matches landing page aesthetic) */}
           <div
-            className="absolute inset-0 opacity-[0.07]"
+            className="absolute inset-0 opacity-[0.06]"
             style={{
               backgroundImage:
-                "repeating-linear-gradient(135deg, hsl(0 85% 55%) 0, hsl(0 85% 55%) 1px, transparent 1px, transparent 22px)",
+                "linear-gradient(hsl(0 0% 100%) 1px, transparent 1px), linear-gradient(90deg, hsl(0 0% 100%) 1px, transparent 1px)",
+              backgroundSize: "56px 56px",
             }}
           />
           {/* Soft vignette */}
@@ -287,6 +288,51 @@ const AdminLogin = () => {
                 "linear-gradient(to top right, rgba(0,0,0,0.6), transparent, transparent)",
             }}
           />
+
+          {/* Animated border accents — corner brackets that breathe */}
+          <div className="pointer-events-none absolute inset-6 xl:inset-8">
+            {/* Top-left corner */}
+            <div
+              className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 rounded-tl-lg animate-pulse"
+              style={{ borderColor: BRAND_RED, animationDuration: "3s" }}
+            />
+            {/* Top-right corner */}
+            <div
+              className="absolute top-0 right-0 w-10 h-10 border-t-2 border-r-2 rounded-tr-lg animate-pulse"
+              style={{ borderColor: BRAND_RED, animationDuration: "3s", animationDelay: "0.75s" }}
+            />
+            {/* Bottom-left corner */}
+            <div
+              className="absolute bottom-0 left-0 w-10 h-10 border-b-2 border-l-2 rounded-bl-lg animate-pulse"
+              style={{ borderColor: BRAND_RED, animationDuration: "3s", animationDelay: "1.5s" }}
+            />
+            {/* Bottom-right corner */}
+            <div
+              className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 rounded-br-lg animate-pulse"
+              style={{ borderColor: BRAND_RED, animationDuration: "3s", animationDelay: "2.25s" }}
+            />
+            {/* Travelling shimmer line — top edge */}
+            <div className="absolute top-0 left-10 right-10 h-px overflow-hidden">
+              <div
+                className="absolute inset-y-0 w-1/3 animate-[shimmer_4s_linear_infinite]"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent, hsl(0 85% 55% / 0.8), transparent)",
+                }}
+              />
+            </div>
+            {/* Travelling shimmer line — bottom edge */}
+            <div className="absolute bottom-0 left-10 right-10 h-px overflow-hidden">
+              <div
+                className="absolute inset-y-0 w-1/3 animate-[shimmer_4s_linear_infinite]"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent, hsl(0 85% 55% / 0.8), transparent)",
+                  animationDelay: "2s",
+                }}
+              />
+            </div>
+          </div>
 
           <div className="relative z-10 flex flex-col justify-between w-full p-12 xl:p-16">
             {/* Top row */}
@@ -308,23 +354,55 @@ const AdminLogin = () => {
 
             {/* Hero */}
             <div className="space-y-8 max-w-xl">
+              {/* Trust pill */}
+              <div
+                className={`inline-flex items-center gap-2 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 px-3.5 py-1.5 transition-all duration-700 delay-150 ${
+                  mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
+                }`}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full animate-pulse"
+                  style={{ backgroundColor: BRAND_RED }}
+                />
+                <span className="text-xs font-medium text-white/80">
+                  Trusted by 50+ gyms across India
+                </span>
+              </div>
+
               <h1
                 className={`text-5xl xl:text-6xl font-black leading-[0.95] tracking-tight transition-all duration-700 delay-200 ${
                   mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
                 }`}
               >
-                BUILT FOR
+                Run Your Gym
                 <br />
-                <span style={{ color: BRAND_RED }}>SERIOUS</span>
-                <br />
-                GYMS
+                on{" "}
+                <span className="relative inline-block">
+                  <span style={{ color: BRAND_RED }}>Autopilot</span>
+                  {/* Hand-drawn underline */}
+                  <svg
+                    className="absolute -bottom-2 left-0 w-full"
+                    height="10"
+                    viewBox="0 0 200 10"
+                    fill="none"
+                    preserveAspectRatio="none"
+                  >
+                    <path
+                      d="M2 6 Q 50 2, 100 5 T 198 4"
+                      stroke={BRAND_RED}
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+                  </svg>
+                </span>
               </h1>
               <p
                 className={`text-base xl:text-lg text-white/70 leading-relaxed max-w-md transition-all duration-700 delay-300 ${
                   mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
                 }`}
               >
-                The all-in-one gym management platform trusted by fitness studios across India.
+                The all-in-one gym management platform built for fitness studios that mean business.
               </p>
 
               {/* Stats */}
@@ -334,8 +412,8 @@ const AdminLogin = () => {
                 }`}
               >
                 {[
-                  { value: "500+", label: "Gyms" },
-                  { value: "50K+", label: "Members" },
+                  { value: "50+", label: "Gyms" },
+                  { value: "10K+", label: "Members" },
                   { value: "99.9%", label: "Uptime" },
                 ].map((stat) => (
                   <div key={stat.label}>
@@ -356,7 +434,7 @@ const AdminLogin = () => {
             {/* Footer line */}
             <div className="flex items-center justify-between text-xs text-white/40">
               <span>© {new Date().getFullYear()} GymKloud</span>
-              <span className="font-mono tracking-wider">v2.0</span>
+              <span className="font-mono tracking-wider uppercase">All systems operational</span>
             </div>
           </div>
         </aside>
