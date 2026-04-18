@@ -85,6 +85,11 @@ export const SlotMembersTab = ({
 
   const { invalidatePtSubscriptions } = useInvalidateQueries();
 
+  // Auto-select & lock trainer when restricted (staff with assigned-only access).
+  useEffect(() => {
+    if (restrictedTrainerId) setSelectedTrainer(restrictedTrainerId);
+  }, [restrictedTrainerId]);
+
   const resolveTrainerPtId = useCallback(async (staffId: string) => {
     const { data: staffRec } = await supabase
       .from("staff" as any)
