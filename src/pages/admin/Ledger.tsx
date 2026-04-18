@@ -618,6 +618,10 @@ const AdminLedger = () => {
     return categories.find((c) => c.value === category)?.label || category;
   };
 
+  if (showSkeleton) {
+    return <LedgerSkeleton />;
+  }
+
   return (
     <Fragment>
       <div className="max-w-6xl mx-auto space-y-6">
