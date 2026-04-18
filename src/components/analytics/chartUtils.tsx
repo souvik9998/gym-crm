@@ -5,6 +5,43 @@ import { ReactNode } from "react";
  * presentation consistent across every analytics chart.
  */
 
+export type Granularity = "day" | "week" | "month";
+export interface IntervalMeta { startISO: string; endISO: string }
+
+/** Format a bucket label into a human-readable date range, e.g. "06 – 12 Apr 2024". */
+export function formatBucketRange(
+  label: string,
+  meta: IntervalMeta | undefined,
+  granularity: Granularity | undefined
+): string | undefined {
+  if (!meta) return undefined;
+  const start = new Date(meta.startISO);
+  const end = new Date(meta.endISO);
+  const sameDay = start.toDateString() === end.toDateString();
+  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+
+  if (granularity === "day" || sameDay) {
+    return start.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
+  }
+  if (granularity === "month") {
+    return start.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  }
+  // week / generic range
+  if (sameMonth) {
+    return `${start.toLocaleDateString("en-GB", { day: "2-digit" })} – ${end.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}`;
+  }
+  return `${start.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} – ${end.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}`;
+}
+
+export function granularityLabel(g: Granularity | undefined): string {
+  switch (g) {
+    case "day": return "day";
+    case "week": return "week";
+    case "month": return "month";
+    default: return "interval";
+  }
+}
+
 // ---------- Number formatting ----------
 export const formatINR = (value: number): string => {
   if (!isFinite(value)) return "₹0";
