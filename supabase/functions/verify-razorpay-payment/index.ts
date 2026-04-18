@@ -431,11 +431,23 @@ Deno.serve(async (req) => {
     // ============ REGULAR MEMBER HANDLING ============
     let finalMemberId = memberId;
 
+    // Normalize possibly-camelCase memberDetails fields (public registration form sends camelCase)
+    const md: any = memberDetails || {};
+    const mdPhotoIdType = md.photo_id_type ?? md.photoIdType ?? null;
+    const mdPhotoIdNumber = md.photo_id_number ?? md.photoIdNumber ?? null;
+    const mdDateOfBirth = md.date_of_birth ?? md.dateOfBirth ?? null;
+    const mdEmail = md.email ?? null;
+
     // If new member, create member record
     if (isNewMember && !memberId) {
       const { data: member, error: memberError } = await supabase
         .from("members")
-        .insert({ name: memberName, phone: memberPhone, branch_id: branchId || null })
+        .insert({
+          name: memberName,
+          phone: memberPhone,
+          email: mdEmail,
+          branch_id: branchId || null,
+        })
         .select()
         .single();
 
@@ -452,11 +464,11 @@ Deno.serve(async (req) => {
           .from("member_details")
           .insert({
             member_id: finalMemberId,
-            gender: memberDetails.gender || null,
-            photo_id_type: memberDetails.photoIdType || null,
-            photo_id_number: memberDetails.photoIdNumber || null,
-            address: memberDetails.address || null,
-            date_of_birth: memberDetails.dateOfBirth || null,
+            gender: md.gender || null,
+            photo_id_type: mdPhotoIdType,
+            photo_id_number: mdPhotoIdNumber,
+            address: md.address || null,
+            date_of_birth: mdDateOfBirth,
           });
 
         if (detailsError) {
