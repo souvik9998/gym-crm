@@ -88,22 +88,50 @@ export const DobInput = ({ value, onChange, className, error, onValidityChange }
 
   const handleDayChange = (val: string) => {
     const clean = val.replace(/\D/g, "").slice(0, 2);
-    const num = parseInt(clean, 10);
-    if (clean.length === 2 && (num < 1 || num > 31)) return;
+    // Reject only impossible first digits (4-9 as first digit means day > 31 is impossible? No — 4,5,6,7,8,9 as first digit always > 31)
+    if (clean.length === 1) {
+      const firstNum = parseInt(clean, 10);
+      if (firstNum > 3) {
+        // Auto-pad single digit 4-9 → "04"-"09" and advance
+        const padded = `0${clean}`;
+        const next = { ...parts, day: padded };
+        setParts(next);
+        emitChange(next.day, next.month, next.year);
+        monthRef.current?.focus();
+        return;
+      }
+    }
     const next = { ...parts, day: clean };
     setParts(next);
     emitChange(next.day, next.month, next.year);
-    if (clean.length === 2) monthRef.current?.focus();
+    // Auto-advance only when 2 digits AND value is a valid day (1-31)
+    if (clean.length === 2) {
+      const num = parseInt(clean, 10);
+      if (num >= 1 && num <= 31) monthRef.current?.focus();
+    }
   };
 
   const handleMonthChange = (val: string) => {
     const clean = val.replace(/\D/g, "").slice(0, 2);
-    const num = parseInt(clean, 10);
-    if (clean.length === 2 && (num < 1 || num > 12)) return;
+    // Auto-pad single digit 2-9 → "02"-"09" and advance (since 12 is max)
+    if (clean.length === 1) {
+      const firstNum = parseInt(clean, 10);
+      if (firstNum > 1) {
+        const padded = `0${clean}`;
+        const next = { ...parts, month: padded };
+        setParts(next);
+        emitChange(next.day, next.month, next.year);
+        yearRef.current?.focus();
+        return;
+      }
+    }
     const next = { ...parts, month: clean };
     setParts(next);
     emitChange(next.day, next.month, next.year);
-    if (clean.length === 2) yearRef.current?.focus();
+    if (clean.length === 2) {
+      const num = parseInt(clean, 10);
+      if (num >= 1 && num <= 12) yearRef.current?.focus();
+    }
   };
 
   const handleYearChange = (val: string) => {
