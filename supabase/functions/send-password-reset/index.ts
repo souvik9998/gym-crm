@@ -57,20 +57,16 @@ function buildEmailHtml(resetUrl: string, email: string) {
               <td style="padding:32px 32px 8px 32px;text-align:center;">
                 <div style="display:inline-block;width:56px;height:56px;border-radius:14px;background:#0f172a;color:#ffffff;font-weight:700;font-size:22px;line-height:56px;letter-spacing:-0.5px;">GK</div>
                 <h1 style="margin:20px 0 4px 0;font-size:22px;font-weight:600;color:#0f172a;">Reset your password</h1>
-                <p style="margin:0;color:#64748b;font-size:14px;">GymKloud account security</p>
+                <p style="margin:0;color:#64748b;font-size:14px;">Secure GymKloud password recovery</p>
               </td>
             </tr>
             <tr>
               <td style="padding:24px 32px 8px 32px;">
                 <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#334155;">
-                  Hi there,
-                </p>
-                <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#334155;">
-                  We received a request to reset the password for the GymKloud account associated with
-                  <strong style="color:#0f172a;">${safeEmail}</strong>.
+                  We received a password reset request for <strong style="color:#0f172a;">${safeEmail}</strong>.
                 </p>
                 <p style="margin:0 0 24px 0;font-size:15px;line-height:1.6;color:#334155;">
-                  Click the button below to choose a new password. This link will expire in 1 hour.
+                  Use the secure button below to open the GymKloud reset page on <strong>app.gymkloud.in</strong> and set a new password. This one-time link expires in 1 hour.
                 </p>
                 <div style="text-align:center;margin:28px 0;">
                   <a href="${safeResetUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:600;font-size:15px;">
@@ -78,15 +74,14 @@ function buildEmailHtml(resetUrl: string, email: string) {
                   </a>
                 </div>
                 <p style="margin:16px 0 8px 0;font-size:13px;color:#64748b;line-height:1.6;">
-                  Or copy and paste this URL into your browser:
+                  Secure reset link:
                 </p>
                 <p style="margin:0 0 24px 0;font-size:12px;word-break:break-all;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;color:#475569;">
                   ${safeResetUrl}
                 </p>
                 <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;" />
                 <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">
-                  If you didn't request a password reset, you can safely ignore this email — your password
-                  won't change.
+                  If you didn't request this, you can ignore this email. Only someone with access to this mailbox can use the secure reset link.
                 </p>
               </td>
             </tr>
@@ -160,14 +155,15 @@ Deno.serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const { data: linkData, error: linkErr } = await admin.auth.admin
-      .generateLink({
-        type: "recovery",
-        email,
-        options: { redirectTo },
-      });
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo },
+    });
 
-    if (linkErr || !linkData?.properties?.action_link) {
+    const tokenHash = linkData?.properties?.hashed_token;
+
+    if (linkErr || !tokenHash) {
       console.warn("generateLink issue:", linkErr?.message);
       return respond(true, {
         data: {
@@ -177,10 +173,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // The action_link verifies the token on Supabase and then redirects the
-    // user to `redirectTo` (https://app.gymkloud.in/reset-password) where our
-    // branded reset page handles the recovery session.
-    const resetUrl = linkData.properties.action_link;
+    const brandedResetUrl = new URL(redirectTo);
+    brandedResetUrl.searchParams.set("token_hash", tokenHash);
+    brandedResetUrl.searchParams.set("type", "recovery");
+    brandedResetUrl.searchParams.set("email", email);
 
     const resendResponse = await fetch(RESEND_API_URL, {
       method: "POST",
@@ -192,7 +188,7 @@ Deno.serve(async (req) => {
         from: FROM_ADDRESS,
         to: [email],
         subject: "Reset your GymKloud password",
-        html: buildEmailHtml(resetUrl, email),
+        html: buildEmailHtml(brandedResetUrl.toString(), email),
       }),
     });
 
