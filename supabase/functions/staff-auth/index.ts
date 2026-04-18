@@ -344,10 +344,36 @@ Deno.serve(async (req) => {
 
         const token = authHeader.replace("Bearer ", "");
 
-        // Verify JWT via Supabase Auth
-        const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+        const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
+        if (!supabaseAnonKey) {
+          throw new Error("Missing Supabase anon key");
+        }
 
-        if (userError || !user) {
+        const authClient = createClient(SUPABASE_URL, supabaseAnonKey, {
+          global: { headers: { Authorization: authHeader } },
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+
+        const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+        let authUserId = claimsData?.claims?.sub ? String(claimsData.claims.sub) : null;
+
+        if (!authUserId) {
+          const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+          authUserId = user?.id ?? null;
+
+          if (!authUserId) {
+            console.warn("staff-auth: verify-session auth failed", {
+              claimsError: claimsError?.message,
+              userError: userError?.message,
+            });
+            return new Response(
+              JSON.stringify({ valid: false, error: "Invalid or expired session" }),
+              { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+
+        if (!authUserId) {
           return new Response(
             JSON.stringify({ valid: false, error: "Invalid or expired session" }),
             { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -358,13 +384,13 @@ Deno.serve(async (req) => {
         const { data: staffList, error: staffError } = await supabaseAdmin
           .from("staff")
           .select("id, full_name, phone, role, is_active")
-          .eq("auth_user_id", user.id)
+          .eq("auth_user_id", authUserId)
           .eq("is_active", true);
 
         const staff = staffList?.[0];
 
         if (staffError || !staff) {
-          console.error("Staff lookup failed:", { userId: user.id, error: staffError });
+          console.error("Staff lookup failed:", { userId: authUserId, error: staffError });
           return new Response(
             JSON.stringify({ valid: false, error: "Staff record not found" }),
             { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -417,7 +443,7 @@ Deno.serve(async (req) => {
               staff_role: staff.role,
               ip_address: getClientIP(req),
               user_agent: req.headers.get("user-agent") || "Unknown",
-              auth_user_id: user.id,
+              auth_user_id: authUserId,
               login_time: new Date().toISOString(),
             },
           });
@@ -428,7 +454,7 @@ Deno.serve(async (req) => {
             valid: true,
             staff: {
               id: staff.id,
-              authUserId: user.id,
+              authUserId,
               fullName: staff.full_name,
               phone: staff.phone,
               role: staff.role,
