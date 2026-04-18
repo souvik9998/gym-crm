@@ -253,6 +253,82 @@ export const TimeSlotsTab = ({
     return `${h12}:${m} ${ampm}`;
   };
 
+  // Derived: filtered slots
+  const filteredSlots = useMemo(() => {
+    return slots.filter(s => {
+      if (filterTrainer !== "all" && s.trainer_id !== filterTrainer) return false;
+      const filled = s.member_count || 0;
+      const isFull = filled >= s.capacity;
+      if (filterStatus === "full" && !isFull) return false;
+      if (filterStatus === "available" && isFull) return false;
+      if (filterStatus === "empty" && filled !== 0) return false;
+      if (filterRecurring === "recurring" && !s.is_recurring) return false;
+      if (filterRecurring === "one_time" && s.is_recurring) return false;
+      if (filterTime !== "all") {
+        const startHour = parseInt(s.start_time.split(":")[0]);
+        if (filterTime === "morning" && (startHour < 5 || startHour >= 12)) return false;
+        if (filterTime === "afternoon" && (startHour < 12 || startHour >= 17)) return false;
+        if (filterTime === "evening" && (startHour < 17 || startHour >= 23)) return false;
+      }
+      if (search) {
+        const q = search.toLowerCase();
+        if (!(s.trainer_name || "").toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [slots, filterTrainer, filterStatus, filterRecurring, filterTime, search]);
+
+  // Summary stats across all slots (not just filtered)
+  const summary = useMemo(() => {
+    const total = slots.length;
+    const totalCapacity = slots.reduce((sum, s) => sum + s.capacity, 0);
+    const totalFilled = slots.reduce((sum, s) => sum + (s.member_count || 0), 0);
+    const fullSlots = slots.filter(s => (s.member_count || 0) >= s.capacity).length;
+    const availableSeats = totalCapacity - totalFilled;
+    const utilization = totalCapacity > 0 ? Math.round((totalFilled / totalCapacity) * 100) : 0;
+    const trainersWithSlots = new Set(slots.map(s => s.trainer_id)).size;
+    return { total, totalCapacity, totalFilled, fullSlots, availableSeats, utilization, trainersWithSlots };
+  }, [slots]);
+
+  // Skeleton component
+  const SkeletonGrid = () => (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Card
+          key={i}
+          className="border-0 shadow-sm animate-fade-in"
+          style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
+        >
+          <CardHeader className="p-3 lg:p-4 pb-2">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-3 lg:p-4 pt-0 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-3 w-10" />
+            </div>
+            <Skeleton className="h-1.5 w-full rounded-full" />
+            <div className="flex gap-1">
+              {Array.from({ length: 4 }).map((_, j) => (
+                <Skeleton key={j} className="h-4 w-8 rounded" />
+              ))}
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Skeleton className="h-7 flex-1 rounded-md" />
+              <Skeleton className="h-7 w-9 rounded-md" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
