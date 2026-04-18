@@ -360,7 +360,7 @@ function TrainerPerformanceSection() {
 function PackageSalesSection() {
   const { analyticsPeriod, analyticsCustomDateFrom, analyticsCustomDateTo } = useAnalyticsStore();
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
-  const { data, isLoading } = useAggregatedAnalyticsPackageSales(
+  const { data, isLoading, granularity, intervalMeta } = useAggregatedAnalyticsPackageSales(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
@@ -383,6 +383,8 @@ function PackageSalesSection() {
           data={data?.packageSalesData || []}
           packageList={data?.packageList || []}
           isLoading={isLoading}
+          granularity={granularity}
+          intervalMeta={intervalMeta}
         />
       </Suspense>
     </SectionCard>
