@@ -46,6 +46,7 @@ import { DevicePhoneMobileIcon, ChevronDownIcon, LockClosedIcon } from "@heroico
 import { StaffCardSkeleton } from "./StaffCardSkeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DetailItem } from "./StaffDetailItem";
+import { nameSchema, phoneSchema, passwordSchema, getPhotoIdSchema } from "@/lib/validation";
 
 interface StaffTrainersTabProps {
   trainers: Staff[];
