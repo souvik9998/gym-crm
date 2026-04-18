@@ -102,14 +102,12 @@ const AdminLogin = () => {
   }, [authLoading, isAuthenticated, isStaffLoggedIn, isAdmin, isSuperAdmin, navigate]);
 
   useEffect(() => {
-    // Only clear cache and show UI once we know user is NOT authenticated
     if (!authLoading && !isAuthenticated && !isStaffLoggedIn) {
       queryClient.clear();
       setTimeout(() => setMounted(true), 50);
     }
   }, [authLoading, isAuthenticated, isStaffLoggedIn]);
 
-  // While auth is loading or user is authenticated (about to redirect), show a minimal spinner
   if (authLoading || isAuthenticated || isStaffLoggedIn) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -167,7 +165,6 @@ const AdminLogin = () => {
         }
       }
 
-      // Log admin login activity
       try {
         const { data: tenantMember } = await supabase
           .from("tenant_members")
@@ -253,240 +250,360 @@ const AdminLogin = () => {
     }
   };
 
+  // Brand red used in the desktop split panel + CTA on this page only.
+  const BRAND_RED = "hsl(0 85% 55%)";
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Main centered content */}
-      <div className="flex-1 flex items-center justify-center p-4 pb-16">
-        <div className={`w-full max-w-md transition-all duration-700 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
-          <Card className="border border-border/50 shadow-2xl shadow-foreground/5 overflow-hidden">
-            <CardHeader className="text-center pb-4 pt-8">
-              {/* Animated GK Logo */}
-              <div className={`flex items-center justify-center mb-5 transition-all duration-500 delay-200 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}>
-                <div className="relative group cursor-default">
-                  <div className="absolute -inset-1.5 rounded-2xl bg-gradient-to-br from-foreground/20 to-foreground/5 blur-lg opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
-                  <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center bg-foreground shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all duration-300">
-                    <span className="text-background font-bold text-2xl tracking-tight select-none">GK</span>
+      <div className="flex-1 flex flex-col lg:flex-row">
+        {/* ===== LEFT: Brand panel (desktop only) ===== */}
+        <aside
+          className={`hidden lg:flex relative w-1/2 xl:w-[55%] overflow-hidden transition-all duration-700 ease-out ${
+            mounted ? "opacity-100" : "opacity-0"
+          }`}
+          style={{ backgroundColor: "hsl(0 0% 6%)", color: "hsl(0 0% 100%)" }}
+        >
+          {/* Diagonal red glow gradients */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                "radial-gradient(ellipse at top left, hsl(0 85% 55% / 0.18), transparent 55%), radial-gradient(ellipse at bottom right, hsl(0 85% 45% / 0.12), transparent 50%)",
+            }}
+          />
+          {/* Subtle diagonal lines */}
+          <div
+            className="absolute inset-0 opacity-[0.07]"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(135deg, hsl(0 85% 55%) 0, hsl(0 85% 55%) 1px, transparent 1px, transparent 22px)",
+            }}
+          />
+          {/* Soft vignette */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                "linear-gradient(to top right, rgba(0,0,0,0.6), transparent, transparent)",
+            }}
+          />
+
+          <div className="relative z-10 flex flex-col justify-between w-full p-12 xl:p-16">
+            {/* Top row */}
+            <div className="flex items-center justify-between">
+              <span
+                className="inline-flex items-center gap-2 rounded-full text-white text-[10px] font-semibold tracking-[0.18em] uppercase px-3 py-1.5 shadow-lg"
+                style={{ backgroundColor: BRAND_RED, boxShadow: "0 10px 30px -10px hsl(0 85% 55% / 0.5)" }}
+              >
+                Admin Portal
+              </span>
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-2 h-2 rounded-full animate-pulse"
+                  style={{ backgroundColor: BRAND_RED }}
+                />
+                <span className="text-xs text-white/60 font-medium">Live</span>
+              </div>
+            </div>
+
+            {/* Hero */}
+            <div className="space-y-8 max-w-xl">
+              <h1
+                className={`text-5xl xl:text-6xl font-black leading-[0.95] tracking-tight transition-all duration-700 delay-200 ${
+                  mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                }`}
+              >
+                BUILT FOR
+                <br />
+                <span style={{ color: BRAND_RED }}>SERIOUS</span>
+                <br />
+                GYMS
+              </h1>
+              <p
+                className={`text-base xl:text-lg text-white/70 leading-relaxed max-w-md transition-all duration-700 delay-300 ${
+                  mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                }`}
+              >
+                The all-in-one gym management platform trusted by fitness studios across India.
+              </p>
+
+              {/* Stats */}
+              <div
+                className={`grid grid-cols-3 gap-6 pt-4 transition-all duration-700 delay-500 ${
+                  mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                }`}
+              >
+                {[
+                  { value: "500+", label: "Gyms" },
+                  { value: "50K+", label: "Members" },
+                  { value: "99.9%", label: "Uptime" },
+                ].map((stat) => (
+                  <div key={stat.label}>
+                    <div
+                      className="text-3xl xl:text-4xl font-black leading-none"
+                      style={{ color: BRAND_RED }}
+                    >
+                      {stat.value}
+                    </div>
+                    <div className="mt-2 text-[10px] tracking-[0.18em] uppercase text-white/50 font-semibold">
+                      {stat.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer line */}
+            <div className="flex items-center justify-between text-xs text-white/40">
+              <span>© {new Date().getFullYear()} GymKloud</span>
+              <span className="font-mono tracking-wider">v2.0</span>
+            </div>
+          </div>
+        </aside>
+
+        {/* ===== RIGHT: Login card ===== */}
+        <main className="flex-1 flex items-center justify-center p-4 lg:p-12 pb-16 lg:pb-12 bg-background">
+          <div
+            className={`w-full max-w-md transition-all duration-700 ease-out ${
+              mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+            }`}
+          >
+            <Card className="border border-border/50 shadow-2xl shadow-foreground/5 lg:border-0 lg:shadow-none overflow-hidden">
+              <CardHeader className="text-center pb-4 pt-8 lg:pt-4">
+                {/* Animated GK Logo */}
+                <div className={`flex items-center justify-center mb-5 transition-all duration-500 delay-200 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}>
+                  <div className="relative group cursor-default">
+                    <div className="absolute -inset-1.5 rounded-2xl bg-gradient-to-br from-foreground/20 to-foreground/5 blur-lg opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center bg-foreground shadow-lg group-hover:shadow-xl group-hover:scale-105 transition-all duration-300">
+                      <span className="text-background font-bold text-2xl tracking-tight select-none">GK</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <CardTitle className={`text-xl md:text-2xl font-semibold transition-all duration-500 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
-                GymKloud Login
-              </CardTitle>
-              <CardDescription className={`transition-all duration-500 delay-400 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
-                Sign in to access the admin dashboard
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="px-6 pb-8">
-              <Tabs defaultValue="admin" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-6 h-11">
-                  <TabsTrigger value="admin" className="gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:shadow-sm">
-                    <Mail className="w-4 h-4" />
-                    Admin
-                  </TabsTrigger>
-                  <TabsTrigger value="staff" className="gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:shadow-sm">
-                    <User className="w-4 h-4" />
-                    Staff
-                  </TabsTrigger>
-                </TabsList>
+                <CardTitle className={`text-xl md:text-2xl font-semibold transition-all duration-500 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
+                  GymKloud Login
+                </CardTitle>
+                <CardDescription className={`transition-all duration-500 delay-400 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+                  Sign in to access the admin dashboard
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-6 pb-8 lg:px-2">
+                <Tabs defaultValue="admin" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-6 h-11">
+                    <TabsTrigger value="admin" className="gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:shadow-sm">
+                      <Mail className="w-4 h-4" />
+                      Admin
+                    </TabsTrigger>
+                    <TabsTrigger value="staff" className="gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:shadow-sm">
+                      <User className="w-4 h-4" />
+                      Staff
+                    </TabsTrigger>
+                  </TabsList>
 
-                <TabsContent value="admin" className="animate-fade-in">
-                  <form onSubmit={handleAdminSubmit} className="space-y-5">
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-muted-foreground" />
-                        Email Address
-                      </Label>
-                      <ValidatedInput
-                        id="email"
-                        type="email"
-                        placeholder="Enter your email address"
-                        value={email}
-                        onChange={(e) => {
-                          setEmail(e.target.value);
-                          if (adminTouched.email) {
-                            setAdminErrors((prev) => ({
-                              ...prev,
-                              email: validateField(emailSchema, e.target.value.trim()),
-                            }));
-                          }
-                        }}
-                        onValidate={(v) => {
-                          setAdminTouched((prev) => ({ ...prev, email: true }));
-                          setAdminErrors((prev) => ({ ...prev, email: validateField(emailSchema, v) }));
-                        }}
-                        error={adminTouched.email ? adminErrors.email : undefined}
-                        autoComplete="email"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="admin-password" className="text-sm font-medium flex items-center gap-2">
-                        <Lock className="w-4 h-4 text-muted-foreground" />
-                        Password
-                      </Label>
-                      <div className="relative">
+                  <TabsContent value="admin" className="animate-fade-in">
+                    <form onSubmit={handleAdminSubmit} className="space-y-5">
+                      <div className="space-y-2">
+                        <Label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-muted-foreground" />
+                          Email Address
+                        </Label>
                         <ValidatedInput
-                          id="admin-password"
-                          type={showAdminPassword ? "text" : "password"}
-                          placeholder="••••••••"
-                          value={adminPassword}
-                          className="pr-12"
+                          id="email"
+                          type="email"
+                          placeholder="Enter your email address"
+                          value={email}
                           onChange={(e) => {
-                            setAdminPassword(e.target.value);
-                            if (adminTouched.password && e.target.value.length > 0 && e.target.value.length < 6) {
-                              setAdminErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
-                            } else {
-                              setAdminErrors((prev) => ({ ...prev, password: undefined }));
+                            setEmail(e.target.value);
+                            if (adminTouched.email) {
+                              setAdminErrors((prev) => ({
+                                ...prev,
+                                email: validateField(emailSchema, e.target.value.trim()),
+                              }));
                             }
                           }}
-                          onValidate={() => {
-                            setAdminTouched((prev) => ({ ...prev, password: true }));
-                            if (adminPassword.length > 0 && adminPassword.length < 6) {
-                              setAdminErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
-                            }
+                          onValidate={(v) => {
+                            setAdminTouched((prev) => ({ ...prev, email: true }));
+                            setAdminErrors((prev) => ({ ...prev, email: validateField(emailSchema, v) }));
                           }}
-                          error={adminTouched.password ? adminErrors.password : undefined}
-                          autoComplete="current-password"
+                          error={adminTouched.email ? adminErrors.email : undefined}
+                          autoComplete="email"
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowAdminPassword((v) => !v)}
-                          className="absolute right-3 top-3 h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                          aria-label={showAdminPassword ? "Hide password" : "Show password"}
-                          tabIndex={-1}
-                        >
-                          {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
                       </div>
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          onClick={handleForgotPassword}
-                          disabled={isResetting}
-                          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                        >
-                          {isResetting ? "Sending..." : "Forgot password?"}
-                        </button>
-                      </div>
-                    </div>
 
-                    <Button
-                      type="submit"
-                      variant="accent"
-                      size="lg"
-                      className="w-full transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-                      disabled={isAdminLoading || !email.trim() || !adminPassword}
-                    >
-                      {isAdminLoading ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
-                          Signing In...
+                      <div className="space-y-2">
+                        <Label htmlFor="admin-password" className="text-sm font-medium flex items-center gap-2">
+                          <Lock className="w-4 h-4 text-muted-foreground" />
+                          Password
+                        </Label>
+                        <div className="relative">
+                          <ValidatedInput
+                            id="admin-password"
+                            type={showAdminPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            value={adminPassword}
+                            className="pr-12"
+                            onChange={(e) => {
+                              setAdminPassword(e.target.value);
+                              if (adminTouched.password && e.target.value.length > 0 && e.target.value.length < 6) {
+                                setAdminErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                              } else {
+                                setAdminErrors((prev) => ({ ...prev, password: undefined }));
+                              }
+                            }}
+                            onValidate={() => {
+                              setAdminTouched((prev) => ({ ...prev, password: true }));
+                              if (adminPassword.length > 0 && adminPassword.length < 6) {
+                                setAdminErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                              }
+                            }}
+                            error={adminTouched.password ? adminErrors.password : undefined}
+                            autoComplete="current-password"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowAdminPassword((v) => !v)}
+                            className="absolute right-3 top-3 h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                            aria-label={showAdminPassword ? "Hide password" : "Show password"}
+                            tabIndex={-1}
+                          >
+                            {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
                         </div>
-                      ) : (
-                        "Sign In"
-                      )}
-                    </Button>
-                  </form>
-                </TabsContent>
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={handleForgotPassword}
+                            disabled={isResetting}
+                            className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                          >
+                            {isResetting ? "Sending..." : "Forgot password?"}
+                          </button>
+                        </div>
+                      </div>
 
-                <TabsContent value="staff" className="animate-fade-in">
-                  <form onSubmit={handleStaffSubmit} className="space-y-5">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-muted-foreground" />
-                        Phone Number
-                      </Label>
-                      <ValidatedInput
-                        id="phone"
-                        type="tel"
-                        placeholder="Enter your phone number"
-                        value={phone}
-                        onChange={(e) => {
-                          const cleaned = e.target.value.replace(/\D/g, "").slice(0, 10);
-                          setPhone(cleaned);
-                          if (staffTouched.phone && cleaned.length === 10) {
-                            setStaffErrors((prev) => ({
-                              ...prev,
-                              phone: validateField(phoneSchema, cleaned),
-                            }));
-                          }
+                      <Button
+                        type="submit"
+                        size="lg"
+                        className="w-full text-white font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                        style={{
+                          backgroundColor: BRAND_RED,
+                          boxShadow: "0 10px 25px -8px hsl(0 85% 55% / 0.45)",
                         }}
-                        onValidate={(v) => {
-                          setStaffTouched((prev) => ({ ...prev, phone: true }));
-                          setStaffErrors((prev) => ({ ...prev, phone: validateField(phoneSchema, v) }));
-                        }}
-                        error={staffTouched.phone ? staffErrors.phone : undefined}
-                        autoComplete="tel"
-                      />
-                    </div>
+                        disabled={isAdminLoading || !email.trim() || !adminPassword}
+                      >
+                        {isAdminLoading ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Signing In...
+                          </div>
+                        ) : (
+                          "Sign In"
+                        )}
+                      </Button>
+                    </form>
+                  </TabsContent>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="staff-password" className="text-sm font-medium flex items-center gap-2">
-                        <Lock className="w-4 h-4 text-muted-foreground" />
-                        Password
-                      </Label>
-                      <div className="relative">
+                  <TabsContent value="staff" className="animate-fade-in">
+                    <form onSubmit={handleStaffSubmit} className="space-y-5">
+                      <div className="space-y-2">
+                        <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-muted-foreground" />
+                          Phone Number
+                        </Label>
                         <ValidatedInput
-                          id="staff-password"
-                          type={showStaffPassword ? "text" : "password"}
-                          placeholder="••••••••"
-                          value={staffPassword}
-                          className="pr-12"
+                          id="phone"
+                          type="tel"
+                          placeholder="Enter your phone number"
+                          value={phone}
                           onChange={(e) => {
-                            setStaffPassword(e.target.value);
-                            if (staffTouched.password && e.target.value.length > 0 && e.target.value.length < 6) {
-                              setStaffErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
-                            } else {
-                              setStaffErrors((prev) => ({ ...prev, password: undefined }));
+                            const cleaned = e.target.value.replace(/\D/g, "").slice(0, 10);
+                            setPhone(cleaned);
+                            if (staffTouched.phone && cleaned.length === 10) {
+                              setStaffErrors((prev) => ({
+                                ...prev,
+                                phone: validateField(phoneSchema, cleaned),
+                              }));
                             }
                           }}
-                          onValidate={() => {
-                            setStaffTouched((prev) => ({ ...prev, password: true }));
-                            if (staffPassword.length > 0 && staffPassword.length < 6) {
-                              setStaffErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
-                            }
+                          onValidate={(v) => {
+                            setStaffTouched((prev) => ({ ...prev, phone: true }));
+                            setStaffErrors((prev) => ({ ...prev, phone: validateField(phoneSchema, v) }));
                           }}
-                          error={staffTouched.password ? staffErrors.password : undefined}
-                          autoComplete="current-password"
+                          error={staffTouched.phone ? staffErrors.phone : undefined}
+                          autoComplete="tel"
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowStaffPassword((v) => !v)}
-                          className="absolute right-3 top-3 h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                          aria-label={showStaffPassword ? "Hide password" : "Show password"}
-                          tabIndex={-1}
-                        >
-                          {showStaffPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
                       </div>
-                    </div>
 
-                    <Button
-                      type="submit"
-                      variant="accent"
-                      size="lg"
-                      className="w-full transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-                      disabled={isStaffLoading || phone.length !== 10 || !staffPassword}
-                    >
-                      {isStaffLoading ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full animate-spin" />
-                          Signing In...
+                      <div className="space-y-2">
+                        <Label htmlFor="staff-password" className="text-sm font-medium flex items-center gap-2">
+                          <Lock className="w-4 h-4 text-muted-foreground" />
+                          Password
+                        </Label>
+                        <div className="relative">
+                          <ValidatedInput
+                            id="staff-password"
+                            type={showStaffPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            value={staffPassword}
+                            className="pr-12"
+                            onChange={(e) => {
+                              setStaffPassword(e.target.value);
+                              if (staffTouched.password && e.target.value.length > 0 && e.target.value.length < 6) {
+                                setStaffErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                              } else {
+                                setStaffErrors((prev) => ({ ...prev, password: undefined }));
+                              }
+                            }}
+                            onValidate={() => {
+                              setStaffTouched((prev) => ({ ...prev, password: true }));
+                              if (staffPassword.length > 0 && staffPassword.length < 6) {
+                                setStaffErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                              }
+                            }}
+                            error={staffTouched.password ? staffErrors.password : undefined}
+                            autoComplete="current-password"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowStaffPassword((v) => !v)}
+                            className="absolute right-3 top-3 h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                            aria-label={showStaffPassword ? "Hide password" : "Show password"}
+                            tabIndex={-1}
+                          >
+                            {showStaffPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
                         </div>
-                      ) : (
-                        "Sign In"
-                      )}
-                    </Button>
+                      </div>
 
-                    <p className="text-center text-xs text-muted-foreground">
-                      Staff credentials are provided by your admin
-                    </p>
-                  </form>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </div>
+                      <Button
+                        type="submit"
+                        size="lg"
+                        className="w-full text-white font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                        style={{
+                          backgroundColor: BRAND_RED,
+                          boxShadow: "0 10px 25px -8px hsl(0 85% 55% / 0.45)",
+                        }}
+                        disabled={isStaffLoading || phone.length !== 10 || !staffPassword}
+                      >
+                        {isStaffLoading ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Signing In...
+                          </div>
+                        ) : (
+                          "Sign In"
+                        )}
+                      </Button>
+
+                      <p className="text-center text-xs text-muted-foreground">
+                        Staff credentials are provided by your admin
+                      </p>
+                    </form>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
       </div>
 
       <PoweredByBadge />
