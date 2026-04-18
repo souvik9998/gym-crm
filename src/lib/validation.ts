@@ -185,6 +185,38 @@ export function getPhotoIdSchema(idType: string) {
   }
 }
 
+/** Format a raw ID-number input string based on the selected ID type.
+ *  Aadhaar: digits-only, capped at 12.
+ *  PAN: alphanumerics, uppercased, capped at 10.
+ *  Voter: alphanumerics, uppercased, capped at 10.
+ */
+export function formatPhotoIdInput(value: string, idType: string): string {
+  switch (idType) {
+    case "aadhaar":
+      return value.replace(/\D/g, "").slice(0, 12);
+    case "pan":
+      return value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 10);
+    case "voter":
+      return value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 10);
+    default:
+      return value.slice(0, 50);
+  }
+}
+
+/** Get a human-friendly placeholder for the selected ID type. */
+export function getPhotoIdPlaceholder(idType: string): string {
+  switch (idType) {
+    case "aadhaar":
+      return "12-digit Aadhaar number";
+    case "pan":
+      return "ABCDE1234F";
+    case "voter":
+      return "ABC1234567";
+    default:
+      return "ID number";
+  }
+}
+
 // ─── Date validation helpers ────────────────────────────────────────────
 
 /** Returns true if date is today or in the future */

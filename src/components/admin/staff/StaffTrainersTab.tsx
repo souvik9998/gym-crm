@@ -46,6 +46,7 @@ import { DevicePhoneMobileIcon, ChevronDownIcon, LockClosedIcon } from "@heroico
 import { StaffCardSkeleton } from "./StaffCardSkeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DetailItem } from "./StaffDetailItem";
+import { nameSchema, phoneSchema, passwordSchema, getPhotoIdSchema, formatPhotoIdInput, getPhotoIdPlaceholder } from "@/lib/validation";
 
 interface StaffTrainersTabProps {
   trainers: Staff[];
@@ -152,24 +153,50 @@ export const StaffTrainersTab = ({
   }, [currentBranch?.id]);
 
   const handleAddTrainer = async () => {
-    if (!newTrainer.full_name) {
-      toast.error("Please enter trainer name");
+    // Validate using shared schemas
+    const nameResult = nameSchema.safeParse(newTrainer.full_name);
+    if (!nameResult.success) {
+      toast.error(nameResult.error.errors[0]?.message || "Invalid name");
       return;
     }
-    if (!newTrainer.phone) {
-      toast.error("Please enter phone number");
+    const phoneResult = phoneSchema.safeParse(newTrainer.phone);
+    if (!phoneResult.success) {
+      toast.error(phoneResult.error.errors[0]?.message || "Invalid phone number");
       return;
     }
-    const cleanPhone = newTrainer.phone.replace(/\D/g, "").replace(/^0/, "");
-    if (cleanPhone.length !== 10) {
-      toast.error("Phone number must be exactly 10 digits", {
-        description: "Enter a valid 10-digit mobile number without country code.",
-      });
+    const cleanPhone = phoneResult.data;
+
+    // Validate ID number against the selected ID type (only if user entered something)
+    if (newTrainer.id_number?.trim()) {
+      const idResult = getPhotoIdSchema(newTrainer.id_type).safeParse(newTrainer.id_number);
+      if (!idResult.success) {
+        toast.error(idResult.error.errors[0]?.message || "Invalid ID number");
+        return;
+      }
+    }
+
+    if (newTrainer.enableLogin) {
+      const pwdResult = passwordSchema.safeParse(newTrainer.password);
+      if (!pwdResult.success) {
+        toast.error(pwdResult.error.errors[0]?.message || "Invalid password");
+        return;
+      }
+    }
+
+    // Validate monthly fee for trainers
+    if (!newTrainer.monthly_fee || Number(newTrainer.monthly_fee) <= 0) {
+      toast.error("Monthly fee (member charge) must be greater than 0");
       return;
     }
-    if (newTrainer.enableLogin && !newTrainer.password) {
-      toast.error("Please enter a password or disable login access");
+    if (newTrainer.payment_category === "session_basis" && (!newTrainer.session_fee || Number(newTrainer.session_fee) <= 0)) {
+      toast.error("Session fee must be greater than 0 for session-basis category");
       return;
+    }
+    if (newTrainer.payment_category === "monthly_percentage") {
+      if (newTrainer.percentage_fee && (Number(newTrainer.percentage_fee) < 0 || Number(newTrainer.percentage_fee) > 100)) {
+        toast.error("Percentage fee must be between 0 and 100");
+        return;
+      }
     }
 
     if (addingRef.current) return;
@@ -218,17 +245,6 @@ export const StaffTrainersTab = ({
           toast.error(`A trainer with this phone already exists in ${branchName}`);
           return;
         }
-      }
-
-      // Validate monthly fee for trainers
-      if (!newTrainer.monthly_fee) {
-        toast.error("Monthly fee (member charge) is required");
-        return;
-      }
-
-      if (newTrainer.payment_category === "session_basis" && !newTrainer.session_fee) {
-        toast.error("Session fee is required for session basis category");
-        return;
       }
 
       // Insert staff record (without password - will be set via edge function)
@@ -544,8 +560,9 @@ export const StaffTrainersTab = ({
               <Label className="text-xs lg:text-sm">Full Name *</Label>
               <Input
                 value={newTrainer.full_name}
-                onChange={(e) => setNewTrainer({ ...newTrainer, full_name: e.target.value })}
+                onChange={(e) => setNewTrainer({ ...newTrainer, full_name: e.target.value.replace(/[^a-zA-Z\s.']/g, "").slice(0, 100) })}
                 placeholder="Enter full name"
+                maxLength={100}
                 className="h-9 lg:h-12 text-sm"
               />
             </div>
@@ -593,8 +610,8 @@ export const StaffTrainersTab = ({
               <Label className="text-xs lg:text-sm">ID Number</Label>
               <Input
                 value={newTrainer.id_number}
-                onChange={(e) => setNewTrainer({ ...newTrainer, id_number: e.target.value })}
-                placeholder="ID number"
+                onChange={(e) => setNewTrainer({ ...newTrainer, id_number: formatPhotoIdInput(e.target.value, newTrainer.id_type) })}
+                placeholder={getPhotoIdPlaceholder(newTrainer.id_type)}
                 className="h-9 lg:h-12 text-sm"
               />
             </div>
