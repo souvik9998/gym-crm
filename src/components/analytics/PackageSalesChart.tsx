@@ -17,12 +17,18 @@ import {
   axisTickStyleMobile,
   gridProps,
   formatCompact,
+  formatBucketRange,
+  granularityLabel,
+  type Granularity,
+  type IntervalMeta,
 } from "./chartUtils";
 
 interface PackageSalesChartProps {
   data: PackageSalesData[];
   packageList: PackageInfo[];
   isLoading?: boolean;
+  granularity?: Granularity;
+  intervalMeta?: Record<string, IntervalMeta>;
 }
 
 const PACKAGE_COLORS = [
