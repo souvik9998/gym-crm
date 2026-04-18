@@ -511,13 +511,19 @@ export const VerifyRazorpayPaymentSchema = z.object({
   isNewMember: z.boolean().optional(),
   isDailyPass: z.boolean().optional(),
   memberDetails: z.object({
+    // Accept both camelCase (from public registration form) and snake_case (legacy/admin) keys
     gender: z.enum(["male", "female", "other"]).optional().nullable(),
+    photoIdType: z.string().max(50).optional().nullable(),
+    photoIdNumber: z.string().max(50).optional().nullable(),
     photo_id_type: z.string().max(50).optional().nullable(),
     photo_id_number: z.string().max(50).optional().nullable(),
     address: z.string().transform(sanitizeText).pipe(z.string().max(500)).optional().nullable(),
+    dateOfBirth: DateSchema.optional().nullable(),
     date_of_birth: DateSchema.optional().nullable(),
     email: z.string().email().max(255).optional().nullable(),
-  }).optional().nullable(),
+    fullName: z.string().max(100).optional().nullable(),
+    occupation: z.string().max(100).optional().nullable(),
+  }).passthrough().optional().nullable(),
   customPackage: z.object({
     id: UUIDSchema,
     name: z.string().max(100),
