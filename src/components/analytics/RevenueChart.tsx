@@ -21,9 +21,11 @@ import {
   axisTickStyle,
   axisTickStyleMobile,
   gridProps,
+  formatBucketRange,
+  granularityLabel,
+  type Granularity,
+  type IntervalMeta,
 } from "./chartUtils";
-
-import { formatBucketRange, granularityLabel, type Granularity, type IntervalMeta } from "./chartUtils";
 
 interface RevenueChartProps {
   data: MonthlyRevenue[];
