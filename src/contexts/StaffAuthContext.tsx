@@ -149,14 +149,17 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       // refresh token rotated out). Clear local Supabase session so the user lands
       // on the login screen instead of getting stuck on a blank protected route.
       const errMsg = String(response?.error || invokeError?.message || "");
-      if (errMsg.toLowerCase().includes("invalid") || errMsg.toLowerCase().includes("expired") || errMsg.toLowerCase().includes("session")) {
-        console.warn("[Staff Auth] Stale session detected, signing out:", errMsg);
-        clearStaffState();
-        await supabase.auth.signOut().catch(() => {});
-      }
+      console.warn("[Staff Auth] verify-session failed, signing out:", errMsg);
+      clearStaffState();
+      await supabase.auth.signOut().catch(() => {});
       return false;
-    } catch (error) {
-      console.error("Session verification failed:", error);
+    } catch (error: any) {
+      // supabase-js throws on non-2xx responses (e.g. 401 from verify-session).
+      // Treat any thrown error here the same as a stale session and sign out
+      // so the user is redirected to login instead of seeing a blank screen.
+      console.warn("[Staff Auth] verify-session threw, signing out:", error?.message || error);
+      clearStaffState();
+      await supabase.auth.signOut().catch(() => {});
       return false;
     }
   }, [applyBranchRestrictions, clearStaffState]);
