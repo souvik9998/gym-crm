@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useStaffOperations } from "@/hooks/useStaffOperations";

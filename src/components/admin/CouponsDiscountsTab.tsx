@@ -12,6 +12,8 @@ import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { useBranch } from "@/contexts/BranchContext";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import {
   Plus, Search, Pencil, Trash2, Copy, TicketPercent,
   AlertTriangle, ChevronDown, ChevronUp, Zap, RefreshCw,
