@@ -26,6 +26,7 @@ const InvoicePage = lazy(() => import("./pages/Invoice"));
 // Lazy load admin pages for better initial load time
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
 const StaffDashboard = lazy(() => import("./pages/admin/StaffDashboard"));
+const StaffTimeSlots = lazy(() => import("./pages/admin/StaffTimeSlots"));
 const AdminQRCode = lazy(() => import("./pages/admin/QRCode"));
 const AdminSettings = lazy(() => import("./pages/admin/Settings"));
 const AdminAnalytics = lazy(() => import("./pages/admin/Analytics"));
@@ -200,6 +201,11 @@ const App = () => (
                 <Route path="/staff/dashboard" element={
                   <Suspense fallback={<PageLoader />}>
                     <StaffDashboard />
+                  </Suspense>
+                } />
+                <Route path="/staff/time-slots" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <StaffTimeSlots />
                   </Suspense>
                 } />
               </Route>
