@@ -160,16 +160,20 @@ Deno.serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
-      type: "recovery",
-      email,
-      options: { redirectTo },
-    });
+    const { data: linkData, error: linkErr } = await admin.auth.admin
+      .generateLink({
+        type: "recovery",
+        email,
+        options: { redirectTo },
+      });
 
     if (linkErr || !linkData?.properties?.action_link) {
       console.warn("generateLink issue:", linkErr?.message);
       return respond(true, {
-        data: { message: "If an account exists, a reset link has been sent to the email." },
+        data: {
+          message:
+            "If an account exists, a reset link has been sent to the email.",
+        },
       });
     }
 
