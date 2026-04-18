@@ -31,7 +31,7 @@ const Attendance = () => {
   const { currentBranch } = useBranch();
   const { tenantPermissions, isSuperAdmin } = useAuth();
 
-  const { data: attendanceMode = "simple" } = useQuery({
+  const { data: attendanceMode = "simple", isLoading: isModeLoading } = useQuery({
     queryKey: ["attendance-mode", currentBranch?.id],
     queryFn: async () => {
       if (!currentBranch?.id) return "simple";
@@ -44,6 +44,11 @@ const Attendance = () => {
     },
     enabled: !!currentBranch?.id,
   });
+
+  // Show full-page skeleton while branch context or attendance mode is loading
+  if (!currentBranch?.id || isModeLoading) {
+    return <AttendanceSkeleton />;
+  }
 
   const isSlotMode = attendanceMode === "time_slot";
 
