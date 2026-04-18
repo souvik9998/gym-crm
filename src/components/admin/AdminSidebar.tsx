@@ -183,16 +183,16 @@ const allBottomNavItems: NavItem[] = [
     href: "/admin/qr-code",
     icon: QrCodeIcon,
     iconSolid: QrCodeIconSolid,
-    requiresPermission: ["can_view_settings", "can_change_settings"] as any,
+    requiresPermission: "can_change_settings",
     tenantModule: "attendance_qr",
   },
-  // Settings - view OR edit settings permission grants visibility
+  // Settings - requires ONLY settings permission
   {
     title: "Settings",
     href: "/admin/settings",
     icon: Cog6ToothIcon,
     iconSolid: Cog6ToothIconSolid,
-    requiresPermission: ["can_view_settings", "can_change_settings"] as any,
+    requiresPermission: "can_change_settings",
   },
 ];
 

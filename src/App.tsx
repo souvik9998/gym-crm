@@ -135,7 +135,7 @@ const App = () => (
               </Route>
 
               <Route element={
-                <ProtectedRoute requiredPermission={["can_view_settings", "can_change_settings"]}>
+                <ProtectedRoute requiredPermission="can_change_settings">
                   <AdminLayoutRoute />
                 </ProtectedRoute>
               }>
