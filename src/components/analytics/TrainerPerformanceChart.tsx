@@ -121,21 +121,21 @@ const TrainerPerformanceChart = memo(({ data, isLoading }: TrainerPerformanceCha
           <h4 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
             Revenue Share
           </h4>
-          <div className="relative h-[220px] sm:h-[260px]">
+          <div className="relative w-full aspect-square max-w-[280px] mx-auto sm:aspect-auto sm:max-w-none sm:h-[260px]">
             <ChartContainer
               config={{ revenue: { label: "Revenue", color: "hsl(var(--accent))" } }}
-              className="h-full overflow-hidden"
+              className="h-full w-full overflow-hidden"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+                <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
                   <Pie
                     data={pieData}
                     dataKey="revenue"
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={isMobile ? 50 : 60}
-                    outerRadius={isMobile ? 80 : 95}
+                    innerRadius="55%"
+                    outerRadius="88%"
                     paddingAngle={2}
                     stroke="hsl(var(--background))"
                     strokeWidth={2}
@@ -175,8 +175,8 @@ const TrainerPerformanceChart = memo(({ data, isLoading }: TrainerPerformanceCha
             </ChartContainer>
             {/* Centered total */}
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</span>
-              <span className="text-base font-bold tabular-nums">{formatINR(totalRevenue)}</span>
+              <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground">Total</span>
+              <span className="text-sm sm:text-base font-bold tabular-nums">{formatINR(totalRevenue)}</span>
             </div>
           </div>
 

@@ -82,7 +82,7 @@ const toneClass: Record<NonNullable<SummaryStat["tone"]>, string> = {
 export function ChartSummary({ stats }: { stats: SummaryStat[] }) {
   if (!stats.length) return null;
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 sm:gap-x-5 sm:gap-y-2 px-0.5 pb-2 sm:pb-3 border-b border-border/50 mb-2 sm:mb-3">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 sm:gap-x-5 sm:gap-y-2 px-0.5 pb-2 sm:pb-3 border-b border-border/50 mb-2 sm:mb-3 -mt-1 sm:mt-0">
       {stats.map((s) => (
         <div key={s.label} className="flex flex-col min-w-0">
           <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-medium leading-tight">
