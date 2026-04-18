@@ -48,6 +48,13 @@ export interface AnalyticsTotals {
   avgRevenue: number;
 }
 
+export type AnalyticsGranularity = "day" | "week" | "month";
+
+export interface IntervalMeta {
+  startISO: string;
+  endISO: string;
+}
+
 export interface AnalyticsData {
   revenueData: MonthlyRevenue[];
   memberGrowth: MemberGrowth[];
@@ -55,6 +62,8 @@ export interface AnalyticsData {
   packageSalesData: PackageSalesData[];
   packageList: PackageInfo[];
   totals: AnalyticsTotals;
+  granularity?: AnalyticsGranularity;
+  intervalMeta?: Record<string, IntervalMeta>;
 }
 
 export const useAggregatedAnalyticsQuery = (
