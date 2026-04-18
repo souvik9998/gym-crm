@@ -555,13 +555,13 @@ export const TimeSlotsTab = ({
                     }
                   : {
                       bar: "bg-emerald-500",
-                      bg: "bg-emerald-50/60 dark:bg-emerald-950/20",
-                      text: "text-emerald-800 dark:text-emerald-300",
+                      bg: "bg-card",
+                      text: "text-foreground",
                       icon: "text-emerald-600 dark:text-emerald-400",
-                      numBg: "bg-emerald-100 dark:bg-emerald-900/40",
-                      badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-                      border: "border-emerald-200/80 dark:border-emerald-900/50",
-                      borderHover: "hover:border-emerald-300 dark:hover:border-emerald-800",
+                      numBg: "bg-muted",
+                      badge: "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/50",
+                      border: "border-emerald-300 dark:border-emerald-800/70",
+                      borderHover: "hover:border-emerald-400 dark:hover:border-emerald-700",
                       ring: "ring-emerald-200/50 dark:ring-emerald-900/40",
                     };
 
