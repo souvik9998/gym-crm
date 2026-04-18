@@ -122,6 +122,14 @@ const StaffTimeSlots = () => {
     return list;
   }, [trainerStaff, restrictedTrainerId]);
 
+  // Full name map (id → name) for resolving trainer names on slots whose
+  // owner role couldn't be resolved via RLS-restricted staff table.
+  const trainerNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    trainerStaff.forEach((s) => { map[s.id] = s.full_name; });
+    return map;
+  }, [trainerStaff]);
+
   if (staffLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -192,6 +200,7 @@ const StaffTimeSlots = () => {
               canCreate={canCreate}
               canEditDelete={canEditDelete}
               canViewMembers={canViewMembers}
+              trainerNameMap={trainerNameMap}
             />
           </TabsContent>
 
@@ -213,6 +222,7 @@ const StaffTimeSlots = () => {
           canCreate={canCreate}
           canEditDelete={canEditDelete}
           canViewMembers={false}
+          trainerNameMap={trainerNameMap}
         />
       )}
     </div>

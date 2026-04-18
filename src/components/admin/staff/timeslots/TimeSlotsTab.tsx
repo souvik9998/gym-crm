@@ -40,6 +40,12 @@ interface TimeSlotsTabProps {
   canCreate?: boolean;
   canEditDelete?: boolean;
   canViewMembers?: boolean;
+  /**
+   * Optional fallback name resolver used when `trainers` (restricted by RLS)
+   * doesn't contain a slot's trainer (e.g. staff viewing another trainer's slot
+   * after RLS hides their staff row). Maps staff.id → full_name.
+   */
+  trainerNameMap?: Record<string, string>;
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -51,6 +57,7 @@ export const TimeSlotsTab = ({
   canCreate = true,
   canEditDelete = true,
   canViewMembers = true,
+  trainerNameMap,
 }: TimeSlotsTabProps) => {
   const isCompact = useIsTabletOrBelow();
   const [slots, setSlots] = useState<TimeSlot[]>([]);
@@ -100,7 +107,10 @@ export const TimeSlotsTab = ({
 
         const enriched = slotsData.map(slot => ({
           ...slot,
-          trainer_name: trainers.find(t => t.id === slot.trainer_id)?.full_name || "Unknown",
+          trainer_name:
+            trainers.find(t => t.id === slot.trainer_id)?.full_name ||
+            trainerNameMap?.[slot.trainer_id] ||
+            "Unknown",
           member_count: memberCounts[slot.id] || 0,
         }));
         setSlots(enriched);
