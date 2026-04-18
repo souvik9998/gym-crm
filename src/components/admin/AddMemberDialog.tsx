@@ -630,12 +630,15 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
       const { data: member, error: memberError } = await supabase
         .from("members")
-        .insert({ name, phone, branch_id: currentBranch?.id || "" })
+        .insert({ name, phone, email: email || null, branch_id: currentBranch?.id || "" })
         .select()
         .single();
       if (memberError) throw memberError;
 
-      if (gender || address || photoIdType || photoIdNumber || dateOfBirth) {
+      const hasDetails = gender || address || photoIdType || photoIdNumber || dateOfBirth ||
+        bloodGroup || heightCm || weightKg || medicalConditions || allergies ||
+        emergencyContact1Name || emergencyContact1Phone || wantsPT;
+      if (hasDetails) {
         const { error: detailsError } = await supabase.from("member_details").insert({
           member_id: member.id,
           gender: gender || null,
@@ -644,8 +647,33 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           photo_id_number: photoIdNumber || null,
           date_of_birth: dateOfBirth || null,
           personal_trainer_id: wantsPT ? selectedTrainerId : null,
+          blood_group: bloodGroup || null,
+          height_cm: heightCm ? Number(heightCm) : null,
+          weight_kg: weightKg ? Number(weightKg) : null,
+          medical_conditions: medicalConditions || null,
+          allergies: allergies || null,
+          emergency_contact_name: emergencyContact1Name || null,
+          emergency_contact_phone: emergencyContact1Phone || null,
         });
         if (detailsError) throw detailsError;
+      }
+
+      // Save uploaded documents (mirrors public registration flow)
+      const docsToInsert = [
+        ...identityFiles.map((f) => ({ ...f, type: "identity_proof" })),
+        ...medicalFiles.map((f) => ({ ...f, type: "medical_record" })),
+      ];
+      if (docsToInsert.length > 0) {
+        await supabase.from("member_documents").insert(
+          docsToInsert.map((d) => ({
+            member_id: member.id,
+            document_type: d.type,
+            file_url: d.url,
+            file_name: d.name,
+            file_size: d.size,
+            uploaded_by: "admin",
+          }))
+        );
       }
 
       const gymStartDate = new Date(startDate);
