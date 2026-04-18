@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mail, Lock, Phone, User } from "lucide-react";
+import { Mail, Lock, Phone, User, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,6 +42,43 @@ const AdminLogin = () => {
   const [isStaffLoading, setIsStaffLoading] = useState(false);
   const [staffErrors, setStaffErrors] = useState<FieldErrors>({});
   const [staffTouched, setStaffTouched] = useState<Record<string, boolean>>({});
+
+  // Password visibility
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [showStaffPassword, setShowStaffPassword] = useState(false);
+
+  // Forgot password
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleForgotPassword = async () => {
+    const trimmed = email.trim();
+    const emailError = validateField(emailSchema, trimmed);
+    if (emailError) {
+      setAdminTouched((prev) => ({ ...prev, email: true }));
+      setAdminErrors((prev) => ({ ...prev, email: emailError }));
+      toast.error("Enter your email", {
+        description: "Please enter a valid email address above to receive a reset link.",
+      });
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("Reset link sent to your email", {
+        description: "Check your inbox for instructions to reset your password.",
+      });
+    } catch (error: any) {
+      toast.error("Couldn't send reset link", {
+        description: error?.message || "Please try again in a moment.",
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   // Redirect already-authenticated users to their dashboard
   useEffect(() => {
@@ -282,28 +319,50 @@ const AdminLogin = () => {
                         <Lock className="w-4 h-4 text-muted-foreground" />
                         Password
                       </Label>
-                      <ValidatedInput
-                        id="admin-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={adminPassword}
-                        onChange={(e) => {
-                          setAdminPassword(e.target.value);
-                          if (adminTouched.password && e.target.value.length > 0 && e.target.value.length < 6) {
-                            setAdminErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
-                          } else {
-                            setAdminErrors((prev) => ({ ...prev, password: undefined }));
-                          }
-                        }}
-                        onValidate={() => {
-                          setAdminTouched((prev) => ({ ...prev, password: true }));
-                          if (adminPassword.length > 0 && adminPassword.length < 6) {
-                            setAdminErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
-                          }
-                        }}
-                        error={adminTouched.password ? adminErrors.password : undefined}
-                        autoComplete="current-password"
-                      />
+                      <div className="relative">
+                        <ValidatedInput
+                          id="admin-password"
+                          type={showAdminPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={adminPassword}
+                          className="pr-12"
+                          onChange={(e) => {
+                            setAdminPassword(e.target.value);
+                            if (adminTouched.password && e.target.value.length > 0 && e.target.value.length < 6) {
+                              setAdminErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                            } else {
+                              setAdminErrors((prev) => ({ ...prev, password: undefined }));
+                            }
+                          }}
+                          onValidate={() => {
+                            setAdminTouched((prev) => ({ ...prev, password: true }));
+                            if (adminPassword.length > 0 && adminPassword.length < 6) {
+                              setAdminErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                            }
+                          }}
+                          error={adminTouched.password ? adminErrors.password : undefined}
+                          autoComplete="current-password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowAdminPassword((v) => !v)}
+                          className="absolute right-3 top-3 h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                          aria-label={showAdminPassword ? "Hide password" : "Show password"}
+                          tabIndex={-1}
+                        >
+                          {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleForgotPassword}
+                          disabled={isResetting}
+                          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                        >
+                          {isResetting ? "Sending..." : "Forgot password?"}
+                        </button>
+                      </div>
                     </div>
 
                     <Button
@@ -361,28 +420,40 @@ const AdminLogin = () => {
                         <Lock className="w-4 h-4 text-muted-foreground" />
                         Password
                       </Label>
-                      <ValidatedInput
-                        id="staff-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={staffPassword}
-                        onChange={(e) => {
-                          setStaffPassword(e.target.value);
-                          if (staffTouched.password && e.target.value.length > 0 && e.target.value.length < 6) {
-                            setStaffErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
-                          } else {
-                            setStaffErrors((prev) => ({ ...prev, password: undefined }));
-                          }
-                        }}
-                        onValidate={() => {
-                          setStaffTouched((prev) => ({ ...prev, password: true }));
-                          if (staffPassword.length > 0 && staffPassword.length < 6) {
-                            setStaffErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
-                          }
-                        }}
-                        error={staffTouched.password ? staffErrors.password : undefined}
-                        autoComplete="current-password"
-                      />
+                      <div className="relative">
+                        <ValidatedInput
+                          id="staff-password"
+                          type={showStaffPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={staffPassword}
+                          className="pr-12"
+                          onChange={(e) => {
+                            setStaffPassword(e.target.value);
+                            if (staffTouched.password && e.target.value.length > 0 && e.target.value.length < 6) {
+                              setStaffErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                            } else {
+                              setStaffErrors((prev) => ({ ...prev, password: undefined }));
+                            }
+                          }}
+                          onValidate={() => {
+                            setStaffTouched((prev) => ({ ...prev, password: true }));
+                            if (staffPassword.length > 0 && staffPassword.length < 6) {
+                              setStaffErrors((prev) => ({ ...prev, password: "Password must be at least 6 characters" }));
+                            }
+                          }}
+                          error={staffTouched.password ? staffErrors.password : undefined}
+                          autoComplete="current-password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowStaffPassword((v) => !v)}
+                          className="absolute right-3 top-3 h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                          aria-label={showStaffPassword ? "Hide password" : "Show password"}
+                          tabIndex={-1}
+                        >
+                          {showStaffPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
 
                     <Button
