@@ -116,21 +116,31 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
         return false;
       }
 
-       // IMPORTANT: When using supabase-js `functions.invoke`, don't manually set
-       // `Content-Type` while passing an object body, otherwise the body can be
-       // coerced to the string "[object Object]" in some runtimes.
-       // Pass action via querystring to avoid body parsing issues entirely.
-       const queryParams = options?.source === "login" ? "action=verify-session&source=login" : "action=verify-session";
-       const { data, error: invokeError } = await supabase.functions.invoke(`staff-auth?${queryParams}`, {
-         headers: {
-           Authorization: `Bearer ${session.access_token}`,
-         },
-       });
+       const queryParams = new URLSearchParams({ action: "verify-session" });
+       if (options?.source === "login") {
+         queryParams.set("source", "login");
+       }
 
-      // Parse response - check if it's a string
-      const response = typeof data === "string" ? JSON.parse(data) : data;
+       const verifyResponse = await fetch(
+         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-auth?${queryParams.toString()}`,
+         {
+           method: "POST",
+           headers: {
+             Authorization: `Bearer ${session.access_token}`,
+             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+           },
+         }
+       );
 
-      if (response?.valid) {
+      const rawResponse = await verifyResponse.text();
+      let response: any = null;
+      try {
+        response = rawResponse ? JSON.parse(rawResponse) : null;
+      } catch {
+        response = rawResponse;
+      }
+
+      if (verifyResponse.ok && response?.valid) {
         console.log("[Staff Auth] Permissions loaded:", response.permissions);
         console.log("[Staff Auth] Staff user:", response.staff);
         console.log("[Staff Auth] Branches:", response.branches);
@@ -148,10 +158,12 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       // Session is invalid/expired on the server (e.g. revoked, password changed,
       // refresh token rotated out). Clear local Supabase session so the user lands
       // on the login screen instead of getting stuck on a blank protected route.
-      const errMsg = String(response?.error || invokeError?.message || "");
+       const errMsg = String(
+         (typeof response === "string" ? response : response?.error || response?.message) || `HTTP ${verifyResponse.status}`
+       );
       console.warn("[Staff Auth] verify-session failed, signing out:", errMsg);
       clearStaffState();
-      await supabase.auth.signOut().catch(() => {});
+       await supabase.auth.signOut({ scope: "local" }).catch(() => {});
       return false;
     } catch (error: any) {
       // supabase-js throws on non-2xx responses (e.g. 401 from verify-session).
@@ -159,7 +171,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       // so the user is redirected to login instead of seeing a blank screen.
       console.warn("[Staff Auth] verify-session threw, signing out:", error?.message || error);
       clearStaffState();
-      await supabase.auth.signOut().catch(() => {});
+      await supabase.auth.signOut({ scope: "local" }).catch(() => {});
       return false;
     }
   }, [applyBranchRestrictions, clearStaffState]);
