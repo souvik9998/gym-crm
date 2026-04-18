@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,11 +10,17 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 import { Staff } from "@/pages/admin/StaffManagement";
-import { PlusIcon, PencilIcon, TrashIcon, ClockIcon } from "@heroicons/react/24/outline";
+import {
+  PlusIcon, PencilIcon, TrashIcon, ClockIcon,
+  MagnifyingGlassIcon, UserGroupIcon, SparklesIcon,
+  CheckCircleIcon, ExclamationCircleIcon,
+} from "@heroicons/react/24/outline";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { TimeSlotDetailDialog } from "./TimeSlotDetailDialog";
+import { cn } from "@/lib/utils";
 
 interface TimeSlot {
   id: string;
