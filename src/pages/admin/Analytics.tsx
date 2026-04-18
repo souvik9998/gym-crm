@@ -270,7 +270,7 @@ function OverviewSection() {
 function RevenueChartSection() {
   const { analyticsPeriod, analyticsCustomDateFrom, analyticsCustomDateTo } = useAnalyticsStore();
   const { ref, inView } = useInView({ threshold: 0.1, triggerOnce: true });
-  const { data, isLoading } = useAggregatedAnalyticsRevenue(
+  const { data, isLoading, granularity, intervalMeta } = useAggregatedAnalyticsRevenue(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
@@ -286,7 +286,7 @@ function RevenueChartSection() {
       accent="accent"
     >
       <Suspense fallback={<ChartSkeleton height="h-[200px] sm:h-[clamp(240px,36vh,380px)] md:h-[clamp(280px,36vh,440px)]" />}>
-        <RevenueChart data={data || []} isLoading={isLoading} />
+        <RevenueChart data={data || []} isLoading={isLoading} granularity={granularity} intervalMeta={intervalMeta} />
       </Suspense>
     </SectionCard>
   );
