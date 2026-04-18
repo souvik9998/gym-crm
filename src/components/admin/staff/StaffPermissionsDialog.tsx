@@ -468,7 +468,7 @@ export const StaffPermissionsDialog = ({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-4 py-3 border-t bg-background flex-shrink-0">
           {grantMode && !hasLoginAccess ? (
             <Button variant="outline" onClick={() => setGrantMode(false)}>Back</Button>
           ) : (
