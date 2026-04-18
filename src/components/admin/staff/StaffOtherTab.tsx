@@ -489,8 +489,9 @@ export const StaffOtherTab = ({
               <Label className="text-xs lg:text-sm">Full Name *</Label>
               <Input
                 value={newStaff.full_name}
-                onChange={(e) => setNewStaff({ ...newStaff, full_name: e.target.value })}
+                onChange={(e) => setNewStaff({ ...newStaff, full_name: e.target.value.replace(/[^a-zA-Z\s.']/g, "").slice(0, 100) })}
                 placeholder="Enter full name"
+                maxLength={100}
                 className="h-9 lg:h-12 text-sm"
               />
             </div>
