@@ -525,27 +525,24 @@ export const TimeSlotsTab = ({
                 const isEmpty = filled === 0;
                 const fillPct = Math.min((filled / slot.capacity) * 100, 100);
 
-                // Rotating palette so "Available" cards aren't all green.
-                // Deterministic per-slot via id hash → stable across renders.
+                // Soft pastel palette inspired by reference cards: solid tinted bg + matching darker text/icon.
                 const palettes = [
-                  { bar: "bg-emerald-500", grad: "from-emerald-500/10 via-emerald-500/[0.04] to-background", ring: "hover:ring-emerald-300/60", border: "border-emerald-200/60 dark:border-emerald-900/40", shadow: "hover:shadow-emerald-500/15", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300", icon: "text-emerald-600", accentDot: "bg-emerald-500" },
-                  { bar: "bg-sky-500", grad: "from-sky-500/10 via-sky-500/[0.04] to-background", ring: "hover:ring-sky-300/60", border: "border-sky-200/60 dark:border-sky-900/40", shadow: "hover:shadow-sky-500/15", badge: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300", icon: "text-sky-600", accentDot: "bg-sky-500" },
-                  { bar: "bg-violet-500", grad: "from-violet-500/10 via-violet-500/[0.04] to-background", ring: "hover:ring-violet-300/60", border: "border-violet-200/60 dark:border-violet-900/40", shadow: "hover:shadow-violet-500/15", badge: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300", icon: "text-violet-600", accentDot: "bg-violet-500" },
-                  { bar: "bg-teal-500", grad: "from-teal-500/10 via-teal-500/[0.04] to-background", ring: "hover:ring-teal-300/60", border: "border-teal-200/60 dark:border-teal-900/40", shadow: "hover:shadow-teal-500/15", badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300", icon: "text-teal-600", accentDot: "bg-teal-500" },
-                  { bar: "bg-indigo-500", grad: "from-indigo-500/10 via-indigo-500/[0.04] to-background", ring: "hover:ring-indigo-300/60", border: "border-indigo-200/60 dark:border-indigo-900/40", shadow: "hover:shadow-indigo-500/15", badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300", icon: "text-indigo-600", accentDot: "bg-indigo-500" },
-                  { bar: "bg-pink-500", grad: "from-pink-500/10 via-pink-500/[0.04] to-background", ring: "hover:ring-pink-300/60", border: "border-pink-200/60 dark:border-pink-900/40", shadow: "hover:shadow-pink-500/15", badge: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300", icon: "text-pink-600", accentDot: "bg-pink-500" },
-                  { bar: "bg-cyan-500", grad: "from-cyan-500/10 via-cyan-500/[0.04] to-background", ring: "hover:ring-cyan-300/60", border: "border-cyan-200/60 dark:border-cyan-900/40", shadow: "hover:shadow-cyan-500/15", badge: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300", icon: "text-cyan-600", accentDot: "bg-cyan-500" },
+                  { bar: "bg-sky-500",     bg: "bg-sky-50 dark:bg-sky-950/30",         text: "text-sky-700 dark:text-sky-300",         icon: "text-sky-500",     numBg: "bg-sky-100 dark:bg-sky-900/40",         badge: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300" },
+                  { bar: "bg-violet-500",  bg: "bg-violet-50 dark:bg-violet-950/30",   text: "text-violet-700 dark:text-violet-300",   icon: "text-violet-500",  numBg: "bg-violet-100 dark:bg-violet-900/40",   badge: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300" },
+                  { bar: "bg-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-700 dark:text-emerald-300", icon: "text-emerald-500", numBg: "bg-emerald-100 dark:bg-emerald-900/40", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
+                  { bar: "bg-pink-500",    bg: "bg-pink-50 dark:bg-pink-950/30",       text: "text-pink-700 dark:text-pink-300",       icon: "text-pink-500",    numBg: "bg-pink-100 dark:bg-pink-900/40",       badge: "bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300" },
+                  { bar: "bg-amber-500",   bg: "bg-amber-50 dark:bg-amber-950/30",     text: "text-amber-700 dark:text-amber-300",     icon: "text-amber-500",   numBg: "bg-amber-100 dark:bg-amber-900/40",     badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
+                  { bar: "bg-teal-500",    bg: "bg-teal-50 dark:bg-teal-950/30",       text: "text-teal-700 dark:text-teal-300",       icon: "text-teal-500",    numBg: "bg-teal-100 dark:bg-teal-900/40",       badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300" },
+                  { bar: "bg-indigo-500",  bg: "bg-indigo-50 dark:bg-indigo-950/30",   text: "text-indigo-700 dark:text-indigo-300",   icon: "text-indigo-500",  numBg: "bg-indigo-100 dark:bg-indigo-900/40",   badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300" },
                 ];
                 const hash = Array.from(slot.id).reduce((a, c) => a + c.charCodeAt(0), 0);
                 const rotated = palettes[hash % palettes.length];
 
-                // Status (full / nearly-full) overrides the rotation with a clear signal color.
+                // Status overrides: full → rose, near-full → amber.
                 const accent = isFull
-                  ? { bar: "bg-rose-500", grad: "from-rose-500/10 via-rose-500/[0.04] to-background", ring: "hover:ring-rose-300/60", border: "border-rose-200/60 dark:border-rose-900/40", shadow: "hover:shadow-rose-500/20", badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300", icon: "text-rose-600", accentDot: "bg-rose-500" }
+                  ? { bar: "bg-rose-500", bg: "bg-rose-50 dark:bg-rose-950/30", text: "text-rose-700 dark:text-rose-300", icon: "text-rose-500", numBg: "bg-rose-100 dark:bg-rose-900/40", badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" }
                   : fillPct >= 70
-                  ? { bar: "bg-amber-500", grad: "from-amber-500/10 via-amber-500/[0.04] to-background", ring: "hover:ring-amber-300/60", border: "border-amber-200/60 dark:border-amber-900/40", shadow: "hover:shadow-amber-500/20", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300", icon: "text-amber-600", accentDot: "bg-amber-500" }
-                  : isEmpty
-                  ? { ...rotated, badge: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" }
+                  ? { bar: "bg-amber-500", bg: "bg-amber-50 dark:bg-amber-950/30", text: "text-amber-700 dark:text-amber-300", icon: "text-amber-500", numBg: "bg-amber-100 dark:bg-amber-900/40", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" }
                   : rotated;
 
                 const statusLabel = isFull ? "Full" : isEmpty ? "Empty" : fillPct >= 70 ? "Filling" : "Available";
@@ -554,47 +551,39 @@ export const TimeSlotsTab = ({
                   <Card
                     key={slot.id}
                     className={cn(
-                      "shadow-sm cursor-pointer transition-all duration-300 animate-fade-in group overflow-hidden relative rounded-xl",
-                      "hover:shadow-lg hover:-translate-y-0.5",
-                      accent.shadow,
-                      "border border-border/40",
-                      "bg-gradient-to-br",
-                      accent.grad
+                      "cursor-pointer transition-all duration-300 animate-fade-in group relative rounded-2xl border-0 shadow-none",
+                      "hover:shadow-lg hover:-translate-y-1",
+                      accent.bg
                     )}
                     style={{ animationDelay: `${index * 40}ms`, animationFillMode: "backwards" }}
                     onClick={() => handleCardClick(slot)}
                   >
-                    {/* Soft inner glow on hover */}
-                    <div className={cn(
-                      "pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
-                      "bg-gradient-to-br", accent.grad
-                    )} />
-
-                    <CardHeader className="p-3 lg:p-4 pb-2 relative">
+                    <CardHeader className="p-5 pb-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <CardTitle className="text-sm lg:text-base truncate flex items-center gap-1.5">
-                            <UserGroupIcon className={cn("w-3.5 h-3.5 shrink-0 transition-colors", accent.icon)} />
+                          <CardTitle className={cn("text-lg font-semibold truncate flex items-center gap-1.5", accent.text)}>
+                            <UserGroupIcon className={cn("w-4 h-4 shrink-0", accent.icon)} />
                             {slot.trainer_name}
                           </CardTitle>
-                          <CardDescription className="text-xs flex items-center gap-1 mt-0.5">
+                          <CardDescription className="text-xs flex items-center gap-1 mt-1 text-muted-foreground">
                             <ClockIcon className="w-3 h-3 shrink-0" />
                             {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
                           </CardDescription>
                         </div>
-                        <Badge className={cn("text-[10px] border-0 shrink-0 shadow-sm", accent.badge)}>
+                        <Badge className={cn("text-[10px] border-0 shrink-0 font-medium", accent.badge)}>
                           {statusLabel}
                         </Badge>
                       </div>
                     </CardHeader>
-                    <CardContent className="p-3 lg:p-4 pt-0 space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground text-xs">Capacity</span>
-                        <span className="font-semibold text-sm tabular-nums">
-                          {filled}<span className="text-muted-foreground font-normal">/{slot.capacity}</span>
-                        </span>
+                    <CardContent className="p-5 pt-2 space-y-3">
+                      <div className="flex items-end justify-between">
+                        <span className="text-xs text-muted-foreground">Capacity</span>
+                        <div className="flex items-baseline gap-1">
+                          <span className={cn("text-2xl font-bold tabular-nums leading-none", accent.text)}>{filled}</span>
+                          <span className="text-sm text-muted-foreground font-normal">/{slot.capacity}</span>
+                        </div>
                       </div>
-                      <div className="w-full bg-muted/60 rounded-full h-2 overflow-hidden">
+                      <div className="w-full bg-white/60 dark:bg-white/5 rounded-full h-1.5 overflow-hidden">
                         <div
                           className={cn("h-full rounded-full transition-all duration-700 ease-out", accent.bar)}
                           style={{ width: `${fillPct}%` }}
@@ -608,8 +597,8 @@ export const TimeSlotsTab = ({
                               className={cn(
                                 "text-[10px] px-1.5 py-0.5 rounded font-medium transition-colors",
                                 slot.recurring_days?.includes(d)
-                                  ? "bg-primary/15 text-primary"
-                                  : "bg-muted text-muted-foreground/40"
+                                  ? cn(accent.numBg, accent.text)
+                                  : "bg-white/50 dark:bg-white/5 text-muted-foreground/50"
                               )}
                             >
                               {label}
@@ -619,10 +608,10 @@ export const TimeSlotsTab = ({
                       )}
                       {canEditDelete && (
                         <div className="flex gap-2 pt-1">
-                          <Button variant="outline" size="sm" className="flex-1 text-xs h-7 hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-colors" onClick={(e) => handleOpenEdit(slot, e)}>
+                          <Button variant="ghost" size="sm" className={cn("flex-1 text-xs h-8 bg-white/60 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border-0", accent.text)} onClick={(e) => handleOpenEdit(slot, e)}>
                             <PencilIcon className="w-3 h-3 mr-1" /> Edit
                           </Button>
-                          <Button variant="outline" size="sm" className="text-xs h-7 text-destructive hover:bg-destructive/5 hover:text-destructive hover:border-destructive/30 transition-colors" onClick={(e) => handleDelete(slot, e)}>
+                          <Button variant="ghost" size="sm" className="text-xs h-8 bg-white/60 dark:bg-white/5 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-500 hover:text-rose-600 border-0" onClick={(e) => handleDelete(slot, e)}>
                             <TrashIcon className="w-3 h-3" />
                           </Button>
                         </div>
