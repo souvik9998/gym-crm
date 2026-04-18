@@ -109,18 +109,13 @@ function OverviewSection() {
     analyticsCustomDateTo,
     true
   );
-  const { data: revenue } = useAggregatedAnalyticsRevenue(
+  const revenueQuery = useAggregatedAnalyticsRevenue(
     analyticsPeriod,
     analyticsCustomDateFrom,
     analyticsCustomDateTo,
     true
   );
-  const { granularity, intervalMeta } = useAggregatedAnalyticsRevenue(
-    analyticsPeriod,
-    analyticsCustomDateFrom,
-    analyticsCustomDateTo,
-    true
-  );
+  const { data: revenue, granularity, intervalMeta } = revenueQuery;
   const { data: growth } = useAggregatedAnalyticsMemberGrowth(
     analyticsPeriod,
     analyticsCustomDateFrom,
