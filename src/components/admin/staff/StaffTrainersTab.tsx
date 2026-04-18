@@ -160,6 +160,13 @@ export const StaffTrainersTab = ({
       toast.error("Please enter phone number");
       return;
     }
+    const cleanPhone = newTrainer.phone.replace(/\D/g, "").replace(/^0/, "");
+    if (cleanPhone.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits", {
+        description: "Enter a valid 10-digit mobile number without country code.",
+      });
+      return;
+    }
     if (newTrainer.enableLogin && !newTrainer.password) {
       toast.error("Please enter a password or disable login access");
       return;
@@ -168,7 +175,6 @@ export const StaffTrainersTab = ({
     if (addingRef.current) return;
     addingRef.current = true;
     setIsAddingTrainer(true);
-    const cleanPhone = newTrainer.phone.replace(/\D/g, "").replace(/^0/, "");
     
     try {
       const branchesToAssign = newTrainer.selected_branches.length > 0 
@@ -546,8 +552,11 @@ export const StaffTrainersTab = ({
             <div className="space-y-1 lg:space-y-2">
               <Label className="text-xs lg:text-sm">Phone Number *</Label>
               <Input
+                type="tel"
+                inputMode="numeric"
+                maxLength={10}
                 value={newTrainer.phone}
-                onChange={(e) => setNewTrainer({ ...newTrainer, phone: e.target.value })}
+                onChange={(e) => setNewTrainer({ ...newTrainer, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
                 placeholder="10-digit phone number"
                 className="h-9 lg:h-12 text-sm"
               />
