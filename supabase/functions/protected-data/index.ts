@@ -573,7 +573,8 @@ Deno.serve(async (req) => {
       }
 
       case "settings": {
-        if (!hasPermission(auth, "can_change_settings")) {
+        // Allow read access for view OR edit settings permission
+        if (!hasPermission(auth, "can_change_settings") && !hasPermission(auth, "can_view_settings")) {
           return errorResponse("Permission denied: cannot access settings", 403);
         }
         if (!branchId) return errorResponse("Branch ID required", 400);
@@ -585,7 +586,8 @@ Deno.serve(async (req) => {
       }
 
       case "packages": {
-        if (!hasPermission(auth, "can_change_settings")) {
+        // Allow read access for view OR edit settings permission
+        if (!hasPermission(auth, "can_change_settings") && !hasPermission(auth, "can_view_settings")) {
           return errorResponse("Permission denied: cannot manage packages", 403);
         }
 
