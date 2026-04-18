@@ -185,7 +185,7 @@ const AdminLedger = () => {
     }
   }, [dateRangePreset, customStartDate, customEndDate]);
 
-  const { data: entries = [], refetch: fetchEntries } = useQuery({
+  const { data: entries = [], refetch: fetchEntries, isLoading: isEntriesLoading, isFetching: isEntriesFetching } = useQuery({
     queryKey: ["ledger-entries", dateRange.start, dateRange.end, currentBranch?.id],
     queryFn: async () => {
       if (!currentBranch?.id) return [];
@@ -210,7 +210,11 @@ const AdminLedger = () => {
     },
     enabled: !!currentBranch?.id,
     staleTime: STALE_TIMES.DYNAMIC,
+    placeholderData: keepPreviousData,
   });
+
+  // Show full-page skeleton on first load (no branch yet, or first fetch in flight)
+  const showSkeleton = !currentBranch?.id || (isEntriesLoading && !entries.length);
 
   const handleAddExpense = async () => {
     if (!expenseCategory || !expenseDescription || !expenseAmount) {
