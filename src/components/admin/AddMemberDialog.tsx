@@ -465,13 +465,89 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     return cleaned;
   };
 
+  // File upload handler (mirrors public registration)
+  const handleFileUpload = async (file: File, type: "identity" | "medical") => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File too large", { description: "Maximum file size is 5MB" });
+      return;
+    }
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type", { description: "Only JPG, PNG, WebP, and PDF are allowed" });
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${type}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from("member-documents").upload(path, file);
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from("member-documents").getPublicUrl(path);
+      const uploaded: UploadedDoc = { name: file.name, url: publicUrl, size: file.size };
+      if (type === "identity") setIdentityFiles((p) => [...p, uploaded]);
+      else setMedicalFiles((p) => [...p, uploaded]);
+      toast.success("File uploaded");
+    } catch (err: any) {
+      toast.error("Upload failed", { description: err.message });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Helpers to read settings (defaults match public registration behavior)
+  const fs = fieldSettings || {};
+  const showGender = fs.gender?.enabled !== false; // locked, default true
+  const showDOB = fs.date_of_birth?.enabled !== false;
+  const dobRequired = fs.date_of_birth?.required ?? true;
+  const showAddress = fs.address?.enabled !== false;
+  const addressRequired = fs.address?.required ?? false;
+  const showPhotoId = fs.photo_id?.enabled !== false;
+  const photoIdRequired = fs.photo_id?.required ?? false;
+  const showEmail = fs.email?.enabled === true;
+  const emailRequired = fs.email?.required === true;
+  const showOccupation = fs.occupation?.enabled === true;
+  const occupationRequired = fs.occupation?.required === true;
+  const showBloodGroup = fs.blood_group?.enabled === true;
+  const bloodGroupRequired = fs.blood_group?.required === true;
+  const showHealth = fs.health_details?.enabled === true;
+  const healthRequired = fs.health_details?.required === true;
+  const showEC1 = fs.emergency_contact_1?.enabled === true;
+  const ec1Required = fs.emergency_contact_1?.required === true;
+  const showEC2 = fs.emergency_contact_2?.enabled === true;
+  const ec2Required = fs.emergency_contact_2?.required === true;
+  const showIdentityUpload = fs.identity_proof_upload?.enabled === true;
+  const identityRequired = fs.identity_proof_upload?.required === true;
+  const showMedicalUpload = fs.medical_records_upload?.enabled === true;
+  const medicalRequired = fs.medical_records_upload?.required === true;
+
+  const emailValid = !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
   // Step validation - Step 1 only has phone
-  // Ensure debounce has settled and phone check is complete before allowing Continue
   const isPhoneSettled = phone.length === 10 && debouncedPhone === phone && !isCheckingPhone;
   const isStep1Valid = isPhoneSettled && !existingMember;
-  // Step 2 has name + personal details
-  const isStep2Valid = name.trim().length >= 2 && !!gender && !!photoIdType && photoIdNumber.trim().length > 0 && address.trim().length >= 3;
+
+  // Step 2 - dynamic based on field settings (mirrors public registration)
+  const isStep2Valid = (() => {
+    if (name.trim().length < 2) return false;
+    if (showGender && !gender) return false;
+    if (showDOB && dobRequired && !dateOfBirth) return false;
+    if (showPhotoId && photoIdRequired && (!photoIdType || !photoIdNumber.trim())) return false;
+    if (showPhotoId && photoIdType && !photoIdNumber.trim()) return false; // if type chosen, number required
+    if (showAddress && addressRequired && address.trim().length < 3) return false;
+    if (showEmail && emailRequired && !email) return false;
+    if (showEmail && !emailValid) return false;
+    if (showOccupation && occupationRequired && !occupation.trim()) return false;
+    if (showBloodGroup && bloodGroupRequired && !bloodGroup) return false;
+    if (showHealth && healthRequired && (!bloodGroup || !emergencyContact1Name || !emergencyContact1Phone)) return false;
+    if (showEC1 && ec1Required && (!emergencyContact1Name || !emergencyContact1Phone)) return false;
+    if (showEC2 && ec2Required && (!emergencyContact2Name || !emergencyContact2Phone)) return false;
+    if (showIdentityUpload && identityRequired && identityFiles.length === 0) return false;
+    if (showMedicalUpload && medicalRequired && medicalFiles.length === 0) return false;
+    return true;
+  })();
+
   const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptFee > 0 && ptMonthOptions.length > 0) : !!selectedPackageId;
+
 
   const goToStep = (step: number) => {
     if (step > currentStep) {
