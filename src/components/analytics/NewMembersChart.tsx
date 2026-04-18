@@ -115,7 +115,24 @@ const NewMembersChart = memo(({ data, isLoading, granularity, intervalMeta }: Ne
             />
             <ChartTooltip
               cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
-              content={<PremiumTooltip formatter={(v) => `${v.toLocaleString("en-IN")} new`} />}
+              content={({ active, payload, label }) => {
+                if (!active || !payload?.length) return null;
+                const row = payload[0].payload as MemberGrowth;
+                const range = formatBucketRange(String(label ?? ""), intervalMeta?.[String(label ?? "")], granularity);
+                return (
+                  <div className="rounded-xl border border-border/70 bg-popover/95 backdrop-blur-md shadow-lg px-3 py-2 min-w-[180px] animate-fade-in">
+                    {range && <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{range}</p>}
+                    <p className="text-[11px] font-semibold mb-1.5">{label}</p>
+                    <div className="flex items-center justify-between gap-3 text-[11px]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-sm bg-success" />
+                        <span className="text-muted-foreground">New sign-ups</span>
+                      </div>
+                      <span className="font-semibold tabular-nums">{Number(row.newMembers) || 0}</span>
+                    </div>
+                  </div>
+                );
+              }}
             />
             <Bar
               dataKey="newMembers"
