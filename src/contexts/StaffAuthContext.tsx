@@ -133,7 +133,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
        );
 
       const rawResponse = await verifyResponse.text();
-      let response: any = null;
+      let response: unknown = null;
       try {
         response = rawResponse ? JSON.parse(rawResponse) : null;
       } catch {
