@@ -18,6 +18,7 @@ import ExtendPT from "./pages/ExtendPT";
 import Success from "./pages/Success";
 import MemberProfile from "./pages/MemberProfile";
 import AdminLogin from "./pages/admin/Login";
+import ResetPassword from "./pages/admin/ResetPassword";
 import CheckIn from "./pages/CheckIn";
 import NotFound from "./pages/NotFound";
 const InvoicePage = lazy(() => import("./pages/Invoice"));
@@ -76,6 +77,7 @@ const App = () => (
                 </Suspense>
               } />
               <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/event/:eventSlug" element={
                 <Suspense fallback={<PageLoader />}><EventRegistration /></Suspense>
               } />
