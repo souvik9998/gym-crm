@@ -156,6 +156,9 @@ const AdminSettings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn, permissions } = useStaffAuth();
+  const { isAdmin, isSuperAdmin } = useIsAdmin();
+  // View-only mode: staff with view-only access can see settings but not edit
+  const canEdit = !isStaffLoggedIn || isAdmin || isSuperAdmin || (permissions as any)?.can_change_settings === true;
   const staffOps = useStaffOperations();
   const [user, setUser] = useState<User | null>(null);
   const [isSavingGymInfo, setIsSavingGymInfo] = useState(false);
