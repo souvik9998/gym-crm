@@ -18,6 +18,12 @@ import { Separator } from "@/components/ui/separator";
 interface SlotMembersTabProps {
   trainers: Staff[];
   currentBranch: any;
+  /** Restrict trainer dropdown to a single staff trainer ID. */
+  restrictedTrainerId?: string | null;
+  /** Permission flag — show "Assign Members" button. */
+  canAssign?: boolean;
+  /** Permission flag — show "Remove" button. */
+  canRemove?: boolean;
 }
 
 interface TimeSlot {
@@ -51,7 +57,13 @@ interface AvailableMember {
   pt_subscription_id: string | null;
 }
 
-export const SlotMembersTab = ({ trainers, currentBranch }: SlotMembersTabProps) => {
+export const SlotMembersTab = ({
+  trainers,
+  currentBranch,
+  restrictedTrainerId = null,
+  canAssign = true,
+  canRemove = true,
+}: SlotMembersTabProps) => {
   const [selectedTrainer, setSelectedTrainer] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
   const [slots, setSlots] = useState<TimeSlot[]>([]);
