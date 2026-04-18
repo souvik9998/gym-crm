@@ -569,10 +569,19 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       if (currentStep === 2 && !isStep2Valid) {
         const missing: string[] = [];
         if (name.trim().length < 2) missing.push("Full Name");
-        if (!gender) missing.push("Gender");
-        if (!photoIdType) missing.push("Photo ID Type");
-        if (photoIdType && !photoIdNumber.trim()) missing.push("Photo ID Number");
-        if (address.trim().length < 3) missing.push("Address");
+        if (showGender && !gender) missing.push("Gender");
+        if (showDOB && dobRequired && !dateOfBirth) missing.push("Date of Birth");
+        if (showPhotoId && photoIdRequired && !photoIdType) missing.push("Photo ID Type");
+        if (showPhotoId && photoIdType && !photoIdNumber.trim()) missing.push("Photo ID Number");
+        if (showAddress && addressRequired && address.trim().length < 3) missing.push("Address");
+        if (showEmail && emailRequired && !email) missing.push("Email");
+        if (showEmail && email && !emailValid) missing.push("Valid Email");
+        if (showOccupation && occupationRequired && !occupation.trim()) missing.push("Occupation");
+        if (showBloodGroup && bloodGroupRequired && !bloodGroup) missing.push("Blood Group");
+        if (showEC1 && ec1Required && (!emergencyContact1Name || !emergencyContact1Phone)) missing.push("Emergency Contact 1");
+        if (showEC2 && ec2Required && (!emergencyContact2Name || !emergencyContact2Phone)) missing.push("Emergency Contact 2");
+        if (showIdentityUpload && identityRequired && identityFiles.length === 0) missing.push("Identity Proof Upload");
+        if (showMedicalUpload && medicalRequired && medicalFiles.length === 0) missing.push("Medical Records Upload");
         toast.error("Please fill all required fields", {
           description: missing.join(", "),
         });
