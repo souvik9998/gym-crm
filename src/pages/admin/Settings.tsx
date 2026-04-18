@@ -156,7 +156,30 @@ const AdminSettings = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { currentBranch } = useBranch();
-  const { isStaffLoggedIn, permissions: staffPermissions } = useStaffAuth();
+  const { isStaffLoggedIn, staffUser, permissions: staffPermissions } = useStaffAuth();
+
+  // Helper: log activity as staff if staff session, else as admin
+  const logActivity = useCallback(async (params: Parameters<typeof logAdminActivity>[0]) => {
+    if (isStaffLoggedIn && staffUser) {
+      const { category, type, ...rest } = params;
+      const staffCategoryMap: Record<string, any> = {
+        packages: "settings",
+        branch: "settings",
+      };
+      const staffCategory = staffCategoryMap[category] || category;
+      await logStaffActivity({
+        ...rest,
+        category: staffCategory,
+        type: type as any,
+        staffId: staffUser.id,
+        staffName: staffUser.fullName,
+        staffPhone: staffUser.phone,
+        description: `Staff "${staffUser.fullName}" — ${params.description}`,
+      });
+    } else {
+      await logAdminActivity(params);
+    }
+  }, [isStaffLoggedIn, staffUser]);
   const { isAdmin, isSuperAdmin } = useIsAdmin();
   const staffOps = useStaffOperations();
 
