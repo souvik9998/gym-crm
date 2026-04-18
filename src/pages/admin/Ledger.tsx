@@ -67,6 +67,8 @@ import { STALE_TIMES } from "@/lib/queryClient";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
+import { LedgerSkeleton } from "@/components/admin/LedgerSkeleton";
+import { keepPreviousData } from "@tanstack/react-query";
 
 interface LedgerEntry {
   id: string;
@@ -183,7 +185,7 @@ const AdminLedger = () => {
     }
   }, [dateRangePreset, customStartDate, customEndDate]);
 
-  const { data: entries = [], refetch: fetchEntries } = useQuery({
+  const { data: entries = [], refetch: fetchEntries, isLoading: isEntriesLoading, isFetching: isEntriesFetching } = useQuery({
     queryKey: ["ledger-entries", dateRange.start, dateRange.end, currentBranch?.id],
     queryFn: async () => {
       if (!currentBranch?.id) return [];
@@ -208,7 +210,11 @@ const AdminLedger = () => {
     },
     enabled: !!currentBranch?.id,
     staleTime: STALE_TIMES.DYNAMIC,
+    placeholderData: keepPreviousData,
   });
+
+  // Show full-page skeleton on first load (no branch yet, or first fetch in flight)
+  const showSkeleton = !currentBranch?.id || (isEntriesLoading && !entries.length);
 
   const handleAddExpense = async () => {
     if (!expenseCategory || !expenseDescription || !expenseAmount) {
@@ -611,6 +617,10 @@ const AdminLedger = () => {
     const categories = entryType === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
     return categories.find((c) => c.value === category)?.label || category;
   };
+
+  if (showSkeleton) {
+    return <LedgerSkeleton />;
+  }
 
   return (
     <Fragment>
