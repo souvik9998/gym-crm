@@ -120,6 +120,8 @@ export const MembersTable = ({
   
   // Check if user can manage members (admin or staff with can_manage_members permission)
   const canManageMembers = isAdmin || (isStaffLoggedIn && permissions?.can_manage_members === true);
+  // Check if user can send WhatsApp (admin or staff with can_send_whatsapp permission)
+  const canSendWhatsApp = isAdmin || (isStaffLoggedIn && (permissions as any)?.can_send_whatsapp === true);
   
   // Map external sortBy to internal sortField
   const mapSortByToField = (sortBy?: "name" | "join_date" | "end_date"): SortField => {
@@ -1097,27 +1099,31 @@ export const MembersTable = ({
             >
               Clear
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleBulkWhatsApp("promotional")}
-              disabled={bulkActionType !== null}
-              className="gap-1 md:gap-2 h-7 md:h-8 text-[10px] md:text-xs px-2 md:px-3"
-            >
-              <MessageCircle className="w-3 h-3 md:w-4 md:h-4" />
-              {bulkActionType === "promotional" ? "Sending..." : "Promotional"}
-            </Button>
-            {hasExpiringOrExpiredSelected() && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleBulkWhatsApp("expiry_reminder")}
-                disabled={bulkActionType !== null}
-                className="gap-1 md:gap-2 h-7 md:h-8 text-[10px] md:text-xs px-2 md:px-3"
-              >
-                <Clock className="w-3 h-3 md:w-4 md:h-4" />
-                {bulkActionType === "expiry_reminder" ? "Sending..." : "Expiry Reminder"}
-              </Button>
+            {canSendWhatsApp && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBulkWhatsApp("promotional")}
+                  disabled={bulkActionType !== null}
+                  className="gap-1 md:gap-2 h-7 md:h-8 text-[10px] md:text-xs px-2 md:px-3"
+                >
+                  <MessageCircle className="w-3 h-3 md:w-4 md:h-4" />
+                  {bulkActionType === "promotional" ? "Sending..." : "Promotional"}
+                </Button>
+                {hasExpiringOrExpiredSelected() && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkWhatsApp("expiry_reminder")}
+                    disabled={bulkActionType !== null}
+                    className="gap-1 md:gap-2 h-7 md:h-8 text-[10px] md:text-xs px-2 md:px-3"
+                  >
+                    <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                    {bulkActionType === "expiry_reminder" ? "Sending..." : "Expiry Reminder"}
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -1246,7 +1252,11 @@ export const MembersTable = ({
                             Move to Inactive
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    {canSendWhatsApp && (
+                      <>
+                        {canManageMembers && <DropdownMenuSeparator />}
                         <DropdownMenuItem
                           onClick={(e) => handleSendPromotional(member, e)}
                           disabled={sendingWhatsApp === member.id}
@@ -1280,6 +1290,10 @@ export const MembersTable = ({
                           <Receipt className="w-4 h-4 mr-2" />
                           Send Payment Details
                         </DropdownMenuItem>
+                      </>
+                    )}
+                    {canManageMembers && (
+                      <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={(e) => {
@@ -1292,7 +1306,7 @@ export const MembersTable = ({
                         </DropdownMenuItem>
                       </>
                     )}
-                    {!canManageMembers && (
+                    {!canManageMembers && !canSendWhatsApp && (
                       <DropdownMenuItem disabled>
                         <span className="text-muted-foreground text-sm">View only - No edit permissions</span>
                       </DropdownMenuItem>
@@ -1537,7 +1551,11 @@ export const MembersTable = ({
                                   Move to Inactive
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuSeparator />
+                            </>
+                          )}
+                          {canSendWhatsApp && (
+                            <>
+                              {canManageMembers && <DropdownMenuSeparator />}
                               <DropdownMenuItem
                                 onClick={(e) => handleSendPromotional(member, e)}
                                 disabled={sendingWhatsApp === member.id}
@@ -1571,6 +1589,10 @@ export const MembersTable = ({
                                 <Receipt className="w-4 h-4 mr-2" />
                                 Send Payment Details
                               </DropdownMenuItem>
+                            </>
+                          )}
+                          {canManageMembers && (
+                            <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={(e) => {
@@ -1583,7 +1605,7 @@ export const MembersTable = ({
                               </DropdownMenuItem>
                             </>
                           )}
-                          {!canManageMembers && (
+                          {!canManageMembers && !canSendWhatsApp && (
                             <DropdownMenuItem disabled>
                               <span className="text-muted-foreground text-sm">View only - No edit permissions</span>
                             </DropdownMenuItem>
