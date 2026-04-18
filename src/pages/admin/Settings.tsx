@@ -1825,7 +1825,7 @@ const AdminSettings = () => {
           </TabsContent>
           
        </Tabs>
-       </fieldset>
+
       </div>
 
       <ConfirmDialog
