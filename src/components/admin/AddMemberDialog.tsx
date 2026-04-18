@@ -290,9 +290,27 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       fetchPackages();
       fetchTrainers();
       fetchTaxSettings();
+      fetchFieldSettings();
       setCurrentStep(1);
     }
   }, [open, currentBranch]);
+
+  const fetchFieldSettings = async () => {
+    if (!currentBranch) return;
+    const { data } = await supabase
+      .from("gym_settings")
+      .select("registration_field_settings")
+      .eq("branch_id", currentBranch.id)
+      .maybeSingle();
+    if (data?.registration_field_settings) {
+      const parsed = typeof data.registration_field_settings === "string"
+        ? JSON.parse(data.registration_field_settings)
+        : data.registration_field_settings;
+      setFieldSettings(parsed as RegistrationFieldSettings);
+    } else {
+      setFieldSettings({});
+    }
+  };
 
   const fetchTaxSettings = async () => {
     if (!currentBranch) return;
