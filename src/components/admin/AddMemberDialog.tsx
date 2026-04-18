@@ -971,8 +971,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           : addMonths(new Date(startDate), selectedPackage?.months || 1).toISOString().split("T")[0];
         
         const notificationType = selectedAction === "add_pt" ? "pt_extension" : "renewal";
-        const shouldAutoSend = await getWhatsAppAutoSendPreference(currentBranch?.id, notificationType);
-        if (shouldAutoSend) {
+        if (notifyWhatsApp) {
           await supabase.functions.invoke("send-whatsapp", {
             body: {
               phone: existingMember.phone, name: existingMember.name, endDate: endDateStr,
