@@ -1281,58 +1281,114 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     />
                   </div>
 
-                  <div className="space-y-2.5">
-                    <Label className="text-sm font-medium">Gender <span className="text-destructive">*</span></Label>
-                    <div className="flex gap-2">
-                      {[
-                        { value: "male", label: "Male" },
-                        { value: "female", label: "Female" },
-                        { value: "other", label: "Other" },
-                      ].map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setGender(opt.value)}
-                          className={cn(
-                            "flex-1 py-2.5 px-3 rounded-xl border-2 text-sm font-medium transition-all duration-200 active:scale-95",
-                            gender === opt.value
-                              ? "border-foreground bg-foreground/5 text-foreground shadow-sm"
-                              : "border-border bg-card text-muted-foreground hover:border-foreground/30"
-                          )}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
+                  {showGender && (
+                    <div className="space-y-2.5">
+                      <Label className="text-sm font-medium">Gender {fs.gender?.required !== false && <span className="text-destructive">*</span>}</Label>
+                      <div className="flex gap-2">
+                        {[
+                          { value: "male", label: "Male" },
+                          { value: "female", label: "Female" },
+                          { value: "other", label: "Other" },
+                        ].map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setGender(opt.value)}
+                            className={cn(
+                              "flex-1 py-2.5 px-3 rounded-xl border-2 text-sm font-medium transition-all duration-200 active:scale-95",
+                              gender === opt.value
+                                ? "border-foreground bg-foreground/5 text-foreground shadow-sm"
+                                : "border-border bg-card text-muted-foreground hover:border-foreground/30"
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-sm font-medium">
-                      <CalendarDays className="w-4 h-4 text-accent" />
-                      Date of Birth
-                    </Label>
-                    <DobInput value={dateOfBirth} onChange={setDateOfBirth} />
-                  </div>
+                  {showDOB && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <CalendarDays className="w-4 h-4 text-accent" />
+                        Date of Birth {dobRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <DobInput value={dateOfBirth} onChange={setDateOfBirth} />
+                    </div>
+                  )}
 
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-sm font-medium">
-                      <IdCard className="w-4 h-4 text-accent" />
-                      Photo ID Type <span className="text-destructive">*</span>
-                    </Label>
-                    <Select value={photoIdType} onValueChange={(val) => { setPhotoIdType(val); setPhotoIdNumber(""); }}>
-                      <SelectTrigger className="h-11 text-sm rounded-xl">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        <SelectItem value="aadhaar">Aadhaar</SelectItem>
-                        <SelectItem value="pan">PAN</SelectItem>
-                        <SelectItem value="voter">Voter ID</SelectItem>
-                        <SelectItem value="driving">Driving License</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {showEmail && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <Mail className="w-4 h-4 text-accent" />
+                        Email {emailRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <Input
+                        type="email"
+                        placeholder="member@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="h-11 text-sm rounded-xl"
+                      />
+                    </div>
+                  )}
 
-                  {photoIdType && (
+                  {showOccupation && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <Briefcase className="w-4 h-4 text-accent" />
+                        Occupation {occupationRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <Input
+                        placeholder="e.g. Software Engineer"
+                        value={occupation}
+                        onChange={(e) => setOccupation(e.target.value)}
+                        className="h-11 text-sm rounded-xl"
+                      />
+                    </div>
+                  )}
+
+                  {showBloodGroup && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <Droplets className="w-4 h-4 text-accent" />
+                        Blood Group {bloodGroupRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <Select value={bloodGroup} onValueChange={setBloodGroup}>
+                        <SelectTrigger className="h-11 text-sm rounded-xl">
+                          <SelectValue placeholder="Select blood group" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map((bg) => (
+                            <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {showPhotoId && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <IdCard className="w-4 h-4 text-accent" />
+                        Photo ID Type {photoIdRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <Select value={photoIdType} onValueChange={(val) => { setPhotoIdType(val); setPhotoIdNumber(""); }}>
+                        <SelectTrigger className="h-11 text-sm rounded-xl">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="aadhaar">Aadhaar</SelectItem>
+                          <SelectItem value="pan">PAN</SelectItem>
+                          <SelectItem value="voter">Voter ID</SelectItem>
+                          <SelectItem value="driving">Driving License</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {showPhotoId && photoIdType && (
                     <div className="space-y-2 animate-fade-in">
                       <Label className="text-sm font-medium">
                         {photoIdType === "aadhaar" ? "Aadhaar" : photoIdType === "pan" ? "PAN" : photoIdType === "voter" ? "Voter ID" : "DL"} Number <span className="text-destructive">*</span>
@@ -1347,18 +1403,110 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-sm font-medium">
-                      <MapPin className="w-4 h-4 text-accent" />
-                      Address <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      placeholder="Enter address"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      className="h-11 text-sm rounded-xl"
-                    />
-                  </div>
+                  {showAddress && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <MapPin className="w-4 h-4 text-accent" />
+                        Address {addressRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <Input
+                        placeholder="Enter address"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        className="h-11 text-sm rounded-xl"
+                      />
+                    </div>
+                  )}
+
+                  {showHealth && (
+                    <div className="rounded-xl border border-border/50 bg-muted/20 p-3.5 space-y-3 animate-fade-in">
+                      <p className="text-sm font-medium flex items-center gap-2"><Heart className="w-4 h-4 text-accent" /> Health Details {healthRequired && <span className="text-destructive">*</span>}</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Height (cm)</Label>
+                          <Input type="number" value={heightCm} onChange={(e) => setHeightCm(e.target.value)} className="h-10 text-sm rounded-xl" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Weight (kg)</Label>
+                          <Input type="number" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} className="h-10 text-sm rounded-xl" />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Medical Conditions</Label>
+                        <Textarea value={medicalConditions} onChange={(e) => setMedicalConditions(e.target.value)} placeholder="Any medical conditions" className="text-sm rounded-xl min-h-[60px]" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Allergies</Label>
+                        <Textarea value={allergies} onChange={(e) => setAllergies(e.target.value)} placeholder="Any allergies" className="text-sm rounded-xl min-h-[60px]" />
+                      </div>
+                    </div>
+                  )}
+
+                  {showEC1 && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <ShieldAlert className="w-4 h-4 text-accent" />
+                        Emergency Contact {ec1Required && <span className="text-destructive">*</span>}
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input placeholder="Name" value={emergencyContact1Name} onChange={(e) => setEmergencyContact1Name(e.target.value)} className="h-11 text-sm rounded-xl" />
+                        <Input placeholder="Phone" value={emergencyContact1Phone} onChange={(e) => setEmergencyContact1Phone(e.target.value.replace(/\D/g, "").slice(0, 10))} className="h-11 text-sm rounded-xl" />
+                      </div>
+                    </div>
+                  )}
+
+                  {showEC2 && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <ShieldAlert className="w-4 h-4 text-accent" />
+                        Emergency Contact 2 {ec2Required && <span className="text-destructive">*</span>}
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input placeholder="Name" value={emergencyContact2Name} onChange={(e) => setEmergencyContact2Name(e.target.value)} className="h-11 text-sm rounded-xl" />
+                        <Input placeholder="Phone" value={emergencyContact2Phone} onChange={(e) => setEmergencyContact2Phone(e.target.value.replace(/\D/g, "").slice(0, 10))} className="h-11 text-sm rounded-xl" />
+                      </div>
+                    </div>
+                  )}
+
+                  {showIdentityUpload && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <Upload className="w-4 h-4 text-accent" />
+                        Identity Proof Upload {identityRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <label className="flex items-center justify-center gap-2 h-11 rounded-xl border-2 border-dashed border-border hover:border-foreground/30 cursor-pointer text-sm text-muted-foreground transition-colors">
+                        <Upload className="w-4 h-4" />
+                        {isUploading ? "Uploading..." : "Click to upload (PDF/Image, max 5MB)"}
+                        <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], "identity")} />
+                      </label>
+                      {identityFiles.map((f, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs bg-muted rounded-lg p-2">
+                          <span className="flex items-center gap-1.5 truncate"><FileText className="w-3.5 h-3.5 shrink-0" />{f.name}</span>
+                          <button type="button" onClick={() => setIdentityFiles((p) => p.filter((_, idx) => idx !== i))}><X className="w-3.5 h-3.5" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {showMedicalUpload && (
+                    <div className="space-y-2 animate-fade-in">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <FileText className="w-4 h-4 text-accent" />
+                        Medical Records Upload {medicalRequired && <span className="text-destructive">*</span>}
+                      </Label>
+                      <label className="flex items-center justify-center gap-2 h-11 rounded-xl border-2 border-dashed border-border hover:border-foreground/30 cursor-pointer text-sm text-muted-foreground transition-colors">
+                        <Upload className="w-4 h-4" />
+                        {isUploading ? "Uploading..." : "Click to upload (PDF/Image, max 5MB)"}
+                        <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], "medical")} />
+                      </label>
+                      {medicalFiles.map((f, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs bg-muted rounded-lg p-2">
+                          <span className="flex items-center gap-1.5 truncate"><FileText className="w-3.5 h-3.5 shrink-0" />{f.name}</span>
+                          <button type="button" onClick={() => setMedicalFiles((p) => p.filter((_, idx) => idx !== i))}><X className="w-3.5 h-3.5" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
