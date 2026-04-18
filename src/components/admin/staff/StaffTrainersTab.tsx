@@ -552,8 +552,11 @@ export const StaffTrainersTab = ({
             <div className="space-y-1 lg:space-y-2">
               <Label className="text-xs lg:text-sm">Phone Number *</Label>
               <Input
+                type="tel"
+                inputMode="numeric"
+                maxLength={10}
                 value={newTrainer.phone}
-                onChange={(e) => setNewTrainer({ ...newTrainer, phone: e.target.value })}
+                onChange={(e) => setNewTrainer({ ...newTrainer, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
                 placeholder="10-digit phone number"
                 className="h-9 lg:h-12 text-sm"
               />
