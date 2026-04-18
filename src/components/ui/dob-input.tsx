@@ -116,30 +116,37 @@ export const DobInput = ({ value, onChange, className, error, onValidityChange }
     emitChange(next.day, next.month, next.year);
   };
 
+  const getCurrentParts = useCallback(
+    () => ({
+      day: dayRef.current?.value.replace(/\D/g, "").slice(0, 2) ?? parts.day,
+      month: monthRef.current?.value.replace(/\D/g, "").slice(0, 2) ?? parts.month,
+      year: yearRef.current?.value.replace(/\D/g, "").slice(0, 4) ?? parts.year,
+    }),
+    [parts.day, parts.month, parts.year]
+  );
+
   const padField = (field: "day" | "month") => {
-    const current = parts[field];
+    const liveParts = getCurrentParts();
+    const current = liveParts[field];
     if (current.length === 1) {
       const padded = current.padStart(2, "0");
       const num = parseInt(padded, 10);
-      // Only pad if the resulting value is valid for the field
       const upperBound = field === "day" ? 31 : 12;
       if (num >= 1 && num <= upperBound) {
-        const next = { ...parts, [field]: padded };
+        const next = { ...liveParts, [field]: padded };
         setParts(next);
         emitChange(next.day, next.month, next.year);
         return next;
       }
     }
-    return parts;
+    return liveParts;
   };
 
   const handleBlur = (field: "day" | "month" | "year") => {
     setFocused(null);
-    // Auto-pad single-digit day/month on blur (e.g. "2" → "02")
     if (field === "day" || field === "month") {
       padField(field);
     }
-    // Do NOT show internal error on blur — only on submit (via external `error` prop)
   };
 
   const handleKeyDown = (
