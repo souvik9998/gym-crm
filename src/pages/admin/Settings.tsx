@@ -1609,6 +1609,15 @@ const AdminSettings = () => {
                               setWhatsappEnabled(!checked); // revert
                               toast.error("Error", { description: error });
                             } else {
+                              await logActivity({
+                                category: "settings", type: "whatsapp_toggled",
+                                description: `${checked ? "Enabled" : "Disabled"} WhatsApp messaging for ${currentBranch?.name || "branch"}`,
+                                entityType: "gym_settings", entityId: settingsId,
+                                entityName: currentBranch?.name || "Gym Settings",
+                                oldValue: { whatsapp_enabled: !checked },
+                                newValue: { whatsapp_enabled: checked },
+                                branchId: currentBranch?.id,
+                              });
                               toast.success(checked ? "WhatsApp Enabled" : "WhatsApp Disabled");
                             }
                             return;
