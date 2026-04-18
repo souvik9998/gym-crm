@@ -76,10 +76,10 @@ const RevenueChart = memo(({ data, isLoading, granularity, intervalMeta }: Reven
       {stats && (
         <ChartSummary
           stats={[
-            { label: "Total", value: formatINRFull(stats.total), tone: "accent" },
-            { label: "Peak", value: `${formatINR(stats.peak)} · ${stats.peakLabel ?? "-"}` },
-            { label: "Avg / interval", value: formatINR(stats.avg) },
-            { label: "Active intervals", value: `${stats.count}` },
+            { label: "Total revenue", value: formatINRFull(stats.total), tone: "accent" },
+            { label: "Payments", value: stats.totalPayments.toLocaleString("en-IN") },
+            { label: `Peak ${granularityLabel(granularity)}`, value: `${formatINR(stats.peak)} · ${stats.peakRange ?? stats.peakLabel ?? "-"}` },
+            { label: `Avg / ${granularityLabel(granularity)}`, value: formatINR(stats.avg) },
           ]}
         />
       )}
