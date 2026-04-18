@@ -82,13 +82,13 @@ const toneClass: Record<NonNullable<SummaryStat["tone"]>, string> = {
 export function ChartSummary({ stats }: { stats: SummaryStat[] }) {
   if (!stats.length) return null;
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-1 pb-3 border-b border-border/50 mb-3">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 sm:gap-x-5 sm:gap-y-2 px-0.5 pb-2 sm:pb-3 border-b border-border/50 mb-2 sm:mb-3">
       {stats.map((s) => (
-        <div key={s.label} className="flex flex-col">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+        <div key={s.label} className="flex flex-col min-w-0">
+          <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-medium leading-tight">
             {s.label}
           </span>
-          <span className={`text-sm font-semibold tabular-nums ${toneClass[s.tone ?? "default"]}`}>
+          <span className={`text-[12px] sm:text-sm font-semibold tabular-nums leading-tight truncate ${toneClass[s.tone ?? "default"]}`}>
             {s.value}
           </span>
         </div>
@@ -163,7 +163,7 @@ export const axisTickStyle = {
 };
 
 export const axisTickStyleMobile = {
-  fontSize: 9,
+  fontSize: 10,
   fill: "hsl(var(--muted-foreground))",
 };
 
@@ -176,3 +176,56 @@ export function gridProps() {
     vertical: false as const,
   };
 }
+
+// ---------- Mobile X-axis label shortener ----------
+/**
+ * Compact a bucket label for narrow mobile X-axes.
+ * Keeps it readable: "06 Apr", "Apr", "W14", "12/04" etc.
+ */
+export function shortenAxisLabel(label: string, granularity: Granularity | undefined): string {
+  if (!label) return "";
+  // Day buckets: "06 Apr 2024" or "Apr 06" → "06 Apr"
+  if (granularity === "day") {
+    // strip trailing year
+    return label.replace(/,?\s*\d{4}$/, "").trim();
+  }
+  // Week buckets: "W14 2024" → "W14"
+  if (granularity === "week") {
+    const m = label.match(/W\d+/i);
+    if (m) return m[0];
+    return label.replace(/\s*\d{4}$/, "").trim();
+  }
+  // Month buckets: "Apr 2024" → "Apr"
+  if (granularity === "month") {
+    return label.replace(/\s*\d{4}$/, "").trim();
+  }
+  return label;
+}
+
+// ---------- Recharts-friendly XAxis props for date buckets ----------
+export interface DateAxisOptions {
+  isMobile: boolean;
+  granularity?: Granularity;
+  dataLength: number;
+}
+export function dateAxisProps({ isMobile, granularity, dataLength }: DateAxisOptions) {
+  // On mobile pick a sensible interval so labels never overlap
+  let interval: number | "preserveStartEnd" | "preserveEnd" = 0;
+  if (isMobile) {
+    if (dataLength <= 6) interval = 0;
+    else if (dataLength <= 10) interval = 1;
+    else if (dataLength <= 16) interval = 2;
+    else interval = Math.ceil(dataLength / 6);
+  }
+  return {
+    tickLine: false,
+    axisLine: false,
+    tick: isMobile ? axisTickStyleMobile : axisTickStyle,
+    minTickGap: isMobile ? 4 : 8,
+    interval,
+    tickMargin: 6,
+    height: isMobile ? 28 : 32,
+    tickFormatter: (v: string) => (isMobile ? shortenAxisLabel(String(v), granularity) : String(v)),
+  } as const;
+}
+
