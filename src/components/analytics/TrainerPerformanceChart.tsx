@@ -121,62 +121,64 @@ const TrainerPerformanceChart = memo(({ data, isLoading }: TrainerPerformanceCha
           <h4 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
             Revenue Share
           </h4>
-          <ChartContainer
-            config={{ revenue: { label: "Revenue", color: "hsl(var(--accent))" } }}
-            className="h-[220px] sm:h-[260px] overflow-hidden relative"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  dataKey="revenue"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={isMobile ? 50 : 60}
-                  outerRadius={isMobile ? 80 : 95}
-                  paddingAngle={2}
-                  stroke="hsl(var(--background))"
-                  strokeWidth={2}
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={index} fill={entry.color} />
-                  ))}
-                </Pie>
-                <ChartTooltip
-                  content={({ active, payload }) => {
-                    if (!active || !payload?.length) return null;
-                    const t = payload[0].payload as TrainerStats & { color: string };
-                    const pct = totalRevenue > 0 ? (Number(t.revenue) / totalRevenue) * 100 : 0;
-                    return (
-                      <div className="rounded-xl border border-border/70 bg-popover/95 backdrop-blur-md shadow-lg px-3 py-2">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: t.color }} />
-                          <p className="text-[12px] font-semibold">{t.name}</p>
+          <div className="relative h-[220px] sm:h-[260px]">
+            <ChartContainer
+              config={{ revenue: { label: "Revenue", color: "hsl(var(--accent))" } }}
+              className="h-full overflow-hidden"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    dataKey="revenue"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={isMobile ? 50 : 60}
+                    outerRadius={isMobile ? 80 : 95}
+                    paddingAngle={2}
+                    stroke="hsl(var(--background))"
+                    strokeWidth={2}
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={index} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const t = payload[0].payload as TrainerStats & { color: string };
+                      const pct = totalRevenue > 0 ? (Number(t.revenue) / totalRevenue) * 100 : 0;
+                      return (
+                        <div className="rounded-xl border border-border/70 bg-popover/95 backdrop-blur-md shadow-lg px-3 py-2">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="w-2.5 h-2.5 rounded-sm" style={{ background: t.color }} />
+                            <p className="text-[12px] font-semibold">{t.name}</p>
+                          </div>
+                          <div className="space-y-0.5 text-[11px]">
+                            <p className="text-muted-foreground">
+                              Revenue: <span className="font-semibold text-foreground">{formatINRFull(Number(t.revenue))}</span>
+                            </p>
+                            <p className="text-muted-foreground">
+                              Share: <span className="font-semibold text-foreground">{pct.toFixed(1)}%</span>
+                            </p>
+                            <p className="text-muted-foreground">
+                              Clients: <span className="font-semibold text-foreground">{t.members}</span>
+                            </p>
+                          </div>
                         </div>
-                        <div className="space-y-0.5 text-[11px]">
-                          <p className="text-muted-foreground">
-                            Revenue: <span className="font-semibold text-foreground">{formatINRFull(Number(t.revenue))}</span>
-                          </p>
-                          <p className="text-muted-foreground">
-                            Share: <span className="font-semibold text-foreground">{pct.toFixed(1)}%</span>
-                          </p>
-                          <p className="text-muted-foreground">
-                            Clients: <span className="font-semibold text-foreground">{t.members}</span>
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+                      );
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </ChartContainer>
             {/* Centered total */}
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</span>
               <span className="text-base font-bold tabular-nums">{formatINR(totalRevenue)}</span>
             </div>
-          </ChartContainer>
+          </div>
 
           {/* Legend with values */}
           <div className="mt-3 space-y-1.5">
