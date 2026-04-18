@@ -177,7 +177,11 @@ Deno.serve(async (req) => {
       });
     }
 
+    // The action_link verifies the token on Supabase and then redirects the
+    // user to `redirectTo` (https://app.gymkloud.in/reset-password) where our
+    // branded reset page handles the recovery session.
     const resetUrl = linkData.properties.action_link;
+
     const resendResponse = await fetch(RESEND_API_URL, {
       method: "POST",
       headers: {
