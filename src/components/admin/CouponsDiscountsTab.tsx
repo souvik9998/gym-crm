@@ -102,6 +102,24 @@ const generateCode = () => {
 
 export const CouponsDiscountsTab = () => {
   const { currentBranch } = useBranch();
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
+
+  const logCouponActivity = async (params: Parameters<typeof logAdminActivity>[0]) => {
+    if (isStaffLoggedIn && staffUser) {
+      await logStaffActivity({
+        ...params,
+        category: "settings",
+        type: params.type as any,
+        description: `Staff "${staffUser.fullName}" — ${params.description}`,
+        staffId: staffUser.id,
+        staffName: staffUser.fullName,
+        staffPhone: staffUser.phone,
+      });
+    } else {
+      await logAdminActivity(params);
+    }
+  };
+
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -223,7 +241,7 @@ export const CouponsDiscountsTab = () => {
         const { error } = await supabase.from("coupons").update(payload).eq("id", editingId);
         if (error) throw error;
         toast.success("Coupon updated");
-        await logAdminActivity({
+        await logCouponActivity({
           category: "settings", type: "coupon_updated",
           description: `Updated coupon ${payload.code}`,
           entityType: "coupon", entityId: editingId,
@@ -239,7 +257,7 @@ export const CouponsDiscountsTab = () => {
           throw error;
         }
         toast.success("Coupon created");
-        await logAdminActivity({
+        await logCouponActivity({
           category: "settings", type: "coupon_created",
           description: `Created coupon ${payload.code}`,
           entityType: "coupon", entityName: payload.code, branchId: currentBranch.id,
@@ -264,6 +282,15 @@ export const CouponsDiscountsTab = () => {
       if (error) throw error;
       setCoupons(prev => prev.map(c => c.id === coupon.id ? { ...c, is_active: !c.is_active } : c));
       toast.success(coupon.is_active ? "Coupon disabled" : "Coupon enabled");
+      await logCouponActivity({
+        category: "settings", type: "coupon_updated",
+        description: `${coupon.is_active ? "Disabled" : "Enabled"} coupon ${coupon.code}`,
+        entityType: "coupon", entityId: coupon.id,
+        entityName: coupon.code,
+        oldValue: { is_active: coupon.is_active },
+        newValue: { is_active: !coupon.is_active },
+        branchId: currentBranch?.id,
+      });
     } catch (err: any) {
       toast.error("Error", { description: err.message });
     } finally {
@@ -275,10 +302,18 @@ export const CouponsDiscountsTab = () => {
     setDeletingId(id);
     setConfirmDeleteId(null);
     try {
+      const couponToDelete = coupons.find(c => c.id === id);
       const { error } = await supabase.from("coupons").delete().eq("id", id);
       if (error) throw error;
       setCoupons(prev => prev.filter(c => c.id !== id));
       toast.success("Coupon deleted");
+      await logCouponActivity({
+        category: "settings", type: "coupon_deleted",
+        description: `Deleted coupon ${couponToDelete?.code || id}`,
+        entityType: "coupon", entityId: id,
+        entityName: couponToDelete?.code,
+        branchId: currentBranch?.id,
+      });
     } catch (err: any) {
       toast.error("Error deleting", { description: err.message });
     } finally {
