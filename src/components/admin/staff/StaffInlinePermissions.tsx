@@ -22,6 +22,7 @@ export interface InlinePermissions {
   can_access_ledger: boolean;
   can_access_payments: boolean;
   can_access_analytics: boolean;
+  can_view_settings: boolean;
   can_change_settings: boolean;
   can_send_whatsapp: boolean;
   can_access_attendance: boolean;
@@ -73,9 +74,15 @@ const CORE_PERMISSION_OPTIONS = [
     icon: ChartBarIcon,
   },
   { 
+    key: "can_view_settings" as const, 
+    label: "View Settings", 
+    description: "View gym settings (read-only)",
+    icon: EyeIcon,
+  },
+  { 
     key: "can_change_settings" as const, 
-    label: "Settings Access", 
-    description: "Modify gym settings",
+    label: "Edit Settings", 
+    description: "Modify gym settings (auto-includes view)",
     icon: Cog6ToothIcon,
   },
   { 
@@ -144,10 +151,20 @@ export const StaffInlinePermissions = ({
 }: StaffInlinePermissionsProps) => {
   const togglePermission = (key: keyof InlinePermissions) => {
     if (key === "member_access_type") return;
-    onChange({
-      ...permissions,
-      [key]: !permissions[key],
-    });
+    const next = !permissions[key];
+    const updated: InlinePermissions = { ...permissions, [key]: next };
+
+    // Mutual logic between view and edit settings:
+    // - Enabling "Edit Settings" auto-enables "View Settings"
+    // - Disabling "View Settings" auto-disables "Edit Settings"
+    if (key === "can_change_settings" && next) {
+      updated.can_view_settings = true;
+    }
+    if (key === "can_view_settings" && !next) {
+      updated.can_change_settings = false;
+    }
+
+    onChange(updated);
   };
 
   if (compact) {
@@ -333,6 +350,7 @@ export const getDefaultPermissions = (role: string): InlinePermissions => ({
   can_access_ledger: role === "accountant",
   can_access_payments: role === "accountant" || role === "manager",
   can_access_analytics: role === "manager",
+  can_view_settings: false,
   can_change_settings: false,
   can_send_whatsapp: role === "manager",
   can_access_attendance: true,

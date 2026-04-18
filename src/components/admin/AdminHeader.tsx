@@ -52,7 +52,9 @@ export const AdminHeader = ({
   const navigate = useNavigate();
   const { currentBranch } = useBranch();
   const { logout: staffLogout, staffUser } = useStaffAuth();
-  const canAccessSettings = useStaffPermission("can_change_settings");
+  const canViewSettings = useStaffPermission("can_view_settings");
+  const canEditSettings = useStaffPermission("can_change_settings");
+  const canAccessSettings = canViewSettings || canEditSettings;
   
   // Get branch name dynamically from currentBranch
   const gymName = currentBranch?.name || "Pro Plus Fitness";

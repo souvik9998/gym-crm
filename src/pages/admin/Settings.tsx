@@ -38,10 +38,12 @@ import { ManualAutomationTriggers } from "@/components/admin/ManualAutomationTri
 import { SubscriptionPlanTab } from "@/components/admin/SubscriptionPlanTab";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useStaffOperations } from "@/hooks/useStaffOperations";
 import { useSettingsPageData } from "@/hooks/queries/useSettingsPageData";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
+import { EyeIcon } from "@heroicons/react/24/outline";
 
 // Lazy load HolidayCalendarTab for code splitting
 const HolidayCalendarTab = lazy(() => import("@/components/admin/HolidayCalendarTab"));
@@ -154,6 +156,9 @@ const AdminSettings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn, permissions } = useStaffAuth();
+  const { isAdmin, isSuperAdmin } = useIsAdmin();
+  // View-only mode: staff with view-only access can see settings but not edit
+  const canEdit = !isStaffLoggedIn || isAdmin || isSuperAdmin || (permissions as any)?.can_change_settings === true;
   const staffOps = useStaffOperations();
   const [user, setUser] = useState<User | null>(null);
   const [isSavingGymInfo, setIsSavingGymInfo] = useState(false);
@@ -994,6 +999,17 @@ const AdminSettings = () => {
   return (
     <Fragment>
       <div className="w-full px-1 sm:px-0">
+        {!canEdit && (
+          <div className="mb-4 flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-3">
+            <EyeIcon className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">View-only access</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                You can review settings but cannot make changes. Ask your admin to grant Edit Settings permission to modify any values.
+              </p>
+            </div>
+          </div>
+        )}
         <Tabs value={activeTab} onValueChange={(val) => { setSearchParams({ tab: val }); setMobileMenuOpen(false); }}>
 
           {/* Mobile: dropdown tab selector */}
@@ -1047,8 +1063,8 @@ const AdminSettings = () => {
             </TabsList>
           </div>
 
-          {/* Content Area */}
-          <div className="min-w-0">
+          {/* Content Area — wrapped in fieldset to enforce read-only mode for view-only staff */}
+          <fieldset disabled={!canEdit} className={cn("min-w-0 border-0 p-0 m-0", !canEdit && "opacity-95")}>
 
           {/* Registration Fields Tab */}
           <TabsContent value="registration" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
@@ -1806,7 +1822,7 @@ const AdminSettings = () => {
           <TabsContent value="subscription" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
             <SubscriptionPlanTab />
           </TabsContent>
-          </div>{/* end content area */}
+          </fieldset>{/* end content area */}
         </Tabs>
       </div>
 
