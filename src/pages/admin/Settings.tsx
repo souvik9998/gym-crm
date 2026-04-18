@@ -1824,7 +1824,8 @@ const AdminSettings = () => {
             <SubscriptionPlanTab />
           </TabsContent>
           
-        </Tabs>
+       </Tabs>
+       </fieldset>
       </div>
 
       <ConfirmDialog
