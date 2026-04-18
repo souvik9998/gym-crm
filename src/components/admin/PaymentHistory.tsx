@@ -753,10 +753,12 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                             <Copy className="w-3.5 h-3.5 mr-2" />
                             Copy Link
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleSendInvoice(payment.id)} disabled={sendingInvoiceId === payment.id}>
-                            <FileText className="w-3.5 h-3.5 mr-2" />
-                            {sendingInvoiceId === payment.id ? "Sending..." : "Send Invoice to WhatsApp"}
-                          </DropdownMenuItem>
+                          {canSendWhatsApp && (
+                            <DropdownMenuItem onClick={() => handleSendInvoice(payment.id)} disabled={sendingInvoiceId === payment.id}>
+                              <FileText className="w-3.5 h-3.5 mr-2" />
+                              {sendingInvoiceId === payment.id ? "Sending..." : "Send Invoice to WhatsApp"}
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
