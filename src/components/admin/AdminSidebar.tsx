@@ -90,14 +90,21 @@ const allNavItems: NavItem[] = [
     requiresPermission: ["can_view_members", "can_manage_members"], // Either permission allows access
     staffOnly: true, // Only for staff users
   },
-  // Staff Time Slots - any time slot permission
+  // Staff Time Slots - any time slot permission grants visibility
   {
     title: "Time Slots",
     href: "/staff/time-slots",
     icon: ClockIcon,
     iconSolid: ClockIcon,
     staffOnly: true,
-    requiresPermission: "can_view_time_slots" as any, // Custom check below covers all time-slot perms
+    requiresPermission: [
+      "can_view_time_slots",
+      "can_manage_time_slots",
+      "can_create_time_slots",
+      "can_edit_delete_time_slots",
+      "can_assign_members_to_slots",
+      "can_view_slot_members",
+    ] as any,
   },
   // Analytics - requires ONLY analytics permission
   {

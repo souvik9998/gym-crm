@@ -17,6 +17,7 @@ const routeTitles: Record<string, { title: string; subtitle?: string }> = {
   "/admin/qr-code": { title: "QR Code", subtitle: "Member Registration Portal" },
   "/admin/attendance": { title: "Attendance", subtitle: "Track member and staff attendance" },
   "/staff/dashboard": { title: "Dashboard", subtitle: "Staff dashboard overview" },
+  "/staff/time-slots": { title: "Time Slots", subtitle: "Manage your trainer time slots" },
 };
 
 /**
