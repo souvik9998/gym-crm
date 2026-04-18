@@ -1734,6 +1734,24 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                       <span className="text-foreground tabular-nums">₹{totalAmount.toLocaleString("en-IN")}</span>
                     </div>
                   </div>
+
+                  {/* Notify member via WhatsApp */}
+                  <label className="flex items-start gap-3 p-3 rounded-xl border border-border/60 bg-card hover:bg-muted/30 cursor-pointer transition-colors">
+                    <Checkbox
+                      checked={notifyWhatsApp}
+                      onCheckedChange={(v) => setNotifyWhatsApp(v === true)}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium flex items-center gap-1.5">
+                        <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        Notify member via WhatsApp
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Sends a registration confirmation to the member's phone after submit.
+                      </p>
+                    </div>
+                  </label>
                 </div>
               )}
             </div>
