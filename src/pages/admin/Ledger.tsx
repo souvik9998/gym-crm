@@ -67,6 +67,8 @@ import { STALE_TIMES } from "@/lib/queryClient";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
+import { LedgerSkeleton } from "@/components/admin/LedgerSkeleton";
+import { keepPreviousData } from "@tanstack/react-query";
 
 interface LedgerEntry {
   id: string;
