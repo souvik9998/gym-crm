@@ -32,6 +32,7 @@ import type { User } from "@supabase/supabase-js";
 import { WhatsAppTemplates } from "@/components/admin/WhatsAppTemplates";
 import { WhatsAppAutoSendSettings } from "@/components/admin/WhatsAppAutoSendSettings";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { BranchManagement } from "@/components/admin/BranchManagement";
 import { AutomatedReportsSettings } from "@/components/admin/AutomatedReportsSettings";
 import { ManualAutomationTriggers } from "@/components/admin/ManualAutomationTriggers";
