@@ -160,6 +160,13 @@ export const StaffTrainersTab = ({
       toast.error("Please enter phone number");
       return;
     }
+    const cleanPhone = newTrainer.phone.replace(/\D/g, "").replace(/^0/, "");
+    if (cleanPhone.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits", {
+        description: "Enter a valid 10-digit mobile number without country code.",
+      });
+      return;
+    }
     if (newTrainer.enableLogin && !newTrainer.password) {
       toast.error("Please enter a password or disable login access");
       return;
@@ -168,7 +175,6 @@ export const StaffTrainersTab = ({
     if (addingRef.current) return;
     addingRef.current = true;
     setIsAddingTrainer(true);
-    const cleanPhone = newTrainer.phone.replace(/\D/g, "").replace(/^0/, "");
     
     try {
       const branchesToAssign = newTrainer.selected_branches.length > 0 
