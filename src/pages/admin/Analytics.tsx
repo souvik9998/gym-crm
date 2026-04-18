@@ -306,7 +306,7 @@ function MemberGrowthSection() {
   );
 
   return (
-    <div className="grid lg:grid-cols-2 gap-3 sm:gap-4" ref={ref as any}>
+    <div className="grid lg:grid-cols-2 gap-3 sm:gap-5" ref={ref as any}>
       <SectionCard
         title="Member Growth"
         description="Cumulative members over time"
@@ -405,7 +405,7 @@ const AdminAnalytics = () => {
   } = useAnalyticsStore();
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
+    <div className="max-w-6xl mx-auto space-y-3 sm:space-y-5">
       {/* Sticky filter bar */}
       <div className="sticky top-0 z-10 -mx-3 sm:mx-0 px-3 sm:px-0 py-2 sm:py-0 bg-background/80 backdrop-blur-md sm:bg-transparent sm:backdrop-blur-0">
         <div className="rounded-2xl border border-border/60 bg-card/95 backdrop-blur-sm shadow-sm p-2.5 sm:p-3 flex items-center justify-between gap-3">

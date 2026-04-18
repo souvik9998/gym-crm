@@ -133,7 +133,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
        );
 
       const rawResponse = await verifyResponse.text();
-      let response: unknown = null;
+      let response: any = null;
       try {
         response = rawResponse ? JSON.parse(rawResponse) : null;
       } catch {
@@ -159,7 +159,7 @@ export const StaffAuthProvider: React.FC<{ children: ReactNode }> = ({ children 
       // refresh token rotated out). Clear local Supabase session so the user lands
       // on the login screen instead of getting stuck on a blank protected route.
        const errMsg = String(
-         (typeof response === "string" ? response : response?.error || response?.message) || `HTTP ${verifyResponse.status}`
+         (typeof response === "string" ? response : (response?.error || response?.message)) || `HTTP ${verifyResponse.status}`
        );
       console.warn("[Staff Auth] verify-session failed, signing out:", errMsg);
       clearStaffState();
