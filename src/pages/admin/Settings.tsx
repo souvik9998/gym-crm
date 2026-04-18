@@ -395,6 +395,13 @@ const AdminSettings = () => {
       } else {
         setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail } : prev);
         toast.success("Gym info saved");
+        await logActivity({
+          category: "settings", type: "gym_info_updated",
+          description: `Updated gym information for ${currentBranch?.name || "branch"}`,
+          entityType: "gym_settings", entityId: settings.id,
+          entityName: currentBranch?.name || "Gym Settings",
+          oldValue: oldSettings, newValue: newSettings, branchId: currentBranch?.id,
+        });
         backgroundInvalidate();
       }
       return;
@@ -531,6 +538,13 @@ const AdminSettings = () => {
         setMonthlyPackages(prev => [...prev, tempPkg].sort((a, b) => a.months - b.months));
         markRecentlyAdded(tempId);
         toast.success("Package added");
+        await logActivity({
+          category: "packages", type: "monthly_package_added",
+          description: `Added ${months} month package at ₹${newMonthlyPackage.price}`,
+          entityType: "monthly_packages", entityName: `${months} Month Package`,
+          newValue: { months, price: Number(newMonthlyPackage.price), joining_fee: Number(newMonthlyPackage.joining_fee) || 0 },
+          branchId: currentBranch.id,
+        });
         setNewMonthlyPackage({ months: "", price: "", joining_fee: "" });
         backgroundInvalidate();
       }
@@ -602,6 +616,15 @@ const AdminSettings = () => {
         // Instant local state update
         setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 } : p));
         toast.success("Package updated");
+        await logActivity({
+          category: "packages", type: "monthly_package_updated",
+          description: `Updated ${pkg?.months} month package pricing`,
+          entityType: "monthly_packages", entityId: id,
+          entityName: `${pkg?.months} Month Package`,
+          oldValue,
+          newValue: { price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 },
+          branchId: currentBranch?.id,
+        });
         setEditingMonthlyId(null);
         backgroundInvalidate();
       }
@@ -660,6 +683,15 @@ const AdminSettings = () => {
         if (error) {
           failed = true;
           toast.error("Failed to update package", { description: error });
+        } else {
+          await logActivity({
+            category: "packages", type: "monthly_package_toggled",
+            description: `${isActive ? "Activated" : "Deactivated"} ${pkg?.months} month package`,
+            entityType: "monthly_packages", entityId: id,
+            entityName: `${pkg?.months} Month Package`,
+            newValue: { is_active: isActive },
+            branchId: currentBranch?.id,
+          });
         }
       } else {
         const { error } = await supabase.from("monthly_packages").update({ is_active: isActive }).eq("id", id);
@@ -710,6 +742,13 @@ const AdminSettings = () => {
             // Instant local state update
             setMonthlyPackages(prev => prev.filter(p => p.id !== id));
             toast.success("Package deleted");
+            await logActivity({
+              category: "packages", type: "monthly_package_deleted",
+              description: `Deleted ${months} month package`,
+              entityType: "monthly_packages", entityId: id,
+              entityName: `${months} Month Package`,
+              branchId: currentBranch?.id,
+            });
             backgroundInvalidate();
           }
           return;
@@ -778,6 +817,13 @@ const AdminSettings = () => {
         setCustomPackages(prev => [...prev, tempPkg]);
         markRecentlyAdded(tempId);
         toast.success("Package added");
+        await logActivity({
+          category: "packages", type: "custom_package_added",
+          description: `Added daily pass "${newPackage.name}" (${durationDays} days) at ₹${newPackage.price}`,
+          entityType: "custom_packages", entityName: newPackage.name,
+          newValue: { name: newPackage.name, duration_days: durationDays, price: Number(newPackage.price) },
+          branchId: currentBranch.id,
+        });
         setNewPackage({ name: "", duration_days: "", price: "" });
         backgroundInvalidate();
       }
@@ -858,6 +904,15 @@ const AdminSettings = () => {
         // Instant local state update
         setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, name: editPackageData.name, price: Number(editPackageData.price) } : p));
         toast.success("Package updated");
+        await logActivity({
+          category: "packages", type: "custom_package_updated",
+          description: `Updated daily pass "${editPackageData.name}"`,
+          entityType: "custom_packages", entityId: id,
+          entityName: editPackageData.name,
+          oldValue,
+          newValue: { name: editPackageData.name, price: Number(editPackageData.price) },
+          branchId: currentBranch?.id,
+        });
         setEditingPackageId(null);
         backgroundInvalidate();
       }
@@ -916,6 +971,17 @@ const AdminSettings = () => {
         if (error) {
           failed = true;
           toast.error("Failed to update package", { description: error });
+        } else {
+          const togglePkg = customPackages.find(p => p.id === id);
+          await logActivity({
+            category: "packages", type: "custom_package_toggled",
+            description: `${isActive ? "Activated" : "Deactivated"} daily pass "${togglePkg?.name}"`,
+            entityType: "custom_packages", entityId: id,
+            entityName: togglePkg?.name,
+            oldValue: { is_active: !isActive },
+            newValue: { is_active: isActive },
+            branchId: currentBranch?.id,
+          });
         }
       } else {
         const { error } = await supabase.from("custom_packages").update({ is_active: isActive }).eq("id", id);
@@ -969,6 +1035,14 @@ const AdminSettings = () => {
             // Instant local state update
             setCustomPackages(prev => prev.filter(p => p.id !== id));
             toast.success("Package deleted");
+            await logActivity({
+              category: "packages", type: "custom_package_deleted",
+              description: `Deleted daily pass "${pkg?.name || id}"`,
+              entityType: "custom_packages", entityId: id,
+              entityName: pkg?.name,
+              oldValue: pkg ? { name: pkg.name, duration_days: pkg.duration_days, price: pkg.price } : null,
+              branchId: currentBranch?.id,
+            });
             backgroundInvalidate();
           }
           return;
