@@ -489,7 +489,7 @@ export const SlotMembersTab = ({
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">Select Trainer</label>
-          <Select value={selectedTrainer} onValueChange={setSelectedTrainer}>
+          <Select value={selectedTrainer} onValueChange={setSelectedTrainer} disabled={!!restrictedTrainerId}>
             <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Choose trainer..." /></SelectTrigger>
             <SelectContent>
               {trainers.filter(t => t.is_active).map(t => (
@@ -533,9 +533,11 @@ export const SlotMembersTab = ({
                     className="h-7 text-xs pl-8 w-36"
                   />
                 </div>
-                <Button size="sm" className="h-7 text-xs gap-1" onClick={handleOpenAddMembers} disabled={isFull}>
-                  <PlusIcon className="w-3 h-3" /> Assign Members
-                </Button>
+                {canAssign && (
+                  <Button size="sm" className="h-7 text-xs gap-1" onClick={handleOpenAddMembers} disabled={isFull}>
+                    <PlusIcon className="w-3 h-3" /> Assign Members
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -567,15 +569,17 @@ export const SlotMembersTab = ({
                         )}
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1"
-                      onClick={() => setRemoveConfirm({ id: m.id, name: m.member_name, memberId: m.member_id })}
-                    >
-                      <XMarkIcon className="w-3.5 h-3.5" />
-                      Remove
-                    </Button>
+                    {canRemove && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1"
+                        onClick={() => setRemoveConfirm({ id: m.id, name: m.member_name, memberId: m.member_id })}
+                      >
+                        <XMarkIcon className="w-3.5 h-3.5" />
+                        Remove
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
