@@ -58,7 +58,7 @@ function SectionCard({ title, description, icon, children, className, innerRef, 
         className
       )}
     >
-      <div className="flex items-start gap-2.5 sm:gap-3 px-3 pt-3 pb-1.5 sm:px-6 sm:pt-6 sm:pb-3">
+      <div className="flex items-start gap-2.5 sm:gap-3 px-3 pt-3 pb-3 sm:px-6 sm:pt-6 sm:pb-4">
         {icon && (
           <div
             className={cn(
@@ -76,7 +76,7 @@ function SectionCard({ title, description, icon, children, className, innerRef, 
           )}
         </div>
       </div>
-      <div className="px-3 pb-3 sm:px-6 sm:pb-6">{children}</div>
+      <div className="px-3 pb-3 pt-1 sm:px-6 sm:pb-6 sm:pt-2">{children}</div>
     </div>
   );
 }
