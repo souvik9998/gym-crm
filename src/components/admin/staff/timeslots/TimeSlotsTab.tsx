@@ -40,6 +40,12 @@ interface TimeSlotsTabProps {
   canCreate?: boolean;
   canEditDelete?: boolean;
   canViewMembers?: boolean;
+  /**
+   * Optional fallback name resolver used when `trainers` (restricted by RLS)
+   * doesn't contain a slot's trainer (e.g. staff viewing another trainer's slot
+   * after RLS hides their staff row). Maps staff.id → full_name.
+   */
+  trainerNameMap?: Record<string, string>;
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
