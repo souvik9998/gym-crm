@@ -73,6 +73,10 @@ interface TimeSlotDetailDialogProps {
   } | null;
   branchId: string;
   onUpdated: () => void;
+  /** Permission flags. Default true (admin behaviour). */
+  canEditSlot?: boolean;
+  canAssignMembers?: boolean;
+  canRemoveMembers?: boolean;
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -83,6 +87,9 @@ export const TimeSlotDetailDialog = ({
   slot,
   branchId,
   onUpdated,
+  canEditSlot = true,
+  canAssignMembers = true,
+  canRemoveMembers = true,
 }: TimeSlotDetailDialogProps) => {
   const [activeTab, setActiveTab] = useState("members");
   const [members, setMembers] = useState<SlotMember[]>([]);
