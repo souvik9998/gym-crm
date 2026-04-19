@@ -36,6 +36,9 @@ import {
   ArrowsRightLeftIcon,
 } from "@heroicons/react/24/outline";
 import { Clock, Loader2, Save } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { TransferSlotDialog } from "./TransferSlotDialog";
 
 interface SlotMember {
   id: string;
@@ -43,6 +46,11 @@ interface SlotMember {
   member_name: string;
   member_phone: string;
   has_pt: boolean;
+  /** The member's CURRENT active PT trainer (regardless of this slot). */
+  current_pt_trainer_id: string | null;
+  current_pt_trainer_name: string | null;
+  /** True when the slot's trainer != member's current active PT trainer. */
+  is_trainer_replaced: boolean;
 }
 
 interface AvailableMember {
