@@ -20,6 +20,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { TimeSlotDetailDialog } from "./TimeSlotDetailDialog";
+import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { cn } from "@/lib/utils";
 
 interface TimeSlot {
@@ -66,6 +67,7 @@ export const TimeSlotsTab = ({
   trainerNameMap,
 }: TimeSlotsTabProps) => {
   const isCompact = useIsTabletOrBelow();
+  const { invalidatePtSubscriptions } = useInvalidateQueries();
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -256,6 +258,10 @@ export const TimeSlotsTab = ({
         });
         toast.success("Time slot deleted");
         fetchSlots();
+        // Slot deletion nulls pt_subscriptions.time_slot_id (FK SET NULL).
+        // Refresh every dependent surface (filter dropdowns, members table,
+        // assigned-member resolvers) so the UI matches reality immediately.
+        invalidatePtSubscriptions();
       },
     });
   };
