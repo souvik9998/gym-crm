@@ -619,8 +619,9 @@ Deno.serve(async (req) => {
       throw new Error("Invalid membership duration");
     }
 
+    // Business rule: every package month is exactly 30 days (not calendar months)
     const endDate = new Date(startDate);
-    endDate.setMonth(endDate.getMonth() + months);
+    endDate.setDate(endDate.getDate() + months * 30);
 
     // Create gym subscription
     const { data: subscription, error: subError } = await supabase
