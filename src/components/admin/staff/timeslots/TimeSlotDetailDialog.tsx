@@ -239,18 +239,24 @@ export const TimeSlotDetailDialog = ({
     if (!data) return;
 
     const memberIds = data.filter((m) => !existingIds.includes(m.id)).map((m) => m.id);
+    const today = new Date().toISOString().split("T")[0];
 
+    // Only ACTIVE & non-expired PT + ACTIVE gym subscriptions are eligible.
+    // Members with inactive/expired gym membership or fully expired PT must
+    // NOT appear in the slot-assignment candidate list.
     const [ptRes, subRes] = await Promise.all([
       supabase
         .from("pt_subscriptions")
-        .select("id, member_id, personal_trainer_id, personal_trainers(name)")
+        .select("id, member_id, personal_trainer_id, end_date, personal_trainers(name)")
         .in("member_id", memberIds.length > 0 ? memberIds : ["__none__"])
-        .eq("status", "active"),
+        .eq("status", "active")
+        .gte("end_date", today),
       supabase
         .from("subscriptions")
         .select("member_id, end_date")
         .in("member_id", memberIds.length > 0 ? memberIds : ["__none__"])
         .in("status", ["active", "expiring_soon"])
+        .gte("end_date", today)
         .order("end_date", { ascending: false }),
     ]);
 
@@ -272,6 +278,8 @@ export const TimeSlotDetailDialog = ({
 
     const available = data
       .filter((m) => !existingIds.includes(m.id))
+      // Hide members without an active gym subscription.
+      .filter((m) => subMap.has(m.id))
       .map((m) => {
         const ptInfo = ptMap.get(m.id);
         let ptStatus: "same_trainer" | "other_trainer" | "no_pt" = "no_pt";

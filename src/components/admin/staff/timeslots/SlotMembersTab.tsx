@@ -239,19 +239,24 @@ export const SlotMembersTab = ({
 
     const available = data.filter(m => !existingIds.includes(m.id));
     const memberIds = available.map(m => m.id);
+    const today = new Date().toISOString().split("T")[0];
 
-    // Fetch active PT subscriptions and gym subscriptions
+    // Fetch ACTIVE & non-expired PT subscriptions and ACTIVE gym subscriptions only.
+    // Members with no active gym membership OR fully expired/inactive PT must NOT
+    // appear as candidates for slot assignment.
     const [ptRes, subRes] = await Promise.all([
       supabase
         .from("pt_subscriptions")
-        .select("id, member_id, personal_trainer_id, personal_trainers(name)")
+        .select("id, member_id, personal_trainer_id, end_date, personal_trainers(name)")
         .in("member_id", memberIds.length > 0 ? memberIds : ["__none__"])
-        .eq("status", "active"),
+        .eq("status", "active")
+        .gte("end_date", today),
       supabase
         .from("subscriptions")
         .select("member_id, end_date, status")
         .in("member_id", memberIds.length > 0 ? memberIds : ["__none__"])
         .in("status", ["active", "expiring_soon"])
+        .gte("end_date", today)
         .order("end_date", { ascending: false }),
     ]);
 
@@ -270,6 +275,8 @@ export const SlotMembersTab = ({
     subRes.data?.forEach((s: any) => { if (!subMap.has(s.member_id)) subMap.set(s.member_id, s); });
 
     const mappedMembers = available
+      // Hide members without an active gym subscription — they cannot train.
+      .filter(m => subMap.has(m.id))
       .map(m => {
         const sub = subMap.get(m.id);
         const ptInfo = ptMap.get(m.id);
