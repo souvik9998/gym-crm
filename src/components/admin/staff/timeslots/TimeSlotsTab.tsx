@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,11 +17,12 @@ import { Staff } from "@/pages/admin/StaffManagement";
 import {
   PlusIcon, PencilIcon, TrashIcon, ClockIcon,
   MagnifyingGlassIcon, UserGroupIcon, SparklesIcon,
-  CheckCircleIcon, ExclamationCircleIcon,
+  CheckCircleIcon, ExclamationCircleIcon, ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { TimeSlotDetailDialog } from "./TimeSlotDetailDialog";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
+import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 
 interface TimeSlot {
@@ -68,8 +70,6 @@ export const TimeSlotsTab = ({
 }: TimeSlotsTabProps) => {
   const isCompact = useIsTabletOrBelow();
   const { invalidatePtSubscriptions } = useInvalidateQueries();
-  const [slots, setSlots] = useState<TimeSlot[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSlot, setEditingSlot] = useState<TimeSlot | null>(null);
   const [detailSlot, setDetailSlot] = useState<TimeSlot | null>(null);
@@ -94,63 +94,89 @@ export const TimeSlotsTab = ({
     recurring_days: [] as number[],
   });
 
-  const fetchSlots = async () => {
-    if (!currentBranch?.id) return;
-    setIsLoading(true);
-    try {
+  // React Query manages data fetching here so updates DON'T flip the panel
+  // back to a full skeleton — `data` stays visible while `isFetching`
+  // refreshes in the background (industry-standard stale-while-revalidate).
+  // First-load only is gated by `isLoading` (no cached data yet).
+  const trainersKey = useMemo(
+    () => trainers.map((t) => t.id).sort().join(","),
+    [trainers],
+  );
+  const trainerNameMapKey = useMemo(
+    () => (trainerNameMap ? Object.keys(trainerNameMap).sort().join(",") : ""),
+    [trainerNameMap],
+  );
+
+  const {
+    data: slots = [],
+    isLoading,
+    isFetching,
+    refetch: refetchSlots,
+  } = useQuery<TimeSlot[]>({
+    queryKey: [
+      "trainer-time-slots",
+      currentBranch?.id,
+      restrictedTrainerId,
+      trainersKey,
+      trainerNameMapKey,
+    ],
+    queryFn: async (): Promise<TimeSlot[]> => {
+      if (!currentBranch?.id) return [];
+
       let query = supabase
         .from("trainer_time_slots")
         .select("*")
         .eq("branch_id", currentBranch.id);
       if (restrictedTrainerId) query = query.eq("trainer_id", restrictedTrainerId);
       const { data: slotsData } = await query.order("start_time");
+      if (!slotsData) return [];
 
-      if (slotsData) {
-        const slotIds = slotsData.map(s => s.id);
-        let memberCounts: Record<string, number> = {};
-        if (slotIds.length > 0) {
-          // Source of truth: pt_subscriptions (active + non-expired).
-          // Same query the TimeSlotFilterDropdown uses, so counts stay consistent
-          // across the app. The legacy time_slot_members table can drift when
-          // PT subscriptions expire/cancel without the join row being cleaned up.
-          const today = new Date().toISOString().split("T")[0];
-          const { data: ptRows } = await supabase
-            .from("pt_subscriptions")
-            .select("time_slot_id, member_id")
-            .in("time_slot_id", slotIds)
-            .eq("status", "active")
-            .gte("end_date", today);
+      const slotIds = slotsData.map((s) => s.id);
+      const memberCounts: Record<string, number> = {};
+      if (slotIds.length > 0) {
+        // Source of truth: pt_subscriptions (active + non-expired).
+        // Same query the TimeSlotFilterDropdown uses, so counts stay
+        // consistent across the app. The legacy time_slot_members
+        // table can drift when PT subscriptions expire/cancel without
+        // the join row being cleaned up.
+        const today = new Date().toISOString().split("T")[0];
+        const { data: ptRows } = await supabase
+          .from("pt_subscriptions")
+          .select("time_slot_id, member_id")
+          .in("time_slot_id", slotIds)
+          .eq("status", "active")
+          .gte("end_date", today);
 
-          if (ptRows) {
-            // Dedupe by member per slot (defensive: a member should only have
-            // one active PT row per slot, but this guards against duplicates).
-            const perSlot: Record<string, Set<string>> = {};
-            for (const row of ptRows as any[]) {
-              if (!row.time_slot_id) continue;
-              (perSlot[row.time_slot_id] ||= new Set()).add(row.member_id);
-            }
-            for (const [sid, set] of Object.entries(perSlot)) {
-              memberCounts[sid] = set.size;
-            }
+        if (ptRows) {
+          const perSlot: Record<string, Set<string>> = {};
+          for (const row of ptRows as any[]) {
+            if (!row.time_slot_id) continue;
+            (perSlot[row.time_slot_id] ||= new Set()).add(row.member_id);
+          }
+          for (const [sid, set] of Object.entries(perSlot)) {
+            memberCounts[sid] = set.size;
           }
         }
-
-        const enriched = slotsData.map(slot => ({
-          ...slot,
-          trainer_name:
-            trainers.find(t => t.id === slot.trainer_id)?.full_name ||
-            trainerNameMap?.[slot.trainer_id] ||
-            "Unknown",
-          member_count: memberCounts[slot.id] || 0,
-        }));
-        setSlots(enriched);
       }
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  useEffect(() => { fetchSlots(); }, [currentBranch?.id, trainers, restrictedTrainerId]);
+      return slotsData.map((slot) => ({
+        ...slot,
+        trainer_name:
+          trainers.find((t) => t.id === slot.trainer_id)?.full_name ||
+          trainerNameMap?.[slot.trainer_id] ||
+          "Unknown",
+        member_count: memberCounts[slot.id] || 0,
+      })) as TimeSlot[];
+    },
+    enabled: !!currentBranch?.id,
+    staleTime: STALE_TIMES.DYNAMIC,
+    gcTime: GC_TIME,
+    placeholderData: (prev) => prev, // keep showing last data while refetching
+  });
+
+  // Refresh helper used after mutations — does NOT flip isLoading,
+  // so the UI stays in place while data updates.
+  const fetchSlots = () => { refetchSlots(); };
 
   const resetForm = () => {
     setForm({ trainer_id: "", start_time: "06:00", end_time: "07:00", capacity: 10, is_recurring: false, recurring_days: [] });
@@ -363,7 +389,14 @@ export const TimeSlotsTab = ({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base lg:text-lg font-semibold">Time Slots</h3>
+          <h3 className="text-base lg:text-lg font-semibold flex items-center gap-2">
+            Time Slots
+            {/* Subtle background-refresh indicator: shown ONLY when revalidating
+                with cached data already on screen — never causes a layout shift. */}
+            {isFetching && !isLoading && (
+              <ArrowPathIcon className="w-3.5 h-3.5 text-muted-foreground animate-spin" aria-label="Refreshing" />
+            )}
+          </h3>
           <p className="text-xs lg:text-sm text-muted-foreground">Manage trainer time slots and capacity</p>
         </div>
         {canCreate && (
