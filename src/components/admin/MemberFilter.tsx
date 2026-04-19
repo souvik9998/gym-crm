@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, XCircle, Clock, ChevronDown, UserX, Users, Dumbbell, Filter } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, ChevronDown, UserX, Users, Dumbbell, Filter, CalendarClock, CalendarDays, CalendarRange, AlertTriangle, History, Check } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +11,78 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
+
+// Per-option metadata for the rich sub-filter dropdowns. Mirrors the
+// trainer/time-slot dropdown style: icon + title + description + check badge.
+type SubFilterMeta = {
+  icon: React.ReactNode;
+  description: string;
+};
+
+const subFilterMeta: Record<MemberFilterValue, SubFilterMeta> = {
+  all: { icon: <Users className="w-3.5 h-3.5" />, description: "Every member in this branch" },
+  active: { icon: <CheckCircle2 className="w-3.5 h-3.5" />, description: "All members with active subscriptions" },
+  expiring_soon: { icon: <CalendarRange className="w-3.5 h-3.5" />, description: "Expiring within the next 7 days" },
+  expiring_today: { icon: <AlertTriangle className="w-3.5 h-3.5" />, description: "Subscription ends today" },
+  expiring_2days: { icon: <CalendarClock className="w-3.5 h-3.5" />, description: "Ends in the next 2 days" },
+  expiring_7days: { icon: <CalendarDays className="w-3.5 h-3.5" />, description: "Ends in the next 7 days" },
+  expired: { icon: <XCircle className="w-3.5 h-3.5" />, description: "All expired memberships" },
+  expired_recent: { icon: <History className="w-3.5 h-3.5" />, description: "Expired within the last 7 days" },
+  inactive: { icon: <UserX className="w-3.5 h-3.5" />, description: "Members never subscribed" },
+};
+
+// Per-category color tokens for the rich dropdown panel (matches Trainer dropdown).
+const categoryPalette: Record<string, {
+  iconBg: string; iconText: string;
+  activeBg: string; activeBorder: string; activeRing: string; activeText: string;
+  badgeBg: string;
+}> = {
+  expiring_soon: {
+    iconBg: "bg-amber-50 dark:bg-amber-950/40",
+    iconText: "text-amber-600 dark:text-amber-400",
+    activeBg: "bg-amber-100/80 dark:bg-amber-900/40",
+    activeBorder: "border-amber-300 dark:border-amber-700",
+    activeRing: "ring-amber-300/50",
+    activeText: "text-amber-800 dark:text-amber-200",
+    badgeBg: "bg-amber-500",
+  },
+  expired: {
+    iconBg: "bg-rose-50 dark:bg-rose-950/40",
+    iconText: "text-rose-600 dark:text-rose-400",
+    activeBg: "bg-rose-100/80 dark:bg-rose-900/40",
+    activeBorder: "border-rose-300 dark:border-rose-700",
+    activeRing: "ring-rose-300/50",
+    activeText: "text-rose-800 dark:text-rose-200",
+    badgeBg: "bg-rose-500",
+  },
+  active: {
+    iconBg: "bg-emerald-50 dark:bg-emerald-950/40",
+    iconText: "text-emerald-600 dark:text-emerald-400",
+    activeBg: "bg-emerald-100/80 dark:bg-emerald-900/40",
+    activeBorder: "border-emerald-300 dark:border-emerald-700",
+    activeRing: "ring-emerald-300/50",
+    activeText: "text-emerald-800 dark:text-emerald-200",
+    badgeBg: "bg-emerald-500",
+  },
+  inactive: {
+    iconBg: "bg-slate-100 dark:bg-slate-900/50",
+    iconText: "text-slate-600 dark:text-slate-400",
+    activeBg: "bg-slate-100/80 dark:bg-slate-800/40",
+    activeBorder: "border-slate-300 dark:border-slate-700",
+    activeRing: "ring-slate-300/50",
+    activeText: "text-slate-800 dark:text-slate-200",
+    badgeBg: "bg-slate-500",
+  },
+  all: {
+    iconBg: "bg-blue-50 dark:bg-blue-950/40",
+    iconText: "text-blue-600 dark:text-blue-400",
+    activeBg: "bg-blue-100/80 dark:bg-blue-900/40",
+    activeBorder: "border-blue-300 dark:border-blue-700",
+    activeRing: "ring-blue-300/50",
+    activeText: "text-blue-800 dark:text-blue-200",
+    badgeBg: "bg-blue-500",
+  },
+};
 
 export type MemberFilterCategory = "all" | "active" | "expired" | "inactive" | "expiring_soon" | "pt";
 
