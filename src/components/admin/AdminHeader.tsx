@@ -136,6 +136,12 @@ export const AdminHeader = ({
         className
       )}
     >
+      {/* Browser-like refresh progress bar */}
+      {isRefreshing && (
+        <div className="absolute left-0 right-0 top-0 h-0.5 overflow-hidden pointer-events-none">
+          <div className="h-full w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent animate-[refresh-sweep_0.9s_ease-in-out_infinite]" />
+        </div>
+      )}
       <div className="flex items-center justify-between w-full">
         {/* Left Section */}
         <div className="flex items-center gap-2 lg:gap-4">
