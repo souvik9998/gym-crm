@@ -198,17 +198,8 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
 
   // Filter users based on search and filter value
   const filteredUsers = useMemo(() => {
-    let result = allUsers;
-
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (user) =>
-          user.name.toLowerCase().includes(query) ||
-          user.phone.includes(query)
-      );
-    }
+    // Forgiving fuzzy search (typos, partial, out-of-order, phone digits).
+    let result = searchQuery ? fuzzySearch(allUsers, searchQuery) : allUsers;
 
     // Apply status filter
     if (filterValue && filterValue !== "all") {
