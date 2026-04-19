@@ -165,22 +165,48 @@ export const TimeSlotDetailDialog = ({
         .eq("time_slot_id", slot.id);
 
       if (data) {
-        const { data: ptData } = await supabase
-          .from("pt_subscriptions")
-          .select("member_id")
-          .eq("time_slot_id", slot.id)
-          .eq("status", "active");
+        const memberIds = data.map((d: any) => d.member_id);
 
-        const ptMemberIds = new Set((ptData || []).map((p) => p.member_id));
+        // PT linked to THIS slot (badge), and CURRENT active PT trainer (replacement detection).
+        const [ptSlotRes, ptCurrentRes] = await Promise.all([
+          supabase
+            .from("pt_subscriptions")
+            .select("member_id")
+            .eq("time_slot_id", slot.id)
+            .eq("status", "active"),
+          supabase
+            .from("pt_subscriptions")
+            .select("member_id, personal_trainer_id, personal_trainers(name)")
+            .in("member_id", memberIds.length > 0 ? memberIds : ["__none__"])
+            .eq("status", "active"),
+        ]);
+
+        const ptMemberIds = new Set((ptSlotRes.data || []).map((p) => p.member_id));
+        const ptCurrentMap = new Map<string, { trainer_id: string; trainer_name: string }>();
+        ptCurrentRes.data?.forEach((p: any) => {
+          if (!ptCurrentMap.has(p.member_id)) {
+            ptCurrentMap.set(p.member_id, {
+              trainer_id: p.personal_trainer_id,
+              trainer_name: (p.personal_trainers as any)?.name || "Unknown",
+            });
+          }
+        });
 
         setMembers(
-          data.map((d: any) => ({
-            id: d.id,
-            member_id: d.member_id,
-            member_name: d.members?.name || "Unknown",
-            member_phone: d.members?.phone || "",
-            has_pt: ptMemberIds.has(d.member_id),
-          }))
+          data.map((d: any) => {
+            const current = ptCurrentMap.get(d.member_id);
+            const isReplaced = !!(current && trainerPtId && current.trainer_id !== trainerPtId);
+            return {
+              id: d.id,
+              member_id: d.member_id,
+              member_name: d.members?.name || "Unknown",
+              member_phone: d.members?.phone || "",
+              has_pt: ptMemberIds.has(d.member_id),
+              current_pt_trainer_id: current?.trainer_id || null,
+              current_pt_trainer_name: current?.trainer_name || null,
+              is_trainer_replaced: isReplaced,
+            };
+          })
         );
       }
     } finally {
