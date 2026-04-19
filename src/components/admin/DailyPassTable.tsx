@@ -256,9 +256,9 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
         <div className="rounded-lg border overflow-hidden">
           {filteredUsers.map((user, index) => (
             <div
-              key={`${searchQuery}-${user.id}`}
-              className="animate-fade-in"
-              style={{ animationDelay: `${Math.min(index, 12) * 25}ms`, animationDuration: "260ms" }}
+              key={user.id}
+              className={!searchQuery ? "animate-fade-in" : undefined}
+              style={!searchQuery ? { animationDelay: `${Math.min(index, 12) * 25}ms`, animationDuration: "260ms" } : undefined}
             >
               <MobileExpandableRow
               collapsedContent={
