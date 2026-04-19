@@ -3,6 +3,16 @@ import { AdminLayout } from "./AdminLayout";
 import { useMemo, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { invalidatePublicDataCache } from "@/api/publicData";
+import { useBranch } from "@/contexts/BranchContext";
+
+// Routes whose data is consumed by the public registration/renew/extend-PT flows.
+// Refreshing on these routes must also bust the public sessionStorage cache so
+// open public tabs immediately drop their stale packages/trainers/branch info.
+const PUBLIC_DATA_ROUTES = new Set([
+  "/admin/settings",
+  "/admin/trainers",
+]);
 
 // Route title mapping
 const routeTitles: Record<string, { title: string; subtitle?: string }> = {
@@ -78,6 +88,8 @@ export const AdminLayoutRoute = () => {
   const location = useLocation();
   const queryClient = useQueryClient();
 
+  const { currentBranch } = useBranch();
+
   const { title, subtitle } = useMemo(() => {
     return routeTitles[location.pathname] || { title: "Admin", subtitle: "" };
   }, [location.pathname]);
@@ -85,6 +97,25 @@ export const AdminLayoutRoute = () => {
   // Dynamic refresh: invalidates only the queries relevant to the current page
   const handleRefresh = useCallback(async () => {
     const keys = routeQueryKeys[location.pathname];
+
+    // If we're on a route that drives public-facing data, also bust the
+    // public sessionStorage cache and broadcast a cross-tab signal so any
+    // open registration/renew tabs immediately fetch fresh data.
+    if (PUBLIC_DATA_ROUTES.has(location.pathname)) {
+      try {
+        if (currentBranch?.id) {
+          invalidatePublicDataCache(currentBranch.id);
+        }
+        if (currentBranch?.slug) {
+          invalidatePublicDataCache(currentBranch.slug);
+        }
+        if (!currentBranch?.id && !currentBranch?.slug) {
+          invalidatePublicDataCache();
+        }
+      } catch (err) {
+        console.warn("Failed to invalidate public data cache:", err);
+      }
+    }
 
     if (keys && keys.length > 0) {
       await Promise.all(
