@@ -127,7 +127,7 @@ export const AdminLayoutRoute = () => {
       // Fallback for unknown routes — refetch everything active
       await queryClient.invalidateQueries({ refetchType: "all" });
     }
-  }, [location.pathname, queryClient]);
+  }, [location.pathname, queryClient, currentBranch?.id, currentBranch?.slug]);
 
   return (
     <AdminLayout title={title} subtitle={subtitle} onRefresh={handleRefresh}>
