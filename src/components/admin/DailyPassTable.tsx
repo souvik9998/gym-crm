@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { fuzzySearch } from "@/lib/fuzzySearch";
 import { useBranch } from "@/contexts/BranchContext";
 import { useIsMobile, useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { useInView } from "react-intersection-observer";
@@ -198,17 +199,8 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
 
   // Filter users based on search and filter value
   const filteredUsers = useMemo(() => {
-    let result = allUsers;
-
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (user) =>
-          user.name.toLowerCase().includes(query) ||
-          user.phone.includes(query)
-      );
-    }
+    // Forgiving fuzzy search (typos, partial, out-of-order, phone digits).
+    let result = searchQuery ? fuzzySearch(allUsers, searchQuery) : allUsers;
 
     // Apply status filter
     if (filterValue && filterValue !== "all") {
@@ -262,9 +254,13 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
       {/* Mobile View */}
       {isCompact ? (
         <div className="rounded-lg border overflow-hidden">
-          {filteredUsers.map((user) => (
-            <MobileExpandableRow
-              key={user.id}
+          {filteredUsers.map((user, index) => (
+            <div
+              key={`${searchQuery}-${user.id}`}
+              className="animate-fade-in"
+              style={{ animationDelay: `${Math.min(index, 12) * 25}ms`, animationDuration: "260ms" }}
+            >
+              <MobileExpandableRow
               collapsedContent={
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
@@ -338,7 +334,8 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
                   </div>
                 </div>
               }
-            />
+              />
+            </div>
           ))}
           
           {/* Infinite scroll sentinel */}
@@ -364,8 +361,12 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
+              {filteredUsers.map((user, index) => (
+                <TableRow
+                  key={`${searchQuery}-${user.id}`}
+                  className="animate-fade-in"
+                  style={{ animationDelay: `${Math.min(index, 15) * 20}ms`, animationDuration: "240ms" }}
+                >
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.phone}</TableCell>
                   <TableCell>

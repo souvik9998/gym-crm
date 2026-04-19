@@ -27,6 +27,7 @@ import { toast } from "@/components/ui/sonner";
 import { EditMemberDialog } from "./EditMemberDialog";
 import { MemberActivityDialog } from "./MemberActivityDialog";
 import { cn } from "@/lib/utils";
+import { fuzzySearch } from "@/lib/fuzzySearch";
 import type { MemberFilterValue } from "./MemberFilter";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { logStaffActivity } from "@/hooks/useStaffActivityLog";
@@ -627,22 +628,12 @@ export const MembersTable = ({
     }
   };
 
-  // Filter by search query, prioritizing names that start with the query
-  const searchFiltered = members
-    .filter(
-      (m) =>
-        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.phone.includes(searchQuery)
-    )
-    .sort((a, b) => {
-      if (!searchQuery) return 0;
-      const q = searchQuery.toLowerCase();
-      const aStarts = a.name.toLowerCase().startsWith(q);
-      const bStarts = b.name.toLowerCase().startsWith(q);
-      if (aStarts && !bStarts) return -1;
-      if (!aStarts && bStarts) return 1;
-      return 0;
-    });
+  // Forgiving fuzzy search: surfaces partial, typo'd, and out-of-order matches
+  // ranked by relevance instead of strict substring matching.
+  const searchFiltered = useMemo(
+    () => fuzzySearch(members, searchQuery),
+    [members, searchQuery],
+  );
 
   // Filter by PT status if PT filter is active
   const filteredMembers = searchFiltered.filter((m) => {
@@ -1194,14 +1185,14 @@ export const MembersTable = ({
           <div className="divide-y divide-border/60">
             {sortedMembers.map((member, index) => (
               <div 
-                key={member.id}
+                key={`${searchQuery}-${member.id}`}
                 className={cn(
-                  "flex items-center gap-2.5 px-3 py-3 cursor-pointer transition-all duration-200 active:scale-[0.99] active:bg-muted/60",
+                  "flex items-center gap-2.5 px-3 py-3 cursor-pointer transition-all duration-200 active:scale-[0.99] active:bg-muted/60 animate-fade-in",
                   "hover:bg-muted/40",
                   selectedMembers.has(member.id) && "bg-primary/5",
                   isNewMember(member) && "border-l-2 border-l-emerald-500 bg-emerald-500/5"
                 )}
-                style={{ animationDelay: `${index * 40}ms` }}
+                style={{ animationDelay: `${Math.min(index, 12) * 25}ms`, animationDuration: "260ms" }}
                 onClick={() => handleMemberClick(member)}
               >
                 {/* Selection Checkbox */}
@@ -1458,14 +1449,15 @@ export const MembersTable = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedMembers.map((member) => (
+                {sortedMembers.map((member, index) => (
                   <TableRow 
-                    key={member.id}
+                    key={`${searchQuery}-${member.id}`}
                     className={cn(
-                      "transition-colors duration-150 ease-in-out hover:bg-muted/50 cursor-pointer",
+                      "transition-colors duration-150 ease-in-out hover:bg-muted/50 cursor-pointer animate-fade-in",
                       selectedMembers.has(member.id) && "bg-primary/5",
                       isNewMember(member) && "bg-emerald-500/[0.06] hover:bg-emerald-500/10 border-l-2 border-l-emerald-500"
                     )}
+                    style={{ animationDelay: `${Math.min(index, 15) * 20}ms`, animationDuration: "240ms" }}
                     onClick={() => handleMemberClick(member)}
                   >
                     <TableCell>
