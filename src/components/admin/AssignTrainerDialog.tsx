@@ -207,17 +207,23 @@ export const AssignTrainerDialog = ({
     setIsLoading(true);
     try {
       if (mode === "replace" && existingPtId) {
+        // 1. Deactivate the old PT subscription AND clear its time_slot_id so
+        //    the slot listing (driven by pt_subscriptions.time_slot_id) no
+        //    longer attributes this member to the old trainer's slot.
         await supabase
           .from("pt_subscriptions")
-          .update({ status: "inactive", updated_at: new Date().toISOString() })
+          .update({
+            status: "inactive",
+            time_slot_id: null,
+            updated_at: new Date().toISOString(),
+          } as any)
           .eq("id", existingPtId);
 
-        // If admin selected a NEW time slot during replacement, remove the member
-        // from the OLD trainer's time slot(s) to prevent duplicate slot membership.
-        // If no new slot was selected, leave existing slot membership untouched
-        // (admin will transfer manually via the Slot Members tab).
-        if (selectedTimeSlotId && existingTrainerId) {
-          // Resolve old trainer's staff_id via phone (trainer_time_slots.trainer_id refs staff.id)
+        // 2. Always remove the member from the OLD trainer's time_slot_members
+        //    rows — regardless of whether admin picked a new slot here.
+        //    Otherwise the slot UI keeps showing the member under the old
+        //    trainer (out of sync with the now-inactive PT subscription).
+        if (existingTrainerId) {
           const { data: oldTrainer } = await supabase
             .from("personal_trainers")
             .select("phone")
@@ -233,7 +239,6 @@ export const AssignTrainerDialog = ({
               .maybeSingle();
 
             if (oldStaff?.id) {
-              // Find slots owned by old trainer in this branch
               const { data: oldSlots } = await supabase
                 .from("trainer_time_slots")
                 .select("id")
@@ -392,6 +397,10 @@ export const AssignTrainerDialog = ({
       );
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      // Slot/PT sync: refresh anywhere we resolve assigned-members from pt_subscriptions
+      queryClient.invalidateQueries({ queryKey: ["pt-subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["assigned-member-ids"] });
+      queryClient.invalidateQueries({ queryKey: ["time-slot-filter"] });
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
