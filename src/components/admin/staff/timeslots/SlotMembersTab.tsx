@@ -967,6 +967,25 @@ export const SlotMembersTab = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Same-trainer slot move */}
+      {moveSlot && (
+        <TransferSlotDialog
+          open={!!moveSlot}
+          onOpenChange={(o) => !o && setMoveSlot(null)}
+          currentSlotId={selectedSlot}
+          slotMemberRowId={moveSlot.rowId}
+          memberId={moveSlot.memberId}
+          memberName={moveSlot.memberName}
+          currentPtTrainerId={moveSlot.trainerId}
+          currentPtTrainerName={moveSlot.trainerName}
+          branchId={currentBranch?.id}
+          onTransferred={() => {
+            setMoveSlot(null);
+            fetchSlotMembers();
+          }}
+        />
+      )}
     </div>
   );
 };
