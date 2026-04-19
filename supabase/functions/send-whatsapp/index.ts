@@ -428,10 +428,44 @@ Deno.serve(async (req) => {
       }
     };
 
+    // ---------------------------------------------------------------
+    // USAGE TRACKING — increment tenant_usage on every successful send.
+    // Resolves tenant from branch_id once per request and caches it.
+    // ---------------------------------------------------------------
+    const tenantCache = new Map<string, string | null>();
+    const resolveTenantId = async (bId: string | null | undefined): Promise<string | null> => {
+      if (!bId) return null;
+      if (tenantCache.has(bId)) return tenantCache.get(bId)!;
+      try {
+        const { data } = await supabase.rpc("get_tenant_from_branch", { _branch_id: bId });
+        const tId = (data as string | null) ?? null;
+        tenantCache.set(bId, tId);
+        return tId;
+      } catch (e) {
+        console.warn("Failed to resolve tenant from branch:", bId, e);
+        tenantCache.set(bId, null);
+        return null;
+      }
+    };
+
+    const trackWhatsAppUsage = async (bId: string | null | undefined, count = 1) => {
+      const tId = await resolveTenantId(bId);
+      if (!tId) {
+        console.warn("Skipping usage increment — no tenant for branch:", bId);
+        return;
+      }
+      try {
+        await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tId, _count: count });
+      } catch (e) {
+        console.error("Failed to increment whatsapp usage:", e);
+      }
+    };
+
     // SEND VIA PERISKOPE
     const sendPeriskopeMessage = async (
       chatId: string,
       message: string,
+      bId?: string | null,
     ): Promise<{ success: boolean; error?: string }> => {
       try {
         const response = await fetch("https://api.periskope.app/v1/message/send", {
@@ -455,6 +489,9 @@ Deno.serve(async (req) => {
             error: `${response.status} - ${responseText}`,
           };
         }
+
+        // Track successful send against tenant quota (best-effort)
+        await trackWhatsAppUsage(bId);
 
         return { success: true };
       } catch (error: any) {
