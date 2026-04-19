@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { TransferSlotDialog } from "./TransferSlotDialog";
 
 interface SlotMembersTabProps {
   trainers: Staff[];
@@ -42,6 +44,11 @@ interface SlotMember {
   pt_status: string;
   pt_end_date: string | null;
   subscription_status: string | null;
+  /** The member's CURRENT active PT trainer id, regardless of this slot. */
+  current_pt_trainer_id: string | null;
+  current_pt_trainer_name: string | null;
+  /** True when slot's trainer != member's current active PT trainer. */
+  is_trainer_replaced: boolean;
 }
 
 interface AvailableMember {
