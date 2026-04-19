@@ -27,6 +27,7 @@ import { toast } from "@/components/ui/sonner";
 import { EditMemberDialog } from "./EditMemberDialog";
 import { MemberActivityDialog } from "./MemberActivityDialog";
 import { cn } from "@/lib/utils";
+import { fuzzySearch } from "@/lib/fuzzySearch";
 import type { MemberFilterValue } from "./MemberFilter";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { logStaffActivity } from "@/hooks/useStaffActivityLog";
