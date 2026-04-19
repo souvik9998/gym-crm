@@ -905,6 +905,11 @@ export const MembersTable = ({
       return bTime - aTime;
     }
 
+    // When the user is searching, preserve the fuzzy-search ranking
+    // (first-letter matches first, then word-prefix, then mid-word, etc.).
+    // The column sort would otherwise overwrite it and bury "S…" names.
+    if (searchQuery.trim()) return 0;
+
     let comparison = 0;
 
     switch (sortField) {
