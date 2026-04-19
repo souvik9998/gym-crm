@@ -3,12 +3,14 @@
  * Shows the permissions, usage limits, and plan details set by the super admin.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 import {
   ShieldCheckIcon,
   ChartBarIcon,
@@ -61,12 +63,11 @@ export function SubscriptionPlanTab() {
   const [tenantName, setTenantName] = useState<string>("");
   const [storageUsedMb, setStorageUsedMb] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  useEffect(() => {
-    fetchPlanDetails();
-  }, []);
-
-  const fetchPlanDetails = async () => {
+  const fetchPlanDetails = useCallback(async (silent = false) => {
+    if (!silent) setIsRefreshing(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
@@ -104,12 +105,29 @@ export function SubscriptionPlanTab() {
       }
       if (usageRes.data?.[0]) setUsage(usageRes.data[0]);
       if (storageRes.data !== null) setStorageUsedMb(Number(storageRes.data) || 0);
+      setLastUpdated(new Date());
     } catch (error) {
       console.error("Error fetching plan details:", error);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchPlanDetails();
+  }, [fetchPlanDetails]);
+
+  // Auto-refetch when tab regains focus so usage stays in sync after sends/changes
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        fetchPlanDetails(true);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [fetchPlanDetails]);
 
   if (isLoading) {
     return (
@@ -212,11 +230,34 @@ export function SubscriptionPlanTab() {
       {/* Usage Limits Card */}
       <Card className="border-0 shadow-sm">
         <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-          <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
-            <ChartBarIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
-            Usage & Quotas
-          </CardTitle>
-          <CardDescription className="text-xs lg:text-sm">Current resource usage against your plan limits</CardDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
+                <ChartBarIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
+                Usage & Quotas
+              </CardTitle>
+              <CardDescription className="text-xs lg:text-sm mt-1">
+                Current resource usage against your plan limits
+                {lastUpdated && (
+                  <span className="ml-1 text-muted-foreground/80">
+                    · Updated {format(lastUpdated, "h:mm a")}
+                  </span>
+                )}
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fetchPlanDetails()}
+              disabled={isRefreshing}
+              className="h-8 gap-1.5 shrink-0"
+              aria-label="Refresh usage"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline text-xs">Refresh</span>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
           <div className="grid gap-3 lg:gap-5 grid-cols-1 sm:grid-cols-2">

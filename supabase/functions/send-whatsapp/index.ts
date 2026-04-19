@@ -428,10 +428,44 @@ Deno.serve(async (req) => {
       }
     };
 
+    // ---------------------------------------------------------------
+    // USAGE TRACKING — increment tenant_usage on every successful send.
+    // Resolves tenant from branch_id once per request and caches it.
+    // ---------------------------------------------------------------
+    const tenantCache = new Map<string, string | null>();
+    const resolveTenantId = async (bId: string | null | undefined): Promise<string | null> => {
+      if (!bId) return null;
+      if (tenantCache.has(bId)) return tenantCache.get(bId)!;
+      try {
+        const { data } = await supabase.rpc("get_tenant_from_branch", { _branch_id: bId });
+        const tId = (data as string | null) ?? null;
+        tenantCache.set(bId, tId);
+        return tId;
+      } catch (e) {
+        console.warn("Failed to resolve tenant from branch:", bId, e);
+        tenantCache.set(bId, null);
+        return null;
+      }
+    };
+
+    const trackWhatsAppUsage = async (bId: string | null | undefined, count = 1) => {
+      const tId = await resolveTenantId(bId);
+      if (!tId) {
+        console.warn("Skipping usage increment — no tenant for branch:", bId);
+        return;
+      }
+      try {
+        await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tId, _count: count });
+      } catch (e) {
+        console.error("Failed to increment whatsapp usage:", e);
+      }
+    };
+
     // SEND VIA PERISKOPE
     const sendPeriskopeMessage = async (
       chatId: string,
       message: string,
+      bId?: string | null,
     ): Promise<{ success: boolean; error?: string }> => {
       try {
         const response = await fetch("https://api.periskope.app/v1/message/send", {
@@ -455,6 +489,9 @@ Deno.serve(async (req) => {
             error: `${response.status} - ${responseText}`,
           };
         }
+
+        // Track successful send against tenant quota (best-effort)
+        await trackWhatsAppUsage(bId);
 
         return { success: true };
       } catch (error: any) {
@@ -484,7 +521,7 @@ Deno.serve(async (req) => {
       message += `⚠️ Please keep your credentials secure and do not share them with others.\n\n`;
       message += `— Team ${gymDisplayName}`;
       
-      const result = await sendPeriskopeMessage(formattedPhone, message);
+      const result = await sendPeriskopeMessage(formattedPhone, message, branchId || null);
       
       // Log the notification (without sensitive password info)
       await logWhatsAppMessage({
@@ -557,7 +594,7 @@ Deno.serve(async (req) => {
 
       const message = generateMessage(name, memberEndDate, type, paymentInfo, null, branchName);
       
-      const result = await sendPeriskopeMessage(formattedPhone, message);
+      const result = await sendPeriskopeMessage(formattedPhone, message, branchId || null);
 
       await logWhatsAppMessage({
         member_id: directMemberId,
@@ -621,7 +658,7 @@ Deno.serve(async (req) => {
         const userBranchName = (user.branches as any)?.name;
         
         const message = generateMessage(user.name, userEndDate, type, null, userBranchName, branchName);
-        const result = await sendPeriskopeMessage(formattedPhone, message);
+        const result = await sendPeriskopeMessage(formattedPhone, message, user.branch_id || branchId || null);
 
         await logWhatsAppMessage({
           daily_pass_user_id: user.id,
@@ -720,7 +757,7 @@ Deno.serve(async (req) => {
       const memberBranchName = (member.branches as any)?.name;
       
       const message = generateMessage(member.name, memberEndDate, type, paymentInfo, memberBranchName, branchName);
-      const result = await sendPeriskopeMessage(formattedPhone, message);
+      const result = await sendPeriskopeMessage(formattedPhone, message, member.branch_id || branchId || null);
 
       await logWhatsAppMessage({
         member_id: member.id,
