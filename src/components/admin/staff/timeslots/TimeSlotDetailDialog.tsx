@@ -120,6 +120,15 @@ export const TimeSlotDetailDialog = ({
   const [transferConfirm, setTransferConfirm] = useState<{ memberId: string; name: string; fromTrainer: string; fromTrainerId: string } | null>(null);
   const [isTransferring, setIsTransferring] = useState(false);
 
+  // Same-trainer slot move (for already-assigned members in this slot).
+  const [moveSlot, setMoveSlot] = useState<{
+    rowId: string;
+    memberId: string;
+    memberName: string;
+    trainerId: string;
+    trainerName: string;
+  } | null>(null);
+
   const [trainerPtId, setTrainerPtId] = useState<string | null>(null);
 
   const { invalidatePtSubscriptions } = useInvalidateQueries();
@@ -757,35 +766,84 @@ export const TimeSlotDetailDialog = ({
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-1.5">
-                      {filteredMembers.map((m, index) => (
-                        <div
-                          key={m.id}
-                          className="flex items-center justify-between p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-all animate-fade-in"
-                          style={{ animationDelay: `${index * 30}ms`, animationFillMode: "backwards" }}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-sm font-medium truncate">{m.member_name}</p>
-                              {m.has_pt && (
-                                <Badge className="bg-primary/10 text-primary text-[9px] px-1 py-0 h-3.5">PT</Badge>
+                    <TooltipProvider delayDuration={150}>
+                      <div className="space-y-1.5">
+                        {filteredMembers.map((m, index) => (
+                          <div
+                            key={m.id}
+                            className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-all animate-fade-in"
+                            style={{ animationDelay: `${index * 30}ms`, animationFillMode: "backwards" }}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-sm font-medium truncate">{m.member_name}</p>
+                                {m.has_pt && (
+                                  <Badge className="bg-primary/10 text-primary text-[9px] px-1 py-0 h-3.5">PT</Badge>
+                                )}
+                                {m.is_trainer_replaced && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[9px] border-0 gap-0.5 cursor-help px-1 py-0 h-3.5">
+                                        <ExclamationTriangleIcon className="w-2.5 h-2.5" />
+                                        Replaced
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-[240px]">
+                                      <p className="text-xs">
+                                        Trainer changed to <strong>{m.current_pt_trainer_name}</strong>.
+                                        Tap <em>Transfer</em> to move them to one of {m.current_pt_trainer_name}'s slots.
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground">{m.member_phone}</p>
+                            </div>
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              {canAssignMembers && m.current_pt_trainer_id && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className={`h-6 w-6 p-0 shrink-0 ${
+                                        m.is_trainer_replaced
+                                          ? "text-amber-700 hover:text-amber-800 hover:bg-amber-50"
+                                          : "text-primary hover:text-primary hover:bg-primary/10"
+                                      }`}
+                                      onClick={() => setMoveSlot({
+                                        rowId: m.id,
+                                        memberId: m.member_id,
+                                        memberName: m.member_name,
+                                        trainerId: m.current_pt_trainer_id!,
+                                        trainerName: m.current_pt_trainer_name || "Trainer",
+                                      })}
+                                    >
+                                      <ArrowsRightLeftIcon className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    <p className="text-xs">
+                                      Transfer to <strong>{m.current_pt_trainer_name}</strong>'s slot
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                              {canRemoveMembers && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0"
+                                  onClick={() => setRemoveConfirm({ id: m.id, name: m.member_name, memberId: m.member_id })}
+                                >
+                                  <XMarkIcon className="w-3.5 h-3.5" />
+                                </Button>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground">{m.member_phone}</p>
                           </div>
-                          {canRemoveMembers && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0"
-                              onClick={() => setRemoveConfirm({ id: m.id, name: m.member_name, memberId: m.member_id })}
-                            >
-                              <XMarkIcon className="w-3.5 h-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    </TooltipProvider>
                   )}
                 </div>
               )}
