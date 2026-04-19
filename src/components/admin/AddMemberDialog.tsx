@@ -418,13 +418,13 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       // For renew + PT, cap to the new gym end date
       const gymStart = new Date(startDate);
       gymStart.setHours(0, 0, 0, 0);
-      return addMonths(gymStart, selectedPackage.months);
+      return addPackageMonths(gymStart, selectedPackage.months);
     }
     if (selectedPackage) {
       // For new members, cap to the selected package end date
       const gymStart = new Date(startDate);
       gymStart.setHours(0, 0, 0, 0);
-      return addMonths(gymStart, selectedPackage.months);
+      return addPackageMonths(gymStart, selectedPackage.months);
     }
     return null;
   })();
@@ -434,7 +434,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     const ptStart = new Date(startDate);
     ptStart.setHours(0, 0, 0, 0);
     for (let m = 1; m <= 12; m++) {
-      const ptEnd = addMonths(ptStart, m);
+      const ptEnd = addPackageMonths(ptStart, m);
       if (isAfter(ptEnd, gymMembershipEndDate)) break;
       ptMonthOptions.push(m);
     }
@@ -679,7 +679,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
       const gymStartDate = new Date(startDate);
       gymStartDate.setHours(0, 0, 0, 0);
-      const endDate = addMonths(gymStartDate, selectedPackage?.months || 1);
+      const endDate = addPackageMonths(gymStartDate, selectedPackage?.months || 1);
 
       const { data: subscription, error: subError } = await supabase
         .from("subscriptions")
@@ -698,7 +698,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       if (subError) throw subError;
 
       if (wantsPT && selectedTrainerId) {
-        const ptEndDate = addMonths(gymStartDate, ptMonths);
+        const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
         await supabase.from("pt_subscriptions").insert({
           member_id: member.id,
           personal_trainer_id: selectedTrainerId,
@@ -820,7 +820,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
       // Renew Gym Membership
       if (selectedAction === "renew_gym" || selectedAction === "renew_gym_pt") {
-        const gymEndDate = addMonths(gymStartDate, selectedPackage?.months || 1);
+        const gymEndDate = addPackageMonths(gymStartDate, selectedPackage?.months || 1);
         
         const { data: subscription, error: subError } = await supabase
           .from("subscriptions")
@@ -868,7 +868,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
         // If also adding PT
         if (selectedAction === "renew_gym_pt" && selectedTrainerId) {
-          const ptEndDate = addMonths(gymStartDate, ptMonths);
+          const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
           await supabase.from("pt_subscriptions").insert({
             member_id: existingMember.id,
             personal_trainer_id: selectedTrainerId,
@@ -903,7 +903,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           return;
         }
 
-        const ptEndDate = addMonths(gymStartDate, ptMonths);
+        const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
         await supabase.from("pt_subscriptions").insert({
           member_id: existingMember.id,
           personal_trainer_id: selectedTrainerId,
@@ -968,8 +968,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         const { data: { session } } = await supabase.auth.getSession();
         const adminUserId = session?.user?.id || null;
         const endDateStr = selectedAction === "add_pt" 
-          ? addMonths(new Date(startDate), ptMonths).toISOString().split("T")[0]
-          : addMonths(new Date(startDate), selectedPackage?.months || 1).toISOString().split("T")[0];
+          ? addPackageMonths(new Date(startDate), ptMonths).toISOString().split("T")[0]
+          : addPackageMonths(new Date(startDate), selectedPackage?.months || 1).toISOString().split("T")[0];
         
         const notificationType = selectedAction === "add_pt" ? "pt_extension" : "renewal";
         if (notifyWhatsApp) {

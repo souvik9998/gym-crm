@@ -295,7 +295,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
       const startDate = isExpired ? new Date() : new Date(currentSub.end_date);
       if (!isExpired) startDate.setDate(startDate.getDate() + 1);
 
-      const endDate = addMonths(startDate, selectedPackage.months);
+      const endDate = addPackageMonths(startDate, selectedPackage.months);
       setGymEndDate(endDate);
     };
 
@@ -345,7 +345,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
 
     // Generate 1-month, 2-month, 3-month options starting from ptStartDate
     for (let months = 1; months <= 3; months++) {
-      const optionEndDate = addMonths(ptStartDate, months);
+      const optionEndDate = addPackageMonths(ptStartDate, months);
       const isValid = isBefore(optionEndDate, membershipEndConstraint!) || optionEndDate.getTime() === membershipEndConstraint!.getTime();
       const days = differenceInDays(optionEndDate, ptStartDate);
       const fee = Math.ceil(dailyRate * days);
@@ -471,7 +471,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
       const startDate = isExpired ? new Date() : new Date(currentSub.end_date);
       if (!isExpired) startDate.setDate(startDate.getDate() + 1);
 
-        const endDate = addMonths(startDate, selectedPackage!.months);
+        const endDate = addPackageMonths(startDate, selectedPackage!.months);
 
       const { data: subscription, error: subError } = await supabase
         .from("subscriptions")

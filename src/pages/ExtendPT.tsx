@@ -237,7 +237,7 @@ const ExtendPT = () => {
 
     // Generate 1-month, 2-month, 3-month options from ptStartDate
     for (let months = 1; months <= 3; months++) {
-      const optionEndDate = addMonths(ptStartDate, months);
+      const optionEndDate = addPackageMonths(ptStartDate, months);
       const isValid = isBefore(optionEndDate, membershipEndDate) || optionEndDate.getTime() === membershipEndDate.getTime();
       const days = differenceInDays(optionEndDate, ptStartDate);
       const fee = Math.ceil(dailyRate * days);
@@ -277,7 +277,7 @@ const ExtendPT = () => {
       const dailyRate = selectedTrainer.monthly_fee / 30;
       
       // Find first valid option (1 month that doesn't exceed membership)
-      const oneMonthEnd = addMonths(ptStartDate, 1);
+      const oneMonthEnd = addPackageMonths(ptStartDate, 1);
       const isOneMonthValid = isBefore(oneMonthEnd, membershipEndDate) || oneMonthEnd.getTime() === membershipEndDate.getTime();
       
       if (isOneMonthValid) {
