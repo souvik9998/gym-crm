@@ -99,6 +99,7 @@ function setCache<T>(key: string, data: T): void {
  * (e.g. a public registration tab) immediately drop their cache too.
  */
 const CACHE_BUST_KEY = "__public-data-cache-bust";
+export const PUBLIC_DATA_BUST_EVENT = "public-data-bust";
 
 export function invalidatePublicDataCache(branchIdentifier?: string): void {
   try {
@@ -119,6 +120,10 @@ export function invalidatePublicDataCache(branchIdentifier?: string): void {
     });
     // Notify other tabs (storage event only fires across tabs, not same tab).
     localStorage.setItem(CACHE_BUST_KEY, JSON.stringify({ branchIdentifier: branchIdentifier || "*", at: Date.now() }));
+    // Notify same-tab listeners (storage event does NOT fire in the originating tab).
+    window.dispatchEvent(new CustomEvent(PUBLIC_DATA_BUST_EVENT, {
+      detail: { branchIdentifier: branchIdentifier || "*", at: Date.now() },
+    }));
   } catch { /* ignore */ }
 }
 
@@ -358,8 +363,21 @@ async function fetchRegistrationBootstrapNetwork(branchIdentifier: string): Prom
   return promise;
 }
 
-export async function fetchRegistrationBootstrap(branchIdentifier: string): Promise<RegistrationBootstrap | null> {
+export async function fetchRegistrationBootstrap(
+  branchIdentifier: string,
+  options: { forceRefresh?: boolean } = {},
+): Promise<RegistrationBootstrap | null> {
   const cacheKey = `public-bootstrap-${branchIdentifier}`;
+
+  // Force refresh: skip cache entirely and hit the network. Used when admin
+  // mutations or the admin Refresh button signal that data has changed.
+  if (options.forceRefresh) {
+    try {
+      sessionStorage.removeItem(cacheKey);
+    } catch { /* ignore */ }
+    return fetchRegistrationBootstrapNetwork(branchIdentifier);
+  }
+
   const cached = getCached<RegistrationBootstrap>(cacheKey);
 
   if (cached) {
