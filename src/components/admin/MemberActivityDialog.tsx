@@ -610,6 +610,26 @@ export const MemberActivityDialog = ({
                         <p className="text-sm text-muted-foreground">
                           {formatDate(activePT.start_date)} — {formatDate(activePT.end_date)}
                         </p>
+                        {activePT.time_slot ? (
+                          <div className="flex items-center gap-2 pt-1">
+                            <div className="flex items-center justify-center w-6 h-6 rounded-md bg-accent/10">
+                              <Clock className="w-3 h-3 text-accent" />
+                            </div>
+                            <span className="text-sm">
+                              <span className="text-muted-foreground">Time Slot: </span>
+                              <span className="font-medium">
+                                {formatSlotTime(activePT.time_slot.start_time)} – {formatSlotTime(activePT.time_slot.end_time)}
+                              </span>
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 pt-1">
+                            <div className="flex items-center justify-center w-6 h-6 rounded-md bg-muted/60">
+                              <Clock className="w-3 h-3 text-muted-foreground" />
+                            </div>
+                            <span className="text-xs text-muted-foreground italic">No time slot assigned</span>
+                          </div>
+                        )}
                         {activePT.personal_trainer?.specialization && (
                           <p className="text-xs text-muted-foreground/70">
                             Specialization: {activePT.personal_trainer.specialization}
