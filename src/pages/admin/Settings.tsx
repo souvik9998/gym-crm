@@ -43,6 +43,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useStaffOperations } from "@/hooks/useStaffOperations";
 import { useSettingsPageData } from "@/hooks/queries/useSettingsPageData";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
+import { invalidatePublicDataCache } from "@/api/publicData";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { EyeIcon } from "@heroicons/react/24/outline";
 
@@ -346,9 +347,17 @@ const AdminSettings = () => {
     }
   }, [isLoadingData, fetchedSettings, currentBranch, user, isStaffLoggedIn, refetchData]);
 
-  // Background invalidation for cross-page consistency (fire-and-forget)
+  // Background invalidation for cross-page consistency (fire-and-forget).
+  // Also busts the public registration sessionStorage cache so the public
+  // /register, /renew, /extend-pt screens reflect admin changes immediately.
   const backgroundInvalidate = () => {
     invalidateSettings().catch(() => {});
+    if (currentBranch?.id) {
+      invalidatePublicDataCache(currentBranch.id);
+      if (currentBranch.slug) invalidatePublicDataCache(currentBranch.slug);
+    } else {
+      invalidatePublicDataCache();
+    }
   };
 
   // Mark an item as recently added for highlight animation

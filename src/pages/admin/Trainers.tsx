@@ -17,6 +17,7 @@ import { toast } from "@/components/ui/sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
+import { invalidatePublicDataCache } from "@/api/publicData";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +36,18 @@ interface Trainer {
 
 const TrainersPage = () => {
   const { currentBranch } = useBranch();
-  const { invalidateSettings } = useInvalidateQueries();
+  const { invalidateSettings: invalidateSettingsRaw } = useInvalidateQueries();
+  // Wrap invalidateSettings to also bust the public registration cache so
+  // trainer add/edit/toggle/delete reflect immediately on /register, /renew, /extend-pt.
+  const invalidateSettings = useCallback(async () => {
+    await invalidateSettingsRaw();
+    if (currentBranch?.id) {
+      invalidatePublicDataCache(currentBranch.id);
+      if (currentBranch.slug) invalidatePublicDataCache(currentBranch.slug);
+    } else {
+      invalidatePublicDataCache();
+    }
+  }, [invalidateSettingsRaw, currentBranch?.id, currentBranch?.slug]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isAddingTrainer, setIsAddingTrainer] = useState(false);
   const [savingTrainerId, setSavingTrainerId] = useState<string | null>(null);

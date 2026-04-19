@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { invalidatePublicDataCache } from "@/api/publicData";
 import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
@@ -423,6 +424,10 @@ export const BranchManagement = () => {
       resetForm();
       setEditingBranch(null);
       await refreshBranches();
+      // Bust public registration cache so branch logo/name/contact changes
+      // appear immediately on /register, /renew, /extend-pt screens.
+      invalidatePublicDataCache(editingBranch?.id);
+      if (editingBranch?.slug) invalidatePublicDataCache(editingBranch.slug);
     } catch (error: any) {
       const msg = error?.message || "";
       if (msg.toLowerCase().includes("limit")) {
