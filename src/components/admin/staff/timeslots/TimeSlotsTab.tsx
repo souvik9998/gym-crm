@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,11 +17,12 @@ import { Staff } from "@/pages/admin/StaffManagement";
 import {
   PlusIcon, PencilIcon, TrashIcon, ClockIcon,
   MagnifyingGlassIcon, UserGroupIcon, SparklesIcon,
-  CheckCircleIcon, ExclamationCircleIcon,
+  CheckCircleIcon, ExclamationCircleIcon, ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { TimeSlotDetailDialog } from "./TimeSlotDetailDialog";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
+import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 
 interface TimeSlot {
