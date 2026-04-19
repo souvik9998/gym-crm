@@ -148,7 +148,8 @@ export const SlotMembersTab = ({
     const slot = slots.find(s => s.id === selectedSlot);
     setSlotCapacity(slot?.capacity || 0);
     fetchSlotMembers();
-  }, [selectedSlot]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSlot, trainerPtId]);
 
   const fetchSlotMembers = async () => {
     if (!selectedSlot) return;
