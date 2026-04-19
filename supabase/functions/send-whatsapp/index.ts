@@ -521,7 +521,7 @@ Deno.serve(async (req) => {
       message += `⚠️ Please keep your credentials secure and do not share them with others.\n\n`;
       message += `— Team ${gymDisplayName}`;
       
-      const result = await sendPeriskopeMessage(formattedPhone, message);
+      const result = await sendPeriskopeMessage(formattedPhone, message, branchId || null);
       
       // Log the notification (without sensitive password info)
       await logWhatsAppMessage({
@@ -594,7 +594,7 @@ Deno.serve(async (req) => {
 
       const message = generateMessage(name, memberEndDate, type, paymentInfo, null, branchName);
       
-      const result = await sendPeriskopeMessage(formattedPhone, message);
+      const result = await sendPeriskopeMessage(formattedPhone, message, branchId || null);
 
       await logWhatsAppMessage({
         member_id: directMemberId,
@@ -658,7 +658,7 @@ Deno.serve(async (req) => {
         const userBranchName = (user.branches as any)?.name;
         
         const message = generateMessage(user.name, userEndDate, type, null, userBranchName, branchName);
-        const result = await sendPeriskopeMessage(formattedPhone, message);
+        const result = await sendPeriskopeMessage(formattedPhone, message, user.branch_id || branchId || null);
 
         await logWhatsAppMessage({
           daily_pass_user_id: user.id,
@@ -757,7 +757,7 @@ Deno.serve(async (req) => {
       const memberBranchName = (member.branches as any)?.name;
       
       const message = generateMessage(member.name, memberEndDate, type, paymentInfo, memberBranchName, branchName);
-      const result = await sendPeriskopeMessage(formattedPhone, message);
+      const result = await sendPeriskopeMessage(formattedPhone, message, member.branch_id || branchId || null);
 
       await logWhatsAppMessage({
         member_id: member.id,
