@@ -929,6 +929,26 @@ export const TimeSlotDetailDialog = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Same-trainer slot move */}
+      {moveSlot && slot && (
+        <TransferSlotDialog
+          open={!!moveSlot}
+          onOpenChange={(o) => !o && setMoveSlot(null)}
+          currentSlotId={slot.id}
+          slotMemberRowId={moveSlot.rowId}
+          memberId={moveSlot.memberId}
+          memberName={moveSlot.memberName}
+          currentPtTrainerId={moveSlot.trainerId}
+          currentPtTrainerName={moveSlot.trainerName}
+          branchId={branchId}
+          onTransferred={() => {
+            setMoveSlot(null);
+            fetchSlotMembers();
+            onUpdated();
+          }}
+        />
+      )}
     </>
   );
 };
