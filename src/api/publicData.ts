@@ -38,7 +38,10 @@ export interface PublicBranch {
   allowDailyPass?: boolean;
 }
 
-const CACHE_TTL = 5 * 60 * 1000;
+// Short TTL — admin updates to packages/trainers must reach the public
+// registration screens quickly. We also implement stale-while-revalidate
+// (return cached + refetch in background) and explicit invalidation hooks.
+const CACHE_TTL = 60 * 1000;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 try {
