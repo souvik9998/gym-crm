@@ -1185,14 +1185,14 @@ export const MembersTable = ({
           <div className="divide-y divide-border/60">
             {sortedMembers.map((member, index) => (
               <div 
-                key={member.id}
+                key={`${searchQuery}-${member.id}`}
                 className={cn(
-                  "flex items-center gap-2.5 px-3 py-3 cursor-pointer transition-all duration-200 active:scale-[0.99] active:bg-muted/60",
+                  "flex items-center gap-2.5 px-3 py-3 cursor-pointer transition-all duration-200 active:scale-[0.99] active:bg-muted/60 animate-fade-in",
                   "hover:bg-muted/40",
                   selectedMembers.has(member.id) && "bg-primary/5",
                   isNewMember(member) && "border-l-2 border-l-emerald-500 bg-emerald-500/5"
                 )}
-                style={{ animationDelay: `${index * 40}ms` }}
+                style={{ animationDelay: `${Math.min(index, 12) * 25}ms`, animationDuration: "260ms" }}
                 onClick={() => handleMemberClick(member)}
               >
                 {/* Selection Checkbox */}
