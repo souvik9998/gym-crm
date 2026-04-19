@@ -230,11 +230,34 @@ export function SubscriptionPlanTab() {
       {/* Usage Limits Card */}
       <Card className="border-0 shadow-sm">
         <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-          <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
-            <ChartBarIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
-            Usage & Quotas
-          </CardTitle>
-          <CardDescription className="text-xs lg:text-sm">Current resource usage against your plan limits</CardDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <CardTitle className="flex items-center gap-2 text-base lg:text-xl">
+                <ChartBarIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
+                Usage & Quotas
+              </CardTitle>
+              <CardDescription className="text-xs lg:text-sm mt-1">
+                Current resource usage against your plan limits
+                {lastUpdated && (
+                  <span className="ml-1 text-muted-foreground/80">
+                    · Updated {format(lastUpdated, "h:mm a")}
+                  </span>
+                )}
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fetchPlanDetails()}
+              disabled={isRefreshing}
+              className="h-8 gap-1.5 shrink-0"
+              aria-label="Refresh usage"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline text-xs">Refresh</span>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
           <div className="grid gap-3 lg:gap-5 grid-cols-1 sm:grid-cols-2">
