@@ -235,6 +235,15 @@ export const TimeSlotsTab = ({
       title: "Delete Time Slot",
       description: `Delete ${slot.trainer_name}'s slot (${slot.start_time.slice(0, 5)} - ${slot.end_time.slice(0, 5)})? This will also remove all member assignments.`,
       onConfirm: async () => {
+        // Defensive: explicitly null any pt_subscriptions still pointing at this slot.
+        // The FK is ON DELETE SET NULL, but doing it client-side guarantees the
+        // change is visible immediately to any cached query that reads
+        // pt_subscriptions.time_slot_id (slot filters, assigned-member resolvers).
+        await supabase
+          .from("pt_subscriptions")
+          .update({ time_slot_id: null } as any)
+          .eq("time_slot_id", slot.id);
+
         await supabase.from("trainer_time_slots").delete().eq("id", slot.id);
         await logAdminActivity({
           category: "time_slots",
