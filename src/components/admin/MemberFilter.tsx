@@ -555,110 +555,118 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
               </Button>
             </DropdownMenuTrigger>
             {hasSubFilters && (
-              <DropdownMenuContent 
-                align="start" 
-                className="w-56 p-1.5 transition-all duration-200 shadow-lg border bg-white dark:bg-gray-950 rounded-lg"
-                sideOffset={4}
+              <DropdownMenuContent
+                align="start"
+                className="w-[260px] p-0 rounded-xl border-border/50 shadow-2xl overflow-hidden"
+                sideOffset={6}
                 onMouseEnter={() => {
-                  // Clear any pending close timeout for this category
                   if (hoverTimeoutRef.current[category.category]) {
                     clearTimeout(hoverTimeoutRef.current[category.category]!);
                     hoverTimeoutRef.current[category.category] = null;
                   }
-                  // Only set if not already open to prevent flickering
                   if (openDropdown !== category.category) {
                     setOpenDropdown(category.category);
                   }
                 }}
                 onMouseLeave={() => {
-                  // Delay closing when leaving dropdown
                   hoverTimeoutRef.current[category.category] = setTimeout(() => {
-                    setOpenDropdown((prev) => {
-                      if (prev === category.category) {
-                        return null;
-                      }
-                      return prev;
-                    });
+                    setOpenDropdown((prev) => (prev === category.category ? null : prev));
                     hoverTimeoutRef.current[category.category] = null;
                   }, 300);
                 }}
               >
-                {category.internalFilters?.map((filter) => {
-                  const isSelected = value === filter.value;
-                  
-                  // Get accent colors based on category for hover states
-                  const hoverBg = category.category === "expiring_soon"
-                    ? "hover:bg-amber-50 dark:hover:bg-amber-950/20"
-                    : category.category === "expired"
-                    ? "hover:bg-red-50 dark:hover:bg-red-950/20"
-                    : category.category === "active"
-                    ? "hover:bg-green-100 dark:hover:bg-green-900/30"
-                    : category.category === "inactive"
-                    ? "hover:bg-slate-50 dark:hover:bg-slate-950/20"
-                    : "hover:bg-blue-50 dark:hover:bg-blue-950/20";
-                  
-                  const selectedBg = category.category === "expiring_soon"
-                    ? "bg-amber-100 dark:bg-amber-900/30"
-                    : category.category === "expired"
-                    ? "bg-red-100 dark:bg-red-900/30"
-                    : category.category === "active"
-                    ? "bg-green-200 dark:bg-green-800/40"
-                    : category.category === "inactive"
-                    ? "bg-slate-100 dark:bg-slate-900/30"
-                    : "bg-blue-100 dark:bg-blue-900/30";
-                  
-                  const textColor = category.category === "expiring_soon"
-                    ? "text-gray-900 dark:text-gray-100"
-                    : category.category === "expired"
-                    ? "text-gray-900 dark:text-gray-100"
-                    : category.category === "active"
-                    ? "text-green-800 dark:text-green-200"
-                    : category.category === "inactive"
-                    ? "text-gray-900 dark:text-gray-100"
-                    : "text-gray-900 dark:text-gray-100";
-                  
-                  const checkmarkColor = category.category === "expiring_soon"
-                    ? "text-amber-600 dark:text-amber-400"
-                    : category.category === "expired"
-                    ? "text-red-600 dark:text-red-400"
-                    : category.category === "active"
-                    ? "text-green-700 dark:text-green-300"
-                    : category.category === "inactive"
-                    ? "text-slate-600 dark:text-slate-400"
-                    : "text-blue-600 dark:text-blue-400";
-                  
-                  return (
-                    <DropdownMenuItem
-                      key={filter.value}
-                      onClick={() => {
-                        onChange(filter.value);
-                        setOpenDropdown(null);
-                        // Clear timeout for this category
-                        if (hoverTimeoutRef.current[category.category]) {
-                          clearTimeout(hoverTimeoutRef.current[category.category]!);
-                          hoverTimeoutRef.current[category.category] = null;
-                        }
-                        if (category.category === "all" && ptFilterActive && onPtFilterChange) {
-                          onPtFilterChange(false);
-                        }
-                      }}
-                      className={cn(
-                        "relative flex cursor-pointer select-none items-center rounded-md px-3 py-2.5 text-sm outline-none transition-all duration-150",
-                        "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                        "focus:outline-none focus:ring-0",
-                        hoverBg,
-                        isSelected && selectedBg,
-                        isSelected && "font-semibold",
-                        textColor
-                      )}
-                    >
-                      <span className="flex-1">{filter.label}</span>
-                      {isSelected && (
-                        <CheckCircle2 className={cn("w-4 h-4 ml-2 flex-shrink-0", checkmarkColor)} />
-                      )}
-                    </DropdownMenuItem>
-                  );
-                })}
+                {/* Header strip — mirrors Trainer/TimeSlot dropdowns */}
+                <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b border-border/40 px-4 py-2.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-foreground">
+                      {category.category === "expiring_soon" ? "Filter Expiring" :
+                       category.category === "expired" ? "Filter Expired" :
+                       `Filter ${category.label}`}
+                    </p>
+                    {isActive && (
+                      <button
+                        onClick={() => {
+                          onChange("all");
+                          setOpenDropdown(null);
+                          if (hoverTimeoutRef.current[category.category]) {
+                            clearTimeout(hoverTimeoutRef.current[category.category]!);
+                            hoverTimeoutRef.current[category.category] = null;
+                          }
+                        }}
+                        className="text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-0.5 rounded-md hover:bg-muted"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Option list */}
+                <div className="p-1.5 space-y-0.5 max-h-[360px] overflow-y-auto">
+                  {category.internalFilters?.map((filter, idx) => {
+                    const isSelected = value === filter.value;
+                    const palette = categoryPalette[category.category] || categoryPalette.all;
+                    const meta = subFilterMeta[filter.value];
+
+                    return (
+                      <button
+                        key={filter.value}
+                        onClick={() => {
+                          onChange(filter.value);
+                          setOpenDropdown(null);
+                          if (hoverTimeoutRef.current[category.category]) {
+                            clearTimeout(hoverTimeoutRef.current[category.category]!);
+                            hoverTimeoutRef.current[category.category] = null;
+                          }
+                          if (category.category === "all" && ptFilterActive && onPtFilterChange) {
+                            onPtFilterChange(false);
+                          }
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-200 text-left",
+                          "hover:scale-[1.01] active:scale-[0.99] animate-fade-in",
+                          isSelected
+                            ? cn(palette.activeBg, palette.activeBorder, "border shadow-sm ring-1", palette.activeRing)
+                            : "border border-transparent hover:bg-muted/50"
+                        )}
+                        style={{ animationDelay: `${idx * 40}ms`, animationDuration: "220ms" }}
+                      >
+                        {/* Icon tile */}
+                        <div className={cn(
+                          "w-8 h-8 rounded-lg flex items-center justify-center ring-2 ring-background shadow-sm flex-shrink-0",
+                          palette.iconBg, palette.iconText
+                        )}>
+                          {meta?.icon}
+                        </div>
+
+                        {/* Label + description */}
+                        <div className="flex-1 min-w-0">
+                          <p className={cn(
+                            "text-xs font-semibold truncate",
+                            isSelected ? palette.activeText : "text-foreground"
+                          )}>
+                            {filter.label}
+                          </p>
+                          {meta?.description && (
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {meta.description}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Selected check badge */}
+                        {isSelected && (
+                          <div className={cn(
+                            "w-5 h-5 rounded-full flex items-center justify-center animate-scale-in flex-shrink-0",
+                            palette.badgeBg
+                          )}>
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </DropdownMenuContent>
             )}
           </DropdownMenu>
