@@ -89,6 +89,59 @@ function setCache<T>(key: string, data: T): void {
   } catch { /* storage full, ignore */ }
 }
 
+/**
+ * Cross-tab cache bust signal. Admin mutations (packages/trainers/settings)
+ * call `invalidatePublicDataCache(branchId)` which both clears local
+ * sessionStorage and broadcasts a storage event so other open tabs
+ * (e.g. a public registration tab) immediately drop their cache too.
+ */
+const CACHE_BUST_KEY = "__public-data-cache-bust";
+
+export function invalidatePublicDataCache(branchIdentifier?: string): void {
+  try {
+    if (typeof window === "undefined") return;
+    const keys = Object.keys(sessionStorage);
+    keys.forEach((key) => {
+      if (
+        key.startsWith("public-packages-") ||
+        key.startsWith("public-trainers-") ||
+        key.startsWith("public-branch-") ||
+        key.startsWith("public-bootstrap-") ||
+        key === "public-default-branch"
+      ) {
+        if (!branchIdentifier || key.includes(branchIdentifier) || key === "public-default-branch") {
+          sessionStorage.removeItem(key);
+        }
+      }
+    });
+    // Notify other tabs (storage event only fires across tabs, not same tab).
+    localStorage.setItem(CACHE_BUST_KEY, JSON.stringify({ branchIdentifier: branchIdentifier || "*", at: Date.now() }));
+  } catch { /* ignore */ }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key !== CACHE_BUST_KEY || !e.newValue) return;
+    try {
+      const { branchIdentifier } = JSON.parse(e.newValue);
+      const wildcard = !branchIdentifier || branchIdentifier === "*";
+      Object.keys(sessionStorage).forEach((key) => {
+        if (
+          key.startsWith("public-packages-") ||
+          key.startsWith("public-trainers-") ||
+          key.startsWith("public-branch-") ||
+          key.startsWith("public-bootstrap-") ||
+          key === "public-default-branch"
+        ) {
+          if (wildcard || key.includes(branchIdentifier)) {
+            sessionStorage.removeItem(key);
+          }
+        }
+      });
+    } catch { /* ignore */ }
+  });
+}
+
 export interface PublicTaxSettings {
   taxRate: number;
   taxEnabled: boolean;
