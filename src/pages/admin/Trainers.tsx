@@ -36,7 +36,18 @@ interface Trainer {
 
 const TrainersPage = () => {
   const { currentBranch } = useBranch();
-  const { invalidateSettings } = useInvalidateQueries();
+  const { invalidateSettings: invalidateSettingsRaw } = useInvalidateQueries();
+  // Wrap invalidateSettings to also bust the public registration cache so
+  // trainer add/edit/toggle/delete reflect immediately on /register, /renew, /extend-pt.
+  const invalidateSettings = useCallback(async () => {
+    await invalidateSettingsRaw();
+    if (currentBranch?.id) {
+      invalidatePublicDataCache(currentBranch.id);
+      if (currentBranch.slug) invalidatePublicDataCache(currentBranch.slug);
+    } else {
+      invalidatePublicDataCache();
+    }
+  }, [invalidateSettingsRaw, currentBranch?.id, currentBranch?.slug]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isAddingTrainer, setIsAddingTrainer] = useState(false);
   const [savingTrainerId, setSavingTrainerId] = useState<string | null>(null);
