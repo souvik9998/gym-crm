@@ -107,14 +107,29 @@ export const TimeSlotsTab = ({
         const slotIds = slotsData.map(s => s.id);
         let memberCounts: Record<string, number> = {};
         if (slotIds.length > 0) {
-          const { data: members } = await supabase
-            .from("time_slot_members")
-            .select("time_slot_id")
-            .in("time_slot_id", slotIds);
-          if (members) {
-            members.forEach(m => {
-              memberCounts[m.time_slot_id] = (memberCounts[m.time_slot_id] || 0) + 1;
-            });
+          // Source of truth: pt_subscriptions (active + non-expired).
+          // Same query the TimeSlotFilterDropdown uses, so counts stay consistent
+          // across the app. The legacy time_slot_members table can drift when
+          // PT subscriptions expire/cancel without the join row being cleaned up.
+          const today = new Date().toISOString().split("T")[0];
+          const { data: ptRows } = await supabase
+            .from("pt_subscriptions")
+            .select("time_slot_id, member_id")
+            .in("time_slot_id", slotIds)
+            .eq("status", "active")
+            .gte("end_date", today);
+
+          if (ptRows) {
+            // Dedupe by member per slot (defensive: a member should only have
+            // one active PT row per slot, but this guards against duplicates).
+            const perSlot: Record<string, Set<string>> = {};
+            for (const row of ptRows as any[]) {
+              if (!row.time_slot_id) continue;
+              (perSlot[row.time_slot_id] ||= new Set()).add(row.member_id);
+            }
+            for (const [sid, set] of Object.entries(perSlot)) {
+              memberCounts[sid] = set.size;
+            }
           }
         }
 
