@@ -36,7 +36,8 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { addMonths, differenceInDays, format, isBefore } from "date-fns";
+import { differenceInDays, format, isBefore } from "date-fns";
+import { addPackageMonths } from "@/lib/packageDuration";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";

@@ -7,7 +7,8 @@ import { ArrowLeft, Dumbbell, Calendar, IndianRupee, User, Check, AlertCircle, C
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
-import { addDays, addMonths, differenceInDays, format, isBefore, isAfter, parseISO } from "date-fns";
+import { addDays, differenceInDays, format, isBefore, isAfter, parseISO } from "date-fns";
+import { addPackageMonths } from "@/lib/packageDuration";
 import { fetchPublicBranch, fetchPublicTrainers, fetchPublicPackages, invalidatePublicDataCache, PUBLIC_DATA_BUST_EVENT } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 import PoweredByBadge from "@/components/PoweredByBadge";

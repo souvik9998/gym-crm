@@ -64,7 +64,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { format, addMonths, addDays, isAfter, isBefore } from "date-fns";
+import { format, addDays, isAfter, isBefore } from "date-fns";
+import { addPackageMonths } from "@/lib/packageDuration";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useBranch } from "@/contexts/BranchContext";
