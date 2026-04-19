@@ -179,10 +179,26 @@ export const AdminHeader = ({
               variant="ghost"
               size="icon"
               onClick={handleRefresh}
-              className="hidden lg:inline-flex text-muted-foreground hover:text-foreground hover:bg-muted h-9 w-9"
+              disabled={isRefreshing}
+              aria-label="Refresh"
+              aria-busy={isRefreshing}
+              className={cn(
+                "hidden lg:inline-flex relative overflow-hidden text-muted-foreground hover:text-foreground hover:bg-muted h-9 w-9 rounded-lg",
+                "transition-all duration-200 ease-out active:scale-90",
+                "focus-visible:ring-2 focus-visible:ring-primary/40",
+                isRefreshing && "text-primary bg-primary/10 hover:bg-primary/10"
+              )}
               title="Refresh"
             >
-              <ArrowPathIcon className="w-5 h-5" />
+              {isRefreshing && (
+                <span className="absolute inset-0 rounded-lg bg-primary/20 animate-[refresh-ripple_0.6s_ease-out]" />
+              )}
+              <ArrowPathIcon
+                className={cn(
+                  "w-5 h-5 relative z-10 transition-transform duration-300",
+                  isRefreshing && "animate-[refresh-spin_0.7s_linear_infinite]"
+                )}
+              />
             </Button>
           )}
 
