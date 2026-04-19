@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { 
   fetchRegistrationBootstrap,
+  PUBLIC_DATA_BUST_EVENT,
   type PublicMonthlyPackage,
   type PublicCustomPackage,
   type PublicTrainer,
@@ -186,7 +187,52 @@ const PackageSelectionForm = ({
     fetchData();
   }, [branchId]);
 
-  const fetchData = async () => {
+  // Listen for cache-bust signals (admin mutations / Refresh button) and
+  // tab visibility changes to silently refetch the latest packages/trainers
+  // without showing a skeleton flash on already-loaded screens.
+  useEffect(() => {
+    if (!branchId) return;
+
+    const matchesCurrentBranch = (id: string) =>
+      id === "*" || id === branchId;
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== "__public-data-cache-bust" || !e.newValue) return;
+      try {
+        const { branchIdentifier } = JSON.parse(e.newValue);
+        if (matchesCurrentBranch(branchIdentifier)) {
+          fetchData({ forceRefresh: true, silent: true });
+        }
+      } catch { /* ignore */ }
+    };
+
+    const onSameTabBust = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail) return;
+      if (matchesCurrentBranch(detail.branchIdentifier)) {
+        fetchData({ forceRefresh: true, silent: true });
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchData({ forceRefresh: true, silent: true });
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+    window.addEventListener(PUBLIC_DATA_BUST_EVENT, onSameTabBust as EventListener);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(PUBLIC_DATA_BUST_EVENT, onSameTabBust as EventListener);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branchId]);
+
+  const fetchData = async (opts: { forceRefresh?: boolean; silent?: boolean } = {}) => {
     // CRITICAL: Without a branchId we MUST NOT fetch — otherwise the public
     // edge function would return packages/trainers for ALL branches/tenants,
     // breaking data isolation across gyms.
@@ -198,25 +244,51 @@ const PackageSelectionForm = ({
       setIsDataLoading(false);
       return;
     }
-    setIsDataLoading(true);
+    // Silent refresh keeps the previously rendered packages on screen while
+    // the network call resolves — no skeleton flash, industry-standard SWR feel.
+    if (!opts.silent) {
+      setIsDataLoading(true);
+    }
     try {
       // Single unified call — fetches packages + trainers + tax settings together.
       // Cached aggressively in sessionStorage and warmed by Index page on mount.
-      const bootstrap = await fetchRegistrationBootstrap(branchId);
+      const bootstrap = await fetchRegistrationBootstrap(branchId, {
+        forceRefresh: opts.forceRefresh,
+      });
 
       if (!bootstrap) {
-        setMonthlyPackages([]);
-        setCustomPackages([]);
-        setTrainers([]);
-        setTaxSettings(null);
+        if (!opts.silent) {
+          setMonthlyPackages([]);
+          setCustomPackages([]);
+          setTrainers([]);
+          setTaxSettings(null);
+        }
         return;
       }
 
       if (bootstrap.monthlyPackages.length > 0) {
         setMonthlyPackages(bootstrap.monthlyPackages);
-        // Auto-select most popular (3 months) or first
-        const defaultPkg = bootstrap.monthlyPackages.find((p) => p.months === 3) || bootstrap.monthlyPackages[0];
-        setSelectedMonthlyPackage(defaultPkg);
+        // Auto-select most popular (3 months) or first — only on initial load
+        if (!opts.silent || !selectedMonthlyPackage) {
+          const defaultPkg = bootstrap.monthlyPackages.find((p) => p.months === 3) || bootstrap.monthlyPackages[0];
+          setSelectedMonthlyPackage((prev) => {
+            // Preserve existing selection if it still exists in the refreshed list
+            if (prev && bootstrap.monthlyPackages.some((p) => p.id === prev.id)) {
+              const refreshed = bootstrap.monthlyPackages.find((p) => p.id === prev.id);
+              return refreshed || prev;
+            }
+            return defaultPkg;
+          });
+        } else {
+          // Silent refresh: keep selection but pick up updated price
+          setSelectedMonthlyPackage((prev) => {
+            if (!prev) return prev;
+            const refreshed = bootstrap.monthlyPackages.find((p) => p.id === prev.id);
+            return refreshed || prev;
+          });
+        }
+      } else {
+        setMonthlyPackages([]);
       }
 
       if (bootstrap.taxSettings) {
@@ -231,15 +303,32 @@ const PackageSelectionForm = ({
           monthly_fee: t.monthly_fee,
         }));
         setTrainers(mapped);
+        // Sync selected trainer with refreshed monthly_fee
+        setSelectedTrainer((prev) => {
+          if (!prev) return prev;
+          const refreshed = mapped.find((t) => t.id === prev.id);
+          return refreshed || null;
+        });
+      } else {
+        setTrainers([]);
       }
 
       if (bootstrap.customPackages.length > 0) {
         setCustomPackages(bootstrap.customPackages);
+        setSelectedCustomPackage((prev) => {
+          if (!prev) return prev;
+          const refreshed = bootstrap.customPackages.find((p) => p.id === prev.id);
+          return refreshed || null;
+        });
+      } else {
+        setCustomPackages([]);
       }
     } catch (error) {
       console.error("Error fetching registration data:", error);
     } finally {
-      setIsDataLoading(false);
+      if (!opts.silent) {
+        setIsDataLoading(false);
+      }
     }
   };
 
