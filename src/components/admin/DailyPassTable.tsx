@@ -361,8 +361,12 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
+              {filteredUsers.map((user, index) => (
+                <TableRow
+                  key={`${searchQuery}-${user.id}`}
+                  className="animate-fade-in"
+                  style={{ animationDelay: `${Math.min(index, 15) * 20}ms`, animationDuration: "240ms" }}
+                >
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.phone}</TableCell>
                   <TableCell>
