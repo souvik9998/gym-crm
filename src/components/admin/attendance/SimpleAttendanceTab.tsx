@@ -611,7 +611,7 @@ export const SimpleAttendanceTab = () => {
 
       {/* Members List */}
       {isLoading ? (
-        <div className="py-10 text-center text-muted-foreground text-sm animate-fade-in">Loading members...</div>
+        <SimpleAttendanceSkeleton isMobile={isMobile} weekDates={weekDates} />
       ) : filteredList.length === 0 ? (
         <div className="py-10 text-center space-y-2 animate-fade-in">
           <UserGroupIcon className="w-10 h-10 mx-auto text-muted-foreground/30" />
