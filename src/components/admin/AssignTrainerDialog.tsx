@@ -211,6 +211,46 @@ export const AssignTrainerDialog = ({
           .from("pt_subscriptions")
           .update({ status: "inactive", updated_at: new Date().toISOString() })
           .eq("id", existingPtId);
+
+        // If admin selected a NEW time slot during replacement, remove the member
+        // from the OLD trainer's time slot(s) to prevent duplicate slot membership.
+        // If no new slot was selected, leave existing slot membership untouched
+        // (admin will transfer manually via the Slot Members tab).
+        if (selectedTimeSlotId && existingTrainerId) {
+          // Resolve old trainer's staff_id via phone (trainer_time_slots.trainer_id refs staff.id)
+          const { data: oldTrainer } = await supabase
+            .from("personal_trainers")
+            .select("phone")
+            .eq("id", existingTrainerId)
+            .maybeSingle();
+
+          if (oldTrainer?.phone) {
+            const { data: oldStaff } = await supabase
+              .from("staff")
+              .select("id")
+              .eq("phone", oldTrainer.phone)
+              .eq("role", "trainer")
+              .maybeSingle();
+
+            if (oldStaff?.id) {
+              // Find slots owned by old trainer in this branch
+              const { data: oldSlots } = await supabase
+                .from("trainer_time_slots")
+                .select("id")
+                .eq("trainer_id", oldStaff.id)
+                .eq("branch_id", branchId);
+
+              const oldSlotIds = (oldSlots || []).map((s) => s.id);
+              if (oldSlotIds.length > 0) {
+                await supabase
+                  .from("time_slot_members")
+                  .delete()
+                  .eq("member_id", memberId)
+                  .in("time_slot_id", oldSlotIds);
+              }
+            }
+          }
+        }
       }
 
       const totalFee = calculateTotalFee();
@@ -238,6 +278,13 @@ export const AssignTrainerDialog = ({
       if (error) throw error;
 
       if (selectedTimeSlotId) {
+        // Upsert-style: ensure no duplicate row for this (member, slot) pair
+        await supabase
+          .from("time_slot_members")
+          .delete()
+          .eq("member_id", memberId)
+          .eq("time_slot_id", selectedTimeSlotId);
+
         await supabase.from("time_slot_members").insert({
           time_slot_id: selectedTimeSlotId,
           member_id: memberId,
