@@ -7,7 +7,8 @@ import { Check, Calendar, IndianRupee, Sparkles, User, Dumbbell, Clock, AlertCir
 import CouponInput from "@/components/ui/coupon-input";
 import { useCouponValidation } from "@/hooks/useCouponValidation";
 import { Badge } from "@/components/ui/badge";
-import { addDays, addMonths, differenceInDays, format, isBefore } from "date-fns";
+import { addDays, differenceInDays, format, isBefore } from "date-fns";
+import { addPackageMonths } from "@/lib/packageDuration";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
