@@ -577,7 +577,7 @@ export const TimeSlotDetailDialog = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto p-0">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto overflow-x-hidden p-0">
           {/* Header */}
           <div className="px-5 pt-5 pb-3 border-b border-border/40">
             <DialogHeader>
@@ -822,7 +822,7 @@ export const TimeSlotDetailDialog = ({
                                       <ArrowsRightLeftIcon className="w-3.5 h-3.5" />
                                     </Button>
                                   </TooltipTrigger>
-                                  <TooltipContent side="top">
+                                  <TooltipContent side="left" align="center" collisionPadding={16} className="max-w-[200px]">
                                     <p className="text-xs">
                                       Transfer to <strong>{m.current_pt_trainer_name}</strong>'s slot
                                     </p>
