@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { TransferSlotDialog } from "./TransferSlotDialog";
 
 interface SlotMembersTabProps {
   trainers: Staff[];
@@ -42,6 +44,11 @@ interface SlotMember {
   pt_status: string;
   pt_end_date: string | null;
   subscription_status: string | null;
+  /** The member's CURRENT active PT trainer id, regardless of this slot. */
+  current_pt_trainer_id: string | null;
+  current_pt_trainer_name: string | null;
+  /** True when slot's trainer != member's current active PT trainer. */
+  is_trainer_replaced: boolean;
 }
 
 interface AvailableMember {
@@ -79,9 +86,18 @@ export const SlotMembersTab = ({
   const [trainerPtId, setTrainerPtId] = useState<string | null>(null);
   const [trainerName, setTrainerName] = useState("");
 
-  // Transfer state
+  // Transfer state (transfer to a different trainer's slot — used in Add dialog)
   const [transferConfirm, setTransferConfirm] = useState<{ memberId: string; name: string; fromTrainer: string; fromTrainerId: string; ptSubId: string } | null>(null);
   const [isTransferring, setIsTransferring] = useState(false);
+
+  // Same-trainer slot move (transfer to another slot of the SAME trainer).
+  const [moveSlot, setMoveSlot] = useState<{
+    rowId: string;
+    memberId: string;
+    memberName: string;
+    trainerId: string;
+    trainerName: string;
+  } | null>(null);
 
   const { invalidatePtSubscriptions } = useInvalidateQueries();
 
@@ -132,7 +148,8 @@ export const SlotMembersTab = ({
     const slot = slots.find(s => s.id === selectedSlot);
     setSlotCapacity(slot?.capacity || 0);
     fetchSlotMembers();
-  }, [selectedSlot]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSlot, trainerPtId]);
 
   const fetchSlotMembers = async () => {
     if (!selectedSlot) return;
@@ -147,12 +164,21 @@ export const SlotMembersTab = ({
 
       const memberIds = tsmData.map((d: any) => d.member_id);
 
-      const [ptRes, subRes] = await Promise.all([
+      // Fetch:
+      //  - PT row LINKED to this slot (status/end_date for badge)
+      //  - The member's CURRENT active PT trainer (regardless of slot)
+      //  - Latest gym subscription
+      const [ptSlotRes, ptCurrentRes, subRes] = await Promise.all([
         supabase
           .from("pt_subscriptions")
           .select("member_id, status, end_date")
           .eq("time_slot_id", selectedSlot)
           .in("member_id", memberIds),
+        supabase
+          .from("pt_subscriptions")
+          .select("member_id, personal_trainer_id, personal_trainers(name)")
+          .in("member_id", memberIds)
+          .eq("status", "active"),
         supabase
           .from("subscriptions")
           .select("member_id, status, end_date")
@@ -161,14 +187,27 @@ export const SlotMembersTab = ({
           .order("end_date", { ascending: false }),
       ]);
 
-      const ptMap = new Map<string, { status: string; end_date: string | null }>();
-      ptRes.data?.forEach((p: any) => { if (!ptMap.has(p.member_id)) ptMap.set(p.member_id, p); });
+      const ptSlotMap = new Map<string, { status: string; end_date: string | null }>();
+      ptSlotRes.data?.forEach((p: any) => { if (!ptSlotMap.has(p.member_id)) ptSlotMap.set(p.member_id, p); });
+
+      const ptCurrentMap = new Map<string, { trainer_id: string; trainer_name: string }>();
+      ptCurrentRes.data?.forEach((p: any) => {
+        if (!ptCurrentMap.has(p.member_id)) {
+          ptCurrentMap.set(p.member_id, {
+            trainer_id: p.personal_trainer_id,
+            trainer_name: (p.personal_trainers as any)?.name || "Unknown",
+          });
+        }
+      });
 
       const subMap = new Map<string, string>();
       subRes.data?.forEach((s: any) => { if (!subMap.has(s.member_id)) subMap.set(s.member_id, s.status); });
 
       setMembers(tsmData.map((d: any) => {
-        const pt = ptMap.get(d.member_id);
+        const pt = ptSlotMap.get(d.member_id);
+        const current = ptCurrentMap.get(d.member_id);
+        // "Replaced" = member has an active PT, but it isn't this slot's trainer.
+        const isReplaced = !!(current && trainerPtId && current.trainer_id !== trainerPtId);
         return {
           id: d.id,
           member_id: d.member_id,
@@ -177,6 +216,9 @@ export const SlotMembersTab = ({
           pt_status: pt?.status || "not_synced",
           pt_end_date: pt?.end_date || null,
           subscription_status: subMap.get(d.member_id) || null,
+          current_pt_trainer_id: current?.trainer_id || null,
+          current_pt_trainer_name: current?.trainer_name || null,
+          is_trainer_replaced: isReplaced,
         };
       }));
     } finally {
@@ -669,39 +711,89 @@ export const SlotMembersTab = ({
                 <p className="text-xs text-muted-foreground/70 mt-1">Only members with active PT can be added here</p>
               </div>
             ) : (
-              <div className="space-y-1.5">
-                {filteredMembers.map(m => (
-                  <div key={m.id} className="flex items-center justify-between p-2.5 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-medium truncate">{m.member_name}</p>
-                        {getPtBadge(m.pt_status)}
-                        {getSubBadge(m.subscription_status)}
+              <TooltipProvider delayDuration={150}>
+                <div className="space-y-1.5">
+                  {filteredMembers.map(m => (
+                    <div key={m.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium truncate">{m.member_name}</p>
+                          {getPtBadge(m.pt_status)}
+                          {getSubBadge(m.subscription_status)}
+                          {m.is_trainer_replaced && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[10px] border-0 gap-1 cursor-help">
+                                  <ExclamationTriangleIcon className="w-3 h-3" />
+                                  Trainer Replaced
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-[260px]">
+                                <p className="text-xs">
+                                  PT trainer changed to <strong>{m.current_pt_trainer_name}</strong>.
+                                  Use <em>Transfer Slot</em> to move them to one of {m.current_pt_trainer_name}'s slots.
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-xs text-muted-foreground">{m.member_phone}</p>
+                          {m.pt_end_date && (
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                              <ClockIcon className="w-3 h-3" />
+                              PT ends {new Date(m.pt_end_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-xs text-muted-foreground">{m.member_phone}</p>
-                        {m.pt_end_date && (
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                            <ClockIcon className="w-3 h-3" />
-                            PT ends {new Date(m.pt_end_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
-                          </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {canAssign && m.current_pt_trainer_id && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`h-7 px-2 text-xs gap-1 ${
+                                  m.is_trainer_replaced
+                                    ? "text-amber-700 hover:text-amber-800 hover:bg-amber-50"
+                                    : "text-primary hover:text-primary hover:bg-primary/10"
+                                }`}
+                                onClick={() => setMoveSlot({
+                                  rowId: m.id,
+                                  memberId: m.member_id,
+                                  memberName: m.member_name,
+                                  trainerId: m.current_pt_trainer_id!,
+                                  trainerName: m.current_pt_trainer_name || "Trainer",
+                                })}
+                              >
+                                <ArrowsRightLeftIcon className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Transfer</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <p className="text-xs">
+                                Move to another slot under <strong>{m.current_pt_trainer_name}</strong>
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                        {canRemove && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1"
+                            onClick={() => setRemoveConfirm({ id: m.id, name: m.member_name, memberId: m.member_id })}
+                          >
+                            <XMarkIcon className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Remove</span>
+                          </Button>
                         )}
                       </div>
                     </div>
-                    {canRemove && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1"
-                        onClick={() => setRemoveConfirm({ id: m.id, name: m.member_name, memberId: m.member_id })}
-                      >
-                        <XMarkIcon className="w-3.5 h-3.5" />
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </TooltipProvider>
             )}
           </CardContent>
         </Card>
@@ -876,6 +968,25 @@ export const SlotMembersTab = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Same-trainer slot move */}
+      {moveSlot && (
+        <TransferSlotDialog
+          open={!!moveSlot}
+          onOpenChange={(o) => !o && setMoveSlot(null)}
+          currentSlotId={selectedSlot}
+          slotMemberRowId={moveSlot.rowId}
+          memberId={moveSlot.memberId}
+          memberName={moveSlot.memberName}
+          currentPtTrainerId={moveSlot.trainerId}
+          currentPtTrainerName={moveSlot.trainerName}
+          branchId={currentBranch?.id}
+          onTransferred={() => {
+            setMoveSlot(null);
+            fetchSlotMembers();
+          }}
+        />
+      )}
     </div>
   );
 };
