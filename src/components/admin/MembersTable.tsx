@@ -1449,14 +1449,15 @@ export const MembersTable = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedMembers.map((member) => (
+                {sortedMembers.map((member, index) => (
                   <TableRow 
-                    key={member.id}
+                    key={`${searchQuery}-${member.id}`}
                     className={cn(
-                      "transition-colors duration-150 ease-in-out hover:bg-muted/50 cursor-pointer",
+                      "transition-colors duration-150 ease-in-out hover:bg-muted/50 cursor-pointer animate-fade-in",
                       selectedMembers.has(member.id) && "bg-primary/5",
                       isNewMember(member) && "bg-emerald-500/[0.06] hover:bg-emerald-500/10 border-l-2 border-l-emerald-500"
                     )}
+                    style={{ animationDelay: `${Math.min(index, 15) * 20}ms`, animationDuration: "240ms" }}
                     onClick={() => handleMemberClick(member)}
                   >
                     <TableCell>
