@@ -175,56 +175,54 @@ export const TimeSlotDetailDialog = ({
     if (!slot) return;
     setIsLoadingMembers(true);
     try {
-      const { data } = await supabase
+      // Source of truth: pt_subscriptions (active + non-expired) — same query
+      // the TimeSlotFilterDropdown uses, so the slot detail and the global
+      // filter dropdown always show the exact same members.
+      const today = new Date().toISOString().split("T")[0];
+      const { data: ptRows } = await supabase
+        .from("pt_subscriptions")
+        .select("id, member_id, personal_trainer_id, members(name, phone), personal_trainers(name)")
+        .eq("time_slot_id", slot.id)
+        .eq("status", "active")
+        .gte("end_date", today);
+
+      // Resolve still-existing time_slot_members.id values so legacy
+      // remove/transfer flows that key off that PK keep working.
+      const { data: tsmRows } = await supabase
         .from("time_slot_members")
-        .select("id, member_id, members(name, phone)")
+        .select("id, member_id")
         .eq("time_slot_id", slot.id);
+      const tsmIdByMember = new Map<string, string>();
+      (tsmRows || []).forEach((r: any) => {
+        if (!tsmIdByMember.has(r.member_id)) tsmIdByMember.set(r.member_id, r.id);
+      });
 
-      if (data) {
-        const memberIds = data.map((d: any) => d.member_id);
+      // Dedupe defensively: one row per member for this slot.
+      const seen = new Set<string>();
+      const list: SlotMember[] = [];
+      (ptRows || []).forEach((p: any) => {
+        if (seen.has(p.member_id)) return;
+        seen.add(p.member_id);
 
-        // PT linked to THIS slot (badge), and CURRENT active PT trainer (replacement detection).
-        const [ptSlotRes, ptCurrentRes] = await Promise.all([
-          supabase
-            .from("pt_subscriptions")
-            .select("member_id")
-            .eq("time_slot_id", slot.id)
-            .eq("status", "active"),
-          supabase
-            .from("pt_subscriptions")
-            .select("member_id, personal_trainer_id, personal_trainers(name)")
-            .in("member_id", memberIds.length > 0 ? memberIds : ["__none__"])
-            .eq("status", "active"),
-        ]);
+        const currentTrainerId = p.personal_trainer_id;
+        const currentTrainerName = (p.personal_trainers as any)?.name || "Unknown";
+        const isReplaced = !!(trainerPtId && currentTrainerId && currentTrainerId !== trainerPtId);
 
-        const ptMemberIds = new Set((ptSlotRes.data || []).map((p) => p.member_id));
-        const ptCurrentMap = new Map<string, { trainer_id: string; trainer_name: string }>();
-        ptCurrentRes.data?.forEach((p: any) => {
-          if (!ptCurrentMap.has(p.member_id)) {
-            ptCurrentMap.set(p.member_id, {
-              trainer_id: p.personal_trainer_id,
-              trainer_name: (p.personal_trainers as any)?.name || "Unknown",
-            });
-          }
+        list.push({
+          // Fall back to pt_subscriptions.id when no time_slot_members row exists
+          // (data was added via PT flow only). Remove handlers branch on this.
+          id: tsmIdByMember.get(p.member_id) || p.id,
+          member_id: p.member_id,
+          member_name: (p.members as any)?.name || "Unknown",
+          member_phone: (p.members as any)?.phone || "",
+          has_pt: true, // anyone in pt_subscriptions for this slot has PT by definition
+          current_pt_trainer_id: currentTrainerId,
+          current_pt_trainer_name: currentTrainerName,
+          is_trainer_replaced: isReplaced,
         });
+      });
 
-        setMembers(
-          data.map((d: any) => {
-            const current = ptCurrentMap.get(d.member_id);
-            const isReplaced = !!(current && trainerPtId && current.trainer_id !== trainerPtId);
-            return {
-              id: d.id,
-              member_id: d.member_id,
-              member_name: d.members?.name || "Unknown",
-              member_phone: d.members?.phone || "",
-              has_pt: ptMemberIds.has(d.member_id),
-              current_pt_trainer_id: current?.trainer_id || null,
-              current_pt_trainer_name: current?.trainer_name || null,
-              is_trainer_replaced: isReplaced,
-            };
-          })
-        );
-      }
+      setMembers(list);
     } finally {
       setIsLoadingMembers(false);
     }
