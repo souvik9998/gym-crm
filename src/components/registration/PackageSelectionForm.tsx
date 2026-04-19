@@ -7,7 +7,8 @@ import { Check, Calendar, IndianRupee, Sparkles, User, Dumbbell, Clock, AlertCir
 import CouponInput from "@/components/ui/coupon-input";
 import { useCouponValidation } from "@/hooks/useCouponValidation";
 import { Badge } from "@/components/ui/badge";
-import { addDays, addMonths, differenceInDays, format, isBefore } from "date-fns";
+import { addDays, differenceInDays, format, isBefore } from "date-fns";
+import { addPackageMonths } from "@/lib/packageDuration";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -339,7 +340,7 @@ const PackageSelectionForm = ({
     if (packageType === "custom" && selectedCustomPackage) {
       return addDays(startDate, selectedCustomPackage.duration_days);
     } else if (selectedMonthlyPackage) {
-      return addMonths(startDate, selectedMonthlyPackage.months);
+      return addPackageMonths(startDate, selectedMonthlyPackage.months);
     }
     return startDate;
   }, [packageType, selectedMonthlyPackage, selectedCustomPackage, selectedStartDate]);
@@ -378,7 +379,7 @@ const PackageSelectionForm = ({
       if (maxDaysAvailable <= 0) return [];
 
       for (let months = 1; months <= 12; months++) {
-        const optionEndDate = addMonths(ptStart, months);
+        const optionEndDate = addPackageMonths(ptStart, months);
         const isValid = isBefore(optionEndDate, membershipEndDate) || optionEndDate.getTime() === membershipEndDate.getTime();
         if (!isValid && months > 1) break;
         const days = differenceInDays(optionEndDate, ptStart);
@@ -592,7 +593,7 @@ const PackageSelectionForm = ({
                   {monthlyPackages.map((pkg, idx) => {
                     const pkgStartDate = new Date(selectedStartDate);
                     pkgStartDate.setHours(0, 0, 0, 0);
-                    const pkgEndDate = addMonths(pkgStartDate, pkg.months);
+                    const pkgEndDate = addPackageMonths(pkgStartDate, pkg.months);
                     const isSelected = selectedMonthlyPackage?.id === pkg.id;
                     const isPopular = pkg.months === 3;
                     
