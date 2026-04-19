@@ -97,15 +97,20 @@ const scoreTarget = (target: FuzzyTarget, rawQuery: string): number => {
   }
 
   // --- Exact / prefix / substring on name --------------------------------
+  // Strong tier: name (or any word) STARTS WITH the query. These always
+  // outrank substring/fuzzy matches so typing "a" lists "Ayush" before "Raj".
   if (name === query) best = Math.max(best, 1000);
-  else if (name.startsWith(query)) best = Math.max(best, 850);
+  else if (name.startsWith(query)) best = Math.max(best, 950);
 
   // Word-prefix: any whitespace-separated token starts with query.
+  // (e.g. query "s" matches "John Smith" via the "smith" token.)
   const tokens = name.split(" ").filter(Boolean);
-  if (tokens.some((t) => t.startsWith(query))) best = Math.max(best, 750);
+  if (tokens.some((t) => t.startsWith(query))) best = Math.max(best, 900);
 
-  if (name.includes(query)) best = Math.max(best, 600);
-  if (email && email.includes(query)) best = Math.max(best, 500);
+  // Weaker tier: query appears somewhere inside the name/email but not at the
+  // start of any word. Capped well below the prefix tier so prefix wins.
+  if (best < 900 && name.includes(query)) best = Math.max(best, 500);
+  if (best < 900 && email && email.includes(query)) best = Math.max(best, 450);
 
   // --- Multi-token AND match ---------------------------------------------
   // e.g. "joh smi" → matches "John Smith" even out of order.
