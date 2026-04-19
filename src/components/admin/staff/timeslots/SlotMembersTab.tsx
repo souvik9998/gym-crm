@@ -86,9 +86,18 @@ export const SlotMembersTab = ({
   const [trainerPtId, setTrainerPtId] = useState<string | null>(null);
   const [trainerName, setTrainerName] = useState("");
 
-  // Transfer state
+  // Transfer state (transfer to a different trainer's slot — used in Add dialog)
   const [transferConfirm, setTransferConfirm] = useState<{ memberId: string; name: string; fromTrainer: string; fromTrainerId: string; ptSubId: string } | null>(null);
   const [isTransferring, setIsTransferring] = useState(false);
+
+  // Same-trainer slot move (transfer to another slot of the SAME trainer).
+  const [moveSlot, setMoveSlot] = useState<{
+    rowId: string;
+    memberId: string;
+    memberName: string;
+    trainerId: string;
+    trainerName: string;
+  } | null>(null);
 
   const { invalidatePtSubscriptions } = useInvalidateQueries();
 
