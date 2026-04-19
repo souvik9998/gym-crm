@@ -710,39 +710,89 @@ export const SlotMembersTab = ({
                 <p className="text-xs text-muted-foreground/70 mt-1">Only members with active PT can be added here</p>
               </div>
             ) : (
-              <div className="space-y-1.5">
-                {filteredMembers.map(m => (
-                  <div key={m.id} className="flex items-center justify-between p-2.5 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-medium truncate">{m.member_name}</p>
-                        {getPtBadge(m.pt_status)}
-                        {getSubBadge(m.subscription_status)}
+              <TooltipProvider delayDuration={150}>
+                <div className="space-y-1.5">
+                  {filteredMembers.map(m => (
+                    <div key={m.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium truncate">{m.member_name}</p>
+                          {getPtBadge(m.pt_status)}
+                          {getSubBadge(m.subscription_status)}
+                          {m.is_trainer_replaced && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[10px] border-0 gap-1 cursor-help">
+                                  <ExclamationTriangleIcon className="w-3 h-3" />
+                                  Trainer Replaced
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-[260px]">
+                                <p className="text-xs">
+                                  PT trainer changed to <strong>{m.current_pt_trainer_name}</strong>.
+                                  Use <em>Transfer Slot</em> to move them to one of {m.current_pt_trainer_name}'s slots.
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-xs text-muted-foreground">{m.member_phone}</p>
+                          {m.pt_end_date && (
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                              <ClockIcon className="w-3 h-3" />
+                              PT ends {new Date(m.pt_end_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-xs text-muted-foreground">{m.member_phone}</p>
-                        {m.pt_end_date && (
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                            <ClockIcon className="w-3 h-3" />
-                            PT ends {new Date(m.pt_end_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
-                          </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {canAssign && m.current_pt_trainer_id && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`h-7 px-2 text-xs gap-1 ${
+                                  m.is_trainer_replaced
+                                    ? "text-amber-700 hover:text-amber-800 hover:bg-amber-50"
+                                    : "text-primary hover:text-primary hover:bg-primary/10"
+                                }`}
+                                onClick={() => setMoveSlot({
+                                  rowId: m.id,
+                                  memberId: m.member_id,
+                                  memberName: m.member_name,
+                                  trainerId: m.current_pt_trainer_id!,
+                                  trainerName: m.current_pt_trainer_name || "Trainer",
+                                })}
+                              >
+                                <ArrowsRightLeftIcon className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Transfer</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <p className="text-xs">
+                                Move to another slot under <strong>{m.current_pt_trainer_name}</strong>
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                        {canRemove && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1"
+                            onClick={() => setRemoveConfirm({ id: m.id, name: m.member_name, memberId: m.member_id })}
+                          >
+                            <XMarkIcon className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Remove</span>
+                          </Button>
                         )}
                       </div>
                     </div>
-                    {canRemove && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1"
-                        onClick={() => setRemoveConfirm({ id: m.id, name: m.member_name, memberId: m.member_id })}
-                      >
-                        <XMarkIcon className="w-3.5 h-3.5" />
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </TooltipProvider>
             )}
           </CardContent>
         </Card>
