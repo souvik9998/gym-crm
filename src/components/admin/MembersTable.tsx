@@ -1185,14 +1185,15 @@ export const MembersTable = ({
           <div className="divide-y divide-border/60">
             {sortedMembers.map((member, index) => (
               <div 
-                key={`${searchQuery}-${member.id}`}
+                key={member.id}
                 className={cn(
-                  "flex items-center gap-2.5 px-3 py-3 cursor-pointer transition-all duration-200 active:scale-[0.99] active:bg-muted/60 animate-fade-in",
+                  "flex items-center gap-2.5 px-3 py-3 cursor-pointer transition-all duration-200 active:scale-[0.99] active:bg-muted/60",
+                  !searchQuery && "animate-fade-in",
                   "hover:bg-muted/40",
                   selectedMembers.has(member.id) && "bg-primary/5",
                   isNewMember(member) && "border-l-2 border-l-emerald-500 bg-emerald-500/5"
                 )}
-                style={{ animationDelay: `${Math.min(index, 12) * 25}ms`, animationDuration: "260ms" }}
+                style={!searchQuery ? { animationDelay: `${Math.min(index, 12) * 25}ms`, animationDuration: "260ms" } : undefined}
                 onClick={() => handleMemberClick(member)}
               >
                 {/* Selection Checkbox */}
@@ -1451,13 +1452,14 @@ export const MembersTable = ({
               <TableBody>
                 {sortedMembers.map((member, index) => (
                   <TableRow 
-                    key={`${searchQuery}-${member.id}`}
+                    key={member.id}
                     className={cn(
-                      "transition-colors duration-150 ease-in-out hover:bg-muted/50 cursor-pointer animate-fade-in",
+                      "transition-colors duration-150 ease-in-out hover:bg-muted/50 cursor-pointer",
+                      !searchQuery && "animate-fade-in",
                       selectedMembers.has(member.id) && "bg-primary/5",
                       isNewMember(member) && "bg-emerald-500/[0.06] hover:bg-emerald-500/10 border-l-2 border-l-emerald-500"
                     )}
-                    style={{ animationDelay: `${Math.min(index, 15) * 20}ms`, animationDuration: "240ms" }}
+                    style={!searchQuery ? { animationDelay: `${Math.min(index, 15) * 20}ms`, animationDuration: "240ms" } : undefined}
                     onClick={() => handleMemberClick(member)}
                   >
                     <TableCell>

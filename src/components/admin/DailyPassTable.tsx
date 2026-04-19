@@ -256,9 +256,9 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
         <div className="rounded-lg border overflow-hidden">
           {filteredUsers.map((user, index) => (
             <div
-              key={`${searchQuery}-${user.id}`}
-              className="animate-fade-in"
-              style={{ animationDelay: `${Math.min(index, 12) * 25}ms`, animationDuration: "260ms" }}
+              key={user.id}
+              className={!searchQuery ? "animate-fade-in" : undefined}
+              style={!searchQuery ? { animationDelay: `${Math.min(index, 12) * 25}ms`, animationDuration: "260ms" } : undefined}
             >
               <MobileExpandableRow
               collapsedContent={
@@ -363,9 +363,9 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
             <TableBody>
               {filteredUsers.map((user, index) => (
                 <TableRow
-                  key={`${searchQuery}-${user.id}`}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${Math.min(index, 15) * 20}ms`, animationDuration: "240ms" }}
+                  key={user.id}
+                  className={!searchQuery ? "animate-fade-in" : undefined}
+                  style={!searchQuery ? { animationDelay: `${Math.min(index, 15) * 20}ms`, animationDuration: "240ms" } : undefined}
                 >
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.phone}</TableCell>
