@@ -90,27 +90,44 @@ const scoreTarget = (target: FuzzyTarget, rawQuery: string): number => {
   let best = 0;
 
   // --- Phone matches (only when query has digits) ------------------------
+  // Tiered so the FIRST digit always wins over a mid-number substring match:
+  //   exact > starts-with > word-boundary > contains.
   if (queryDigits.length > 0) {
     if (phone === queryDigits) best = Math.max(best, 1000);
-    else if (phone.startsWith(queryDigits)) best = Math.max(best, 900);
-    else if (phone.includes(queryDigits)) best = Math.max(best, 700);
+    else if (phone.startsWith(queryDigits)) best = Math.max(best, 980);
+    // Common case: stored as "+91XXXXXXXXXX" but user types the local 10-digit
+    // number. Treat trailing-match as a strong "starts with" signal too.
+    else if (phone.endsWith(queryDigits) && queryDigits.length >= 6) {
+      best = Math.max(best, 960);
+    }
+    else if (phone.includes(queryDigits)) best = Math.max(best, 600);
   }
 
   // --- Exact / prefix / substring on name --------------------------------
-  // Strong tier: name (or any word) STARTS WITH the query. These always
-  // outrank substring/fuzzy matches so typing "a" lists "Ayush" before "Raj".
-  if (name === query) best = Math.max(best, 1000);
-  else if (name.startsWith(query)) best = Math.max(best, 950);
-
-  // Word-prefix: any whitespace-separated token starts with query.
-  // (e.g. query "s" matches "John Smith" via the "smith" token.)
+  // Highest priority: the name's FIRST letter matches the query's first letter.
+  // This guarantees that typing "A" lists every "A…" name above any name
+  // where "a" only appears later (e.g. "Ayush" before "Raj" before "Mahesh").
   const tokens = name.split(" ").filter(Boolean);
-  if (tokens.some((t) => t.startsWith(query))) best = Math.max(best, 900);
+
+  if (name === query) best = Math.max(best, 1000);
+  else if (name.startsWith(query)) best = Math.max(best, 980);
+  // Single-letter query: if the FIRST char of the full name matches, treat it
+  // as a top-tier hit even before considering other word tokens.
+  else if (query.length === 1 && name.length > 0 && name[0] === query[0]) {
+    best = Math.max(best, 970);
+  }
+
+  // Word-prefix: any whitespace-separated token (after the first word) starts
+  // with the query. Ranked BELOW full-name first-letter matches so that
+  // "S" surfaces "Smith John" after "Sara" but still above mid-word hits.
+  if (best < 900 && tokens.some((t) => t.startsWith(query))) {
+    best = Math.max(best, 880);
+  }
 
   // Weaker tier: query appears somewhere inside the name/email but not at the
   // start of any word. Capped well below the prefix tier so prefix wins.
-  if (best < 900 && name.includes(query)) best = Math.max(best, 500);
-  if (best < 900 && email && email.includes(query)) best = Math.max(best, 450);
+  if (best < 880 && name.includes(query)) best = Math.max(best, 500);
+  if (best < 880 && email && email.includes(query)) best = Math.max(best, 450);
 
   // --- Multi-token AND match ---------------------------------------------
   // e.g. "joh smi" → matches "John Smith" even out of order.
