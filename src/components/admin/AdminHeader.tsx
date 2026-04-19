@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth, useStaffPermission } from "@/contexts/StaffAuthContext";
@@ -99,10 +100,27 @@ export const AdminHeader = ({
     navigate("/admin/login");
   };
 
-  const handleRefresh = () => {
-    if (onRefresh) {
-      onRefresh();
-      toast.success("Data refreshed");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshStartRef = useRef<number>(0);
+
+  const handleRefresh = async () => {
+    if (!onRefresh || isRefreshing) return;
+    setIsRefreshing(true);
+    refreshStartRef.current = Date.now();
+    try {
+      await Promise.resolve(onRefresh());
+    } catch (err) {
+      console.error("Refresh failed:", err);
+      toast.error("Failed to refresh");
+    } finally {
+      // Enforce a minimum spin duration so the animation always feels intentional
+      const elapsed = Date.now() - refreshStartRef.current;
+      const minDuration = 650;
+      if (elapsed < minDuration) {
+        await new Promise((r) => setTimeout(r, minDuration - elapsed));
+      }
+      setIsRefreshing(false);
+      toast.success("Data refreshed", { duration: 1500 });
     }
   };
 
