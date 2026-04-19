@@ -334,7 +334,8 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
                   </div>
                 </div>
               }
-            />
+              />
+            </div>
           ))}
           
           {/* Infinite scroll sentinel */}
