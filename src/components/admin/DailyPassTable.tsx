@@ -254,9 +254,13 @@ const DailyPassTable = ({ searchQuery, refreshKey, filterValue }: DailyPassTable
       {/* Mobile View */}
       {isCompact ? (
         <div className="rounded-lg border overflow-hidden">
-          {filteredUsers.map((user) => (
-            <MobileExpandableRow
-              key={user.id}
+          {filteredUsers.map((user, index) => (
+            <div
+              key={`${searchQuery}-${user.id}`}
+              className="animate-fade-in"
+              style={{ animationDelay: `${Math.min(index, 12) * 25}ms`, animationDuration: "260ms" }}
+            >
+              <MobileExpandableRow
               collapsedContent={
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
