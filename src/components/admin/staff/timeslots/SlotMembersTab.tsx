@@ -154,12 +154,21 @@ export const SlotMembersTab = ({
 
       const memberIds = tsmData.map((d: any) => d.member_id);
 
-      const [ptRes, subRes] = await Promise.all([
+      // Fetch:
+      //  - PT row LINKED to this slot (status/end_date for badge)
+      //  - The member's CURRENT active PT trainer (regardless of slot)
+      //  - Latest gym subscription
+      const [ptSlotRes, ptCurrentRes, subRes] = await Promise.all([
         supabase
           .from("pt_subscriptions")
           .select("member_id, status, end_date")
           .eq("time_slot_id", selectedSlot)
           .in("member_id", memberIds),
+        supabase
+          .from("pt_subscriptions")
+          .select("member_id, personal_trainer_id, personal_trainers(name)")
+          .in("member_id", memberIds)
+          .eq("status", "active"),
         supabase
           .from("subscriptions")
           .select("member_id, status, end_date")
@@ -168,14 +177,27 @@ export const SlotMembersTab = ({
           .order("end_date", { ascending: false }),
       ]);
 
-      const ptMap = new Map<string, { status: string; end_date: string | null }>();
-      ptRes.data?.forEach((p: any) => { if (!ptMap.has(p.member_id)) ptMap.set(p.member_id, p); });
+      const ptSlotMap = new Map<string, { status: string; end_date: string | null }>();
+      ptSlotRes.data?.forEach((p: any) => { if (!ptSlotMap.has(p.member_id)) ptSlotMap.set(p.member_id, p); });
+
+      const ptCurrentMap = new Map<string, { trainer_id: string; trainer_name: string }>();
+      ptCurrentRes.data?.forEach((p: any) => {
+        if (!ptCurrentMap.has(p.member_id)) {
+          ptCurrentMap.set(p.member_id, {
+            trainer_id: p.personal_trainer_id,
+            trainer_name: (p.personal_trainers as any)?.name || "Unknown",
+          });
+        }
+      });
 
       const subMap = new Map<string, string>();
       subRes.data?.forEach((s: any) => { if (!subMap.has(s.member_id)) subMap.set(s.member_id, s.status); });
 
       setMembers(tsmData.map((d: any) => {
-        const pt = ptMap.get(d.member_id);
+        const pt = ptSlotMap.get(d.member_id);
+        const current = ptCurrentMap.get(d.member_id);
+        // "Replaced" = member has an active PT, but it isn't this slot's trainer.
+        const isReplaced = !!(current && trainerPtId && current.trainer_id !== trainerPtId);
         return {
           id: d.id,
           member_id: d.member_id,
@@ -184,6 +206,9 @@ export const SlotMembersTab = ({
           pt_status: pt?.status || "not_synced",
           pt_end_date: pt?.end_date || null,
           subscription_status: subMap.get(d.member_id) || null,
+          current_pt_trainer_id: current?.trainer_id || null,
+          current_pt_trainer_name: current?.trainer_name || null,
+          is_trainer_replaced: isReplaced,
         };
       }));
     } finally {
