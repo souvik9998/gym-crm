@@ -17,6 +17,7 @@ import { toast } from "@/components/ui/sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
+import { invalidatePublicDataCache } from "@/api/publicData";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { cn } from "@/lib/utils";
 
