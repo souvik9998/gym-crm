@@ -180,52 +180,67 @@ export const MemberActivityDialog = ({
 
       const { data: ptData } = await supabase
         .from("pt_subscriptions")
-        .select("*, personal_trainer:personal_trainers(id, name, specialization), time_slot:trainer_time_slots(id, start_time, end_time)")
+        .select("*, personal_trainer:personal_trainers(id, name, specialization), time_slot:trainer_time_slots(id, start_time, end_time, trainer_id)")
         .eq("member_id", memberId)
         .order("created_at", { ascending: false });
 
       if (ptData) {
-        // For PT subs without time_slot_id, look up from time_slot_members
-        const ptsMissingSlot = ptData.filter(pt => !pt.time_slot_id && pt.status === "active");
-        let slotLookup: Record<string, { id: string; start_time: string; end_time: string }> = {};
+        // Resolve correct time slot for each ACTIVE PT sub by matching slot's trainer to PT's current trainer.
+        // This handles the case where a trainer was replaced but the time_slot_id still points to the old trainer's slot.
+        const activePts = ptData.filter(pt => pt.status === "active");
+        let slotLookup: Record<string, { id: string; start_time: string; end_time: string } | null> = {};
 
-        if (ptsMissingSlot.length > 0) {
-          // Get all time_slot_members for this member
+        if (activePts.length > 0) {
+          // Get all time_slot_members for this member (one query)
           const { data: tsmData } = await supabase
             .from("time_slot_members" as any)
             .select("time_slot_id, time_slot:trainer_time_slots(id, start_time, end_time, trainer_id)")
             .eq("member_id", memberId);
 
-          if (tsmData && (tsmData as any[]).length > 0) {
-            // For each PT sub missing a slot, find a matching slot via trainer
-            for (const pt of ptsMissingSlot) {
-              if (!pt.personal_trainer) continue;
-              // Resolve staff_id from personal_trainer phone
-              const { data: ptTrainer } = await supabase
-                .from("personal_trainers")
-                .select("phone")
-                .eq("id", (pt.personal_trainer as any).id)
-                .maybeSingle();
-              if (!ptTrainer?.phone) continue;
-              const { data: staffRec } = await supabase
-                .from("staff" as any)
-                .select("id")
-                .eq("phone", ptTrainer.phone)
-                .maybeSingle();
-              if (!staffRec) continue;
-              const matchedSlot = (tsmData as any[]).find(
-                (tsm: any) => tsm.time_slot?.trainer_id === (staffRec as any).id
-              );
-              if (matchedSlot?.time_slot) {
-                slotLookup[pt.id] = matchedSlot.time_slot;
-              }
+          for (const pt of activePts) {
+            if (!pt.personal_trainer) continue;
+
+            // Resolve current PT trainer's staff_id (via phone) to compare against slot trainer_id
+            const { data: ptTrainer } = await supabase
+              .from("personal_trainers")
+              .select("phone")
+              .eq("id", (pt.personal_trainer as any).id)
+              .maybeSingle();
+            if (!ptTrainer?.phone) continue;
+            const { data: staffRec } = await supabase
+              .from("staff" as any)
+              .select("id")
+              .eq("phone", ptTrainer.phone)
+              .maybeSingle();
+            if (!staffRec) continue;
+            const currentTrainerStaffId = (staffRec as any).id;
+
+            // If existing slot already belongs to the current trainer, keep it as-is.
+            const existingSlotTrainerId = (pt.time_slot as any)?.trainer_id;
+            if (pt.time_slot_id && existingSlotTrainerId === currentTrainerStaffId) {
+              continue;
+            }
+
+            // Otherwise, find a slot among the member's time_slot_members that belongs to the current trainer.
+            const matchedSlot = (tsmData as any[] | null)?.find(
+              (tsm: any) => tsm.time_slot?.trainer_id === currentTrainerStaffId
+            );
+            if (matchedSlot?.time_slot) {
+              slotLookup[pt.id] = matchedSlot.time_slot;
+            } else {
+              // No slot matches the current trainer → clear stale slot reference
+              slotLookup[pt.id] = null;
             }
           }
         }
 
         const enrichedPtData = ptData.map(pt => {
-          if (!pt.time_slot_id && slotLookup[pt.id]) {
-            return { ...pt, time_slot: slotLookup[pt.id], time_slot_id: slotLookup[pt.id].id };
+          if (Object.prototype.hasOwnProperty.call(slotLookup, pt.id)) {
+            const resolved = slotLookup[pt.id];
+            if (resolved) {
+              return { ...pt, time_slot: resolved, time_slot_id: resolved.id };
+            }
+            return { ...pt, time_slot: null, time_slot_id: null };
           }
           return pt;
         });
