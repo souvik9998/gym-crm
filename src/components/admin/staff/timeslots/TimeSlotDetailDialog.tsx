@@ -153,7 +153,14 @@ export const TimeSlotDetailDialog = ({
       resolveTrainerPtId(slot.trainer_id);
       fetchSlotMembers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, slot?.id]);
+
+  // Re-evaluate replacement detection once trainerPtId resolves async.
+  useEffect(() => {
+    if (open && slot && trainerPtId !== null) fetchSlotMembers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trainerPtId]);
 
   const fetchSlotMembers = async () => {
     if (!slot) return;
