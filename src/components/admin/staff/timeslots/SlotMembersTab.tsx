@@ -155,30 +155,28 @@ export const SlotMembersTab = ({
     if (!selectedSlot) return;
     setIsLoading(true);
     try {
-      const { data: tsmData } = await supabase
-        .from("time_slot_members")
-        .select("id, member_id, members(name, phone)")
-        .eq("time_slot_id", selectedSlot);
+      // Source of truth: pt_subscriptions (active + non-expired) — matches
+      // TimeSlotFilterDropdown and TimeSlotsTab counts. The legacy
+      // time_slot_members table is only used to recover the row PK so the
+      // existing remove/transfer flows keep working unchanged.
+      const today = new Date().toISOString().split("T")[0];
+      const { data: ptRows } = await supabase
+        .from("pt_subscriptions")
+        .select("member_id, status, end_date, personal_trainer_id, members(name, phone), personal_trainers(name)")
+        .eq("time_slot_id", selectedSlot)
+        .eq("status", "active")
+        .gte("end_date", today);
 
-      if (!tsmData || tsmData.length === 0) { setMembers([]); return; }
+      if (!ptRows || ptRows.length === 0) { setMembers([]); return; }
 
-      const memberIds = tsmData.map((d: any) => d.member_id);
+      const memberIds = Array.from(new Set((ptRows as any[]).map((r: any) => r.member_id)));
 
-      // Fetch:
-      //  - PT row LINKED to this slot (status/end_date for badge)
-      //  - The member's CURRENT active PT trainer (regardless of slot)
-      //  - Latest gym subscription
-      const [ptSlotRes, ptCurrentRes, subRes] = await Promise.all([
+      const [tsmRes, subRes] = await Promise.all([
         supabase
-          .from("pt_subscriptions")
-          .select("member_id, status, end_date")
+          .from("time_slot_members")
+          .select("id, member_id")
           .eq("time_slot_id", selectedSlot)
           .in("member_id", memberIds),
-        supabase
-          .from("pt_subscriptions")
-          .select("member_id, personal_trainer_id, personal_trainers(name)")
-          .in("member_id", memberIds)
-          .eq("status", "active"),
         supabase
           .from("subscriptions")
           .select("member_id, status, end_date")
@@ -187,40 +185,41 @@ export const SlotMembersTab = ({
           .order("end_date", { ascending: false }),
       ]);
 
-      const ptSlotMap = new Map<string, { status: string; end_date: string | null }>();
-      ptSlotRes.data?.forEach((p: any) => { if (!ptSlotMap.has(p.member_id)) ptSlotMap.set(p.member_id, p); });
-
-      const ptCurrentMap = new Map<string, { trainer_id: string; trainer_name: string }>();
-      ptCurrentRes.data?.forEach((p: any) => {
-        if (!ptCurrentMap.has(p.member_id)) {
-          ptCurrentMap.set(p.member_id, {
-            trainer_id: p.personal_trainer_id,
-            trainer_name: (p.personal_trainers as any)?.name || "Unknown",
-          });
-        }
+      const tsmIdByMember = new Map<string, string>();
+      (tsmRes.data || []).forEach((r: any) => {
+        if (!tsmIdByMember.has(r.member_id)) tsmIdByMember.set(r.member_id, r.id);
       });
 
       const subMap = new Map<string, string>();
       subRes.data?.forEach((s: any) => { if (!subMap.has(s.member_id)) subMap.set(s.member_id, s.status); });
 
-      setMembers(tsmData.map((d: any) => {
-        const pt = ptSlotMap.get(d.member_id);
-        const current = ptCurrentMap.get(d.member_id);
-        // "Replaced" = member has an active PT, but it isn't this slot's trainer.
-        const isReplaced = !!(current && trainerPtId && current.trainer_id !== trainerPtId);
-        return {
-          id: d.id,
-          member_id: d.member_id,
-          member_name: d.members?.name || "Unknown",
-          member_phone: d.members?.phone || "",
-          pt_status: pt?.status || "not_synced",
-          pt_end_date: pt?.end_date || null,
-          subscription_status: subMap.get(d.member_id) || null,
-          current_pt_trainer_id: current?.trainer_id || null,
-          current_pt_trainer_name: current?.trainer_name || null,
+      // Dedupe defensively: one row per member.
+      const seen = new Set<string>();
+      const list: any[] = [];
+      (ptRows as any[]).forEach((p: any) => {
+        if (seen.has(p.member_id)) return;
+        seen.add(p.member_id);
+
+        const currentTrainerId = p.personal_trainer_id;
+        const currentTrainerName = (p.personal_trainers as any)?.name || "Unknown";
+        const isReplaced = !!(trainerPtId && currentTrainerId && currentTrainerId !== trainerPtId);
+
+        list.push({
+          // Fall back to a synthetic id when no time_slot_members row exists yet.
+          id: tsmIdByMember.get(p.member_id) || `pt-${p.member_id}`,
+          member_id: p.member_id,
+          member_name: (p.members as any)?.name || "Unknown",
+          member_phone: (p.members as any)?.phone || "",
+          pt_status: p.status,
+          pt_end_date: p.end_date,
+          subscription_status: subMap.get(p.member_id) || null,
+          current_pt_trainer_id: currentTrainerId,
+          current_pt_trainer_name: currentTrainerName,
           is_trainer_replaced: isReplaced,
-        };
-      }));
+        });
+      });
+
+      setMembers(list);
     } finally {
       setIsLoading(false);
     }
