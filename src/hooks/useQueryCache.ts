@@ -101,6 +101,13 @@ export function useInvalidateQueries() {
       forceInvalidate(["staff-page-data"]),
       forceInvalidate(["time-slot-members"]),
       forceInvalidate(["trainer-filter-list"]),
+      // Trainer/Time-slot filter resolvers in MembersTable & friends.
+      // These read pt_subscriptions.time_slot_id directly and must refresh
+      // whenever any time-slot/PT-replace/transfer mutation lands.
+      forceInvalidate(["pt-member-ids"]),
+      forceInvalidate(["assigned-member-ids"]),
+      forceInvalidate(["time-slot-filter"]),
+      forceInvalidate(["staff-timeslot-trainers"]),
     ]);
   }, [forceInvalidate]);
 
