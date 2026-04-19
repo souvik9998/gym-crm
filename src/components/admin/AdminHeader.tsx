@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth, useStaffPermission } from "@/contexts/StaffAuthContext";
@@ -99,10 +100,27 @@ export const AdminHeader = ({
     navigate("/admin/login");
   };
 
-  const handleRefresh = () => {
-    if (onRefresh) {
-      onRefresh();
-      toast.success("Data refreshed");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshStartRef = useRef<number>(0);
+
+  const handleRefresh = async () => {
+    if (!onRefresh || isRefreshing) return;
+    setIsRefreshing(true);
+    refreshStartRef.current = Date.now();
+    try {
+      await Promise.resolve(onRefresh());
+    } catch (err) {
+      console.error("Refresh failed:", err);
+      toast.error("Failed to refresh");
+    } finally {
+      // Enforce a minimum spin duration so the animation always feels intentional
+      const elapsed = Date.now() - refreshStartRef.current;
+      const minDuration = 650;
+      if (elapsed < minDuration) {
+        await new Promise((r) => setTimeout(r, minDuration - elapsed));
+      }
+      setIsRefreshing(false);
+      toast.success("Data refreshed", { duration: 1500 });
     }
   };
 
@@ -118,6 +136,12 @@ export const AdminHeader = ({
         className
       )}
     >
+      {/* Browser-like refresh progress bar */}
+      {isRefreshing && (
+        <div className="absolute left-0 right-0 top-0 h-0.5 overflow-hidden pointer-events-none">
+          <div className="h-full w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent animate-[refresh-sweep_0.9s_ease-in-out_infinite]" />
+        </div>
+      )}
       <div className="flex items-center justify-between w-full">
         {/* Left Section */}
         <div className="flex items-center gap-2 lg:gap-4">
@@ -155,10 +179,26 @@ export const AdminHeader = ({
               variant="ghost"
               size="icon"
               onClick={handleRefresh}
-              className="hidden lg:inline-flex text-muted-foreground hover:text-foreground hover:bg-muted h-9 w-9"
+              disabled={isRefreshing}
+              aria-label="Refresh"
+              aria-busy={isRefreshing}
+              className={cn(
+                "hidden lg:inline-flex relative overflow-hidden text-muted-foreground hover:text-foreground hover:bg-muted h-9 w-9 rounded-lg",
+                "transition-all duration-200 ease-out active:scale-90",
+                "focus-visible:ring-2 focus-visible:ring-primary/40",
+                isRefreshing && "text-primary bg-primary/10 hover:bg-primary/10"
+              )}
               title="Refresh"
             >
-              <ArrowPathIcon className="w-5 h-5" />
+              {isRefreshing && (
+                <span className="absolute inset-0 rounded-lg bg-primary/20 animate-[refresh-ripple_0.6s_ease-out]" />
+              )}
+              <ArrowPathIcon
+                className={cn(
+                  "w-5 h-5 relative z-10 transition-transform duration-300",
+                  isRefreshing && "animate-[refresh-spin_0.7s_linear_infinite]"
+                )}
+              />
             </Button>
           )}
 

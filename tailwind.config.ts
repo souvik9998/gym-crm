@@ -159,6 +159,18 @@ export default {
   				to: {
   					backgroundPosition: '-200% 0'
   				}
+  			},
+  			'refresh-spin': {
+  				from: { transform: 'rotate(0deg)' },
+  				to: { transform: 'rotate(-360deg)' }
+  			},
+  			'refresh-ripple': {
+  				'0%': { transform: 'scale(0.6)', opacity: '0.7' },
+  				'100%': { transform: 'scale(1.4)', opacity: '0' }
+  			},
+  			'refresh-sweep': {
+  				'0%': { transform: 'translateX(-100%)' },
+  				'100%': { transform: 'translateX(400%)' }
   			}
   		},
   		animation: {
