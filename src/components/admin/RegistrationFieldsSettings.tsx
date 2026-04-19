@@ -8,6 +8,7 @@ import { toast } from "@/components/ui/sonner";
 import { ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
 import { Lock, User, Phone, Calendar, MapPin, IdCard, Upload, Heart, FileText, Dumbbell, Clock, Mail, Droplets, Briefcase, ShieldAlert } from "lucide-react";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { invalidatePublicDataCache } from "@/api/publicData";
 
 interface FieldSetting {
   enabled: boolean;
@@ -145,6 +146,10 @@ export const RegistrationFieldsSettings = () => {
       });
 
       setOriginalFields(updatedFields);
+      // Bust public registration cache so toggled fields appear instantly
+      // on /register, /renew, /extend-pt without waiting for cache TTL.
+      invalidatePublicDataCache(currentBranch.id);
+      if (currentBranch.slug) invalidatePublicDataCache(currentBranch.slug);
       toast.success("Settings saved");
     } catch (err: any) {
       toast.error("Error saving settings", { description: err.message });
