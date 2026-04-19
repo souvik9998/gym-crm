@@ -627,22 +627,12 @@ export const MembersTable = ({
     }
   };
 
-  // Filter by search query, prioritizing names that start with the query
-  const searchFiltered = members
-    .filter(
-      (m) =>
-        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        m.phone.includes(searchQuery)
-    )
-    .sort((a, b) => {
-      if (!searchQuery) return 0;
-      const q = searchQuery.toLowerCase();
-      const aStarts = a.name.toLowerCase().startsWith(q);
-      const bStarts = b.name.toLowerCase().startsWith(q);
-      if (aStarts && !bStarts) return -1;
-      if (!aStarts && bStarts) return 1;
-      return 0;
-    });
+  // Forgiving fuzzy search: surfaces partial, typo'd, and out-of-order matches
+  // ranked by relevance instead of strict substring matching.
+  const searchFiltered = useMemo(
+    () => fuzzySearch(members, searchQuery),
+    [members, searchQuery],
+  );
 
   // Filter by PT status if PT filter is active
   const filteredMembers = searchFiltered.filter((m) => {
