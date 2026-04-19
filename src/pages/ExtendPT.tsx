@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { addDays, addMonths, differenceInDays, format, isBefore, isAfter, parseISO } from "date-fns";
-import { fetchPublicBranch, fetchPublicTrainers, fetchPublicPackages } from "@/api/publicData";
+import { fetchPublicBranch, fetchPublicTrainers, fetchPublicPackages, invalidatePublicDataCache, PUBLIC_DATA_BUST_EVENT } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import RegistrationPageSkeleton from "@/components/registration/RegistrationPageSkeleton";
@@ -94,10 +94,18 @@ const ExtendPT = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchData = async () => {
-    setIsLoadingData(true);
-    
+  const fetchData = async (opts: { forceRefresh?: boolean; silent?: boolean } = {}) => {
+    if (!opts.silent) {
+      setIsLoadingData(true);
+    }
+
     try {
+      // If we are forcing a refresh, drop the public sessionStorage cache for
+      // this branch so the next call hits the network with the latest data.
+      if (opts.forceRefresh && branchId) {
+        invalidatePublicDataCache(branchId);
+      }
+
       // Fetch trainers and tax settings in parallel
       const [trainersData, packagesResult] = await Promise.all([
         fetchPublicTrainers(branchId),
@@ -112,7 +120,15 @@ const ExtendPT = () => {
           monthly_fee: t.monthly_fee,
         }));
         setTrainers(mappedTrainers);
-        setSelectedTrainer(mappedTrainers[0]);
+        setSelectedTrainer((prev) => {
+          if (prev) {
+            const refreshed = mappedTrainers.find((t) => t.id === prev.id);
+            if (refreshed) return refreshed;
+          }
+          return prev || mappedTrainers[0];
+        });
+      } else if (!opts.silent) {
+        setTrainers([]);
       }
 
       // Set tax settings
@@ -123,26 +139,75 @@ const ExtendPT = () => {
         setTaxEnabled(enabled);
       }
 
-      // Fetch existing active PT subscription
-      const today = new Date().toISOString().split("T")[0];
-      const { data: existingPT } = await supabase
-        .from("pt_subscriptions")
-        .select("end_date")
-        .eq("member_id", member.id)
-        .gte("end_date", today)
-        .order("end_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Fetch existing active PT subscription (only on initial load — this is
+      // member-specific and not affected by admin package mutations).
+      if (!opts.silent) {
+        const today = new Date().toISOString().split("T")[0];
+        const { data: existingPT } = await supabase
+          .from("pt_subscriptions")
+          .select("end_date")
+          .eq("member_id", member.id)
+          .gte("end_date", today)
+          .order("end_date", { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      if (existingPT?.end_date) {
-        setExistingPTEndDate(parseISO(existingPT.end_date));
+        if (existingPT?.end_date) {
+          setExistingPTEndDate(parseISO(existingPT.end_date));
+        }
       }
     } catch (error) {
       console.error("Error fetching data:", error);
     }
 
-    setIsLoadingData(false);
+    if (!opts.silent) {
+      setIsLoadingData(false);
+    }
   };
+
+  // Listen for cache-bust signals (admin mutations / Refresh button) and
+  // tab visibility changes to silently refresh trainers + tax data without
+  // showing a skeleton flash on already-loaded screens.
+  useEffect(() => {
+    if (!branchId) return;
+
+    const matchesCurrentBranch = (id: string) => id === "*" || id === branchId;
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== "__public-data-cache-bust" || !e.newValue) return;
+      try {
+        const { branchIdentifier } = JSON.parse(e.newValue);
+        if (matchesCurrentBranch(branchIdentifier)) {
+          fetchData({ forceRefresh: true, silent: true });
+        }
+      } catch { /* ignore */ }
+    };
+
+    const onSameTabBust = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail) return;
+      if (matchesCurrentBranch(detail.branchIdentifier)) {
+        fetchData({ forceRefresh: true, silent: true });
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchData({ forceRefresh: true, silent: true });
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+    window.addEventListener(PUBLIC_DATA_BUST_EVENT, onSameTabBust as EventListener);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(PUBLIC_DATA_BUST_EVENT, onSameTabBust as EventListener);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branchId]);
 
   // Calculate the PT start date based on existing PT subscriptions or gym membership start
   const ptStartDate = useMemo(() => {
