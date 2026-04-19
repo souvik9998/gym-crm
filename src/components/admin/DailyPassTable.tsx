@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { fuzzySearch } from "@/lib/fuzzySearch";
 import { useBranch } from "@/contexts/BranchContext";
 import { useIsMobile, useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { useInView } from "react-intersection-observer";
