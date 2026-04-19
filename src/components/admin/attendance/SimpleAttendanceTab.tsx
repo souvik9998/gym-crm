@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import {
   MagnifyingGlassIcon,
@@ -56,6 +57,108 @@ function getWeekDates(referenceDate: string): string[] {
 
 const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
 const DAY_LABELS_FULL = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/**
+ * Skeleton mirroring the SimpleAttendanceTab member list:
+ * - Mobile: stacked cards with avatar + name + 3 status pills + week dots
+ * - Desktop: table with sticky member col + 7 day cols + action col
+ */
+const SimpleAttendanceSkeleton = ({ isMobile, weekDates }: { isMobile: boolean; weekDates: string[] }) => {
+  if (isMobile) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div
+            key={i}
+            className="bg-card rounded-xl border border-border/40 p-3 animate-fade-in"
+            style={{ animationDelay: `${Math.min(i * 30, 240)}ms`, animationFillMode: "backwards" }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-2.5 w-20" />
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {Array.from({ length: 3 }).map((_, j) => (
+                  <Skeleton key={j} className="w-9 h-9 rounded-lg" />
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/20">
+              {Array.from({ length: 7 }).map((_, j) => (
+                <div key={j} className="flex flex-col items-center flex-1 py-1 gap-1">
+                  <Skeleton className="h-2 w-2" />
+                  <Skeleton className="w-4 h-4 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <Card className="border border-border/40 shadow-sm overflow-hidden animate-fade-in">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-border/40 bg-muted/30">
+              <th className="text-left px-3 py-2 sticky left-0 bg-muted/30 z-10 min-w-[140px]">
+                <Skeleton className="h-3 w-14" />
+              </th>
+              {weekDates.map((d) => (
+                <th key={d} className="px-1 py-2 min-w-[60px]">
+                  <div className="flex flex-col items-center gap-1">
+                    <Skeleton className="h-2.5 w-7" />
+                    <Skeleton className="h-3 w-5" />
+                  </div>
+                </th>
+              ))}
+              <th className="px-2 py-2 min-w-[90px]">
+                <Skeleton className="h-3 w-12 mx-auto" />
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/20">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <tr
+                key={i}
+                className="animate-fade-in"
+                style={{ animationDelay: `${Math.min(i * 30, 270)}ms`, animationFillMode: "backwards" }}
+              >
+                <td className="px-3 py-2 sticky left-0 bg-background z-10">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="w-7 h-7 rounded-full shrink-0" />
+                    <div className="min-w-0 space-y-1.5">
+                      <Skeleton className="h-3 w-20" />
+                      <Skeleton className="h-2.5 w-16" />
+                    </div>
+                  </div>
+                </td>
+                {weekDates.map((d) => (
+                  <td key={d} className="text-center px-1 py-2">
+                    <Skeleton className="w-7 h-7 rounded-md mx-auto" />
+                  </td>
+                ))}
+                <td className="px-2 py-2">
+                  <div className="flex items-center justify-center gap-1">
+                    <Skeleton className="w-6 h-6 rounded" />
+                    <Skeleton className="w-6 h-6 rounded" />
+                    <Skeleton className="w-7 h-7 rounded" />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+};
 
 export const SimpleAttendanceTab = () => {
   const { currentBranch } = useBranch();
@@ -611,7 +714,7 @@ export const SimpleAttendanceTab = () => {
 
       {/* Members List */}
       {isLoading ? (
-        <div className="py-10 text-center text-muted-foreground text-sm animate-fade-in">Loading members...</div>
+        <SimpleAttendanceSkeleton isMobile={isMobile} weekDates={weekDates} />
       ) : filteredList.length === 0 ? (
         <div className="py-10 text-center space-y-2 animate-fade-in">
           <UserGroupIcon className="w-10 h-10 mx-auto text-muted-foreground/30" />
