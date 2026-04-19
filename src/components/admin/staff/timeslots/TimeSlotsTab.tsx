@@ -389,7 +389,14 @@ export const TimeSlotsTab = ({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base lg:text-lg font-semibold">Time Slots</h3>
+          <h3 className="text-base lg:text-lg font-semibold flex items-center gap-2">
+            Time Slots
+            {/* Subtle background-refresh indicator: shown ONLY when revalidating
+                with cached data already on screen — never causes a layout shift. */}
+            {isFetching && !isLoading && (
+              <ArrowPathIcon className="w-3.5 h-3.5 text-muted-foreground animate-spin" aria-label="Refreshing" />
+            )}
+          </h3>
           <p className="text-xs lg:text-sm text-muted-foreground">Manage trainer time slots and capacity</p>
         </div>
         {canCreate && (
