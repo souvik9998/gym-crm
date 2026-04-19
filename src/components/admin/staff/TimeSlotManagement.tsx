@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Staff } from "@/pages/admin/StaffManagement";
 import { TimeSlotsTab } from "./timeslots/TimeSlotsTab";
@@ -11,12 +12,33 @@ interface TimeSlotManagementProps {
   allStaff: Staff[];
 }
 
+const VALID_SUBS = new Set(["slots", "members"]);
+
 export const TimeSlotManagement = ({
   trainers,
   currentBranch,
   allStaff,
 }: TimeSlotManagementProps) => {
-  const [activeSubTab, setActiveSubTab] = useState("slots");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const subParam = searchParams.get("sub");
+  const activeSubTab = subParam && VALID_SUBS.has(subParam) ? subParam : "slots";
+
+  // Persist sub-tab in URL (`?tab=timeslots&sub=members`) so reload + browser
+  // back keep the user where they were. forceMount on TabsContent below
+  // preserves the in-tab state (filters, search, dialogs) across switches.
+  const setActiveSubTab = useCallback(
+    (sub: string) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("sub", sub);
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   return (
     <div className="space-y-4">
@@ -32,11 +54,11 @@ export const TimeSlotManagement = ({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="slots">
+        <TabsContent value="slots" forceMount hidden={activeSubTab !== "slots"}>
           <TimeSlotsTab trainers={trainers} currentBranch={currentBranch} />
         </TabsContent>
 
-        <TabsContent value="members">
+        <TabsContent value="members" forceMount hidden={activeSubTab !== "members"}>
           <SlotMembersTab trainers={trainers} currentBranch={currentBranch} />
         </TabsContent>
       </Tabs>

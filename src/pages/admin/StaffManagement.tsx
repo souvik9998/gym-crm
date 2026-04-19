@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useBranch } from "@/contexts/BranchContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StaffTrainersTab } from "@/components/admin/staff/StaffTrainersTab";
@@ -61,72 +62,103 @@ export interface StaffBranchAssignment {
   branch_name?: string;
 }
 
+const VALID_TABS = new Set(["trainers", "staff", "timeslots", "overview"]);
+
 const StaffManagement = () => {
   const { currentBranch, branches } = useBranch();
-  const [activeTab, setActiveTab] = useState("trainers");
+  const [searchParams, setSearchParams] = useSearchParams();
   const { staff, trainers, otherStaff, totalPaidToStaff, isLoading, refetch } = useStaffPageData();
 
+  // URL-driven active tab — persists across reloads + back/forward navigation,
+  // and (because TabsContent stays mounted while inactive in shadcn/Radix Tabs)
+  // each tab keeps its own scroll position, filters, dialogs and form state.
+  const tabParam = searchParams.get("tab");
+  const activeTab = tabParam && VALID_TABS.has(tabParam) ? tabParam : "trainers";
+
+  const setActiveTab = useCallback(
+    (tab: string) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("tab", tab);
+          // Clear the time-slot sub-tab when leaving that tab so we don't
+          // surface a stale ?sub= when the user comes back via "Time Slots".
+          if (tab !== "timeslots") next.delete("sub");
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
   return (
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-lg grid-cols-4 mb-6">
-          <TabsTrigger value="trainers" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
-            <AcademicCapIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-            <span>Trainers</span>
-          </TabsTrigger>
-          <TabsTrigger value="staff" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
-            <UserGroupIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-            <span>Other Staff</span>
-          </TabsTrigger>
-          <TabsTrigger value="timeslots" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
-            <ClockIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-            <span>Time Slots</span>
-          </TabsTrigger>
-          <TabsTrigger value="overview" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
-            <ChartBarIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-            <span>Overview</span>
-          </TabsTrigger>
-        </TabsList>
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <TabsList className="grid w-full max-w-lg grid-cols-4 mb-6">
+        <TabsTrigger value="trainers" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
+          <AcademicCapIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <span>Trainers</span>
+        </TabsTrigger>
+        <TabsTrigger value="staff" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
+          <UserGroupIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <span>Other Staff</span>
+        </TabsTrigger>
+        <TabsTrigger value="timeslots" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
+          <ClockIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <span>Time Slots</span>
+        </TabsTrigger>
+        <TabsTrigger value="overview" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
+          <ChartBarIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <span>Overview</span>
+        </TabsTrigger>
+      </TabsList>
 
-        <TabsContent value="trainers">
-          <StaffTrainersTab
-            trainers={trainers}
-            branches={branches}
-            currentBranch={currentBranch}
-            onRefresh={() => refetch()}
-            isLoading={isLoading}
-            onConversionSuccess={() => { refetch(); setActiveTab("staff"); }}
-          />
-        </TabsContent>
+      {/*
+        forceMount keeps each panel in the DOM while another tab is active,
+        so all in-tab state (search input, dialogs, filters, scroll position)
+        survives a tab switch — matching the persistence behavior of /admin/settings.
+        We hide inactive panels with data-state instead of unmounting.
+      */}
+      <TabsContent value="trainers" forceMount hidden={activeTab !== "trainers"}>
+        <StaffTrainersTab
+          trainers={trainers}
+          branches={branches}
+          currentBranch={currentBranch}
+          onRefresh={() => refetch()}
+          isLoading={isLoading}
+          onConversionSuccess={() => { refetch(); setActiveTab("staff"); }}
+        />
+      </TabsContent>
 
-        <TabsContent value="staff">
-          <StaffOtherTab
-            staff={otherStaff}
-            branches={branches}
-            currentBranch={currentBranch}
-            onRefresh={() => refetch()}
-            isLoading={isLoading}
-            onConversionSuccess={() => { refetch(); setActiveTab("trainers"); }}
-          />
-        </TabsContent>
+      <TabsContent value="staff" forceMount hidden={activeTab !== "staff"}>
+        <StaffOtherTab
+          staff={otherStaff}
+          branches={branches}
+          currentBranch={currentBranch}
+          onRefresh={() => refetch()}
+          isLoading={isLoading}
+          onConversionSuccess={() => { refetch(); setActiveTab("trainers"); }}
+        />
+      </TabsContent>
 
-        <TabsContent value="timeslots">
-          <TimeSlotManagement
-            trainers={trainers}
-            currentBranch={currentBranch}
-            allStaff={staff}
-          />
-        </TabsContent>
+      <TabsContent value="timeslots" forceMount hidden={activeTab !== "timeslots"}>
+        <TimeSlotManagement
+          trainers={trainers}
+          currentBranch={currentBranch}
+          allStaff={staff}
+        />
+      </TabsContent>
 
-        <TabsContent value="overview">
-          <StaffOverviewTab
-            allStaff={staff}
-            branches={branches}
-            currentBranch={currentBranch}
-            onRefresh={() => refetch()}
-            totalPaidToStaff={totalPaidToStaff}
-          />
-        </TabsContent>
-      </Tabs>
+      <TabsContent value="overview" forceMount hidden={activeTab !== "overview"}>
+        <StaffOverviewTab
+          allStaff={staff}
+          branches={branches}
+          currentBranch={currentBranch}
+          onRefresh={() => refetch()}
+          totalPaidToStaff={totalPaidToStaff}
+        />
+      </TabsContent>
+    </Tabs>
   );
 };
 
