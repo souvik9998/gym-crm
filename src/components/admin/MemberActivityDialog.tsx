@@ -358,6 +358,32 @@ export const MemberActivityDialog = ({
     });
   };
 
+  const calculateAge = (dob: string | null | undefined): number | null => {
+    if (!dob) return null;
+    const birth = new Date(dob);
+    if (isNaN(birth.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age >= 0 ? age : null;
+  };
+
+  // Latest gym subscription (used for expiry banner)
+  const latestSubscription = subscriptions[0] || null;
+  const expiryInfo = (() => {
+    if (!latestSubscription) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(latestSubscription.end_date);
+    end.setHours(0, 0, 0, 0);
+    const diffMs = end.getTime() - today.getTime();
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return { kind: "expired" as const, days: Math.abs(diffDays), endDate: latestSubscription.end_date };
+    if (diffDays <= 7) return { kind: "expiring" as const, days: diffDays, endDate: latestSubscription.end_date };
+    return null;
+  })();
+
   const formatSlotTime = (time: string) => {
     const [h, m] = time.split(":");
     const hour = parseInt(h);
@@ -526,6 +552,72 @@ export const MemberActivityDialog = ({
             {/* Overview Tab */}
             <TabsContent value="overview" className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-thin" key="overview">
               <div className="space-y-3">
+                {/* Expiry Notification Banner — eye-catching */}
+                {expiryInfo && (
+                  <div
+                    className={cn(
+                      "rounded-xl p-4 border-2 shadow-sm relative overflow-hidden",
+                      expiryInfo.kind === "expired"
+                        ? "bg-red-500/10 border-red-500/40 animate-pulse-slow"
+                        : "bg-amber-500/10 border-amber-500/40"
+                    )}
+                    style={{ animation: "memberDialogFadeSlide 0.4s ease-out forwards" }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={cn(
+                          "flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0",
+                          expiryInfo.kind === "expired" ? "bg-red-500/20" : "bg-amber-500/20"
+                        )}
+                      >
+                        {expiryInfo.kind === "expired" ? (
+                          <XCircle className="w-5 h-5 text-red-500" />
+                        ) : (
+                          <Clock className="w-5 h-5 text-amber-600" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={cn(
+                              "text-sm font-bold uppercase tracking-wide",
+                              expiryInfo.kind === "expired" ? "text-red-600" : "text-amber-700"
+                            )}
+                          >
+                            {expiryInfo.kind === "expired" ? "Membership Expired" : "Expiring Soon"}
+                          </span>
+                          <Badge
+                            className={cn(
+                              "text-[10px] px-2 py-0.5",
+                              expiryInfo.kind === "expired"
+                                ? "bg-red-500 text-white border-red-600"
+                                : "bg-amber-500 text-white border-amber-600"
+                            )}
+                          >
+                            {expiryInfo.kind === "expired"
+                              ? `${expiryInfo.days} day${expiryInfo.days !== 1 ? "s" : ""} ago`
+                              : expiryInfo.days === 0
+                              ? "Today"
+                              : `In ${expiryInfo.days} day${expiryInfo.days !== 1 ? "s" : ""}`}
+                          </Badge>
+                        </div>
+                        <p
+                          className={cn(
+                            "text-xs mt-1",
+                            expiryInfo.kind === "expired" ? "text-red-600/80" : "text-amber-700/80"
+                          )}
+                        >
+                          {expiryInfo.kind === "expired"
+                            ? `Membership expired ${expiryInfo.days} day${expiryInfo.days !== 1 ? "s" : ""} ago on ${formatDate(expiryInfo.endDate)}.`
+                            : expiryInfo.days === 0
+                            ? `Membership expires today (${formatDate(expiryInfo.endDate)}).`
+                            : `Membership expires in ${expiryInfo.days} day${expiryInfo.days !== 1 ? "s" : ""} on ${formatDate(expiryInfo.endDate)}.`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Contact Info */}
                 <AnimatedItem index={0}>
                   <div className="rounded-xl border border-border/60 bg-card/50 p-4 space-y-3 hover:border-border transition-colors duration-200">
@@ -581,6 +673,11 @@ export const MemberActivityDialog = ({
                           <span className="font-medium">
                             {details?.date_of_birth ? formatDate(details.date_of_birth) : "Not provided"}
                           </span>
+                          {details?.date_of_birth && calculateAge(details.date_of_birth) !== null && (
+                            <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0 border-accent/30 text-accent">
+                              {calculateAge(details.date_of_birth)} yrs
+                            </Badge>
+                          )}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
