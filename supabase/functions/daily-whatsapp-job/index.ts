@@ -311,29 +311,47 @@ Deno.serve(async (req) => {
         },
       });
 
-      // --- EXPIRING SOON ---
+      // --- EXPIRING SOON --- (sent ONCE per subscription cycle)
       if (prefs.expiring_2days !== false) {
         const daysBefore = prefs.expiring_days_before ?? 2;
         const targetDate = new Date(today);
         targetDate.setDate(targetDate.getDate() + daysBefore);
         const targetStr = targetDate.toISOString().split("T")[0];
 
-        const { data: expiringSubs, error: expSoonErr } = await supabase
+        const { data: expiringSubsRaw, error: expSoonErr } = await supabase
           .from("subscriptions")
           .select("id, member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
           .eq("end_date", targetStr)
           .eq("members.branch_id", branchId)
           .in("status", ["active", "expiring_soon"]);
 
+        // Dedup: skip subscriptions that already received an expiring_2days reminder
+        const candidateSubIds = (expiringSubsRaw || []).map((s: any) => s.id).filter(Boolean);
+        let alreadySoonSubIds = new Set<string>();
+        if (candidateSubIds.length > 0) {
+          const { data: priorLogs } = await supabase
+            .from("whatsapp_notifications")
+            .select("subscription_id")
+            .eq("branch_id", branchId)
+            .eq("notification_type", "expiring_2days")
+            .eq("status", "sent")
+            .in("subscription_id", candidateSubIds);
+          alreadySoonSubIds = new Set((priorLogs || []).map((p: any) => p.subscription_id).filter(Boolean));
+        }
+
+        const expiringSubs = (expiringSubsRaw || []).filter((s: any) => !alreadySoonSubIds.has(s.id));
+
         log("expiring-soon-query", {
           branchId,
           targetDate: targetStr,
           daysBefore,
-          matched: expiringSubs?.length || 0,
+          matchedRaw: expiringSubsRaw?.length || 0,
+          alreadyReminded: alreadySoonSubIds.size,
+          willSend: expiringSubs.length,
           error: expSoonErr?.message,
         });
 
-        if (expiringSubs && expiringSubs.length > 0) {
+        if (expiringSubs.length > 0) {
           stats.expiringSoon = expiringSubs;
 
           for (const sub of expiringSubs) {
@@ -350,8 +368,14 @@ Deno.serve(async (req) => {
 
             await supabase.from("whatsapp_notifications").insert({
               member_id: member.id,
+              subscription_id: sub.id,
+              recipient_name: member.name,
+              recipient_phone: formattedPhone,
+              message_content: message,
               notification_type: "expiring_2days",
               status: result.ok ? "sent" : "failed",
+              error_message: result.ok ? null : result.body,
+              is_manual: isManualTrigger,
               branch_id: branchId,
             });
 
@@ -453,28 +477,32 @@ Deno.serve(async (req) => {
         const candidateMemberIds = expiredCandidates.map((subscription: any) => subscription.member_id).filter(Boolean);
         let alreadyRemindedMemberIds = new Set<string>();
 
-        if (candidateMemberIds.length > 0) {
+        // Dedup PER SUBSCRIPTION (not per member) — so renewed-then-expired members can be reminded again for the new cycle
+        const candidateSubIds = expiredCandidates.map((s: any) => s.id).filter(Boolean);
+        let alreadyRemindedSubIds = new Set<string>();
+
+        if (candidateSubIds.length > 0) {
           const { data: sentReminderLogs, error: sentLogErr } = await supabase
             .from("whatsapp_notifications")
-            .select("member_id")
+            .select("subscription_id")
             .eq("branch_id", branchId)
             .eq("notification_type", "expired_reminder")
             .eq("status", "sent")
-            .in("member_id", candidateMemberIds);
+            .in("subscription_id", candidateSubIds);
 
           if (sentLogErr) {
             log("expired-reminder-log-fetch-error", { branchId, error: sentLogErr.message });
           } else {
-            alreadyRemindedMemberIds = new Set(
+            alreadyRemindedSubIds = new Set(
               (sentReminderLogs || [])
-                .map((entry: any) => entry.member_id)
+                .map((entry: any) => entry.subscription_id)
                 .filter(Boolean),
             );
           }
         }
 
         const expiredSubs = expiredCandidates.filter(
-          (subscription: any) => !alreadyRemindedMemberIds.has(subscription.member_id),
+          (subscription: any) => !alreadyRemindedSubIds.has(subscription.id),
         );
 
         log("expired-query", {
@@ -509,6 +537,7 @@ Deno.serve(async (req) => {
 
             await supabase.from("whatsapp_notifications").insert({
               member_id: member.id,
+              subscription_id: sub.id,
               recipient_name: member.name,
               recipient_phone: formattedPhone,
               message_content: message,
