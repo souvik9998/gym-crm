@@ -97,7 +97,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
     ref={ref}
     data-dropdown-item
     className={cn(
-      "dropdown-item-modern relative flex cursor-default select-none items-center rounded-md py-2 pl-8 pr-2 text-sm text-foreground outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus:bg-muted focus:text-foreground hover:bg-muted/70",
+      "dropdown-item-modern relative flex cursor-default select-none items-center rounded-md py-2 pl-8 pr-2 text-sm text-foreground outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground",
       className,
     )}
     checked={checked}
