@@ -161,6 +161,7 @@ const AdminSettings = () => {
 
   // Fetch tenant info (gym organization) so we can prefill Gym Information from
   // what was registered in the Super Admin portal whenever a field is empty.
+  // Email + phone are LOCKED to the tenant values (managed by the super admin).
   useEffect(() => {
     if (!tenantId) {
       setTenantInfo(null);
@@ -174,7 +175,11 @@ const AdminSettings = () => {
         .eq("id", tenantId)
         .maybeSingle();
       if (!cancelled && !error && data) {
-        setTenantInfo({ name: data.name ?? null, email: data.email ?? null, phone: data.phone ?? null });
+        const info = { name: data.name ?? null, email: data.email ?? null, phone: data.phone ?? null };
+        setTenantInfo(info);
+        // Always force the form fields for email + phone to mirror tenant info
+        if (info.email) setGymEmail(info.email);
+        if (info.phone) setGymPhone(info.phone);
       }
     })();
     return () => { cancelled = true; };
@@ -406,16 +411,9 @@ const AdminSettings = () => {
   const handleSaveGymInfo = async () => {
     if (!settings?.id || !currentBranch?.id) return;
     
-    // Validate required fields
-    if (!gymPhone || gymPhone.trim().length < 10) {
-      toast.error("Gym phone number is required (10 digits)");
-      return;
-    }
-    if (!gymEmail || !gymEmail.includes("@")) {
-      toast.error("A valid gym email is required");
-      return;
-    }
-    
+    // Phone & email are managed by the super admin at the tenant level — skip
+    // local validation since the user can't edit them here.
+
     setIsSavingGymInfo(true);
 
     const oldSettings = { gym_name: settings.gym_name, gym_phone: settings.gym_phone, gym_address: settings.gym_address, gym_email: settings.gym_email };
@@ -1735,13 +1733,17 @@ const AdminSettings = () => {
                         />
                       </div>
                       <div className="space-y-1.5 lg:space-y-2">
-                        <Label htmlFor="gym-phone" className="text-xs lg:text-sm font-medium">Phone Number</Label>
+                        <Label htmlFor="gym-phone" className="text-xs lg:text-sm font-medium flex items-center gap-1.5">
+                          Phone Number
+                          <span className="text-[10px] font-normal text-muted-foreground">(managed by super admin)</span>
+                        </Label>
                         <Input
                           id="gym-phone"
-                          value={gymPhone}
-                          onChange={(e) => setGymPhone(e.target.value)}
-                          placeholder="Enter phone number"
-                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
+                          value={tenantInfo?.phone || gymPhone}
+                          readOnly
+                          disabled
+                          placeholder="Set by super admin"
+                          className="h-10 lg:h-11 rounded-lg border-border/50 bg-muted/40 cursor-not-allowed"
                         />
                       </div>
                     </div>
@@ -1757,13 +1759,17 @@ const AdminSettings = () => {
                     </div>
                     <div className="grid gap-3 lg:gap-4 grid-cols-1 md:grid-cols-2">
                       <div className="space-y-1.5 lg:space-y-2">
-                        <Label htmlFor="gym-email" className="text-xs lg:text-sm font-medium">Email</Label>
+                        <Label htmlFor="gym-email" className="text-xs lg:text-sm font-medium flex items-center gap-1.5">
+                          Email
+                          <span className="text-[10px] font-normal text-muted-foreground">(managed by super admin)</span>
+                        </Label>
                         <Input
                           id="gym-email"
-                          value={gymEmail}
-                          onChange={(e) => setGymEmail(e.target.value)}
-                          placeholder="gym@example.com"
-                          className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
+                          value={tenantInfo?.email || gymEmail}
+                          readOnly
+                          disabled
+                          placeholder="Set by super admin"
+                          className="h-10 lg:h-11 rounded-lg border-border/50 bg-muted/40 cursor-not-allowed"
                         />
                       </div>
                     </div>
@@ -1773,10 +1779,9 @@ const AdminSettings = () => {
                         onClick={handleSaveGymInfo}
                         disabled={isSavingGymInfo || (
                           gymName === (settings?.gym_name || "") &&
-                          gymPhone === (settings?.gym_phone || "") &&
-                          gymAddress === (settings?.gym_address || "") &&
-                          gymEmail === (settings?.gym_email || "")
+                          gymAddress === (settings?.gym_address || "")
                         )}
+
                       >
                         {isSavingGymInfo ? (
                           <span className="flex items-center gap-2"><ButtonSpinner />Saving...</span>
