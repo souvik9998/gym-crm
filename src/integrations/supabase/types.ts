@@ -3187,6 +3187,7 @@ export type Database = {
           recipient_phone: string | null
           sent_at: string
           status: string
+          subscription_id: string | null
         }
         Insert: {
           admin_user_id?: string | null
@@ -3203,6 +3204,7 @@ export type Database = {
           recipient_phone?: string | null
           sent_at?: string
           status?: string
+          subscription_id?: string | null
         }
         Update: {
           admin_user_id?: string | null
@@ -3219,6 +3221,7 @@ export type Database = {
           recipient_phone?: string | null
           sent_at?: string
           status?: string
+          subscription_id?: string | null
         }
         Relationships: [
           {
@@ -3240,6 +3243,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_notifications_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
             referencedColumns: ["id"]
           },
         ]
