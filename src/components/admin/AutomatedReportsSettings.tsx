@@ -37,6 +37,39 @@ const REPORT_FORMATS = [
 ];
 
 export function AutomatedReportsSettings() {
+  return (
+    <Card className="border border-border/40 shadow-sm overflow-hidden">
+      <CardHeader className="p-4 lg:p-6">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+            <ChartBarIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <CardTitle className="text-base lg:text-xl">Automated Reports</CardTitle>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] lg:text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                Coming Soon
+              </span>
+            </div>
+            <CardDescription className="text-xs lg:text-sm mt-1">
+              Periodic business reports delivered to your email and WhatsApp — launching soon.
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
+        <div className="p-4 lg:p-6 bg-muted/30 border border-dashed border-border/60 rounded-xl text-center">
+          <p className="text-sm lg:text-base font-medium text-foreground">🚧 This feature is coming soon</p>
+          <p className="text-xs lg:text-sm text-muted-foreground mt-1">
+            We're polishing automated email & WhatsApp reports. Stay tuned!
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function _AutomatedReportsSettingsDisabled() {
   const { currentBranch } = useBranch();
   const [schedule, setSchedule] = useState<ReportSchedule | null>(null);
   const [isLoading, setIsLoading] = useState(true);
