@@ -1005,11 +1005,24 @@ export const MembersTable = ({
 
     // Use actual calculated status for display
     if (isActuallyExpired) {
-      return <Badge className={`bg-destructive/10 text-destructive border-destructive/20 ${badgeBaseClass}`}>Expired</Badge>;
+      const daysExpired = Math.abs(diffDays);
+      const dayLabel = daysExpired === 1 ? "1 day ago" : `${daysExpired} days ago`;
+      return (
+        <div className="flex flex-col items-start gap-0.5">
+          <Badge className={`bg-destructive/10 text-destructive border-destructive/20 ${badgeBaseClass}`}>Expired</Badge>
+          <span className="text-[9px] md:text-[10px] text-destructive/70 font-medium pl-0.5">{dayLabel}</span>
+        </div>
+      );
     }
     
     if (isActuallyExpiringSoon) {
-      return <Badge className={`bg-warning/10 text-warning border-warning/20 ${badgeBaseClass}`}>Expiring Soon</Badge>;
+      const dayLabel = diffDays === 0 ? "Today" : diffDays === 1 ? "in 1 day" : `in ${diffDays} days`;
+      return (
+        <div className="flex flex-col items-start gap-0.5">
+          <Badge className={`bg-warning/10 text-warning border-warning/20 ${badgeBaseClass}`}>Expiring Soon</Badge>
+          <span className="text-[9px] md:text-[10px] text-warning/80 font-medium pl-0.5">{dayLabel}</span>
+        </div>
+      );
     }
 
     switch (subscription.status) {
