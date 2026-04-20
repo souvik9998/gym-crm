@@ -225,7 +225,7 @@ export function ManualAutomationTriggers() {
               Send Test WhatsApp Message
             </p>
             <p className="text-[10px] lg:text-xs text-muted-foreground">
-              Sends a single message to the configured admin number — confirms the Periskope WhatsApp pipeline is working
+              Sends a single message to the configured admin number — confirms WhatsApp delivery is working
             </p>
           </div>
           <Button
@@ -239,24 +239,46 @@ export function ManualAutomationTriggers() {
           </Button>
         </div>
 
-        {/* Recent results panel */}
+        {/* Recent results panel — friendly summary only */}
         {results.length > 0 && (
           <div className="space-y-2 mt-2">
             <p className="text-xs font-medium text-muted-foreground">Recent Runs</p>
-            {results.map((r, i) => (
-              <div key={i} className="p-3 bg-muted/30 border border-border/40 rounded-lg space-y-1.5 animate-fade-in">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium truncate">{r.label}</p>
-                  <Badge variant={r.ok ? "default" : "destructive"} className={`text-[10px] ${r.ok ? "bg-emerald-600" : ""}`}>
-                    {r.ok ? "OK" : "FAIL"} · {r.status}
-                  </Badge>
+            {results.map((r, i) => {
+              const b: any = (r.body && typeof r.body === "object") ? r.body : {};
+              const sent = b.notificationsSent ?? b.processed ?? (r.ok && b.test_mode ? 1 : 0);
+              const failed = b.failed ?? b.errors ?? 0;
+              const skipped = b.skipped === true;
+
+              return (
+                <div key={i} className="p-3 bg-muted/30 border border-border/40 rounded-lg space-y-1.5 animate-fade-in">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium truncate">{r.label}</p>
+                    <Badge
+                      variant={r.ok ? "default" : "destructive"}
+                      className={`text-[10px] ${r.ok ? (skipped ? "bg-muted text-muted-foreground" : "bg-emerald-600") : ""}`}
+                    >
+                      {!r.ok ? "Failed" : skipped ? "Already ran today" : "Success"}
+                    </Badge>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">{new Date(r.ranAt).toLocaleString()}</p>
+                  {r.ok ? (
+                    !skipped && (
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        <Badge variant="secondary" className="text-[10px]">Sent: {sent}</Badge>
+                        {failed > 0 && (
+                          <Badge variant="destructive" className="text-[10px]">Failed: {failed}</Badge>
+                        )}
+                        {typeof b.branchesProcessed === "number" && (
+                          <Badge variant="secondary" className="text-[10px]">Branches: {b.branchesProcessed}</Badge>
+                        )}
+                      </div>
+                    )
+                  ) : (
+                    <p className="text-[10px] text-destructive">{b.error || `Request failed (${r.status})`}</p>
+                  )}
                 </div>
-                <p className="text-[10px] text-muted-foreground">{new Date(r.ranAt).toLocaleString()}</p>
-                <pre className="text-[10px] bg-background/60 p-2 rounded overflow-auto max-h-40 leading-relaxed">
-                  {typeof r.body === "string" ? r.body : JSON.stringify(r.body, null, 2)}
-                </pre>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
