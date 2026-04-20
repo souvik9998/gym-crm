@@ -7,7 +7,7 @@ import { toast } from "@/components/ui/sonner";
 import { getEdgeFunctionUrl, getEdgeFunctionHeaders } from "@/lib/supabaseConfig";
 import { getAuthToken } from "@/api/authenticatedFetch";
 import { useBranch } from "@/contexts/BranchContext";
-import { BoltIcon, BeakerIcon, ChartBarIcon } from "@heroicons/react/24/outline";
+import { BoltIcon, BeakerIcon } from "@heroicons/react/24/outline";
 
 type RunResult = {
   label: string;
@@ -19,9 +19,7 @@ type RunResult = {
 
 export function ManualAutomationTriggers() {
   const [isRunningExpiry, setIsRunningExpiry] = useState(false);
-  const [isRunningReports, setIsRunningReports] = useState(false);
   const [isRunningTest, setIsRunningTest] = useState(false);
-  // Pipeline state removed — per-branch only
   const [results, setResults] = useState<RunResult[]>([]);
   const { currentBranch } = useBranch();
 
@@ -70,29 +68,6 @@ export function ManualAutomationTriggers() {
     }
   };
 
-  const handleRunReports = async () => {
-    if (!currentBranch?.id) {
-      toast.error("No branch selected");
-      return;
-    }
-    setIsRunningReports(true);
-    try {
-      const result = await callEdge("scheduled-reports", { force: true, branchId: currentBranch.id });
-      pushResult({ label: `Scheduled reports (${currentBranch.name})`, ok: result.ok, status: result.status, body: result.body, ranAt: new Date().toISOString() });
-      if (!result.ok) {
-        toast.error("Reports job failed", { description: result.body?.error || `HTTP ${result.status}` });
-      } else {
-        toast.success("Reports run complete", {
-          description: `Processed: ${result.body?.processed ?? 0}, errors: ${result.body?.errors ?? 0}`,
-        });
-      }
-    } catch (e: any) {
-      toast.error("Failed to run", { description: e.message });
-    } finally {
-      setIsRunningReports(false);
-    }
-  };
-
   const handleTestWhatsApp = async () => {
     setIsRunningTest(true);
     try {
@@ -110,9 +85,6 @@ export function ManualAutomationTriggers() {
     }
   };
 
-  // Removed: handleRunFullPipeline — automation is per-branch only
-
-
   return (
     <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
       <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
@@ -129,10 +101,6 @@ export function ManualAutomationTriggers() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3 p-4 lg:p-6 pt-0 lg:pt-0">
-        {/* Per-branch only — global pipeline removed */}
-
-
-        {/* Per-branch Expiry Reminder */}
         <div className="flex items-center justify-between p-3 lg:p-4 bg-muted/20 border border-border/40 rounded-xl">
           <div className="space-y-0.5 flex-1 mr-3">
             <p className="text-xs lg:text-sm font-medium flex items-center gap-2">
@@ -151,28 +119,6 @@ export function ManualAutomationTriggers() {
             className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg active:scale-[0.97] transition-all"
           >
             {isRunningExpiry ? <><ButtonSpinner /> Running...</> : "▶ Run Now"}
-          </Button>
-        </div>
-
-        {/* Per-branch Reports */}
-        <div className="flex items-center justify-between p-3 lg:p-4 bg-muted/20 border border-border/40 rounded-xl">
-          <div className="space-y-0.5 flex-1 mr-3">
-            <p className="text-xs lg:text-sm font-medium flex items-center gap-2">
-              <ChartBarIcon className="w-3.5 h-3.5 text-blue-500" />
-              Scheduled Reports (this branch)
-            </p>
-            <p className="text-[10px] lg:text-xs text-muted-foreground">
-              Force-runs the configured automated report for {currentBranch?.name || "this branch"} now
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRunReports}
-            disabled={isRunningReports}
-            className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg active:scale-[0.97] transition-all"
-          >
-            {isRunningReports ? <><ButtonSpinner /> Running...</> : "▶ Run Now"}
           </Button>
         </div>
 

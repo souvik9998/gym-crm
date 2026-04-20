@@ -433,22 +433,62 @@ Deno.serve(async (req) => {
         targetExpiredDate.setDate(targetExpiredDate.getDate() - daysAfter);
         const targetExpiredStr = targetExpiredDate.toISOString().split("T")[0];
 
-        const { data: expiredSubs, error: expErr } = await supabase
+        const { data: branchSubscriptions, error: expErr } = await supabase
           .from("subscriptions")
-          .select("id, member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
-          .eq("end_date", targetExpiredStr)
+          .select("id, member_id, end_date, status, branch_id, members!inner(id, name, phone, branch_id)")
           .eq("members.branch_id", branchId)
-          .eq("status", "expired");
+          .order("end_date", { ascending: false });
+
+        const latestSubscriptionByMember = new Map<string, any>();
+        for (const subscription of branchSubscriptions || []) {
+          const member = subscription.members as any;
+          if (!member?.id || latestSubscriptionByMember.has(member.id)) continue;
+          latestSubscriptionByMember.set(member.id, subscription);
+        }
+
+        const expiredCandidates = Array.from(latestSubscriptionByMember.values()).filter((subscription: any) => {
+          return subscription.status === "expired" && subscription.end_date <= targetExpiredStr;
+        });
+
+        const candidateMemberIds = expiredCandidates.map((subscription: any) => subscription.member_id).filter(Boolean);
+        let alreadyRemindedMemberIds = new Set<string>();
+
+        if (candidateMemberIds.length > 0) {
+          const { data: sentReminderLogs, error: sentLogErr } = await supabase
+            .from("whatsapp_notifications")
+            .select("member_id")
+            .eq("branch_id", branchId)
+            .eq("notification_type", "expired_reminder")
+            .eq("status", "sent")
+            .in("member_id", candidateMemberIds);
+
+          if (sentLogErr) {
+            log("expired-reminder-log-fetch-error", { branchId, error: sentLogErr.message });
+          } else {
+            alreadyRemindedMemberIds = new Set(
+              (sentReminderLogs || [])
+                .map((entry: any) => entry.member_id)
+                .filter(Boolean),
+            );
+          }
+        }
+
+        const expiredSubs = expiredCandidates.filter(
+          (subscription: any) => !alreadyRemindedMemberIds.has(subscription.member_id),
+        );
 
         log("expired-query", {
           branchId,
-          targetDate: targetExpiredStr,
+          targetDateLte: targetExpiredStr,
           daysAfter,
-          matched: expiredSubs?.length || 0,
+          totalSubscriptionsFetched: branchSubscriptions?.length || 0,
+          latestExpiredEligible: expiredCandidates.length,
+          alreadyReminded: alreadyRemindedMemberIds.size,
+          matched: expiredSubs.length,
           error: expErr?.message,
         });
 
-        if (expiredSubs && expiredSubs.length > 0) {
+        if (expiredSubs.length > 0) {
           stats.expired = expiredSubs;
 
           for (const sub of expiredSubs) {
@@ -456,7 +496,11 @@ Deno.serve(async (req) => {
             const expiryDate = new Date(sub.end_date).toLocaleDateString("en-IN", {
               day: "numeric", month: "long", year: "numeric",
             });
-            const message = `⛔ Hi ${member.name}!\n\nYour gym membership at *${config.gymName}* expired *${daysAfter} day${daysAfter > 1 ? "s" : ""} ago* (${expiryDate}).\n\nWe miss you! Renew now to get back on track with your fitness goals 💪\n\n🎁 Renew within 7 days for exclusive benefits!`;
+            const expiredForDays = Math.max(
+              daysAfter,
+              Math.floor((today.getTime() - new Date(sub.end_date).getTime()) / (1000 * 60 * 60 * 24)),
+            );
+            const message = `⛔ Hi ${member.name}!\n\nYour gym membership at *${config.gymName}* expired *${expiredForDays} day${expiredForDays > 1 ? "s" : ""} ago* (${expiryDate}).\n\nWe miss you! Renew now to get back on track with your fitness goals 💪\n\n🎁 Renew within 7 days for exclusive benefits!`;
 
             const formattedPhone = formatPhone(member.phone);
             attemptedCount++;
@@ -465,8 +509,13 @@ Deno.serve(async (req) => {
 
             await supabase.from("whatsapp_notifications").insert({
               member_id: member.id,
+              recipient_name: member.name,
+              recipient_phone: formattedPhone,
+              message_content: message,
               notification_type: "expired_reminder",
               status: result.ok ? "sent" : "failed",
+              error_message: result.ok ? null : result.body,
+              is_manual: isManualTrigger,
               branch_id: branchId,
             });
 
