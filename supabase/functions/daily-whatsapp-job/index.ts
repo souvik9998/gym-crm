@@ -474,9 +474,6 @@ Deno.serve(async (req) => {
           return subscription.status === "expired" && subscription.end_date <= targetExpiredStr;
         });
 
-        const candidateMemberIds = expiredCandidates.map((subscription: any) => subscription.member_id).filter(Boolean);
-        let alreadyRemindedMemberIds = new Set<string>();
-
         // Dedup PER SUBSCRIPTION (not per member) — so renewed-then-expired members can be reminded again for the new cycle
         const candidateSubIds = expiredCandidates.map((s: any) => s.id).filter(Boolean);
         let alreadyRemindedSubIds = new Set<string>();
@@ -511,7 +508,7 @@ Deno.serve(async (req) => {
           daysAfter,
           totalSubscriptionsFetched: branchSubscriptions?.length || 0,
           latestExpiredEligible: expiredCandidates.length,
-          alreadyReminded: alreadyRemindedMemberIds.size,
+          alreadyReminded: alreadyRemindedSubIds.size,
           matched: expiredSubs.length,
           error: expErr?.message,
         });
