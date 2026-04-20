@@ -119,6 +119,11 @@ export function useCouponValidation({ branchId, isNewMember, memberId, subtotal,
         }
       }
 
+      // Parse applicable_on JSON (registration / renewal / event)
+      const applicableOn = (typeof coupon.applicable_on === "string"
+        ? JSON.parse(coupon.applicable_on)
+        : coupon.applicable_on) as Record<string, boolean>;
+
       // Applicable on check (registration / renewal / event)
       if (effectiveContext === "new_registration" && applicableOn.new_registration === false) {
         setCouponError("This coupon is not valid for new registrations");
