@@ -13,14 +13,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const log = (event: string, data: Record<string, unknown> = {}) => {
+  console.log(`[scheduled-reports] ${event}`, JSON.stringify(data));
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const triggeredAt = new Date().toISOString();
+  log("triggered", { at: triggeredAt, method: req.method });
+
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
+
+  log("env-check", {
+    hasSupabaseUrl: !!SUPABASE_URL,
+    hasServiceRoleKey: !!SUPABASE_SERVICE_ROLE_KEY,
+    hasAnonKey: !!SUPABASE_ANON_KEY,
+  });
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return new Response(
@@ -29,37 +42,63 @@ Deno.serve(async (req) => {
     );
   }
 
+  // Allow manual trigger to optionally force-run (ignore next_run_at) for a single branch
+  let force = false;
+  let manualBranchId: string | null = null;
+  try {
+    const body = await req.json();
+    force = body?.force === true;
+    manualBranchId = body?.branchId || null;
+  } catch {
+    // No body
+  }
+  log("body-parsed", { force, manualBranchId });
+
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   try {
-    // IST timezone
     const now = new Date();
     const istOffset = 5.5 * 60 * 60 * 1000;
     const istNow = new Date(now.getTime() + istOffset);
 
-    console.log(`[scheduled-reports] Running at ${istNow.toISOString()} IST`);
+    log("date-context", { utcNow: now.toISOString(), istNow: istNow.toISOString() });
 
-    // Fetch all enabled report schedules that are due
-    const { data: dueSchedules, error: fetchError } = await supabase
-      .from("report_schedules")
-      .select("*")
-      .eq("is_enabled", true)
-      .lte("next_run_at", now.toISOString());
+    // Build query
+    let query = supabase.from("report_schedules").select("*").eq("is_enabled", true);
+    if (!force) {
+      query = query.lte("next_run_at", now.toISOString());
+    }
+    if (manualBranchId) {
+      query = query.eq("branch_id", manualBranchId);
+    }
+
+    const { data: dueSchedules, error: fetchError } = await query;
 
     if (fetchError) {
-      console.error("[scheduled-reports] Error fetching schedules:", fetchError);
+      log("fetch-error", { error: fetchError.message });
       throw fetchError;
     }
 
+    log("schedules-fetched", {
+      count: dueSchedules?.length || 0,
+      schedules: (dueSchedules || []).map((s: any) => ({
+        id: s.id,
+        branch_id: s.branch_id,
+        frequency: s.frequency,
+        next_run_at: s.next_run_at,
+        last_sent_at: s.last_sent_at,
+        report_email: s.report_email,
+        send_whatsapp: s.send_whatsapp,
+        whatsapp_phone: s.whatsapp_phone,
+      })),
+    });
+
     if (!dueSchedules || dueSchedules.length === 0) {
-      console.log("[scheduled-reports] No due reports found");
       return new Response(
-        JSON.stringify({ success: true, processed: 0, message: "No reports due" }),
+        JSON.stringify({ success: true, processed: 0, message: "No reports due", force, manualBranchId }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    console.log(`[scheduled-reports] Found ${dueSchedules.length} due report(s)`);
 
     let processedCount = 0;
     let errorCount = 0;

@@ -5,10 +5,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Structured logger — every line is greppable in Supabase Edge Logs
+const log = (event: string, data: Record<string, unknown> = {}) => {
+  console.log(`[daily-whatsapp-job] ${event}`, JSON.stringify(data));
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const triggeredAt = new Date().toISOString();
+  log("triggered", { at: triggeredAt, method: req.method });
 
   try {
     const PERISKOPE_API_KEY = Deno.env.get("PERISKOPE_API_KEY");
@@ -16,6 +24,14 @@ Deno.serve(async (req) => {
     const ADMIN_WHATSAPP_NUMBER = Deno.env.get("ADMIN_WHATSAPP_NUMBER");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    log("env-check", {
+      hasPeriskopeKey: !!PERISKOPE_API_KEY,
+      hasPeriskopePhone: !!PERISKOPE_PHONE,
+      hasAdminWhatsApp: !!ADMIN_WHATSAPP_NUMBER,
+      hasSupabaseUrl: !!SUPABASE_URL,
+      hasServiceRoleKey: !!SUPABASE_SERVICE_ROLE_KEY,
+    });
 
     if (!PERISKOPE_API_KEY || !PERISKOPE_PHONE) {
       throw new Error("Periskope API credentials not configured");
@@ -29,13 +45,76 @@ Deno.serve(async (req) => {
     // Parse request body
     let isManualTrigger = false;
     let manualBranchId: string | null = null;
+    let testMode = false;
+    let testPhone: string | null = null;
     try {
       const body = await req.json();
       isManualTrigger = body?.manual === true;
       manualBranchId = body?.branchId || null;
+      testMode = body?.test_mode === true;
+      testPhone = body?.test_phone || null;
     } catch {
       // No body = scheduled run
     }
+
+    log("body-parsed", { isManualTrigger, manualBranchId, testMode, testPhone });
+
+    // ---------- TEST MODE: send a single WhatsApp message unconditionally ----------
+    if (testMode) {
+      const targetPhone = testPhone || ADMIN_WHATSAPP_NUMBER;
+      if (!targetPhone) {
+        return new Response(
+          JSON.stringify({ success: false, error: "No test_phone provided and ADMIN_WHATSAPP_NUMBER not set" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const formatPhone = (phoneNum: string): string => {
+        let cleaned = phoneNum.replace(/\D/g, "");
+        if (cleaned.startsWith("0")) cleaned = cleaned.substring(1);
+        if (cleaned.length === 10) cleaned = "91" + cleaned;
+        return cleaned;
+      };
+
+      const formatted = formatPhone(targetPhone);
+      const msg = `🧪 *GymKloud Test Message*\n\nThis is a test from the daily automation cron.\nTime: ${new Date().toISOString()}\n\nIf you received this, the WhatsApp pipeline is working ✅`;
+
+      log("test-mode-sending", { targetPhone: formatted });
+
+      try {
+        const response = await fetch("https://api.periskope.app/v1/message/send", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${PERISKOPE_API_KEY}`,
+            "x-phone": PERISKOPE_PHONE,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ chat_id: `${formatted}@c.us`, message: msg }),
+        });
+
+        const responseText = await response.text();
+        log("test-mode-result", { status: response.status, ok: response.ok, body: responseText });
+
+        return new Response(
+          JSON.stringify({
+            success: response.ok,
+            test_mode: true,
+            target_phone: formatted,
+            periskope_status: response.status,
+            periskope_response: responseText,
+          }),
+          { status: response.ok ? 200 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      } catch (err: any) {
+        log("test-mode-error", { error: err?.message || String(err) });
+        return new Response(
+          JSON.stringify({ success: false, test_mode: true, error: err?.message || String(err) }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+
+    // ---------- NORMAL FLOW ----------
 
     // IST timezone date handling
     const now = new Date();
@@ -49,21 +128,29 @@ Deno.serve(async (req) => {
     const endOfDay = new Date(today);
     endOfDay.setUTCHours(23, 59, 59, 999);
 
+    log("date-context", {
+      utcNow: now.toISOString(),
+      istNow: istNow.toISOString(),
+      todayStrIST: todayStr,
+      startOfDayUTC: startOfDay.toISOString(),
+      endOfDayUTC: endOfDay.toISOString(),
+    });
+
     // Check if already ran today (skip for manual triggers)
     if (!isManualTrigger) {
       const { data: existingLog } = await supabase
         .from("admin_summary_log")
-        .select("id")
+        .select("id, sent_at")
         .eq("summary_type", "daily_periskope")
         .gte("sent_at", startOfDay.toISOString())
         .lte("sent_at", endOfDay.toISOString())
         .limit(1);
 
       if (existingLog && existingLog.length > 0) {
-        console.log("Daily job already ran today, skipping");
+        log("idempotency-skip", { existingLogId: existingLog[0].id, sentAt: existingLog[0].sent_at });
         return new Response(
           JSON.stringify({ success: true, skipped: true, message: "Daily job already ran today" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
     }
@@ -73,12 +160,30 @@ Deno.serve(async (req) => {
       .from("gym_settings")
       .select("branch_id, whatsapp_enabled, whatsapp_auto_send, gym_name");
 
-    // For manual trigger with branchId, only fetch that branch's settings
     if (manualBranchId) {
       settingsQuery = settingsQuery.eq("branch_id", manualBranchId);
     }
 
-    const { data: branchSettings } = await settingsQuery;
+    const { data: branchSettings, error: settingsError } = await settingsQuery;
+
+    if (settingsError) {
+      log("settings-fetch-error", { error: settingsError.message });
+      throw new Error(`Failed to fetch gym settings: ${settingsError.message}`);
+    }
+
+    log("settings-fetched", {
+      totalRows: branchSettings?.length || 0,
+      branches: (branchSettings || []).map((s: any) => ({
+        branch_id: s.branch_id,
+        gym_name: s.gym_name,
+        whatsapp_enabled: s.whatsapp_enabled,
+        expiring_soon_enabled: s.whatsapp_auto_send?.expiring_2days !== false,
+        expiring_soon_days_before: s.whatsapp_auto_send?.expiring_days_before ?? 2,
+        expiring_today_enabled: s.whatsapp_auto_send?.expiring_today !== false,
+        expired_enabled: s.whatsapp_auto_send?.expired_reminder === true,
+        expired_days_after: s.whatsapp_auto_send?.expired_days_after ?? 7,
+      })),
+    });
 
     // Build per-branch config maps
     const branchConfigMap = new Map<string, {
@@ -99,30 +204,30 @@ Deno.serve(async (req) => {
       });
     }
 
-    // If manual trigger with branchId but branch has WhatsApp disabled, return early
     if (manualBranchId) {
       const branchConfig = branchConfigMap.get(manualBranchId);
       if (!branchConfig || !branchConfig.enabled) {
+        log("manual-branch-disabled", { manualBranchId });
         return new Response(
           JSON.stringify({ success: false, error: "WhatsApp is disabled for this branch" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
     }
 
-    // Get list of branch IDs to process
     const branchIdsToProcess = Array.from(branchConfigMap.entries())
       .filter(([_, config]) => config.enabled)
       .map(([id]) => id);
 
+    log("branches-to-process", { count: branchIdsToProcess.length, ids: branchIdsToProcess });
+
     if (branchIdsToProcess.length === 0) {
       return new Response(
         JSON.stringify({ success: true, message: "No branches with WhatsApp enabled", notificationsSent: 0, failed: 0 }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Format phone number for Periskope
     const formatPhone = (phoneNum: string): string => {
       let cleaned = phoneNum.replace(/\D/g, "");
       if (cleaned.startsWith("0")) cleaned = cleaned.substring(1);
@@ -130,9 +235,8 @@ Deno.serve(async (req) => {
       return cleaned;
     };
 
-    // Send message with retry
-    const sendMessageWithRetry = async (chatId: string, message: string): Promise<boolean> => {
-      const attempt = async (): Promise<boolean> => {
+    const sendMessageWithRetry = async (chatId: string, message: string): Promise<{ ok: boolean; status: number; body: string }> => {
+      const attempt = async (): Promise<{ ok: boolean; status: number; body: string }> => {
         try {
           const response = await fetch("https://api.periskope.app/v1/message/send", {
             method: "POST",
@@ -144,29 +248,28 @@ Deno.serve(async (req) => {
             body: JSON.stringify({ chat_id: `${chatId}@c.us`, message }),
           });
           const responseText = await response.text();
-          console.log(`Periskope response for ${chatId}: ${response.status} - ${responseText}`);
-          return response.ok;
-        } catch (error) {
-          console.error(`Error sending message to ${chatId}:`, error);
-          return false;
+          return { ok: response.ok, status: response.status, body: responseText };
+        } catch (error: any) {
+          return { ok: false, status: 0, body: error?.message || String(error) };
         }
       };
 
-      let success = await attempt();
-      if (!success) {
-        console.log(`Retrying message to ${chatId}...`);
-        await new Promise(r => setTimeout(r, 2000));
-        success = await attempt();
+      let result = await attempt();
+      if (!result.ok) {
+        log("periskope-retry", { chatId, firstStatus: result.status, firstBody: result.body });
+        await new Promise((r) => setTimeout(r, 2000));
+        result = await attempt();
       }
-      return success;
+      log("periskope-result", { chatId, status: result.status, ok: result.ok, body: result.body.slice(0, 300) });
+      return result;
     };
 
     const sentMemberIds: string[] = [];
     let successCount = 0;
     let failCount = 0;
-    const logs: { memberId: string; memberName: string; branchId: string; type: string; status: string }[] = [];
+    let attemptedCount = 0;
+    const logs: { memberId: string; memberName: string; branchId: string; type: string; status: string; periskopeStatus?: number }[] = [];
 
-    // Track per-branch stats for admin summary
     const branchStats = new Map<string, {
       gymName: string;
       expiringSoon: any[];
@@ -174,9 +277,9 @@ Deno.serve(async (req) => {
       expired: any[];
       sent: number;
       failed: number;
+      attempted: number;
     }>();
 
-    // Initialize stats for each branch
     for (const branchId of branchIdsToProcess) {
       const config = branchConfigMap.get(branchId)!;
       branchStats.set(branchId, {
@@ -186,6 +289,7 @@ Deno.serve(async (req) => {
         expired: [],
         sent: 0,
         failed: 0,
+        attempted: 0,
       });
     }
 
@@ -195,6 +299,18 @@ Deno.serve(async (req) => {
       const prefs = config.autoSend;
       const stats = branchStats.get(branchId)!;
 
+      log("branch-start", {
+        branchId,
+        gymName: config.gymName,
+        prefs: {
+          expiring_2days: prefs.expiring_2days,
+          expiring_days_before: prefs.expiring_days_before,
+          expiring_today: prefs.expiring_today,
+          expired_reminder: prefs.expired_reminder,
+          expired_days_after: prefs.expired_days_after,
+        },
+      });
+
       // --- EXPIRING SOON ---
       if (prefs.expiring_2days !== false) {
         const daysBefore = prefs.expiring_days_before ?? 2;
@@ -202,13 +318,20 @@ Deno.serve(async (req) => {
         targetDate.setDate(targetDate.getDate() + daysBefore);
         const targetStr = targetDate.toISOString().split("T")[0];
 
-        // Query subscriptions for THIS branch only, joining members to get branch-correct data
-        const { data: expiringSubs } = await supabase
+        const { data: expiringSubs, error: expSoonErr } = await supabase
           .from("subscriptions")
           .select("id, member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
           .eq("end_date", targetStr)
           .eq("members.branch_id", branchId)
           .in("status", ["active", "expiring_soon"]);
+
+        log("expiring-soon-query", {
+          branchId,
+          targetDate: targetStr,
+          daysBefore,
+          matched: expiringSubs?.length || 0,
+          error: expSoonErr?.message,
+        });
 
         if (expiringSubs && expiringSubs.length > 0) {
           stats.expiringSoon = expiringSubs;
@@ -221,18 +344,20 @@ Deno.serve(async (req) => {
             const message = `⚠️ Hi ${member.name}!\n\nYour gym membership at *${config.gymName}* expires in *${daysBefore} day${daysBefore > 1 ? "s" : ""}* (${expiryDate}).\n\nRenew now to avoid any interruption! 🏃`;
 
             const formattedPhone = formatPhone(member.phone);
-            const success = await sendMessageWithRetry(formattedPhone, message);
+            attemptedCount++;
+            stats.attempted++;
+            const result = await sendMessageWithRetry(formattedPhone, message);
 
             await supabase.from("whatsapp_notifications").insert({
               member_id: member.id,
               notification_type: "expiring_2days",
-              status: success ? "sent" : "failed",
+              status: result.ok ? "sent" : "failed",
               branch_id: branchId,
             });
 
-            logs.push({ memberId: member.id, memberName: member.name, branchId, type: "expiring_soon", status: success ? "sent" : "failed" });
+            logs.push({ memberId: member.id, memberName: member.name, branchId, type: "expiring_soon", status: result.ok ? "sent" : "failed", periskopeStatus: result.status });
 
-            if (success) {
+            if (result.ok) {
               successCount++;
               stats.sent++;
               sentMemberIds.push(member.id);
@@ -244,16 +369,25 @@ Deno.serve(async (req) => {
             }
           }
         }
+      } else {
+        log("expiring-soon-disabled", { branchId });
       }
 
       // --- EXPIRING TODAY ---
       if (prefs.expiring_today !== false) {
-        const { data: expiringTodaySubs } = await supabase
+        const { data: expiringTodaySubs, error: expTodayErr } = await supabase
           .from("subscriptions")
           .select("id, member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
           .eq("end_date", todayStr)
           .eq("members.branch_id", branchId)
           .in("status", ["active", "expiring_soon"]);
+
+        log("expiring-today-query", {
+          branchId,
+          targetDate: todayStr,
+          matched: expiringTodaySubs?.length || 0,
+          error: expTodayErr?.message,
+        });
 
         if (expiringTodaySubs && expiringTodaySubs.length > 0) {
           stats.expiringToday = expiringTodaySubs;
@@ -263,18 +397,20 @@ Deno.serve(async (req) => {
             const message = `🚨 Hi ${member.name}!\n\nYour gym membership at *${config.gymName}* expires *TODAY*!\n\nPlease renew immediately to continue your fitness journey. 💪`;
 
             const formattedPhone = formatPhone(member.phone);
-            const success = await sendMessageWithRetry(formattedPhone, message);
+            attemptedCount++;
+            stats.attempted++;
+            const result = await sendMessageWithRetry(formattedPhone, message);
 
             await supabase.from("whatsapp_notifications").insert({
               member_id: member.id,
               notification_type: "expiring_today",
-              status: success ? "sent" : "failed",
+              status: result.ok ? "sent" : "failed",
               branch_id: branchId,
             });
 
-            logs.push({ memberId: member.id, memberName: member.name, branchId, type: "expiring_today", status: success ? "sent" : "failed" });
+            logs.push({ memberId: member.id, memberName: member.name, branchId, type: "expiring_today", status: result.ok ? "sent" : "failed", periskopeStatus: result.status });
 
-            if (success) {
+            if (result.ok) {
               successCount++;
               stats.sent++;
               sentMemberIds.push(member.id);
@@ -286,6 +422,8 @@ Deno.serve(async (req) => {
             }
           }
         }
+      } else {
+        log("expiring-today-disabled", { branchId });
       }
 
       // --- EXPIRED REMINDER ---
@@ -295,12 +433,20 @@ Deno.serve(async (req) => {
         targetExpiredDate.setDate(targetExpiredDate.getDate() - daysAfter);
         const targetExpiredStr = targetExpiredDate.toISOString().split("T")[0];
 
-        const { data: expiredSubs } = await supabase
+        const { data: expiredSubs, error: expErr } = await supabase
           .from("subscriptions")
           .select("id, member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
           .eq("end_date", targetExpiredStr)
           .eq("members.branch_id", branchId)
           .eq("status", "expired");
+
+        log("expired-query", {
+          branchId,
+          targetDate: targetExpiredStr,
+          daysAfter,
+          matched: expiredSubs?.length || 0,
+          error: expErr?.message,
+        });
 
         if (expiredSubs && expiredSubs.length > 0) {
           stats.expired = expiredSubs;
@@ -313,18 +459,20 @@ Deno.serve(async (req) => {
             const message = `⛔ Hi ${member.name}!\n\nYour gym membership at *${config.gymName}* expired *${daysAfter} day${daysAfter > 1 ? "s" : ""} ago* (${expiryDate}).\n\nWe miss you! Renew now to get back on track with your fitness goals 💪\n\n🎁 Renew within 7 days for exclusive benefits!`;
 
             const formattedPhone = formatPhone(member.phone);
-            const success = await sendMessageWithRetry(formattedPhone, message);
+            attemptedCount++;
+            stats.attempted++;
+            const result = await sendMessageWithRetry(formattedPhone, message);
 
             await supabase.from("whatsapp_notifications").insert({
               member_id: member.id,
               notification_type: "expired_reminder",
-              status: success ? "sent" : "failed",
+              status: result.ok ? "sent" : "failed",
               branch_id: branchId,
             });
 
-            logs.push({ memberId: member.id, memberName: member.name, branchId, type: "expired_reminder", status: success ? "sent" : "failed" });
+            logs.push({ memberId: member.id, memberName: member.name, branchId, type: "expired_reminder", status: result.ok ? "sent" : "failed", periskopeStatus: result.status });
 
-            if (success) {
+            if (result.ok) {
               successCount++;
               stats.sent++;
               sentMemberIds.push(member.id);
@@ -336,20 +484,31 @@ Deno.serve(async (req) => {
             }
           }
         }
+      } else {
+        log("expired-disabled", { branchId });
       }
+
+      log("branch-done", {
+        branchId,
+        attempted: stats.attempted,
+        sent: stats.sent,
+        failed: stats.failed,
+        expiringSoonCount: stats.expiringSoon.length,
+        expiringTodayCount: stats.expiringToday.length,
+        expiredCount: stats.expired.length,
+      });
     }
 
     // Send admin daily summary (only for scheduled runs, not manual)
     if (ADMIN_WHATSAPP_NUMBER && !isManualTrigger) {
       const adminPhone = formatPhone(ADMIN_WHATSAPP_NUMBER);
 
-      // Build per-branch summary
       let summaryMessage = `📊 *Daily Expiry Summary*\n`;
       let totalExpiringSoon = 0;
       let totalExpiringToday = 0;
       let totalExpired = 0;
 
-      for (const [branchId, stats] of branchStats) {
+      for (const [, stats] of branchStats) {
         const hasData = stats.expiringSoon.length > 0 || stats.expiringToday.length > 0 || stats.expired.length > 0;
         if (!hasData) continue;
 
@@ -396,9 +555,13 @@ Deno.serve(async (req) => {
       await sendMessageWithRetry(adminPhone, summaryMessage);
     }
 
-    // Log the run
-    console.log(`[daily-whatsapp-job] Completed: ${successCount} sent, ${failCount} failed, ${isManualTrigger ? 'MANUAL' : 'SCHEDULED'}, branches: ${branchIdsToProcess.join(",")}`);
-    console.log(`[daily-whatsapp-job] Details:`, JSON.stringify(logs));
+    log("completed", {
+      attempted: attemptedCount,
+      sent: successCount,
+      failed: failCount,
+      isManualTrigger,
+      branches: branchIdsToProcess.length,
+    });
 
     await supabase.from("admin_summary_log").insert({
       summary_type: "daily_periskope",
@@ -408,23 +571,36 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
+        triggeredAt,
+        finishedAt: new Date().toISOString(),
         manual: isManualTrigger,
         branchId: manualBranchId,
         branchesProcessed: branchIdsToProcess.length,
-        expiringSoon: logs.filter(l => l.type === "expiring_soon").length,
-        expiringToday: logs.filter(l => l.type === "expiring_today").length,
-        expiredReminders: logs.filter(l => l.type === "expired_reminder").length,
+        attempted: attemptedCount,
+        expiringSoon: logs.filter((l) => l.type === "expiring_soon").length,
+        expiringToday: logs.filter((l) => l.type === "expiring_today").length,
+        expiredReminders: logs.filter((l) => l.type === "expired_reminder").length,
         notificationsSent: successCount,
         failed: failCount,
         logs,
+        branchStats: Array.from(branchStats.entries()).map(([branchId, s]) => ({
+          branchId,
+          gymName: s.gymName,
+          attempted: s.attempted,
+          sent: s.sent,
+          failed: s.failed,
+          expiringSoonCount: s.expiringSoon.length,
+          expiringTodayCount: s.expiringToday.length,
+          expiredCount: s.expired.length,
+        })),
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: any) {
-    console.error("[daily-whatsapp-job] ERROR:", error);
+    log("ERROR", { message: error?.message, stack: error?.stack });
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ success: false, error: error?.message || String(error) }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
