@@ -1,0 +1,2 @@
+ALTER TABLE public.whatsapp_notifications ADD COLUMN IF NOT EXISTS subscription_id uuid REFERENCES public.subscriptions(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_whatsapp_notifications_dedup ON public.whatsapp_notifications (branch_id, member_id, notification_type, subscription_id);

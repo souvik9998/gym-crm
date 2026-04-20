@@ -118,56 +118,73 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-1 p-4 lg:p-6 pt-0 lg:pt-0">
-        {MESSAGE_TYPES.map((type) => (
-          <div
-            key={type.key}
-            className="flex items-center justify-between p-2 lg:p-3 rounded-lg hover:bg-muted/50 transition-colors"
-          >
-            <div className="space-y-0.5 flex-1 mr-3 lg:mr-4">
-              <p className="text-xs lg:text-sm font-medium">{type.label}</p>
-              <p className="text-[10px] lg:text-xs text-muted-foreground">{type.description}</p>
-              {type.hasDaySelector && preferences[type.key] && (
-                <div className="flex items-center gap-1.5 lg:gap-2 mt-1.5 lg:mt-2">
-                  <span className="text-[10px] lg:text-xs text-muted-foreground">
-                    Send
-                  </span>
-                  <Select
-                    value={String(
-                      type.hasDaySelector === "before"
-                        ? preferences.expiring_days_before ?? DEFAULT_EXPIRING_DAYS
-                        : preferences.expired_days_after ?? DEFAULT_EXPIRED_DAYS
-                    )}
-                    onValueChange={(val) =>
-                      handleDaysChange(
-                        type.hasDaySelector === "before" ? "expiring_days_before" : "expired_days_after",
-                        val
-                      )
-                    }
-                  >
-                    <SelectTrigger className="h-6 lg:h-7 w-14 lg:w-16 text-[10px] lg:text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRESET_DAYS.map((d) => (
-                        <SelectItem key={d} value={String(d)}>
-                          {d}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <span className="text-[10px] lg:text-xs text-muted-foreground">
-                    {type.hasDaySelector === "before" ? "days before expiry" : "days after expiry"}
-                  </span>
+        {MESSAGE_TYPES.map((type) => {
+          const isEnabled = preferences[type.key] ?? WHATSAPP_AUTO_SEND_DEFAULTS[type.key];
+          const showDaySelector = type.hasDaySelector && isEnabled;
+          const dayValue =
+            type.hasDaySelector === "before"
+              ? preferences.expiring_days_before ?? DEFAULT_EXPIRING_DAYS
+              : preferences.expired_days_after ?? DEFAULT_EXPIRED_DAYS;
+
+          return (
+            <div
+              key={type.key}
+              className="flex flex-col gap-2 p-2 lg:p-3 rounded-lg hover:bg-muted/50 transition-colors"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5 flex-1">
+                  <p className="text-xs lg:text-sm font-medium">{type.label}</p>
+                  <p className="text-[10px] lg:text-xs text-muted-foreground">{type.description}</p>
+                </div>
+                <Switch
+                  checked={!whatsappEnabled ? false : isEnabled}
+                  disabled={!whatsappEnabled || togglingKey === type.key}
+                  onCheckedChange={(checked) => handleToggle(type.key, checked)}
+                />
+              </div>
+
+              {showDaySelector && (
+                <div className="ml-0 mt-1 p-2.5 lg:p-3 rounded-md bg-primary/5 border border-primary/15">
+                  <p className="text-[10px] lg:text-xs font-medium text-foreground/80 mb-2">
+                    {type.hasDaySelector === "before"
+                      ? "How many days BEFORE expiry should we send this reminder?"
+                      : "How many days AFTER expiry should we send this reminder?"}
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Select
+                      value={String(dayValue)}
+                      onValueChange={(val) =>
+                        handleDaysChange(
+                          type.hasDaySelector === "before" ? "expiring_days_before" : "expired_days_after",
+                          val
+                        )
+                      }
+                    >
+                      <SelectTrigger className="h-8 lg:h-9 w-24 text-xs lg:text-sm font-semibold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRESET_DAYS.map((d) => (
+                          <SelectItem key={d} value={String(d)}>
+                            {d} {d === 1 ? "day" : "days"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <span className="text-[11px] lg:text-xs text-muted-foreground">
+                      {type.hasDaySelector === "before"
+                        ? `→ Sent ${dayValue} day${dayValue > 1 ? "s" : ""} before the membership expires`
+                        : `→ Sent ${dayValue} day${dayValue > 1 ? "s" : ""} after the membership expires`}
+                    </span>
+                  </div>
+                  <p className="text-[10px] lg:text-[11px] text-muted-foreground mt-2 italic">
+                    ✓ Each member receives this reminder only once per membership cycle.
+                  </p>
                 </div>
               )}
             </div>
-            <Switch
-              checked={!whatsappEnabled ? false : (preferences[type.key] ?? WHATSAPP_AUTO_SEND_DEFAULTS[type.key])}
-              disabled={!whatsappEnabled || togglingKey === type.key}
-              onCheckedChange={(checked) => handleToggle(type.key, checked)}
-            />
-          </div>
-        ))}
+          );
+        })}
 
         {/* Promotional - always manual */}
         <div className="flex items-center justify-between p-2 lg:p-3 rounded-lg bg-muted/30">
