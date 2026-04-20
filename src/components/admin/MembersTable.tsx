@@ -1006,28 +1006,41 @@ export const MembersTable = ({
     // Use actual calculated status for display
     if (isActuallyExpired) {
       const daysExpired = Math.abs(diffDays);
-      const dayLabel = daysExpired === 1 ? "1d" : `${daysExpired}d`;
+      const dayLabel =
+        daysExpired === 0
+          ? "Today"
+          : daysExpired === 1
+          ? "Yesterday"
+          : daysExpired < 7
+          ? `${daysExpired} days ago`
+          : daysExpired < 30
+          ? `${Math.floor(daysExpired / 7)}w ago`
+          : `${Math.floor(daysExpired / 30)}mo ago`;
       return (
-        <div className="inline-flex items-center gap-1 rounded-full border border-destructive/20 bg-destructive/10 pl-2 pr-1 py-0.5 text-destructive">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-destructive opacity-60 animate-ping" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-destructive" />
-          </span>
-          <span className="text-[10px] md:text-xs font-semibold leading-none">Expired</span>
-          <span className="ml-0.5 rounded-full bg-destructive/15 px-1.5 py-[2px] text-[9px] md:text-[10px] font-bold tabular-nums leading-none">
+        <div className="flex items-center gap-2">
+          <Badge className={`bg-destructive/10 text-destructive border-destructive/20 ${badgeBaseClass}`}>
+            Expired
+          </Badge>
+          <span className="text-[10px] md:text-[11px] font-medium text-destructive/80 tabular-nums whitespace-nowrap">
             {dayLabel}
           </span>
         </div>
       );
     }
-    
+
     if (isActuallyExpiringSoon) {
-      const dayLabel = diffDays === 0 ? "Today" : diffDays === 1 ? "1d" : `${diffDays}d`;
+      const dayLabel =
+        diffDays === 0
+          ? "Today"
+          : diffDays === 1
+          ? "Tomorrow"
+          : `In ${diffDays} days`;
       return (
-        <div className="inline-flex items-center gap-1 rounded-full border border-warning/20 bg-warning/10 pl-2 pr-1 py-0.5 text-warning">
-          <Clock className="h-2.5 w-2.5" strokeWidth={2.5} />
-          <span className="text-[10px] md:text-xs font-semibold leading-none">Expiring</span>
-          <span className="ml-0.5 rounded-full bg-warning/15 px-1.5 py-[2px] text-[9px] md:text-[10px] font-bold tabular-nums leading-none">
+        <div className="flex items-center gap-2">
+          <Badge className={`bg-warning/10 text-warning border-warning/20 ${badgeBaseClass}`}>
+            Expiring Soon
+          </Badge>
+          <span className="text-[10px] md:text-[11px] font-medium text-warning/90 tabular-nums whitespace-nowrap">
             {dayLabel}
           </span>
         </div>
