@@ -7,7 +7,7 @@ import { toast } from "@/components/ui/sonner";
 import { getEdgeFunctionUrl, getEdgeFunctionHeaders } from "@/lib/supabaseConfig";
 import { getAuthToken } from "@/api/authenticatedFetch";
 import { useBranch } from "@/contexts/BranchContext";
-import { BoltIcon, BeakerIcon, RocketLaunchIcon, ChartBarIcon } from "@heroicons/react/24/outline";
+import { BoltIcon, BeakerIcon, ChartBarIcon } from "@heroicons/react/24/outline";
 
 type RunResult = {
   label: string;
