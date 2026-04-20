@@ -24,7 +24,7 @@ import {
   ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import { Textarea } from "@/components/ui/textarea";
-import { TicketPercent, Check, Save } from "lucide-react";
+import { TicketPercent } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -1773,21 +1773,19 @@ const AdminSettings = () => {
                         />
                       </div>
                     </div>
-                    <div className="pt-2 flex justify-end">
+                    <div className="pt-2">
                       <Button
-                        size="sm"
-                        className="h-9 px-5 text-sm font-medium rounded-lg bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.97] transition-all duration-200 shadow-sm hover:shadow-md disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none gap-2 group"
+                        className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
                         onClick={handleSaveGymInfo}
                         disabled={isSavingGymInfo || (
                           gymName === (settings?.gym_name || "") &&
                           gymAddress === (settings?.gym_address || "")
                         )}
+
                       >
                         {isSavingGymInfo ? (
-                          <><ButtonSpinner />Saving...</>
-                        ) : (
-                          <><Save className="w-4 h-4 transition-transform group-hover:-rotate-6" />Save Changes</>
-                        )}
+                          <span className="flex items-center gap-2"><ButtonSpinner />Saving...</span>
+                        ) : "Save Gym Info"}
                       </Button>
                     </div>
                   </CardContent>
@@ -1878,10 +1876,9 @@ const AdminSettings = () => {
                         )}
                       </div>
                     )}
-                    <div className="pt-2 flex justify-end">
+                    <div className="pt-2">
                       <Button
-                        size="sm"
-                        className="h-9 px-5 text-sm font-medium rounded-lg bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.97] transition-all duration-200 shadow-sm hover:shadow-md disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none gap-2 group"
+                        className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
                         onClick={handleSaveGst}
                         disabled={isSavingGst || (
                           gymGst === (settings?.gym_gst || "") &&
@@ -1890,10 +1887,8 @@ const AdminSettings = () => {
                         )}
                       >
                         {isSavingGst ? (
-                          <><ButtonSpinner />Saving...</>
-                        ) : (
-                          <><Save className="w-4 h-4 transition-transform group-hover:-rotate-6" />Save Changes</>
-                        )}
+                          <span className="flex items-center gap-2"><ButtonSpinner />Saving...</span>
+                        ) : "Save GST Settings"}
                       </Button>
                     </div>
                   </CardContent>
@@ -1947,10 +1942,9 @@ const AdminSettings = () => {
                         maxLength={500}
                       />
                     </div>
-                    <div className="pt-2 flex justify-end">
+                    <div className="pt-2">
                       <Button
-                        size="sm"
-                        className="h-9 px-5 text-sm font-medium rounded-lg bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.97] transition-all duration-200 shadow-sm hover:shadow-md disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none gap-2 group"
+                        className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
                         onClick={handleSaveInvoice}
                         disabled={isSavingInvoice || (
                           invoicePrefix === (settings?.invoice_prefix || "INV") &&
@@ -1959,10 +1953,8 @@ const AdminSettings = () => {
                         )}
                       >
                         {isSavingInvoice ? (
-                          <><ButtonSpinner />Saving...</>
-                        ) : (
-                          <><Save className="w-4 h-4 transition-transform group-hover:-rotate-6" />Save Changes</>
-                        )}
+                          <span className="flex items-center gap-2"><ButtonSpinner />Saving...</span>
+                        ) : "Save Invoice Settings"}
                       </Button>
                     </div>
                   </CardContent>
