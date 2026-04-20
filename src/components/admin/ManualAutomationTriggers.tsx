@@ -21,7 +21,7 @@ export function ManualAutomationTriggers() {
   const [isRunningExpiry, setIsRunningExpiry] = useState(false);
   const [isRunningReports, setIsRunningReports] = useState(false);
   const [isRunningTest, setIsRunningTest] = useState(false);
-  const [isRunningPipeline, setIsRunningPipeline] = useState(false);
+  // Pipeline state removed — per-branch only
   const [results, setResults] = useState<RunResult[]>([]);
   const { currentBranch } = useBranch();
 
@@ -110,30 +110,8 @@ export function ManualAutomationTriggers() {
     }
   };
 
-  const handleRunFullPipeline = async () => {
-    setIsRunningPipeline(true);
-    try {
-      // Run both jobs sequentially — same as the Vercel cron
-      const whatsapp = await callEdge("daily-whatsapp-job", { manual: true });
-      pushResult({ label: "Pipeline → daily-whatsapp-job (all branches)", ok: whatsapp.ok, status: whatsapp.status, body: whatsapp.body, ranAt: new Date().toISOString() });
+  // Removed: handleRunFullPipeline — automation is per-branch only
 
-      const reports = await callEdge("scheduled-reports", { force: true });
-      pushResult({ label: "Pipeline → scheduled-reports (all due)", ok: reports.ok, status: reports.status, body: reports.body, ranAt: new Date().toISOString() });
-
-      const ok = whatsapp.ok && reports.ok;
-      if (ok) {
-        toast.success("Cron pipeline executed", {
-          description: `WhatsApp: ${whatsapp.body?.notificationsSent ?? 0} sent · Reports: ${reports.body?.processed ?? 0} processed`,
-        });
-      } else {
-        toast.error("Pipeline finished with errors", { description: "See result panel for details" });
-      }
-    } catch (e: any) {
-      toast.error("Pipeline failed", { description: e.message });
-    } finally {
-      setIsRunningPipeline(false);
-    }
-  };
 
   return (
     <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
@@ -151,27 +129,8 @@ export function ManualAutomationTriggers() {
         </div>
       </CardHeader>
       <CardContent className="space-y-3 p-4 lg:p-6 pt-0 lg:pt-0">
-        {/* Full Pipeline (mirrors the Vercel cron) */}
-        <div className="flex items-center justify-between p-3 lg:p-4 bg-primary/5 border border-primary/30 rounded-xl">
-          <div className="space-y-0.5 flex-1 mr-3">
-            <p className="text-xs lg:text-sm font-medium flex items-center gap-2">
-              <RocketLaunchIcon className="w-3.5 h-3.5 text-primary" />
-              Run Full Cron Pipeline (All Branches)
-            </p>
-            <p className="text-[10px] lg:text-xs text-muted-foreground">
-              Mirrors the daily 9:00 AM IST Vercel cron — runs WhatsApp expiry job + scheduled reports for every branch
-            </p>
-          </div>
-          <Button
-            variant="default"
-            size="sm"
-            onClick={handleRunFullPipeline}
-            disabled={isRunningPipeline}
-            className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg active:scale-[0.97] transition-all"
-          >
-            {isRunningPipeline ? <><ButtonSpinner /> Running...</> : "▶ Run Pipeline"}
-          </Button>
-        </div>
+        {/* Per-branch only — global pipeline removed */}
+
 
         {/* Per-branch Expiry Reminder */}
         <div className="flex items-center justify-between p-3 lg:p-4 bg-muted/20 border border-border/40 rounded-xl">
