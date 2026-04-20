@@ -541,15 +541,24 @@ async function sendEmailWithResend(to: string, subject: string, html: string, at
 
 // ─── WhatsApp sender ───
 
-async function sendWhatsAppMessage(phone: string, message: string): Promise<boolean> {
+async function sendWhatsAppMessage(phone: string, message: string): Promise<{ ok: boolean; status?: number; body?: string; reason?: string }> {
   try {
     const PERISKOPE_API_KEY = Deno.env.get("PERISKOPE_API_KEY");
     const PERISKOPE_PHONE = Deno.env.get("PERISKOPE_PHONE");
-    if (!PERISKOPE_API_KEY || !PERISKOPE_PHONE) return false;
+    if (!PERISKOPE_API_KEY || !PERISKOPE_PHONE) {
+      console.error("[generate-report:whatsapp] Missing PERISKOPE credentials");
+      return { ok: false, reason: "missing_credentials" };
+    }
+    if (!phone || String(phone).trim().length < 8) {
+      console.error("[generate-report:whatsapp] Invalid/empty phone:", phone);
+      return { ok: false, reason: "invalid_phone" };
+    }
 
-    let cleaned = String(phone || "").replace(/\D/g, "");
+    let cleaned = String(phone).replace(/\D/g, "");
     if (cleaned.startsWith("0")) cleaned = cleaned.substring(1);
     if (cleaned.length === 10) cleaned = `91${cleaned}`;
+
+    console.log(`[generate-report:whatsapp] Sending to chat_id=${cleaned}@c.us`);
 
     const waRes = await fetch("https://api.periskope.app/v1/message/send", {
       method: "POST",
@@ -563,10 +572,16 @@ async function sendWhatsAppMessage(phone: string, message: string): Promise<bool
         message,
       }),
     });
-    return waRes.ok;
+    const respBody = await waRes.text();
+    if (!waRes.ok) {
+      console.error(`[generate-report:whatsapp] FAILED status=${waRes.status} body=${respBody.slice(0, 500)}`);
+    } else {
+      console.log(`[generate-report:whatsapp] Sent OK status=${waRes.status}`);
+    }
+    return { ok: waRes.ok, status: waRes.status, body: respBody };
   } catch (e) {
-    console.error("WhatsApp error:", e);
-    return false;
+    console.error("[generate-report:whatsapp] Exception:", e);
+    return { ok: false, reason: String(e) };
   }
 }
 
@@ -661,27 +676,37 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-      const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        global: { headers: { Authorization: authHeader } },
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
+      // Allow service-role bearer to bypass user-auth check (used by the
+      // scheduled-reports cron and any internal server-to-server calls).
+      const bearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+      const isServiceRole = bearerToken === SUPABASE_SERVICE_ROLE_KEY;
 
-      const { data: userData } = await anonClient.auth.getUser();
-      if (!userData?.user) {
-        return new Response(JSON.stringify({ error: "Invalid auth" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (!isServiceRole) {
+        const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+        const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          global: { headers: { Authorization: authHeader } },
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+
+        const { data: userData } = await anonClient.auth.getUser();
+        if (!userData?.user) {
+          return new Response(JSON.stringify({ error: "Invalid auth" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      } else {
+        console.log("[generate-report] Service-role call detected — bypassing user auth check");
       }
 
       config = parsed as ReportConfig;
 
       // For WhatsApp channel - if no phone provided, get from gym_settings
-      if (config.deliveryChannel === 'whatsapp' && !config.whatsappPhone && config.branchId) {
+      if ((config.deliveryChannel === 'whatsapp' || config.deliveryChannel === 'both' || config.sendWhatsapp) && !config.whatsappPhone && config.branchId) {
         const { data: gymSettings } = await supabase
           .from("gym_settings")
           .select("gym_phone")
           .eq("branch_id", config.branchId)
           .maybeSingle();
         config.whatsappPhone = gymSettings?.gym_phone || undefined;
+        console.log(`[generate-report] WhatsApp phone resolved from gym_settings: ${config.whatsappPhone || "NOT FOUND"}`);
       }
     } else {
       return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -998,15 +1023,19 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
 
   if (shouldSendWhatsApp) {
     if (config.whatsappPhone) {
-      whatsappSent = await sendWhatsAppMessage(config.whatsappPhone, whatsappMessage);
-      if (whatsappSent && config.branchId) {
+      const waResult = await sendWhatsAppMessage(config.whatsappPhone, whatsappMessage);
+      whatsappSent = waResult.ok;
+      if (waResult.ok && config.branchId) {
         const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: config.branchId });
         if (tenantId) {
           await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tenantId, _count: 1 });
         }
       }
+      if (!waResult.ok) {
+        console.error(`[generate-report] WhatsApp delivery failed for branch ${config.branchId}:`, waResult);
+      }
     } else {
-      console.warn("No WhatsApp phone number available for report delivery");
+      console.warn(`[generate-report] No WhatsApp phone for branch ${config.branchId} — skipping WA delivery`);
     }
   }
 
