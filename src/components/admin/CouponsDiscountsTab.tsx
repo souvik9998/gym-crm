@@ -521,6 +521,11 @@ export const CouponsDiscountsTab = () => {
                   Expired members only
                 </label>
               </div>
+              {(form.first_time_only || form.existing_members_only || form.expired_members_only) && (
+                <p className="text-[11px] text-muted-foreground italic pl-1">
+                  💡 If multiple conditions are enabled, the coupon applies to members matching <strong>any one</strong> of them.
+                </p>
+              )}
             </div>
 
             {/* Advanced */}
