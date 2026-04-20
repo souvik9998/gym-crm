@@ -673,6 +673,11 @@ export const MemberActivityDialog = ({
                           <span className="font-medium">
                             {details?.date_of_birth ? formatDate(details.date_of_birth) : "Not provided"}
                           </span>
+                          {details?.date_of_birth && calculateAge(details.date_of_birth) !== null && (
+                            <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0 border-accent/30 text-accent">
+                              {calculateAge(details.date_of_birth)} yrs
+                            </Badge>
+                          )}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
