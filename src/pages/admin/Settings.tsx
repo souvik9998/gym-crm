@@ -156,7 +156,29 @@ SettingsGeneralSkeleton.displayName = "SettingsGeneralSkeleton";
 const AdminSettings = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { currentBranch } = useBranch();
+  const { currentBranch, tenantId } = useBranch();
+  const [tenantInfo, setTenantInfo] = useState<{ name: string | null; email: string | null; phone: string | null } | null>(null);
+
+  // Fetch tenant info (gym organization) so we can prefill Gym Information from
+  // what was registered in the Super Admin portal whenever a field is empty.
+  useEffect(() => {
+    if (!tenantId) {
+      setTenantInfo(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("tenants")
+        .select("name, email, phone")
+        .eq("id", tenantId)
+        .maybeSingle();
+      if (!cancelled && !error && data) {
+        setTenantInfo({ name: data.name ?? null, email: data.email ?? null, phone: data.phone ?? null });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [tenantId]);
   const { isStaffLoggedIn, staffUser, permissions: staffPermissions } = useStaffAuth();
 
   // Helper: log activity as staff if staff session, else as admin
