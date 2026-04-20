@@ -1023,15 +1023,19 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
 
   if (shouldSendWhatsApp) {
     if (config.whatsappPhone) {
-      whatsappSent = await sendWhatsAppMessage(config.whatsappPhone, whatsappMessage);
-      if (whatsappSent && config.branchId) {
+      const waResult = await sendWhatsAppMessage(config.whatsappPhone, whatsappMessage);
+      whatsappSent = waResult.ok;
+      if (waResult.ok && config.branchId) {
         const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: config.branchId });
         if (tenantId) {
           await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tenantId, _count: 1 });
         }
       }
+      if (!waResult.ok) {
+        console.error(`[generate-report] WhatsApp delivery failed for branch ${config.branchId}:`, waResult);
+      }
     } else {
-      console.warn("No WhatsApp phone number available for report delivery");
+      console.warn(`[generate-report] No WhatsApp phone for branch ${config.branchId} — skipping WA delivery`);
     }
   }
 
