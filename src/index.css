@@ -330,22 +330,22 @@
 @keyframes dropdown-open {
   0% {
     opacity: 0;
-    transform: translateY(-6px) scale(0.96);
+    transform: scale(0.96);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: scale(1);
   }
 }
 
 @keyframes dropdown-close {
   0% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: scale(1);
   }
   100% {
     opacity: 0;
-    transform: translateY(-4px) scale(0.97);
+    transform: scale(0.97);
   }
 }
 
