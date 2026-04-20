@@ -34,9 +34,19 @@ interface UseCouponValidationProps {
   isNewMember: boolean;
   memberId?: string;
   subtotal: number;
+  /**
+   * Context the coupon is being applied in. Defaults are inferred from
+   * `isNewMember` for backward compatibility:
+   *   - true  → "new_registration"
+   *   - false → "renewal"
+   * Pass "event" explicitly from the event-registration flow.
+   */
+  context?: "new_registration" | "renewal" | "event";
 }
 
-export function useCouponValidation({ branchId, isNewMember, memberId, subtotal }: UseCouponValidationProps) {
+export function useCouponValidation({ branchId, isNewMember, memberId, subtotal, context }: UseCouponValidationProps) {
+  const effectiveContext: "new_registration" | "renewal" | "event" =
+    context ?? (isNewMember ? "new_registration" : "renewal");
   const [couponCode, setCouponCode] = useState("");
   const [isValidating, setIsValidating] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<CouponDiscount | null>(null);
