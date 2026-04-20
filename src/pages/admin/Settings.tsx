@@ -1779,10 +1779,9 @@ const AdminSettings = () => {
                         onClick={handleSaveGymInfo}
                         disabled={isSavingGymInfo || (
                           gymName === (settings?.gym_name || "") &&
-                          gymPhone === (settings?.gym_phone || "") &&
-                          gymAddress === (settings?.gym_address || "") &&
-                          gymEmail === (settings?.gym_email || "")
+                          gymAddress === (settings?.gym_address || "")
                         )}
+
                       >
                         {isSavingGymInfo ? (
                           <span className="flex items-center gap-2"><ButtonSpinner />Saving...</span>
