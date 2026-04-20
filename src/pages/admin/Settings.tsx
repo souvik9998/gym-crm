@@ -1947,9 +1947,10 @@ const AdminSettings = () => {
                         maxLength={500}
                       />
                     </div>
-                    <div className="pt-2">
+                    <div className="pt-2 flex justify-end">
                       <Button
-                        className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
+                        size="sm"
+                        className="h-9 px-5 text-sm font-medium rounded-lg bg-accent text-accent-foreground hover:bg-accent/90 active:scale-[0.97] transition-all duration-200 shadow-sm hover:shadow-md disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none gap-2 group"
                         onClick={handleSaveInvoice}
                         disabled={isSavingInvoice || (
                           invoicePrefix === (settings?.invoice_prefix || "INV") &&
@@ -1958,8 +1959,10 @@ const AdminSettings = () => {
                         )}
                       >
                         {isSavingInvoice ? (
-                          <span className="flex items-center gap-2"><ButtonSpinner />Saving...</span>
-                        ) : "Save Invoice Settings"}
+                          <><ButtonSpinner />Saving...</>
+                        ) : (
+                          <><Save className="w-4 h-4 transition-transform group-hover:-rotate-6" />Save Changes</>
+                        )}
                       </Button>
                     </div>
                   </CardContent>
