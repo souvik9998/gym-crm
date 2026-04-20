@@ -309,11 +309,13 @@ const AdminSettings = () => {
     if (fetchedSettings && !initialSyncDone.current) {
       initialSyncDone.current = true;
       setSettings(fetchedSettings);
-      setGymName(fetchedSettings.gym_name || "");
-      setGymPhone(fetchedSettings.gym_phone || "");
-      setGymAddress(fetchedSettings.gym_address || "");
+      // Fall back to branch then tenant so the form is always populated with
+      // information that was registered for this organization in the Super Admin portal.
+      setGymName(fetchedSettings.gym_name || currentBranch?.name || tenantInfo?.name || "");
+      setGymPhone(fetchedSettings.gym_phone || currentBranch?.phone || tenantInfo?.phone || "");
+      setGymAddress(fetchedSettings.gym_address || currentBranch?.address || "");
       setWhatsappEnabled(fetchedSettings.whatsapp_enabled === true);
-      setGymEmail(fetchedSettings.gym_email || "");
+      setGymEmail(fetchedSettings.gym_email || currentBranch?.email || tenantInfo?.email || "");
       setGymGst(fetchedSettings.gym_gst || "");
       setInvoicePrefix(fetchedSettings.invoice_prefix || "INV");
       setInvoiceFooter(fetchedSettings.invoice_footer_message || "Thank you for choosing our gym!");
@@ -321,7 +323,7 @@ const AdminSettings = () => {
       setInvoiceTerms(fetchedSettings.invoice_terms || "");
       setInvoiceShowGst(fetchedSettings.invoice_show_gst !== false);
     }
-  }, [fetchedSettings]);
+  }, [fetchedSettings, currentBranch, tenantInfo]);
 
   const monthlyPackagesSynced = useRef(false);
   useEffect(() => {
@@ -342,15 +344,21 @@ const AdminSettings = () => {
   // Handle case where no settings exist for the branch - create them
   useEffect(() => {
     if (!isLoadingData && !fetchedSettings && currentBranch && (user || isStaffLoggedIn)) {
-      // Create default settings for this branch
+      // Seed defaults from branch first, then tenant info from the Super Admin portal
+      const seedName = currentBranch.name || tenantInfo?.name || "";
+      const seedPhone = currentBranch.phone || tenantInfo?.phone || null;
+      const seedAddress = currentBranch.address || null;
+      const seedEmail = currentBranch.email || tenantInfo?.email || null;
+
       const createDefaultSettings = async () => {
         const { error } = await supabase
           .from("gym_settings")
           .insert({
             branch_id: currentBranch.id,
-            gym_name: currentBranch.name || "",
-            gym_phone: currentBranch.phone || null,
-            gym_address: currentBranch.address || null,
+            gym_name: seedName,
+            gym_phone: seedPhone,
+            gym_address: seedAddress,
+            gym_email: seedEmail,
             whatsapp_enabled: false,
           });
 
@@ -359,15 +367,16 @@ const AdminSettings = () => {
         } else {
           console.error("Error creating gym_settings:", error);
           setSettings(null);
-          setGymName(currentBranch.name || "");
-          setGymPhone(currentBranch.phone || "");
-          setGymAddress(currentBranch.address || "");
+          setGymName(seedName);
+          setGymPhone(seedPhone || "");
+          setGymAddress(seedAddress || "");
+          setGymEmail(seedEmail || "");
           setWhatsappEnabled(false);
         }
       };
       createDefaultSettings();
     }
-  }, [isLoadingData, fetchedSettings, currentBranch, user, isStaffLoggedIn, refetchData]);
+  }, [isLoadingData, fetchedSettings, currentBranch, user, isStaffLoggedIn, refetchData, tenantInfo]);
 
   // Background invalidation for cross-page consistency (fire-and-forget).
   // Also busts the public registration sessionStorage cache so the public
