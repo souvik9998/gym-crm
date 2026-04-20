@@ -359,7 +359,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
                   <p className="text-xs font-semibold text-foreground">{section.label}</p>
                 </div>
                 {hasFields ? (
-                  <div className={fields.length <= 3 ? "space-y-2" : "grid grid-cols-2 gap-2"}>
+                  <div className={fields.length <= 3 ? "space-y-2" : "grid grid-cols-1 sm:grid-cols-2 gap-2"}>
                     {fields.map((f) => renderFieldInput(f.key, f.label))}
                   </div>
                 ) : (
@@ -394,28 +394,30 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
           return (
             <div key={a.id} className="rounded-xl border border-border/60 bg-card/50 p-3 hover:border-border transition-colors">
               {confirmDeleteId === a.id && (
-                <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg p-2.5 mb-2 animate-in fade-in duration-200">
+                <div className="flex flex-wrap items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg p-2.5 mb-2 animate-in fade-in duration-200">
                   <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0" />
-                  <span className="text-xs text-destructive font-medium flex-1">Delete this assessment?</span>
-                  <Button size="sm" variant="destructive" className="h-6 text-xs px-2 rounded-md" onClick={() => handleDelete(a.id)} disabled={deletingId === a.id}>
-                    {deletingId === a.id ? <ButtonSpinner /> : "Delete"}
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-6 text-xs px-2 rounded-md" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+                  <span className="text-xs text-destructive font-medium flex-1 min-w-0">Delete this assessment?</span>
+                  <div className="flex gap-2 ml-auto">
+                    <Button size="sm" variant="destructive" className="h-6 text-xs px-2 rounded-md" onClick={() => handleDelete(a.id)} disabled={deletingId === a.id}>
+                      {deletingId === a.id ? <ButtonSpinner /> : "Delete"}
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-6 text-xs px-2 rounded-md" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+                  </div>
                 </div>
               )}
-              <div className="flex items-center justify-between">
-                <button onClick={() => setExpandedId(expandedId === a.id ? null : a.id)} className="flex items-center gap-2.5 text-left flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <button onClick={() => setExpandedId(expandedId === a.id ? null : a.id)} className="flex items-center gap-1.5 sm:gap-2.5 text-left flex-1 min-w-0 flex-wrap">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Calendar className="w-3 h-3" />
-                    {formatDate(a.assessment_date)}
+                    <Calendar className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{formatDate(a.assessment_date)}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">•</span>
-                  <div className="flex items-center gap-1.5 text-xs font-medium">
-                    <User className="w-3 h-3" />
-                    {a.assessed_by}
+                  <span className="text-xs text-muted-foreground hidden sm:inline">•</span>
+                  <div className="flex items-center gap-1.5 text-xs font-medium min-w-0">
+                    <User className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{a.assessed_by}</span>
                   </div>
                   {displayData.length > 0 && (
-                    <span className="text-[10px] text-muted-foreground/70">{displayData.length} fields</span>
+                    <span className="text-[10px] text-muted-foreground/70 flex-shrink-0">{displayData.length} fields</span>
                   )}
                 </button>
                 <div className="flex items-center gap-0.5 flex-shrink-0">

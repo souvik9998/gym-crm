@@ -190,8 +190,8 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
 
         {showHealthForm ? (
           <div className="space-y-2">
-            <div className="grid grid-cols-3 gap-2">
-              <div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="col-span-2 sm:col-span-1">
                 <Label className="text-[10px]">Blood Group</Label>
                 <Select value={healthForm.blood_group || ""} onValueChange={v => setHealthForm(f => ({ ...f, blood_group: v }))}>
                   <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue placeholder="Select" /></SelectTrigger>
@@ -219,7 +219,7 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
               <Label className="text-[10px]">Allergies</Label>
               <Input value={healthForm.allergies || ""} onChange={e => setHealthForm(f => ({ ...f, allergies: e.target.value }))} className="h-8 text-xs mt-0.5" placeholder="Known allergies..." />
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <Label className="text-[10px]">Emergency Contact</Label>
                 <Input value={healthForm.emergency_contact_name || ""} onChange={e => setHealthForm(f => ({ ...f, emergency_contact_name: e.target.value }))} className="h-8 text-xs mt-0.5" placeholder="Name" />
@@ -237,13 +237,13 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
             </div>
           </div>
         ) : hasHealthData ? (
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs break-words">
             {healthDetails.blood_group && <div><span className="text-muted-foreground">Blood: </span><span className="font-medium">{healthDetails.blood_group}</span></div>}
             {healthDetails.height_cm && <div><span className="text-muted-foreground">Height: </span><span className="font-medium">{healthDetails.height_cm} cm</span></div>}
             {healthDetails.weight_kg && <div><span className="text-muted-foreground">Weight: </span><span className="font-medium">{healthDetails.weight_kg} kg</span></div>}
-            {healthDetails.medical_conditions && <div className="col-span-2"><span className="text-muted-foreground">Conditions: </span><span className="font-medium">{healthDetails.medical_conditions}</span></div>}
-            {healthDetails.allergies && <div className="col-span-2"><span className="text-muted-foreground">Allergies: </span><span className="font-medium">{healthDetails.allergies}</span></div>}
-            {healthDetails.emergency_contact_name && <div className="col-span-2"><span className="text-muted-foreground">Emergency: </span><span className="font-medium">{healthDetails.emergency_contact_name} ({healthDetails.emergency_contact_phone})</span></div>}
+            {healthDetails.medical_conditions && <div className="sm:col-span-2"><span className="text-muted-foreground">Conditions: </span><span className="font-medium">{healthDetails.medical_conditions}</span></div>}
+            {healthDetails.allergies && <div className="sm:col-span-2"><span className="text-muted-foreground">Allergies: </span><span className="font-medium">{healthDetails.allergies}</span></div>}
+            {healthDetails.emergency_contact_name && <div className="sm:col-span-2"><span className="text-muted-foreground">Emergency: </span><span className="font-medium">{healthDetails.emergency_contact_name} ({healthDetails.emergency_contact_phone})</span></div>}
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">No health details added yet</p>
@@ -299,13 +299,15 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
               <div key={doc.id} className="rounded-lg border border-border/60 bg-card/50 p-2.5 hover:border-border transition-colors">
                 {/* Inline delete confirmation */}
                 {confirmDeleteId === doc.id && (
-                  <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg p-2 mb-2 animate-in fade-in duration-200">
+                  <div className="flex flex-wrap items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg p-2 mb-2 animate-in fade-in duration-200">
                     <AlertTriangle className="w-3.5 h-3.5 text-destructive flex-shrink-0" />
-                    <span className="text-xs text-destructive font-medium flex-1 truncate">Delete "{doc.file_name}"?</span>
-                    <Button size="sm" variant="destructive" className="h-6 text-xs px-2 rounded-md" onClick={() => handleDeleteDoc(doc)} disabled={deletingId === doc.id}>
-                      {deletingId === doc.id ? <ButtonSpinner /> : "Delete"}
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-6 text-xs px-2 rounded-md" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+                    <span className="text-xs text-destructive font-medium flex-1 min-w-0 truncate">Delete "{doc.file_name}"?</span>
+                    <div className="flex gap-2 ml-auto">
+                      <Button size="sm" variant="destructive" className="h-6 text-xs px-2 rounded-md" onClick={() => handleDeleteDoc(doc)} disabled={deletingId === doc.id}>
+                        {deletingId === doc.id ? <ButtonSpinner /> : "Delete"}
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-6 text-xs px-2 rounded-md" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+                    </div>
                   </div>
                 )}
                 <div className="flex items-center justify-between">
