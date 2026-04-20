@@ -7,47 +7,131 @@ import { toast } from "@/components/ui/sonner";
 import { getEdgeFunctionUrl, getEdgeFunctionHeaders } from "@/lib/supabaseConfig";
 import { getAuthToken } from "@/api/authenticatedFetch";
 import { useBranch } from "@/contexts/BranchContext";
-import { BoltIcon } from "@heroicons/react/24/outline";
+import { BoltIcon, BeakerIcon, RocketLaunchIcon, ChartBarIcon } from "@heroicons/react/24/outline";
+
+type RunResult = {
+  label: string;
+  ok: boolean;
+  status: number;
+  body: any;
+  ranAt: string;
+};
 
 export function ManualAutomationTriggers() {
   const [isRunningExpiry, setIsRunningExpiry] = useState(false);
-  const [lastExpiryResult, setLastExpiryResult] = useState<any>(null);
+  const [isRunningReports, setIsRunningReports] = useState(false);
+  const [isRunningTest, setIsRunningTest] = useState(false);
+  const [isRunningPipeline, setIsRunningPipeline] = useState(false);
+  const [results, setResults] = useState<RunResult[]>([]);
   const { currentBranch } = useBranch();
+
+  const pushResult = (r: RunResult) => setResults((prev) => [r, ...prev].slice(0, 6));
+
+  const callEdge = async (fn: string, payload: Record<string, unknown>): Promise<{ ok: boolean; status: number; body: any }> => {
+    const token = await getAuthToken();
+    if (!token) throw new Error("Not authenticated");
+    const res = await fetch(getEdgeFunctionUrl(fn), {
+      method: "POST",
+      headers: getEdgeFunctionHeaders(token),
+      body: JSON.stringify(payload),
+    });
+    let body: any = null;
+    const text = await res.text();
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = text;
+    }
+    return { ok: res.ok, status: res.status, body };
+  };
 
   const handleRunExpiryReminder = async () => {
     if (!currentBranch?.id) {
       toast.error("No branch selected");
       return;
     }
-
     setIsRunningExpiry(true);
-    setLastExpiryResult(null);
     try {
-      const token = await getAuthToken();
-      if (!token) throw new Error("Not authenticated");
-
-      const res = await fetch(getEdgeFunctionUrl("daily-whatsapp-job"), {
-        method: "POST",
-        headers: getEdgeFunctionHeaders(token),
-        body: JSON.stringify({ manual: true, branchId: currentBranch.id }),
-      });
-
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Failed to run");
-
-      setLastExpiryResult(result);
-      
-      if (result.skipped) {
-        toast.info("Job already ran today", { description: "The daily expiry reminder was already executed." });
+      const result = await callEdge("daily-whatsapp-job", { manual: true, branchId: currentBranch.id });
+      pushResult({ label: `Expiry reminders (${currentBranch.name})`, ok: result.ok, status: result.status, body: result.body, ranAt: new Date().toISOString() });
+      if (!result.ok) {
+        toast.error("Expiry job failed", { description: result.body?.error || `HTTP ${result.status}` });
+      } else if (result.body?.skipped) {
+        toast.info("Already ran today");
       } else {
-        toast.success("Expiry reminders sent!", {
-          description: `${result.notificationsSent} sent, ${result.failed} failed for ${currentBranch.name}`,
+        toast.success("Expiry reminders sent", {
+          description: `${result.body?.notificationsSent ?? 0} sent / ${result.body?.failed ?? 0} failed`,
         });
       }
     } catch (e: any) {
-      toast.error("Failed to run automation", { description: e.message });
+      toast.error("Failed to run", { description: e.message });
     } finally {
       setIsRunningExpiry(false);
+    }
+  };
+
+  const handleRunReports = async () => {
+    if (!currentBranch?.id) {
+      toast.error("No branch selected");
+      return;
+    }
+    setIsRunningReports(true);
+    try {
+      const result = await callEdge("scheduled-reports", { force: true, branchId: currentBranch.id });
+      pushResult({ label: `Scheduled reports (${currentBranch.name})`, ok: result.ok, status: result.status, body: result.body, ranAt: new Date().toISOString() });
+      if (!result.ok) {
+        toast.error("Reports job failed", { description: result.body?.error || `HTTP ${result.status}` });
+      } else {
+        toast.success("Reports run complete", {
+          description: `Processed: ${result.body?.processed ?? 0}, errors: ${result.body?.errors ?? 0}`,
+        });
+      }
+    } catch (e: any) {
+      toast.error("Failed to run", { description: e.message });
+    } finally {
+      setIsRunningReports(false);
+    }
+  };
+
+  const handleTestWhatsApp = async () => {
+    setIsRunningTest(true);
+    try {
+      const result = await callEdge("daily-whatsapp-job", { test_mode: true });
+      pushResult({ label: "Test WhatsApp (admin number)", ok: result.ok, status: result.status, body: result.body, ranAt: new Date().toISOString() });
+      if (result.ok) {
+        toast.success("Test WhatsApp sent", { description: `Periskope status: ${result.body?.periskope_status}` });
+      } else {
+        toast.error("Test WhatsApp failed", { description: result.body?.error || `HTTP ${result.status}` });
+      }
+    } catch (e: any) {
+      toast.error("Failed to test", { description: e.message });
+    } finally {
+      setIsRunningTest(false);
+    }
+  };
+
+  const handleRunFullPipeline = async () => {
+    setIsRunningPipeline(true);
+    try {
+      // Run both jobs sequentially — same as the Vercel cron
+      const whatsapp = await callEdge("daily-whatsapp-job", { manual: true });
+      pushResult({ label: "Pipeline → daily-whatsapp-job (all branches)", ok: whatsapp.ok, status: whatsapp.status, body: whatsapp.body, ranAt: new Date().toISOString() });
+
+      const reports = await callEdge("scheduled-reports", { force: true });
+      pushResult({ label: "Pipeline → scheduled-reports (all due)", ok: reports.ok, status: reports.status, body: reports.body, ranAt: new Date().toISOString() });
+
+      const ok = whatsapp.ok && reports.ok;
+      if (ok) {
+        toast.success("Cron pipeline executed", {
+          description: `WhatsApp: ${whatsapp.body?.notificationsSent ?? 0} sent · Reports: ${reports.body?.processed ?? 0} processed`,
+        });
+      } else {
+        toast.error("Pipeline finished with errors", { description: "See result panel for details" });
+      }
+    } catch (e: any) {
+      toast.error("Pipeline failed", { description: e.message });
+    } finally {
+      setIsRunningPipeline(false);
     }
   };
 
@@ -61,17 +145,43 @@ export function ManualAutomationTriggers() {
           <div>
             <CardTitle className="text-base lg:text-xl">Manual Automation Triggers</CardTitle>
             <CardDescription className="text-xs lg:text-sm">
-              Test and manually trigger automated messaging jobs for <strong>{currentBranch?.name || "current branch"}</strong>
+              Test & manually trigger automation jobs for <strong>{currentBranch?.name || "current branch"}</strong>
             </CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3 p-4 lg:p-6 pt-0 lg:pt-0">
+        {/* Full Pipeline (mirrors the Vercel cron) */}
+        <div className="flex items-center justify-between p-3 lg:p-4 bg-primary/5 border border-primary/30 rounded-xl">
+          <div className="space-y-0.5 flex-1 mr-3">
+            <p className="text-xs lg:text-sm font-medium flex items-center gap-2">
+              <RocketLaunchIcon className="w-3.5 h-3.5 text-primary" />
+              Run Full Cron Pipeline (All Branches)
+            </p>
+            <p className="text-[10px] lg:text-xs text-muted-foreground">
+              Mirrors the daily 9:00 AM IST Vercel cron — runs WhatsApp expiry job + scheduled reports for every branch
+            </p>
+          </div>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleRunFullPipeline}
+            disabled={isRunningPipeline}
+            className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg active:scale-[0.97] transition-all"
+          >
+            {isRunningPipeline ? <><ButtonSpinner /> Running...</> : "▶ Run Pipeline"}
+          </Button>
+        </div>
+
+        {/* Per-branch Expiry Reminder */}
         <div className="flex items-center justify-between p-3 lg:p-4 bg-muted/20 border border-border/40 rounded-xl">
           <div className="space-y-0.5 flex-1 mr-3">
-            <p className="text-xs lg:text-sm font-medium">Expiry Reminder Job</p>
+            <p className="text-xs lg:text-sm font-medium flex items-center gap-2">
+              <BoltIcon className="w-3.5 h-3.5 text-orange-500" />
+              Expiry Reminder Job (this branch)
+            </p>
             <p className="text-[10px] lg:text-xs text-muted-foreground">
-              Sends reminders to members with expiring/expired memberships in this branch
+              Sends expiring-soon / today / expired reminders for {currentBranch?.name || "this branch"}
             </p>
           </div>
           <Button
@@ -85,33 +195,73 @@ export function ManualAutomationTriggers() {
           </Button>
         </div>
 
-        {lastExpiryResult && !lastExpiryResult.skipped && (
-          <div className="p-3 bg-muted/30 border border-border/40 rounded-lg space-y-1.5 animate-fade-in">
-            <p className="text-xs font-medium text-muted-foreground">Last Run Result</p>
-            <div className="flex flex-wrap gap-1.5">
-              <Badge variant="secondary" className="text-[10px]">
-                Expiring Soon: {lastExpiryResult.expiringSoon}
-              </Badge>
-              <Badge variant="secondary" className="text-[10px]">
-                Expiring Today: {lastExpiryResult.expiringToday}
-              </Badge>
-              <Badge variant="secondary" className="text-[10px]">
-                Expired: {lastExpiryResult.expiredReminders}
-              </Badge>
-              <Badge variant="default" className="text-[10px] bg-emerald-600">
-                Sent: {lastExpiryResult.notificationsSent}
-              </Badge>
-              {lastExpiryResult.failed > 0 && (
-                <Badge variant="destructive" className="text-[10px]">
-                  Failed: {lastExpiryResult.failed}
-                </Badge>
-              )}
-            </div>
+        {/* Per-branch Reports */}
+        <div className="flex items-center justify-between p-3 lg:p-4 bg-muted/20 border border-border/40 rounded-xl">
+          <div className="space-y-0.5 flex-1 mr-3">
+            <p className="text-xs lg:text-sm font-medium flex items-center gap-2">
+              <ChartBarIcon className="w-3.5 h-3.5 text-blue-500" />
+              Scheduled Reports (this branch)
+            </p>
+            <p className="text-[10px] lg:text-xs text-muted-foreground">
+              Force-runs the configured automated report for {currentBranch?.name || "this branch"} now
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRunReports}
+            disabled={isRunningReports}
+            className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg active:scale-[0.97] transition-all"
+          >
+            {isRunningReports ? <><ButtonSpinner /> Running...</> : "▶ Run Now"}
+          </Button>
+        </div>
+
+        {/* Test WhatsApp */}
+        <div className="flex items-center justify-between p-3 lg:p-4 bg-emerald-500/5 border border-emerald-500/30 rounded-xl">
+          <div className="space-y-0.5 flex-1 mr-3">
+            <p className="text-xs lg:text-sm font-medium flex items-center gap-2">
+              <BeakerIcon className="w-3.5 h-3.5 text-emerald-600" />
+              Send Test WhatsApp Message
+            </p>
+            <p className="text-[10px] lg:text-xs text-muted-foreground">
+              Sends a single message to the configured admin number — confirms the Periskope WhatsApp pipeline is working
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleTestWhatsApp}
+            disabled={isRunningTest}
+            className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg active:scale-[0.97] transition-all"
+          >
+            {isRunningTest ? <><ButtonSpinner /> Sending...</> : "▶ Send Test"}
+          </Button>
+        </div>
+
+        {/* Recent results panel */}
+        {results.length > 0 && (
+          <div className="space-y-2 mt-2">
+            <p className="text-xs font-medium text-muted-foreground">Recent Runs</p>
+            {results.map((r, i) => (
+              <div key={i} className="p-3 bg-muted/30 border border-border/40 rounded-lg space-y-1.5 animate-fade-in">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium truncate">{r.label}</p>
+                  <Badge variant={r.ok ? "default" : "destructive"} className={`text-[10px] ${r.ok ? "bg-emerald-600" : ""}`}>
+                    {r.ok ? "OK" : "FAIL"} · {r.status}
+                  </Badge>
+                </div>
+                <p className="text-[10px] text-muted-foreground">{new Date(r.ranAt).toLocaleString()}</p>
+                <pre className="text-[10px] bg-background/60 p-2 rounded overflow-auto max-h-40 leading-relaxed">
+                  {typeof r.body === "string" ? r.body : JSON.stringify(r.body, null, 2)}
+                </pre>
+              </div>
+            ))}
           </div>
         )}
 
         <p className="text-[10px] text-muted-foreground italic">
-          💡 These jobs run automatically every day at 9:00 AM IST for all branches. Use manual triggers only for testing.
+          💡 The cron pipeline runs automatically every day at 9:00 AM IST. Use these triggers for testing & ad-hoc runs.
         </p>
       </CardContent>
     </Card>
