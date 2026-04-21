@@ -82,8 +82,9 @@ const FK_MAP: Record<string, Record<string, string>> = {
   member_documents: { member_id: "members" },
   subscriptions: { member_id: "members" },
   personal_trainers: {},
-  trainer_time_slots: { trainer_id: "personal_trainers" },
-  pt_subscriptions: { member_id: "members", trainer_id: "personal_trainers", time_slot_id: "trainer_time_slots" },
+  // trainer_id here references public.staff(id), not personal_trainers — handled via STAFF_FK_COLS below
+  trainer_time_slots: {},
+  pt_subscriptions: { member_id: "members", personal_trainer_id: "personal_trainers", time_slot_id: "trainer_time_slots" },
   time_slot_members: { time_slot_id: "trainer_time_slots", member_id: "members", subscription_id: "pt_subscriptions" },
   member_exercise_plans: { member_id: "members" },
   member_exercise_items: { plan_id: "member_exercise_plans" },
