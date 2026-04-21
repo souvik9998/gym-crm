@@ -1868,11 +1868,29 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                         <span className="font-semibold tabular-nums">₹{taxAmount.toLocaleString("en-IN")}</span>
                       </div>
                     )}
+                    {couponDiscount > 0 && (
+                      <div className="flex justify-between text-sm text-success animate-fade-in">
+                        <span>Coupon ({adminCoupon.appliedCoupon?.coupon.code})</span>
+                        <span className="font-semibold tabular-nums">-₹{couponDiscount.toLocaleString("en-IN")}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between font-bold pt-2.5 border-t border-border/60 text-base">
                       <span>Total ({paymentMode === "upi" ? "UPI" : "Cash"})</span>
                       <span className="text-foreground tabular-nums">₹{totalAmount.toLocaleString("en-IN")}</span>
                     </div>
                   </div>
+
+                  {/* Coupon Input */}
+                  <CouponInput
+                    couponCode={adminCoupon.couponCode}
+                    onCouponCodeChange={adminCoupon.setCouponCode}
+                    onApply={adminCoupon.validateCoupon}
+                    onRemove={adminCoupon.removeCoupon}
+                    isValidating={adminCoupon.isValidating}
+                    appliedCoupon={adminCoupon.appliedCoupon}
+                    error={adminCoupon.couponError}
+                    compact
+                  />
 
                   {/* Notify member via WhatsApp */}
                   <label className="flex items-start gap-3 p-3 rounded-xl border border-border/60 bg-card hover:bg-muted/30 cursor-pointer transition-colors">
