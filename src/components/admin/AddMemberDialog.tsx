@@ -73,6 +73,8 @@ import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { useDebounce } from "@/hooks/useDebounce";
+import CouponInput from "@/components/ui/coupon-input";
+import { useCouponValidation } from "@/hooks/useCouponValidation";
 
 interface MonthlyPackage {
   id: string;
@@ -412,7 +414,17 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const ptTotal = (wantsPT || isPTOnly) ? ptFee : 0;
   const subtotalAmount = gymTotal + ptTotal;
   const taxAmount = taxEnabled && taxRate > 0 ? Math.round((subtotalAmount * taxRate) / 100) : 0;
-  const totalAmount = subtotalAmount + taxAmount;
+
+  // Coupon validation — works for new members and existing-member actions
+  const adminCoupon = useCouponValidation({
+    branchId: currentBranch?.id,
+    isNewMember: !isExistingMemberAction,
+    memberId: existingMember?.id,
+    subtotal: subtotalAmount + taxAmount,
+    context: isExistingMemberAction ? "renewal" : "new_registration",
+  });
+  const couponDiscount = adminCoupon.appliedCoupon?.discountAmount || 0;
+  const totalAmount = Math.max(0, subtotalAmount + taxAmount - couponDiscount);
 
   // Calculate the gym membership end date for PT capping
   const gymMembershipEndDate = (() => {
@@ -553,7 +565,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     return true;
   })();
 
-  const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptFee > 0 && ptMonthOptions.length > 0) : !!selectedPackageId;
+  const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptMonthOptions.length > 0) : !!selectedPackageId;
 
 
   const goToStep = (step: number) => {
@@ -760,6 +772,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       }
 
       const paymentType = wantsPT ? "gym_and_pt" : "gym_membership";
+      const couponNote = adminCoupon.appliedCoupon
+        ? ` (Coupon: ${adminCoupon.appliedCoupon.coupon.code}, -₹${couponDiscount})`
+        : "";
       const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
         member_id: member.id,
         subscription_id: subscription.id,
@@ -767,16 +782,32 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         payment_mode: paymentMode,
         status: "success",
         payment_type: paymentType,
-        notes: `Added via admin dashboard (${paymentMode.toUpperCase()})`,
+        notes: `Added via admin dashboard (${paymentMode.toUpperCase()})${couponNote}`,
         branch_id: currentBranch?.id,
       }).select().single();
       if (paymentError) throw paymentError;
 
-      await createMembershipIncomeEntry(
-        monthlyFee, "gym_membership",
-        `New member - ${name} (${selectedPackage?.months || 1} months)`,
-        member.id, undefined, paymentRecord.id, currentBranch?.id
-      );
+      // Record coupon usage if applied
+      if (adminCoupon.appliedCoupon) {
+        await supabase.from("coupon_usage").insert({
+          coupon_id: adminCoupon.appliedCoupon.coupon.id,
+          member_id: member.id,
+          payment_id: paymentRecord.id,
+          discount_applied: couponDiscount,
+          branch_id: currentBranch?.id,
+        });
+        await supabase.from("coupons").update({
+          usage_count: adminCoupon.appliedCoupon.coupon.usage_count + 1,
+        }).eq("id", adminCoupon.appliedCoupon.coupon.id);
+      }
+
+      if (monthlyFee > 0) {
+        await createMembershipIncomeEntry(
+          monthlyFee, "gym_membership",
+          `New member - ${name} (${selectedPackage?.months || 1} months)`,
+          member.id, undefined, paymentRecord.id, currentBranch?.id
+        );
+      }
 
       if (joiningFee > 0) {
         await createMembershipIncomeEntry(
@@ -900,6 +931,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
         // Create payment record
         const paymentType = selectedAction === "renew_gym_pt" ? "gym_and_pt" : "gym_renewal";
+        const couponNote = adminCoupon.appliedCoupon
+          ? ` (Coupon: ${adminCoupon.appliedCoupon.coupon.code}, -₹${couponDiscount})`
+          : "";
         const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
           member_id: existingMember.id,
           subscription_id: subscription.id,
@@ -907,17 +941,33 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           payment_mode: paymentMode,
           status: "success",
           payment_type: paymentType,
-          notes: `Renewed via admin dashboard (${paymentMode.toUpperCase()})`,
+          notes: `Renewed via admin dashboard (${paymentMode.toUpperCase()})${couponNote}`,
           branch_id: currentBranch.id,
         }).select().single();
         if (paymentError) throw paymentError;
 
+        // Record coupon usage if applied
+        if (adminCoupon.appliedCoupon) {
+          await supabase.from("coupon_usage").insert({
+            coupon_id: adminCoupon.appliedCoupon.coupon.id,
+            member_id: existingMember.id,
+            payment_id: paymentRecord.id,
+            discount_applied: couponDiscount,
+            branch_id: currentBranch.id,
+          });
+          await supabase.from("coupons").update({
+            usage_count: adminCoupon.appliedCoupon.coupon.usage_count + 1,
+          }).eq("id", adminCoupon.appliedCoupon.coupon.id);
+        }
+
         // Ledger entries
-        await createMembershipIncomeEntry(
-          monthlyFee, "gym_renewal",
-          `Renewal - ${existingMember.name} (${selectedPackage?.months || 1} months)`,
-          existingMember.id, undefined, paymentRecord.id, currentBranch.id
-        );
+        if (monthlyFee > 0) {
+          await createMembershipIncomeEntry(
+            monthlyFee, "gym_renewal",
+            `Renewal - ${existingMember.name} (${selectedPackage?.months || 1} months)`,
+            existingMember.id, undefined, paymentRecord.id, currentBranch.id
+          );
+        }
 
         if (joiningFee > 0) {
           await createMembershipIncomeEntry(
@@ -940,11 +990,13 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
             branch_id: currentBranch.id,
           });
 
-          await createMembershipIncomeEntry(
-            ptFee, "pt_subscription",
-            `PT subscription - ${existingMember.name} with ${selectedTrainer?.name}`,
-            existingMember.id, undefined, paymentRecord.id, currentBranch.id
-          );
+          if (ptFee > 0) {
+            await createMembershipIncomeEntry(
+              ptFee, "pt_subscription",
+              `PT subscription - ${existingMember.name} with ${selectedTrainer?.name}`,
+              existingMember.id, undefined, paymentRecord.id, currentBranch.id
+            );
+          }
           if (selectedTrainer) {
             await calculateTrainerPercentageExpense(
               selectedTrainerId, ptFee, existingMember.id, undefined, undefined, existingMember.name, currentBranch.id
@@ -975,22 +1027,41 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           branch_id: currentBranch.id,
         });
 
+        const couponNotePT = adminCoupon.appliedCoupon
+          ? ` (Coupon: ${adminCoupon.appliedCoupon.coupon.code}, -₹${couponDiscount})`
+          : "";
         const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
           member_id: existingMember.id,
           amount: totalAmount,
           payment_mode: paymentMode,
           status: "success",
           payment_type: "pt_subscription",
-          notes: `PT added via admin dashboard (${paymentMode.toUpperCase()})`,
+          notes: `PT added via admin dashboard (${paymentMode.toUpperCase()})${couponNotePT}`,
           branch_id: currentBranch.id,
         }).select().single();
         if (paymentError) throw paymentError;
 
-        await createMembershipIncomeEntry(
-          ptFee, "pt_subscription",
-          `PT subscription - ${existingMember.name} with ${selectedTrainer?.name}`,
-          existingMember.id, undefined, paymentRecord.id, currentBranch.id
-        );
+        // Record coupon usage if applied
+        if (adminCoupon.appliedCoupon) {
+          await supabase.from("coupon_usage").insert({
+            coupon_id: adminCoupon.appliedCoupon.coupon.id,
+            member_id: existingMember.id,
+            payment_id: paymentRecord.id,
+            discount_applied: couponDiscount,
+            branch_id: currentBranch.id,
+          });
+          await supabase.from("coupons").update({
+            usage_count: adminCoupon.appliedCoupon.coupon.usage_count + 1,
+          }).eq("id", adminCoupon.appliedCoupon.coupon.id);
+        }
+
+        if (ptFee > 0) {
+          await createMembershipIncomeEntry(
+            ptFee, "pt_subscription",
+            `PT subscription - ${existingMember.name} with ${selectedTrainer?.name}`,
+            existingMember.id, undefined, paymentRecord.id, currentBranch.id
+          );
+        }
         if (selectedTrainer) {
           await calculateTrainerPercentageExpense(
             selectedTrainerId, ptFee, existingMember.id, undefined, undefined, existingMember.name, currentBranch.id
@@ -1080,6 +1151,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setEmergencyContact2Name(""); setEmergencyContact2Phone("");
     setIdentityFiles([]); setMedicalFiles([]);
     setNotifyWhatsApp(true);
+    adminCoupon.removeCoupon();
     const today = new Date(); today.setHours(0, 0, 0, 0); setStartDate(today);
   };
 
@@ -1796,11 +1868,29 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                         <span className="font-semibold tabular-nums">₹{taxAmount.toLocaleString("en-IN")}</span>
                       </div>
                     )}
+                    {couponDiscount > 0 && (
+                      <div className="flex justify-between text-sm text-success animate-fade-in">
+                        <span>Coupon ({adminCoupon.appliedCoupon?.coupon.code})</span>
+                        <span className="font-semibold tabular-nums">-₹{couponDiscount.toLocaleString("en-IN")}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between font-bold pt-2.5 border-t border-border/60 text-base">
                       <span>Total ({paymentMode === "upi" ? "UPI" : "Cash"})</span>
                       <span className="text-foreground tabular-nums">₹{totalAmount.toLocaleString("en-IN")}</span>
                     </div>
                   </div>
+
+                  {/* Coupon Input */}
+                  <CouponInput
+                    couponCode={adminCoupon.couponCode}
+                    onCouponCodeChange={adminCoupon.setCouponCode}
+                    onApply={adminCoupon.validateCoupon}
+                    onRemove={adminCoupon.removeCoupon}
+                    isValidating={adminCoupon.isValidating}
+                    appliedCoupon={adminCoupon.appliedCoupon}
+                    error={adminCoupon.couponError}
+                    compact
+                  />
 
                   {/* Notify member via WhatsApp */}
                   <label className="flex items-start gap-3 p-3 rounded-xl border border-border/60 bg-card hover:bg-muted/30 cursor-pointer transition-colors">
