@@ -1198,6 +1198,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setEmergencyContact2Name(""); setEmergencyContact2Phone("");
     setIdentityFiles([]); setMedicalFiles([]);
     setNotifyWhatsApp(true);
+    setRegisterFree(false);
     adminCoupon.removeCoupon();
     const today = new Date(); today.setHours(0, 0, 0, 0); setStartDate(today);
   };
