@@ -775,24 +775,32 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       const couponNote = adminCoupon.appliedCoupon
         ? ` (Coupon: ${adminCoupon.appliedCoupon.coupon.code}, -₹${couponDiscount})`
         : "";
-      const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
-        member_id: member.id,
-        subscription_id: subscription.id,
-        amount: totalAmount,
-        payment_mode: paymentMode,
-        status: "success",
-        payment_type: paymentType,
-        notes: `Added via admin dashboard (${paymentMode.toUpperCase()})${couponNote}`,
-        branch_id: currentBranch?.id,
-      }).select().single();
-      if (paymentError) throw paymentError;
 
-      // Record coupon usage if applied
+      // Only create a payment record when there's an actual amount.
+      // DB constraint: payments_amount_check (amount > 0). For ₹0 (admin waiver / 100% coupon),
+      // skip the payments row but still create the subscription + ledger + coupon-usage entries.
+      let paymentRecord: { id: string } | null = null;
+      if (totalAmount > 0) {
+        const { data, error: paymentError } = await supabase.from("payments").insert({
+          member_id: member.id,
+          subscription_id: subscription.id,
+          amount: totalAmount,
+          payment_mode: paymentMode,
+          status: "success",
+          payment_type: paymentType,
+          notes: `Added via admin dashboard (${paymentMode.toUpperCase()})${couponNote}`,
+          branch_id: currentBranch?.id,
+        }).select().single();
+        if (paymentError) throw paymentError;
+        paymentRecord = data;
+      }
+
+      // Record coupon usage if applied (works even when total is ₹0)
       if (adminCoupon.appliedCoupon) {
         await supabase.from("coupon_usage").insert({
           coupon_id: adminCoupon.appliedCoupon.coupon.id,
           member_id: member.id,
-          payment_id: paymentRecord.id,
+          payment_id: paymentRecord?.id ?? null,
           discount_applied: couponDiscount,
           branch_id: currentBranch?.id,
         });
