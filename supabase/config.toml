@@ -1,1 +1,7 @@
 project_id = "stsgzeujqcrvybveuskh"
+
+[functions.branch-export]
+verify_jwt = false
+
+[functions.branch-import]
+verify_jwt = false
