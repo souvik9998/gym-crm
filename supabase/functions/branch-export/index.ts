@@ -50,10 +50,6 @@ const BRANCH_TABLES = [
   "biometric_enrollment_requests",
   "biometric_sync_logs",
   "events",
-  "event_pricing_options",
-  "event_custom_fields",
-  "event_registrations",
-  "event_registration_items",
   "staff_branch_assignments",
   "admin_activity_logs",
 ] as const;
