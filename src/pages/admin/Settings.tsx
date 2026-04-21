@@ -54,6 +54,8 @@ const HolidayCalendarTab = lazy(() => import("@/components/admin/HolidayCalendar
 import { RegistrationFieldsSettings } from "@/components/admin/RegistrationFieldsSettings";
 import { CouponsDiscountsTab } from "@/components/admin/CouponsDiscountsTab";
 import { AssessmentFieldsSettings } from "@/components/admin/AssessmentFieldsSettings";
+import { BackupRestoreTab } from "@/components/admin/backup/BackupRestoreTab";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CustomPackage {
   id: string;
