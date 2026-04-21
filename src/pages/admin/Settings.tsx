@@ -1123,6 +1123,9 @@ const AdminSettings = () => {
     });
   };
 
+  const { isGymOwner, isSuperAdmin } = useAuth();
+  const canSeeBackup = isGymOwner || isSuperAdmin;
+
   const settingsTabs = [
     { value: "packages", label: "Packages" },
     { value: "registration", label: "Registration" },
@@ -1133,6 +1136,7 @@ const AdminSettings = () => {
     { value: "general", label: "General" },
     { value: "coupons", label: "Coupons" },
     { value: "subscription", label: "Subscription" },
+    ...(canSeeBackup ? [{ value: "backup", label: "Backup & Restore" }] : []),
   ];
 
   const activeTabLabel = settingsTabs.find(t => t.value === activeTab)?.label || "Packages";
@@ -1992,6 +1996,13 @@ const AdminSettings = () => {
           <TabsContent value="subscription" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
             <SubscriptionPlanTab />
           </TabsContent>
+
+          {/* Backup & Restore Tab */}
+          {canSeeBackup && (
+            <TabsContent value="backup" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
+              <BackupRestoreTab />
+            </TabsContent>
+          )}
           </fieldset>
        </Tabs>
 
