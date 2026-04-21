@@ -237,12 +237,18 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     if (!currentBranch?.id) return;
     setIsCheckingPhone(true);
     try {
-      const { data: member } = await supabase
-        .from("members")
-        .select("id, name, phone")
-        .eq("phone", phoneNum)
-        .eq("branch_id", currentBranch.id)
-        .maybeSingle();
+      // Use secure RPC (bypasses RLS issues, validates input)
+      const { data: rpcData, error: rpcError } = await supabase.rpc("check_phone_exists", {
+        phone_number: phoneNum,
+        p_branch_id: currentBranch.id,
+      });
+
+      if (rpcError) throw rpcError;
+
+      const rpcResult = rpcData?.[0];
+      const member = rpcResult?.member_exists
+        ? { id: rpcResult.member_id, name: rpcResult.member_name, phone: phoneNum }
+        : null;
 
       if (member) {
         // Fetch latest subscription
