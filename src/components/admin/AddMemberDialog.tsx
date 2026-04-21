@@ -1043,23 +1043,28 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         const couponNotePT = adminCoupon.appliedCoupon
           ? ` (Coupon: ${adminCoupon.appliedCoupon.coupon.code}, -₹${couponDiscount})`
           : "";
-        const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
-          member_id: existingMember.id,
-          amount: totalAmount,
-          payment_mode: paymentMode,
-          status: "success",
-          payment_type: "pt_subscription",
-          notes: `PT added via admin dashboard (${paymentMode.toUpperCase()})${couponNotePT}`,
-          branch_id: currentBranch.id,
-        }).select().single();
-        if (paymentError) throw paymentError;
+        // Only insert payment when there's an actual amount (DB requires amount > 0)
+        let paymentRecord: { id: string } | null = null;
+        if (totalAmount > 0) {
+          const { data, error: paymentError } = await supabase.from("payments").insert({
+            member_id: existingMember.id,
+            amount: totalAmount,
+            payment_mode: paymentMode,
+            status: "success",
+            payment_type: "pt_subscription",
+            notes: `PT added via admin dashboard (${paymentMode.toUpperCase()})${couponNotePT}`,
+            branch_id: currentBranch.id,
+          }).select().single();
+          if (paymentError) throw paymentError;
+          paymentRecord = data;
+        }
 
         // Record coupon usage if applied
         if (adminCoupon.appliedCoupon) {
           await supabase.from("coupon_usage").insert({
             coupon_id: adminCoupon.appliedCoupon.coupon.id,
             member_id: existingMember.id,
-            payment_id: paymentRecord.id,
+            payment_id: paymentRecord?.id ?? null,
             discount_applied: couponDiscount,
             branch_id: currentBranch.id,
           });
@@ -1072,7 +1077,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           await createMembershipIncomeEntry(
             ptFee, "pt_subscription",
             `PT subscription - ${existingMember.name} with ${selectedTrainer?.name}`,
-            existingMember.id, undefined, paymentRecord.id, currentBranch.id
+            existingMember.id, undefined, paymentRecord?.id, currentBranch.id
           );
         }
         if (selectedTrainer) {
