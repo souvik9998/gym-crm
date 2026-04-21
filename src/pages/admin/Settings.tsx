@@ -393,8 +393,12 @@ const AdminSettings = () => {
   // Background invalidation for cross-page consistency (fire-and-forget).
   // Also busts the public registration sessionStorage cache so the public
   // /register, /renew, /extend-pt screens reflect admin changes immediately.
+  // After a successful mutation, the React Query cache for ["settings-page-data", branchId]
+  // has already been updated optimistically via updateSettingsCache(), so we deliberately
+  // skip queryClient.invalidateQueries() here to avoid an unnecessary refetch round-trip.
+  // We still bust the separate sessionStorage cache used by the public registration pages
+  // (/register, /renew, /extend-pt) so end-users see admin changes on next visit.
   const backgroundInvalidate = () => {
-    invalidateSettings().catch(() => {});
     if (currentBranch?.id) {
       invalidatePublicDataCache(currentBranch.id);
       if (currentBranch.slug) invalidatePublicDataCache(currentBranch.slug);
@@ -402,6 +406,7 @@ const AdminSettings = () => {
       invalidatePublicDataCache();
     }
   };
+
 
   // Mark an item as recently added for highlight animation
   const markRecentlyAdded = useCallback((id: string) => {
