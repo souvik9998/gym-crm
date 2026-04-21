@@ -17,50 +17,15 @@ import { Staff } from "@/pages/admin/StaffManagement";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { useBranch } from "@/contexts/BranchContext";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import { passwordSchema } from "@/lib/validation";
-import { generateStaffPassword, STAFF_PASSWORD_RULE_TEXT } from "@/lib/staffPassword";
+import { generateStaffPassword, STAFF_PASSWORD_RULE_TEXT, validateStaffPassword } from "@/lib/staffPassword";
 import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
-
-interface StaffPasswordDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  staff: Staff | null;
-  onSuccess: () => void;
-}
-
-export const StaffPasswordDialog = ({
-  open,
-  onOpenChange,
-  staff,
-  onSuccess,
-}: StaffPasswordDialogProps) => {
-  const { currentBranch } = useBranch();
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [sendWhatsApp, setSendWhatsApp] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
-
-  const handleGeneratePassword = () => {
-    const newPassword = generateStaffPassword();
-    setPassword(newPassword);
-    setShowPassword(true);
-    setServerError(null);
-  };
-
-  // WhatsApp is now sent directly from the edge function with the plain password
-
-  const handleSubmit = async () => {
-    if (!staff) return;
-
-    if (!password) {
-      toast.error("Please enter a password");
-      return;
-    }
-
-    const pwdResult = passwordSchema.safeParse(password);
-    if (!pwdResult.success) {
-      toast.error(pwdResult.error.errors[0]?.message || "Invalid password");
+...
+    const pwdResult = validateStaffPassword(password, {
+      fullName: staff.full_name,
+      phone: staff.phone,
+    });
+    if (!pwdResult.valid) {
+      toast.error(pwdResult.error);
       return;
     }
 

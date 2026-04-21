@@ -46,151 +46,17 @@ import { StaffCardSkeleton } from "./StaffCardSkeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChangePhoneDialog } from "./ChangePhoneDialog";
 import { DetailItem } from "./StaffDetailItem";
-import { nameSchema, phoneSchema, passwordSchema, getPhotoIdSchema, formatPhotoIdInput, getPhotoIdPlaceholder } from "@/lib/validation";
+import { nameSchema, phoneSchema, getPhotoIdSchema, formatPhotoIdInput, getPhotoIdPlaceholder } from "@/lib/validation";
 import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
-
-interface StaffOtherTabProps {
-  staff: Staff[];
-  branches: any[];
-  currentBranch: any;
-  onRefresh: () => void;
-  isLoading: boolean;
-  onConversionSuccess?: () => void;
-}
-
-const ROLE_LABELS: Record<string, string> = {
-  manager: "Manager",
-  reception: "Reception",
-  accountant: "Accountant",
-};
-
-
-export const StaffOtherTab = ({
-  staff,
-  branches,
-  currentBranch,
-  onRefresh,
-  isLoading,
-  onConversionSuccess,
-}: StaffOtherTabProps) => {
-  const queryClient = useQueryClient();
-  const isCompact = useIsTabletOrBelow();
-
-  // Hard cache bust + refetch — ensures mutations are reflected even when data is cached
-  const refreshAll = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["staff-page-data"], refetchType: "all" }),
-      queryClient.invalidateQueries({ queryKey: ["trainer-filter-list"], refetchType: "all" }),
-    ]);
-    onRefresh();
-  };
-
-  const [newStaff, setNewStaff] = useState({
-    full_name: "",
-    phone: "",
-    role: "reception" as "manager" | "reception" | "accountant",
-    id_type: "aadhaar",
-    id_number: "",
-    monthly_salary: "",
-    selected_branches: currentBranch?.id ? [currentBranch.id] : [] as string[],
-    enableLogin: false,
-    password: "",
-    permissions: getDefaultPermissions("reception"),
-    sendWhatsApp: true, // Default to send WhatsApp
-  });
-  const [isAddingStaff, setIsAddingStaff] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<any>({});
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean;
-    title: string;
-    description: string;
-    onConfirm: () => void;
-    variant?: "default" | "destructive";
-  }>({
-    open: false,
-    title: "",
-    description: "",
-    onConfirm: () => {},
-  });
-  const [passwordDialog, setPasswordDialog] = useState<{ open: boolean; staff: Staff | null }>({
-    open: false,
-    staff: null,
-  });
-  const [viewPasswordDialog, setViewPasswordDialog] = useState<{ open: boolean; staff: Staff | null; password: string | null }>({
-    open: false,
-    staff: null,
-    password: null,
-  });
-  const [permissionsDialog, setPermissionsDialog] = useState<{ open: boolean; staff: Staff | null }>({
-    open: false,
-    staff: null,
-  });
-  const [branchAssignmentDialog, setBranchAssignmentDialog] = useState<{ open: boolean; staff: Staff | null }>({
-    open: false,
-    staff: null,
-  });
-  const [existingStaffDialog, setExistingStaffDialog] = useState<{
-    open: boolean;
-    existingStaff: Staff | null;
-  }>({ open: false, existingStaff: null });
-  const addingRef = { current: false };
-  const [conversionDialog, setConversionDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
-  const [changePhoneDialog, setChangePhoneDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // Update selected branches when currentBranch changes
-  useEffect(() => {
-    if (currentBranch?.id && !newStaff.selected_branches.includes(currentBranch.id)) {
-      setNewStaff((prev) => ({
-        ...prev,
-        selected_branches: prev.selected_branches.length === 0 
-          ? [currentBranch.id] 
-          : prev.selected_branches,
-      }));
-    }
-  }, [currentBranch?.id]);
-
-  const handleRoleChange = (role: "manager" | "reception" | "accountant") => {
-    setNewStaff({
-      ...newStaff,
-      role,
-      permissions: getDefaultPermissions(role),
-    });
-  };
-
-  const handleAddStaff = async () => {
-    // Validate using shared schemas
-    const nameResult = nameSchema.safeParse(newStaff.full_name);
-    if (!nameResult.success) {
-      toast.error(nameResult.error.errors[0]?.message || "Invalid name");
-      return;
-    }
-    const phoneResult = phoneSchema.safeParse(newStaff.phone);
-    if (!phoneResult.success) {
-      toast.error(phoneResult.error.errors[0]?.message || "Invalid phone number");
-      return;
-    }
-    const cleanPhone = phoneResult.data;
-
-    // Validate ID number against the selected ID type (only if user entered something)
-    if (newStaff.id_number?.trim()) {
-      const idResult = getPhotoIdSchema(newStaff.id_type).safeParse(newStaff.id_number);
-      if (!idResult.success) {
-        toast.error(idResult.error.errors[0]?.message || "Invalid ID number");
-        return;
-      }
-    }
-
-    if (newStaff.monthly_salary && Number(newStaff.monthly_salary) < 0) {
-      toast.error("Monthly salary cannot be negative");
-      return;
-    }
-
+import { validateStaffPassword } from "@/lib/staffPassword";
+...
     if (newStaff.enableLogin) {
-      const pwdResult = passwordSchema.safeParse(newStaff.password);
-      if (!pwdResult.success) {
-        toast.error(pwdResult.error.errors[0]?.message || "Invalid password");
+      const pwdResult = validateStaffPassword(newStaff.password, {
+        fullName: newStaff.full_name,
+        phone: cleanPhone,
+      });
+      if (!pwdResult.valid) {
+        toast.error(pwdResult.error);
         return;
       }
     }
