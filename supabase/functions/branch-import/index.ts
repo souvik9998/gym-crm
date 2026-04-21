@@ -216,7 +216,7 @@ function newUuid(): string {
 }
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", bytes);
+  const buf = await crypto.subtle.digest("SHA-256", bytes as unknown as BufferSource);
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
@@ -231,6 +231,69 @@ function safeStoragePath(bucket: string, originalPath: string, oldBranchId: stri
   }
   // If it doesn't start with oldBranchId, prefix with newBranchId
   return `${newBranchId}/${originalPath}`;
+}
+
+function generateSlug(input: string): string {
+  return input
+    .trim()
+    .replace(/[^a-zA-Z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .toLowerCase();
+}
+
+function makeUniqueValue(base: string, used: Set<string>, fallback: string): string {
+  const cleanBase = base.trim() || fallback.trim();
+  if (!used.has(cleanBase)) {
+    used.add(cleanBase);
+    return cleanBase;
+  }
+
+  let suffix = 1;
+  while (suffix <= 1000) {
+    const candidate = `${cleanBase}-${suffix}`;
+    if (!used.has(candidate)) {
+      used.add(candidate);
+      return candidate;
+    }
+    suffix += 1;
+  }
+
+  const emergency = `${fallback.trim() || "imported"}-${newUuid().slice(0, 8)}`;
+  used.add(emergency);
+  return emergency;
+}
+
+async function fetchExistingStringValuesExcludingBranch(
+  service: SupabaseClient,
+  table: string,
+  column: string,
+  excludeBranchId: string
+): Promise<Set<string>> {
+  const PAGE = 1000;
+  let from = 0;
+  const out = new Set<string>();
+
+  while (true) {
+    const { data, error } = await service
+      .from(table)
+      .select(column)
+      .neq("branch_id", excludeBranchId)
+      .range(from, from + PAGE - 1);
+
+    if (error) throw new Error(`Failed to read existing ${table}.${column}: ${error.message}`);
+    if (!data || data.length === 0) break;
+
+    for (const row of (data as unknown as Record<string, unknown>[])) {
+      const value = row[column];
+      if (typeof value === "string" && value.trim()) out.add(value.trim());
+    }
+
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  return out;
 }
 
 // ----------------------------------------------------------------------------
@@ -411,6 +474,19 @@ Deno.serve(async (req) => {
       );
     }
 
+    const existingInvoiceNumbers = await fetchExistingStringValuesExcludingBranch(
+      service,
+      "invoices",
+      "invoice_number",
+      targetBranchId
+    );
+    const existingEventSlugs = await fetchExistingStringValuesExcludingBranch(
+      service,
+      "events",
+      "slug",
+      targetBranchId
+    );
+
     // Apply remap: produce final payload table-by-table
     const payload: Record<string, Record<string, unknown>[]> = {};
     for (const t of RESTORE_TABLES) {
@@ -430,6 +506,34 @@ Deno.serve(async (req) => {
 
         // Force branch_id to target (where the column exists)
         if ("branch_id" in newRow) newRow.branch_id = targetBranchId;
+
+        // Normalize imported app-wide unique fields so restore never collides with
+        // rows outside the target branch.
+        if (t === "invoices" && typeof newRow.invoice_number === "string") {
+          const originalInvoiceNumber = newRow.invoice_number.trim();
+          const normalizedInvoiceNumber = makeUniqueValue(
+            originalInvoiceNumber,
+            existingInvoiceNumbers,
+            originalInvoiceNumber || `INV-${Date.now()}`
+          );
+          if (normalizedInvoiceNumber !== originalInvoiceNumber) {
+            warnings.push(
+              `Adjusted invoice_number during import: ${originalInvoiceNumber} → ${normalizedInvoiceNumber}`
+            );
+          }
+          newRow.invoice_number = normalizedInvoiceNumber;
+        }
+
+        if (t === "events") {
+          const originalSlug = typeof newRow.slug === "string" ? newRow.slug.trim() : "";
+          const title = typeof newRow.title === "string" ? newRow.title.trim() : "event";
+          const baseSlug = originalSlug || `${generateSlug(title)}-${String(newRow.id).slice(0, 6)}`;
+          const normalizedSlug = makeUniqueValue(baseSlug, existingEventSlugs, `${generateSlug(title)}-${newUuid().slice(0, 6)}`);
+          if (originalSlug && normalizedSlug !== originalSlug) {
+            warnings.push(`Adjusted event slug during import: ${originalSlug} → ${normalizedSlug}`);
+          }
+          newRow.slug = normalizedSlug;
+        }
 
         // Remap FKs
         const fks = FK_MAP[t] || {};
