@@ -2082,10 +2082,15 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   ) : (
                     <>
                       <Check className="w-4 h-4 mr-1.5" />
-                      {selectedAction === "renew_gym" ? "Renew Membership" 
-                        : selectedAction === "add_pt" ? "Add PT"
-                        : selectedAction === "renew_gym_pt" ? "Renew + Add PT"
-                        : "Add Member"}
+                      {registerFree
+                        ? (selectedAction === "renew_gym" ? "Renew Free"
+                          : selectedAction === "add_pt" ? "Add PT Free"
+                          : selectedAction === "renew_gym_pt" ? "Renew + PT Free"
+                          : "Register Free")
+                        : (selectedAction === "renew_gym" ? "Renew Membership"
+                          : selectedAction === "add_pt" ? "Add PT"
+                          : selectedAction === "renew_gym_pt" ? "Renew + Add PT"
+                          : "Add Member")}
                     </>
                   )}
                 </Button>
