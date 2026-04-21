@@ -280,9 +280,10 @@ export const StaffTrainersTab = ({
           },
         });
         if (passwordError) {
+          const serverMessage = await extractEdgeFunctionError(passwordError, "Password setup failed");
           console.error("Error setting password:", passwordError);
           toast.warning("Trainer created but password setup failed", {
-            description: "Please set the password manually from the staff list.",
+            description: serverMessage,
           });
         }
       }

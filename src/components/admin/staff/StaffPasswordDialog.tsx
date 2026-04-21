@@ -19,6 +19,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { passwordSchema } from "@/lib/validation";
 import { generateStaffPassword, STAFF_PASSWORD_RULE_TEXT } from "@/lib/staffPassword";
+import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
 
 interface StaffPasswordDialogProps {
   open: boolean;
@@ -74,18 +75,9 @@ export const StaffPasswordDialog = ({
       });
 
       if (error) {
-        // FunctionsHttpError holds the server response on `error.context`.
-        // Read the JSON body so we can surface the server's friendly message
-        // (e.g. HIBP weak-password rejection) instead of "Edge function returned 500".
-        let serverMessage = error.message;
-        try {
-          const ctx: any = (error as any).context;
-          if (ctx && typeof ctx.text === "function") {
-            const bodyText = await ctx.text();
-            const parsed = bodyText ? JSON.parse(bodyText) : null;
-            if (parsed?.error) serverMessage = parsed.error;
-          }
-        } catch { /* fall back to error.message */ }
+        // Surface the server's friendly message (e.g. HIBP weak-password rejection)
+        // instead of the generic "Edge function returned 500".
+        const serverMessage = await extractEdgeFunctionError(error, "Failed to set password");
         throw new Error(serverMessage);
       }
 
