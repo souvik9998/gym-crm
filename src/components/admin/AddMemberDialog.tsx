@@ -414,7 +414,17 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const ptTotal = (wantsPT || isPTOnly) ? ptFee : 0;
   const subtotalAmount = gymTotal + ptTotal;
   const taxAmount = taxEnabled && taxRate > 0 ? Math.round((subtotalAmount * taxRate) / 100) : 0;
-  const totalAmount = subtotalAmount + taxAmount;
+
+  // Coupon validation — works for new members and existing-member actions
+  const adminCoupon = useCouponValidation({
+    branchId: currentBranch?.id,
+    isNewMember: !isExistingMemberAction,
+    memberId: existingMember?.id,
+    subtotal: subtotalAmount + taxAmount,
+    context: isExistingMemberAction ? "renewal" : "new_registration",
+  });
+  const couponDiscount = adminCoupon.appliedCoupon?.discountAmount || 0;
+  const totalAmount = Math.max(0, subtotalAmount + taxAmount - couponDiscount);
 
   // Calculate the gym membership end date for PT capping
   const gymMembershipEndDate = (() => {
