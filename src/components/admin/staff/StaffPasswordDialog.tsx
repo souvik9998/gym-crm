@@ -39,11 +39,13 @@ export const StaffPasswordDialog = ({
   const [showPassword, setShowPassword] = useState(false);
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const handleGeneratePassword = () => {
     const newPassword = generateStaffPassword();
     setPassword(newPassword);
     setShowPassword(true);
+    setServerError(null);
   };
 
   // WhatsApp is now sent directly from the edge function with the plain password
@@ -63,6 +65,7 @@ export const StaffPasswordDialog = ({
     }
 
     setIsLoading(true);
+    setServerError(null);
 
     try {
       // Send password with sendWhatsApp flag - edge function handles WhatsApp with plain password
@@ -116,9 +119,12 @@ export const StaffPasswordDialog = ({
 
       setPassword("");
       setShowPassword(false);
+      setServerError(null);
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {
+      // Show inline so user can see the message + click Generate without dismissing a toast
+      setServerError(error.message);
       toast.error("Failed to set password", { description: error.message });
     } finally {
       setIsLoading(false);
@@ -160,7 +166,10 @@ export const StaffPasswordDialog = ({
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (serverError) setServerError(null);
+                  }}
                   placeholder="Enter password"
                   className="pr-10"
                 />
@@ -187,6 +196,11 @@ export const StaffPasswordDialog = ({
             <p className="text-xs text-muted-foreground">
               {STAFF_PASSWORD_RULE_TEXT}
             </p>
+            {serverError && (
+              <div className="p-2 bg-destructive/10 border border-destructive/30 rounded-md text-xs text-destructive">
+                {serverError}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
