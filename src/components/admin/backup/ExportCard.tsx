@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { ArrowDownTrayIcon, ArchiveBoxIcon } from "@heroicons/react/24/outline";
+import { Download, Archive, Building2, Clock, ShieldCheck, Sparkles } from "lucide-react";
 import { useBranch } from "@/contexts/BranchContext";
 import { exportBranch } from "@/api/backup";
 import { toast } from "@/components/ui/sonner";
@@ -25,7 +25,6 @@ export const ExportCard = () => {
     const tId = toast.loading(`Preparing backup for ${currentBranch.name}…`);
     try {
       const { blob, filename } = await exportBranch(currentBranch.id);
-      // Trigger download
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -46,37 +45,84 @@ export const ExportCard = () => {
   };
 
   return (
-    <Card className="border border-border/40 shadow-sm">
-      <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-primary/10 text-primary">
-            <ArchiveBoxIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+    <Card className="relative overflow-hidden border border-border/40 shadow-sm transition-all hover:shadow-md">
+      {/* Decorative gradient backdrop */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
+      <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+
+      <CardContent className="relative p-5 lg:p-7 space-y-5">
+        {/* Header */}
+        <div className="flex items-start gap-4">
+          <div className="relative shrink-0">
+            <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-md" />
+            <div className="relative flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg">
+              <Archive className="w-5 h-5" />
+            </div>
           </div>
-          <div>
-            <CardTitle className="text-base lg:text-xl">Export branch data</CardTitle>
-            <CardDescription className="text-xs lg:text-sm">
-              Download a complete backup of this branch as a .zip file
-            </CardDescription>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base lg:text-xl font-semibold text-foreground">
+                Export branch data
+              </h3>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-success/10 text-success border border-success/20">
+                <Sparkles className="w-2.5 h-2.5" />
+                Safe
+              </span>
+            </div>
+            <p className="text-xs lg:text-sm text-muted-foreground mt-0.5">
+              Download a complete .zip backup of this branch
+            </p>
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4 p-4 lg:p-6 pt-0 lg:pt-0">
-        <div className="flex flex-col gap-1 text-sm">
-          <span className="text-muted-foreground">Branch</span>
-          <span className="font-medium text-foreground">{currentBranch?.name || "—"}</span>
+
+        {/* Info pills */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm p-3 transition-colors hover:bg-card">
+            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary shrink-0">
+              <Building2 className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                Branch
+              </div>
+              <div className="text-sm font-semibold text-foreground truncate">
+                {currentBranch?.name || "—"}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm p-3 transition-colors hover:bg-card">
+            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-accent/10 text-accent shrink-0">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                Last export
+              </div>
+              <div className="text-sm font-semibold text-foreground truncate">
+                {lastExportAt ? new Date(lastExportAt).toLocaleString() : "Never"}
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-1 text-sm">
-          <span className="text-muted-foreground">Last export</span>
-          <span className="font-medium text-foreground">
-            {lastExportAt ? new Date(lastExportAt).toLocaleString() : "Never"}
-          </span>
+
+        {/* What's included */}
+        <div className="flex gap-3 rounded-xl border border-primary/15 bg-primary/5 p-3.5">
+          <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <div className="text-xs text-foreground/80 leading-relaxed">
+            Includes <strong>members, subscriptions, payments, attendance, events, settings</strong>{" "}
+            and all related files. Staff accounts are snapshotted for reference only.
+          </div>
         </div>
-        <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-          Includes members, subscriptions, payments, attendance, events, settings and all
-          related files. Staff accounts are snapshotted for reference only.
-        </div>
-        <Button onClick={handleExport} disabled={!currentBranch || isExporting} className="w-full sm:w-auto">
-          {isExporting ? <ButtonSpinner /> : <ArrowDownTrayIcon className="w-4 h-4 mr-2" />}
+
+        {/* Action */}
+        <Button
+          onClick={handleExport}
+          disabled={!currentBranch || isExporting}
+          size="lg"
+          className="w-full sm:w-auto gap-2 bg-gradient-to-r from-primary to-primary/85 hover:from-primary/95 hover:to-primary/80 shadow-md transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.99]"
+        >
+          {isExporting ? <ButtonSpinner /> : <Download className="w-4 h-4" />}
           {isExporting ? "Preparing backup…" : "Export branch data"}
         </Button>
       </CardContent>
