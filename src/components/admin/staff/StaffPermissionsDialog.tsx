@@ -34,15 +34,8 @@ import {
   KeyIcon,
   LockClosedIcon,
 } from "@heroicons/react/24/outline";
-
-const generatePassword = (length = 8): string => {
-  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let password = "";
-  for (let i = 0; i < length; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
-};
+import { passwordSchema } from "@/lib/validation";
+import { generateStaffPassword, STAFF_PASSWORD_RULE_TEXT } from "@/lib/staffPassword";
 
 interface StaffPermissionsDialogProps {
   open: boolean;
@@ -183,7 +176,7 @@ export const StaffPermissionsDialog = ({
   }, [staff]);
 
   const handleGeneratePassword = () => {
-    setPassword(generatePassword());
+    setPassword(generateStaffPassword());
     setShowPassword(true);
   };
 
@@ -195,8 +188,9 @@ export const StaffPermissionsDialog = ({
         toast.error("Please enter or generate a password");
         return;
       }
-      if (password.length < 6) {
-        toast.error("Password must be at least 6 characters");
+      const pwdResult = passwordSchema.safeParse(password);
+      if (!pwdResult.success) {
+        toast.error(pwdResult.error.errors[0]?.message || "Invalid password");
         return;
       }
       if (sendWhatsApp && !staff.phone) {
@@ -396,7 +390,7 @@ export const StaffPermissionsDialog = ({
                       Generate
                     </Button>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Minimum 6 characters. Staff will log in with their phone number.</p>
+                  <p className="text-[11px] text-muted-foreground">{STAFF_PASSWORD_RULE_TEXT} Staff log in with their phone number.</p>
                 </div>
 
                 <div className="flex items-center space-x-2">

@@ -244,11 +244,21 @@ export const DescriptionSchema = z
       .max(500, "Description too long")
   );
 
+/**
+ * Strong password rule for staff accounts (must match the client-side
+ * `passwordSchema` in src/lib/validation.ts):
+ *   - Min 8 characters
+ *   - At least 1 uppercase, 1 lowercase, 1 digit
+ */
 export const PasswordSchema = z
   .string()
   .min(8, "Password must be at least 8 characters")
-  .max(128, "Password too long");
+  .max(128, "Password too long")
+  .regex(/[A-Z]/, "Password must contain at least 1 uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least 1 lowercase letter")
+  .regex(/\d/, "Password must contain at least 1 number");
 
+/** Used only for tenant owner provisioning where rules predate the staff rule. */
 export const WeakPasswordSchema = z
   .string()
   .min(6, "Password must be at least 6 characters")
@@ -265,7 +275,7 @@ export const LoginSchema = z.object({
 
 export const SetPasswordSchema = z.object({
   staffId: UUIDSchema,
-  password: WeakPasswordSchema,
+  password: PasswordSchema,
   sendWhatsApp: z.boolean().optional(),
 });
 

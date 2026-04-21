@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { KeyIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { generateStaffPassword, STAFF_PASSWORD_RULE_TEXT } from "@/lib/staffPassword";
 
 interface StaffCredentialsSectionProps {
   enableLogin: boolean;
@@ -11,15 +12,6 @@ interface StaffCredentialsSectionProps {
   password: string;
   onPasswordChange: (password: string) => void;
 }
-
-const generatePassword = () => {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  let password = "";
-  for (let i = 0; i < 8; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
-};
 
 export const StaffCredentialsSection = ({
   enableLogin,
@@ -30,7 +22,7 @@ export const StaffCredentialsSection = ({
   const [showPassword, setShowPassword] = useState(false);
 
   const handleGeneratePassword = () => {
-    onPasswordChange(generatePassword());
+    onPasswordChange(generateStaffPassword());
   };
 
   return (
@@ -77,8 +69,7 @@ export const StaffCredentialsSection = ({
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Staff can login using their phone number and this password.
-            Password is securely managed by the authentication system.
+            {STAFF_PASSWORD_RULE_TEXT} Staff log in with their phone number.
           </p>
         </div>
       )}
