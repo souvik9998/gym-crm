@@ -49,7 +49,130 @@ import { DetailItem } from "./StaffDetailItem";
 import { nameSchema, phoneSchema, getPhotoIdSchema, formatPhotoIdInput, getPhotoIdPlaceholder } from "@/lib/validation";
 import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
 import { validateStaffPassword } from "@/lib/staffPassword";
-...
+
+interface StaffTrainersTabProps {
+  trainers: Staff[];
+  branches: any[];
+  currentBranch: any;
+  onRefresh: () => void;
+  isLoading: boolean;
+  onConversionSuccess?: () => void;
+}
+
+
+export const StaffTrainersTab = ({
+  trainers,
+  branches,
+  currentBranch,
+  onRefresh,
+  isLoading,
+  onConversionSuccess,
+}: StaffTrainersTabProps) => {
+  const queryClient = useQueryClient();
+  const isCompact = useIsTabletOrBelow();
+  const [infoDialog, setInfoDialog] = useState<{ open: boolean; trainer: Staff | null }>({ open: false, trainer: null });
+  const [conversionDialog, setConversionDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
+  const [changePhoneDialog, setChangePhoneDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const refreshAll = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["staff-page-data"], refetchType: "all" }),
+      queryClient.invalidateQueries({ queryKey: ["trainer-filter-list"], refetchType: "all" }),
+      queryClient.invalidateQueries({ queryKey: ["time-slot-members"], refetchType: "all" }),
+      queryClient.invalidateQueries({ queryKey: ["assigned-members"], refetchType: "all" }),
+    ]);
+    onRefresh();
+  };
+
+  const [newTrainer, setNewTrainer] = useState({
+    full_name: "",
+    phone: "",
+    specialization: "",
+    id_type: "aadhaar",
+    id_number: "",
+    payment_category: "monthly_percentage" as "monthly_percentage" | "session_basis",
+    monthly_fee: "",
+    monthly_salary: "",
+    percentage_fee: "",
+    session_fee: "",
+    selected_branches: currentBranch?.id ? [currentBranch.id] : [] as string[],
+    enableLogin: false,
+    password: "",
+    permissions: getDefaultPermissions("trainer"),
+    sendWhatsApp: true,
+  });
+  const [isAddingTrainer, setIsAddingTrainer] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<any>({});
+  const [originalEditData, setOriginalEditData] = useState<any>({});
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+    variant?: "default" | "destructive";
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  });
+  const [passwordDialog, setPasswordDialog] = useState<{ open: boolean; staff: Staff | null }>({
+    open: false,
+    staff: null,
+  });
+  const [viewPasswordDialog, setViewPasswordDialog] = useState<{ open: boolean; staff: Staff | null; password: string | null }>({
+    open: false,
+    staff: null,
+    password: null,
+  });
+  const [permissionsDialog, setPermissionsDialog] = useState<{ open: boolean; staff: Staff | null }>({
+    open: false,
+    staff: null,
+  });
+  const [branchAssignmentDialog, setBranchAssignmentDialog] = useState<{ open: boolean; staff: Staff | null }>({
+    open: false,
+    staff: null,
+  });
+  const [existingStaffDialog, setExistingStaffDialog] = useState<{
+    open: boolean;
+    existingStaff: Staff | null;
+  }>({ open: false, existingStaff: null });
+  const addingRef = { current: false };
+
+  useEffect(() => {
+    if (currentBranch?.id && !newTrainer.selected_branches.includes(currentBranch.id)) {
+      setNewTrainer((prev) => ({
+        ...prev,
+        selected_branches: prev.selected_branches.length === 0
+          ? [currentBranch.id]
+          : prev.selected_branches,
+      }));
+    }
+  }, [currentBranch?.id]);
+
+  const handleAddTrainer = async () => {
+    const nameResult = nameSchema.safeParse(newTrainer.full_name);
+    if (!nameResult.success) {
+      toast.error(nameResult.error.errors[0]?.message || "Invalid name");
+      return;
+    }
+    const phoneResult = phoneSchema.safeParse(newTrainer.phone);
+    if (!phoneResult.success) {
+      toast.error(phoneResult.error.errors[0]?.message || "Invalid phone number");
+      return;
+    }
+    const cleanPhone = phoneResult.data;
+
+    if (newTrainer.id_number?.trim()) {
+      const idResult = getPhotoIdSchema(newTrainer.id_type).safeParse(newTrainer.id_number);
+      if (!idResult.success) {
+        toast.error(idResult.error.errors[0]?.message || "Invalid ID number");
+        return;
+      }
+    }
+
     if (newTrainer.enableLogin) {
       const pwdResult = validateStaffPassword(newTrainer.password, {
         fullName: newTrainer.full_name,
@@ -61,7 +184,6 @@ import { validateStaffPassword } from "@/lib/staffPassword";
       }
     }
 
-    // Validate monthly fee for trainers
     if (!newTrainer.monthly_fee || Number(newTrainer.monthly_fee) <= 0) {
       toast.error("Monthly fee (member charge) must be greater than 0");
       return;
@@ -80,7 +202,7 @@ import { validateStaffPassword } from "@/lib/staffPassword";
     if (addingRef.current) return;
     addingRef.current = true;
     setIsAddingTrainer(true);
-    
+
     try {
       const branchesToAssign = newTrainer.selected_branches.length > 0 
         ? newTrainer.selected_branches 

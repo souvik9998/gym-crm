@@ -17,14 +17,54 @@ import { Staff } from "@/pages/admin/StaffManagement";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { useBranch } from "@/contexts/BranchContext";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import { generateStaffPassword, STAFF_PASSWORD_RULE_TEXT, validateStaffPassword } from "@/lib/staffPassword";
+import {
+  generateStaffPassword,
+  STAFF_PASSWORD_RULE_TEXT,
+  validateStaffPassword,
+} from "@/lib/staffPassword";
 import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
-...
+
+interface StaffPasswordDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  staff: Staff | null;
+  onSuccess: () => void;
+}
+
+export const StaffPasswordDialog = ({
+  open,
+  onOpenChange,
+  staff,
+  onSuccess,
+}: StaffPasswordDialogProps) => {
+  const { currentBranch } = useBranch();
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [sendWhatsApp, setSendWhatsApp] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const handleGeneratePassword = () => {
+    const newPassword = generateStaffPassword();
+    setPassword(newPassword);
+    setShowPassword(true);
+    setServerError(null);
+  };
+
+  const handleSubmit = async () => {
+    if (!staff) return;
+
+    if (!password) {
+      toast.error("Please enter a password");
+      return;
+    }
+
     const pwdResult = validateStaffPassword(password, {
       fullName: staff.full_name,
       phone: staff.phone,
     });
     if (!pwdResult.valid) {
+      setServerError(pwdResult.error);
       toast.error(pwdResult.error);
       return;
     }
@@ -33,7 +73,6 @@ import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
     setServerError(null);
 
     try {
-      // Send password with sendWhatsApp flag - edge function handles WhatsApp with plain password
       const { data, error } = await supabase.functions.invoke("staff-auth?action=set-password", {
         body: {
           staffId: staff.id,
@@ -43,8 +82,6 @@ import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
       });
 
       if (error) {
-        // Surface the server's friendly message (e.g. HIBP weak-password rejection)
-        // instead of the generic "Edge function returned 500".
         const serverMessage = await extractEdgeFunctionError(error, "Failed to set password");
         throw new Error(serverMessage);
       }
@@ -55,7 +92,6 @@ import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
         throw new Error(response.error || "Failed to set password");
       }
 
-      // Log password set activity - DO NOT store password in logs for security
       const hasExistingAuth = !!(staff as any).auth_user_id;
       await logAdminActivity({
         category: "staff",
@@ -65,7 +101,6 @@ import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
         entityId: staff.id,
         entityName: staff.full_name,
         metadata: {
-          // Security: Never store plaintext passwords in activity logs
           phone: staff.phone,
           role: staff.role,
           password_updated: true,
@@ -88,7 +123,6 @@ import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {
-      // Show inline so user can see the message + click Generate without dismissing a toast
       setServerError(error.message);
       toast.error("Failed to set password", { description: error.message });
     } finally {
@@ -96,7 +130,6 @@ import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
     }
   };
 
-  // Check if staff has Supabase Auth account (auth_user_id instead of password_hash)
   const hasExistingPassword = !!(staff as any)?.auth_user_id;
 
   return (
@@ -150,17 +183,11 @@ import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
                   )}
                 </button>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleGeneratePassword}
-              >
+              <Button type="button" variant="outline" onClick={handleGeneratePassword}>
                 Generate
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {STAFF_PASSWORD_RULE_TEXT}
-            </p>
+            <p className="text-xs text-muted-foreground">{STAFF_PASSWORD_RULE_TEXT}</p>
             {serverError && (
               <div className="p-2 bg-destructive/10 border border-destructive/30 rounded-md text-xs text-destructive">
                 {serverError}
@@ -194,8 +221,8 @@ import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
             {isLoading
               ? "Setting Password..."
               : hasExistingPassword
-              ? "Update Password"
-              : "Set Password"}
+                ? "Update Password"
+                : "Set Password"}
           </Button>
         </DialogFooter>
       </DialogContent>
