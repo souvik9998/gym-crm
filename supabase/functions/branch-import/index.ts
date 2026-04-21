@@ -474,6 +474,19 @@ Deno.serve(async (req) => {
       );
     }
 
+    const existingInvoiceNumbers = await fetchExistingStringValuesExcludingBranch(
+      service,
+      "invoices",
+      "invoice_number",
+      targetBranchId
+    );
+    const existingEventSlugs = await fetchExistingStringValuesExcludingBranch(
+      service,
+      "events",
+      "slug",
+      targetBranchId
+    );
+
     // Apply remap: produce final payload table-by-table
     const payload: Record<string, Record<string, unknown>[]> = {};
     for (const t of RESTORE_TABLES) {
