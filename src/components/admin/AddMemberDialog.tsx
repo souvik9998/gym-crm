@@ -565,7 +565,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     return true;
   })();
 
-  const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptFee > 0 && ptMonthOptions.length > 0) : !!selectedPackageId;
+  const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptMonthOptions.length > 0) : !!selectedPackageId;
 
 
   const goToStep = (step: number) => {
@@ -1092,6 +1092,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setEmergencyContact2Name(""); setEmergencyContact2Phone("");
     setIdentityFiles([]); setMedicalFiles([]);
     setNotifyWhatsApp(true);
+    adminCoupon.removeCoupon();
     const today = new Date(); today.setHours(0, 0, 0, 0); setStartDate(today);
   };
 
