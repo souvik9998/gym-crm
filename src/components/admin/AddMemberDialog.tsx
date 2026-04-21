@@ -1066,9 +1066,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         const couponNotePT = adminCoupon.appliedCoupon
           ? ` (Coupon: ${adminCoupon.appliedCoupon.coupon.code}, -₹${couponDiscount})`
           : "";
-        // Only insert payment when there's an actual amount (DB requires amount > 0)
+        // Only insert payment when not a free registration and amount > 0 (DB constraint)
         let paymentRecord: { id: string } | null = null;
-        if (totalAmount > 0) {
+        if (!registerFree && totalAmount > 0) {
           const { data, error: paymentError } = await supabase.from("payments").insert({
             member_id: existingMember.id,
             amount: totalAmount,
