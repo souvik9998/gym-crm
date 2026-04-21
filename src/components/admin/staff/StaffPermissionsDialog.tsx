@@ -34,8 +34,11 @@ import {
   KeyIcon,
   LockClosedIcon,
 } from "@heroicons/react/24/outline";
-import { passwordSchema } from "@/lib/validation";
-import { generateStaffPassword, STAFF_PASSWORD_RULE_TEXT } from "@/lib/staffPassword";
+import {
+  generateStaffPassword,
+  STAFF_PASSWORD_RULE_TEXT,
+  validateStaffPassword,
+} from "@/lib/staffPassword";
 import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
 
 interface StaffPermissionsDialogProps {
@@ -189,9 +192,12 @@ export const StaffPermissionsDialog = ({
         toast.error("Please enter or generate a password");
         return;
       }
-      const pwdResult = passwordSchema.safeParse(password);
-      if (!pwdResult.success) {
-        toast.error(pwdResult.error.errors[0]?.message || "Invalid password");
+      const pwdResult = validateStaffPassword(password, {
+        fullName: staff.full_name,
+        phone: staff.phone,
+      });
+      if (pwdResult.valid === false) {
+        toast.error(pwdResult.error);
         return;
       }
       if (sendWhatsApp && !staff.phone) {

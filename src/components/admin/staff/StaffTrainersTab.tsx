@@ -178,7 +178,7 @@ export const StaffTrainersTab = ({
         fullName: newTrainer.full_name,
         phone: cleanPhone,
       });
-      if (!pwdResult.valid) {
+      if (pwdResult.valid === false) {
         toast.error(pwdResult.error);
         return;
       }

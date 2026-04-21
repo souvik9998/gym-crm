@@ -63,7 +63,7 @@ export const StaffPasswordDialog = ({
       fullName: staff.full_name,
       phone: staff.phone,
     });
-    if (!pwdResult.valid) {
+    if (pwdResult.valid === false) {
       setServerError(pwdResult.error);
       toast.error(pwdResult.error);
       return;
