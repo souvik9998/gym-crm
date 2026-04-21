@@ -634,13 +634,55 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setIsLoading(true);
 
     try {
+      // Final safety net: re-check phone right before insert (prevents race conditions
+      // and catches cases where the debounced check missed an existing member)
+      if (currentBranch?.id) {
+        const { data: rpcData } = await supabase.rpc("check_phone_exists", {
+          phone_number: phone,
+          p_branch_id: currentBranch.id,
+        });
+        const existing = rpcData?.[0];
+        if (existing?.member_exists) {
+          setIsLoading(false);
+          // Trigger the existing-member UI flow instead of inserting
+          setExistingMember({
+            id: existing.member_id,
+            name: existing.member_name,
+            phone,
+            subscription: null,
+            activePT: null,
+          });
+          setName(existing.member_name);
+          setCurrentStep(1);
+          // Re-fetch full subscription details for the action picker
+          await checkExistingMember(phone);
+          toast.error("Member Already Exists", {
+            description: `${existing.member_name} is already registered with this phone. Choose Renew or Add PT instead.`,
+          });
+          return;
+        }
+      }
 
       const { data: member, error: memberError } = await supabase
         .from("members")
         .insert({ name, phone, email: email || null, branch_id: currentBranch?.id || "" })
         .select()
         .single();
-      if (memberError) throw memberError;
+      if (memberError) {
+        // Friendly handling for unique constraint violation (race condition fallback)
+        if (
+          memberError.code === "23505" ||
+          /members_phone_branch_unique|duplicate key/i.test(memberError.message || "")
+        ) {
+          toast.error("Member Already Exists", {
+            description: "A member with this phone number already exists in this branch. Use Renew or Add PT instead.",
+          });
+          setCurrentStep(1);
+          if (currentBranch?.id) await checkExistingMember(phone);
+          return;
+        }
+        throw memberError;
+      }
 
       const hasDetails = gender || address || photoIdType || photoIdNumber || dateOfBirth ||
         bloodGroup || heightCm || weightKg || medicalConditions || allergies ||
