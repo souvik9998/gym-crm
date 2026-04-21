@@ -813,14 +813,14 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         await createMembershipIncomeEntry(
           monthlyFee, "gym_membership",
           `New member - ${name} (${selectedPackage?.months || 1} months)`,
-          member.id, undefined, paymentRecord.id, currentBranch?.id
+          member.id, undefined, paymentRecord?.id, currentBranch?.id
         );
       }
 
       if (joiningFee > 0) {
         await createMembershipIncomeEntry(
           joiningFee, "joining_fee", `Joining fee - ${name}`,
-          member.id, undefined, paymentRecord.id, currentBranch?.id
+          member.id, undefined, paymentRecord?.id, currentBranch?.id
         );
       }
 
@@ -828,7 +828,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         await createMembershipIncomeEntry(
           ptFee, "pt_subscription",
           `PT subscription - ${name} with ${selectedTrainer.name}`,
-          member.id, undefined, paymentRecord.id, currentBranch?.id
+          member.id, undefined, paymentRecord?.id, currentBranch?.id
         );
         await calculateTrainerPercentageExpense(
           selectedTrainerId, ptFee, member.id, undefined, undefined, name, currentBranch?.id
