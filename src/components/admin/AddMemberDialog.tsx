@@ -851,22 +851,28 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         );
       }
 
+      const paymentTag = registerFree ? "FREE" : paymentMode.toUpperCase();
       if (isStaffLoggedIn && staffUser) {
         await logStaffActivity({
           category: "members", type: "member_added",
-          description: `Staff "${staffUser.fullName}" added new member "${name}" with ${selectedPackage?.months || 1} month package (${paymentMode.toUpperCase()})`,
+          description: registerFree
+            ? `Staff "${staffUser.fullName}" registered new member "${name}" FREE (${selectedPackage?.months || 1} month package, no payment collected)`
+            : `Staff "${staffUser.fullName}" added new member "${name}" with ${selectedPackage?.months || 1} month package (${paymentTag})`,
           entityType: "members", entityId: member.id, entityName: name,
-          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT, payment_mode: paymentMode },
+          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT, payment_mode: registerFree ? "free" : paymentMode, registered_free: registerFree },
           branchId: currentBranch?.id, staffId: staffUser.id, staffName: staffUser.fullName,
-          staffPhone: staffUser.phone, metadata: { staff_role: staffUser.role },
+          staffPhone: staffUser.phone, metadata: { staff_role: staffUser.role, registered_free: registerFree },
         });
       } else {
         await logAdminActivity({
           category: "members", type: "member_added",
-          description: `Added new member "${name}" with ${selectedPackage?.months || 1} month package (${paymentMode.toUpperCase()})`,
+          description: registerFree
+            ? `Registered new member "${name}" FREE (${selectedPackage?.months || 1} month package, no payment collected)`
+            : `Added new member "${name}" with ${selectedPackage?.months || 1} month package (${paymentTag})`,
           entityType: "members", entityId: member.id, entityName: name,
-          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT, payment_mode: paymentMode },
+          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT, payment_mode: registerFree ? "free" : paymentMode, registered_free: registerFree },
           branchId: currentBranch?.id,
+          metadata: { registered_free: registerFree },
         });
       }
 
