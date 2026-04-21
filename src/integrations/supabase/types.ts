@@ -3260,10 +3260,12 @@ export type Database = {
     }
     Functions: {
       branch_purge: { Args: { _branch_id: string }; Returns: undefined }
-      branch_restore_tx: {
-        Args: { _branch_id: string; _payload: Json }
-        Returns: Json
-      }
+      branch_restore_tx:
+        | { Args: { _branch_id: string; _payload: Json }; Returns: Json }
+        | {
+            Args: { _branch_id: string; _caller_id?: string; _payload: Json }
+            Returns: Json
+          }
       check_phone_exists: {
         Args: { p_branch_id?: string; phone_number: string }
         Returns: {
