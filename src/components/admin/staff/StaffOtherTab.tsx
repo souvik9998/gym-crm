@@ -47,6 +47,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChangePhoneDialog } from "./ChangePhoneDialog";
 import { DetailItem } from "./StaffDetailItem";
 import { nameSchema, phoneSchema, passwordSchema, getPhotoIdSchema, formatPhotoIdInput, getPhotoIdPlaceholder } from "@/lib/validation";
+import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
 
 interface StaffOtherTabProps {
   staff: Staff[];
