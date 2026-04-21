@@ -792,10 +792,11 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         : "";
 
       // Only create a payment record when there's an actual amount.
-      // DB constraint: payments_amount_check (amount > 0). For ₹0 (admin waiver / 100% coupon),
-      // skip the payments row but still create the subscription + ledger + coupon-usage entries.
+      // DB constraint: payments_amount_check (amount > 0).
+      // For "Register Free", skip the payments row entirely — the subscription itself
+      // marks them as a member; the activity log records that it was a free registration.
       let paymentRecord: { id: string } | null = null;
-      if (totalAmount > 0) {
+      if (!registerFree && totalAmount > 0) {
         const { data, error: paymentError } = await supabase.from("payments").insert({
           member_id: member.id,
           subscription_id: subscription.id,
