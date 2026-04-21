@@ -1764,9 +1764,12 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                           </Label>
                           <Input
                             type="number"
-                            value={monthlyFee}
-                            onChange={(e) => setMonthlyFee(Number(e.target.value) || 0)}
-                            className="h-10 text-sm rounded-xl"
+                            min={registerFree ? 0 : 1}
+                            step={1}
+                            value={registerFree ? 0 : monthlyFee}
+                            disabled={registerFree}
+                            onChange={(e) => handleFeeInput(e.target.value, setMonthlyFee)}
+                            className="h-10 text-sm rounded-xl disabled:opacity-60"
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -1776,9 +1779,16 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                           </Label>
                           <Input
                             type="number"
-                            value={joiningFee}
-                            onChange={(e) => setJoiningFee(Number(e.target.value) || 0)}
-                            className="h-10 text-sm rounded-xl"
+                            min={0}
+                            step={1}
+                            value={registerFree ? 0 : joiningFee}
+                            disabled={registerFree}
+                            onChange={(e) => {
+                              // joining fee can be 0 (some packages have no joining fee), but never negative
+                              const v = e.target.value === "" ? 0 : Math.max(0, Number(e.target.value) || 0);
+                              setJoiningFee(v);
+                            }}
+                            className="h-10 text-sm rounded-xl disabled:opacity-60"
                           />
                         </div>
                       </div>
