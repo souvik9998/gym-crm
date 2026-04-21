@@ -3259,7 +3259,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      branch_purge: { Args: { _branch_id: string }; Returns: undefined }
+      branch_purge:
+        | { Args: { _branch_id: string }; Returns: undefined }
+        | {
+            Args: { _branch_id: string; _caller_id?: string }
+            Returns: undefined
+          }
       branch_restore_tx:
         | { Args: { _branch_id: string; _payload: Json }; Returns: Json }
         | {
