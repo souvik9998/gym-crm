@@ -931,6 +931,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
         // Create payment record
         const paymentType = selectedAction === "renew_gym_pt" ? "gym_and_pt" : "gym_renewal";
+        const couponNote = adminCoupon.appliedCoupon
+          ? ` (Coupon: ${adminCoupon.appliedCoupon.coupon.code}, -₹${couponDiscount})`
+          : "";
         const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
           member_id: existingMember.id,
           subscription_id: subscription.id,
@@ -938,17 +941,33 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           payment_mode: paymentMode,
           status: "success",
           payment_type: paymentType,
-          notes: `Renewed via admin dashboard (${paymentMode.toUpperCase()})`,
+          notes: `Renewed via admin dashboard (${paymentMode.toUpperCase()})${couponNote}`,
           branch_id: currentBranch.id,
         }).select().single();
         if (paymentError) throw paymentError;
 
+        // Record coupon usage if applied
+        if (adminCoupon.appliedCoupon) {
+          await supabase.from("coupon_usage").insert({
+            coupon_id: adminCoupon.appliedCoupon.coupon.id,
+            member_id: existingMember.id,
+            payment_id: paymentRecord.id,
+            discount_applied: couponDiscount,
+            branch_id: currentBranch.id,
+          });
+          await supabase.from("coupons").update({
+            usage_count: adminCoupon.appliedCoupon.coupon.usage_count + 1,
+          }).eq("id", adminCoupon.appliedCoupon.coupon.id);
+        }
+
         // Ledger entries
-        await createMembershipIncomeEntry(
-          monthlyFee, "gym_renewal",
-          `Renewal - ${existingMember.name} (${selectedPackage?.months || 1} months)`,
-          existingMember.id, undefined, paymentRecord.id, currentBranch.id
-        );
+        if (monthlyFee > 0) {
+          await createMembershipIncomeEntry(
+            monthlyFee, "gym_renewal",
+            `Renewal - ${existingMember.name} (${selectedPackage?.months || 1} months)`,
+            existingMember.id, undefined, paymentRecord.id, currentBranch.id
+          );
+        }
 
         if (joiningFee > 0) {
           await createMembershipIncomeEntry(
