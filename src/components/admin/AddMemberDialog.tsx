@@ -1105,6 +1105,12 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
               ? `For ${existingMember.name} · ${existingMember.phone}`
               : `Step ${currentStep} of 3 — ${STEPS[currentStep - 1].title} Details`}
           </DialogDescription>
+          {!isExistingMemberAction && phone.length === 10 && currentStep > 1 && (
+            <div className="flex items-center justify-center gap-1.5 mt-1.5">
+              <Phone className="w-3 h-3 text-muted-foreground" />
+              <span className="text-xs font-medium text-foreground">+91 {phone}</span>
+            </div>
+          )}
         </DialogHeader>
 
         {/* Step Indicator */}
