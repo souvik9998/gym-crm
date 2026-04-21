@@ -157,6 +157,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   
   // Payment mode
   const [paymentMode, setPaymentMode] = useState<"cash" | "upi">("cash");
+
+  // Free registration toggle — when ON, no payment is recorded and all fees become 0.
+  // Manual fee inputs are disabled while this is on; coupon section is hidden.
+  const [registerFree, setRegisterFree] = useState(false);
   
   // Existing member check
   const [existingMember, setExistingMember] = useState<ExistingMember | null>(null);
@@ -415,7 +419,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const subtotalAmount = gymTotal + ptTotal;
   const taxAmount = taxEnabled && taxRate > 0 ? Math.round((subtotalAmount * taxRate) / 100) : 0;
 
-  // Coupon validation — works for new members and existing-member actions
+  // Coupon validation — works for new members and existing-member actions.
+  // Disabled entirely when registering free (no payment, no discount math needed).
   const adminCoupon = useCouponValidation({
     branchId: currentBranch?.id,
     isNewMember: !isExistingMemberAction,
@@ -423,8 +428,18 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     subtotal: subtotalAmount + taxAmount,
     context: isExistingMemberAction ? "renewal" : "new_registration",
   });
-  const couponDiscount = adminCoupon.appliedCoupon?.discountAmount || 0;
-  const totalAmount = Math.max(0, subtotalAmount + taxAmount - couponDiscount);
+  const couponDiscount = registerFree ? 0 : (adminCoupon.appliedCoupon?.discountAmount || 0);
+  // When registering free, force the total to 0 regardless of fee inputs.
+  const totalAmount = registerFree ? 0 : Math.max(0, subtotalAmount + taxAmount - couponDiscount);
+
+  // Helper: clamp manual fee inputs to a minimum of 1 (never 0) when not registering free.
+  // Allows empty string while typing, but the bound value is at least 1 once a number is entered.
+  const handleFeeInput = (raw: string, setter: (n: number) => void) => {
+    if (raw === "") { setter(0); return; }
+    const n = Number(raw);
+    if (Number.isNaN(n)) return;
+    setter(n < 1 ? 1 : n);
+  };
 
   // Calculate the gym membership end date for PT capping
   const gymMembershipEndDate = (() => {
@@ -777,10 +792,11 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         : "";
 
       // Only create a payment record when there's an actual amount.
-      // DB constraint: payments_amount_check (amount > 0). For ₹0 (admin waiver / 100% coupon),
-      // skip the payments row but still create the subscription + ledger + coupon-usage entries.
+      // DB constraint: payments_amount_check (amount > 0).
+      // For "Register Free", skip the payments row entirely — the subscription itself
+      // marks them as a member; the activity log records that it was a free registration.
       let paymentRecord: { id: string } | null = null;
-      if (totalAmount > 0) {
+      if (!registerFree && totalAmount > 0) {
         const { data, error: paymentError } = await supabase.from("payments").insert({
           member_id: member.id,
           subscription_id: subscription.id,
@@ -835,22 +851,28 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         );
       }
 
+      const paymentTag = registerFree ? "FREE" : paymentMode.toUpperCase();
       if (isStaffLoggedIn && staffUser) {
         await logStaffActivity({
           category: "members", type: "member_added",
-          description: `Staff "${staffUser.fullName}" added new member "${name}" with ${selectedPackage?.months || 1} month package (${paymentMode.toUpperCase()})`,
+          description: registerFree
+            ? `Staff "${staffUser.fullName}" registered new member "${name}" FREE (${selectedPackage?.months || 1} month package, no payment collected)`
+            : `Staff "${staffUser.fullName}" added new member "${name}" with ${selectedPackage?.months || 1} month package (${paymentTag})`,
           entityType: "members", entityId: member.id, entityName: name,
-          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT, payment_mode: paymentMode },
+          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT, payment_mode: registerFree ? "free" : paymentMode, registered_free: registerFree },
           branchId: currentBranch?.id, staffId: staffUser.id, staffName: staffUser.fullName,
-          staffPhone: staffUser.phone, metadata: { staff_role: staffUser.role },
+          staffPhone: staffUser.phone, metadata: { staff_role: staffUser.role, registered_free: registerFree },
         });
       } else {
         await logAdminActivity({
           category: "members", type: "member_added",
-          description: `Added new member "${name}" with ${selectedPackage?.months || 1} month package (${paymentMode.toUpperCase()})`,
+          description: registerFree
+            ? `Registered new member "${name}" FREE (${selectedPackage?.months || 1} month package, no payment collected)`
+            : `Added new member "${name}" with ${selectedPackage?.months || 1} month package (${paymentTag})`,
           entityType: "members", entityId: member.id, entityName: name,
-          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT, payment_mode: paymentMode },
+          newValue: { name, phone, package_months: selectedPackage?.months, total_amount: totalAmount, with_pt: wantsPT, payment_mode: registerFree ? "free" : paymentMode, registered_free: registerFree },
           branchId: currentBranch?.id,
+          metadata: { registered_free: registerFree },
         });
       }
 
@@ -942,9 +964,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         const couponNote = adminCoupon.appliedCoupon
           ? ` (Coupon: ${adminCoupon.appliedCoupon.coupon.code}, -₹${couponDiscount})`
           : "";
-        // Create payment record (only when there's an actual amount; DB requires amount > 0)
+        // Create payment record only when this isn't a free registration
+        // and there's an actual amount (DB requires amount > 0).
         let paymentRecord: { id: string } | null = null;
-        if (totalAmount > 0) {
+        if (!registerFree && totalAmount > 0) {
           const { data, error: paymentError } = await supabase.from("payments").insert({
             member_id: existingMember.id,
             subscription_id: subscription.id,
@@ -1043,9 +1066,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         const couponNotePT = adminCoupon.appliedCoupon
           ? ` (Coupon: ${adminCoupon.appliedCoupon.coupon.code}, -₹${couponDiscount})`
           : "";
-        // Only insert payment when there's an actual amount (DB requires amount > 0)
+        // Only insert payment when not a free registration and amount > 0 (DB constraint)
         let paymentRecord: { id: string } | null = null;
-        if (totalAmount > 0) {
+        if (!registerFree && totalAmount > 0) {
           const { data, error: paymentError } = await supabase.from("payments").insert({
             member_id: existingMember.id,
             amount: totalAmount,
@@ -1091,24 +1114,30 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
       // Log activity
       const actionDesc = selectedAction === "add_pt" ? "added PT for" : "renewed";
+      const paymentTagEx = registerFree ? "FREE" : paymentMode.toUpperCase();
       if (isStaffLoggedIn && staffUser) {
         await logStaffActivity({
           category: selectedAction === "add_pt" ? "subscriptions" : "members",
           type: selectedAction === "add_pt" ? "pt_subscription_added" : "subscription_renewed",
-          description: `Staff "${staffUser.fullName}" ${actionDesc} "${existingMember.name}" (${paymentMode.toUpperCase()})`,
+          description: registerFree
+            ? `Staff "${staffUser.fullName}" ${actionDesc} "${existingMember.name}" FREE (no payment collected)`
+            : `Staff "${staffUser.fullName}" ${actionDesc} "${existingMember.name}" (${paymentTagEx})`,
           entityType: "members", entityId: existingMember.id, entityName: existingMember.name,
-          newValue: { action: selectedAction, total_amount: totalAmount, payment_mode: paymentMode },
+          newValue: { action: selectedAction, total_amount: totalAmount, payment_mode: registerFree ? "free" : paymentMode, registered_free: registerFree },
           branchId: currentBranch.id, staffId: staffUser.id, staffName: staffUser.fullName,
-          staffPhone: staffUser.phone, metadata: { staff_role: staffUser.role },
+          staffPhone: staffUser.phone, metadata: { staff_role: staffUser.role, registered_free: registerFree },
         });
       } else {
         await logAdminActivity({
           category: selectedAction === "add_pt" ? "subscriptions" : "members",
           type: selectedAction === "add_pt" ? "pt_subscription_added" : "subscription_renewed",
-          description: `${selectedAction === "add_pt" ? "Added PT for" : "Renewed"} "${existingMember.name}" (${paymentMode.toUpperCase()})`,
+          description: registerFree
+            ? `${selectedAction === "add_pt" ? "Added PT for" : "Renewed"} "${existingMember.name}" FREE (no payment collected)`
+            : `${selectedAction === "add_pt" ? "Added PT for" : "Renewed"} "${existingMember.name}" (${paymentTagEx})`,
           entityType: "members", entityId: existingMember.id, entityName: existingMember.name,
-          newValue: { action: selectedAction, total_amount: totalAmount, payment_mode: paymentMode },
+          newValue: { action: selectedAction, total_amount: totalAmount, payment_mode: registerFree ? "free" : paymentMode, registered_free: registerFree },
           branchId: currentBranch.id,
+          metadata: { registered_free: registerFree },
         });
       }
 
@@ -1169,6 +1198,7 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setEmergencyContact2Name(""); setEmergencyContact2Phone("");
     setIdentityFiles([]); setMedicalFiles([]);
     setNotifyWhatsApp(true);
+    setRegisterFree(false);
     adminCoupon.removeCoupon();
     const today = new Date(); today.setHours(0, 0, 0, 0); setStartDate(today);
   };
@@ -1734,9 +1764,12 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                           </Label>
                           <Input
                             type="number"
-                            value={monthlyFee}
-                            onChange={(e) => setMonthlyFee(Number(e.target.value) || 0)}
-                            className="h-10 text-sm rounded-xl"
+                            min={registerFree ? 0 : 1}
+                            step={1}
+                            value={registerFree ? 0 : monthlyFee}
+                            disabled={registerFree}
+                            onChange={(e) => handleFeeInput(e.target.value, setMonthlyFee)}
+                            className="h-10 text-sm rounded-xl disabled:opacity-60"
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -1746,9 +1779,16 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                           </Label>
                           <Input
                             type="number"
-                            value={joiningFee}
-                            onChange={(e) => setJoiningFee(Number(e.target.value) || 0)}
-                            className="h-10 text-sm rounded-xl"
+                            min={0}
+                            step={1}
+                            value={registerFree ? 0 : joiningFee}
+                            disabled={registerFree}
+                            onChange={(e) => {
+                              // joining fee can be 0 (some packages have no joining fee), but never negative
+                              const v = e.target.value === "" ? 0 : Math.max(0, Number(e.target.value) || 0);
+                              setJoiningFee(v);
+                            }}
+                            className="h-10 text-sm rounded-xl disabled:opacity-60"
                           />
                         </div>
                       </div>
@@ -1806,9 +1846,12 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                               <Label className="text-xs text-muted-foreground">PT Fee (₹)</Label>
                               <Input
                                 type="number"
-                                value={ptFee}
-                                onChange={(e) => setPtFee(Number(e.target.value) || 0)}
-                                className="h-10 text-sm rounded-xl"
+                                min={registerFree ? 0 : 1}
+                                step={1}
+                                value={registerFree ? 0 : ptFee}
+                                disabled={registerFree}
+                                onChange={(e) => handleFeeInput(e.target.value, setPtFee)}
+                                className="h-10 text-sm rounded-xl disabled:opacity-60"
                               />
                             </div>
                           </div>
@@ -1832,83 +1875,134 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     </div>
                   )}
 
-                  {/* Payment Mode Selection */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-sm font-medium">
-                      <IndianRupee className="w-4 h-4 text-accent" />
-                      Payment Method <span className="text-destructive">*</span>
-                    </Label>
-                    <div className="flex gap-2">
-                      {[
-                        { value: "cash" as const, label: "Cash" },
-                        { value: "upi" as const, label: "UPI" },
-                      ].map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setPaymentMode(opt.value)}
-                          className={cn(
-                            "flex-1 py-2.5 px-4 rounded-xl border-2 text-sm font-medium transition-all duration-200 active:scale-95",
-                            paymentMode === opt.value
-                              ? "border-foreground bg-foreground/5 text-foreground shadow-sm"
-                              : "border-border bg-card text-muted-foreground hover:border-foreground/30"
-                          )}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
+                  {/* Register Free toggle — when on, no payment is collected/recorded */}
+                  <label
+                    className={cn(
+                      "flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors",
+                      registerFree
+                        ? "border-success/40 bg-success/5"
+                        : "border-border/60 bg-card hover:bg-muted/30"
+                    )}
+                  >
+                    <Switch
+                      checked={registerFree}
+                      onCheckedChange={(v) => {
+                        setRegisterFree(v);
+                        // Clear any applied coupon when switching into free mode — discounts no longer apply
+                        if (v) adminCoupon.removeCoupon();
+                      }}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium flex items-center gap-1.5">
+                        <Check className={cn("w-3.5 h-3.5", registerFree ? "text-success" : "text-muted-foreground")} />
+                        Register Free
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {registerFree
+                          ? "No payment will be recorded. Member is registered free of charge."
+                          : "Skip payment entirely — useful for complimentary, trial, or staff registrations."}
+                      </p>
                     </div>
-                  </div>
+                  </label>
+
+                  {/* Payment Mode Selection — hidden when registering free */}
+                  {!registerFree && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <IndianRupee className="w-4 h-4 text-accent" />
+                        Payment Method <span className="text-destructive">*</span>
+                      </Label>
+                      <div className="flex gap-2">
+                        {[
+                          { value: "cash" as const, label: "Cash" },
+                          { value: "upi" as const, label: "UPI" },
+                        ].map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setPaymentMode(opt.value)}
+                            className={cn(
+                              "flex-1 py-2.5 px-4 rounded-xl border-2 text-sm font-medium transition-all duration-200 active:scale-95",
+                              paymentMode === opt.value
+                                ? "border-foreground bg-foreground/5 text-foreground shadow-sm"
+                                : "border-border bg-card text-muted-foreground hover:border-foreground/30"
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Price Summary */}
                   <div className="bg-muted/40 rounded-xl p-4 space-y-2.5 border border-border/40">
                     {showGymSection && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Membership ({selectedPackage?.months || 0}mo)</span>
-                        <span className="font-semibold tabular-nums">₹{monthlyFee.toLocaleString("en-IN")}</span>
+                        <span className={cn("font-semibold tabular-nums", registerFree && "line-through text-muted-foreground")}>
+                          ₹{monthlyFee.toLocaleString("en-IN")}
+                        </span>
                       </div>
                     )}
                     {showGymSection && joiningFee > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Joining Fee</span>
-                        <span className="font-semibold tabular-nums">₹{joiningFee.toLocaleString("en-IN")}</span>
+                        <span className={cn("font-semibold tabular-nums", registerFree && "line-through text-muted-foreground")}>
+                          ₹{joiningFee.toLocaleString("en-IN")}
+                        </span>
                       </div>
                     )}
                     {(wantsPT || isPTOnly) && (
                       <div className="flex justify-between text-sm animate-fade-in">
                         <span className="text-muted-foreground">PT ({ptMonths}mo)</span>
-                        <span className="font-semibold tabular-nums">₹{ptFee.toLocaleString("en-IN")}</span>
+                        <span className={cn("font-semibold tabular-nums", registerFree && "line-through text-muted-foreground")}>
+                          ₹{ptFee.toLocaleString("en-IN")}
+                        </span>
                       </div>
                     )}
-                    {taxEnabled && taxAmount > 0 && (
+                    {!registerFree && taxEnabled && taxAmount > 0 && (
                       <div className="flex justify-between text-sm animate-fade-in">
                         <span className="text-muted-foreground">GST ({taxRate}%)</span>
                         <span className="font-semibold tabular-nums">₹{taxAmount.toLocaleString("en-IN")}</span>
                       </div>
                     )}
-                    {couponDiscount > 0 && (
+                    {!registerFree && couponDiscount > 0 && (
                       <div className="flex justify-between text-sm text-success animate-fade-in">
                         <span>Coupon ({adminCoupon.appliedCoupon?.coupon.code})</span>
                         <span className="font-semibold tabular-nums">-₹{couponDiscount.toLocaleString("en-IN")}</span>
                       </div>
                     )}
                     <div className="flex justify-between font-bold pt-2.5 border-t border-border/60 text-base">
-                      <span>Total ({paymentMode === "upi" ? "UPI" : "Cash"})</span>
-                      <span className="text-foreground tabular-nums">₹{totalAmount.toLocaleString("en-IN")}</span>
+                      <span>
+                        {registerFree
+                          ? "Total"
+                          : `Total (${paymentMode === "upi" ? "UPI" : "Cash"})`}
+                      </span>
+                      {registerFree ? (
+                        <span className="text-success tabular-nums flex items-center gap-1.5">
+                          <Check className="w-4 h-4" /> FREE
+                        </span>
+                      ) : (
+                        <span className="text-foreground tabular-nums">₹{totalAmount.toLocaleString("en-IN")}</span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Coupon Input */}
-                  <CouponInput
-                    couponCode={adminCoupon.couponCode}
-                    onCouponCodeChange={adminCoupon.setCouponCode}
-                    onApply={adminCoupon.validateCoupon}
-                    onRemove={adminCoupon.removeCoupon}
-                    isValidating={adminCoupon.isValidating}
-                    appliedCoupon={adminCoupon.appliedCoupon}
-                    error={adminCoupon.couponError}
-                    compact
-                  />
+                  {/* Coupon Input — hidden when registering free */}
+                  {!registerFree && (
+                    <CouponInput
+                      couponCode={adminCoupon.couponCode}
+                      onCouponCodeChange={adminCoupon.setCouponCode}
+                      onApply={adminCoupon.validateCoupon}
+                      onRemove={adminCoupon.removeCoupon}
+                      isValidating={adminCoupon.isValidating}
+                      appliedCoupon={adminCoupon.appliedCoupon}
+                      error={adminCoupon.couponError}
+                      compact
+                    />
+                  )}
 
                   {/* Notify member via WhatsApp */}
                   <label className="flex items-start gap-3 p-3 rounded-xl border border-border/60 bg-card hover:bg-muted/30 cursor-pointer transition-colors">
@@ -1988,10 +2082,15 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                   ) : (
                     <>
                       <Check className="w-4 h-4 mr-1.5" />
-                      {selectedAction === "renew_gym" ? "Renew Membership" 
-                        : selectedAction === "add_pt" ? "Add PT"
-                        : selectedAction === "renew_gym_pt" ? "Renew + Add PT"
-                        : "Add Member"}
+                      {registerFree
+                        ? (selectedAction === "renew_gym" ? "Renew Free"
+                          : selectedAction === "add_pt" ? "Add PT Free"
+                          : selectedAction === "renew_gym_pt" ? "Renew + PT Free"
+                          : "Register Free")
+                        : (selectedAction === "renew_gym" ? "Renew Membership"
+                          : selectedAction === "add_pt" ? "Add PT"
+                          : selectedAction === "renew_gym_pt" ? "Renew + Add PT"
+                          : "Add Member")}
                     </>
                   )}
                 </Button>
