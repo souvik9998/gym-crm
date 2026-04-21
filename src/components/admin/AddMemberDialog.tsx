@@ -237,12 +237,18 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     if (!currentBranch?.id) return;
     setIsCheckingPhone(true);
     try {
-      const { data: member } = await supabase
-        .from("members")
-        .select("id, name, phone")
-        .eq("phone", phoneNum)
-        .eq("branch_id", currentBranch.id)
-        .maybeSingle();
+      // Use secure RPC (bypasses RLS issues, validates input)
+      const { data: rpcData, error: rpcError } = await supabase.rpc("check_phone_exists", {
+        phone_number: phoneNum,
+        p_branch_id: currentBranch.id,
+      });
+
+      if (rpcError) throw rpcError;
+
+      const rpcResult = rpcData?.[0];
+      const member = rpcResult?.member_exists
+        ? { id: rpcResult.member_id, name: rpcResult.member_name, phone: phoneNum }
+        : null;
 
       if (member) {
         // Fetch latest subscription
@@ -628,13 +634,55 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     setIsLoading(true);
 
     try {
+      // Final safety net: re-check phone right before insert (prevents race conditions
+      // and catches cases where the debounced check missed an existing member)
+      if (currentBranch?.id) {
+        const { data: rpcData } = await supabase.rpc("check_phone_exists", {
+          phone_number: phone,
+          p_branch_id: currentBranch.id,
+        });
+        const existing = rpcData?.[0];
+        if (existing?.member_exists) {
+          setIsLoading(false);
+          // Trigger the existing-member UI flow instead of inserting
+          setExistingMember({
+            id: existing.member_id,
+            name: existing.member_name,
+            phone,
+            subscription: null,
+            activePT: null,
+          });
+          setName(existing.member_name);
+          setCurrentStep(1);
+          // Re-fetch full subscription details for the action picker
+          await checkExistingMember(phone);
+          toast.error("Member Already Exists", {
+            description: `${existing.member_name} is already registered with this phone. Choose Renew or Add PT instead.`,
+          });
+          return;
+        }
+      }
 
       const { data: member, error: memberError } = await supabase
         .from("members")
         .insert({ name, phone, email: email || null, branch_id: currentBranch?.id || "" })
         .select()
         .single();
-      if (memberError) throw memberError;
+      if (memberError) {
+        // Friendly handling for unique constraint violation (race condition fallback)
+        if (
+          memberError.code === "23505" ||
+          /members_phone_branch_unique|duplicate key/i.test(memberError.message || "")
+        ) {
+          toast.error("Member Already Exists", {
+            description: "A member with this phone number already exists in this branch. Use Renew or Add PT instead.",
+          });
+          setCurrentStep(1);
+          if (currentBranch?.id) await checkExistingMember(phone);
+          return;
+        }
+        throw memberError;
+      }
 
       const hasDetails = gender || address || photoIdType || photoIdNumber || dateOfBirth ||
         bloodGroup || heightCm || weightKg || medicalConditions || allergies ||
@@ -803,7 +851,19 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       onOpenChange(false);
       resetForm();
     } catch (error: any) {
-      toast.error("Error", { description: error.message });
+      // Friendly handling for duplicate phone constraint at any insert step
+      if (
+        error?.code === "23505" ||
+        /members_phone_branch_unique|duplicate key/i.test(error?.message || "")
+      ) {
+        toast.error("Member Already Exists", {
+          description: "A member with this phone number already exists in this branch. Use Renew or Add PT instead.",
+        });
+        setCurrentStep(1);
+        if (currentBranch?.id) await checkExistingMember(phone);
+      } else {
+        toast.error("Error", { description: error.message });
+      }
     } finally {
       setIsLoading(false);
     }
