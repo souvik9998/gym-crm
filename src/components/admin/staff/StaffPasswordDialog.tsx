@@ -65,6 +65,7 @@ export const StaffPasswordDialog = ({
     }
 
     setIsLoading(true);
+    setServerError(null);
 
     try {
       // Send password with sendWhatsApp flag - edge function handles WhatsApp with plain password
@@ -118,9 +119,12 @@ export const StaffPasswordDialog = ({
 
       setPassword("");
       setShowPassword(false);
+      setServerError(null);
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {
+      // Show inline so user can see the message + click Generate without dismissing a toast
+      setServerError(error.message);
       toast.error("Failed to set password", { description: error.message });
     } finally {
       setIsLoading(false);
