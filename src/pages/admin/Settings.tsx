@@ -222,10 +222,44 @@ const AdminSettings = () => {
   
   // Use aggregated settings page data hook (single API call)
   const { settings: fetchedSettings, monthlyPackages: fetchedMonthlyPackages, customPackages: fetchedCustomPackages, isLoading: isLoadingData, refetch: refetchData } = useSettingsPageData();
-  
+
   // Cache invalidation for cross-page updates
   const { invalidateSettings } = useInvalidateQueries();
-  
+
+  // Direct React Query cache access — single source of truth for settings page data.
+  // Mutations write here via setQueryData so the UI reflects changes instantly without
+  // needing a refetch, and switching tabs always shows the latest cached values
+  // (no stale local-state mirror).
+  const queryClient = useQueryClient();
+  const settingsQueryKey = ["settings-page-data", currentBranch?.id] as const;
+
+  type SettingsCache = {
+    settings: GymSettings | null;
+    monthlyPackages: MonthlyPackage[];
+    customPackages: CustomPackage[];
+  };
+
+  const updateSettingsCache = useCallback(
+    (updater: (prev: SettingsCache) => SettingsCache) => {
+      queryClient.setQueryData<SettingsCache>(settingsQueryKey, (prev) => {
+        const safe: SettingsCache = prev ?? { settings: null, monthlyPackages: [], customPackages: [] };
+        return updater({
+          settings: safe.settings ?? null,
+          monthlyPackages: safe.monthlyPackages ?? [],
+          customPackages: safe.customPackages ?? [],
+        });
+      });
+    },
+    [queryClient, settingsQueryKey]
+  );
+
+  // Derive UI lists & settings object directly from the query cache so any
+  // refetch / cache write (mutations, window-focus refetch, branch switch)
+  // is immediately reflected in the UI.
+  const monthlyPackages: MonthlyPackage[] = fetchedMonthlyPackages ?? [];
+  const customPackages: CustomPackage[] = fetchedCustomPackages ?? [];
+  const settings: GymSettings | null = fetchedSettings ?? null;
+
   // Loading states for toggle buttons
   const [isTogglingWhatsApp, setIsTogglingWhatsApp] = useState(false);
   const [togglingMonthlyId, setTogglingMonthlyId] = useState<string | null>(null);
@@ -236,12 +270,12 @@ const AdminSettings = () => {
   const [savingMonthlyId, setSavingMonthlyId] = useState<string | null>(null);
   const [isAddingCustom, setIsAddingCustom] = useState(false);
   const [savingCustomId, setSavingCustomId] = useState<string | null>(null);
-  
+
   // Track recently added items for highlight animation
   const [recentlyAddedIds, setRecentlyAddedIds] = useState<Set<string>>(new Set());
 
-  // Gym Settings
-  const [settings, setSettings] = useState<GymSettings | null>(null);
+  // Gym Settings form fields (local because they are user-editable inputs).
+  // Underlying source-of-truth `settings` object lives in the query cache above.
   const [gymName, setGymName] = useState("");
   const [gymPhone, setGymPhone] = useState("");
   const [gymAddress, setGymAddress] = useState("");
@@ -254,14 +288,12 @@ const AdminSettings = () => {
   const [invoiceTerms, setInvoiceTerms] = useState("");
   const [invoiceShowGst, setInvoiceShowGst] = useState(true);
 
-  // Monthly Packages
-  const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
+  // Monthly Packages form-only state
   const [newMonthlyPackage, setNewMonthlyPackage] = useState({ months: "", price: "", joining_fee: "" });
   const [editingMonthlyId, setEditingMonthlyId] = useState<string | null>(null);
   const [editMonthlyData, setEditMonthlyData] = useState({ price: "", joining_fee: "" });
 
-  // Custom Packages
-  const [customPackages, setCustomPackages] = useState<CustomPackage[]>([]);
+  // Custom Packages form-only state
   const [newPackage, setNewPackage] = useState({ name: "", duration_days: "", price: "" });
   const [editingPackageId, setEditingPackageId] = useState<string | null>(null);
   const [editPackageData, setEditPackageData] = useState({ name: "", price: "" });
@@ -297,55 +329,29 @@ const AdminSettings = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Reset sync refs when branch changes so fresh data loads
-  const prevBranchId = useRef(currentBranch?.id);
+  // Re-seed gym-info form fields whenever the underlying settings row identity
+  // changes (initial load, branch switch, or external refresh that brings in a
+  // different row). We key on `fetchedSettings?.id` so in-place edits to the
+  // same row don't blow away the user's unsaved typing.
+  const lastSeededSettingsId = useRef<string | null>(null);
   useEffect(() => {
-    if (currentBranch?.id && currentBranch.id !== prevBranchId.current) {
-      prevBranchId.current = currentBranch.id;
-      initialSyncDone.current = false;
-      monthlyPackagesSynced.current = false;
-      customPackagesSynced.current = false;
-    }
-  }, [currentBranch?.id]);
+    if (!fetchedSettings) return;
+    if (lastSeededSettingsId.current === fetchedSettings.id) return;
+    lastSeededSettingsId.current = fetchedSettings.id;
 
-  // Only sync fetched data to local state on initial load, not on every refetch
-  const initialSyncDone = useRef(false);
-
-  useEffect(() => {
-    if (fetchedSettings && !initialSyncDone.current) {
-      initialSyncDone.current = true;
-      setSettings(fetchedSettings);
-      // Fall back to branch then tenant so the form is always populated with
-      // information that was registered for this organization in the Super Admin portal.
-      setGymName(fetchedSettings.gym_name || currentBranch?.name || tenantInfo?.name || "");
-      setGymPhone(fetchedSettings.gym_phone || currentBranch?.phone || tenantInfo?.phone || "");
-      setGymAddress(fetchedSettings.gym_address || currentBranch?.address || "");
-      setWhatsappEnabled(fetchedSettings.whatsapp_enabled === true);
-      setGymEmail(fetchedSettings.gym_email || currentBranch?.email || tenantInfo?.email || "");
-      setGymGst(fetchedSettings.gym_gst || "");
-      setInvoicePrefix(fetchedSettings.invoice_prefix || "INV");
-      setInvoiceFooter(fetchedSettings.invoice_footer_message || "Thank you for choosing our gym!");
-      setInvoiceTaxRate(String(fetchedSettings.invoice_tax_rate || 0));
-      setInvoiceTerms(fetchedSettings.invoice_terms || "");
-      setInvoiceShowGst(fetchedSettings.invoice_show_gst !== false);
-    }
+    setGymName(fetchedSettings.gym_name || currentBranch?.name || tenantInfo?.name || "");
+    setGymPhone(fetchedSettings.gym_phone || currentBranch?.phone || tenantInfo?.phone || "");
+    setGymAddress(fetchedSettings.gym_address || currentBranch?.address || "");
+    setWhatsappEnabled(fetchedSettings.whatsapp_enabled === true);
+    setGymEmail(fetchedSettings.gym_email || currentBranch?.email || tenantInfo?.email || "");
+    setGymGst(fetchedSettings.gym_gst || "");
+    setInvoicePrefix(fetchedSettings.invoice_prefix || "INV");
+    setInvoiceFooter(fetchedSettings.invoice_footer_message || "Thank you for choosing our gym!");
+    setInvoiceTaxRate(String(fetchedSettings.invoice_tax_rate || 0));
+    setInvoiceTerms(fetchedSettings.invoice_terms || "");
+    setInvoiceShowGst(fetchedSettings.invoice_show_gst !== false);
   }, [fetchedSettings, currentBranch, tenantInfo]);
 
-  const monthlyPackagesSynced = useRef(false);
-  useEffect(() => {
-    if (fetchedMonthlyPackages && !monthlyPackagesSynced.current) {
-      monthlyPackagesSynced.current = true;
-      setMonthlyPackages(fetchedMonthlyPackages);
-    }
-  }, [fetchedMonthlyPackages]);
-
-  const customPackagesSynced = useRef(false);
-  useEffect(() => {
-    if (fetchedCustomPackages && !customPackagesSynced.current) {
-      customPackagesSynced.current = true;
-      setCustomPackages(fetchedCustomPackages);
-    }
-  }, [fetchedCustomPackages]);
 
   // Handle case where no settings exist for the branch - create them
   useEffect(() => {
