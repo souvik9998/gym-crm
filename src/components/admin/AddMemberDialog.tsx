@@ -419,7 +419,8 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   const subtotalAmount = gymTotal + ptTotal;
   const taxAmount = taxEnabled && taxRate > 0 ? Math.round((subtotalAmount * taxRate) / 100) : 0;
 
-  // Coupon validation — works for new members and existing-member actions
+  // Coupon validation — works for new members and existing-member actions.
+  // Disabled entirely when registering free (no payment, no discount math needed).
   const adminCoupon = useCouponValidation({
     branchId: currentBranch?.id,
     isNewMember: !isExistingMemberAction,
@@ -427,8 +428,18 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
     subtotal: subtotalAmount + taxAmount,
     context: isExistingMemberAction ? "renewal" : "new_registration",
   });
-  const couponDiscount = adminCoupon.appliedCoupon?.discountAmount || 0;
-  const totalAmount = Math.max(0, subtotalAmount + taxAmount - couponDiscount);
+  const couponDiscount = registerFree ? 0 : (adminCoupon.appliedCoupon?.discountAmount || 0);
+  // When registering free, force the total to 0 regardless of fee inputs.
+  const totalAmount = registerFree ? 0 : Math.max(0, subtotalAmount + taxAmount - couponDiscount);
+
+  // Helper: clamp manual fee inputs to a minimum of 1 (never 0) when not registering free.
+  // Allows empty string while typing, but the bound value is at least 1 once a number is entered.
+  const handleFeeInput = (raw: string, setter: (n: number) => void) => {
+    if (raw === "") { setter(0); return; }
+    const n = Number(raw);
+    if (Number.isNaN(n)) return;
+    setter(n < 1 ? 1 : n);
+  };
 
   // Calculate the gym membership end date for PT capping
   const gymMembershipEndDate = (() => {
