@@ -223,8 +223,10 @@ const AdminSettings = () => {
   // Use aggregated settings page data hook (single API call)
   const { settings: fetchedSettings, monthlyPackages: fetchedMonthlyPackages, customPackages: fetchedCustomPackages, isLoading: isLoadingData, refetch: refetchData } = useSettingsPageData();
 
-  // Cache invalidation for cross-page updates
-  const { invalidateSettings } = useInvalidateQueries();
+  // Note: useInvalidateQueries() is intentionally not used here. After mutations,
+  // we write directly to the React Query cache via updateSettingsCache (below),
+  // so an invalidation+refetch round-trip is unnecessary. Cross-tab freshness is
+  // handled by React Query's refetchOnWindowFocus default.
 
   // Direct React Query cache access — single source of truth for settings page data.
   // Mutations write here via setQueryData so the UI reflects changes instantly without
