@@ -46,8 +46,9 @@ import { DevicePhoneMobileIcon, ChevronDownIcon, LockClosedIcon } from "@heroico
 import { StaffCardSkeleton } from "./StaffCardSkeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DetailItem } from "./StaffDetailItem";
-import { nameSchema, phoneSchema, passwordSchema, getPhotoIdSchema, formatPhotoIdInput, getPhotoIdPlaceholder } from "@/lib/validation";
+import { nameSchema, phoneSchema, getPhotoIdSchema, formatPhotoIdInput, getPhotoIdPlaceholder } from "@/lib/validation";
 import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
+import { validateStaffPassword } from "@/lib/staffPassword";
 
 interface StaffTrainersTabProps {
   trainers: Staff[];
@@ -74,7 +75,6 @@ export const StaffTrainersTab = ({
   const [changePhoneDialog, setChangePhoneDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Hard cache bust + refetch — ensures mutations are reflected even when data is cached
   const refreshAll = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["staff-page-data"], refetchType: "all" }),
@@ -100,7 +100,7 @@ export const StaffTrainersTab = ({
     enableLogin: false,
     password: "",
     permissions: getDefaultPermissions("trainer"),
-    sendWhatsApp: true, // Default to send WhatsApp
+    sendWhatsApp: true,
   });
   const [isAddingTrainer, setIsAddingTrainer] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -141,20 +141,18 @@ export const StaffTrainersTab = ({
   }>({ open: false, existingStaff: null });
   const addingRef = { current: false };
 
-  // Update selected branches when currentBranch changes
   useEffect(() => {
     if (currentBranch?.id && !newTrainer.selected_branches.includes(currentBranch.id)) {
       setNewTrainer((prev) => ({
         ...prev,
-        selected_branches: prev.selected_branches.length === 0 
-          ? [currentBranch.id] 
+        selected_branches: prev.selected_branches.length === 0
+          ? [currentBranch.id]
           : prev.selected_branches,
       }));
     }
   }, [currentBranch?.id]);
 
   const handleAddTrainer = async () => {
-    // Validate using shared schemas
     const nameResult = nameSchema.safeParse(newTrainer.full_name);
     if (!nameResult.success) {
       toast.error(nameResult.error.errors[0]?.message || "Invalid name");
@@ -167,7 +165,6 @@ export const StaffTrainersTab = ({
     }
     const cleanPhone = phoneResult.data;
 
-    // Validate ID number against the selected ID type (only if user entered something)
     if (newTrainer.id_number?.trim()) {
       const idResult = getPhotoIdSchema(newTrainer.id_type).safeParse(newTrainer.id_number);
       if (!idResult.success) {
@@ -177,14 +174,16 @@ export const StaffTrainersTab = ({
     }
 
     if (newTrainer.enableLogin) {
-      const pwdResult = passwordSchema.safeParse(newTrainer.password);
-      if (!pwdResult.success) {
-        toast.error(pwdResult.error.errors[0]?.message || "Invalid password");
+      const pwdResult = validateStaffPassword(newTrainer.password, {
+        fullName: newTrainer.full_name,
+        phone: cleanPhone,
+      });
+      if (pwdResult.valid === false) {
+        toast.error(pwdResult.error);
         return;
       }
     }
 
-    // Validate monthly fee for trainers
     if (!newTrainer.monthly_fee || Number(newTrainer.monthly_fee) <= 0) {
       toast.error("Monthly fee (member charge) must be greater than 0");
       return;
@@ -203,7 +202,7 @@ export const StaffTrainersTab = ({
     if (addingRef.current) return;
     addingRef.current = true;
     setIsAddingTrainer(true);
-    
+
     try {
       const branchesToAssign = newTrainer.selected_branches.length > 0 
         ? newTrainer.selected_branches 

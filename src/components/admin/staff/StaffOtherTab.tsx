@@ -46,8 +46,9 @@ import { StaffCardSkeleton } from "./StaffCardSkeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChangePhoneDialog } from "./ChangePhoneDialog";
 import { DetailItem } from "./StaffDetailItem";
-import { nameSchema, phoneSchema, passwordSchema, getPhotoIdSchema, formatPhotoIdInput, getPhotoIdPlaceholder } from "@/lib/validation";
+import { nameSchema, phoneSchema, getPhotoIdSchema, formatPhotoIdInput, getPhotoIdPlaceholder } from "@/lib/validation";
 import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
+import { validateStaffPassword } from "@/lib/staffPassword";
 
 interface StaffOtherTabProps {
   staff: Staff[];
@@ -76,7 +77,6 @@ export const StaffOtherTab = ({
   const queryClient = useQueryClient();
   const isCompact = useIsTabletOrBelow();
 
-  // Hard cache bust + refetch — ensures mutations are reflected even when data is cached
   const refreshAll = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["staff-page-data"], refetchType: "all" }),
@@ -96,7 +96,7 @@ export const StaffOtherTab = ({
     enableLogin: false,
     password: "",
     permissions: getDefaultPermissions("reception"),
-    sendWhatsApp: true, // Default to send WhatsApp
+    sendWhatsApp: true,
   });
   const [isAddingStaff, setIsAddingStaff] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -139,13 +139,12 @@ export const StaffOtherTab = ({
   const [changePhoneDialog, setChangePhoneDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Update selected branches when currentBranch changes
   useEffect(() => {
     if (currentBranch?.id && !newStaff.selected_branches.includes(currentBranch.id)) {
       setNewStaff((prev) => ({
         ...prev,
-        selected_branches: prev.selected_branches.length === 0 
-          ? [currentBranch.id] 
+        selected_branches: prev.selected_branches.length === 0
+          ? [currentBranch.id]
           : prev.selected_branches,
       }));
     }
@@ -160,7 +159,6 @@ export const StaffOtherTab = ({
   };
 
   const handleAddStaff = async () => {
-    // Validate using shared schemas
     const nameResult = nameSchema.safeParse(newStaff.full_name);
     if (!nameResult.success) {
       toast.error(nameResult.error.errors[0]?.message || "Invalid name");
@@ -173,7 +171,6 @@ export const StaffOtherTab = ({
     }
     const cleanPhone = phoneResult.data;
 
-    // Validate ID number against the selected ID type (only if user entered something)
     if (newStaff.id_number?.trim()) {
       const idResult = getPhotoIdSchema(newStaff.id_type).safeParse(newStaff.id_number);
       if (!idResult.success) {
@@ -188,9 +185,12 @@ export const StaffOtherTab = ({
     }
 
     if (newStaff.enableLogin) {
-      const pwdResult = passwordSchema.safeParse(newStaff.password);
-      if (!pwdResult.success) {
-        toast.error(pwdResult.error.errors[0]?.message || "Invalid password");
+      const pwdResult = validateStaffPassword(newStaff.password, {
+        fullName: newStaff.full_name,
+        phone: cleanPhone,
+      });
+      if (pwdResult.valid === false) {
+        toast.error(pwdResult.error);
         return;
       }
     }
@@ -198,7 +198,7 @@ export const StaffOtherTab = ({
     if (addingRef.current) return;
     addingRef.current = true;
     setIsAddingStaff(true);
-    
+
     try {
       const branchesToAssign = newStaff.selected_branches.length > 0 
         ? newStaff.selected_branches 

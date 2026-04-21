@@ -17,8 +17,11 @@ import { Staff } from "@/pages/admin/StaffManagement";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { useBranch } from "@/contexts/BranchContext";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import { passwordSchema } from "@/lib/validation";
-import { generateStaffPassword, STAFF_PASSWORD_RULE_TEXT } from "@/lib/staffPassword";
+import {
+  generateStaffPassword,
+  STAFF_PASSWORD_RULE_TEXT,
+  validateStaffPassword,
+} from "@/lib/staffPassword";
 import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
 
 interface StaffPasswordDialogProps {
@@ -48,8 +51,6 @@ export const StaffPasswordDialog = ({
     setServerError(null);
   };
 
-  // WhatsApp is now sent directly from the edge function with the plain password
-
   const handleSubmit = async () => {
     if (!staff) return;
 
@@ -58,9 +59,13 @@ export const StaffPasswordDialog = ({
       return;
     }
 
-    const pwdResult = passwordSchema.safeParse(password);
-    if (!pwdResult.success) {
-      toast.error(pwdResult.error.errors[0]?.message || "Invalid password");
+    const pwdResult = validateStaffPassword(password, {
+      fullName: staff.full_name,
+      phone: staff.phone,
+    });
+    if (pwdResult.valid === false) {
+      setServerError(pwdResult.error);
+      toast.error(pwdResult.error);
       return;
     }
 
@@ -68,7 +73,6 @@ export const StaffPasswordDialog = ({
     setServerError(null);
 
     try {
-      // Send password with sendWhatsApp flag - edge function handles WhatsApp with plain password
       const { data, error } = await supabase.functions.invoke("staff-auth?action=set-password", {
         body: {
           staffId: staff.id,
@@ -78,8 +82,6 @@ export const StaffPasswordDialog = ({
       });
 
       if (error) {
-        // Surface the server's friendly message (e.g. HIBP weak-password rejection)
-        // instead of the generic "Edge function returned 500".
         const serverMessage = await extractEdgeFunctionError(error, "Failed to set password");
         throw new Error(serverMessage);
       }
@@ -90,7 +92,6 @@ export const StaffPasswordDialog = ({
         throw new Error(response.error || "Failed to set password");
       }
 
-      // Log password set activity - DO NOT store password in logs for security
       const hasExistingAuth = !!(staff as any).auth_user_id;
       await logAdminActivity({
         category: "staff",
@@ -100,7 +101,6 @@ export const StaffPasswordDialog = ({
         entityId: staff.id,
         entityName: staff.full_name,
         metadata: {
-          // Security: Never store plaintext passwords in activity logs
           phone: staff.phone,
           role: staff.role,
           password_updated: true,
@@ -123,7 +123,6 @@ export const StaffPasswordDialog = ({
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {
-      // Show inline so user can see the message + click Generate without dismissing a toast
       setServerError(error.message);
       toast.error("Failed to set password", { description: error.message });
     } finally {
@@ -131,7 +130,6 @@ export const StaffPasswordDialog = ({
     }
   };
 
-  // Check if staff has Supabase Auth account (auth_user_id instead of password_hash)
   const hasExistingPassword = !!(staff as any)?.auth_user_id;
 
   return (
@@ -185,17 +183,11 @@ export const StaffPasswordDialog = ({
                   )}
                 </button>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleGeneratePassword}
-              >
+              <Button type="button" variant="outline" onClick={handleGeneratePassword}>
                 Generate
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {STAFF_PASSWORD_RULE_TEXT}
-            </p>
+            <p className="text-xs text-muted-foreground">{STAFF_PASSWORD_RULE_TEXT}</p>
             {serverError && (
               <div className="p-2 bg-destructive/10 border border-destructive/30 rounded-md text-xs text-destructive">
                 {serverError}
@@ -229,8 +221,8 @@ export const StaffPasswordDialog = ({
             {isLoading
               ? "Setting Password..."
               : hasExistingPassword
-              ? "Update Password"
-              : "Set Password"}
+                ? "Update Password"
+                : "Set Password"}
           </Button>
         </DialogFooter>
       </DialogContent>
