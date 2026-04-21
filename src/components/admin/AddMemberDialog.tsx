@@ -157,6 +157,10 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
   
   // Payment mode
   const [paymentMode, setPaymentMode] = useState<"cash" | "upi">("cash");
+
+  // Free registration toggle — when ON, no payment is recorded and all fees become 0.
+  // Manual fee inputs are disabled while this is on; coupon section is hidden.
+  const [registerFree, setRegisterFree] = useState(false);
   
   // Existing member check
   const [existingMember, setExistingMember] = useState<ExistingMember | null>(null);
