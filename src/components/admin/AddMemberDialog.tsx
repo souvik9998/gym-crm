@@ -990,11 +990,13 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
             branch_id: currentBranch.id,
           });
 
-          await createMembershipIncomeEntry(
-            ptFee, "pt_subscription",
-            `PT subscription - ${existingMember.name} with ${selectedTrainer?.name}`,
-            existingMember.id, undefined, paymentRecord.id, currentBranch.id
-          );
+          if (ptFee > 0) {
+            await createMembershipIncomeEntry(
+              ptFee, "pt_subscription",
+              `PT subscription - ${existingMember.name} with ${selectedTrainer?.name}`,
+              existingMember.id, undefined, paymentRecord.id, currentBranch.id
+            );
+          }
           if (selectedTrainer) {
             await calculateTrainerPercentageExpense(
               selectedTrainerId, ptFee, existingMember.id, undefined, undefined, existingMember.name, currentBranch.id
@@ -1025,22 +1027,41 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
           branch_id: currentBranch.id,
         });
 
+        const couponNotePT = adminCoupon.appliedCoupon
+          ? ` (Coupon: ${adminCoupon.appliedCoupon.coupon.code}, -₹${couponDiscount})`
+          : "";
         const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
           member_id: existingMember.id,
           amount: totalAmount,
           payment_mode: paymentMode,
           status: "success",
           payment_type: "pt_subscription",
-          notes: `PT added via admin dashboard (${paymentMode.toUpperCase()})`,
+          notes: `PT added via admin dashboard (${paymentMode.toUpperCase()})${couponNotePT}`,
           branch_id: currentBranch.id,
         }).select().single();
         if (paymentError) throw paymentError;
 
-        await createMembershipIncomeEntry(
-          ptFee, "pt_subscription",
-          `PT subscription - ${existingMember.name} with ${selectedTrainer?.name}`,
-          existingMember.id, undefined, paymentRecord.id, currentBranch.id
-        );
+        // Record coupon usage if applied
+        if (adminCoupon.appliedCoupon) {
+          await supabase.from("coupon_usage").insert({
+            coupon_id: adminCoupon.appliedCoupon.coupon.id,
+            member_id: existingMember.id,
+            payment_id: paymentRecord.id,
+            discount_applied: couponDiscount,
+            branch_id: currentBranch.id,
+          });
+          await supabase.from("coupons").update({
+            usage_count: adminCoupon.appliedCoupon.coupon.usage_count + 1,
+          }).eq("id", adminCoupon.appliedCoupon.coupon.id);
+        }
+
+        if (ptFee > 0) {
+          await createMembershipIncomeEntry(
+            ptFee, "pt_subscription",
+            `PT subscription - ${existingMember.name} with ${selectedTrainer?.name}`,
+            existingMember.id, undefined, paymentRecord.id, currentBranch.id
+          );
+        }
         if (selectedTrainer) {
           await calculateTrainerPercentageExpense(
             selectedTrainerId, ptFee, existingMember.id, undefined, undefined, existingMember.name, currentBranch.id
