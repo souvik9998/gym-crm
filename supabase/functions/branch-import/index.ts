@@ -501,6 +501,7 @@ Deno.serve(async (req) => {
     const { data: rpcResult, error: rpcError } = await service.rpc("branch_restore_tx", {
       _branch_id: targetBranchId,
       _payload: payload,
+      _caller_id: ctx.userId,
     });
     if (rpcError) throw new Error(`Database restore failed: ${rpcError.message}`);
     trace(`Restore RPC succeeded: ${JSON.stringify(rpcResult)}`);
