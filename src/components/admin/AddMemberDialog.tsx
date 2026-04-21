@@ -1846,9 +1846,12 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                               <Label className="text-xs text-muted-foreground">PT Fee (₹)</Label>
                               <Input
                                 type="number"
-                                value={ptFee}
-                                onChange={(e) => setPtFee(Number(e.target.value) || 0)}
-                                className="h-10 text-sm rounded-xl"
+                                min={registerFree ? 0 : 1}
+                                step={1}
+                                value={registerFree ? 0 : ptFee}
+                                disabled={registerFree}
+                                onChange={(e) => handleFeeInput(e.target.value, setPtFee)}
+                                className="h-10 text-sm rounded-xl disabled:opacity-60"
                               />
                             </div>
                           </div>
