@@ -36,6 +36,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { passwordSchema } from "@/lib/validation";
 import { generateStaffPassword, STAFF_PASSWORD_RULE_TEXT } from "@/lib/staffPassword";
+import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
 
 interface StaffPermissionsDialogProps {
   open: boolean;
@@ -214,7 +215,10 @@ export const StaffPermissionsDialog = ({
             },
           }
         );
-        if (authError) throw authError;
+        if (authError) {
+          const serverMessage = await extractEdgeFunctionError(authError, "Failed to grant login access");
+          throw new Error(serverMessage);
+        }
         const authResp = typeof authData === "string" ? JSON.parse(authData) : authData;
         if (!authResp?.success) {
           throw new Error(authResp?.error || "Failed to grant login access");

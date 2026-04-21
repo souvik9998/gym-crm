@@ -47,6 +47,7 @@ import { StaffCardSkeleton } from "./StaffCardSkeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DetailItem } from "./StaffDetailItem";
 import { nameSchema, phoneSchema, passwordSchema, getPhotoIdSchema, formatPhotoIdInput, getPhotoIdPlaceholder } from "@/lib/validation";
+import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
 
 interface StaffTrainersTabProps {
   trainers: Staff[];
@@ -280,9 +281,10 @@ export const StaffTrainersTab = ({
           },
         });
         if (passwordError) {
+          const serverMessage = await extractEdgeFunctionError(passwordError, "Password setup failed");
           console.error("Error setting password:", passwordError);
           toast.warning("Trainer created but password setup failed", {
-            description: "Please set the password manually from the staff list.",
+            description: serverMessage,
           });
         }
       }

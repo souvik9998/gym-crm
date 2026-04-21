@@ -37,6 +37,25 @@ const corsHeaders = {
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 15;
 
+// Friendly message when Supabase Auth's HIBP/leaked-password check rejects a password.
+const WEAK_PASSWORD_MESSAGE =
+  "This password has been found in a known data breach and cannot be used. Please choose a different password (try the Generate button for a strong, safe one).";
+
+// deno-lint-ignore no-explicit-any
+function isWeakPasswordError(err: any): boolean {
+  if (!err) return false;
+  const code = (err.code || err.error_code || "").toString().toLowerCase();
+  const msg = (err.message || err.msg || "").toString().toLowerCase();
+  return (
+    code === "weak_password" ||
+    code.includes("weak_password") ||
+    msg.includes("known to be weak") ||
+    msg.includes("pwned") ||
+    msg.includes("data breach") ||
+    msg.includes("compromised password")
+  );
+}
+
 // Staff email format for Supabase Auth
 function getStaffEmail(phone: string): string {
   return `staff_${phone}@gym.local`;
@@ -589,6 +608,11 @@ Deno.serve(async (req) => {
           });
 
           if (createError) {
+            // HIBP / weak-password rejection from Supabase Auth → friendly 400
+            if (isWeakPasswordError(createError)) {
+              return errorResponse(WEAK_PASSWORD_MESSAGE, 400);
+            }
+
             // Try to find existing user by email
             const { data: users } = await supabaseAdmin.auth.admin.listUsers();
             const existingUser = users?.users?.find(u => u.email === staffEmail);
@@ -600,8 +624,11 @@ Deno.serve(async (req) => {
                 password: password 
               });
               if (updateError) {
+                if (isWeakPasswordError(updateError)) {
+                  return errorResponse(WEAK_PASSWORD_MESSAGE, 400);
+                }
                 console.error("Failed to update password:", updateError);
-                return errorResponse("Failed to update password", 500);
+                return errorResponse("Failed to update password: " + updateError.message, 500);
               }
             } else {
               console.error("Failed to create auth user:", createError);
@@ -622,6 +649,9 @@ Deno.serve(async (req) => {
             password: password 
           });
           if (updateError) {
+            if (isWeakPasswordError(updateError)) {
+              return errorResponse(WEAK_PASSWORD_MESSAGE, 400);
+            }
             console.error("Failed to update password:", updateError);
             return errorResponse("Failed to update password: " + updateError.message, 500);
           }

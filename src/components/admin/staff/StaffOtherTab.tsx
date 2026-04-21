@@ -47,6 +47,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChangePhoneDialog } from "./ChangePhoneDialog";
 import { DetailItem } from "./StaffDetailItem";
 import { nameSchema, phoneSchema, passwordSchema, getPhotoIdSchema, formatPhotoIdInput, getPhotoIdPlaceholder } from "@/lib/validation";
+import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
 
 interface StaffOtherTabProps {
   staff: Staff[];
@@ -272,9 +273,10 @@ export const StaffOtherTab = ({
           },
         });
         if (passwordError) {
+          const serverMessage = await extractEdgeFunctionError(passwordError, "Password setup failed");
           console.error("Error setting password:", passwordError);
           toast.warning("Staff created but password setup failed", {
-            description: "Please set the password manually from the staff list.",
+            description: serverMessage,
           });
         }
       }

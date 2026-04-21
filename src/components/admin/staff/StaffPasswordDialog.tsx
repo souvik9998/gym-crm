@@ -19,6 +19,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { passwordSchema } from "@/lib/validation";
 import { generateStaffPassword, STAFF_PASSWORD_RULE_TEXT } from "@/lib/staffPassword";
+import { extractEdgeFunctionError } from "@/lib/edgeFunctionErrors";
 
 interface StaffPasswordDialogProps {
   open: boolean;
@@ -73,7 +74,12 @@ export const StaffPasswordDialog = ({
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Surface the server's friendly message (e.g. HIBP weak-password rejection)
+        // instead of the generic "Edge function returned 500".
+        const serverMessage = await extractEdgeFunctionError(error, "Failed to set password");
+        throw new Error(serverMessage);
+      }
 
       const response = typeof data === "string" ? JSON.parse(data) : data;
 
