@@ -507,6 +507,34 @@ Deno.serve(async (req) => {
         // Force branch_id to target (where the column exists)
         if ("branch_id" in newRow) newRow.branch_id = targetBranchId;
 
+        // Normalize imported app-wide unique fields so restore never collides with
+        // rows outside the target branch.
+        if (t === "invoices" && typeof newRow.invoice_number === "string") {
+          const originalInvoiceNumber = newRow.invoice_number.trim();
+          const normalizedInvoiceNumber = makeUniqueValue(
+            originalInvoiceNumber,
+            existingInvoiceNumbers,
+            originalInvoiceNumber || `INV-${Date.now()}`
+          );
+          if (normalizedInvoiceNumber !== originalInvoiceNumber) {
+            warnings.push(
+              `Adjusted invoice_number during import: ${originalInvoiceNumber} → ${normalizedInvoiceNumber}`
+            );
+          }
+          newRow.invoice_number = normalizedInvoiceNumber;
+        }
+
+        if (t === "events") {
+          const originalSlug = typeof newRow.slug === "string" ? newRow.slug.trim() : "";
+          const title = typeof newRow.title === "string" ? newRow.title.trim() : "event";
+          const baseSlug = originalSlug || `${generateSlug(title)}-${String(newRow.id).slice(0, 6)}`;
+          const normalizedSlug = makeUniqueValue(baseSlug, existingEventSlugs, `${generateSlug(title)}-${newUuid().slice(0, 6)}`);
+          if (originalSlug && normalizedSlug !== originalSlug) {
+            warnings.push(`Adjusted event slug during import: ${originalSlug} → ${normalizedSlug}`);
+          }
+          newRow.slug = normalizedSlug;
+        }
+
         // Remap FKs
         const fks = FK_MAP[t] || {};
         let dropRow = false;
