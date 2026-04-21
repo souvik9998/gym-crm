@@ -82,8 +82,9 @@ const FK_MAP: Record<string, Record<string, string>> = {
   member_documents: { member_id: "members" },
   subscriptions: { member_id: "members" },
   personal_trainers: {},
-  trainer_time_slots: { trainer_id: "personal_trainers" },
-  pt_subscriptions: { member_id: "members", trainer_id: "personal_trainers", time_slot_id: "trainer_time_slots" },
+  // trainer_id here references public.staff(id), not personal_trainers — handled via STAFF_FK_COLS below
+  trainer_time_slots: {},
+  pt_subscriptions: { member_id: "members", personal_trainer_id: "personal_trainers", time_slot_id: "trainer_time_slots" },
   time_slot_members: { time_slot_id: "trainer_time_slots", member_id: "members", subscription_id: "pt_subscriptions" },
   member_exercise_plans: { member_id: "members" },
   member_exercise_items: { plan_id: "member_exercise_plans" },
@@ -139,7 +140,16 @@ const FK_MAP: Record<string, Record<string, string>> = {
   gym_holidays: {},
 };
 
-// Columns to NULL out (we don't restore creator audit references across tenants)
+// Columns that reference public.staff(id). Staff are tenant-wide (not branch-scoped) and
+// are NEVER purged on restore. We remap by matching source-staff phone → target-staff id.
+// If the source staff isn't present in the target tenant, we drop the row (or null if
+// the column is nullable — see STAFF_FK_NULLABLE).
+const STAFF_FK_COLS: Record<string, string[]> = {
+  trainer_time_slots: ["trainer_id"], // NOT NULL → drop row when unmatched
+};
+const STAFF_FK_NULLABLE: Record<string, Set<string>> = {
+  trainer_time_slots: new Set<string>(), // trainer_id is NOT NULL
+};
 const NULLABLE_AUDIT_COLS: Record<string, string[]> = {
   gym_holidays: ["created_by"],
   ledger_entries: ["created_by"],
@@ -451,7 +461,27 @@ Deno.serve(async (req) => {
           }
         }
 
-        // NULL out audit columns we don't restore
+        // Generic staff FK remap: source staff id → target staff id (matched by phone).
+        // Drop the row if the column is NOT NULL and no target staff matches.
+        const staffCols = STAFF_FK_COLS[t] || [];
+        for (const col of staffCols) {
+          const oldVal = newRow[col];
+          if (oldVal === null || oldVal === undefined) continue;
+          const sourceStaffRow = sourceStaffById.get(String(oldVal));
+          const phone = sourceStaffRow ? (sourceStaffRow.phone as string) : "";
+          const targetStaffId = phone ? targetStaffByPhone.get(phone) : undefined;
+          if (targetStaffId) {
+            newRow[col] = targetStaffId;
+          } else if (STAFF_FK_NULLABLE[t]?.has(col)) {
+            newRow[col] = null;
+          } else {
+            warnings.push(
+              `Dropped ${t} row: source staff ${oldVal} not present in target tenant (no phone match)`
+            );
+            dropRow = true;
+            break;
+          }
+        }
         for (const c of NULLABLE_AUDIT_COLS[t] || []) {
           if (c in newRow) newRow[c] = null;
         }
