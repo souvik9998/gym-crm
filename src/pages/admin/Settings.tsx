@@ -378,7 +378,7 @@ const AdminSettings = () => {
           refetchData();
         } else {
           console.error("Error creating gym_settings:", error);
-          setSettings(null);
+          updateSettingsCache(c => ({ ...c, settings: null }));
           setGymName(seedName);
           setGymPhone(seedPhone || "");
           setGymAddress(seedAddress || "");
@@ -438,7 +438,7 @@ const AdminSettings = () => {
       if (error) {
         toast.error("Error", { description: error });
       } else {
-        setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail } : prev);
+        updateSettingsCache(c => ({ ...c, settings: c.settings ? { ...c.settings, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail } : c.settings }));
         toast.success("Gym info saved");
         await logActivity({
           category: "settings", type: "gym_info_updated",
@@ -469,7 +469,7 @@ const AdminSettings = () => {
         entityName: currentBranch?.name || "Gym Settings",
         oldValue: oldSettings, newValue: newSettings, branchId: currentBranch?.id,
       });
-      setSettings(prev => prev ? { ...prev, ...newSettings } : prev);
+      updateSettingsCache(c => ({ ...c, settings: c.settings ? { ...c.settings, ...newSettings } : c.settings }));
       toast.success("Gym info saved");
       backgroundInvalidate();
     }
@@ -501,7 +501,7 @@ const AdminSettings = () => {
         newValue: { invoice_show_gst: invoiceShowGst, invoice_tax_rate: Number(invoiceTaxRate), gym_gst: gymGst },
         branchId: currentBranch?.id,
       });
-      setSettings(prev => prev ? { ...prev, invoice_show_gst: invoiceShowGst, invoice_tax_rate: Number(invoiceTaxRate) || 0, gym_gst: gymGst } : prev);
+      updateSettingsCache(c => ({ ...c, settings: c.settings ? { ...c.settings, invoice_show_gst: invoiceShowGst, invoice_tax_rate: Number(invoiceTaxRate) || 0, gym_gst: gymGst } : c.settings }));
       toast.success("GST settings saved");
       backgroundInvalidate();
     }
@@ -533,7 +533,7 @@ const AdminSettings = () => {
         newValue: { invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_terms: invoiceTerms },
         branchId: currentBranch?.id,
       });
-      setSettings(prev => prev ? { ...prev, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_terms: invoiceTerms } : prev);
+      updateSettingsCache(c => ({ ...c, settings: c.settings ? { ...c.settings, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_terms: invoiceTerms } : c.settings }));
       toast.success("Invoice settings saved");
       backgroundInvalidate();
     }
@@ -580,7 +580,7 @@ const AdminSettings = () => {
       } else {
         const tempId = crypto.randomUUID();
         const tempPkg: MonthlyPackage = { id: tempId, months, price: Number(newMonthlyPackage.price), joining_fee: Number(newMonthlyPackage.joining_fee) || 0, is_active: true };
-        setMonthlyPackages(prev => [...prev, tempPkg].sort((a, b) => a.months - b.months));
+        updateSettingsCache(c => ({ ...c, monthlyPackages: [...c.monthlyPackages, tempPkg].sort((a, b) => a.months - b.months) }));
         markRecentlyAdded(tempId);
         toast.success("Package added");
         await logActivity({
@@ -620,7 +620,7 @@ const AdminSettings = () => {
       });
       // Instant local state update
       if (inserted) {
-        setMonthlyPackages(prev => [...prev, { id: inserted.id, months: inserted.months, price: inserted.price, joining_fee: inserted.joining_fee, is_active: inserted.is_active }].sort((a, b) => a.months - b.months));
+        updateSettingsCache(c => ({ ...c, monthlyPackages: [...c.monthlyPackages, { id: inserted.id, months: inserted.months, price: inserted.price, joining_fee: inserted.joining_fee, is_active: inserted.is_active }].sort((a, b) => a.months - b.months) }));
         markRecentlyAdded(inserted.id);
       }
       toast.success("Package added");
@@ -659,7 +659,7 @@ const AdminSettings = () => {
         toast.error("Error", { description: error });
       } else {
         // Instant local state update
-        setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 } : p));
+        updateSettingsCache(c => ({ ...c, monthlyPackages: c.monthlyPackages.map(p => p.id === id ? { ...p, price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 } : p) }));
         toast.success("Package updated");
         await logActivity({
           category: "packages", type: "monthly_package_updated",
@@ -702,7 +702,7 @@ const AdminSettings = () => {
         branchId: currentBranch?.id,
       });
       // Instant local state update
-      setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 } : p));
+      updateSettingsCache(c => ({ ...c, monthlyPackages: c.monthlyPackages.map(p => p.id === id ? { ...p, price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 } : p) }));
       toast.success("Package updated");
       setEditingMonthlyId(null);
       backgroundInvalidate();
@@ -713,7 +713,7 @@ const AdminSettings = () => {
     const pkg = monthlyPackages.find(p => p.id === id);
 
     // Optimistic: update local state instantly (Switch already flipped visually)
-    setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: isActive } : p));
+    updateSettingsCache(c => ({ ...c, monthlyPackages: c.monthlyPackages.map(p => p.id === id ? { ...p, is_active: isActive } : p) }));
     setTogglingMonthlyId(id);
 
     try {
@@ -759,7 +759,7 @@ const AdminSettings = () => {
 
       if (failed) {
         // Revert optimistic update — Switch will smoothly animate back
-        setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: !isActive } : p));
+        updateSettingsCache(c => ({ ...c, monthlyPackages: c.monthlyPackages.map(p => p.id === id ? { ...p, is_active: !isActive } : p) }));
       } else {
         toast.success(`Package ${isActive ? "activated" : "deactivated"}`);
       }
@@ -785,7 +785,7 @@ const AdminSettings = () => {
             toast.error("Error", { description: error });
           } else {
             // Instant local state update
-            setMonthlyPackages(prev => prev.filter(p => p.id !== id));
+            updateSettingsCache(c => ({ ...c, monthlyPackages: c.monthlyPackages.filter(p => p.id !== id) }));
             toast.success("Package deleted");
             await logActivity({
               category: "packages", type: "monthly_package_deleted",
@@ -811,7 +811,7 @@ const AdminSettings = () => {
           branchId: currentBranch?.id,
         });
         // Instant local state update
-        setMonthlyPackages(prev => prev.filter(p => p.id !== id));
+        updateSettingsCache(c => ({ ...c, monthlyPackages: c.monthlyPackages.filter(p => p.id !== id) }));
         toast.success("Package deleted");
         backgroundInvalidate();
       },
@@ -859,7 +859,7 @@ const AdminSettings = () => {
       } else {
         const tempId = crypto.randomUUID();
         const tempPkg: CustomPackage = { id: tempId, name: newPackage.name, duration_days: durationDays, price: Number(newPackage.price), is_active: true };
-        setCustomPackages(prev => [...prev, tempPkg]);
+        updateSettingsCache(c => ({ ...c, customPackages: [...c.customPackages, tempPkg] }));
         markRecentlyAdded(tempId);
         toast.success("Package added");
         await logActivity({
@@ -903,7 +903,7 @@ const AdminSettings = () => {
       });
       // Instant local state update
       if (inserted) {
-        setCustomPackages(prev => [...prev, { id: inserted.id, name: inserted.name, duration_days: inserted.duration_days, price: inserted.price, is_active: inserted.is_active }]);
+        updateSettingsCache(c => ({ ...c, customPackages: [...c.customPackages, { id: inserted.id, name: inserted.name, duration_days: inserted.duration_days, price: inserted.price, is_active: inserted.is_active }] }));
         markRecentlyAdded(inserted.id);
       }
       toast.success("Package added");
@@ -947,7 +947,7 @@ const AdminSettings = () => {
         toast.error("Error", { description: error });
       } else {
         // Instant local state update
-        setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, name: editPackageData.name, price: Number(editPackageData.price) } : p));
+        updateSettingsCache(c => ({ ...c, customPackages: c.customPackages.map(p => p.id === id ? { ...p, name: editPackageData.name, price: Number(editPackageData.price) } : p) }));
         toast.success("Package updated");
         await logActivity({
           category: "packages", type: "custom_package_updated",
@@ -990,7 +990,7 @@ const AdminSettings = () => {
         branchId: currentBranch?.id,
       });
       // Instant local state update
-      setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, name: editPackageData.name, price: Number(editPackageData.price) } : p));
+      updateSettingsCache(c => ({ ...c, customPackages: c.customPackages.map(p => p.id === id ? { ...p, name: editPackageData.name, price: Number(editPackageData.price) } : p) }));
       toast.success("Package updated");
       setEditingPackageId(null);
       backgroundInvalidate();
@@ -1001,7 +1001,7 @@ const AdminSettings = () => {
     const pkg = customPackages.find(p => p.id === id);
 
     // Optimistic: update local state instantly
-    setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: isActive } : p));
+    updateSettingsCache(c => ({ ...c, customPackages: c.customPackages.map(p => p.id === id ? { ...p, is_active: isActive } : p) }));
     setTogglingCustomId(id);
 
     try {
@@ -1050,7 +1050,7 @@ const AdminSettings = () => {
 
       if (failed) {
         // Revert optimistic update
-        setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: !isActive } : p));
+        updateSettingsCache(c => ({ ...c, customPackages: c.customPackages.map(p => p.id === id ? { ...p, is_active: !isActive } : p) }));
       } else {
         toast.success(`Package ${isActive ? "activated" : "deactivated"}`);
       }
@@ -1078,7 +1078,7 @@ const AdminSettings = () => {
             toast.error("Error", { description: error });
           } else {
             // Instant local state update
-            setCustomPackages(prev => prev.filter(p => p.id !== id));
+            updateSettingsCache(c => ({ ...c, customPackages: c.customPackages.filter(p => p.id !== id) }));
             toast.success("Package deleted");
             await logActivity({
               category: "packages", type: "custom_package_deleted",
@@ -1106,7 +1106,7 @@ const AdminSettings = () => {
           branchId: currentBranch?.id,
         });
         // Instant local state update
-        setCustomPackages(prev => prev.filter(p => p.id !== id));
+        updateSettingsCache(c => ({ ...c, customPackages: c.customPackages.filter(p => p.id !== id) }));
         toast.success("Package deleted");
         backgroundInvalidate();
       },
@@ -1621,7 +1621,7 @@ const AdminSettings = () => {
                             }
                             
                             settingsId = newSettings.id;
-                            setSettings({ ...settings, id: settingsId } as GymSettings);
+                            updateSettingsCache(c => ({ ...c, settings: { ...(c.settings ?? {} as GymSettings), id: settingsId } as GymSettings }));
                             await logActivity({
                               category: "settings",
                               type: "whatsapp_toggled",
