@@ -17,6 +17,8 @@ import { Staff } from "@/pages/admin/StaffManagement";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { useBranch } from "@/contexts/BranchContext";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import { passwordSchema } from "@/lib/validation";
+import { generateStaffPassword, STAFF_PASSWORD_RULE_TEXT } from "@/lib/staffPassword";
 
 interface StaffPasswordDialogProps {
   open: boolean;
@@ -24,16 +26,6 @@ interface StaffPasswordDialogProps {
   staff: Staff | null;
   onSuccess: () => void;
 }
-
-// Generate a random password
-const generatePassword = (length = 8): string => {
-  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let password = "";
-  for (let i = 0; i < length; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
-};
 
 export const StaffPasswordDialog = ({
   open,
@@ -48,7 +40,7 @@ export const StaffPasswordDialog = ({
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGeneratePassword = () => {
-    const newPassword = generatePassword();
+    const newPassword = generateStaffPassword();
     setPassword(newPassword);
     setShowPassword(true);
   };
@@ -63,8 +55,9 @@ export const StaffPasswordDialog = ({
       return;
     }
 
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    const pwdResult = passwordSchema.safeParse(password);
+    if (!pwdResult.success) {
+      toast.error(pwdResult.error.errors[0]?.message || "Invalid password");
       return;
     }
 
@@ -186,7 +179,7 @@ export const StaffPasswordDialog = ({
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Minimum 6 characters required
+              {STAFF_PASSWORD_RULE_TEXT}
             </p>
           </div>
 
