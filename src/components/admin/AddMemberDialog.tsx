@@ -1875,83 +1875,134 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
                     </div>
                   )}
 
-                  {/* Payment Mode Selection */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-sm font-medium">
-                      <IndianRupee className="w-4 h-4 text-accent" />
-                      Payment Method <span className="text-destructive">*</span>
-                    </Label>
-                    <div className="flex gap-2">
-                      {[
-                        { value: "cash" as const, label: "Cash" },
-                        { value: "upi" as const, label: "UPI" },
-                      ].map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setPaymentMode(opt.value)}
-                          className={cn(
-                            "flex-1 py-2.5 px-4 rounded-xl border-2 text-sm font-medium transition-all duration-200 active:scale-95",
-                            paymentMode === opt.value
-                              ? "border-foreground bg-foreground/5 text-foreground shadow-sm"
-                              : "border-border bg-card text-muted-foreground hover:border-foreground/30"
-                          )}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
+                  {/* Register Free toggle — when on, no payment is collected/recorded */}
+                  <label
+                    className={cn(
+                      "flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors",
+                      registerFree
+                        ? "border-success/40 bg-success/5"
+                        : "border-border/60 bg-card hover:bg-muted/30"
+                    )}
+                  >
+                    <Switch
+                      checked={registerFree}
+                      onCheckedChange={(v) => {
+                        setRegisterFree(v);
+                        // Clear any applied coupon when switching into free mode — discounts no longer apply
+                        if (v) adminCoupon.removeCoupon();
+                      }}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium flex items-center gap-1.5">
+                        <Check className={cn("w-3.5 h-3.5", registerFree ? "text-success" : "text-muted-foreground")} />
+                        Register Free
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {registerFree
+                          ? "No payment will be recorded. Member is registered free of charge."
+                          : "Skip payment entirely — useful for complimentary, trial, or staff registrations."}
+                      </p>
                     </div>
-                  </div>
+                  </label>
+
+                  {/* Payment Mode Selection — hidden when registering free */}
+                  {!registerFree && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-sm font-medium">
+                        <IndianRupee className="w-4 h-4 text-accent" />
+                        Payment Method <span className="text-destructive">*</span>
+                      </Label>
+                      <div className="flex gap-2">
+                        {[
+                          { value: "cash" as const, label: "Cash" },
+                          { value: "upi" as const, label: "UPI" },
+                        ].map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setPaymentMode(opt.value)}
+                            className={cn(
+                              "flex-1 py-2.5 px-4 rounded-xl border-2 text-sm font-medium transition-all duration-200 active:scale-95",
+                              paymentMode === opt.value
+                                ? "border-foreground bg-foreground/5 text-foreground shadow-sm"
+                                : "border-border bg-card text-muted-foreground hover:border-foreground/30"
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Price Summary */}
                   <div className="bg-muted/40 rounded-xl p-4 space-y-2.5 border border-border/40">
                     {showGymSection && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Membership ({selectedPackage?.months || 0}mo)</span>
-                        <span className="font-semibold tabular-nums">₹{monthlyFee.toLocaleString("en-IN")}</span>
+                        <span className={cn("font-semibold tabular-nums", registerFree && "line-through text-muted-foreground")}>
+                          ₹{monthlyFee.toLocaleString("en-IN")}
+                        </span>
                       </div>
                     )}
                     {showGymSection && joiningFee > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Joining Fee</span>
-                        <span className="font-semibold tabular-nums">₹{joiningFee.toLocaleString("en-IN")}</span>
+                        <span className={cn("font-semibold tabular-nums", registerFree && "line-through text-muted-foreground")}>
+                          ₹{joiningFee.toLocaleString("en-IN")}
+                        </span>
                       </div>
                     )}
                     {(wantsPT || isPTOnly) && (
                       <div className="flex justify-between text-sm animate-fade-in">
                         <span className="text-muted-foreground">PT ({ptMonths}mo)</span>
-                        <span className="font-semibold tabular-nums">₹{ptFee.toLocaleString("en-IN")}</span>
+                        <span className={cn("font-semibold tabular-nums", registerFree && "line-through text-muted-foreground")}>
+                          ₹{ptFee.toLocaleString("en-IN")}
+                        </span>
                       </div>
                     )}
-                    {taxEnabled && taxAmount > 0 && (
+                    {!registerFree && taxEnabled && taxAmount > 0 && (
                       <div className="flex justify-between text-sm animate-fade-in">
                         <span className="text-muted-foreground">GST ({taxRate}%)</span>
                         <span className="font-semibold tabular-nums">₹{taxAmount.toLocaleString("en-IN")}</span>
                       </div>
                     )}
-                    {couponDiscount > 0 && (
+                    {!registerFree && couponDiscount > 0 && (
                       <div className="flex justify-between text-sm text-success animate-fade-in">
                         <span>Coupon ({adminCoupon.appliedCoupon?.coupon.code})</span>
                         <span className="font-semibold tabular-nums">-₹{couponDiscount.toLocaleString("en-IN")}</span>
                       </div>
                     )}
                     <div className="flex justify-between font-bold pt-2.5 border-t border-border/60 text-base">
-                      <span>Total ({paymentMode === "upi" ? "UPI" : "Cash"})</span>
-                      <span className="text-foreground tabular-nums">₹{totalAmount.toLocaleString("en-IN")}</span>
+                      <span>
+                        {registerFree
+                          ? "Total"
+                          : `Total (${paymentMode === "upi" ? "UPI" : "Cash"})`}
+                      </span>
+                      {registerFree ? (
+                        <span className="text-success tabular-nums flex items-center gap-1.5">
+                          <Check className="w-4 h-4" /> FREE
+                        </span>
+                      ) : (
+                        <span className="text-foreground tabular-nums">₹{totalAmount.toLocaleString("en-IN")}</span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Coupon Input */}
-                  <CouponInput
-                    couponCode={adminCoupon.couponCode}
-                    onCouponCodeChange={adminCoupon.setCouponCode}
-                    onApply={adminCoupon.validateCoupon}
-                    onRemove={adminCoupon.removeCoupon}
-                    isValidating={adminCoupon.isValidating}
-                    appliedCoupon={adminCoupon.appliedCoupon}
-                    error={adminCoupon.couponError}
-                    compact
-                  />
+                  {/* Coupon Input — hidden when registering free */}
+                  {!registerFree && (
+                    <CouponInput
+                      couponCode={adminCoupon.couponCode}
+                      onCouponCodeChange={adminCoupon.setCouponCode}
+                      onApply={adminCoupon.validateCoupon}
+                      onRemove={adminCoupon.removeCoupon}
+                      isValidating={adminCoupon.isValidating}
+                      appliedCoupon={adminCoupon.appliedCoupon}
+                      error={adminCoupon.couponError}
+                      compact
+                    />
+                  )}
 
                   {/* Notify member via WhatsApp */}
                   <label className="flex items-start gap-3 p-3 rounded-xl border border-border/60 bg-card hover:bg-muted/30 cursor-pointer transition-colors">
