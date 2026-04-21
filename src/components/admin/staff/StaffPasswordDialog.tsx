@@ -166,7 +166,10 @@ export const StaffPasswordDialog = ({
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (serverError) setServerError(null);
+                  }}
                   placeholder="Enter password"
                   className="pr-10"
                 />
@@ -193,6 +196,11 @@ export const StaffPasswordDialog = ({
             <p className="text-xs text-muted-foreground">
               {STAFF_PASSWORD_RULE_TEXT}
             </p>
+            {serverError && (
+              <div className="p-2 bg-destructive/10 border border-destructive/30 rounded-md text-xs text-destructive">
+                {serverError}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
