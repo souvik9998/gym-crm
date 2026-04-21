@@ -1,4 +1,5 @@
 import { useState, useEffect, Fragment, memo, useCallback, lazy, Suspense, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
