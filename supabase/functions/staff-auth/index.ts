@@ -37,6 +37,25 @@ const corsHeaders = {
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 15;
 
+// Friendly message when Supabase Auth's HIBP/leaked-password check rejects a password.
+const WEAK_PASSWORD_MESSAGE =
+  "This password has been found in a known data breach and cannot be used. Please choose a different password (try the Generate button for a strong, safe one).";
+
+// deno-lint-ignore no-explicit-any
+function isWeakPasswordError(err: any): boolean {
+  if (!err) return false;
+  const code = (err.code || err.error_code || "").toString().toLowerCase();
+  const msg = (err.message || err.msg || "").toString().toLowerCase();
+  return (
+    code === "weak_password" ||
+    code.includes("weak_password") ||
+    msg.includes("known to be weak") ||
+    msg.includes("pwned") ||
+    msg.includes("data breach") ||
+    msg.includes("compromised password")
+  );
+}
+
 // Staff email format for Supabase Auth
 function getStaffEmail(phone: string): string {
   return `staff_${phone}@gym.local`;
