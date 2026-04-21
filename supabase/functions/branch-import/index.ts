@@ -461,7 +461,27 @@ Deno.serve(async (req) => {
           }
         }
 
-        // NULL out audit columns we don't restore
+        // Generic staff FK remap: source staff id → target staff id (matched by phone).
+        // Drop the row if the column is NOT NULL and no target staff matches.
+        const staffCols = STAFF_FK_COLS[t] || [];
+        for (const col of staffCols) {
+          const oldVal = newRow[col];
+          if (oldVal === null || oldVal === undefined) continue;
+          const sourceStaffRow = sourceStaffById.get(String(oldVal));
+          const phone = sourceStaffRow ? (sourceStaffRow.phone as string) : "";
+          const targetStaffId = phone ? targetStaffByPhone.get(phone) : undefined;
+          if (targetStaffId) {
+            newRow[col] = targetStaffId;
+          } else if (STAFF_FK_NULLABLE[t]?.has(col)) {
+            newRow[col] = null;
+          } else {
+            warnings.push(
+              `Dropped ${t} row: source staff ${oldVal} not present in target tenant (no phone match)`
+            );
+            dropRow = true;
+            break;
+          }
+        }
         for (const c of NULLABLE_AUDIT_COLS[t] || []) {
           if (c in newRow) newRow[c] = null;
         }
