@@ -1123,7 +1123,7 @@ const AdminSettings = () => {
     });
   };
 
-  const { isGymOwner, isSuperAdmin } = useAuth();
+  const { isGymOwner } = useAuth();
   const canSeeBackup = isGymOwner || isSuperAdmin;
 
   const settingsTabs = [
