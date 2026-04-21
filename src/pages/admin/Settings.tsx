@@ -43,7 +43,8 @@ import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useStaffOperations } from "@/hooks/useStaffOperations";
 import { useSettingsPageData } from "@/hooks/queries/useSettingsPageData";
-import { useInvalidateQueries } from "@/hooks/useQueryCache";
+// useInvalidateQueries removed: Settings page writes directly to the React Query cache
+// (see updateSettingsCache below) instead of triggering invalidation refetches.
 import { invalidatePublicDataCache } from "@/api/publicData";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { EyeIcon } from "@heroicons/react/24/outline";
