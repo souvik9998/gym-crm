@@ -73,7 +73,21 @@ export const StaffPasswordDialog = ({
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // FunctionsHttpError holds the server response on `error.context`.
+        // Read the JSON body so we can surface the server's friendly message
+        // (e.g. HIBP weak-password rejection) instead of "Edge function returned 500".
+        let serverMessage = error.message;
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx && typeof ctx.text === "function") {
+            const bodyText = await ctx.text();
+            const parsed = bodyText ? JSON.parse(bodyText) : null;
+            if (parsed?.error) serverMessage = parsed.error;
+          }
+        } catch { /* fall back to error.message */ }
+        throw new Error(serverMessage);
+      }
 
       const response = typeof data === "string" ? JSON.parse(data) : data;
 
