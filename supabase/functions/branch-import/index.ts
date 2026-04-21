@@ -140,7 +140,16 @@ const FK_MAP: Record<string, Record<string, string>> = {
   gym_holidays: {},
 };
 
-// Columns to NULL out (we don't restore creator audit references across tenants)
+// Columns that reference public.staff(id). Staff are tenant-wide (not branch-scoped) and
+// are NEVER purged on restore. We remap by matching source-staff phone → target-staff id.
+// If the source staff isn't present in the target tenant, we drop the row (or null if
+// the column is nullable — see STAFF_FK_NULLABLE).
+const STAFF_FK_COLS: Record<string, string[]> = {
+  trainer_time_slots: ["trainer_id"], // NOT NULL → drop row when unmatched
+};
+const STAFF_FK_NULLABLE: Record<string, Set<string>> = {
+  trainer_time_slots: new Set<string>(), // trainer_id is NOT NULL
+};
 const NULLABLE_AUDIT_COLS: Record<string, string[]> = {
   gym_holidays: ["created_by"],
   ledger_entries: ["created_by"],
