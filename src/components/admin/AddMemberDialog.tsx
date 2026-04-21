@@ -851,7 +851,19 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       onOpenChange(false);
       resetForm();
     } catch (error: any) {
-      toast.error("Error", { description: error.message });
+      // Friendly handling for duplicate phone constraint at any insert step
+      if (
+        error?.code === "23505" ||
+        /members_phone_branch_unique|duplicate key/i.test(error?.message || "")
+      ) {
+        toast.error("Member Already Exists", {
+          description: "A member with this phone number already exists in this branch. Use Renew or Add PT instead.",
+        });
+        setCurrentStep(1);
+        if (currentBranch?.id) await checkExistingMember(phone);
+      } else {
+        toast.error("Error", { description: error.message });
+      }
     } finally {
       setIsLoading(false);
     }
