@@ -73,6 +73,8 @@ import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { useDebounce } from "@/hooks/useDebounce";
+import CouponInput from "@/components/ui/coupon-input";
+import { useCouponValidation } from "@/hooks/useCouponValidation";
 
 interface MonthlyPackage {
   id: string;
