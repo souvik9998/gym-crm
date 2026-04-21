@@ -230,6 +230,18 @@ Deno.serve(async (req) => {
     data["member_exercise_items"] = await fetchAll(service, "member_exercise_items", "plan_id", planIds);
     recordCounts["member_exercise_items"] = data["member_exercise_items"].length;
 
+    // Event-scoped tables (no branch_id; resolve via event_id / registration_id)
+    const eventIds = (data["events"] || []).map((e) => e.id as string).filter(Boolean);
+    data["event_pricing_options"] = await fetchAll(service, "event_pricing_options", "event_id", eventIds);
+    data["event_custom_fields"] = await fetchAll(service, "event_custom_fields", "event_id", eventIds);
+    data["event_registrations"] = await fetchAll(service, "event_registrations", "event_id", eventIds);
+    const regIds = (data["event_registrations"] || []).map((r) => r.id as string).filter(Boolean);
+    data["event_registration_items"] = await fetchAll(service, "event_registration_items", "registration_id", regIds);
+    recordCounts["event_pricing_options"] = data["event_pricing_options"].length;
+    recordCounts["event_custom_fields"] = data["event_custom_fields"].length;
+    recordCounts["event_registrations"] = data["event_registrations"].length;
+    recordCounts["event_registration_items"] = data["event_registration_items"].length;
+
     // Reference snapshots (read-only, never restored)
     const staffIds = Array.from(
       new Set((data["staff_branch_assignments"] || []).map((s) => s.staff_id as string).filter(Boolean))
