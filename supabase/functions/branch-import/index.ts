@@ -285,7 +285,7 @@ async function fetchExistingStringValuesExcludingBranch(
     if (error) throw new Error(`Failed to read existing ${table}.${column}: ${error.message}`);
     if (!data || data.length === 0) break;
 
-    for (const row of data as Record<string, unknown>[]) {
+    for (const row of (data as unknown as Record<string, unknown>[])) {
       const value = row[column];
       if (typeof value === "string" && value.trim()) out.add(value.trim());
     }
