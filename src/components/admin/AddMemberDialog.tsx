@@ -772,6 +772,9 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       }
 
       const paymentType = wantsPT ? "gym_and_pt" : "gym_membership";
+      const couponNote = adminCoupon.appliedCoupon
+        ? ` (Coupon: ${adminCoupon.appliedCoupon.coupon.code}, -₹${couponDiscount})`
+        : "";
       const { data: paymentRecord, error: paymentError } = await supabase.from("payments").insert({
         member_id: member.id,
         subscription_id: subscription.id,
@@ -779,16 +782,32 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
         payment_mode: paymentMode,
         status: "success",
         payment_type: paymentType,
-        notes: `Added via admin dashboard (${paymentMode.toUpperCase()})`,
+        notes: `Added via admin dashboard (${paymentMode.toUpperCase()})${couponNote}`,
         branch_id: currentBranch?.id,
       }).select().single();
       if (paymentError) throw paymentError;
 
-      await createMembershipIncomeEntry(
-        monthlyFee, "gym_membership",
-        `New member - ${name} (${selectedPackage?.months || 1} months)`,
-        member.id, undefined, paymentRecord.id, currentBranch?.id
-      );
+      // Record coupon usage if applied
+      if (adminCoupon.appliedCoupon) {
+        await supabase.from("coupon_usage").insert({
+          coupon_id: adminCoupon.appliedCoupon.coupon.id,
+          member_id: member.id,
+          payment_id: paymentRecord.id,
+          discount_applied: couponDiscount,
+          branch_id: currentBranch?.id,
+        });
+        await supabase.from("coupons").update({
+          usage_count: adminCoupon.appliedCoupon.coupon.usage_count + 1,
+        }).eq("id", adminCoupon.appliedCoupon.coupon.id);
+      }
+
+      if (monthlyFee > 0) {
+        await createMembershipIncomeEntry(
+          monthlyFee, "gym_membership",
+          `New member - ${name} (${selectedPackage?.months || 1} months)`,
+          member.id, undefined, paymentRecord.id, currentBranch?.id
+        );
+      }
 
       if (joiningFee > 0) {
         await createMembershipIncomeEntry(
