@@ -1,4 +1,5 @@
 import { useState, useEffect, Fragment, memo, useCallback, lazy, Suspense, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,7 +43,8 @@ import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useStaffOperations } from "@/hooks/useStaffOperations";
 import { useSettingsPageData } from "@/hooks/queries/useSettingsPageData";
-import { useInvalidateQueries } from "@/hooks/useQueryCache";
+// useInvalidateQueries removed: Settings page writes directly to the React Query cache
+// (see updateSettingsCache below) instead of triggering invalidation refetches.
 import { invalidatePublicDataCache } from "@/api/publicData";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { EyeIcon } from "@heroicons/react/24/outline";
@@ -221,10 +223,46 @@ const AdminSettings = () => {
   
   // Use aggregated settings page data hook (single API call)
   const { settings: fetchedSettings, monthlyPackages: fetchedMonthlyPackages, customPackages: fetchedCustomPackages, isLoading: isLoadingData, refetch: refetchData } = useSettingsPageData();
-  
-  // Cache invalidation for cross-page updates
-  const { invalidateSettings } = useInvalidateQueries();
-  
+
+  // Note: useInvalidateQueries() is intentionally not used here. After mutations,
+  // we write directly to the React Query cache via updateSettingsCache (below),
+  // so an invalidation+refetch round-trip is unnecessary. Cross-tab freshness is
+  // handled by React Query's refetchOnWindowFocus default.
+
+  // Direct React Query cache access — single source of truth for settings page data.
+  // Mutations write here via setQueryData so the UI reflects changes instantly without
+  // needing a refetch, and switching tabs always shows the latest cached values
+  // (no stale local-state mirror).
+  const queryClient = useQueryClient();
+  const settingsQueryKey = ["settings-page-data", currentBranch?.id] as const;
+
+  type SettingsCache = {
+    settings: GymSettings | null;
+    monthlyPackages: MonthlyPackage[];
+    customPackages: CustomPackage[];
+  };
+
+  const updateSettingsCache = useCallback(
+    (updater: (prev: SettingsCache) => SettingsCache) => {
+      queryClient.setQueryData<SettingsCache>(settingsQueryKey, (prev) => {
+        const safe: SettingsCache = prev ?? { settings: null, monthlyPackages: [], customPackages: [] };
+        return updater({
+          settings: safe.settings ?? null,
+          monthlyPackages: safe.monthlyPackages ?? [],
+          customPackages: safe.customPackages ?? [],
+        });
+      });
+    },
+    [queryClient, settingsQueryKey]
+  );
+
+  // Derive UI lists & settings object directly from the query cache so any
+  // refetch / cache write (mutations, window-focus refetch, branch switch)
+  // is immediately reflected in the UI.
+  const monthlyPackages: MonthlyPackage[] = fetchedMonthlyPackages ?? [];
+  const customPackages: CustomPackage[] = fetchedCustomPackages ?? [];
+  const settings: GymSettings | null = fetchedSettings ?? null;
+
   // Loading states for toggle buttons
   const [isTogglingWhatsApp, setIsTogglingWhatsApp] = useState(false);
   const [togglingMonthlyId, setTogglingMonthlyId] = useState<string | null>(null);
@@ -235,12 +273,12 @@ const AdminSettings = () => {
   const [savingMonthlyId, setSavingMonthlyId] = useState<string | null>(null);
   const [isAddingCustom, setIsAddingCustom] = useState(false);
   const [savingCustomId, setSavingCustomId] = useState<string | null>(null);
-  
+
   // Track recently added items for highlight animation
   const [recentlyAddedIds, setRecentlyAddedIds] = useState<Set<string>>(new Set());
 
-  // Gym Settings
-  const [settings, setSettings] = useState<GymSettings | null>(null);
+  // Gym Settings form fields (local because they are user-editable inputs).
+  // Underlying source-of-truth `settings` object lives in the query cache above.
   const [gymName, setGymName] = useState("");
   const [gymPhone, setGymPhone] = useState("");
   const [gymAddress, setGymAddress] = useState("");
@@ -253,14 +291,12 @@ const AdminSettings = () => {
   const [invoiceTerms, setInvoiceTerms] = useState("");
   const [invoiceShowGst, setInvoiceShowGst] = useState(true);
 
-  // Monthly Packages
-  const [monthlyPackages, setMonthlyPackages] = useState<MonthlyPackage[]>([]);
+  // Monthly Packages form-only state
   const [newMonthlyPackage, setNewMonthlyPackage] = useState({ months: "", price: "", joining_fee: "" });
   const [editingMonthlyId, setEditingMonthlyId] = useState<string | null>(null);
   const [editMonthlyData, setEditMonthlyData] = useState({ price: "", joining_fee: "" });
 
-  // Custom Packages
-  const [customPackages, setCustomPackages] = useState<CustomPackage[]>([]);
+  // Custom Packages form-only state
   const [newPackage, setNewPackage] = useState({ name: "", duration_days: "", price: "" });
   const [editingPackageId, setEditingPackageId] = useState<string | null>(null);
   const [editPackageData, setEditPackageData] = useState({ name: "", price: "" });
@@ -296,55 +332,29 @@ const AdminSettings = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Reset sync refs when branch changes so fresh data loads
-  const prevBranchId = useRef(currentBranch?.id);
+  // Re-seed gym-info form fields whenever the underlying settings row identity
+  // changes (initial load, branch switch, or external refresh that brings in a
+  // different row). We key on `fetchedSettings?.id` so in-place edits to the
+  // same row don't blow away the user's unsaved typing.
+  const lastSeededSettingsId = useRef<string | null>(null);
   useEffect(() => {
-    if (currentBranch?.id && currentBranch.id !== prevBranchId.current) {
-      prevBranchId.current = currentBranch.id;
-      initialSyncDone.current = false;
-      monthlyPackagesSynced.current = false;
-      customPackagesSynced.current = false;
-    }
-  }, [currentBranch?.id]);
+    if (!fetchedSettings) return;
+    if (lastSeededSettingsId.current === fetchedSettings.id) return;
+    lastSeededSettingsId.current = fetchedSettings.id;
 
-  // Only sync fetched data to local state on initial load, not on every refetch
-  const initialSyncDone = useRef(false);
-
-  useEffect(() => {
-    if (fetchedSettings && !initialSyncDone.current) {
-      initialSyncDone.current = true;
-      setSettings(fetchedSettings);
-      // Fall back to branch then tenant so the form is always populated with
-      // information that was registered for this organization in the Super Admin portal.
-      setGymName(fetchedSettings.gym_name || currentBranch?.name || tenantInfo?.name || "");
-      setGymPhone(fetchedSettings.gym_phone || currentBranch?.phone || tenantInfo?.phone || "");
-      setGymAddress(fetchedSettings.gym_address || currentBranch?.address || "");
-      setWhatsappEnabled(fetchedSettings.whatsapp_enabled === true);
-      setGymEmail(fetchedSettings.gym_email || currentBranch?.email || tenantInfo?.email || "");
-      setGymGst(fetchedSettings.gym_gst || "");
-      setInvoicePrefix(fetchedSettings.invoice_prefix || "INV");
-      setInvoiceFooter(fetchedSettings.invoice_footer_message || "Thank you for choosing our gym!");
-      setInvoiceTaxRate(String(fetchedSettings.invoice_tax_rate || 0));
-      setInvoiceTerms(fetchedSettings.invoice_terms || "");
-      setInvoiceShowGst(fetchedSettings.invoice_show_gst !== false);
-    }
+    setGymName(fetchedSettings.gym_name || currentBranch?.name || tenantInfo?.name || "");
+    setGymPhone(fetchedSettings.gym_phone || currentBranch?.phone || tenantInfo?.phone || "");
+    setGymAddress(fetchedSettings.gym_address || currentBranch?.address || "");
+    setWhatsappEnabled(fetchedSettings.whatsapp_enabled === true);
+    setGymEmail(fetchedSettings.gym_email || currentBranch?.email || tenantInfo?.email || "");
+    setGymGst(fetchedSettings.gym_gst || "");
+    setInvoicePrefix(fetchedSettings.invoice_prefix || "INV");
+    setInvoiceFooter(fetchedSettings.invoice_footer_message || "Thank you for choosing our gym!");
+    setInvoiceTaxRate(String(fetchedSettings.invoice_tax_rate || 0));
+    setInvoiceTerms(fetchedSettings.invoice_terms || "");
+    setInvoiceShowGst(fetchedSettings.invoice_show_gst !== false);
   }, [fetchedSettings, currentBranch, tenantInfo]);
 
-  const monthlyPackagesSynced = useRef(false);
-  useEffect(() => {
-    if (fetchedMonthlyPackages && !monthlyPackagesSynced.current) {
-      monthlyPackagesSynced.current = true;
-      setMonthlyPackages(fetchedMonthlyPackages);
-    }
-  }, [fetchedMonthlyPackages]);
-
-  const customPackagesSynced = useRef(false);
-  useEffect(() => {
-    if (fetchedCustomPackages && !customPackagesSynced.current) {
-      customPackagesSynced.current = true;
-      setCustomPackages(fetchedCustomPackages);
-    }
-  }, [fetchedCustomPackages]);
 
   // Handle case where no settings exist for the branch - create them
   useEffect(() => {
@@ -371,7 +381,7 @@ const AdminSettings = () => {
           refetchData();
         } else {
           console.error("Error creating gym_settings:", error);
-          setSettings(null);
+          updateSettingsCache(c => ({ ...c, settings: null }));
           setGymName(seedName);
           setGymPhone(seedPhone || "");
           setGymAddress(seedAddress || "");
@@ -386,8 +396,12 @@ const AdminSettings = () => {
   // Background invalidation for cross-page consistency (fire-and-forget).
   // Also busts the public registration sessionStorage cache so the public
   // /register, /renew, /extend-pt screens reflect admin changes immediately.
+  // After a successful mutation, the React Query cache for ["settings-page-data", branchId]
+  // has already been updated optimistically via updateSettingsCache(), so we deliberately
+  // skip queryClient.invalidateQueries() here to avoid an unnecessary refetch round-trip.
+  // We still bust the separate sessionStorage cache used by the public registration pages
+  // (/register, /renew, /extend-pt) so end-users see admin changes on next visit.
   const backgroundInvalidate = () => {
-    invalidateSettings().catch(() => {});
     if (currentBranch?.id) {
       invalidatePublicDataCache(currentBranch.id);
       if (currentBranch.slug) invalidatePublicDataCache(currentBranch.slug);
@@ -395,6 +409,7 @@ const AdminSettings = () => {
       invalidatePublicDataCache();
     }
   };
+
 
   // Mark an item as recently added for highlight animation
   const markRecentlyAdded = useCallback((id: string) => {
@@ -431,7 +446,7 @@ const AdminSettings = () => {
       if (error) {
         toast.error("Error", { description: error });
       } else {
-        setSettings(prev => prev ? { ...prev, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail } : prev);
+        updateSettingsCache(c => ({ ...c, settings: c.settings ? { ...c.settings, gym_name: gymName, gym_phone: gymPhone, gym_address: gymAddress, gym_email: gymEmail } : c.settings }));
         toast.success("Gym info saved");
         await logActivity({
           category: "settings", type: "gym_info_updated",
@@ -462,7 +477,7 @@ const AdminSettings = () => {
         entityName: currentBranch?.name || "Gym Settings",
         oldValue: oldSettings, newValue: newSettings, branchId: currentBranch?.id,
       });
-      setSettings(prev => prev ? { ...prev, ...newSettings } : prev);
+      updateSettingsCache(c => ({ ...c, settings: c.settings ? { ...c.settings, ...newSettings } : c.settings }));
       toast.success("Gym info saved");
       backgroundInvalidate();
     }
@@ -494,7 +509,7 @@ const AdminSettings = () => {
         newValue: { invoice_show_gst: invoiceShowGst, invoice_tax_rate: Number(invoiceTaxRate), gym_gst: gymGst },
         branchId: currentBranch?.id,
       });
-      setSettings(prev => prev ? { ...prev, invoice_show_gst: invoiceShowGst, invoice_tax_rate: Number(invoiceTaxRate) || 0, gym_gst: gymGst } : prev);
+      updateSettingsCache(c => ({ ...c, settings: c.settings ? { ...c.settings, invoice_show_gst: invoiceShowGst, invoice_tax_rate: Number(invoiceTaxRate) || 0, gym_gst: gymGst } : c.settings }));
       toast.success("GST settings saved");
       backgroundInvalidate();
     }
@@ -526,7 +541,7 @@ const AdminSettings = () => {
         newValue: { invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_terms: invoiceTerms },
         branchId: currentBranch?.id,
       });
-      setSettings(prev => prev ? { ...prev, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_terms: invoiceTerms } : prev);
+      updateSettingsCache(c => ({ ...c, settings: c.settings ? { ...c.settings, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_terms: invoiceTerms } : c.settings }));
       toast.success("Invoice settings saved");
       backgroundInvalidate();
     }
@@ -573,7 +588,7 @@ const AdminSettings = () => {
       } else {
         const tempId = crypto.randomUUID();
         const tempPkg: MonthlyPackage = { id: tempId, months, price: Number(newMonthlyPackage.price), joining_fee: Number(newMonthlyPackage.joining_fee) || 0, is_active: true };
-        setMonthlyPackages(prev => [...prev, tempPkg].sort((a, b) => a.months - b.months));
+        updateSettingsCache(c => ({ ...c, monthlyPackages: [...c.monthlyPackages, tempPkg].sort((a, b) => a.months - b.months) }));
         markRecentlyAdded(tempId);
         toast.success("Package added");
         await logActivity({
@@ -613,7 +628,7 @@ const AdminSettings = () => {
       });
       // Instant local state update
       if (inserted) {
-        setMonthlyPackages(prev => [...prev, { id: inserted.id, months: inserted.months, price: inserted.price, joining_fee: inserted.joining_fee, is_active: inserted.is_active }].sort((a, b) => a.months - b.months));
+        updateSettingsCache(c => ({ ...c, monthlyPackages: [...c.monthlyPackages, { id: inserted.id, months: inserted.months, price: inserted.price, joining_fee: inserted.joining_fee, is_active: inserted.is_active }].sort((a, b) => a.months - b.months) }));
         markRecentlyAdded(inserted.id);
       }
       toast.success("Package added");
@@ -652,7 +667,7 @@ const AdminSettings = () => {
         toast.error("Error", { description: error });
       } else {
         // Instant local state update
-        setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 } : p));
+        updateSettingsCache(c => ({ ...c, monthlyPackages: c.monthlyPackages.map(p => p.id === id ? { ...p, price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 } : p) }));
         toast.success("Package updated");
         await logActivity({
           category: "packages", type: "monthly_package_updated",
@@ -695,7 +710,7 @@ const AdminSettings = () => {
         branchId: currentBranch?.id,
       });
       // Instant local state update
-      setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 } : p));
+      updateSettingsCache(c => ({ ...c, monthlyPackages: c.monthlyPackages.map(p => p.id === id ? { ...p, price: Number(editMonthlyData.price), joining_fee: Number(editMonthlyData.joining_fee) || 0 } : p) }));
       toast.success("Package updated");
       setEditingMonthlyId(null);
       backgroundInvalidate();
@@ -706,7 +721,7 @@ const AdminSettings = () => {
     const pkg = monthlyPackages.find(p => p.id === id);
 
     // Optimistic: update local state instantly (Switch already flipped visually)
-    setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: isActive } : p));
+    updateSettingsCache(c => ({ ...c, monthlyPackages: c.monthlyPackages.map(p => p.id === id ? { ...p, is_active: isActive } : p) }));
     setTogglingMonthlyId(id);
 
     try {
@@ -752,7 +767,7 @@ const AdminSettings = () => {
 
       if (failed) {
         // Revert optimistic update — Switch will smoothly animate back
-        setMonthlyPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: !isActive } : p));
+        updateSettingsCache(c => ({ ...c, monthlyPackages: c.monthlyPackages.map(p => p.id === id ? { ...p, is_active: !isActive } : p) }));
       } else {
         toast.success(`Package ${isActive ? "activated" : "deactivated"}`);
       }
@@ -778,7 +793,7 @@ const AdminSettings = () => {
             toast.error("Error", { description: error });
           } else {
             // Instant local state update
-            setMonthlyPackages(prev => prev.filter(p => p.id !== id));
+            updateSettingsCache(c => ({ ...c, monthlyPackages: c.monthlyPackages.filter(p => p.id !== id) }));
             toast.success("Package deleted");
             await logActivity({
               category: "packages", type: "monthly_package_deleted",
@@ -804,7 +819,7 @@ const AdminSettings = () => {
           branchId: currentBranch?.id,
         });
         // Instant local state update
-        setMonthlyPackages(prev => prev.filter(p => p.id !== id));
+        updateSettingsCache(c => ({ ...c, monthlyPackages: c.monthlyPackages.filter(p => p.id !== id) }));
         toast.success("Package deleted");
         backgroundInvalidate();
       },
@@ -852,7 +867,7 @@ const AdminSettings = () => {
       } else {
         const tempId = crypto.randomUUID();
         const tempPkg: CustomPackage = { id: tempId, name: newPackage.name, duration_days: durationDays, price: Number(newPackage.price), is_active: true };
-        setCustomPackages(prev => [...prev, tempPkg]);
+        updateSettingsCache(c => ({ ...c, customPackages: [...c.customPackages, tempPkg] }));
         markRecentlyAdded(tempId);
         toast.success("Package added");
         await logActivity({
@@ -896,7 +911,7 @@ const AdminSettings = () => {
       });
       // Instant local state update
       if (inserted) {
-        setCustomPackages(prev => [...prev, { id: inserted.id, name: inserted.name, duration_days: inserted.duration_days, price: inserted.price, is_active: inserted.is_active }]);
+        updateSettingsCache(c => ({ ...c, customPackages: [...c.customPackages, { id: inserted.id, name: inserted.name, duration_days: inserted.duration_days, price: inserted.price, is_active: inserted.is_active }] }));
         markRecentlyAdded(inserted.id);
       }
       toast.success("Package added");
@@ -940,7 +955,7 @@ const AdminSettings = () => {
         toast.error("Error", { description: error });
       } else {
         // Instant local state update
-        setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, name: editPackageData.name, price: Number(editPackageData.price) } : p));
+        updateSettingsCache(c => ({ ...c, customPackages: c.customPackages.map(p => p.id === id ? { ...p, name: editPackageData.name, price: Number(editPackageData.price) } : p) }));
         toast.success("Package updated");
         await logActivity({
           category: "packages", type: "custom_package_updated",
@@ -983,7 +998,7 @@ const AdminSettings = () => {
         branchId: currentBranch?.id,
       });
       // Instant local state update
-      setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, name: editPackageData.name, price: Number(editPackageData.price) } : p));
+      updateSettingsCache(c => ({ ...c, customPackages: c.customPackages.map(p => p.id === id ? { ...p, name: editPackageData.name, price: Number(editPackageData.price) } : p) }));
       toast.success("Package updated");
       setEditingPackageId(null);
       backgroundInvalidate();
@@ -994,7 +1009,7 @@ const AdminSettings = () => {
     const pkg = customPackages.find(p => p.id === id);
 
     // Optimistic: update local state instantly
-    setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: isActive } : p));
+    updateSettingsCache(c => ({ ...c, customPackages: c.customPackages.map(p => p.id === id ? { ...p, is_active: isActive } : p) }));
     setTogglingCustomId(id);
 
     try {
@@ -1043,7 +1058,7 @@ const AdminSettings = () => {
 
       if (failed) {
         // Revert optimistic update
-        setCustomPackages(prev => prev.map(p => p.id === id ? { ...p, is_active: !isActive } : p));
+        updateSettingsCache(c => ({ ...c, customPackages: c.customPackages.map(p => p.id === id ? { ...p, is_active: !isActive } : p) }));
       } else {
         toast.success(`Package ${isActive ? "activated" : "deactivated"}`);
       }
@@ -1071,7 +1086,7 @@ const AdminSettings = () => {
             toast.error("Error", { description: error });
           } else {
             // Instant local state update
-            setCustomPackages(prev => prev.filter(p => p.id !== id));
+            updateSettingsCache(c => ({ ...c, customPackages: c.customPackages.filter(p => p.id !== id) }));
             toast.success("Package deleted");
             await logActivity({
               category: "packages", type: "custom_package_deleted",
@@ -1099,7 +1114,7 @@ const AdminSettings = () => {
           branchId: currentBranch?.id,
         });
         // Instant local state update
-        setCustomPackages(prev => prev.filter(p => p.id !== id));
+        updateSettingsCache(c => ({ ...c, customPackages: c.customPackages.filter(p => p.id !== id) }));
         toast.success("Package deleted");
         backgroundInvalidate();
       },
@@ -1614,7 +1629,7 @@ const AdminSettings = () => {
                             }
                             
                             settingsId = newSettings.id;
-                            setSettings({ ...settings, id: settingsId } as GymSettings);
+                            updateSettingsCache(c => ({ ...c, settings: { ...(c.settings ?? {} as GymSettings), id: settingsId } as GymSettings }));
                             await logActivity({
                               category: "settings",
                               type: "whatsapp_toggled",
