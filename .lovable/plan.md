@@ -1,51 +1,66 @@
 
-## Goal
-Make admin package mutations (and the admin **Refresh** button) reflect **instantly** on the public registration/renew/extend-PT pages, with no stale-time delay — both on first visit and on already-open tabs.
 
-## Current behavior (gaps)
-1. `fetchRegistrationBootstrap` uses **stale-while-revalidate** — serves cached packages immediately even if admin just changed something. The user sees old data for one render cycle.
-2. The **Refresh button** on `/admin/settings` and `/admin/trainers` only invalidates the admin TanStack Query keys (`settings-page-data`). It does **not** clear the public sessionStorage cache (`public-bootstrap-*`, `public-packages-*`, `public-trainers-*`, `public-branch-*`) nor broadcast the cross-tab bust signal.
-3. Public pages (`PackageSelectionForm`, `ExtendPT`) do **not** listen to the `__public-data-cache-bust` storage event nor to window focus/visibility — so a public tab left open never refetches even after admin invalidation.
+## Your suggestion vs. the root cause
 
-## Plan
+Invalidating the settings query on every mutation is **already happening** today via `backgroundInvalidate()` inside each Settings handler — and it correctly refetches fresh data from the server. That's not the bug.
 
-### 1. Hook the admin Refresh button into public-cache invalidation
-File: `src/components/admin/AdminLayoutRoute.tsx`
+The bug is that the Settings page **ignores** the fresh data once it arrives. It copies the first query result into local React state behind a `useRef` "sync once" guard, and the UI then renders from that local copy forever. So even a perfect invalidation refetches data that the UI never reads.
 
-Extend `handleRefresh` so when the active route is `/admin/settings` or `/admin/trainers` (the routes that actually mutate package/trainer/branch data), it also calls `invalidatePublicDataCache(currentBranch.id)` and the slug variant. This:
-- Clears local sessionStorage public caches.
-- Broadcasts the `localStorage` cache-bust signal that other tabs already listen for.
+So adding more invalidations would add API calls **without** fixing the staleness. The fix has to remove the local-state mirror.
 
-### 2. Add a "force refresh" path to `fetchRegistrationBootstrap`
-File: `src/api/publicData.ts`
+## Recommended approach (minimum API calls + always fresh)
 
-Add an optional `{ forceRefresh?: boolean }` argument. When true, skip the SWR cached read and go straight to the network. This is used by the public pages when they detect a cache-bust signal or are about to render fresh data after a tab focus.
+Combine two changes:
 
-### 3. Make public pages auto-refetch on cache-bust + tab focus
-Files: `src/components/registration/PackageSelectionForm.tsx`, `src/pages/ExtendPT.tsx`
+### 1. Render directly from React Query (fixes the actual bug, zero extra calls)
 
-Add `useEffect` listeners for:
-- `storage` event with key `__public-data-cache-bust` → call `fetchData()` again with `forceRefresh: true` if the bust is for the current branchId or wildcard.
-- `visibilitychange` (when document becomes visible) → silent background refetch with `forceRefresh: true`.
+In `src/pages/admin/Settings.tsx`:
+- Delete the `monthlyPackagesSynced` / `customPackagesSynced` / `initialSyncDone` refs and their sync effects.
+- Remove local state for `monthlyPackages`, `customPackages`, `settings`.
+- Derive them inline from the existing query:
+  ```ts
+  const monthlyPackages = fetchedMonthlyPackages ?? [];
+  const customPackages = fetchedCustomPackages ?? [];
+  const settings = fetchedSettings;
+  ```
+- Gym-info form fields stay local (they're an editable form), but re-seed them when `fetchedSettings?.id` changes (normal effect, no ref guard) so a branch switch updates them.
 
-Show a subtle inline indicator (no full skeleton flash) — reuse the already-loaded packages while the fresh fetch resolves to keep UX smooth (industry-standard SWR feel).
+### 2. Optimistic cache writes on mutations (instant UI, **no extra refetch**)
 
-### 4. Tighten the bootstrap freshness on first paint after a known mutation
-File: `src/api/publicData.ts`
+Instead of `setMonthlyPackages(...)` + `backgroundInvalidate()`, each handler writes the new value straight into the React Query cache:
 
-When the cache-bust signal fires in the same tab (we'll fire a `window` `CustomEvent('public-data-bust')` from `invalidatePublicDataCache`), any in-flight bootstrap returns the network result instead of cache for the next call. This is the same-tab equivalent of the cross-tab `storage` event.
+```ts
+queryClient.setQueryData(["settings-page-data", branchId], (prev) => ({
+  ...prev,
+  monthlyPackages: [...prev.monthlyPackages, newPkg],
+}));
+```
+
+- UI updates instantly (same feel as today).
+- We **drop** the `backgroundInvalidate()` call on the success path because the cache already holds the truth — saving one network round-trip per mutation.
+- On error, revert by writing the previous snapshot back.
+
+### 3. Keep one safety net for cross-tab / external changes
+
+`useSettingsPageData` keeps `staleTime: 5 min` and React Query's `refetchOnWindowFocus: true` (already the project default). So if the data changes outside this tab (another admin, another device), the next focus naturally refetches — still no extra calls during normal use.
+
+## Net effect on API calls
+
+| Scenario | Before | After |
+|---|---|---|
+| Open Settings tab (cache fresh) | 0 | 0 |
+| Add/edit/delete a package | 1 mutation + 1 invalidation refetch | **1 mutation only** |
+| Switch tabs and return | 0 (but shows stale data — bug) | 0 (shows fresh data from cache) |
+| Return after 5+ min | 1 background refetch | 1 background refetch |
+| Another admin edits in parallel | needs reload | auto-refetch on window focus |
+
+Fewer API calls than today **and** no more stale data.
 
 ## Files to edit
+
 | File | Change |
 |---|---|
-| `src/api/publicData.ts` | Add `forceRefresh` param, dispatch same-tab `CustomEvent` on invalidation |
-| `src/components/admin/AdminLayoutRoute.tsx` | Bust public cache on Refresh from Settings/Trainers routes |
-| `src/components/registration/PackageSelectionForm.tsx` | Listen to bust signal + visibility change; force refetch |
-| `src/pages/ExtendPT.tsx` | Same listeners for renew/extend flow |
+| `src/pages/admin/Settings.tsx` | Remove sync-ref pattern; derive lists from query; replace `setState + backgroundInvalidate` in CRUD handlers with `queryClient.setQueryData` optimistic writes (with error revert); re-seed gym-info form on `settings?.id` change |
 
-## Outcome
-- Admin edits a package → sessionStorage cleared + cross-tab signal fired (already in place for mutations).
-- Admin clicks **Refresh** → now also clears public caches and broadcasts the signal.
-- Open public registration tab → instantly drops cache and refetches in the background.
-- New visitor to `/register` → first call always returns latest because cache is gone.
-- No stale time, no skeleton flash on already-loaded tabs.
+No other files, no DB changes, no hook changes.
+
