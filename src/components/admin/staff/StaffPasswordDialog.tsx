@@ -39,11 +39,13 @@ export const StaffPasswordDialog = ({
   const [showPassword, setShowPassword] = useState(false);
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const handleGeneratePassword = () => {
     const newPassword = generateStaffPassword();
     setPassword(newPassword);
     setShowPassword(true);
+    setServerError(null);
   };
 
   // WhatsApp is now sent directly from the edge function with the plain password
