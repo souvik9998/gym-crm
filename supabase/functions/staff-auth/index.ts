@@ -589,6 +589,11 @@ Deno.serve(async (req) => {
           });
 
           if (createError) {
+            // HIBP / weak-password rejection from Supabase Auth → friendly 400
+            if (isWeakPasswordError(createError)) {
+              return errorResponse(WEAK_PASSWORD_MESSAGE, 400);
+            }
+
             // Try to find existing user by email
             const { data: users } = await supabaseAdmin.auth.admin.listUsers();
             const existingUser = users?.users?.find(u => u.email === staffEmail);
@@ -600,8 +605,11 @@ Deno.serve(async (req) => {
                 password: password 
               });
               if (updateError) {
+                if (isWeakPasswordError(updateError)) {
+                  return errorResponse(WEAK_PASSWORD_MESSAGE, 400);
+                }
                 console.error("Failed to update password:", updateError);
-                return errorResponse("Failed to update password", 500);
+                return errorResponse("Failed to update password: " + updateError.message, 500);
               }
             } else {
               console.error("Failed to create auth user:", createError);
@@ -622,6 +630,9 @@ Deno.serve(async (req) => {
             password: password 
           });
           if (updateError) {
+            if (isWeakPasswordError(updateError)) {
+              return errorResponse(WEAK_PASSWORD_MESSAGE, 400);
+            }
             console.error("Failed to update password:", updateError);
             return errorResponse("Failed to update password: " + updateError.message, 500);
           }
