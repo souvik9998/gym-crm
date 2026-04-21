@@ -37,7 +37,6 @@ const BRANCH_TABLES = [
   "pt_subscriptions",
   "time_slot_members",
   "member_exercise_plans",
-  "member_exercise_items",
   "daily_pass_users",
   "daily_pass_subscriptions",
   "payments",
@@ -229,6 +228,11 @@ Deno.serve(async (req) => {
       data[t] = await fetchAll(service, t, "member_id", memberIds);
       recordCounts[t] = data[t].length;
     }
+
+    // Plan-scoped tables (member_exercise_items has no branch_id; resolve via plan_id)
+    const planIds = (data["member_exercise_plans"] || []).map((p) => p.id as string).filter(Boolean);
+    data["member_exercise_items"] = await fetchAll(service, "member_exercise_items", "plan_id", planIds);
+    recordCounts["member_exercise_items"] = data["member_exercise_items"].length;
 
     // Reference snapshots (read-only, never restored)
     const staffIds = Array.from(
