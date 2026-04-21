@@ -1114,24 +1114,30 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
 
       // Log activity
       const actionDesc = selectedAction === "add_pt" ? "added PT for" : "renewed";
+      const paymentTagEx = registerFree ? "FREE" : paymentMode.toUpperCase();
       if (isStaffLoggedIn && staffUser) {
         await logStaffActivity({
           category: selectedAction === "add_pt" ? "subscriptions" : "members",
           type: selectedAction === "add_pt" ? "pt_subscription_added" : "subscription_renewed",
-          description: `Staff "${staffUser.fullName}" ${actionDesc} "${existingMember.name}" (${paymentMode.toUpperCase()})`,
+          description: registerFree
+            ? `Staff "${staffUser.fullName}" ${actionDesc} "${existingMember.name}" FREE (no payment collected)`
+            : `Staff "${staffUser.fullName}" ${actionDesc} "${existingMember.name}" (${paymentTagEx})`,
           entityType: "members", entityId: existingMember.id, entityName: existingMember.name,
-          newValue: { action: selectedAction, total_amount: totalAmount, payment_mode: paymentMode },
+          newValue: { action: selectedAction, total_amount: totalAmount, payment_mode: registerFree ? "free" : paymentMode, registered_free: registerFree },
           branchId: currentBranch.id, staffId: staffUser.id, staffName: staffUser.fullName,
-          staffPhone: staffUser.phone, metadata: { staff_role: staffUser.role },
+          staffPhone: staffUser.phone, metadata: { staff_role: staffUser.role, registered_free: registerFree },
         });
       } else {
         await logAdminActivity({
           category: selectedAction === "add_pt" ? "subscriptions" : "members",
           type: selectedAction === "add_pt" ? "pt_subscription_added" : "subscription_renewed",
-          description: `${selectedAction === "add_pt" ? "Added PT for" : "Renewed"} "${existingMember.name}" (${paymentMode.toUpperCase()})`,
+          description: registerFree
+            ? `${selectedAction === "add_pt" ? "Added PT for" : "Renewed"} "${existingMember.name}" FREE (no payment collected)`
+            : `${selectedAction === "add_pt" ? "Added PT for" : "Renewed"} "${existingMember.name}" (${paymentTagEx})`,
           entityType: "members", entityId: existingMember.id, entityName: existingMember.name,
-          newValue: { action: selectedAction, total_amount: totalAmount, payment_mode: paymentMode },
+          newValue: { action: selectedAction, total_amount: totalAmount, payment_mode: registerFree ? "free" : paymentMode, registered_free: registerFree },
           branchId: currentBranch.id,
+          metadata: { registered_free: registerFree },
         });
       }
 
