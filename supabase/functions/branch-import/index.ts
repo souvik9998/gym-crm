@@ -233,6 +233,69 @@ function safeStoragePath(bucket: string, originalPath: string, oldBranchId: stri
   return `${newBranchId}/${originalPath}`;
 }
 
+function generateSlug(input: string): string {
+  return input
+    .trim()
+    .replace(/[^a-zA-Z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .toLowerCase();
+}
+
+function makeUniqueValue(base: string, used: Set<string>, fallback: string): string {
+  const cleanBase = base.trim() || fallback.trim();
+  if (!used.has(cleanBase)) {
+    used.add(cleanBase);
+    return cleanBase;
+  }
+
+  let suffix = 1;
+  while (suffix <= 1000) {
+    const candidate = `${cleanBase}-${suffix}`;
+    if (!used.has(candidate)) {
+      used.add(candidate);
+      return candidate;
+    }
+    suffix += 1;
+  }
+
+  const emergency = `${fallback.trim() || "imported"}-${newUuid().slice(0, 8)}`;
+  used.add(emergency);
+  return emergency;
+}
+
+async function fetchExistingStringValuesExcludingBranch(
+  service: SupabaseClient,
+  table: string,
+  column: string,
+  excludeBranchId: string
+): Promise<Set<string>> {
+  const PAGE = 1000;
+  let from = 0;
+  const out = new Set<string>();
+
+  while (true) {
+    const { data, error } = await service
+      .from(table)
+      .select(column)
+      .neq("branch_id", excludeBranchId)
+      .range(from, from + PAGE - 1);
+
+    if (error) throw new Error(`Failed to read existing ${table}.${column}: ${error.message}`);
+    if (!data || data.length === 0) break;
+
+    for (const row of data as Record<string, unknown>[]) {
+      const value = row[column];
+      if (typeof value === "string" && value.trim()) out.add(value.trim());
+    }
+
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  return out;
+}
+
 // ----------------------------------------------------------------------------
 // Main
 // ----------------------------------------------------------------------------
