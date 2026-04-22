@@ -71,6 +71,7 @@ export interface CreateTenantParams {
   ownerEmail: string;
   ownerPassword: string;
   limits?: Partial<TenantLimits>;
+  features?: Partial<TenantLimits["features"]>;
 }
 
 /**
@@ -172,6 +173,10 @@ export async function createTenant(params: CreateTenantParams): Promise<{ tenant
           maxMembers: params.limits.max_members,
           maxTrainers: params.limits.max_trainers,
           maxMonthlyWhatsAppMessages: params.limits.max_monthly_whatsapp_messages,
+          maxMonthlyCheckins: params.limits.max_monthly_checkins,
+          maxStorageMb: params.limits.max_storage_mb,
+          planExpiryDate: params.limits.plan_expiry_date,
+          features: params.features,
         } : undefined,
       }),
     }
