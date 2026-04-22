@@ -30,6 +30,9 @@ interface TenantCreateRequest {
     maxMembers?: number;
     maxTrainers?: number;
     maxMonthlyWhatsAppMessages?: number;
+    maxMonthlyCheckins?: number;
+    maxStorageMb?: number;
+    planExpiryDate?: string | null;
     features?: Record<string, boolean>;
   };
 }
@@ -315,6 +318,9 @@ interface UsageUpdateRequest {
             max_members: limits?.maxMembers ?? 500,
             max_trainers: limits?.maxTrainers ?? 10,
             max_monthly_whatsapp_messages: limits?.maxMonthlyWhatsAppMessages ?? 100,
+            max_monthly_checkins: limits?.maxMonthlyCheckins ?? 10000,
+            max_storage_mb: limits?.maxStorageMb ?? 500,
+            plan_expiry_date: limits?.planExpiryDate ?? null,
             features: limits?.features ?? { analytics: true, whatsapp: true, daily_pass: true },
           });
 

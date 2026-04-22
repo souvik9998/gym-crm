@@ -438,6 +438,9 @@ export const CreateTenantSchema = z.object({
     maxMembers: z.number().int().min(1).max(100000).optional(),
     maxTrainers: z.number().int().min(1).max(500).optional(),
     maxMonthlyWhatsAppMessages: z.number().int().min(0).max(100000).optional(),
+    maxMonthlyCheckins: z.number().int().min(0).max(1000000).optional(),
+    maxStorageMb: z.number().int().min(0).max(100000).optional(),
+    planExpiryDate: DateSchema.optional().nullable(),
     features: z.record(z.boolean()).optional(),
   }).optional(),
 });
