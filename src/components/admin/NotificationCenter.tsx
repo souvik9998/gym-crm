@@ -17,11 +17,12 @@ import {
 } from "@/components/ui/dialog";
 import { useAdminNotifications, type AdminNotification } from "@/hooks/useAdminNotifications";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
 import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const categoryFilters = ["all", "new_member", "plan", "limit", "member"] as const;
 type CategoryFilter = (typeof categoryFilters)[number];
@@ -78,7 +79,7 @@ function NotificationBadge({ type }: { type: AdminNotification["type"] }) {
 
 export function NotificationCenter() {
   const navigate = useNavigate();
-  const { notifications, dangerCount, successCount, totalCount } = useAdminNotifications();
+  const { notifications, dangerCount, successCount, totalCount, refetch } = useAdminNotifications();
   const [filter, setFilter] = useState<CategoryFilter>("all");
   const [open, setOpen] = useState(false);
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
@@ -99,6 +100,7 @@ export function NotificationCenter() {
   const [planDialog, setPlanDialog] = useState<{ open: boolean; notification: AdminNotification | null }>({ open: false, notification: null });
   const [memberDialog, setMemberDialog] = useState<{ open: boolean; notification: AdminNotification | null }>({ open: false, notification: null });
   const [sendingReminder, setSendingReminder] = useState(false);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
 
   const filtered = filter === "all"
     ? notifications
@@ -130,7 +132,44 @@ export function NotificationCenter() {
 
   const waOverlay = useWhatsAppOverlay();
 
+  const memberCandidates = memberDialog.notification?.memberMeta?.members ?? [];
+  const allMembersSelected = memberCandidates.length > 0 && selectedMemberIds.length === memberCandidates.length;
+  const someMembersSelected = selectedMemberIds.length > 0 && !allMembersSelected;
+
+  useEffect(() => {
+    if (!memberDialog.open || !memberDialog.notification?.memberMeta) {
+      setSelectedMemberIds([]);
+      return;
+    }
+
+    setSelectedMemberIds(memberDialog.notification.memberMeta.members.map((member) => member.id));
+  }, [memberDialog.open, memberDialog.notification]);
+
+  const selectedMembersLabel = useMemo(() => {
+    if (selectedMemberIds.length === 0) return "No members selected";
+    if (selectedMemberIds.length === 1) return "1 member selected";
+    return `${selectedMemberIds.length} members selected`;
+  }, [selectedMemberIds.length]);
+
+  const toggleMember = (memberId: string, checked: boolean) => {
+    setSelectedMemberIds((current) =>
+      checked ? [...current, memberId] : current.filter((id) => id !== memberId),
+    );
+  };
+
+  const toggleAllMembers = (checked: boolean) => {
+    setSelectedMemberIds(checked ? memberCandidates.map((member) => member.id) : []);
+  };
+
   const handleSendReminder = async () => {
+    const notification = memberDialog.notification;
+    const notificationType = notification?.memberMeta?.mode === "expiring_today" ? "expiring_today" : "expiry_reminder";
+
+    if (selectedMemberIds.length === 0) {
+      toast.error("Select at least one member");
+      return;
+    }
+
     // Close dialog first so overlay isn't competing
     setMemberDialog({ open: false, notification: null });
     setSendingReminder(true);
@@ -144,7 +183,6 @@ export function NotificationCenter() {
     }
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
@@ -153,21 +191,25 @@ export function NotificationCenter() {
         return;
       }
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/daily-whatsapp-job`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+      const { data, error } = await supabase.functions.invoke("send-whatsapp", {
+        body: {
+          memberIds: selectedMemberIds,
+          type: notificationType,
+          isManual: true,
+          adminUserId: session.user.id,
+          branchId: notification?.memberMeta?.members[0] ? undefined : undefined,
         },
-        body: JSON.stringify({ manual: true }),
       });
 
-      const responseData = await response.json().catch(() => ({}));
+      if (error) throw error;
 
-      if (response.ok && responseData?.error == null) {
-        const sentCount = responseData?.sent ?? responseData?.results?.filter((r: any) => r.success)?.length;
-        const label = sentCount != null ? `${sentCount} expiring member${sentCount !== 1 ? "s" : ""}` : "expiring members";
+      const responseData = typeof data === "string" ? JSON.parse(data) : data;
+
+      if (responseData?.success) {
+        const sentCount = responseData?.results?.filter((result: { success: boolean }) => result.success).length ?? selectedMemberIds.length;
+        const label = `${sentCount} expiring member${sentCount !== 1 ? "s" : ""}`;
         waOverlay.markSuccess(label);
+        await refetch();
       } else {
         waOverlay.markError(responseData?.error || responseData?.message || "Failed to send reminders. Please try again.");
       }
@@ -304,7 +346,7 @@ export function NotificationCenter() {
 
       {/* Plan Expiry Dialog */}
       <Dialog open={planDialog.open} onOpenChange={(o) => setPlanDialog({ open: o, notification: o ? planDialog.notification : null })}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogContent className="sm:max-w-2xl rounded-2xl">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
               <div className={cn(
@@ -385,31 +427,60 @@ export function NotificationCenter() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <Button
-              variant="outline"
-              className="flex flex-col items-center gap-2 h-auto py-4 rounded-xl hover:bg-muted/80"
-              onClick={() => {
-                setMemberDialog({ open: false, notification: null });
-                navigate("/admin/dashboard");
-              }}
-            >
-              <Info className="h-5 w-5 text-primary" />
-              <div className="text-center">
-                <p className="text-sm font-medium">View Members</p>
-                <p className="text-[10px] text-muted-foreground">See who's expiring</p>
+          <div className="space-y-4 pt-2">
+            <div className="flex flex-col gap-3 rounded-xl border border-border/50 bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <label className="flex items-center gap-3">
+                <Checkbox
+                  checked={allMembersSelected ? true : someMembersSelected ? "indeterminate" as never : false}
+                  onCheckedChange={(checked) => toggleAllMembers(checked === true)}
+                />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Select all</p>
+                  <p className="text-xs text-muted-foreground">{selectedMembersLabel}</p>
+                </div>
+              </label>
+              <Button
+                variant="outline"
+                className="rounded-xl"
+                onClick={() => {
+                  setMemberDialog({ open: false, notification: null });
+                  navigate("/admin/dashboard");
+                }}
+              >
+                <Info className="h-4 w-4 text-primary" />
+                View Members
+              </Button>
+            </div>
+
+            <ScrollArea className="max-h-[320px] rounded-xl border border-border/50 bg-background/60">
+              <div className="divide-y divide-border/40">
+                {memberCandidates.map((member) => (
+                  <label key={member.id} className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-muted/40">
+                    <Checkbox
+                      checked={selectedMemberIds.includes(member.id)}
+                      onCheckedChange={(checked) => toggleMember(member.id, checked === true)}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="truncate text-sm font-medium text-foreground">{member.name}</p>
+                        <span className="text-[11px] font-medium text-primary">
+                          {new Date(member.endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{member.phone}</p>
+                    </div>
+                  </label>
+                ))}
               </div>
-            </Button>
+            </ScrollArea>
+
             <Button
-              className="flex flex-col items-center gap-2 h-auto py-4 rounded-xl"
+              className="h-auto gap-2 rounded-xl py-3"
               onClick={handleSendReminder}
-              disabled={sendingReminder}
+              disabled={sendingReminder || selectedMemberIds.length === 0}
             >
-              <Send className="h-5 w-5" />
-              <div className="text-center">
-                <p className="text-sm font-medium">{sendingReminder ? "Sending..." : "Send Reminder"}</p>
-                <p className="text-[10px] opacity-80">Via WhatsApp</p>
-              </div>
+              <Send className="h-4 w-4" />
+              {sendingReminder ? "Sending..." : `Send to ${selectedMemberIds.length || 0} Member${selectedMemberIds.length === 1 ? "" : "s"}`}
             </Button>
           </div>
 
