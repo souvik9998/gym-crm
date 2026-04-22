@@ -2,14 +2,26 @@
  * Hook to gather admin notifications:
  * - Plan expiry warnings
  * - Resource limit warnings (members, branches, staff, whatsapp, trainers)
- * - Expiring/expired members
+ * - Expiring members based on WhatsApp reminder settings
  * - Recently added members (within 1 hour)
  */
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
-import { useDashboardStats } from "@/hooks/queries/useDashboard";
 import { useAuth } from "@/contexts/AuthContext";
+
+interface ExpiringMemberNotificationItem {
+  id: string;
+  name: string;
+  phone: string;
+  endDate: string;
+}
+
+interface MemberNotificationMeta {
+  mode: "expiring_soon" | "expiring_today";
+  daysBefore?: number;
+  members: ExpiringMemberNotificationItem[];
+}
 
 export interface AdminNotification {
   id: string;
@@ -19,6 +31,7 @@ export interface AdminNotification {
   description: string;
   actionRoute?: string;
   timestamp: Date;
+  memberMeta?: MemberNotificationMeta;
 }
 
 interface TenantLimitsData {
@@ -40,65 +53,94 @@ interface TenantUsageData {
   monthly_checkins: number;
 }
 
+type SubscriptionRow = {
+  id: string;
+  end_date: string;
+  status: string;
+  member_id: string;
+  members: {
+    id: string;
+    name: string;
+    phone: string;
+    branch_id: string;
+  } | null;
+};
+
+const DEFAULT_EXPIRING_DAYS = 2;
+
+const startOfToday = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+};
+
+const addDays = (date: Date, days: number) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+
+const formatDate = (date: Date) => date.toISOString().split("T")[0];
+
 export function useAdminNotifications() {
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { currentBranch } = useBranch();
-  const { data: dashStats } = useDashboardStats();
   const { tenantId, isLoading: authLoading } = useAuth();
-  const hasFetched = useRef(false);
-
-  useEffect(() => {
-    if (authLoading || !tenantId) {
-      if (!authLoading && !tenantId) setIsLoading(false);
-      return;
-    }
-    fetchNotifications();
-  }, [tenantId, currentBranch?.id, dashStats]);
-
-  // Auto-refresh every 5 minutes to keep new member notifications current
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (tenantId) fetchNotifications();
-    }, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [tenantId, currentBranch?.id]);
 
   const fetchNotifications = async () => {
-    if (!tenantId) { setIsLoading(false); return; }
+    if (!tenantId) {
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const items: AdminNotification[] = [];
-
-      // Fetch limits, usage, and recent members in parallel
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      
+      const today = startOfToday();
+
       let recentMembersQuery = supabase
         .from("members")
         .select("id, name, created_at")
         .gte("created_at", oneHourAgo)
         .order("created_at", { ascending: false });
-      
+
       if (currentBranch?.id) {
         recentMembersQuery = recentMembersQuery.eq("branch_id", currentBranch.id);
       }
 
-      const [limitsRes, usageRes, recentMembersRes] = await Promise.all([
+      let settingsQuery = supabase
+        .from("gym_settings")
+        .select("branch_id, whatsapp_auto_send")
+        .limit(1);
+
+      if (currentBranch?.id) {
+        settingsQuery = settingsQuery.eq("branch_id", currentBranch.id);
+      } else {
+        settingsQuery = settingsQuery.not("branch_id", "is", null);
+      }
+
+      const [limitsRes, usageRes, recentMembersRes, settingsRes] = await Promise.all([
         supabase.from("tenant_limits").select("*").eq("tenant_id", tenantId).single(),
         supabase.rpc("get_tenant_current_usage", { _tenant_id: tenantId }),
         recentMembersQuery,
+        settingsQuery.maybeSingle(),
       ]);
 
       const limits = limitsRes.data as TenantLimitsData | null;
       const usage = (usageRes.data as TenantUsageData[] | null)?.[0];
       const recentMembers = recentMembersRes.data || [];
+      const autoSend = (settingsRes.data?.whatsapp_auto_send as Record<string, unknown> | null) || {};
+      const expiringSoonEnabled = autoSend.expiring_2days !== false;
+      const expiringTodayEnabled = autoSend.expiring_today !== false;
+      const expiringDaysBefore =
+        typeof autoSend.expiring_days_before === "number" ? autoSend.expiring_days_before : DEFAULT_EXPIRING_DAYS;
 
-      // New members notification (within 1 hour)
       if (recentMembers.length > 0) {
         const memberNames = recentMembers.slice(0, 3).map((m: any) => m.name);
         const moreCount = recentMembers.length - 3;
         const namesList = memberNames.join(", ") + (moreCount > 0 ? ` and ${moreCount} more` : "");
-        
+
         items.push({
           id: "new-members-recent",
           type: "success",
@@ -111,11 +153,8 @@ export function useAdminNotifications() {
       }
 
       if (limits) {
-        // Plan expiry check
         if (limits.plan_expiry_date) {
           const expiry = new Date(limits.plan_expiry_date);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
           const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
           if (daysLeft < 0) {
@@ -141,7 +180,6 @@ export function useAdminNotifications() {
           }
         }
 
-        // Resource limit warnings
         if (usage) {
           const checks: { key: string; used: number; max: number; label: string; route: string }[] = [
             { key: "members", used: usage.members_count, max: limits.max_members, label: "Members", route: "/admin/dashboard" },
@@ -178,29 +216,75 @@ export function useAdminNotifications() {
         }
       }
 
-      // Expiring/expired members from dashboard stats
-      if (dashStats) {
-        if (dashStats.expiredMembers > 0) {
-          items.push({
-            id: "members-expired",
-            type: "danger",
-            category: "member",
-            title: `${dashStats.expiredMembers} Expired Member${dashStats.expiredMembers > 1 ? "s" : ""}`,
-            description: "Members with expired subscriptions need renewal.",
-            actionRoute: "/admin/dashboard",
-            timestamp: new Date(),
-          });
-        }
-        if (dashStats.expiringSoon > 0) {
-          items.push({
-            id: "members-expiring",
-            type: "warning",
-            category: "member",
-            title: `${dashStats.expiringSoon} Expiring Soon`,
-            description: "Members whose subscriptions expire within 7 days.",
-            actionRoute: "/admin/dashboard",
-            timestamp: new Date(),
-          });
+      if (currentBranch?.id && (expiringSoonEnabled || expiringTodayEnabled)) {
+        const targetSoonDate = formatDate(addDays(today, expiringDaysBefore));
+        const targetTodayDate = formatDate(today);
+
+        const subscriptionQuery = supabase
+          .from("subscriptions")
+          .select("id, end_date, status, member_id, members!inner(id, name, phone, branch_id)")
+          .eq("members.branch_id", currentBranch.id)
+          .in("status", ["active", "expiring_soon"]);
+
+        const dateFilters = [
+          expiringSoonEnabled ? `end_date.eq.${targetSoonDate}` : null,
+          expiringTodayEnabled ? `end_date.eq.${targetTodayDate}` : null,
+        ].filter(Boolean);
+
+        const { data: matchedSubscriptions, error: matchedError } = await subscriptionQuery.or(dateFilters.join(","));
+
+        if (matchedError) {
+          console.error("Failed to fetch expiring member notifications:", matchedError);
+        } else {
+          const rows = (matchedSubscriptions || []) as unknown as SubscriptionRow[];
+          const expiringSoonMembers = rows
+            .filter((row) => row.end_date === targetSoonDate)
+            .map((row) => ({
+              id: row.member_id,
+              name: row.members?.name || "Member",
+              phone: row.members?.phone || "",
+              endDate: row.end_date,
+            }));
+
+          const expiringTodayMembers = rows
+            .filter((row) => row.end_date === targetTodayDate)
+            .map((row) => ({
+              id: row.member_id,
+              name: row.members?.name || "Member",
+              phone: row.members?.phone || "",
+              endDate: row.end_date,
+            }));
+
+          if (expiringSoonMembers.length > 0) {
+            items.push({
+              id: `members-expiring-${expiringDaysBefore}`,
+              type: "warning",
+              category: "member",
+              title: `${expiringSoonMembers.length} Member${expiringSoonMembers.length > 1 ? "s" : ""} Expiring in ${expiringDaysBefore} Day${expiringDaysBefore > 1 ? "s" : ""}`,
+              description: `Select members and send the configured reminder scheduled ${expiringDaysBefore} day${expiringDaysBefore > 1 ? "s" : ""} before expiry.`,
+              timestamp: new Date(),
+              memberMeta: {
+                mode: "expiring_soon",
+                daysBefore: expiringDaysBefore,
+                members: expiringSoonMembers,
+              },
+            });
+          }
+
+          if (expiringTodayMembers.length > 0) {
+            items.push({
+              id: "members-expiring-today",
+              type: "danger",
+              category: "member",
+              title: `${expiringTodayMembers.length} Member${expiringTodayMembers.length > 1 ? "s" : ""} Expiring Today`,
+              description: "Select members and send today's expiry notification in bulk.",
+              timestamp: new Date(),
+              memberMeta: {
+                mode: "expiring_today",
+                members: expiringTodayMembers,
+              },
+            });
+          }
         }
       }
 
@@ -212,8 +296,25 @@ export function useAdminNotifications() {
     }
   };
 
-  const dangerCount = useMemo(() => notifications.filter(n => n.type === "danger").length, [notifications]);
-  const successCount = useMemo(() => notifications.filter(n => n.type === "success").length, [notifications]);
+  useEffect(() => {
+    if (authLoading || !tenantId) {
+      if (!authLoading && !tenantId) setIsLoading(false);
+      return;
+    }
+
+    fetchNotifications();
+  }, [authLoading, tenantId, currentBranch?.id]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (tenantId) fetchNotifications();
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [tenantId, currentBranch?.id]);
+
+  const dangerCount = useMemo(() => notifications.filter((n) => n.type === "danger").length, [notifications]);
+  const successCount = useMemo(() => notifications.filter((n) => n.type === "success").length, [notifications]);
   const totalCount = notifications.length;
 
   return { notifications, isLoading, dangerCount, successCount, totalCount, refetch: fetchNotifications };
