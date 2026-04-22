@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsSuperAdmin } from "@/hooks/useUserRoles";
 import { createTenant } from "@/api/tenants";
@@ -6,7 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { FeaturePermissionsSection } from "@/components/superadmin/create-tenant/FeaturePermissionsSection";
+import { UsageLimitsSection } from "@/components/superadmin/create-tenant/UsageLimitsSection";
+import {
+  defaultTenantFeatures,
+  defaultTenantLimits,
+  type CreateTenantLimitsForm,
+} from "@/components/superadmin/create-tenant/tenantCreationConfig";
+import type { TenantFeaturePermissions } from "@/contexts/AuthContext";
 import { ArrowLeftIcon, BuildingOffice2Icon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 
@@ -14,30 +22,30 @@ export default function CreateTenant() {
   const navigate = useNavigate();
   const { isSuperAdmin, isLoading: roleLoading } = useIsSuperAdmin();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Form state
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
     phone: "",
     ownerEmail: "",
     ownerPassword: "",
-    maxBranches: 3,
-    maxStaffPerBranch: 10,
-    maxMembers: 1000,
-    maxTrainers: 20,
-    maxWhatsApp: 500,
   });
+  const [limits, setLimits] = useState<CreateTenantLimitsForm>(defaultTenantLimits);
+  const [features, setFeatures] = useState<TenantFeaturePermissions>(defaultTenantFeatures);
+
+  useEffect(() => {
+    if (!roleLoading && !isSuperAdmin) {
+      navigate("/admin/login");
+    }
+  }, [isSuperAdmin, roleLoading, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type } = e.target;
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "number" ? parseInt(value) || 0 : value,
+      [name]: value,
     }));
   };
 
-  // Auto-generate slug from name
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
     const slug = name
@@ -45,6 +53,29 @@ export default function CreateTenant() {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
     setFormData((prev) => ({ ...prev, name, slug }));
+  };
+
+  const handleLimitNumberChange = (key: keyof CreateTenantLimitsForm, value: number) => {
+    setLimits((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleFeatureToggle = (key: keyof TenantFeaturePermissions, checked: boolean) => {
+    setFeatures((prev) => {
+      if (key === "attendance") {
+        return {
+          ...prev,
+          attendance: checked,
+          attendance_manual: checked ? prev.attendance_manual : false,
+          attendance_qr: checked ? prev.attendance_qr : false,
+          attendance_biometric: checked ? prev.attendance_biometric : false,
+        };
+      }
+
+      return {
+        ...prev,
+        [key]: checked,
+      };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,17 +96,21 @@ export default function CreateTenant() {
       const result = await createTenant({
         name: formData.name,
         slug: formData.slug,
-        email: formData.ownerEmail, // Use owner email as contact email
+        email: formData.ownerEmail,
         phone: formData.phone || undefined,
         ownerEmail: formData.ownerEmail,
         ownerPassword: formData.ownerPassword,
         limits: {
-          max_branches: formData.maxBranches,
-          max_staff_per_branch: formData.maxStaffPerBranch,
-          max_members: formData.maxMembers,
-          max_trainers: formData.maxTrainers,
-          max_monthly_whatsapp_messages: formData.maxWhatsApp,
+          max_branches: limits.maxBranches,
+          max_staff_per_branch: limits.maxStaffPerBranch,
+          max_members: limits.maxMembers,
+          max_trainers: limits.maxTrainers,
+          max_monthly_whatsapp_messages: limits.maxWhatsApp,
+          max_monthly_checkins: limits.maxMonthlyCheckins,
+          max_storage_mb: limits.maxStorageMb,
+          plan_expiry_date: limits.planExpiryDate || null,
         },
+        features,
       });
 
       toast.success(`Organization "${formData.name}" created successfully!`);
@@ -97,13 +132,11 @@ export default function CreateTenant() {
   }
 
   if (!isSuperAdmin) {
-    navigate("/admin/login");
     return null;
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      {/* Page Header */}
+    <div className="space-y-6 max-w-5xl">
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
@@ -115,54 +148,54 @@ export default function CreateTenant() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Create Organization</h1>
           <p className="text-sm text-muted-foreground">
-            Set up a new gym organization on the platform
+            Set permissions, plan expiry, and resource limits before onboarding a new gym.
           </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Organization Details */}
         <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <BuildingOffice2Icon className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle>Organization Details</CardTitle>
-                  <CardDescription>Basic information about the gym</CardDescription>
-                </div>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <BuildingOffice2Icon className="w-5 h-5 text-primary" />
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Organization Name *</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleNameChange}
-                    placeholder="Pro Plus Fitness"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="slug">URL Slug *</Label>
-                  <Input
-                    id="slug"
-                    name="slug"
-                    value={formData.slug}
-                    onChange={handleInputChange}
-                    placeholder="pro-plus-fitness"
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Used in URLs: /org/{formData.slug || "slug"}
-                  </p>
-                </div>
+              <div>
+                <CardTitle>Organization Details</CardTitle>
+                <CardDescription>Basic information and owner access for the new gym.</CardDescription>
               </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Organization Name *</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleNameChange}
+                  placeholder="Pro Plus Fitness"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="slug">URL Slug *</Label>
+                <Input
+                  id="slug"
+                  name="slug"
+                  value={formData.slug}
+                  onChange={handleInputChange}
+                  placeholder="pro-plus-fitness"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used in URLs: /org/{formData.slug || "slug"}
+                </p>
+              </div>
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="phone">Contact Phone (Optional)</Label>
                 <Input
@@ -173,18 +206,27 @@ export default function CreateTenant() {
                   placeholder="+91 9876543210"
                 />
               </div>
-            </CardContent>
-          </Card>
+              <div className="space-y-2">
+                <Label htmlFor="provisioningSummary">Provisioning Summary</Label>
+                <div
+                  id="provisioningSummary"
+                  className="min-h-10 rounded-md border border-border bg-muted/30 px-3 py-2 flex flex-wrap gap-2 items-center"
+                >
+                  <Badge variant="secondary">{limits.maxBranches} branches</Badge>
+                  <Badge variant="secondary">{limits.maxMembers} members</Badge>
+                  <Badge variant="secondary">{Object.values(features).filter(Boolean).length} modules on</Badge>
+                  {limits.planExpiryDate ? <Badge variant="outline">Expires {limits.planExpiryDate}</Badge> : null}
+                </div>
+              </div>
+            </div>
 
-          {/* Owner Login Credentials */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle>Owner Login Credentials</CardTitle>
-              <CardDescription>
-                These credentials will be used by the gym owner to access their admin dashboard
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Owner Login Credentials</h2>
+                <p className="text-sm text-muted-foreground">
+                  These credentials will be used by the gym owner to access the admin dashboard.
+                </p>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="ownerEmail">Login Email *</Label>
@@ -197,9 +239,7 @@ export default function CreateTenant() {
                     placeholder="owner@gym.com"
                     required
                   />
-                  <p className="text-xs text-muted-foreground">
-                    The gym owner will use this email to log in
-                  </p>
+                  <p className="text-xs text-muted-foreground">The gym owner will use this email to log in.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ownerPassword">Password *</Label>
@@ -212,98 +252,40 @@ export default function CreateTenant() {
                     placeholder="Min 6 characters"
                     required
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Share this password with the gym owner
-                  </p>
+                  <p className="text-xs text-muted-foreground">Share this password securely with the gym owner.</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Resource Limits */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle>Resource Limits</CardTitle>
-              <CardDescription>
-                Set usage limits for this organization
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="maxBranches">Max Branches</Label>
-                  <Input
-                    id="maxBranches"
-                    name="maxBranches"
-                    type="number"
-                    value={formData.maxBranches}
-                    onChange={handleInputChange}
-                    min={1}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maxStaffPerBranch">Staff per Branch</Label>
-                  <Input
-                    id="maxStaffPerBranch"
-                    name="maxStaffPerBranch"
-                    type="number"
-                    value={formData.maxStaffPerBranch}
-                    onChange={handleInputChange}
-                    min={1}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maxMembers">Max Members</Label>
-                  <Input
-                    id="maxMembers"
-                    name="maxMembers"
-                    type="number"
-                    value={formData.maxMembers}
-                    onChange={handleInputChange}
-                    min={1}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maxTrainers">Max Trainers</Label>
-                  <Input
-                    id="maxTrainers"
-                    name="maxTrainers"
-                    type="number"
-                    value={formData.maxTrainers}
-                    onChange={handleInputChange}
-                    min={1}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maxWhatsApp">Monthly WhatsApp</Label>
-                  <Input
-                    id="maxWhatsApp"
-                    name="maxWhatsApp"
-                    type="number"
-                    value={formData.maxWhatsApp}
-                    onChange={handleInputChange}
-                    min={0}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <UsageLimitsSection
+          limits={limits}
+          disabled={isSubmitting}
+          onNumberChange={handleLimitNumberChange}
+          onDateChange={(value) => setLimits((prev) => ({ ...prev, planExpiryDate: value }))}
+        />
 
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate("/superadmin/tenants")}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create Organization"}
-            </Button>
-          </div>
-        </form>
-      </div>
+        <FeaturePermissionsSection
+          features={features}
+          disabled={isSubmitting}
+          onToggle={handleFeatureToggle}
+        />
+
+        <div className="flex items-center justify-end gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate("/superadmin/tenants")}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Creating..." : "Create Organization"}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }
