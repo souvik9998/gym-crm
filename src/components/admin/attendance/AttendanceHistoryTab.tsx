@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAttendanceFilters, formatSlotTime } from "@/hooks/queries/useAttendanceFilters";
 import { UserGroupIcon, FunnelIcon } from "@heroicons/react/24/outline";
+import { TIME_BUCKET_OPTIONS, matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
 function getMonthDates(year: number, month: number): (string | null)[][] {
   const first = new Date(year, month, 1);
@@ -64,15 +65,27 @@ export const AttendanceHistoryTab = () => {
   const [activeView, setActiveView] = useState("calendar");
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [timeFilter, setTimeFilter] = useState<TimeBucket>("all");
+  const [customStart, setCustomStart] = useState("06:00");
+  const [customEnd, setCustomEnd] = useState("10:00");
   const [exportPeriod, setExportPeriod] = useState<"1w" | "1m" | "3m">("1m");
   const [isExporting, setIsExporting] = useState(false);
 
   const { trainers, allSlots, isLimitedAccess } = useAttendanceFilters();
   const { assignedMemberIds } = useAssignedMemberIds();
   const filteredSlots = useMemo(() => {
-    if (selectedTrainerId) return allSlots.filter(s => s.trainer_id === selectedTrainerId);
-    return allSlots;
-  }, [allSlots, selectedTrainerId]);
+    return allSlots.filter((slot) => {
+      if (selectedTrainerId && slot.trainer_id !== selectedTrainerId) return false;
+      return matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd);
+    });
+  }, [allSlots, selectedTrainerId, timeFilter, customStart, customEnd]);
+
+  useEffect(() => {
+    if (!selectedSlotId) return;
+    if (!filteredSlots.some((slot) => slot.id === selectedSlotId)) {
+      setSelectedSlotId(null);
+    }
+  }, [filteredSlots, selectedSlotId]);
 
   const weeks = useMemo(() => getMonthDates(currentMonth.year, currentMonth.month), [currentMonth]);
   const monthStart = `${currentMonth.year}-${String(currentMonth.month + 1).padStart(2, "0")}-01`;
@@ -380,7 +393,41 @@ export const AttendanceHistoryTab = () => {
 
       {/* Trainer & Slot Filters */}
       {(trainers.length > 0 || allSlots.length > 0) && !isLimitedAccess && (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide rounded-xl border border-border/50 bg-background/70 p-1.5">
+            {TIME_BUCKET_OPTIONS.map((option) => {
+              const active = timeFilter === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setTimeFilter(option.value)}
+                  className={cn(
+                    "shrink-0 rounded-lg px-3 py-1.5 text-[10px] lg:text-xs font-medium transition-all duration-200",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {timeFilter === "custom" && (
+            <div className="grid gap-2 rounded-xl border border-border/50 bg-card/60 p-3 sm:grid-cols-2 animate-fade-in">
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-muted-foreground">Start time</label>
+                <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-muted-foreground">End time</label>
+                <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 text-sm" />
+              </div>
+            </div>
+          )}
+
           {trainers.length > 1 && (
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
               <UserGroupIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
