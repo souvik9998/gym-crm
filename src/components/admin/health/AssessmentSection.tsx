@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle, Info } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle, Info, Maximize2, Minimize2, PanelTopOpen } from "lucide-react";
 import type { MemberAssessment } from "./MemberHealthTab";
 import { ASSESSMENT_SECTIONS, getAssessmentFieldMeta, getDefaultAssessmentSettings, getExerciseInputMode, isExerciseAssessmentSection, type AssessmentSettings, type CustomField, type ExerciseFieldValue, type ExerciseInputMode } from "@/components/admin/health/assessmentConfig";
 
@@ -21,6 +22,7 @@ interface AssessmentSectionProps {
 
 export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }: AssessmentSectionProps) => {
   const [showForm, setShowForm] = useState(false);
+  const [isFormExpanded, setIsFormExpanded] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -349,6 +351,122 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
   const enabledSections = getEnabledSections();
 
+  const renderAssessmentForm = (expanded = false) => (
+    <div
+      className={expanded
+        ? "flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-accent/20 bg-accent/5"
+        : "space-y-3 rounded-xl border border-accent/20 bg-accent/5 p-2 sm:p-3 lg:p-4 max-h-[76vh] overflow-y-auto overscroll-contain pr-1 sm:pr-2"
+      }
+    >
+      <div className={expanded ? "border-b border-border/40 bg-background/85 px-4 py-3 sm:px-5" : "rounded-lg border border-border/50 bg-background/80 p-2.5 sm:p-3"}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-2">
+            <Info className="mt-0.5 h-4 w-4 text-accent" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Assessment form preview</p>
+              <p className="text-xs text-muted-foreground">Only the enabled sections and fields from settings are shown here, with their configured labels and units.</p>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setIsFormExpanded((prev) => !prev)}
+            className="h-8 rounded-lg px-2.5 text-[11px]"
+          >
+            {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            {expanded ? "Exit large view" : "Enlarge"}
+          </Button>
+        </div>
+      </div>
+
+      <div className={expanded ? "min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 sm:px-5 sm:py-4" : "space-y-3"}>
+        {expanded && (
+          <div className="rounded-xl border border-border/50 bg-background/90 px-4 py-3 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                <PanelTopOpen className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Focused assessment workspace</p>
+                <p className="text-xs text-muted-foreground">This enlarged view gives the form more room so every field stays readable and easier to complete.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className={expanded ? "rounded-xl border border-border/50 bg-background/95 p-3 sm:p-4" : "rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3"}>
+          <Label className="text-xs font-medium text-foreground">Assessed By *</Label>
+          <Input
+            value={formData.assessed_by || ""}
+            onChange={(e) => updateField("assessed_by", e.target.value)}
+            placeholder="Trainer / Admin name"
+            className={expanded ? "mt-1.5 h-11 text-sm" : "mt-1 h-10 text-sm"}
+          />
+        </div>
+
+        {enabledSections.map((section) => {
+          const fields = getEnabledFields(section.key);
+          const hasFields = !!section.fields || !!config[section.key]?.custom_fields?.length;
+          const Icon = section.icon;
+
+          return (
+            <div key={section.key} className={expanded ? "rounded-2xl border border-border/50 bg-background/95 p-3 sm:p-4 lg:p-5 space-y-4 shadow-sm" : "rounded-xl border border-border/50 bg-background/80 p-2.5 sm:p-3 lg:p-3.5 space-y-3"}>
+              <div className="flex items-start gap-2.5 sm:gap-3">
+                <div className={expanded ? "flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 text-accent" : "flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-accent/10 text-accent"}>
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className={expanded ? "text-base font-semibold text-foreground" : "text-sm font-semibold text-foreground"}>{section.label}</p>
+                    <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">
+                      {hasFields ? `${fields.length} fields` : "Notes"}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{section.purpose}</p>
+                </div>
+              </div>
+
+              {hasFields ? (
+                <div className={expanded ? "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" : "grid grid-cols-1 gap-2 min-[560px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"}>
+                  {fields.map((field) => {
+                    const customField = config[section.key]?.custom_fields?.find((item) => item.key === field.key);
+                    return renderFieldInput(section.key, field.key, field.label, customField);
+                  })}
+                </div>
+              ) : (
+                <div className={expanded ? "rounded-xl border border-border/50 bg-background/95 p-3 sm:p-4" : "rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3"}>
+                  <Label className="text-xs font-medium text-foreground">{section.label}</Label>
+                  <Textarea
+                    value={formData[section.key] || ""}
+                    onChange={(e) => updateField(section.key, e.target.value)}
+                    placeholder={`Enter ${section.label.toLowerCase()}...`}
+                    className={expanded ? "mt-1.5 min-h-[144px] resize-y text-sm leading-5" : "mt-1 min-h-[112px] resize-y text-sm leading-5"}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className={expanded ? "border-t border-border/40 bg-background/95 px-3 py-3 sm:px-5 backdrop-blur supports-[backdrop-filter]:bg-background/85" : "sticky bottom-0 flex gap-2 border-t border-border/40 bg-background/95 px-1 pt-3 pb-1 backdrop-blur supports-[backdrop-filter]:bg-background/80"}>
+        <div className={expanded ? "flex flex-col gap-2 sm:flex-row" : "flex w-full gap-2"}>
+          <Button size="sm" onClick={handleSave} disabled={isSaving} className="flex-1 rounded-lg">
+            {isSaving ? <><ButtonSpinner /> Saving...</> : "Save Assessment"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => {
+            if (expanded) setIsFormExpanded(false);
+            else setShowForm(false);
+          }} className="rounded-lg">
+            {expanded ? "Back to dialog" : "Cancel"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-3">
       {!showForm && (
@@ -357,80 +475,15 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
         </Button>
       )}
 
-      {showForm && (
-        <div className="space-y-3 rounded-xl border border-accent/20 bg-accent/5 p-2 sm:p-3 lg:p-4 max-h-[76vh] overflow-y-auto overscroll-contain pr-1 sm:pr-2">
-          <div className="rounded-lg border border-border/50 bg-background/80 p-2.5 sm:p-3">
-            <div className="flex items-start gap-2">
-              <Info className="mt-0.5 h-4 w-4 text-accent" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Assessment form preview</p>
-                <p className="text-xs text-muted-foreground">Only the enabled sections and fields from settings are shown here, with their configured labels and units.</p>
-              </div>
-            </div>
-          </div>
+      {showForm && !isFormExpanded && renderAssessmentForm(false)}
 
-          <div className="rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3">
-            <Label className="text-xs font-medium text-foreground">Assessed By *</Label>
-            <Input
-              value={formData.assessed_by || ""}
-              onChange={(e) => updateField("assessed_by", e.target.value)}
-              placeholder="Trainer / Admin name"
-              className="mt-1 h-10 text-sm"
-            />
-          </div>
-
-          {enabledSections.map((section) => {
-            const fields = getEnabledFields(section.key);
-            const hasFields = !!section.fields || !!config[section.key]?.custom_fields?.length;
-            const Icon = section.icon;
-
-            return (
-              <div key={section.key} className="rounded-xl border border-border/50 bg-background/80 p-2.5 sm:p-3 lg:p-3.5 space-y-3">
-                <div className="flex items-start gap-2.5 sm:gap-3">
-                  <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-foreground">{section.label}</p>
-                      <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">
-                        {hasFields ? `${fields.length} fields` : "Notes"}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">{section.purpose}</p>
-                  </div>
-                </div>
-
-                {hasFields ? (
-                  <div className="grid grid-cols-1 gap-2 min-[560px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                    {fields.map((field) => {
-                      const customField = config[section.key]?.custom_fields?.find((item) => item.key === field.key);
-                      return renderFieldInput(section.key, field.key, field.label, customField);
-                    })}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3">
-                    <Label className="text-xs font-medium text-foreground">{section.label}</Label>
-                    <Textarea
-                      value={formData[section.key] || ""}
-                      onChange={(e) => updateField(section.key, e.target.value)}
-                      placeholder={`Enter ${section.label.toLowerCase()}...`}
-                      className="mt-1 min-h-[112px] resize-y text-sm leading-5"
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          <div className="sticky bottom-0 flex gap-2 border-t border-border/40 bg-background/95 px-1 pt-3 pb-1 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-            <Button size="sm" onClick={handleSave} disabled={isSaving} className="flex-1 rounded-lg">
-              {isSaving ? <><ButtonSpinner /> Saving...</> : "Save Assessment"}
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setShowForm(false)} className="rounded-lg">Cancel</Button>
-          </div>
-        </div>
-      )}
+      <Dialog open={showForm && isFormExpanded} onOpenChange={(open) => {
+        if (!open) setIsFormExpanded(false);
+      }}>
+        <DialogContent className="w-[min(96vw,1180px)] max-w-[1180px] gap-0 overflow-hidden border-border/60 p-0 sm:max-h-[92vh]">
+          {renderAssessmentForm(true)}
+        </DialogContent>
+      </Dialog>
 
       {assessments.length === 0 && !showForm ? (
         <div className="text-center py-8 text-muted-foreground">
