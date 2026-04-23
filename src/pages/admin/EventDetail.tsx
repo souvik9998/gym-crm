@@ -58,6 +58,7 @@ export default function EventDetail() {
   const [qrOpen, setQrOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteReg, setDeleteReg] = useState<any>(null);
+  const [viewReg, setViewReg] = useState<any>(null);
   const [editReg, setEditReg] = useState<any>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -192,6 +193,30 @@ export default function EventDetail() {
     setEditName(reg.name);
     setEditPhone(reg.phone);
     setEditEmail(reg.email || "");
+  };
+
+  const getRegistrationItemsLabel = (reg: any) => {
+    return isMultiSelect && reg.registration_items?.length > 0
+      ? reg.registration_items.map((i: any) => i.event_pricing_options?.name || "Item").join(", ")
+      : reg.event_pricing_options?.name || "-";
+  };
+
+  const getCustomFieldEntries = (reg: any) => {
+    const responses = reg?.custom_field_responses;
+    if (!responses || typeof responses !== "object" || Array.isArray(responses)) return [];
+
+    return (event?.event_custom_fields || [])
+      .sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      .map((field: any) => {
+        const rawValue = responses[field.id];
+        const value = Array.isArray(rawValue) ? rawValue.join(", ") : rawValue;
+        return {
+          id: field.id,
+          label: field.field_name,
+          value: value ? String(value) : "—",
+        };
+      })
+      .filter((entry: any) => entry.value !== "—");
   };
 
   const filtered = registrations.filter((r: any) => {
@@ -469,11 +494,9 @@ export default function EventDetail() {
                   </TableHeader>
                   <TableBody>
                     {filtered.map((r: any) => {
-                      const itemNames = isMultiSelect && r.registration_items?.length > 0
-                        ? r.registration_items.map((i: any) => i.event_pricing_options?.name || "Item").join(", ")
-                        : r.event_pricing_options?.name || "-";
+                      const itemNames = getRegistrationItemsLabel(r);
                       return (
-                      <TableRow key={r.id}>
+                      <TableRow key={r.id} className="cursor-pointer" onClick={() => setViewReg(r)}>
                         <TableCell className="font-medium">{r.name}</TableCell>
                         <TableCell>{r.phone}</TableCell>
                         <TableCell className="hidden md:table-cell text-muted-foreground">{r.email || "-"}</TableCell>
@@ -494,10 +517,13 @@ export default function EventDetail() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEditDialog(r)}>
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); setViewReg(r); }}>
+                              <Eye className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); openEditDialog(r); }}>
                               <Edit2 className="w-3.5 h-3.5" />
                             </Button>
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={() => setDeleteReg(r)}>
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteReg(r); }}>
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           </div>
@@ -512,6 +538,46 @@ export default function EventDetail() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={!!viewReg} onOpenChange={(open) => !open && setViewReg(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Registration Details</DialogTitle>
+          </DialogHeader>
+          {viewReg && (
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                  <p className="text-xs text-muted-foreground">Member</p>
+                  <p className="text-sm font-medium text-foreground">{viewReg.name}</p>
+                  <p className="text-xs text-muted-foreground">+91 {viewReg.phone}</p>
+                  <p className="text-xs text-muted-foreground">{viewReg.email || "No email added"}</p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                  <p className="text-xs text-muted-foreground">Registration</p>
+                  <p className="text-sm font-medium text-foreground">{getRegistrationItemsLabel(viewReg)}</p>
+                  <p className="text-xs text-muted-foreground">{format(new Date(viewReg.registered_at), "dd MMM yyyy, hh:mm a")}</p>
+                  <p className="text-xs text-muted-foreground">Amount: ₹{viewReg.amount_paid} • {viewReg.payment_status}</p>
+                </div>
+              </div>
+
+              {getCustomFieldEntries(viewReg).length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-foreground">Additional Fields</p>
+                  <div className="space-y-2 rounded-xl border border-border/50 bg-muted/20 p-3">
+                    {getCustomFieldEntries(viewReg).map((entry: any) => (
+                      <div key={entry.id} className="flex items-start justify-between gap-3 border-b border-border/40 pb-2 last:border-b-0 last:pb-0">
+                        <p className="text-sm text-muted-foreground">{entry.label}</p>
+                        <p className="max-w-[60%] text-right text-sm font-medium text-foreground">{entry.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Registration Dialog */}
       <Dialog open={!!editReg} onOpenChange={(open) => !open && setEditReg(null)}>
