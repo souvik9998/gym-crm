@@ -342,6 +342,52 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
       if (coupon.end_date && coupon.end_date < today) { setCouponError("Coupon has expired"); return; }
       if (coupon.total_usage_limit && coupon.usage_count >= coupon.total_usage_limit) { setCouponError("Coupon usage limit reached"); return; }
       if (coupon.branch_id && coupon.branch_id !== event.branch_id) { setCouponError("Coupon not valid for this branch"); return; }
+
+      const memberConditionResults: boolean[] = [];
+      if (coupon.first_time_only) {
+        memberConditionResults.push(!foundMember?.id);
+      }
+      if (coupon.existing_members_only) {
+        memberConditionResults.push(!!foundMember?.id);
+      }
+      if (coupon.expired_members_only) {
+        if (!foundMember?.id) {
+          memberConditionResults.push(false);
+        } else {
+          const { data: latestSub } = await supabase
+            .from("subscriptions")
+            .select("end_date")
+            .eq("member_id", foundMember.id)
+            .order("end_date", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          memberConditionResults.push(!!latestSub?.end_date && latestSub.end_date < today);
+        }
+      }
+
+      if (memberConditionResults.length > 0 && !memberConditionResults.some(Boolean)) {
+        const labels: string[] = [];
+        if (coupon.first_time_only) labels.push("first-time users");
+        if (coupon.existing_members_only) labels.push("existing members");
+        if (coupon.expired_members_only) labels.push("expired members");
+        setCouponError(`This coupon is only for ${labels.join(" / ")}`);
+        return;
+      }
+
+      if (foundMember?.id && coupon.per_user_limit > 0) {
+        const { count } = await supabase
+          .from("coupon_usage")
+          .select("*", { count: "exact", head: true })
+          .eq("coupon_id", coupon.id)
+          .eq("member_id", foundMember.id);
+
+        if (count !== null && count >= coupon.per_user_limit) {
+          setCouponError("You've already used this coupon the maximum number of times");
+          return;
+        }
+      }
+
       const discountAmount = calculateDiscount(coupon, basePrice);
       setAppliedCoupon({ id: coupon.id, code: coupon.code, discount_type: coupon.discount_type, discount_value: coupon.discount_value, max_discount_cap: coupon.max_discount_cap, discountAmount });
     } catch (err: any) { setCouponError(err.message || "Failed to validate coupon"); }
