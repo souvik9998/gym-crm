@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { MemberHealthTab } from "./health/MemberHealthTab";
 import { AssignTrainerDialog } from "./AssignTrainerDialog";
+import { AddMemberDialog, type ExistingMember as RenewalExistingMember } from "./AddMemberDialog";
 import { TransferSlotDialog } from "./staff/timeslots/TransferSlotDialog";
 import {
   Dialog,
@@ -128,6 +129,7 @@ export const MemberActivityDialog = ({
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [showAssignTrainer, setShowAssignTrainer] = useState(false);
+  const [showRenewMember, setShowRenewMember] = useState(false);
   const [assignMode, setAssignMode] = useState<"assign" | "replace">("assign");
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState<string | null>(null);
   const [assigningSlotForPt, setAssigningSlotForPt] = useState<PTSubscription | null>(null);
@@ -512,6 +514,26 @@ export const MemberActivityDialog = ({
     .filter((p) => p.status === "success")
     .reduce((sum, p) => sum + Number(p.amount), 0);
 
+  const renewalPrefill: RenewalExistingMember | null = member
+    ? {
+        id: member.id,
+        name: member.name,
+        phone: member.phone,
+        subscription: latestSubscription
+          ? {
+              status: latestSubscription.status,
+              end_date: latestSubscription.end_date,
+            }
+          : null,
+        activePT: activePT?.personal_trainer
+          ? {
+              trainer_name: activePT.personal_trainer.name,
+              end_date: activePT.end_date,
+            }
+          : null,
+      }
+    : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:max-w-2xl h-[80vh] sm:h-[75vh] overflow-hidden flex flex-col p-0 left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] rounded-2xl border-border/60 shadow-2xl bg-background/95 backdrop-blur-xl">
@@ -790,6 +812,19 @@ export const MemberActivityDialog = ({
             {/* Subscriptions Tab */}
             <TabsContent value="subscriptions" className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1" key="subscriptions">
               <div className="space-y-2.5">
+                {member && (
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      className="gap-1.5 text-xs"
+                      onClick={() => setShowRenewMember(true)}
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Renew Member
+                    </Button>
+                  </div>
+                )}
+
                 {subscriptions.length === 0 ? (
                   <div className="text-center py-16">
                     <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-muted/60 mx-auto mb-3">
@@ -954,6 +989,20 @@ export const MemberActivityDialog = ({
                   existingTrainerId={activePT?.personal_trainer?.id}
                   membershipEndDate={subscriptions.find(s => s.status === "active" || s.status === "expiring_soon")?.end_date}
                   onSuccess={() => { fetchMemberData(); invalidatePtSubscriptions(); }}
+                />
+              )}
+
+              {member && renewalPrefill && (
+                <AddMemberDialog
+                  open={showRenewMember}
+                  onOpenChange={setShowRenewMember}
+                  onSuccess={() => {
+                    setShowRenewMember(false);
+                    fetchMemberData();
+                    invalidatePtSubscriptions();
+                  }}
+                  initialExistingMember={renewalPrefill}
+                  initialAction="renew_gym"
                 />
               )}
 
