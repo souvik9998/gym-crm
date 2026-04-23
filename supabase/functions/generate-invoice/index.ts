@@ -104,6 +104,12 @@ async function generateInvoicePDF(data: {
   const termsBottom = 314;
   const totalsBottom = 250;
 
+  const sanitizePdfText = (value: string) => value
+    .replace(/₹/g, "Rs.")
+    .replace(/[–—]/g, "-")
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'");
+
   const drawTopText = (
     x: number,
     topY: number,
@@ -112,7 +118,8 @@ async function generateInvoicePDF(data: {
     color = rgb(0, 0, 0),
     bold = false,
   ) => {
-    page.drawText(text, {
+    const safeText = sanitizePdfText(text);
+    page.drawText(safeText, {
       x,
       y: pageH - topY - size,
       size,
@@ -272,7 +279,7 @@ async function generateInvoicePDF(data: {
   })(), 70);
 
   drawTopLine(outerX, 622, outerX + outerW, 622);
-  drawTopText(outerX + 4, 634, "Total Amount (₹ - In Words):", 9, rgb(0, 0, 0), true);
+  drawTopText(outerX + 4, 634, "Total Amount (Rs. - In Words):", 9, rgb(0, 0, 0), true);
   amountInWords.slice(0, 2).forEach((line, index) => drawTopText(outerX + 10, 650 + index * 12, line, 8, rgb(0.2, 0.2, 0.2), false));
   drawTopText(outerX + 4, 690, `For : ${data.invoiceBrandName || data.gymName}`, 10, rgb(0, 0, 0), true);
   drawTopText(outerX + 4, 736, "Authorised Signatory", 10, rgb(textR, textG, textB), true);
