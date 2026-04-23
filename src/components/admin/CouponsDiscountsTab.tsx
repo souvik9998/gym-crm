@@ -192,6 +192,13 @@ export const CouponsDiscountsTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [form, setForm] = useState<CouponForm>(defaultForm);
+  const selectedTargetMeta = useMemo(
+    () => couponTargetOptions.find((option) => option.value === form.coupon_target) ?? couponTargetOptions[0],
+    [form.coupon_target]
+  );
+  const showFirstTimeCondition = form.coupon_target === "new_registration";
+  const showExistingCondition = form.coupon_target === "renewal" || form.coupon_target === "pt_renewal";
+  const showExpiredCondition = form.coupon_target === "renewal" || form.coupon_target === "pt_renewal";
 
   const fetchCoupons = useCallback(async () => {
     if (!currentBranch) return;
@@ -247,27 +254,35 @@ export const CouponsDiscountsTab = () => {
       is_active: coupon.is_active,
       total_usage_limit: coupon.total_usage_limit ? String(coupon.total_usage_limit) : "",
       per_user_limit: String(coupon.per_user_limit),
-      applicable_on_registration: coupon.applicable_on?.new_registration !== false,
-      applicable_on_renewal: coupon.applicable_on?.renewal !== false,
-      applicable_on_event: coupon.applicable_on?.event === true,
+      coupon_target: getCouponTarget(coupon.applicable_on),
       first_time_only: coupon.first_time_only,
       existing_members_only: coupon.existing_members_only,
       expired_members_only: coupon.expired_members_only,
-      stackable: coupon.stackable,
-      auto_apply: coupon.auto_apply,
       notes: coupon.notes || "",
     });
     setShowForm(true);
   };
 
   const handleSave = async () => {
-    if (!form.code.trim()) { toast.error("Coupon code is required"); return; }
-    if (!form.discount_value || Number(form.discount_value) <= 0) { toast.error("Discount value must be positive"); return; }
-    if (form.discount_type === "percentage" && Number(form.discount_value) > 100) { toast.error("Percentage cannot exceed 100%"); return; }
     if (!currentBranch) return;
 
     setIsSaving(true);
     try {
+      const normalizedForm = {
+        ...form,
+        code: form.code.toUpperCase().trim(),
+        notes: form.notes.trim(),
+        first_time_only: showFirstTimeCondition ? form.first_time_only : false,
+        existing_members_only: showExistingCondition ? form.existing_members_only : false,
+        expired_members_only: showExpiredCondition ? form.expired_members_only : false,
+      };
+
+      const parsed = couponFormSchema.safeParse(normalizedForm);
+      if (!parsed.success) {
+        toast.error(parsed.error.issues[0]?.message || "Please check the coupon details");
+        return;
+      }
+
       // Get tenant_id from branch
       const { data: branchData } = await supabase
         .from("branches")
@@ -276,23 +291,23 @@ export const CouponsDiscountsTab = () => {
         .single();
 
       const payload = {
-        code: form.code.toUpperCase().trim(),
-        discount_type: form.discount_type,
-        discount_value: Number(form.discount_value),
-        max_discount_cap: form.max_discount_cap ? Number(form.max_discount_cap) : null,
-        min_order_value: form.min_order_value ? Number(form.min_order_value) : 0,
-        start_date: form.start_date,
-        end_date: form.end_date || null,
-        is_active: form.is_active,
-        total_usage_limit: form.total_usage_limit ? Number(form.total_usage_limit) : null,
-        per_user_limit: Number(form.per_user_limit) || 1,
-        applicable_on: { new_registration: form.applicable_on_registration, renewal: form.applicable_on_renewal, event: form.applicable_on_event },
-        first_time_only: form.first_time_only,
-        existing_members_only: form.existing_members_only,
-        expired_members_only: form.expired_members_only,
-        stackable: form.stackable,
-        auto_apply: form.auto_apply,
-        notes: form.notes || null,
+        code: parsed.data.code,
+        discount_type: parsed.data.discount_type,
+        discount_value: parsed.data.discount_value,
+        max_discount_cap: parsed.data.max_discount_cap === "" ? null : parsed.data.max_discount_cap,
+        min_order_value: parsed.data.min_order_value === "" ? 0 : parsed.data.min_order_value,
+        start_date: parsed.data.start_date,
+        end_date: parsed.data.end_date || null,
+        is_active: parsed.data.is_active,
+        total_usage_limit: parsed.data.total_usage_limit === "" ? null : parsed.data.total_usage_limit,
+        per_user_limit: parsed.data.per_user_limit,
+        applicable_on: getApplicableOnFromTarget(parsed.data.coupon_target),
+        first_time_only: parsed.data.first_time_only,
+        existing_members_only: parsed.data.existing_members_only,
+        expired_members_only: parsed.data.expired_members_only,
+        stackable: false,
+        auto_apply: false,
+        notes: parsed.data.notes || null,
         branch_id: currentBranch.id,
         tenant_id: branchData?.tenant_id || null,
       };
