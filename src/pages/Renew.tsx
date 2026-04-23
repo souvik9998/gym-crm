@@ -20,6 +20,41 @@ interface Member {
   branch_id: string | null;
 }
 
+function parseDateOnly(dateStr?: string | null): Date | null {
+  if (!dateStr) return null;
+
+  const dmy = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (dmy) {
+    let [, d, m, y] = dmy;
+    let yearNum = parseInt(y, 10);
+    if (yearNum < 100) yearNum += 2000;
+
+    const dayNum = parseInt(d, 10);
+    const monthNum = parseInt(m, 10);
+    if (monthNum < 1 || monthNum > 12 || dayNum < 1 || dayNum > 31) return null;
+
+    const result = new Date(Date.UTC(yearNum, monthNum - 1, dayNum));
+    if (result.getUTCDate() !== dayNum || result.getUTCMonth() !== monthNum - 1) return null;
+    return result;
+  }
+
+  const iso = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) {
+    const result = new Date(Date.UTC(+iso[1], +iso[2] - 1, +iso[3]));
+    if (result.getUTCDate() !== +iso[3] || result.getUTCMonth() !== +iso[2] - 1) return null;
+    return result;
+  }
+
+  return null;
+}
+
+function toIsoDate(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const Renew = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -57,7 +92,7 @@ const Renew = () => {
       }
 
       const fetchMemberData = async () => {
-        const today = new Date().toISOString().split("T")[0];
+        const today = toIsoDate(new Date());
         
         const { data: activeSubscription } = await supabase
           .from("subscriptions")
@@ -85,9 +120,11 @@ const Renew = () => {
 
         if (activePT) {
           setExistingPTEndDate(activePT.end_date);
-          const existingEndDate = new Date(activePT.end_date);
-          existingEndDate.setDate(existingEndDate.getDate() + 1);
-          setPtStartDate(existingEndDate.toISOString().split("T")[0]);
+          const existingEndDate = parseDateOnly(activePT.end_date);
+          if (existingEndDate) {
+            existingEndDate.setUTCDate(existingEndDate.getUTCDate() + 1);
+            setPtStartDate(toIsoDate(existingEndDate));
+          }
         } else {
           setPtStartDate(today);
         }
@@ -120,7 +157,7 @@ const Renew = () => {
       gymStartDate: gymStart,
       branchId: branchId || undefined,
       onSuccess: async (data) => {
-        const endDate = new Date(data.endDate);
+        const endDate = parseDateOnly(data.endDate) ?? new Date(data.endDate);
         
         // Send WhatsApp notification for renewal (if auto-send enabled)
         try {
@@ -165,10 +202,11 @@ const Renew = () => {
             memberName: member.name,
             phone: member.phone,
             amount: packageData.totalAmount,
-            endDate: endDate.toLocaleDateString("en-IN", {
+              endDate: endDate.toLocaleDateString("en-IN", {
               day: "numeric",
               month: "long",
               year: "numeric",
+                timeZone: "UTC",
             }),
             isNewMember: false,
             hasTrainer: packageData.wantsTrainer,

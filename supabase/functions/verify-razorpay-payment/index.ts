@@ -14,6 +14,52 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function parseDateOnly(dateStr?: string | null): Date | null {
+  if (!dateStr) return null;
+
+  const dmy = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (dmy) {
+    let [, d, m, y] = dmy;
+    let yearNum = parseInt(y, 10);
+    if (yearNum < 100) yearNum += 2000;
+
+    const dayNum = parseInt(d, 10);
+    const monthNum = parseInt(m, 10);
+    if (monthNum < 1 || monthNum > 12 || dayNum < 1 || dayNum > 31) return null;
+
+    const result = new Date(Date.UTC(yearNum, monthNum - 1, dayNum));
+    if (result.getUTCDate() !== dayNum || result.getUTCMonth() !== monthNum - 1) return null;
+    return result;
+  }
+
+  const iso = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) {
+    const result = new Date(Date.UTC(+iso[1], +iso[2] - 1, +iso[3]));
+    if (result.getUTCDate() !== +iso[3] || result.getUTCMonth() !== +iso[2] - 1) return null;
+    return result;
+  }
+
+  return null;
+}
+
+function startOfTodayUtc(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+}
+
+function addDaysUtc(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result;
+}
+
+function toIsoDate(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 // Helper to create ledger entries
 async function createLedgerEntry(
   supabase: any,
@@ -30,7 +76,7 @@ async function createLedgerEntry(
     branchId?: string;
   }
 ) {
-  const today = new Date().toISOString().split("T")[0];
+  const today = toIsoDate(startOfTodayUtc());
   const { error } = await supabase.from("ledger_entries").insert({
     entry_type: params.entryType,
     category: params.category,
@@ -479,8 +525,7 @@ Deno.serve(async (req) => {
     }
 
     // Determine gym start date: for renewals, use gymStartDate (day after existing end); otherwise today
-    const startDate = gymStartDate ? new Date(gymStartDate) : new Date();
-    startDate.setHours(0, 0, 0, 0);
+    const startDate = parseDateOnly(gymStartDate) ?? startOfTodayUtc();
 
     // Determine if this is PT-only (extension) or includes gym membership
     const isPTOnlyPurchase = trainerId && customDays && customDays > 0 && (!months || months === 0);
@@ -504,9 +549,10 @@ Deno.serve(async (req) => {
       }
 
       // Use provided ptStartDate or default to today
-      const ptStart = ptStartDate ? new Date(ptStartDate) : startDate;
-      const endDate = new Date(ptStart);
-      endDate.setDate(endDate.getDate() + customDays);
+      const ptStart = parseDateOnly(ptStartDate) ?? new Date(startDate);
+      const endDate = addDaysUtc(ptStart, customDays);
+      const ptStartIso = toIsoDate(ptStart);
+      const endDateIso = toIsoDate(endDate);
 
       const totalFee = typeof trainerFee === "number" ? trainerFee : amount;
 
@@ -515,8 +561,8 @@ Deno.serve(async (req) => {
         .insert({
           member_id: finalMemberId,
           personal_trainer_id: trainerId,
-          start_date: ptStart.toISOString().split("T")[0],
-          end_date: endDate.toISOString().split("T")[0],
+          start_date: ptStartIso,
+          end_date: endDateIso,
           monthly_fee: trainer.monthly_fee,
           total_fee: totalFee,
           status: "active",
@@ -590,8 +636,8 @@ Deno.serve(async (req) => {
         memberName,
         memberPhone,
         trainerName: trainer.name,
-        startDate: ptStart.toISOString().split("T")[0],
-        endDate: endDate.toISOString().split("T")[0],
+        startDate: ptStartIso,
+        endDate: endDateIso,
         metadata: {
           trainerMonthlyFee: trainer.monthly_fee,
           totalFee: totalFee,
@@ -604,7 +650,7 @@ Deno.serve(async (req) => {
           success: true,
           memberId: finalMemberId,
           subscriptionId: ptSub.id,
-          endDate: endDate.toISOString().split("T")[0],
+          endDate: endDateIso,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -620,16 +666,17 @@ Deno.serve(async (req) => {
     }
 
     // Business rule: every package month is exactly 30 days (not calendar months)
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + months * 30);
+    const endDate = addDaysUtc(startDate, months * 30);
+    const startDateIso = toIsoDate(startDate);
+    const endDateIso = toIsoDate(endDate);
 
     // Create gym subscription
     const { data: subscription, error: subError } = await supabase
       .from("subscriptions")
       .insert({
         member_id: finalMemberId,
-        start_date: startDate.toISOString().split("T")[0],
-        end_date: endDate.toISOString().split("T")[0],
+        start_date: startDateIso,
+        end_date: endDateIso,
         plan_months: months,
         status: "active",
         branch_id: branchId || null,
@@ -663,23 +710,22 @@ Deno.serve(async (req) => {
       trainerName = trainer.name;
 
       // Use provided ptStartDate or default to gym start date
-      const ptStart = ptStartDate ? new Date(ptStartDate) : startDate;
-      ptStart.setHours(0, 0, 0, 0);
-      
-      const ptEndDate = new Date(ptStart);
-      ptEndDate.setDate(ptEndDate.getDate() + customDays);
+      const ptStart = parseDateOnly(ptStartDate) ?? new Date(startDate);
+      const ptEndDate = addDaysUtc(ptStart, customDays);
+      const ptStartIso = toIsoDate(ptStart);
+      const ptEndDateIso = toIsoDate(ptEndDate);
 
       const totalPTFee = typeof trainerFee === "number" ? trainerFee : 0;
 
-      console.log("Creating PT subscription:", { ptStart: ptStart.toISOString().split("T")[0], ptEndDate: ptEndDate.toISOString().split("T")[0], customDays });
+      console.log("Creating PT subscription:", { ptStart: ptStartIso, ptEndDate: ptEndDateIso, customDays });
 
       const { data: ptSub, error: ptError } = await supabase
         .from("pt_subscriptions")
         .insert({
           member_id: finalMemberId,
           personal_trainer_id: trainerId,
-          start_date: ptStart.toISOString().split("T")[0],
-          end_date: ptEndDate.toISOString().split("T")[0],
+          start_date: ptStartIso,
+          end_date: ptEndDateIso,
           monthly_fee: trainer.monthly_fee,
           total_fee: totalPTFee,
           status: "active",
@@ -805,8 +851,8 @@ Deno.serve(async (req) => {
       memberName,
       memberPhone,
       trainerName: trainerName || undefined,
-      startDate: startDate.toISOString().split("T")[0],
-      endDate: endDate.toISOString().split("T")[0],
+      startDate: startDateIso,
+      endDate: endDateIso,
       metadata: {
         isNewMember,
         hasTrainer: isGymWithPT,
@@ -823,7 +869,7 @@ Deno.serve(async (req) => {
         memberId: finalMemberId,
         subscriptionId: subscription.id,
         ptSubscriptionId: ptSubscriptionId,
-        endDate: endDate.toISOString().split("T")[0],
+        endDate: endDateIso,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
