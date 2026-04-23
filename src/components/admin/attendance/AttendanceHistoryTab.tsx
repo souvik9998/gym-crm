@@ -25,8 +25,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAttendanceFilters, formatSlotTime } from "@/hooks/queries/useAttendanceFilters";
-import { UserGroupIcon, FunnelIcon } from "@heroicons/react/24/outline";
-import { TIME_BUCKET_OPTIONS, matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
+import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
+import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 
 function getMonthDates(year: number, month: number): (string | null)[][] {
   const first = new Date(year, month, 1);
@@ -65,20 +65,15 @@ export const AttendanceHistoryTab = () => {
   const [activeView, setActiveView] = useState("calendar");
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
-  const [timeFilter, setTimeFilter] = useState<TimeBucket>("all");
-  const [customStart, setCustomStart] = useState("06:00");
-  const [customEnd, setCustomEnd] = useState("10:00");
   const [exportPeriod, setExportPeriod] = useState<"1w" | "1m" | "3m">("1m");
   const [isExporting, setIsExporting] = useState(false);
 
   const { trainers, allSlots, isLimitedAccess } = useAttendanceFilters();
   const { assignedMemberIds } = useAssignedMemberIds();
   const filteredSlots = useMemo(() => {
-    return allSlots.filter((slot) => {
-      if (selectedTrainerId && slot.trainer_id !== selectedTrainerId) return false;
-      return matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd);
-    });
-  }, [allSlots, selectedTrainerId, timeFilter, customStart, customEnd]);
+    if (!selectedTrainerId) return allSlots;
+    return allSlots.filter((slot) => slot.trainer_id === selectedTrainerId);
+  }, [allSlots, selectedTrainerId]);
 
   useEffect(() => {
     if (!selectedSlotId) return;
@@ -393,73 +388,40 @@ export const AttendanceHistoryTab = () => {
 
       {/* Trainer & Slot Filters */}
       {(trainers.length > 0 || allSlots.length > 0) && !isLimitedAccess && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide rounded-xl border border-border/50 bg-background/70 p-1.5">
-            {TIME_BUCKET_OPTIONS.map((option) => {
-              const active = timeFilter === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setTimeFilter(option.value)}
-                  className={cn(
-                    "shrink-0 rounded-lg px-3 py-1.5 text-[10px] lg:text-xs font-medium transition-all duration-200",
-                    active
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
+        <div className="rounded-2xl border border-border/50 bg-card/60 p-3 lg:p-4 shadow-sm">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <TrainerFilterDropdown
+              value={selectedTrainerId}
+              onChange={(trainerId) => {
+                setSelectedTrainerId(trainerId);
+                setSelectedSlotId(null);
+              }}
+              compact
+            />
+            <TimeSlotFilterDropdown
+              value={selectedSlotId}
+              onChange={setSelectedSlotId}
+              trainerFilter={selectedTrainerId}
+              compact
+            />
           </div>
-
-          {timeFilter === "custom" && (
-            <div className="grid gap-2 rounded-xl border border-border/50 bg-card/60 p-3 sm:grid-cols-2 animate-fade-in">
-              <div className="space-y-1">
-                <label className="text-[11px] font-medium text-muted-foreground">Start time</label>
-                <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-medium text-muted-foreground">End time</label>
-                <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 text-sm" />
-              </div>
-            </div>
-          )}
-
-          {trainers.length > 1 && (
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-              <UserGroupIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <button onClick={() => { setSelectedTrainerId(null); setSelectedSlotId(null); }}
-                className={cn(
-                  "shrink-0 px-2.5 py-1 rounded-full text-[10px] lg:text-xs font-medium transition-all duration-200 border active:scale-95",
-                  !selectedTrainerId ? "bg-foreground text-background border-foreground" : "bg-card border-border text-muted-foreground hover:text-foreground"
-                )}>All Trainers</button>
-              {trainers.map((t) => (
-                <button key={t.id} onClick={() => { setSelectedTrainerId(t.id); setSelectedSlotId(null); }}
-                  className={cn(
-                    "shrink-0 px-2.5 py-1 rounded-full text-[10px] lg:text-xs font-medium transition-all duration-200 border active:scale-95",
-                    selectedTrainerId === t.id ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:border-primary/30"
-                  )}>{t.name}</button>
-              ))}
-            </div>
-          )}
-          {filteredSlots.length > 0 && (
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-              <FunnelIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <button onClick={() => setSelectedSlotId(null)}
-                className={cn(
-                  "shrink-0 px-2 py-1 rounded-full text-[10px] lg:text-xs font-medium transition-all duration-200 border active:scale-95",
-                  !selectedSlotId ? "bg-foreground text-background border-foreground" : "bg-card border-border text-muted-foreground"
-                )}>All Slots</button>
-              {filteredSlots.map((slot) => (
-                <button key={slot.id} onClick={() => setSelectedSlotId(slot.id)}
-                  className={cn(
-                    "shrink-0 px-2 py-1 rounded-lg border text-[10px] lg:text-xs font-medium transition-all duration-200 active:scale-95",
-                    selectedSlotId === slot.id ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:border-primary/30"
-                  )}>{formatSlotTime(slot.start_time)} – {formatSlotTime(slot.end_time)}</button>
-              ))}
+          {(selectedTrainerId || selectedSlotId) && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="rounded-full bg-muted px-2.5 py-1 font-medium">
+                {selectedSlotId ? "Filtered by trainer + slot" : "Filtered by trainer"}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 rounded-full px-2.5 text-[11px]"
+                onClick={() => {
+                  setSelectedTrainerId(null);
+                  setSelectedSlotId(null);
+                }}
+              >
+                Clear filters
+              </Button>
             </div>
           )}
         </div>
