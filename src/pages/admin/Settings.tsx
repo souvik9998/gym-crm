@@ -306,6 +306,11 @@ const AdminSettings = () => {
   const [invoiceTaxRate, setInvoiceTaxRate] = useState("0");
   const [invoiceTerms, setInvoiceTerms] = useState("");
   const [invoiceShowGst, setInvoiceShowGst] = useState(true);
+  const [invoiceBrandName, setInvoiceBrandName] = useState("");
+  const [invoiceLogoUrl, setInvoiceLogoUrl] = useState<string | null>(null);
+  const [invoiceLogoFile, setInvoiceLogoFile] = useState<File | null>(null);
+  const [invoicePalette, setInvoicePalette] = useState<(typeof INVOICE_PALETTES)[number]>(INVOICE_PALETTES[0]);
+  const [isUploadingInvoiceLogo, setIsUploadingInvoiceLogo] = useState(false);
 
   // Monthly Packages form-only state
   const [newMonthlyPackage, setNewMonthlyPackage] = useState({ months: "", price: "", joining_fee: "" });
@@ -369,6 +374,15 @@ const AdminSettings = () => {
     setInvoiceTaxRate(String(fetchedSettings.invoice_tax_rate || 0));
     setInvoiceTerms(fetchedSettings.invoice_terms || "");
     setInvoiceShowGst(fetchedSettings.invoice_show_gst !== false);
+    setInvoiceBrandName(fetchedSettings.invoice_brand_name || fetchedSettings.gym_name || currentBranch?.name || tenantInfo?.name || "");
+    setInvoiceLogoUrl(fetchedSettings.invoice_logo_url || currentBranch?.logo_url || null);
+    const matchedPalette = INVOICE_PALETTES.find((palette) =>
+      palette.header === fetchedSettings.invoice_palette?.header &&
+      palette.accent === fetchedSettings.invoice_palette?.accent &&
+      palette.text === fetchedSettings.invoice_palette?.text
+    );
+    setInvoicePalette(matchedPalette || INVOICE_PALETTES[0]);
+    setInvoiceLogoFile(null);
   }, [fetchedSettings, currentBranch, tenantInfo]);
 
 
