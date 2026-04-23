@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { MemberHealthTab } from "./health/MemberHealthTab";
 import { AssignTrainerDialog } from "./AssignTrainerDialog";
+import { TransferSlotDialog } from "./staff/timeslots/TransferSlotDialog";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,7 @@ import {
   RefreshCw,
   MessageCircle,
   Loader2 as Spinner,
+  ArrowRightLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -132,6 +134,7 @@ export const MemberActivityDialog = ({
   const [availableSlots, setAvailableSlots] = useState<any[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState("");
   const [isSavingSlot, setIsSavingSlot] = useState(false);
+  const [transferringPt, setTransferringPt] = useState<PTSubscription | null>(null);
   const { invalidatePtSubscriptions } = useInvalidateQueries();
 
   useEffect(() => {
@@ -906,17 +909,29 @@ export const MemberActivityDialog = ({
                           </div>
                         </div>
                         {/* Action buttons for active PTs */}
-                        {pt.status === "active" && new Date(pt.end_date) >= new Date() && !pt.time_slot && (
+                        {pt.status === "active" && new Date(pt.end_date) >= new Date() && (
                           <div className="mt-3 pt-2.5 border-t border-border/40 space-y-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full gap-1.5 text-xs h-8"
-                              onClick={() => handleOpenSlotAssign(pt)}
-                            >
-                              <Clock className="w-3.5 h-3.5 text-amber-500" />
-                              Assign Time Slot
-                            </Button>
+                            {pt.time_slot ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full gap-1.5 text-xs h-8 border-primary/20 bg-primary/5 hover:bg-primary/10"
+                                onClick={() => setTransferringPt(pt)}
+                              >
+                                <ArrowRightLeft className="w-3.5 h-3.5 text-primary" />
+                                Transfer Time Slot
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full gap-1.5 text-xs h-8"
+                                onClick={() => handleOpenSlotAssign(pt)}
+                              >
+                                <Clock className="w-3.5 h-3.5 text-amber-500" />
+                                Assign Time Slot
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1003,6 +1018,26 @@ export const MemberActivityDialog = ({
                     </div>
                   </DialogContent>
                 </Dialog>
+              )}
+
+              {transferringPt && member && transferringPt.personal_trainer && transferringPt.time_slot && (
+                <TransferSlotDialog
+                  open={!!transferringPt}
+                  onOpenChange={(open) => !open && setTransferringPt(null)}
+                  currentSlotId={transferringPt.time_slot.id}
+                  slotMemberRowId={null}
+                  ptSubscriptionId={transferringPt.id}
+                  memberId={member.id}
+                  memberName={member.name}
+                  currentPtTrainerId={transferringPt.personal_trainer.id}
+                  currentPtTrainerName={transferringPt.personal_trainer.name}
+                  branchId={member.branch_id}
+                  onTransferred={() => {
+                    setTransferringPt(null);
+                    fetchMemberData();
+                    invalidatePtSubscriptions();
+                  }}
+                />
               )}
             </TabsContent>
 

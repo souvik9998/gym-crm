@@ -140,7 +140,7 @@ export const TransferSlotDialog = ({
       const today = new Date().toISOString().split("T")[0];
       const { data: counts } = await supabase
         .from("pt_subscriptions")
-        .select("time_slot_id, member_id")
+        .select("time_slot_id, member_id, status, end_date")
         .in("time_slot_id", slotIds);
 
       const countMap = new Map<string, Set<string>>();
