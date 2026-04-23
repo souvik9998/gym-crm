@@ -454,11 +454,11 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   const renderAssessmentForm = (expanded = false) => (
     <div
       className={expanded
-        ? "flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-accent/20 bg-accent/5"
+        ? "flex h-full max-h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-accent/20 bg-accent/5"
         : "space-y-3 rounded-xl border border-accent/20 bg-accent/5 p-2 sm:p-3 lg:p-4 max-h-[76vh] overflow-y-auto overscroll-contain pr-1 sm:pr-2"
       }
     >
-      <div className={expanded ? "border-b border-border/40 bg-background/85 px-4 py-3 sm:px-5" : "rounded-lg border border-border/50 bg-background/80 p-2.5 sm:p-3"}>
+      <div className={expanded ? "shrink-0 border-b border-border/40 bg-background/85 px-3 py-3 sm:px-5" : "rounded-lg border border-border/50 bg-background/80 p-2.5 sm:p-3"}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2">
             <Info className="mt-0.5 h-4 w-4 text-accent" />
@@ -481,7 +481,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
         </div>
       </div>
 
-      <div className={expanded ? "min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 sm:px-5 sm:py-4" : "space-y-3"}>
+      <div className={expanded ? "min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-3 pb-4 sm:px-5 sm:py-4" : "space-y-3"}>
         {expanded && (
           <div className="rounded-xl border border-border/50 bg-background/90 px-4 py-3 shadow-sm">
             <div className="flex items-start gap-3">
@@ -567,7 +567,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
         })}
       </div>
 
-      <div className={expanded ? "border-t border-border/40 bg-background/95 px-3 py-3 sm:px-5 backdrop-blur supports-[backdrop-filter]:bg-background/85" : "sticky bottom-0 flex gap-2 border-t border-border/40 bg-background/95 px-1 pt-3 pb-1 backdrop-blur supports-[backdrop-filter]:bg-background/80"}>
+      <div className={expanded ? "shrink-0 border-t border-border/40 bg-background/95 px-3 py-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] sm:px-5 backdrop-blur supports-[backdrop-filter]:bg-background/85" : "sticky bottom-0 flex gap-2 border-t border-border/40 bg-background/95 px-1 pt-3 pb-1 backdrop-blur supports-[backdrop-filter]:bg-background/80"}>
         <div className={expanded ? "flex flex-col gap-2 sm:flex-row" : "flex w-full gap-2"}>
           <Button size="sm" onClick={handleSave} disabled={isSaving} className="flex-1 rounded-lg">
             {isSaving ? <><ButtonSpinner /> Saving...</> : "Save Assessment"}
@@ -599,7 +599,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       <Dialog open={showForm && isFormExpanded} onOpenChange={(open) => {
         if (!open) setIsFormExpanded(false);
       }}>
-        <DialogContent className="w-[min(96vw,1180px)] max-w-[1180px] gap-0 overflow-hidden border-border/60 p-0 sm:max-h-[92vh]">
+        <DialogContent className="h-[calc(100dvh-0.75rem)] max-h-[calc(100dvh-0.75rem)] w-[calc(100vw-0.75rem)] max-w-[1180px] gap-0 overflow-hidden border-border/60 p-0 sm:h-auto sm:max-h-[92vh] sm:w-[min(96vw,1180px)]">
           {renderAssessmentForm(true)}
         </DialogContent>
       </Dialog>
