@@ -6,6 +6,7 @@ import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Dumbbell, ChevronDown, X, Check, Users, User } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Popover,
   PopoverContent,
@@ -45,6 +46,7 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
   const [open, setOpen] = useState(false);
   const { currentBranch } = useBranch();
   const { staffUser, permissions, isStaffLoggedIn } = useStaffAuth();
+  const isMobile = useIsMobile();
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
 
   const { data: trainers = [], isLoading } = useQuery({
@@ -188,7 +190,9 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
         <Button
           variant="outline"
           className={cn(
-            "h-7 lg:h-8 px-1.5 rounded-lg border transition-all duration-200 shadow-sm",
+            compact
+              ? "h-9 w-full justify-between px-3 rounded-xl border transition-all duration-200 shadow-sm"
+              : "h-7 lg:h-8 px-1.5 rounded-lg border transition-all duration-200 shadow-sm",
             "focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none",
             "focus:ring-0 focus:ring-offset-0 focus:outline-none",
             isActive
@@ -197,18 +201,20 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
           )}
           onClick={(e) => e.currentTarget.blur()}
         >
-          <div className="flex items-center gap-1 lg:gap-1.5">
+          <div className={cn("flex items-center gap-1 lg:gap-1.5", compact && "w-full justify-between") }>
+            <div className="flex min-w-0 items-center gap-1.5">
             <Dumbbell className={cn(
               "w-3.5 h-3.5 lg:w-4 lg:h-4 transition-colors",
               isActive ? "text-violet-700 dark:text-violet-300" : "text-violet-600 dark:text-violet-400"
             )} />
             <span className={cn(
-              "text-[10px] lg:text-xs font-medium transition-colors max-w-[120px] truncate",
+              compact ? "text-xs font-medium transition-colors max-w-[140px] truncate text-left" : "text-[10px] lg:text-xs font-medium transition-colors max-w-[120px] truncate",
               isActive ? "text-violet-800 dark:text-violet-200" : "text-violet-700 dark:text-violet-300"
             )}>
               {compact ? (isActive ? selectedLabel : "Trainer") : selectedLabel}
             </span>
-            {isActive && !isLimitedAccess ? (
+            </div>
+            {isActive && !isLimitedAccess && !compact ? (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -229,8 +235,11 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        align="end"
-        className="w-[280px] p-0 rounded-xl border-border/50 shadow-2xl overflow-hidden"
+        align={compact || isMobile ? "start" : "end"}
+        className={cn(
+          "p-0 rounded-xl border-border/50 shadow-2xl overflow-hidden",
+          compact || isMobile ? "w-[min(22rem,calc(100vw-2rem))]" : "w-[280px]"
+        )}
         sideOffset={6}
       >
         {isLoading ? (
@@ -254,7 +263,7 @@ export const TrainerFilterDropdown = ({ value, onChange, compact = false }: Trai
             <p className="text-xs text-muted-foreground/60 mt-1">Create time slots in Staff Management</p>
           </div>
         ) : (
-          <div className="max-h-[360px] overflow-y-auto">
+          <div className="max-h-[min(65vh,360px)] overflow-y-auto overscroll-contain">
             {/* Header */}
             <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b border-border/40 px-4 py-2.5">
               <div className="flex items-center justify-between">
