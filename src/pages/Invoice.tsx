@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -230,11 +230,81 @@ export default function Invoice() {
   };
 
   const palette = {
-    header: invoice.invoice_palette?.header || "#166534",
-    accent: invoice.invoice_palette?.accent || "#dcfce7",
-    text: invoice.invoice_palette?.text || "#052e16",
+    header: invoice.invoice_palette?.header || "#1d4ed8",
+    accent: invoice.invoice_palette?.accent || "#dbeafe",
+    text: invoice.invoice_palette?.text || "#172554",
   };
   const brandName = invoice.invoice_brand_name || invoice.gym_name;
+  const invoiceItems = useMemo(() => {
+    const items: Array<{ description: string; duration: string; amount: number; qty?: number }> = [];
+
+    if (invoice.gym_fee > 0) {
+      items.push({
+        description: invoice.package_name || "Gym Membership",
+        duration:
+          invoice.start_date && invoice.end_date
+            ? `${formatDate(invoice.start_date)} – ${formatDate(invoice.end_date)}`
+            : "-",
+        amount: Number(invoice.gym_fee),
+        qty: 1,
+      });
+    }
+
+    if (invoice.joining_fee > 0) {
+      items.push({ description: "Joining Fee", duration: "-", amount: Number(invoice.joining_fee), qty: 1 });
+    }
+
+    if (invoice.trainer_fee > 0) {
+      items.push({
+        description: "Personal Training Fee",
+        duration:
+          invoice.start_date && invoice.end_date
+            ? `${formatDate(invoice.start_date)} – ${formatDate(invoice.end_date)}`
+            : "-",
+        amount: Number(invoice.trainer_fee),
+        qty: 1,
+      });
+    }
+
+    if (items.length === 0) {
+      items.push({
+        description: invoice.package_name || "Payment",
+        duration: "-",
+        amount: Number(invoice.amount),
+        qty: 1,
+      });
+    }
+
+    return items;
+  }, [invoice]);
+
+  const amountInWords = useMemo(() => {
+    const value = Math.round(Number(invoice.amount));
+    if (!Number.isFinite(value) || value <= 0) return "Zero rupees only";
+
+    const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+    const toWords = (num: number): string => {
+      if (num === 0) return "";
+      if (num < 20) return ones[num];
+      if (num < 100) return `${tens[Math.floor(num / 10)]}${num % 10 ? ` ${ones[num % 10]}` : ""}`;
+      if (num < 1000) {
+        return `${ones[Math.floor(num / 100)]} Hundred${num % 100 ? ` ${toWords(num % 100)}` : ""}`;
+      }
+      if (num < 100000) {
+        return `${toWords(Math.floor(num / 1000))} Thousand${num % 1000 ? ` ${toWords(num % 1000)}` : ""}`;
+      }
+      if (num < 10000000) {
+        return `${toWords(Math.floor(num / 100000))} Lakh${num % 100000 ? ` ${toWords(num % 100000)}` : ""}`;
+      }
+      return `${toWords(Math.floor(num / 10000000))} Crore${num % 10000000 ? ` ${toWords(num % 10000000)}` : ""}`;
+    };
+
+    return `${toWords(value).trim()} rupees only`;
+  }, [invoice.amount]);
+
+  const formatCurrency = (value: number) => `₹${Number(value).toLocaleString("en-IN")}`;
 
   if (loading) {
     return (
@@ -292,221 +362,153 @@ export default function Invoice() {
       </div>
 
       {/* Invoice Content */}
-      <div className="max-w-3xl mx-auto px-4 py-6 pb-24">
-        <Card className="overflow-hidden">
-          {/* Header */}
-          <div className="p-6 sm:p-8" style={{ backgroundColor: palette.header, color: "white" }}>
-            <div className="flex flex-col sm:flex-row justify-between gap-4">
-              <div className="min-w-0">
-                {invoice.invoice_logo_url && (
-                  <div className="mb-3 flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-white/10 p-1">
-                    <img src={invoice.invoice_logo_url} alt={`${brandName} logo`} className="h-full w-full object-contain" />
-                  </div>
-                )}
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-                  {brandName}
-                </h1>
-                {invoice.gym_address && (
-                  <p className="text-sm mt-1 opacity-80">{invoice.gym_address}</p>
-                )}
-                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs opacity-70">
-                  {invoice.gym_phone && <span>📞 {invoice.gym_phone}</span>}
-                  {invoice.gym_email && <span>✉️ {invoice.gym_email}</span>}
-                  {invoice.gym_gst && <span>GST: {invoice.gym_gst}</span>}
+      <div className="max-w-5xl mx-auto px-4 py-6 pb-24">
+        <Card className="overflow-hidden border-border bg-card shadow-sm">
+          <div className="border-b border-border" style={{ backgroundColor: palette.header, color: "white" }}>
+            <div className="px-4 py-3 text-center text-lg font-bold sm:text-xl">
+              {invoice.gym_gst ? "TAX INVOICE" : "INVOICE"}
+            </div>
+          </div>
+
+          <div className="border-b border-border px-4 py-6 sm:px-8">
+            <div className="flex flex-col items-center gap-3 text-center">
+              {invoice.invoice_logo_url && (
+                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md border border-border bg-background p-1">
+                  <img src={invoice.invoice_logo_url} alt={`${brandName} logo`} className="h-full w-full object-contain" />
                 </div>
-              </div>
-              <div className="text-left sm:text-right shrink-0">
-                <p className="text-lg sm:text-xl font-bold tracking-widest opacity-90">INVOICE</p>
-                <p className="text-sm font-mono mt-1">{invoice.invoice_number}</p>
-                <p className="text-xs mt-1 opacity-70">
-                  {formatDate(invoice.payment_date || invoice.created_at)}
-                </p>
+              )}
+              <div className="space-y-1">
+                <h1 className="text-2xl font-bold text-foreground sm:text-3xl">{brandName}</h1>
+                {invoice.gym_address && <p className="text-sm text-muted-foreground">{invoice.gym_address}</p>}
+                <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  {invoice.gym_phone && <span>{invoice.gym_phone}</span>}
+                  {invoice.gym_email && <span>{invoice.gym_email}</span>}
+                  {invoice.gym_gst && <span>GSTIN: {invoice.gym_gst}</span>}
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="p-6 sm:p-8 space-y-6">
-            {/* Payment Status Badge */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold" style={{ backgroundColor: palette.accent, color: palette.text }}>
+          <div className="grid grid-cols-1 border-b border-border md:grid-cols-[1.1fr_0.9fr]">
+            <div className="border-b border-border p-4 sm:p-6 md:border-b-0 md:border-r">
+              <p className="mb-2 text-sm font-semibold text-foreground">Bill To:</p>
+              <div className="space-y-1 text-sm text-muted-foreground">
+                <p className="text-lg font-semibold text-foreground">{invoice.customer_name}</p>
+                {invoice.customer_phone && <p>Phone: {invoice.customer_phone}</p>}
+                {invoice.member_id && <p>ID: {invoice.member_id.slice(0, 8).toUpperCase()}</p>}
+                {invoice.branch_name && <p>Branch: {invoice.branch_name}</p>}
+              </div>
+            </div>
+            <div className="p-4 sm:p-6">
+              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">Invoice No:</span>
+                <span>{invoice.invoice_number}</span>
+                <span className="font-medium text-foreground">Date:</span>
+                <span>{formatDate(invoice.payment_date || invoice.created_at)}</span>
+                <span className="font-medium text-foreground">Payment Mode:</span>
+                <span>{formatPaymentMode(invoice.payment_mode)}</span>
+                {invoice.transaction_id && (
+                  <>
+                    <span className="font-medium text-foreground">Transaction:</span>
+                    <span className="break-all font-mono text-xs sm:text-sm">{invoice.transaction_id}</span>
+                  </>
+                )}
+              </div>
+              <div className="mt-4 inline-flex items-center gap-2 border border-border px-3 py-1.5 text-xs font-semibold" style={{ backgroundColor: palette.accent, color: palette.text }}>
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 PAID
               </div>
-              <span className="text-sm text-muted-foreground">
-                via {formatPaymentMode(invoice.payment_mode)}
-              </span>
+            </div>
+          </div>
+
+          <div className="overflow-hidden">
+            <div className="hidden grid-cols-[minmax(0,1.7fr)_120px_90px_130px] border-b border-border text-xs font-semibold uppercase tracking-wide text-muted-foreground md:grid" style={{ backgroundColor: palette.accent, color: palette.text }}>
+              <div className="border-r border-border px-4 py-3">Description</div>
+              <div className="border-r border-border px-4 py-3 text-center">Duration</div>
+              <div className="border-r border-border px-4 py-3 text-center">Qty</div>
+              <div className="px-4 py-3 text-right">Amount</div>
             </div>
 
-            <Separator />
-
-            {/* Bill To */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                  Bill To
-                </p>
-                <p className="font-semibold text-foreground">{invoice.customer_name}</p>
-                {invoice.customer_phone && (
-                  <p className="text-sm text-muted-foreground mt-0.5">📞 {invoice.customer_phone}</p>
-                )}
-                {invoice.member_id && (
-                  <p className="text-xs text-muted-foreground mt-0.5 font-mono">
-                    ID: {invoice.member_id.slice(0, 8).toUpperCase()}
-                  </p>
-                )}
-              </div>
-              <div className="sm:text-right">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                  Invoice Info
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Date: <span className="text-foreground font-medium">{formatDate(invoice.payment_date || invoice.created_at)}</span>
-                </p>
-                {invoice.transaction_id && (
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Txn: <span className="text-foreground font-mono text-xs">{invoice.transaction_id}</span>
-                  </p>
-                )}
-                {invoice.branch_name && (
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Branch: <span className="text-foreground">{invoice.branch_name}</span>
-                  </p>
-                )}
-              </div>
+            <div className="divide-y divide-border">
+              {invoiceItems.map((item, index) => (
+                <div key={`${item.description}-${index}`} className="grid grid-cols-1 md:grid-cols-[minmax(0,1.7fr)_120px_90px_130px]">
+                  <div className="px-4 py-4 md:border-r md:border-border">
+                    <p className="text-sm font-medium text-foreground">{item.description}</p>
+                  </div>
+                  <div className="px-4 py-4 text-sm text-muted-foreground md:border-r md:border-border md:text-center">
+                    <span className="md:hidden font-medium text-foreground">Duration: </span>
+                    {item.duration}
+                  </div>
+                  <div className="px-4 py-4 text-sm text-muted-foreground md:border-r md:border-border md:text-center">
+                    <span className="md:hidden font-medium text-foreground">Qty: </span>
+                    {item.qty ?? 1}
+                  </div>
+                  <div className="px-4 py-4 text-sm font-semibold text-foreground md:text-right">
+                    <span className="md:hidden font-medium">Amount: </span>
+                    {formatCurrency(item.amount)}
+                  </div>
+                </div>
+              ))}
             </div>
+          </div>
 
-            <Separator />
-
-            {/* Items Table */}
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                Membership Details
-              </p>
-              <div className="border rounded-lg overflow-hidden">
-                {/* Table Header */}
-                <div className="bg-muted/50 px-4 py-2.5 grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground uppercase">
-                  <div className="col-span-6">Description</div>
-                  <div className="col-span-3 text-center">Duration</div>
-                  <div className="col-span-3 text-right">Amount</div>
+          <div className="grid grid-cols-1 border-t border-border lg:grid-cols-[1.3fr_0.7fr]">
+            <div className="border-b border-border p-4 sm:p-6 lg:border-b-0 lg:border-r">
+              <div className="space-y-4">
+                <div>
+                  <p className="mb-2 text-sm font-semibold text-foreground">Terms & conditions</p>
+                  <div className="min-h-28 whitespace-pre-wrap text-sm text-muted-foreground">
+                    {invoice.invoice_terms || "1. Fees once paid are non-refundable unless approved by management.\n2. Keep this invoice for future reference.\n3. Package validity follows the dates listed above."}
+                  </div>
                 </div>
 
-                {/* Gym Fee Row */}
-                {invoice.gym_fee > 0 && (
-                  <div className="px-4 py-3 grid grid-cols-12 gap-2 items-center border-t text-sm">
-                    <div className="col-span-6 font-medium text-foreground">
-                      {invoice.package_name || "Gym Membership"}
-                    </div>
-                    <div className="col-span-3 text-center text-muted-foreground text-xs">
-                      {invoice.start_date && invoice.end_date
-                        ? `${formatDate(invoice.start_date)} – ${formatDate(invoice.end_date)}`
-                        : "-"}
-                    </div>
-                    <div className="col-span-3 text-right font-medium">
-                      ₹{Number(invoice.gym_fee).toLocaleString("en-IN")}
-                    </div>
-                  </div>
-                )}
+                <div className="border-t border-border pt-4 text-sm">
+                  <p className="font-medium text-foreground">Total Amount (in words):</p>
+                  <p className="mt-1 capitalize text-muted-foreground">{amountInWords}</p>
+                </div>
 
-                {/* Joining Fee Row */}
-                {invoice.joining_fee > 0 && (
-                  <div className="px-4 py-3 grid grid-cols-12 gap-2 items-center border-t text-sm">
-                    <div className="col-span-6 text-foreground">Joining Fee</div>
-                    <div className="col-span-3 text-center text-muted-foreground text-xs">-</div>
-                    <div className="col-span-3 text-right font-medium">
-                      ₹{Number(invoice.joining_fee).toLocaleString("en-IN")}
-                    </div>
+                <div className="border-t border-border pt-6">
+                  <p className="text-sm font-semibold text-foreground">For: {brandName}</p>
+                  <div className="mt-12">
+                    <p className="text-sm font-medium italic text-foreground">Authorised Signatory</p>
                   </div>
-                )}
-
-                {/* Trainer Fee Row */}
-                {invoice.trainer_fee > 0 && (
-                  <div className="px-4 py-3 grid grid-cols-12 gap-2 items-center border-t text-sm">
-                    <div className="col-span-6 text-foreground">Personal Training Fee</div>
-                    <div className="col-span-3 text-center text-muted-foreground text-xs">
-                      {invoice.start_date && invoice.end_date
-                        ? `${formatDate(invoice.start_date)} – ${formatDate(invoice.end_date)}`
-                        : "-"}
-                    </div>
-                    <div className="col-span-3 text-right font-medium">
-                      ₹{Number(invoice.trainer_fee).toLocaleString("en-IN")}
-                    </div>
-                  </div>
-                )}
-
-                {/* If no breakdown, show single line */}
-                {invoice.gym_fee === 0 && invoice.joining_fee === 0 && invoice.trainer_fee === 0 && (
-                  <div className="px-4 py-3 grid grid-cols-12 gap-2 items-center border-t text-sm">
-                    <div className="col-span-6 font-medium text-foreground">
-                      {invoice.package_name || "Payment"}
-                    </div>
-                    <div className="col-span-3 text-center text-muted-foreground text-xs">-</div>
-                    <div className="col-span-3 text-right font-medium">
-                      ₹{Number(invoice.amount).toLocaleString("en-IN")}
-                    </div>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
 
-            {/* Summary */}
-            <div className="flex justify-end">
-              <div className="w-full sm:w-64 space-y-2">
-                {invoice.subtotal > 0 && invoice.subtotal !== invoice.amount && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>₹{Number(invoice.subtotal).toLocaleString("en-IN")}</span>
-                  </div>
-                )}
+            <div className="p-4 sm:p-6">
+              <div className="overflow-hidden border border-border">
+                <div className="grid grid-cols-[1fr_auto] border-b border-border px-4 py-3 text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="font-medium text-foreground">{formatCurrency(invoice.subtotal || invoice.amount)}</span>
+                </div>
                 {invoice.discount > 0 && (
-                  <div className="flex justify-between text-sm">
+                  <div className="grid grid-cols-[1fr_auto] border-b border-border px-4 py-3 text-sm">
                     <span className="text-muted-foreground">Discount</span>
-                    <span className="text-success">-₹{Number(invoice.discount).toLocaleString("en-IN")}</span>
+                    <span className="font-medium text-foreground">-{formatCurrency(invoice.discount)}</span>
                   </div>
                 )}
                 {invoice.tax > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Tax</span>
-                    <span>₹{Number(invoice.tax).toLocaleString("en-IN")}</span>
+                  <div className="grid grid-cols-[1fr_auto] border-b border-border px-4 py-3 text-sm">
+                    <span className="text-muted-foreground">GST / Tax</span>
+                    <span className="font-medium text-foreground">{formatCurrency(invoice.tax)}</span>
                   </div>
                 )}
-                <Separator />
-                <div className="flex justify-between items-center pt-1">
-                  <span className="font-semibold text-foreground">Total Paid</span>
-                  <span className="text-xl font-bold text-foreground">
-                    ₹{Number(invoice.amount).toLocaleString("en-IN")}
-                  </span>
+                <div className="grid grid-cols-[1fr_auto] px-4 py-3 text-sm font-bold" style={{ backgroundColor: palette.header, color: "white" }}>
+                  <span>Grand Total</span>
+                  <span>{formatCurrency(invoice.amount)}</span>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Footer Message */}
+          <div className="border-t border-border px-4 py-5 text-center sm:px-8">
             {invoice.footer_message && (
-              <>
-                <Separator />
-                <div className="text-center py-2">
-                  <p className="text-sm text-muted-foreground italic">
-                    "{invoice.footer_message}"
-                  </p>
-                </div>
-              </>
+              <p className="text-sm italic text-muted-foreground">"{invoice.footer_message}"</p>
             )}
-
-            {invoice.invoice_terms && (
-              <>
-                <Separator />
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Terms & Conditions</p>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{invoice.invoice_terms}</p>
-                </div>
-              </>
-            )}
-
-            {/* Auto-generated note */}
-            <div className="text-center pt-2">
-              <p className="text-[10px] text-muted-foreground/60">
-                This is a computer-generated invoice. No signature required.
-              </p>
-            </div>
+            <p className="mt-2 text-[10px] text-muted-foreground/70">
+              This is a computer-generated invoice. No signature required.
+            </p>
           </div>
         </Card>
       </div>

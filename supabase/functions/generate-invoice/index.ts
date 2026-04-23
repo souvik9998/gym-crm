@@ -10,6 +10,7 @@ const corsHeaders = {
 function generateInvoicePDF(data: {
   invoiceNumber: string;
   gymName: string;
+  invoiceBrandName: string;
   gymAddress: string;
   gymPhone: string;
   gymEmail: string;
@@ -33,6 +34,12 @@ function generateInvoicePDF(data: {
   tax: number;
   branchName: string;
   footerMessage: string;
+  invoiceTerms: string;
+  invoicePalette: {
+    header: string;
+    accent: string;
+    text: string;
+  };
 }): Uint8Array {
   const content: string[] = [];
   const pageW = 612;
@@ -62,6 +69,17 @@ function generateInvoicePDF(data: {
     content.push(`${r} ${g} ${b} rg ${x} ${y} ${w} ${h} re f 0 0 0 rg`);
   };
 
+  const hexToRgb = (hex: string, fallback: [number, number, number]) => {
+    const safe = hex?.replace("#", "") || "";
+    const full = safe.length === 3 ? safe.split("").map((char) => char + char).join("") : safe;
+    if (!/^[0-9a-fA-F]{6}$/.test(full)) return fallback;
+    return [
+      parseInt(full.slice(0, 2), 16) / 255,
+      parseInt(full.slice(2, 4), 16) / 255,
+      parseInt(full.slice(4, 6), 16) / 255,
+    ] as const;
+  };
+
   const addRoundBadge = (x: number, y: number, text: string, r: number, g: number, b: number) => {
     // Simple rect badge (rounded corners not available in basic PDF)
     const badgeW = 60;
@@ -72,177 +90,163 @@ function generateInvoicePDF(data: {
 
   let yPos = pageH;
 
-  // ===== PRIMARY COLOR HEADER =====
-  const headerH = 100;
-  const headerY = pageH - headerH;
-  // Primary color (hsl 142 76% 36% ≈ rgb 0.22, 0.64, 0.32)
-  addRect(0, headerY, pageW, headerH, 0.22, 0.64, 0.32);
+  const [headerR, headerG, headerB] = hexToRgb(data.invoicePalette.header, [0.12, 0.24, 0.43]);
+  const [accentR, accentG, accentB] = hexToRgb(data.invoicePalette.accent, [0.88, 0.94, 0.98]);
+  const [textR, textG, textB] = hexToRgb(data.invoicePalette.text, [0.11, 0.16, 0.33]);
 
-  // Gym name - white, large
-  let hy = pageH - 30;
-  addColorText(leftMargin, hy, data.gymName, 20, true, 1, 1, 1);
-  hy -= 16;
+  const invoiceTitle = data.gymGst ? "TAX INVOICE" : "INVOICE";
+  const outerX = 28;
+  const outerY = 28;
+  const outerW = pageW - 56;
+  const outerH = pageH - 56;
+  const rightColX = 330;
+  const totalRowsStartY = 264;
+
+  content.push(`0 0 0 RG 1 w ${outerX} ${outerY} ${outerW} ${outerH} re S`);
+  addRect(outerX, 760, outerW, 30, headerR, headerG, headerB);
+  addColorText(240, 770, invoiceTitle, 17, true, 1, 1, 1);
+  addColorText(470, 775, `INVOICE NO : ${data.invoiceNumber}`, 8, true, 1, 1, 1);
+  addColorText(470, 764, `DATE : ${data.paymentDate}`, 8, true, 1, 1, 1);
+
+  addColorText(170, 735, data.invoiceBrandName || data.gymName, 22, true, 0, 0, 0);
+  let hy = 718;
   if (data.gymAddress) {
-    addColorText(leftMargin, hy, data.gymAddress, 9, false, 1, 1, 0.85);
+    addColorText(150, hy, data.gymAddress, 10, false, 0.2, 0.2, 0.2);
     hy -= 13;
   }
-  const contactParts: string[] = [];
-  if (data.gymPhone) contactParts.push(`Phone: ${data.gymPhone}`);
-  if (data.gymEmail) contactParts.push(`Email: ${data.gymEmail}`);
-  if (data.gymGst) contactParts.push(`GST: ${data.gymGst}`);
-  if (contactParts.length > 0) {
-    addColorText(leftMargin, hy, contactParts.join("  |  "), 8, false, 1, 1, 0.75);
+  if (data.gymGst) {
+    addColorText(205, hy, `GSTIN: ${data.gymGst}`, 9, false, 0.2, 0.2, 0.2);
+    hy -= 12;
+  }
+  if (data.gymEmail) {
+    addColorText(185, hy, `Email ID: ${data.gymEmail}`, 9, false, 0.2, 0.2, 0.2);
+    hy -= 12;
+  }
+  if (data.gymPhone) {
+    addColorText(200, hy, `Phone: ${data.gymPhone}`, 9, false, 0.2, 0.2, 0.2);
   }
 
-  // INVOICE title - right side, white
-  addColorText(430, pageH - 30, "INVOICE", 22, true, 1, 1, 1);
-  addColorText(430, pageH - 48, data.invoiceNumber, 10, false, 1, 1, 0.85);
-  addColorText(430, pageH - 62, data.paymentDate, 9, false, 1, 1, 0.75);
+  addLine(outerX, 682, outerX + outerW, 682, 0, 0, 0);
+  addRect(outerX, 580, 290, 102, accentR, accentG, accentB);
+  addRect(rightColX, 580, outerX + outerW - rightColX, 102, accentR, accentG, accentB);
+  addLine(rightColX, 580, rightColX, 682, 0, 0, 0);
+  addLine(outerX, 580, outerX + outerW, 580, 0, 0, 0);
 
-  // ===== BODY SECTION =====
-  yPos = headerY - 25;
+  addText(32, 662, "Bill To:", 10, true);
+  addText(32, 645, data.memberName, 10, false);
+  if (data.memberPhone) addText(32, 630, `Phone: ${data.memberPhone}`, 9, false);
+  if (data.memberId) addText(32, 616, `ID: ${data.memberId.slice(0, 8).toUpperCase()}`, 9, false);
+  if (data.branchName) addText(32, 602, `Branch: ${data.branchName}`, 9, false);
 
-  // PAID badge + payment mode
-  addRoundBadge(leftMargin, yPos, "PAID", 0.13, 0.62, 0.33);
-  addColorText(leftMargin + 70, yPos, `via ${data.paymentMode}`, 9, false, 0.5, 0.5, 0.5);
-  yPos -= 15;
+  addText(334, 645, `Payment Date: ${data.paymentDate}`, 10, false);
+  addText(334, 630, `Payment Mode: ${data.paymentMode}`, 10, false);
+  if (data.razorpayPaymentId) addText(334, 615, `Txn No: ${data.razorpayPaymentId}`, 9, false);
+  addRoundBadge(334, 595, "PAID", headerR, headerG, headerB);
 
-  // Separator
-  addLine(leftMargin, yPos, rightMargin, yPos);
-  yPos -= 25;
+  addLine(outerX, 550, outerX + outerW, 550, 0, 0, 0);
+  addLine(320, 360, 320, 580, 0, 0, 0);
+  addLine(380, 360, 380, 580, 0, 0, 0);
+  addLine(435, 360, 435, 580, 0, 0, 0);
+  addLine(500, 360, 500, 580, 0, 0, 0);
+  addLine(outerX, 360, outerX + outerW, 360, 0, 0, 0);
+  addLine(outerX, 550, outerX + outerW, 550, 0, 0, 0);
+  addLine(outerX, 520, outerX + outerW, 520, 0, 0, 0);
 
-  // ===== BILL TO + INVOICE INFO (two columns) =====
-  const col2X = 350;
+  addText(32, 535, "Description", 9, true);
+  addText(338, 535, "Duration", 9, true);
+  addText(398, 535, "Qty", 9, true);
+  addText(470, 535, "Amount", 9, true);
 
-  // Left column: Bill To
-  addColorText(leftMargin, yPos, "BILL TO", 8, true, 0.5, 0.5, 0.5);
-  yPos -= 16;
-  addText(leftMargin, yPos, data.memberName, 12, true);
-  yPos -= 15;
-  if (data.memberPhone) {
-    addColorText(leftMargin, yPos, `Phone: ${data.memberPhone}`, 9, false, 0.4, 0.4, 0.4);
-    yPos -= 13;
-  }
-  if (data.memberId) {
-    addColorText(leftMargin, yPos, `ID: ${data.memberId.slice(0, 8).toUpperCase()}`, 8, false, 0.5, 0.5, 0.5);
-    yPos -= 13;
-  }
-
-  // Right column: Invoice Info (at same vertical start)
-  const infoY = yPos + 44 + 16; // align with BILL TO
-  addColorText(col2X, infoY, "INVOICE INFO", 8, true, 0.5, 0.5, 0.5);
-  addColorText(col2X, infoY - 16, `Date: ${data.paymentDate}`, 9, false, 0.3, 0.3, 0.3);
-  if (data.razorpayPaymentId) {
-    addColorText(col2X, infoY - 30, `Txn: ${data.razorpayPaymentId}`, 8, false, 0.3, 0.3, 0.3);
-  }
-  if (data.branchName) {
-    addColorText(col2X, infoY - 44, `Branch: ${data.branchName}`, 9, false, 0.3, 0.3, 0.3);
-  }
-
-  yPos -= 15;
-  // Separator
-  addLine(leftMargin, yPos, rightMargin, yPos);
-  yPos -= 25;
-
-  // ===== MEMBERSHIP DETAILS TABLE =====
-  addColorText(leftMargin, yPos, "MEMBERSHIP DETAILS", 8, true, 0.5, 0.5, 0.5);
-  yPos -= 18;
-
-  // Table header row
-  const tableX = leftMargin;
-  addRect(tableX, yPos - 5, contentWidth, 22, 0.96, 0.96, 0.96);
-  addColorText(tableX + 8, yPos, "DESCRIPTION", 8, true, 0.5, 0.5, 0.5);
-  addColorText(tableX + 250, yPos, "DURATION", 8, true, 0.5, 0.5, 0.5);
-  addColorText(tableX + 430, yPos, "AMOUNT", 8, true, 0.5, 0.5, 0.5);
-  yPos -= 24;
-
-  // Table separator
-  addLine(tableX, yPos + 2, tableX + contentWidth, yPos + 2);
+  let tableRowY = 490;
 
   // Gym Fee row
   if (data.gymFee > 0) {
     const packageLabel = data.packageName || "Gym Membership";
-    addText(tableX + 8, yPos - 8, packageLabel, 9, true);
+      addText(32, tableRowY, packageLabel, 9, true);
     if (data.startDate && data.endDate) {
-      addColorText(tableX + 250, yPos - 8, `${data.startDate} - ${data.endDate}`, 8, false, 0.5, 0.5, 0.5);
+        addColorText(338, tableRowY, `${data.startDate} - ${data.endDate}`, 8, false, 0.4, 0.4, 0.4);
     }
-    addText(tableX + 430, yPos - 8, `Rs.${data.gymFee.toLocaleString("en-IN")}`, 9, true);
-    yPos -= 24;
-    addLine(tableX, yPos + 2, tableX + contentWidth, yPos + 2);
+      addText(405, tableRowY, "1", 9, false);
+      addText(470, tableRowY, `Rs.${data.gymFee.toLocaleString("en-IN")}`, 9, true);
+      tableRowY -= 22;
   }
 
   // Joining Fee row
   if (data.joiningFee > 0) {
-    addText(tableX + 8, yPos - 8, "Joining Fee", 9, false);
-    addColorText(tableX + 250, yPos - 8, "-", 8, false, 0.5, 0.5, 0.5);
-    addText(tableX + 430, yPos - 8, `Rs.${data.joiningFee.toLocaleString("en-IN")}`, 9, true);
-    yPos -= 24;
-    addLine(tableX, yPos + 2, tableX + contentWidth, yPos + 2);
+      addText(32, tableRowY, "Joining Fee", 9, false);
+      addColorText(338, tableRowY, "-", 8, false, 0.5, 0.5, 0.5);
+      addText(405, tableRowY, "1", 9, false);
+      addText(470, tableRowY, `Rs.${data.joiningFee.toLocaleString("en-IN")}`, 9, true);
+      tableRowY -= 22;
   }
 
   // Trainer Fee row
   if (data.trainerFee > 0) {
-    addText(tableX + 8, yPos - 8, "Personal Training Fee", 9, false);
+      addText(32, tableRowY, "Personal Training Fee", 9, false);
     if (data.startDate && data.endDate) {
-      addColorText(tableX + 250, yPos - 8, `${data.startDate} - ${data.endDate}`, 8, false, 0.5, 0.5, 0.5);
+        addColorText(338, tableRowY, `${data.startDate} - ${data.endDate}`, 8, false, 0.5, 0.5, 0.5);
     }
-    addText(tableX + 430, yPos - 8, `Rs.${data.trainerFee.toLocaleString("en-IN")}`, 9, true);
-    yPos -= 24;
-    addLine(tableX, yPos + 2, tableX + contentWidth, yPos + 2);
+      addText(405, tableRowY, "1", 9, false);
+      addText(470, tableRowY, `Rs.${data.trainerFee.toLocaleString("en-IN")}`, 9, true);
+      tableRowY -= 22;
   }
 
   // If no breakdown, show single line
   if (data.gymFee === 0 && data.joiningFee === 0 && data.trainerFee === 0) {
     const label = data.packageName || "Payment";
-    addText(tableX + 8, yPos - 8, label, 9, true);
-    addColorText(tableX + 250, yPos - 8, "-", 8, false, 0.5, 0.5, 0.5);
-    addText(tableX + 430, yPos - 8, `Rs.${data.amount.toLocaleString("en-IN")}`, 9, true);
-    yPos -= 24;
-    addLine(tableX, yPos + 2, tableX + contentWidth, yPos + 2);
+      addText(32, tableRowY, label, 9, true);
+      addColorText(338, tableRowY, "-", 8, false, 0.5, 0.5, 0.5);
+      addText(405, tableRowY, "1", 9, false);
+      addText(470, tableRowY, `Rs.${data.amount.toLocaleString("en-IN")}`, 9, true);
+      tableRowY -= 22;
   }
 
-  yPos -= 10;
+  addRect(outerX, 314, 292, 46, accentR, accentG, accentB);
+  addLine(rightColX, 314, rightColX, 360, 0, 0, 0);
+  addLine(outerX, 314, outerX + outerW, 314, 0, 0, 0);
+  addText(32, 345, "Terms & conditions", 9, true);
 
-  // ===== TOTALS (right-aligned) =====
-  const totalsX = 380;
+  const termLines = (data.invoiceTerms || "Fees once paid are non-refundable.")
+    .split(/\n+/)
+    .flatMap((line) => line.match(/.{1,55}(\s|$)/g) || [line])
+    .slice(0, 5);
+  termLines.forEach((line, index) => {
+    addText(36, 328 - index * 12, `${index + 1}. ${line.trim()}`, 8, false);
+  });
+
+  let totalsY = totalRowsStartY;
 
   if (data.subtotal > 0 && data.subtotal !== data.amount) {
-    addColorText(totalsX, yPos, "Subtotal", 9, false, 0.5, 0.5, 0.5);
-    addText(totalsX + 110, yPos, `Rs.${data.subtotal.toLocaleString("en-IN")}`, 9, false);
-    yPos -= 16;
+    addText(rightColX + 5, totalsY, "Subtotal", 9, true);
+    addText(515, totalsY, `Rs.${data.subtotal.toLocaleString("en-IN")}`, 9, true);
+    totalsY -= 18;
   }
 
   if (data.discount > 0) {
-    addColorText(totalsX, yPos, "Discount", 9, false, 0.5, 0.5, 0.5);
-    addColorText(totalsX + 110, yPos, `-Rs.${data.discount.toLocaleString("en-IN")}`, 9, false, 0.13, 0.62, 0.33);
-    yPos -= 16;
+    addText(rightColX + 5, totalsY, "Discount", 9, true);
+    addText(510, totalsY, `-Rs.${data.discount.toLocaleString("en-IN")}`, 9, true);
+    totalsY -= 18;
   }
 
   if (data.tax > 0) {
-    addColorText(totalsX, yPos, `GST (${data.gymGst ? data.gymGst + " - " : ""}Tax)`, 9, false, 0.5, 0.5, 0.5);
-    addText(totalsX + 110, yPos, `Rs.${data.tax.toLocaleString("en-IN")}`, 9, false);
-    yPos -= 16;
+    addText(rightColX + 5, totalsY, "GST / Tax", 9, true);
+    addText(515, totalsY, `Rs.${data.tax.toLocaleString("en-IN")}`, 9, true);
+    totalsY -= 18;
   }
 
-  // Total separator
-  addLine(totalsX, yPos + 4, rightMargin, yPos + 4);
-  yPos -= 8;
+  addRect(rightColX, 250, outerX + outerW - rightColX, 24, headerR, headerG, headerB);
+  addColorText(rightColX + 5, 258, "Grand Total", 10, true, 1, 1, 1);
+  addColorText(500, 258, `Rs.${data.amount.toLocaleString("en-IN")}`, 10, true, 1, 1, 1);
 
-  addText(totalsX, yPos, "Total Paid", 11, true);
-  addText(totalsX + 100, yPos, `Rs.${data.amount.toLocaleString("en-IN")}`, 14, true);
-  yPos -= 30;
-
-  // ===== FOOTER =====
-  // Footer separator
-  addLine(leftMargin, yPos, rightMargin, yPos);
-  yPos -= 18;
+  addLine(outerX, 220, outerX + outerW, 220, 0, 0, 0);
+  addText(32, 206, "Total Amount (₹ - In Words):", 9, true);
+  addText(32, 180, `For : ${data.invoiceBrandName || data.gymName}`, 10, true);
+  addColorText(32, 150, "Authorised Signatory", 10, true, textR, textG, textB);
 
   if (data.footerMessage) {
-    addColorText(leftMargin + (contentWidth / 2 - 80), yPos, `"${data.footerMessage}"`, 9, false, 0.5, 0.5, 0.5);
-    yPos -= 18;
+    addColorText(165, 120, `"${data.footerMessage}"`, 9, false, 0.5, 0.5, 0.5);
   }
-
-  addColorText(leftMargin + (contentWidth / 2 - 100), yPos, "This is a computer-generated invoice. No signature required.", 7, false, 0.7, 0.7, 0.7);
+  addColorText(150, 105, "This is a computer-generated invoice. No signature required.", 7, false, 0.7, 0.7, 0.7);
 
   // ===== BUILD PDF =====
   const contentStream = content.join("\n");
@@ -367,8 +371,29 @@ Deno.serve(async (req) => {
       }
     }
 
+    const formatAmountInWords = (amount: number) => {
+      const value = Math.round(Number(amount));
+      if (!Number.isFinite(value) || value <= 0) return "Zero rupees only";
+
+      const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+      const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+      const toWords = (num: number): string => {
+        if (num === 0) return "";
+        if (num < 20) return ones[num];
+        if (num < 100) return `${tens[Math.floor(num / 10)]}${num % 10 ? ` ${ones[num % 10]}` : ""}`;
+        if (num < 1000) return `${ones[Math.floor(num / 100)]} Hundred${num % 100 ? ` ${toWords(num % 100)}` : ""}`;
+        if (num < 100000) return `${toWords(Math.floor(num / 1000))} Thousand${num % 1000 ? ` ${toWords(num % 1000)}` : ""}`;
+        if (num < 10000000) return `${toWords(Math.floor(num / 100000))} Lakh${num % 100000 ? ` ${toWords(num % 100000)}` : ""}`;
+        return `${toWords(Math.floor(num / 10000000))} Crore${num % 10000000 ? ` ${toWords(num % 10000000)}` : ""}`;
+      };
+
+      return `${toWords(value).trim()} rupees only`;
+    };
+
     // Fetch gym settings for branding
     let gymName = "Pro Plus Fitness";
+    let invoiceBrandName = "";
     let gymAddress = "";
     let gymPhone = "";
     let gymEmail = "";
@@ -377,6 +402,12 @@ Deno.serve(async (req) => {
     let footerMessage = "Thank you for choosing our gym!";
     let invoicePrefix = "INV";
     let invoiceTaxRate = 0;
+    let invoiceTerms = "";
+    let invoicePalette = {
+      header: "#1d4ed8",
+      accent: "#dbeafe",
+      text: "#172554",
+    };
 
     if (effectiveBranchId) {
       const { data: branch } = await supabase
@@ -389,7 +420,7 @@ Deno.serve(async (req) => {
 
       const { data: settings } = await supabase
         .from("gym_settings")
-        .select("gym_name, gym_address, gym_phone, gym_email, gym_gst, invoice_prefix, invoice_footer_message, invoice_tax_rate, invoice_show_gst")
+        .select("gym_name, gym_address, gym_phone, gym_email, gym_gst, invoice_prefix, invoice_footer_message, invoice_tax_rate, invoice_show_gst, invoice_terms, invoice_brand_name, invoice_palette")
         .eq("branch_id", effectiveBranchId)
         .maybeSingle();
 
@@ -402,6 +433,13 @@ Deno.serve(async (req) => {
         gymGst = settings.gym_gst || "";
         invoicePrefix = settings.invoice_prefix || "INV";
         footerMessage = settings.invoice_footer_message || footerMessage;
+        invoiceTerms = settings.invoice_terms || "";
+        invoiceBrandName = settings.invoice_brand_name || settings.gym_name || "";
+        invoicePalette = {
+          header: settings.invoice_palette?.header || invoicePalette.header,
+          accent: settings.invoice_palette?.accent || invoicePalette.accent,
+          text: settings.invoice_palette?.text || invoicePalette.text,
+        };
         // GST: only apply if both show_gst is enabled AND tax_rate > 0
         if (settings.invoice_show_gst === true && (settings.invoice_tax_rate || 0) > 0) {
           invoiceTaxRate = settings.invoice_tax_rate;
@@ -501,6 +539,7 @@ Deno.serve(async (req) => {
     const pdfBytes = generateInvoicePDF({
       invoiceNumber,
       gymName,
+      invoiceBrandName: invoiceBrandName || gymName,
       gymAddress,
       gymPhone,
       gymEmail,
@@ -524,6 +563,8 @@ Deno.serve(async (req) => {
       tax: taxOnInvoice,
       branchName: branchName || gymName,
       footerMessage,
+      invoiceTerms,
+      invoicePalette,
     });
 
     // Upload to storage
@@ -571,6 +612,9 @@ Deno.serve(async (req) => {
       transaction_id: transactionId,
       pdf_url: pdfUrl,
       footer_message: footerMessage,
+      invoice_terms: invoiceTerms || null,
+      invoice_brand_name: invoiceBrandName || gymName,
+      invoice_palette: invoicePalette,
     };
 
     if (existingInvoice?.id) {
