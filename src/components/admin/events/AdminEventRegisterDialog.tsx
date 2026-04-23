@@ -604,15 +604,48 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
           {mode === "search" && (
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label className="text-xs">Phone Number</Label>
+                <Label className="text-xs">Search Member</Label>
                 <div className="flex gap-2">
-                  <span className="flex items-center px-3 bg-muted rounded-l-xl text-sm text-muted-foreground">+91</span>
-                  <Input value={phone}
-                    onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); setSearchDone(false); setFoundMember(null); setFreeForExisting(false); }}
-                    placeholder="Enter 10-digit number" className="rounded-r-xl rounded-l-none" maxLength={10} inputMode="numeric" />
-                  <Button size="sm" onClick={handleSearch} disabled={phone.length !== 10} className="rounded-xl">Search</Button>
+                  <Input
+                    value={memberSearch}
+                    onChange={(e) => {
+                      setMemberSearch(e.target.value);
+                      setSearchDone(false);
+                      setFoundMember(null);
+                      setMemberResults([]);
+                      setFreeForExisting(false);
+                    }}
+                    placeholder="Search by member name or phone"
+                    className="rounded-xl"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleSearch}
+                    disabled={isSearchingMembers || memberSearch.trim().length < 2}
+                    className="rounded-xl"
+                  >
+                    {isSearchingMembers ? <ButtonSpinner /> : "Search"}
+                  </Button>
                 </div>
               </div>
+              {memberResults.length > 0 && !foundMember && (
+                <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-2">
+                  {memberResults.map((member) => (
+                    <button
+                      key={member.id}
+                      type="button"
+                      onClick={() => handleSelectMember(member)}
+                      className="flex w-full items-center justify-between rounded-lg border border-border/60 bg-background px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-accent"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">{member.name}</p>
+                        <p className="text-xs text-muted-foreground">+91 {member.phone}{member.email ? ` • ${member.email}` : ""}</p>
+                      </div>
+                      <span className="text-xs font-medium text-primary">Select</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {searchDone && foundMember && (
                 <div className="p-3 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800">
                   <div className="flex items-center gap-2 mb-1">
@@ -620,10 +653,11 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
                     <span className="text-sm font-medium text-green-700 dark:text-green-400">Member Found</span>
                   </div>
                   <p className="text-sm text-foreground">{foundMember.name}</p>
+                  <p className="text-xs text-muted-foreground">+91 {foundMember.phone}</p>
                   {foundMember.email && <p className="text-xs text-muted-foreground">{foundMember.email}</p>}
                 </div>
               )}
-              {searchDone && !foundMember && (
+              {searchDone && !foundMember && memberResults.length === 0 && (
                 <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800">
                   <p className="text-sm text-amber-700 dark:text-amber-400">No member found. Fill in details below:</p>
                 </div>
