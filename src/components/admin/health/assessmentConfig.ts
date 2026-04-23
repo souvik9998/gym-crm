@@ -32,6 +32,7 @@ export interface CustomField {
   input_type: "text" | "number" | "textarea" | "select";
   kind?: "standard" | "exercise";
   exercise_mode?: ExerciseInputMode;
+  unit?: string;
   options?: string[];
 }
 
@@ -50,6 +51,7 @@ export type AssessmentSettings = Record<string, {
   fields?: Record<string, boolean>;
   field_labels?: Record<string, string>;
   field_modes?: Record<string, ExerciseInputMode>;
+  field_units?: Record<string, string>;
   custom_fields?: CustomField[];
 }>;
 
@@ -221,9 +223,14 @@ export const getDefaultAssessmentSettings = (): AssessmentSettings => {
       entry.fields = {};
       entry.field_labels = {};
       entry.field_modes = {};
+      entry.field_units = {};
       section.fields.forEach((field) => {
         entry.fields![field.key] = true;
         entry.field_labels![field.key] = field.label;
+        const meta = ASSESSMENT_FIELD_META[field.key];
+        if (meta?.unit) {
+          entry.field_units![field.key] = meta.unit;
+        }
         if (section.key === "muscle_strength") {
           entry.field_modes![field.key] = field.key === "plank" ? "time" : "reps";
         }
