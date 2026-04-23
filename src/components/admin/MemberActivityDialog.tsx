@@ -915,7 +915,7 @@ export const MemberActivityDialog = ({
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="w-full gap-1.5 text-xs h-8 border-primary/20 bg-primary/5 hover:bg-primary/10"
+                                className="w-full h-9 gap-1.5 rounded-xl border-primary/20 bg-card/80 text-foreground shadow-sm backdrop-blur-sm transition-all duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-md"
                                 onClick={() => setTransferringPt(pt)}
                               >
                                 <ArrowRightLeft className="w-3.5 h-3.5 text-primary" />
