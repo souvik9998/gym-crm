@@ -621,6 +621,30 @@ export const SlotMembersTab = ({
       ? Math.round(filteredSlots.reduce((sum, slot) => sum + slot.utilization, 0) / filteredSlots.length)
       : 0;
 
+  const getTimeFilterButtonClass = (option: TimeBucket) => {
+    const isActive = timeFilter === option;
+
+    if (!isActive) {
+      return "shrink-0 border-border/70 bg-background/70 text-muted-foreground backdrop-blur-sm hover:border-primary/30 hover:bg-primary/5 hover:text-foreground";
+    }
+
+    switch (option) {
+      case "morning":
+        return "shrink-0 border-warning/40 bg-warning/15 text-foreground shadow-sm backdrop-blur-sm hover:bg-warning/20";
+      case "afternoon":
+        return "shrink-0 border-accent/35 bg-accent/12 text-foreground shadow-sm backdrop-blur-sm hover:bg-accent/18";
+      case "evening":
+        return "shrink-0 border-primary/35 bg-primary/12 text-foreground shadow-sm backdrop-blur-sm hover:bg-primary/18";
+      case "night":
+        return "shrink-0 border-secondary-foreground/15 bg-secondary text-secondary-foreground shadow-sm backdrop-blur-sm hover:bg-secondary";
+      case "custom":
+        return "shrink-0 border-success/35 bg-success/12 text-foreground shadow-sm backdrop-blur-sm hover:bg-success/18";
+      case "all":
+      default:
+        return "shrink-0 border-primary/35 bg-primary text-primary-foreground shadow-sm backdrop-blur-sm hover:bg-primary/90";
+    }
+  };
+
   const getPtBadge = (status: string) => {
     switch (status) {
       case "active":
@@ -732,7 +756,7 @@ export const SlotMembersTab = ({
                     type="button"
                     variant={timeFilter === option.value ? "default" : "outline"}
                     size="sm"
-                    className="shrink-0 border-border/70 bg-background/70 backdrop-blur-sm"
+                    className={getTimeFilterButtonClass(option.value)}
                     onClick={() => setTimeFilter(option.value)}
                   >
                     {option.label}
@@ -798,7 +822,7 @@ export const SlotMembersTab = ({
               </div>
 
               {timeFilter === "custom" && (
-                <div className="grid gap-3 sm:grid-cols-2 lg:max-w-md">
+                <div className="grid gap-3 rounded-xl border border-success/20 bg-success/5 p-3 sm:grid-cols-2 lg:max-w-md">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Start time</label>
                     <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 border-border/70 bg-background/70 text-sm backdrop-blur-sm" />
@@ -811,11 +835,11 @@ export const SlotMembersTab = ({
               )}
 
               <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="bg-background/60">{filteredSlots.length} slot{filteredSlots.length === 1 ? "" : "s"}</Badge>
-                <Badge variant="outline" className="bg-background/60">{filteredMembers.length} member{filteredMembers.length === 1 ? "" : "s"}</Badge>
-                <Badge variant="outline" className="bg-background/60">{visibleUtilization}% utilization</Badge>
+                <Badge variant="outline" className="border-primary/20 bg-primary/5 text-foreground">{filteredSlots.length} slot{filteredSlots.length === 1 ? "" : "s"}</Badge>
+                <Badge variant="outline" className="border-accent/20 bg-accent/5 text-foreground">{filteredMembers.length} member{filteredMembers.length === 1 ? "" : "s"}</Badge>
+                <Badge variant="outline" className="border-success/20 bg-success/5 text-foreground">{visibleUtilization}% utilization</Badge>
                 {selectedSlotData && (
-                  <Badge variant="secondary" className="bg-primary/10 text-foreground">
+                  <Badge variant="secondary" className="border border-primary/20 bg-primary/12 text-foreground">
                     {selectedSlotData.trainer_name} • {formatTimeLabel(selectedSlotData.start_time)} – {formatTimeLabel(selectedSlotData.end_time)}
                   </Badge>
                 )}
