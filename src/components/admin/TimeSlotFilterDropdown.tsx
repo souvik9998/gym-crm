@@ -5,6 +5,7 @@ import { useBranch } from "@/contexts/BranchContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Clock, ChevronDown, X, Check, Users, User } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Popover,
   PopoverContent,
@@ -62,6 +63,7 @@ export const NO_SLOT_FILTER = "__no_slot__";
 export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, compact = false }: TimeSlotFilterDropdownProps) => {
   const [open, setOpen] = useState(false);
   const { currentBranch } = useBranch();
+  const isMobile = useIsMobile();
 
   const { data: trainerGroups = [], isLoading } = useQuery({
     queryKey: ["time-slots-mega-menu", currentBranch?.id],
@@ -182,7 +184,9 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
         <Button
           variant="outline"
           className={cn(
-            "h-7 lg:h-8 px-1.5 rounded-lg border transition-all duration-200 shadow-sm",
+            compact
+              ? "h-9 w-full justify-between px-3 rounded-xl border transition-all duration-200 shadow-sm"
+              : "h-7 lg:h-8 px-1.5 rounded-lg border transition-all duration-200 shadow-sm",
             "focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none",
             "focus:ring-0 focus:ring-offset-0 focus:outline-none",
             isActive
@@ -191,18 +195,20 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
           )}
           onClick={(e) => e.currentTarget.blur()}
         >
-          <div className="flex items-center gap-1 lg:gap-1.5">
+          <div className={cn("flex items-center gap-1 lg:gap-1.5", compact && "w-full justify-between")}>
+            <div className="flex min-w-0 items-center gap-1.5">
             <Clock className={cn(
               "w-3.5 h-3.5 lg:w-4 lg:h-4 transition-colors",
               isActive ? "text-indigo-700 dark:text-indigo-300" : "text-indigo-600 dark:text-indigo-400"
             )} />
             <span className={cn(
-              "text-[10px] lg:text-xs font-medium transition-colors max-w-[140px] truncate",
+              compact ? "text-xs font-medium transition-colors max-w-[160px] truncate text-left" : "text-[10px] lg:text-xs font-medium transition-colors max-w-[140px] truncate",
               isActive ? "text-indigo-800 dark:text-indigo-200" : "text-indigo-700 dark:text-indigo-300"
             )}>
               {compact ? (isActive ? selectedLabel : "Slot") : selectedLabel}
             </span>
-            {isActive ? (
+            </div>
+            {isActive && !compact ? (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -223,8 +229,11 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        align="end"
-        className="w-[300px] p-0 rounded-xl border-border/50 shadow-2xl overflow-hidden"
+        align={compact || isMobile ? "start" : "end"}
+        className={cn(
+          "p-0 rounded-xl border-border/50 shadow-2xl overflow-hidden",
+          compact || isMobile ? "w-[min(23rem,calc(100vw-2rem))]" : "w-[300px]"
+        )}
         sideOffset={6}
       >
         {isLoading ? (
@@ -239,7 +248,7 @@ export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, 
             <p className="text-xs font-medium text-muted-foreground">No time slots</p>
           </div>
         ) : (
-          <div className="max-h-[360px] overflow-y-auto">
+          <div className="max-h-[min(65vh,360px)] overflow-y-auto overscroll-contain">
             {/* Header */}
             <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b border-border/40 px-3 py-2">
               <div className="flex items-center justify-between">

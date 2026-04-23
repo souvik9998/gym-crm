@@ -443,7 +443,7 @@ export const SlotAttendanceTab = () => {
             </div>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {TIME_BUCKET_OPTIONS.map((option) => (
               <Button
                 key={option.value}
@@ -548,17 +548,19 @@ export const SlotAttendanceTab = () => {
       ) : (
         <>
           {!isFutureDate && filteredList.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className={cn("gap-2", isMobile ? "grid grid-cols-1" : "flex flex-wrap items-center")}>
               <span className="text-xs text-muted-foreground">Quick mark visible:</span>
-              <Button variant="outline" size="sm" className="gap-1 border-success/25 text-success hover:bg-success/10" onClick={() => markAll("present")}>
+              <div className={cn("gap-2", isMobile ? "grid grid-cols-3" : "flex flex-wrap items-center") }>
+              <Button variant="outline" size="sm" className="gap-1 border-success/25 text-success hover:bg-success/10 h-10 rounded-xl" onClick={() => markAll("present")}>
                 <CheckBadgeIcon className="h-3.5 w-3.5" /> All Present
               </Button>
-              <Button variant="outline" size="sm" className="gap-1 border-warning/25 text-foreground hover:bg-warning/10" onClick={() => markAll("late")}>
+              <Button variant="outline" size="sm" className="gap-1 border-warning/25 text-foreground hover:bg-warning/10 h-10 rounded-xl" onClick={() => markAll("late")}>
                 <ClockIcon className="h-3.5 w-3.5" /> All Late
               </Button>
-              <Button variant="outline" size="sm" className="gap-1 border-destructive/25 text-destructive hover:bg-destructive/10" onClick={() => markAll("absent")}>
+              <Button variant="outline" size="sm" className="gap-1 border-destructive/25 text-destructive hover:bg-destructive/10 h-10 rounded-xl" onClick={() => markAll("absent")}>
                 <XCircleIcon className="h-3.5 w-3.5" /> All Absent
               </Button>
+              </div>
             </div>
           )}
 

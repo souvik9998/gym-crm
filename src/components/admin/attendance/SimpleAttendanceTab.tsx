@@ -738,7 +738,7 @@ export const SimpleAttendanceTab = () => {
           </Button>
         </div>
         <div className="flex flex-col gap-2">
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide rounded-lg border border-border/50 bg-background/70 p-1">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide rounded-xl border border-border/50 bg-background/70 p-1.5">
             {TIME_BUCKET_OPTIONS.map((option) => {
               const active = timeFilter === option.value;
               return (
@@ -746,8 +746,8 @@ export const SimpleAttendanceTab = () => {
                   key={option.value}
                   type="button"
                   onClick={() => setTimeFilter(option.value)}
-                  className={cn(
-                    "shrink-0 rounded-md px-2.5 py-1 text-[10px] font-medium transition-all duration-200",
+                    className={cn(
+                      "shrink-0 rounded-lg px-3 py-1.5 text-[10px] font-medium transition-all duration-200",
                     active
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -758,10 +758,10 @@ export const SimpleAttendanceTab = () => {
               );
             })}
           </div>
-          <div className="flex items-center gap-1.5 justify-start">
-          <TrainerFilterDropdown value={selectedTrainerId} onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }} compact />
-          <TimeSlotFilterDropdown value={selectedSlotId} onChange={setSelectedSlotId} trainerFilter={selectedTrainerId} compact />
-        </div>
+          <div className="grid grid-cols-2 gap-2">
+            <TrainerFilterDropdown value={selectedTrainerId} onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }} compact />
+            <TimeSlotFilterDropdown value={selectedSlotId} onChange={setSelectedSlotId} trainerFilter={selectedTrainerId} compact />
+          </div>
           {timeFilter === "custom" && (
             <div className="grid gap-2 rounded-xl border border-border/50 bg-card/60 p-3 sm:grid-cols-2 animate-fade-in">
               <div className="space-y-1">
@@ -778,18 +778,18 @@ export const SimpleAttendanceTab = () => {
       </div>
 
       {/* Search + Quick Actions */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1">
           <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-          <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-xs rounded-lg" />
+          <Input placeholder="Search members" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-10 text-sm rounded-xl" />
         </div>
         {!isFutureDate && stats.total > 0 && (
-          <div className="flex items-center gap-1 shrink-0">
-            <Button variant="outline" size="sm" className="gap-1 text-[10px] lg:text-[11px] h-8 px-2 text-green-700 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 active:scale-95 transition-transform" onClick={() => markAll("present")}>
-              <CheckCircleIcon className="w-3.5 h-3.5" /> <span className="hidden sm:inline">All</span> P
+          <div className="grid grid-cols-2 gap-2 shrink-0 sm:flex sm:items-center">
+            <Button variant="outline" size="sm" className="gap-1 h-10 rounded-xl px-3 text-xs text-green-700 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 active:scale-95 transition-transform" onClick={() => markAll("present")}>
+              <CheckCircleIcon className="w-3.5 h-3.5" /> <span>All P</span>
             </Button>
-            <Button variant="outline" size="sm" className="gap-1 text-[10px] lg:text-[11px] h-8 px-2 text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 active:scale-95 transition-transform" onClick={() => markAll("absent")}>
-              <XCircleIcon className="w-3.5 h-3.5" /> <span className="hidden sm:inline">All</span> A
+            <Button variant="outline" size="sm" className="gap-1 h-10 rounded-xl px-3 text-xs text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 active:scale-95 transition-transform" onClick={() => markAll("absent")}>
+              <XCircleIcon className="w-3.5 h-3.5" /> <span>All A</span>
             </Button>
           </div>
         )}
