@@ -381,7 +381,8 @@ export const AssessmentFieldsSettings = () => {
                 )}
               >
                 <div className="flex items-start justify-between gap-3 p-3 lg:p-4">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <CollapsibleTrigger asChild>
+                    <button className="flex items-start gap-3 flex-1 min-w-0 text-left rounded-lg transition-colors hover:bg-background/50 -m-1 p-1">
                     <div
                       className={cn(
                         "mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg",
@@ -405,15 +406,14 @@ export const AssessmentFieldsSettings = () => {
                       <p className="text-xs text-muted-foreground">{section.description}</p>
                       <p className="text-[11px] text-muted-foreground/90">{section.purpose}</p>
                     </div>
-                  </div>
+                  </button>
+                  </CollapsibleTrigger>
 
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <CollapsibleTrigger asChild>
-                      <button className="flex h-8 w-8 items-center justify-center rounded-md border border-border/50 bg-background/70 transition-colors hover:bg-muted/50">
+                      <button type="button" onClick={() => setOpenSections((prev) => isOpen ? prev.filter((item) => item !== section.key) : [...prev, section.key])} className="flex h-8 w-8 items-center justify-center rounded-md border border-border/50 bg-background/70 transition-colors hover:bg-muted/50">
                         <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")} />
                       </button>
-                    </CollapsibleTrigger>
-                    <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/70 px-2 py-1">
+                    <div className={cn("flex items-center gap-2 rounded-lg border px-2 py-1 transition-colors", sectionSettings.enabled ? "border-accent/20 bg-background/80" : "border-border/50 bg-background/70")}>
                       {sectionSettings.enabled ? <Eye className="h-3.5 w-3.5 text-accent" /> : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}
                       <Switch checked={sectionSettings.enabled} onCheckedChange={(value) => toggleSection(section.key, value)} />
                     </div>
