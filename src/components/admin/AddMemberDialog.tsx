@@ -991,6 +991,14 @@ export const AddMemberDialog = ({
       const gymStartDate = new Date(startDate);
       gymStartDate.setHours(0, 0, 0, 0);
 
+      if ((selectedAction === "renew_gym" || selectedAction === "renew_gym_pt") && gymStartDate < minAllowedStartDate) {
+        toast.error("Renewal start date is invalid", {
+          description: `The next membership must start on ${format(minAllowedStartDate, "d MMM yyyy")} or later.`,
+        });
+        setStartDate(minAllowedStartDate);
+        return;
+      }
+
       // Renew Gym Membership
       if (selectedAction === "renew_gym" || selectedAction === "renew_gym_pt") {
         const gymEndDate = addPackageMonths(gymStartDate, selectedPackage?.months || 1);
@@ -1769,20 +1777,29 @@ export const AddMemberDialog = ({
                         </button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                        <CalendarComponent
+                          <CalendarComponent
                           mode="single"
                           selected={startDate}
                           onSelect={(date) => {
                             if (date) { setStartDate(date); setShowDatePicker(false); }
                           }}
                           disabled={(date) => {
-                            const today = new Date(); today.setHours(0, 0, 0, 0);
-                            return date < today;
+                              const candidate = new Date(date);
+                              candidate.setHours(0, 0, 0, 0);
+                              const minDate = new Date(minAllowedStartDate);
+                              minDate.setHours(0, 0, 0, 0);
+                              return candidate < minDate;
                           }}
+                            defaultMonth={startDate < minAllowedStartDate ? minAllowedStartDate : startDate}
                           initialFocus
                         />
                       </PopoverContent>
                     </Popover>
+                    {(selectedAction === "renew_gym" || selectedAction === "renew_gym_pt") && existingMember?.subscription?.end_date && (
+                      <p className="text-xs text-muted-foreground">
+                        Current membership ends on {format(parseDateOnly(existingMember.subscription.end_date) || minAllowedStartDate, "d MMM yyyy")}. Renewal can start from {format(minAllowedStartDate, "d MMM yyyy")}. 
+                      </p>
+                    )}
                   </div>
                   
                   {/* Duration - only for gym actions */}
