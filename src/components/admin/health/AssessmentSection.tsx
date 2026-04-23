@@ -302,9 +302,30 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     });
 
     Object.entries(data).forEach(([key, value]) => {
-      if (value && String(value).trim()) {
-        items.push({ label: labelMap[key] || key, value: String(value) });
+      if (!value || !String(value).trim()) return;
+
+      const sectionKey = ASSESSMENT_SECTIONS.find((section) =>
+        section.fields?.some((field) => field.key === key) || config[section.key]?.custom_fields?.some((field) => field.key === key)
+      )?.key;
+      const customField = sectionKey ? config[sectionKey]?.custom_fields?.find((field) => field.key === key) : undefined;
+
+      if (sectionKey && (isExerciseAssessmentSection(sectionKey) || customField?.kind === "exercise")) {
+        try {
+          const parsed = typeof value === "string" ? JSON.parse(value) as ExerciseFieldValue : value as ExerciseFieldValue;
+          const formatted = parsed.mode === "time"
+            ? `${parsed.time || "—"} ${parsed.unit || "sec"}`
+            : parsed.mode === "reps_sets"
+              ? `${parsed.reps || "—"} reps × ${parsed.sets || "—"} sets`
+              : `${parsed.reps || "—"} reps`;
+
+          items.push({ label: labelMap[key] || key, value: formatted });
+          return;
+        } catch {
+          // fall through to raw rendering
+        }
       }
+
+      items.push({ label: labelMap[key] || key, value: String(value) });
     });
 
     if (items.length === 0) {
@@ -329,7 +350,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       )}
 
       {showForm && (
-        <div className="space-y-4 rounded-xl border border-accent/20 bg-accent/5 p-4 max-h-[70vh] overflow-y-auto">
+        <div className="space-y-3 rounded-xl border border-accent/20 bg-accent/5 p-3 sm:p-4 max-h-[70vh] overflow-y-auto">
           <div className="rounded-lg border border-border/50 bg-background/70 p-3">
             <div className="flex items-start gap-2">
               <Info className="mt-0.5 h-4 w-4 text-accent" />
@@ -356,7 +377,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
             const Icon = section.icon;
 
             return (
-              <div key={section.key} className="rounded-xl border border-border/50 bg-background/70 p-4 space-y-3">
+              <div key={section.key} className="rounded-xl border border-border/50 bg-background/70 p-3 sm:p-4 space-y-3">
                 <div className="flex items-start gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 text-accent">
                     <Icon className="h-4 w-4" />
@@ -373,8 +394,11 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
                 </div>
 
                 {hasFields ? (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {fields.map((field) => renderFieldInput(field.key, field.label))}
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {fields.map((field) => {
+                      const customField = config[section.key]?.custom_fields?.find((item) => item.key === field.key);
+                      return renderFieldInput(section.key, field.key, field.label, customField);
+                    })}
                   </div>
                 ) : (
                   <div className="rounded-lg border border-border/50 bg-background/80 p-3">
