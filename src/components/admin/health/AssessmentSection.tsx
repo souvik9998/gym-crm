@@ -213,7 +213,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
   const handleSave = async () => {
     if (!formData.assessed_by?.trim()) {
-      toast.error("Please enter assessor name");
+      toast.error("Please select who took this assessment");
       return;
     }
 
@@ -251,6 +251,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       toast.success("Assessment saved");
       setFormData({ assessed_by: "" });
       setShowForm(false);
+      setIsFormExpanded(false);
       await onRefresh();
     } catch (err: any) {
       toast.error("Error saving assessment", { description: err.message });
@@ -497,12 +498,28 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
         <div className={expanded ? "rounded-xl border border-border/50 bg-background/95 p-3 sm:p-4" : "rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3"}>
           <Label className="text-xs font-medium text-foreground">Assessed By *</Label>
-          <Input
-            value={formData.assessed_by || ""}
-            onChange={(e) => updateField("assessed_by", e.target.value)}
-            placeholder="Trainer / Admin name"
-            className={expanded ? "mt-1.5 h-11 text-sm" : "mt-1 h-10 text-sm"}
-          />
+          <Select value={formData.assessed_by || undefined} onValueChange={(value) => updateField("assessed_by", value)} disabled={loadingAssessors || assessorOptions.length === 0}>
+            <SelectTrigger className={expanded ? "mt-1.5 h-11 text-sm" : "mt-1 h-10 text-sm"}>
+              <SelectValue placeholder={loadingAssessors ? "Loading trainers / staff..." : assessorOptions.length === 0 ? "No allowed assessor available" : "Select trainer / staff"} />
+            </SelectTrigger>
+            <SelectContent>
+              {assessorOptions.map((option) => (
+                <SelectItem key={option.id} value={option.name}>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate">{option.name}</span>
+                    {option.role && (
+                      <span className="text-[10px] capitalize text-muted-foreground">{option.role}</span>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {isLimitedAccess
+              ? "Restricted staff can only register assessments under their own name."
+              : "Only trainers and staff allowed for this branch are shown here."}
+          </p>
         </div>
 
         {enabledSections.map((section) => {
@@ -557,7 +574,10 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
           </Button>
           <Button size="sm" variant="outline" onClick={() => {
             if (expanded) setIsFormExpanded(false);
-            else setShowForm(false);
+            else {
+              setShowForm(false);
+              setFormData({ assessed_by: "" });
+            }
           }} className="rounded-lg">
             {expanded ? "Back to dialog" : "Cancel"}
           </Button>
