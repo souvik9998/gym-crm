@@ -26,6 +26,7 @@ import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdow
 import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
 import { useMembersQuery } from "@/hooks/queries/useMembers";
+import { TIME_BUCKET_OPTIONS, matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
 type AttendanceStatus = "present" | "absent" | "late";
 
@@ -174,6 +175,9 @@ export const SimpleAttendanceTab = () => {
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [timeFilter, setTimeFilter] = useState<TimeBucket>("all");
+  const [customStart, setCustomStart] = useState("06:00");
+  const [customEnd, setCustomEnd] = useState("10:00");
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "all">("all");
   const { assignedMemberIds } = useAssignedMemberIds();
   const { allSlots } = useAttendanceFilters();
@@ -181,12 +185,22 @@ export const SimpleAttendanceTab = () => {
 
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
 
+  const timeFilteredSlots = useMemo(() => {
+    return allSlots.filter((slot) => matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd));
+  }, [allSlots, timeFilter, customStart, customEnd]);
+
+  const filteredSlotIds = useMemo(() => timeFilteredSlots.map((slot) => slot.id), [timeFilteredSlots]);
+
   const trainerSlotIds = useMemo(() => {
-    if (!selectedTrainerId) return null;
-    return allSlots
-      .filter((slot) => slot.trainer_id === selectedTrainerId)
+    const scopedSlots = selectedTrainerId
+      ? timeFilteredSlots.filter((slot) => slot.trainer_id === selectedTrainerId)
+      : timeFilteredSlots;
+
+    if (!selectedTrainerId) return scopedSlots.map((slot) => slot.id);
+
+    return scopedSlots
       .map((slot) => slot.id);
-  }, [allSlots, selectedTrainerId]);
+  }, [timeFilteredSlots, selectedTrainerId]);
 
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
   const isFutureDate = selectedDate > today;
@@ -209,6 +223,18 @@ export const SimpleAttendanceTab = () => {
     return nextMonday <= today;
   })();
 
+  useEffect(() => {
+    if (!selectedSlotId) return;
+
+    const isValidSlot = timeFilteredSlots.some((slot) => {
+      if (slot.id !== selectedSlotId) return false;
+      if (!selectedTrainerId) return true;
+      return slot.trainer_id === selectedTrainerId;
+    });
+
+    if (!isValidSlot) setSelectedSlotId(null);
+  }, [selectedSlotId, selectedTrainerId, timeFilteredSlots]);
+
   const activeMembers = useMemo(() => {
     return scopedMembers.filter((member) => {
       const subscriptionStatus = member.subscription?.status;
@@ -221,22 +247,16 @@ export const SimpleAttendanceTab = () => {
         return member.activePT?.time_slot_id === selectedSlotId;
       }
 
-      // Trainer filter: include ALL members assigned to this trainer (with or without slot)
-      if (selectedTrainerId) {
-        // Check if member has activePT and if trainer matches via slot or direct assignment
-        if (!member.activePT) return false;
-        // If member has a slot assigned to this trainer, include
-        if (trainerSlotIds && member.activePT.time_slot_id && trainerSlotIds.includes(member.activePT.time_slot_id)) {
-          return true;
-        }
-        // Also include members whose PT trainer matches (even without slot)
-        // The activePT is populated from pt_subscriptions which is our source of truth
-        return !!member.activePT.trainer_name;
+      if (selectedTrainerId || timeFilter !== "all") {
+        const slotId = member.activePT?.time_slot_id;
+        if (!slotId) return false;
+        if (!filteredSlotIds.includes(slotId)) return false;
+        if (selectedTrainerId && !trainerSlotIds.includes(slotId)) return false;
       }
 
       return true;
     });
-  }, [scopedMembers, selectedSlotId, selectedTrainerId, trainerSlotIds]);
+  }, [scopedMembers, selectedSlotId, selectedTrainerId, trainerSlotIds, filteredSlotIds, timeFilter]);
 
   const { data: weekRecords = [], isLoading: loadingRecords } = useQuery({
     queryKey: ["daily-attendance-week", branchId, weekDates[0], weekDates[6], isLimitedAccess ? (assignedMemberIds ?? []).join(",") : "all"],
@@ -545,6 +565,26 @@ export const SimpleAttendanceTab = () => {
 
         {/* Filters */}
         <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide rounded-lg border border-border/50 bg-background/70 px-1 py-1">
+            {TIME_BUCKET_OPTIONS.map((option) => {
+              const active = timeFilter === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setTimeFilter(option.value)}
+                  className={cn(
+                    "shrink-0 rounded-md px-2 py-1 text-[10px] font-medium transition-all duration-200",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
           <TrainerFilterDropdown
             value={selectedTrainerId}
             onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }}
@@ -556,6 +596,19 @@ export const SimpleAttendanceTab = () => {
           />
         </div>
       </div>
+
+      {timeFilter === "custom" && (
+        <div className="hidden lg:grid gap-3 rounded-xl border border-border/50 bg-card/60 p-3 sm:grid-cols-2 lg:max-w-md animate-fade-in">
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Start time</label>
+            <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">End time</label>
+            <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 text-sm" />
+          </div>
+        </div>
+      )}
 
       {/* Filter Pills — colorful segmented filters */}
       <div className="flex items-center gap-1.5 lg:gap-2 p-1 rounded-xl bg-gradient-to-r from-muted/40 via-muted/20 to-muted/40 border border-border/40 overflow-x-auto scrollbar-hide animate-fade-in">
@@ -684,9 +737,43 @@ export const SimpleAttendanceTab = () => {
             <ChevronRightIcon className="w-4 h-4" />
           </Button>
         </div>
-        <div className="flex items-center gap-1.5 justify-start">
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide rounded-lg border border-border/50 bg-background/70 p-1">
+            {TIME_BUCKET_OPTIONS.map((option) => {
+              const active = timeFilter === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setTimeFilter(option.value)}
+                  className={cn(
+                    "shrink-0 rounded-md px-2.5 py-1 text-[10px] font-medium transition-all duration-200",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-1.5 justify-start">
           <TrainerFilterDropdown value={selectedTrainerId} onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }} compact />
           <TimeSlotFilterDropdown value={selectedSlotId} onChange={setSelectedSlotId} trainerFilter={selectedTrainerId} compact />
+        </div>
+          {timeFilter === "custom" && (
+            <div className="grid gap-2 rounded-xl border border-border/50 bg-card/60 p-3 sm:grid-cols-2 animate-fade-in">
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-muted-foreground">Start time</label>
+                <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-muted-foreground">End time</label>
+                <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 text-sm" />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
