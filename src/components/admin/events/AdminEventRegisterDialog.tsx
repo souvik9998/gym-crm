@@ -112,6 +112,32 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
     }
   }, [open, pricingOptions, isMultiSelect]);
 
+  useEffect(() => {
+    if (!open || mode !== "search") return;
+
+    const searchValue = memberSearch.trim();
+
+    if (searchValue.length < 2) {
+      setMemberResults([]);
+      setSearchDone(false);
+      setIsSearchingMembers(false);
+      if (!foundMember || memberSearch !== `${foundMember.name} • ${foundMember.phone}`) {
+        setFoundMember(null);
+      }
+      return;
+    }
+
+    if (foundMember && searchValue === `${foundMember.name} • ${foundMember.phone}`) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      handleSearch(true);
+    }, 180);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [memberSearch, mode, open]);
+
   const selectedItems = useMemo(() => {
     if (isMultiSelect) {
       return pricingOptions.filter((p: any) => selectedItemIds.has(p.id));
@@ -231,10 +257,10 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
     ].filter(Boolean).join("\n");
   };
 
-  const handleSearch = async () => {
+  const handleSearch = async (silent = false) => {
     const searchValue = memberSearch.trim();
     if (searchValue.length < 2) {
-      toast.error("Enter at least 2 characters to search");
+      if (!silent) toast.error("Enter at least 2 characters to search");
       return;
     }
 
@@ -270,7 +296,9 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
 
       setSearchDone(true);
     } catch (err: any) {
-      toast.error("Member search failed", { description: err.message });
+      if (!silent) {
+        toast.error("Member search failed", { description: err.message });
+      }
     } finally {
       setIsSearchingMembers(false);
     }
