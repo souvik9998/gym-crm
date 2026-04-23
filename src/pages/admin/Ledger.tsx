@@ -97,6 +97,18 @@ const EXPENSE_CATEGORIES = [
   { value: "misc_expense", label: "Miscellaneous Expense" },
 ];
 
+const EXPENSE_DESCRIPTION_PLACEHOLDERS: Record<string, string> = {
+  trainer_session: "e.g., Trainer session payout for morning batch",
+  trainer_percentage: "e.g., Monthly salary",
+  staff_salary: "e.g., Front desk salary for April",
+  bill_payment: "e.g., Electricity bill for January",
+  service_repair: "e.g., Treadmill repair service",
+  equipment: "e.g., Dumbbell rack purchase",
+  rent: "e.g., Gym rent for April",
+  utilities: "e.g., Water and electricity charges",
+  misc_expense: "e.g., Cleaning supplies purchase",
+};
+
 const INCOME_CATEGORIES = [
   { value: "gym_membership", label: "Gym Membership" },
   { value: "gym_renewal", label: "Gym Renewal" },
@@ -134,6 +146,9 @@ const AdminLedger = () => {
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
   const [otherStaff, setOtherStaff] = useState<Array<{ id: string; full_name: string; monthly_salary: number; phone: string | null; role: string }>>([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
+
+  const expenseDescriptionPlaceholder =
+    EXPENSE_DESCRIPTION_PLACEHOLDERS[expenseCategory] || "e.g., Enter expense description";
 
   // Confirm dialog for delete
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -890,7 +905,7 @@ const AdminLedger = () => {
                       <Input
                         value={expenseDescription}
                         onChange={(e) => setExpenseDescription(e.target.value)}
-                        placeholder={expenseCategory === "trainer_percentage" || expenseCategory === "staff_salary" ? "e.g., Monthly Salary" : "e.g., Electricity bill for January"}
+                        placeholder={expenseDescriptionPlaceholder}
                         disabled={(expenseCategory === "trainer_percentage" && selectedTrainerId !== "") || (expenseCategory === "staff_salary" && selectedStaffId !== "")}
                       />
                     </div>
