@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranch } from "@/contexts/BranchContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,6 +64,8 @@ export const AttendanceHistoryTab = () => {
   const [activeView, setActiveView] = useState("calendar");
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [exportPeriod, setExportPeriod] = useState<"1w" | "1m" | "3m">("1m");
+  const [isExporting, setIsExporting] = useState(false);
 
   const { trainers, allSlots, isLimitedAccess } = useAttendanceFilters();
   const { assignedMemberIds } = useAssignedMemberIds();
@@ -187,11 +190,78 @@ export const AttendanceHistoryTab = () => {
       weekday: isMobile ? "short" : "long", day: "numeric", month: "short",
     });
 
-  const handleExport = () => {
+  const getExportRange = () => {
+    const anchor = new Date((selectedDate || today) + "T00:00:00");
+    const end = new Date(anchor);
+    const start = new Date(anchor);
+
+    if (exportPeriod === "1w") {
+      start.setDate(start.getDate() - 6);
+    } else if (exportPeriod === "1m") {
+      start.setMonth(start.getMonth() - 1);
+      start.setDate(start.getDate() + 1);
+    } else {
+      start.setMonth(start.getMonth() - 3);
+      start.setDate(start.getDate() + 1);
+    }
+
+    return {
+      startDate: start.toISOString().split("T")[0],
+      endDate: end.toISOString().split("T")[0],
+    };
+  };
+
+  const handleExport = async () => {
     try {
-      if (monthRecords.length === 0) {
+      if (!branchId) return;
+
+      const { startDate, endDate } = getExportRange();
+      setIsExporting(true);
+
+      let from = 0;
+      const pageSize = 1000;
+      const allRecords: any[] = [];
+
+      while (true) {
+        let query = supabase
+          .from("daily_attendance")
+          .select("id, member_id, date, status, time_slot_id, marked_by_type, created_at, members(name, phone)")
+          .eq("branch_id", branchId)
+          .gte("date", startDate)
+          .lte("date", endDate)
+          .order("date", { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (assignedMemberIds !== null && assignedMemberIds.length > 0) {
+          query = query.in("member_id", assignedMemberIds);
+        } else if (assignedMemberIds !== null && assignedMemberIds.length === 0) {
+          toast.error("No attendance data", {
+            description: "There are no accessible attendance records for the selected export period.",
+          });
+          return;
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const batch = data || [];
+        allRecords.push(...batch);
+
+        if (batch.length < pageSize) break;
+        from += pageSize;
+      }
+
+      let exportRecords = allRecords;
+      if (selectedSlotId) {
+        exportRecords = exportRecords.filter((r: any) => r.time_slot_id === selectedSlotId);
+      } else if (selectedTrainerId) {
+        const trainerSlotIds = new Set(allSlots.filter((s) => s.trainer_id === selectedTrainerId).map((s) => s.id));
+        exportRecords = exportRecords.filter((r: any) => r.time_slot_id && trainerSlotIds.has(r.time_slot_id));
+      }
+
+      if (exportRecords.length === 0) {
         toast.error("No attendance data", {
-          description: "There are no attendance records available for the selected period.",
+          description: "There are no attendance records available for the selected export period.",
         });
         return;
       }
@@ -201,7 +271,7 @@ export const AttendanceHistoryTab = () => {
       );
       const trainerLabelMap = new Map(allSlots.map((slot) => [slot.id, slot.trainer_name || "-"]));
 
-      const exportData = [...monthRecords]
+      const exportData = [...exportRecords]
         .sort((a: any, b: any) => {
           if (a.date !== b.date) return a.date.localeCompare(b.date);
           const aName = a.members?.name || "";
@@ -238,17 +308,19 @@ export const AttendanceHistoryTab = () => {
 
       exportToExcel(
         exportData,
-        `attendance_history_${currentMonth.year}_${String(currentMonth.month + 1).padStart(2, "0")}`,
+        `attendance_history_${exportPeriod}_${startDate}_to_${endDate}`,
         "Attendance History"
       );
 
       toast.success("Export successful", {
-        description: `Exported ${exportData.length} attendance record(s) for the selected period.`,
+        description: `Exported ${exportData.length} attendance record(s) from ${startDate} to ${endDate}.`,
       });
     } catch (error: any) {
       toast.error("Export failed", {
         description: error?.message || "Failed to export attendance history.",
       });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -285,9 +357,19 @@ export const AttendanceHistoryTab = () => {
             <span className="px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/20 text-red-600 font-medium">{monthTotals.absent}A</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2.5 text-[10px] lg:text-xs" onClick={handleExport}>
-              <ArrowDownTrayIcon className="h-3.5 w-3.5" />
-              Export Excel
+            <Select value={exportPeriod} onValueChange={(value: "1w" | "1m" | "3m") => setExportPeriod(value)}>
+              <SelectTrigger className="h-7 w-[102px] lg:w-[120px] rounded-md text-[10px] lg:text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1w">1 Week</SelectItem>
+                <SelectItem value="1m">1 Month</SelectItem>
+                <SelectItem value="3m">3 Months</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2.5 text-[10px] lg:text-xs" onClick={handleExport} disabled={isExporting}>
+              {isExporting ? <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" /> : <ArrowDownTrayIcon className="h-3.5 w-3.5" />}
+              {isMobile ? "Export" : "Export Excel"}
             </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => refetch()}>
               <ArrowPathIcon className="w-3.5 h-3.5" />
