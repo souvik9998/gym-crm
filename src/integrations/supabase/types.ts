@@ -1742,6 +1742,8 @@ export type Database = {
           reps: string
           sets: number
           sort_order: number
+          weight_unit: string | null
+          weight_value: number | null
         }
         Insert: {
           created_at?: string
@@ -1752,6 +1754,8 @@ export type Database = {
           reps?: string
           sets?: number
           sort_order?: number
+          weight_unit?: string | null
+          weight_value?: number | null
         }
         Update: {
           created_at?: string
@@ -1762,6 +1766,8 @@ export type Database = {
           reps?: string
           sets?: number
           sort_order?: number
+          weight_unit?: string | null
+          weight_value?: number | null
         }
         Relationships: [
           {
