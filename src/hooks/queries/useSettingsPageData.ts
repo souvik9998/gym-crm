@@ -16,6 +16,13 @@ interface GymSettings {
   invoice_tax_rate: number | null;
   invoice_terms: string | null;
   invoice_show_gst: boolean | null;
+  invoice_brand_name: string | null;
+  invoice_logo_url: string | null;
+  invoice_palette: {
+    header?: string;
+    accent?: string;
+    text?: string;
+  } | null;
 }
 
 interface MonthlyPackage {
