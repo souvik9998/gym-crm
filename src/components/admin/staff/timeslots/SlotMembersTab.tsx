@@ -807,48 +807,6 @@ export const SlotMembersTab = ({
         </div>
       )}
 
-      {!selectedSlot && (
-        <Card className="border-border/60 bg-muted/20">
-          <CardContent className="grid gap-4 p-5 lg:grid-cols-[1fr_auto] lg:items-center">
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-primary/10 p-3 text-primary">
-                  <UserGroupIcon className="h-6 w-6" />
-                </div>
-                <div>
-                  <h4 className="text-base font-semibold text-foreground">Browse members by time slot</h4>
-                  <p className="text-xs text-muted-foreground">Pick a time window or specific slot to narrow the list, then select an exact slot when you want to assign or transfer.</p>
-                </div>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-3">
-                <div className="rounded-lg border border-border bg-background p-3">
-                  <p className="text-xs font-medium text-foreground">1. Filter by time</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Morning, afternoon, evening, night, or custom range.</p>
-                </div>
-                <div className="rounded-lg border border-border bg-background p-3">
-                  <p className="text-xs font-medium text-foreground">2. Review trainers</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Trainer names stay visible beside every member and slot.</p>
-                </div>
-                <div className="rounded-lg border border-border bg-background p-3">
-                  <p className="text-xs font-medium text-foreground">3. Select exact slot</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Required only for assigning, removing, or transferring members.</p>
-                </div>
-              </div>
-            </div>
-            <div className="hidden min-w-[180px] flex-col gap-2 lg:flex">
-              <div className="rounded-lg border border-border bg-background p-3">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Open slots</p>
-                <p className="mt-1 text-xl font-semibold text-foreground">{filteredSlots.filter((slot) => slot.availability === "open").length}</p>
-              </div>
-              <div className="rounded-lg border border-border bg-background p-3">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">High load</p>
-                <p className="mt-1 text-xl font-semibold text-foreground">{filteredSlots.filter((slot) => slot.availability === "high_load").length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       <Card className="border-border/60 shadow-sm">
         <CardContent className="space-y-3 p-3 lg:p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -870,7 +828,7 @@ export const SlotMembersTab = ({
                   className="h-8 w-56 pl-8 text-xs"
                 />
               </div>
-              {canAssign && (
+              {canAssign && false && (
                 <Button size="sm" className="h-8 gap-1 text-xs" onClick={handleOpenAddMembers} disabled={!selectedSlotData || isSelectedSlotFull}>
                   <PlusIcon className="h-3.5 w-3.5" /> Assign Members
                 </Button>
