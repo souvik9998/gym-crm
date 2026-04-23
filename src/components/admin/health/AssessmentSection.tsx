@@ -10,6 +10,8 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle, Info, Maximize2, Minimize2, PanelTopOpen } from "lucide-react";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import type { MemberAssessment } from "./MemberHealthTab";
 import { ASSESSMENT_SECTIONS, getAssessmentFieldMeta, getDefaultAssessmentSettings, getExerciseInputMode, isExerciseAssessmentSection, type AssessmentSettings, type CustomField, type ExerciseFieldValue, type ExerciseInputMode } from "@/components/admin/health/assessmentConfig";
 
@@ -20,7 +22,15 @@ interface AssessmentSectionProps {
   onRefresh: () => Promise<void>;
 }
 
+interface AssessorOption {
+  id: string;
+  name: string;
+  role?: string;
+}
+
 export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }: AssessmentSectionProps) => {
+  const { isAdmin } = useIsAdmin();
+  const { isStaffLoggedIn, staffUser, permissions } = useStaffAuth();
   const [showForm, setShowForm] = useState(false);
   const [isFormExpanded, setIsFormExpanded] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -28,11 +38,39 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [config, setConfig] = useState<AssessmentSettings>(getDefaultAssessmentSettings());
+  const [assessorOptions, setAssessorOptions] = useState<AssessorOption[]>([]);
+  const [loadingAssessors, setLoadingAssessors] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({ assessed_by: "" });
+  const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
 
   useEffect(() => {
     fetchConfig();
   }, [branchId]);
+
+  useEffect(() => {
+    fetchAssessors();
+  }, [branchId, isStaffLoggedIn, staffUser?.id, staffUser?.fullName, permissions?.member_access_type, isAdmin]);
+
+  useEffect(() => {
+    if (!showForm || assessorOptions.length === 0) return;
+
+    setFormData((prev) => {
+      if (prev.assessed_by && assessorOptions.some((option) => option.name === prev.assessed_by)) {
+        return prev;
+      }
+
+      if (isStaffLoggedIn && staffUser?.fullName) {
+        const selfOption = assessorOptions.find((option) => option.id === staffUser.id || option.name === staffUser.fullName);
+        if (selfOption) return { ...prev, assessed_by: selfOption.name };
+      }
+
+      if (assessorOptions.length === 1) {
+        return { ...prev, assessed_by: assessorOptions[0].name };
+      }
+
+      return prev;
+    });
+  }, [showForm, assessorOptions, isStaffLoggedIn, staffUser?.id, staffUser?.fullName]);
 
   const fetchConfig = async () => {
     try {
@@ -54,6 +92,67 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       }
     } catch (err) {
       console.error("Error fetching assessment config:", err);
+    }
+  };
+
+  const fetchAssessors = async () => {
+    if (!branchId) return;
+
+    setLoadingAssessors(true);
+    try {
+      if (isLimitedAccess && staffUser) {
+        setAssessorOptions([{ id: staffUser.id, name: staffUser.fullName, role: staffUser.role }]);
+        return;
+      }
+
+      const [{ data: branchStaffNames, error: namesError }, { data: assignments, error: assignmentsError }] = await Promise.all([
+        supabase.rpc("get_staff_names_for_branch" as any, { _branch_id: branchId }),
+        supabase
+          .from("staff_branch_assignments")
+          .select("staff_id, staff!inner(id, full_name, role, is_active)")
+          .eq("branch_id", branchId),
+      ]);
+
+      if (namesError) throw namesError;
+      if (assignmentsError) throw assignmentsError;
+
+      const roleMap = new Map<string, { id: string; role?: string }>();
+      ((assignments as any[]) || []).forEach((assignment) => {
+        const staff = assignment.staff;
+        if (staff?.id && staff?.full_name && staff?.is_active) {
+          roleMap.set(String(staff.full_name).trim().toLowerCase(), { id: staff.id, role: staff.role });
+        }
+      });
+
+      const deduped = new Map<string, AssessorOption>();
+      ((branchStaffNames as any[]) || []).forEach((item) => {
+        if (!item?.full_name || !item?.id) return;
+        const normalizedName = String(item.full_name).trim();
+        const roleInfo = roleMap.get(normalizedName.toLowerCase());
+        const optionId = roleInfo?.id || item.id;
+        if (!deduped.has(optionId)) {
+          deduped.set(optionId, {
+            id: optionId,
+            name: normalizedName,
+            role: roleInfo?.role,
+          });
+        }
+      });
+
+      if (isStaffLoggedIn && staffUser && !deduped.has(staffUser.id)) {
+        deduped.set(staffUser.id, { id: staffUser.id, name: staffUser.fullName, role: staffUser.role });
+      }
+
+      setAssessorOptions(Array.from(deduped.values()).sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (err) {
+      console.error("Error fetching assessors:", err);
+      if (isStaffLoggedIn && staffUser) {
+        setAssessorOptions([{ id: staffUser.id, name: staffUser.fullName, role: staffUser.role }]);
+      } else {
+        setAssessorOptions([]);
+      }
+    } finally {
+      setLoadingAssessors(false);
     }
   };
 
@@ -114,7 +213,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
   const handleSave = async () => {
     if (!formData.assessed_by?.trim()) {
-      toast.error("Please enter assessor name");
+      toast.error("Please select who took this assessment");
       return;
     }
 
@@ -152,6 +251,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       toast.success("Assessment saved");
       setFormData({ assessed_by: "" });
       setShowForm(false);
+      setIsFormExpanded(false);
       await onRefresh();
     } catch (err: any) {
       toast.error("Error saving assessment", { description: err.message });
@@ -398,12 +498,28 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
         <div className={expanded ? "rounded-xl border border-border/50 bg-background/95 p-3 sm:p-4" : "rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3"}>
           <Label className="text-xs font-medium text-foreground">Assessed By *</Label>
-          <Input
-            value={formData.assessed_by || ""}
-            onChange={(e) => updateField("assessed_by", e.target.value)}
-            placeholder="Trainer / Admin name"
-            className={expanded ? "mt-1.5 h-11 text-sm" : "mt-1 h-10 text-sm"}
-          />
+          <Select value={formData.assessed_by || undefined} onValueChange={(value) => updateField("assessed_by", value)} disabled={loadingAssessors || assessorOptions.length === 0}>
+            <SelectTrigger className={expanded ? "mt-1.5 h-11 text-sm" : "mt-1 h-10 text-sm"}>
+              <SelectValue placeholder={loadingAssessors ? "Loading trainers / staff..." : assessorOptions.length === 0 ? "No allowed assessor available" : "Select trainer / staff"} />
+            </SelectTrigger>
+            <SelectContent>
+              {assessorOptions.map((option) => (
+                <SelectItem key={option.id} value={option.name}>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate">{option.name}</span>
+                    {option.role && (
+                      <span className="text-[10px] capitalize text-muted-foreground">{option.role}</span>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {isLimitedAccess
+              ? "Restricted staff can only register assessments under their own name."
+              : "Only trainers and staff allowed for this branch are shown here."}
+          </p>
         </div>
 
         {enabledSections.map((section) => {
@@ -458,7 +574,10 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
           </Button>
           <Button size="sm" variant="outline" onClick={() => {
             if (expanded) setIsFormExpanded(false);
-            else setShowForm(false);
+            else {
+              setShowForm(false);
+              setFormData({ assessed_by: "" });
+            }
           }} className="rounded-lg">
             {expanded ? "Back to dialog" : "Cancel"}
           </Button>
