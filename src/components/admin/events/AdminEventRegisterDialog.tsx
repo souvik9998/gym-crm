@@ -387,7 +387,7 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
         amount_paid: effectivePaymentStatus === "success" ? amountToPay : 0,
         payment_status: effectivePaymentStatus,
         custom_field_responses: Object.keys(customResponses).length > 0 ? customResponses : null,
-      }).select("id").single();
+      }).select("*").single();
       if (error) throw error;
 
       // Insert registration items for multi-select
@@ -467,9 +467,35 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
         }
       }
 
-      return { notifyFailed, notifyAttempted: notifyMember };
+      return {
+        notifyFailed,
+        notifyAttempted: notifyMember,
+        registration: {
+          ...reg,
+          event_pricing_options: isMultiSelect
+            ? null
+            : (selectedItems[0]
+                ? { name: selectedItems[0].name, price: selectedItems[0].price }
+                : null),
+          registration_items: isMultiSelect
+            ? selectedItems.map((item: any) => ({
+                registration_id: reg.id,
+                pricing_option_id: item.id,
+                amount_paid: Number(item.price || 0),
+                event_pricing_options: { name: item.name, price: item.price },
+              }))
+            : [],
+        },
+      };
     },
     onSuccess: (result) => {
+      if (result?.registration) {
+        queryClient.setQueryData(["event-registrations", event.id], (current: any[] = []) => {
+          const exists = current.some((item: any) => item.id === result.registration.id);
+          return exists ? current : [result.registration, ...current];
+        });
+      }
+
       queryClient.invalidateQueries({ queryKey: ["event-registrations", event.id] });
       queryClient.invalidateQueries({ queryKey: ["event-reg-counts", event.id] });
       queryClient.invalidateQueries({ queryKey: ["event-detail", event.id] });
