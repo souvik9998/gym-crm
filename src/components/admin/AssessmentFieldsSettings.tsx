@@ -150,6 +150,21 @@ export const AssessmentFieldsSettings = () => {
     });
   };
 
+  const updateFieldUnit = (sectionKey: string, fieldKey: string, unit: string) => {
+    setSettings((prev) => {
+      const updated = { ...prev };
+      updated[sectionKey] = {
+        ...updated[sectionKey],
+        field_units: {
+          ...updated[sectionKey]?.field_units,
+          [fieldKey]: unit.trim(),
+        },
+      };
+      saveSettings(updated);
+      return updated;
+    });
+  };
+
   const startEditLabel = (sectionKey: string, fieldKey: string, currentLabel: string) => {
     setEditingField({ section: sectionKey, key: fieldKey });
     setEditLabel(currentLabel);
@@ -193,6 +208,7 @@ export const AssessmentFieldsSettings = () => {
         input_type: newFieldType,
         kind: isExerciseAssessmentSection(sectionKey) ? "exercise" : "standard",
         exercise_mode: isExerciseAssessmentSection(sectionKey) ? newExerciseMode : undefined,
+        unit: newFieldUnit.trim() || undefined,
       });
       updated[sectionKey] = { ...section, custom_fields: customFields, enabled: true };
       saveSettings(updated);
@@ -202,6 +218,7 @@ export const AssessmentFieldsSettings = () => {
     setNewFieldLabel("");
     setNewFieldType("text");
     setNewExerciseMode("reps");
+    setNewFieldUnit("");
     setAddingToSection(null);
   };
 
@@ -212,6 +229,21 @@ export const AssessmentFieldsSettings = () => {
       if (section.custom_fields) {
         section.custom_fields = section.custom_fields.map((cf) =>
           cf.key === fieldKey ? { ...cf, kind: "exercise", exercise_mode: mode } : cf
+        );
+        updated[sectionKey] = { ...section };
+      }
+      saveSettings(updated);
+      return updated;
+    });
+  };
+
+  const updateCustomFieldUnit = (sectionKey: string, fieldKey: string, unit: string) => {
+    setSettings((prev) => {
+      const updated = { ...prev };
+      const section = updated[sectionKey];
+      if (section.custom_fields) {
+        section.custom_fields = section.custom_fields.map((cf) =>
+          cf.key === fieldKey ? { ...cf, unit: unit.trim() || undefined } : cf
         );
         updated[sectionKey] = { ...section };
       }
