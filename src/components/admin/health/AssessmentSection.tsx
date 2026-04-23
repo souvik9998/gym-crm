@@ -10,7 +10,7 @@ import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle, Info } from "lucide-react";
 import type { MemberAssessment } from "./MemberHealthTab";
-import { ASSESSMENT_SECTIONS, getAssessmentFieldMeta, getDefaultAssessmentSettings, type AssessmentSettings } from "@/components/admin/health/assessmentConfig";
+import { ASSESSMENT_SECTIONS, getAssessmentFieldMeta, getDefaultAssessmentSettings, getExerciseInputMode, isExerciseAssessmentSection, type AssessmentSettings, type CustomField, type ExerciseFieldValue, type ExerciseInputMode } from "@/components/admin/health/assessmentConfig";
 
 interface AssessmentSectionProps {
   assessments: MemberAssessment[];
@@ -89,6 +89,19 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
+  const updateExerciseField = (key: string, patch: Partial<ExerciseFieldValue>) => {
+    const existing = (formData[key] ? JSON.parse(formData[key]) : { mode: "reps" }) as ExerciseFieldValue;
+    setFormData((prev) => ({ ...prev, [key]: JSON.stringify({ ...existing, ...patch }) }));
+  };
+
+  const getExerciseValue = (key: string, mode: ExerciseInputMode): ExerciseFieldValue => {
+    try {
+      const parsed = formData[key] ? JSON.parse(formData[key]) : null;
+      if (parsed && typeof parsed === "object") return { mode, unit: "sec", ...parsed };
+    } catch {}
+    return { mode, unit: "sec" };
+  };
+
   const handleSave = async () => {
     if (!formData.assessed_by?.trim()) {
       toast.error("Please enter assessor name");
@@ -154,7 +167,54 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
   const formatDate = (date: string) => new Date(date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
-  const renderFieldInput = (fieldKey: string, label: string) => {
+  const renderExerciseInput = (fieldKey: string, label: string, mode: ExerciseInputMode) => {
+    const value = getExerciseValue(fieldKey, mode);
+
+    return (
+      <div key={fieldKey} className="rounded-lg border border-border/50 bg-background/80 p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Label className="text-xs font-medium text-foreground">{label}</Label>
+          <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">
+            {mode === "time" ? "Time" : mode === "reps_sets" ? "Reps + sets" : "Reps"}
+          </Badge>
+        </div>
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {mode !== "time" && (
+            <div>
+              <Label className="text-[11px] text-muted-foreground">Reps</Label>
+              <Input value={value.reps || ""} onChange={(e) => updateExerciseField(fieldKey, { mode, reps: e.target.value })} placeholder="10" className="mt-1 h-10 text-sm" />
+            </div>
+          )}
+          {mode === "reps_sets" && (
+            <div>
+              <Label className="text-[11px] text-muted-foreground">Sets</Label>
+              <Input value={value.sets || ""} onChange={(e) => updateExerciseField(fieldKey, { mode, sets: e.target.value })} placeholder="3" className="mt-1 h-10 text-sm" />
+            </div>
+          )}
+          {mode === "time" && (
+            <>
+              <div>
+                <Label className="text-[11px] text-muted-foreground">Duration</Label>
+                <Input value={value.time || ""} onChange={(e) => updateExerciseField(fieldKey, { mode, time: e.target.value })} placeholder="60" className="mt-1 h-10 text-sm" />
+              </div>
+              <div>
+                <Label className="text-[11px] text-muted-foreground">Unit</Label>
+                <Select value={value.unit || "sec"} onValueChange={(unit: "sec" | "min") => updateExerciseField(fieldKey, { mode, unit })}>
+                  <SelectTrigger className="mt-1 h-10 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sec">Seconds</SelectItem>
+                    <SelectItem value="min">Minutes</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderFieldInput = (sectionKey: string, fieldKey: string, label: string, customField?: CustomField) => {
     const isCustom = fieldKey.startsWith("custom_");
     const meta = isCustom ? { inputType: getCustomFieldInputType(fieldKey) } : getAssessmentFieldMeta(fieldKey);
     const inputType = meta.inputType || "text";
@@ -162,6 +222,11 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     const helpText = !isCustom ? meta.helpText : undefined;
     const placeholder = meta.placeholder || `Enter ${label.toLowerCase()}`;
     const options = !isCustom ? meta.options : undefined;
+    const isExerciseField = isExerciseAssessmentSection(sectionKey) || customField?.kind === "exercise";
+
+    if (isExerciseField) {
+      return renderExerciseInput(fieldKey, label, getExerciseInputMode(config, sectionKey, fieldKey, customField));
+    }
 
     const fieldControl = (() => {
       if (inputType === "select" && options?.length) {
