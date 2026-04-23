@@ -565,6 +565,26 @@ export const SimpleAttendanceTab = () => {
 
         {/* Filters */}
         <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide rounded-lg border border-border/50 bg-background/70 px-1 py-1">
+            {TIME_BUCKET_OPTIONS.map((option) => {
+              const active = timeFilter === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setTimeFilter(option.value)}
+                  className={cn(
+                    "shrink-0 rounded-md px-2 py-1 text-[10px] font-medium transition-all duration-200",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
           <TrainerFilterDropdown
             value={selectedTrainerId}
             onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }}
@@ -576,6 +596,19 @@ export const SimpleAttendanceTab = () => {
           />
         </div>
       </div>
+
+      {timeFilter === "custom" && (
+        <div className="hidden lg:grid gap-3 rounded-xl border border-border/50 bg-card/60 p-3 sm:grid-cols-2 lg:max-w-md animate-fade-in">
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Start time</label>
+            <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">End time</label>
+            <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 text-sm" />
+          </div>
+        </div>
+      )}
 
       {/* Filter Pills — colorful segmented filters */}
       <div className="flex items-center gap-1.5 lg:gap-2 p-1 rounded-xl bg-gradient-to-r from-muted/40 via-muted/20 to-muted/40 border border-border/40 overflow-x-auto scrollbar-hide animate-fade-in">
@@ -704,9 +737,43 @@ export const SimpleAttendanceTab = () => {
             <ChevronRightIcon className="w-4 h-4" />
           </Button>
         </div>
-        <div className="flex items-center gap-1.5 justify-start">
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide rounded-lg border border-border/50 bg-background/70 p-1">
+            {TIME_BUCKET_OPTIONS.map((option) => {
+              const active = timeFilter === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setTimeFilter(option.value)}
+                  className={cn(
+                    "shrink-0 rounded-md px-2.5 py-1 text-[10px] font-medium transition-all duration-200",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-1.5 justify-start">
           <TrainerFilterDropdown value={selectedTrainerId} onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }} compact />
           <TimeSlotFilterDropdown value={selectedSlotId} onChange={setSelectedSlotId} trainerFilter={selectedTrainerId} compact />
+        </div>
+          {timeFilter === "custom" && (
+            <div className="grid gap-2 rounded-xl border border-border/50 bg-card/60 p-3 sm:grid-cols-2 animate-fade-in">
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-muted-foreground">Start time</label>
+                <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-muted-foreground">End time</label>
+                <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 text-sm" />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
