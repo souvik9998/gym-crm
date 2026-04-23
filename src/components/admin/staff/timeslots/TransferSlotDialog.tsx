@@ -30,7 +30,9 @@ interface TransferSlotDialogProps {
   /** The slot the member is currently in (will be excluded from the picker). */
   currentSlotId: string;
   /** Slot row id (time_slot_members.id) — used for the row update. */
-  slotMemberRowId: string;
+  slotMemberRowId?: string | null;
+  /** Optional PT subscription id for direct source-of-truth updates. */
+  ptSubscriptionId?: string | null;
   /** Member identity for messaging. */
   memberId: string;
   memberName: string;
@@ -62,6 +64,7 @@ export const TransferSlotDialog = ({
   onOpenChange,
   currentSlotId,
   slotMemberRowId,
+  ptSubscriptionId = null,
   memberId,
   memberName,
   currentPtTrainerId,
@@ -134,15 +137,20 @@ export const TransferSlotDialog = ({
 
       // 3. Current member counts per slot.
       const slotIds = slots.map((s) => s.id);
+      const today = new Date().toISOString().split("T")[0];
       const { data: counts } = await supabase
-        .from("time_slot_members")
-        .select("time_slot_id")
+        .from("pt_subscriptions")
+        .select("time_slot_id, member_id")
         .in("time_slot_id", slotIds);
 
-      const countMap = new Map<string, number>();
-      (counts || []).forEach((c: any) => {
-        countMap.set(c.time_slot_id, (countMap.get(c.time_slot_id) || 0) + 1);
-      });
+      const countMap = new Map<string, Set<string>>();
+      ((counts as any[]) || [])
+        .filter((row) => row.time_slot_id)
+        .filter((row) => row.status === "active" && row.end_date >= today)
+        .forEach((row: any) => {
+          if (!countMap.has(row.time_slot_id)) countMap.set(row.time_slot_id, new Set());
+          countMap.get(row.time_slot_id)?.add(row.member_id);
+        });
 
       setTargets(
         slots.map((s) => ({
@@ -150,7 +158,7 @@ export const TransferSlotDialog = ({
           start_time: s.start_time,
           end_time: s.end_time,
           capacity: s.capacity,
-          current_count: countMap.get(s.id) || 0,
+          current_count: countMap.get(s.id)?.size || 0,
         })),
       );
     } finally {
@@ -162,24 +170,49 @@ export const TransferSlotDialog = ({
     if (!selectedTarget) return;
     setIsTransferring(true);
     try {
-      // 1. Move row in time_slot_members.
-      const { error: tsmErr } = await supabase
-        .from("time_slot_members")
-        .update({ time_slot_id: selectedTarget })
-        .eq("id", slotMemberRowId);
+      const ptUpdate = ptSubscriptionId
+        ? supabase
+            .from("pt_subscriptions")
+            .update({ time_slot_id: selectedTarget } as any)
+            .eq("id", ptSubscriptionId)
+        : supabase
+            .from("pt_subscriptions")
+            .update({ time_slot_id: selectedTarget } as any)
+            .eq("member_id", memberId)
+            .eq("personal_trainer_id", currentPtTrainerId)
+            .eq("status", "active");
 
-      if (tsmErr) {
-        toast.error("Failed to transfer member", { description: tsmErr.message });
+      const { error: ptErr } = await ptUpdate;
+      if (ptErr) {
+        toast.error("Failed to transfer member", { description: ptErr.message });
         return;
       }
 
-      // 2. Sync the member's active PT subscription's time_slot_id.
-      await supabase
-        .from("pt_subscriptions")
-        .update({ time_slot_id: selectedTarget } as any)
+      const { data: existingSlotRow } = await supabase
+        .from("time_slot_members")
+        .select("id")
         .eq("member_id", memberId)
-        .eq("personal_trainer_id", currentPtTrainerId)
-        .eq("status", "active");
+        .eq("time_slot_id", currentSlotId)
+        .maybeSingle();
+
+      const rowIdToUpdate = slotMemberRowId || existingSlotRow?.id;
+      const rowMutation = rowIdToUpdate
+        ? supabase
+            .from("time_slot_members")
+            .update({ time_slot_id: selectedTarget })
+            .eq("id", rowIdToUpdate)
+        : supabase.from("time_slot_members").insert({
+            time_slot_id: selectedTarget,
+            member_id: memberId,
+            branch_id: branchId,
+            assigned_by: "admin",
+          } as any);
+
+      const { error: tsmErr } = await rowMutation;
+      if (tsmErr) {
+        toast.error("Transferred PT, but slot sync failed", { description: tsmErr.message });
+        return;
+      }
 
       const target = targets.find((t) => t.slot_id === selectedTarget);
       const slotLabel = target
@@ -227,8 +260,22 @@ export const TransferSlotDialog = ({
 
         <div className="px-5 py-3 space-y-2 max-h-[55vh] overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <div className="space-y-2 py-1">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between rounded-lg border border-border/50 bg-card/60 p-3 animate-pulse"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 rounded-lg bg-muted" />
+                    <div className="space-y-2">
+                      <div className="h-3 w-28 rounded bg-muted" />
+                      <div className="h-2.5 w-20 rounded bg-muted/80" />
+                    </div>
+                  </div>
+                  <div className="h-5 w-14 rounded-full bg-muted" />
+                </div>
+              ))}
             </div>
           ) : targets.length === 0 ? (
             <div className="text-center py-8">

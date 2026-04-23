@@ -100,6 +100,8 @@ export function useInvalidateQueries() {
       forceInvalidate([CACHE_KEYS.TRAINERS]),
       forceInvalidate(["staff-page-data"]),
       forceInvalidate(["time-slot-members"]),
+      forceInvalidate(["slot-members-panel-slots"]),
+      forceInvalidate(["slot-members-panel-members"]),
       forceInvalidate(["trainer-filter-list"]),
       // Trainer/Time-slot filter resolvers in MembersTable & friends.
       // These read pt_subscriptions.time_slot_id directly and must refresh
