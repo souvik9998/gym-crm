@@ -34,6 +34,14 @@ interface InvoiceData {
   transaction_id: string | null;
   pdf_url: string | null;
   footer_message: string | null;
+  invoice_terms: string | null;
+  invoice_brand_name: string | null;
+  invoice_logo_url: string | null;
+  invoice_palette: {
+    header?: string;
+    accent?: string;
+    text?: string;
+  } | null;
   created_at: string;
   member_id: string | null;
   payment_id: string | null;
@@ -186,6 +194,13 @@ export default function Invoice() {
     return modeMap[mode] || mode;
   };
 
+  const palette = {
+    header: invoice.invoice_palette?.header || "#166534",
+    accent: invoice.invoice_palette?.accent || "#dcfce7",
+    text: invoice.invoice_palette?.text || "#052e16",
+  };
+  const brandName = invoice.invoice_brand_name || invoice.gym_name;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-muted/30 flex items-center justify-center">
@@ -245,11 +260,16 @@ export default function Invoice() {
       <div className="max-w-3xl mx-auto px-4 py-6 pb-24">
         <Card className="overflow-hidden">
           {/* Header */}
-          <div className="bg-primary p-6 sm:p-8 text-primary-foreground">
+          <div className="p-6 sm:p-8" style={{ backgroundColor: palette.header, color: "white" }}>
             <div className="flex flex-col sm:flex-row justify-between gap-4">
               <div className="min-w-0">
+                {invoice.invoice_logo_url && (
+                  <div className="mb-3 flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-white/10 p-1">
+                    <img src={invoice.invoice_logo_url} alt={`${brandName} logo`} className="h-full w-full object-contain" />
+                  </div>
+                )}
                 <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-                  {invoice.gym_name}
+                  {brandName}
                 </h1>
                 {invoice.gym_address && (
                   <p className="text-sm mt-1 opacity-80">{invoice.gym_address}</p>
@@ -273,7 +293,7 @@ export default function Invoice() {
           <div className="p-6 sm:p-8 space-y-6">
             {/* Payment Status Badge */}
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 bg-success/10 text-success px-3 py-1.5 rounded-full text-xs font-semibold">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold" style={{ backgroundColor: palette.accent, color: palette.text }}>
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 PAID
               </div>
@@ -432,6 +452,16 @@ export default function Invoice() {
                   <p className="text-sm text-muted-foreground italic">
                     "{invoice.footer_message}"
                   </p>
+                </div>
+              </>
+            )}
+
+            {invoice.invoice_terms && (
+              <>
+                <Separator />
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Terms & Conditions</p>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{invoice.invoice_terms}</p>
                 </div>
               </>
             )}
