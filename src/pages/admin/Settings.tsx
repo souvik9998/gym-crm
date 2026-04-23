@@ -2011,6 +2011,77 @@ const AdminSettings = () => {
                   </CardHeader>
                   <CardContent className="space-y-4 lg:space-y-5 p-4 lg:p-6 pt-0 lg:pt-0">
                     <div className="space-y-1.5 lg:space-y-2">
+                      <Label htmlFor="invoice-brand-name" className="text-xs lg:text-sm font-medium">Invoice Brand Name</Label>
+                      <Input
+                        id="invoice-brand-name"
+                        value={invoiceBrandName}
+                        onChange={(e) => setInvoiceBrandName(e.target.value)}
+                        placeholder="GymKloud Fitness"
+                        className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs lg:text-sm font-medium">Invoice Logo</Label>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-muted/30">
+                          {invoiceLogoUrl ? (
+                            <img src={invoiceLogoUrl} alt="Invoice logo preview" className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">No logo</span>
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <Input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (file.size > 2 * 1024 * 1024) {
+                                toast.error("Logo must be under 2MB");
+                                return;
+                              }
+                              setInvoiceLogoFile(file);
+                              setInvoiceLogoUrl(URL.createObjectURL(file));
+                            }}
+                            className="h-10 rounded-lg border-border/50 file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-xs"
+                          />
+                          <p className="text-[10px] text-muted-foreground">PNG, JPG, SVG, or WebP up to 2MB.</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs lg:text-sm font-medium">Invoice Color Palette</Label>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {INVOICE_PALETTES.map((palette) => {
+                          const selected = invoicePalette.id === palette.id;
+                          return (
+                            <button
+                              key={palette.id}
+                              type="button"
+                              onClick={() => setInvoicePalette(palette)}
+                              className={cn(
+                                "rounded-xl border p-3 text-left transition-all",
+                                selected ? "border-primary bg-primary/5 shadow-sm" : "border-border/60 bg-background hover:border-primary/40"
+                              )}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-medium text-foreground">{palette.label}</p>
+                                  <p className="text-[11px] text-muted-foreground">Used on invoice header and highlights</p>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="h-5 w-5 rounded-full border border-border/40" style={{ backgroundColor: palette.header }} />
+                                  <span className="h-5 w-5 rounded-full border border-border/40" style={{ backgroundColor: palette.accent }} />
+                                  <span className="h-5 w-5 rounded-full border border-border/40" style={{ backgroundColor: palette.text }} />
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 lg:space-y-2">
                       <Label htmlFor="invoice-prefix" className="text-xs lg:text-sm font-medium">Invoice Prefix</Label>
                       <Input
                         id="invoice-prefix"
@@ -2049,6 +2120,11 @@ const AdminSettings = () => {
                         className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
                         onClick={handleSaveInvoice}
                         disabled={isSavingInvoice || (
+                          invoiceBrandName === (settings?.invoice_brand_name || settings?.gym_name || currentBranch?.name || tenantInfo?.name || "") &&
+                          invoiceLogoUrl === (settings?.invoice_logo_url || currentBranch?.logo_url || null) &&
+                          invoicePalette.header === (settings?.invoice_palette?.header || INVOICE_PALETTES[0].header) &&
+                          invoicePalette.accent === (settings?.invoice_palette?.accent || INVOICE_PALETTES[0].accent) &&
+                          invoicePalette.text === (settings?.invoice_palette?.text || INVOICE_PALETTES[0].text) &&
                           invoicePrefix === (settings?.invoice_prefix || "INV") &&
                           invoiceFooter === (settings?.invoice_footer_message || "Thank you for choosing our gym!") &&
                           invoiceTerms === (settings?.invoice_terms || "")
