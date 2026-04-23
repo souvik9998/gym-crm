@@ -86,7 +86,21 @@ interface GymSettings {
   invoice_tax_rate: number | null;
   invoice_terms: string | null;
   invoice_show_gst: boolean | null;
+  invoice_brand_name: string | null;
+  invoice_logo_url: string | null;
+  invoice_palette: {
+    header?: string;
+    accent?: string;
+    text?: string;
+  } | null;
 }
+
+const INVOICE_PALETTES = [
+  { id: "emerald", label: "Emerald", header: "#166534", accent: "#dcfce7", text: "#052e16" },
+  { id: "blue", label: "Ocean", header: "#1d4ed8", accent: "#dbeafe", text: "#172554" },
+  { id: "amber", label: "Amber", header: "#b45309", accent: "#fef3c7", text: "#78350f" },
+  { id: "rose", label: "Rose", header: "#be123c", accent: "#ffe4e6", text: "#881337" },
+] as const;
 
 /** Skeleton for Packages tab */
 const SettingsPackagesSkeleton = memo(() => (
@@ -292,6 +306,11 @@ const AdminSettings = () => {
   const [invoiceTaxRate, setInvoiceTaxRate] = useState("0");
   const [invoiceTerms, setInvoiceTerms] = useState("");
   const [invoiceShowGst, setInvoiceShowGst] = useState(true);
+  const [invoiceBrandName, setInvoiceBrandName] = useState("");
+  const [invoiceLogoUrl, setInvoiceLogoUrl] = useState<string | null>(null);
+  const [invoiceLogoFile, setInvoiceLogoFile] = useState<File | null>(null);
+  const [invoicePalette, setInvoicePalette] = useState<(typeof INVOICE_PALETTES)[number]>(INVOICE_PALETTES[0]);
+  const [isUploadingInvoiceLogo, setIsUploadingInvoiceLogo] = useState(false);
 
   // Monthly Packages form-only state
   const [newMonthlyPackage, setNewMonthlyPackage] = useState({ months: "", price: "", joining_fee: "" });
@@ -355,6 +374,15 @@ const AdminSettings = () => {
     setInvoiceTaxRate(String(fetchedSettings.invoice_tax_rate || 0));
     setInvoiceTerms(fetchedSettings.invoice_terms || "");
     setInvoiceShowGst(fetchedSettings.invoice_show_gst !== false);
+    setInvoiceBrandName(fetchedSettings.invoice_brand_name || fetchedSettings.gym_name || currentBranch?.name || tenantInfo?.name || "");
+    setInvoiceLogoUrl(fetchedSettings.invoice_logo_url || currentBranch?.logo_url || null);
+    const matchedPalette = INVOICE_PALETTES.find((palette) =>
+      palette.header === fetchedSettings.invoice_palette?.header &&
+      palette.accent === fetchedSettings.invoice_palette?.accent &&
+      palette.text === fetchedSettings.invoice_palette?.text
+    );
+    setInvoicePalette(matchedPalette || INVOICE_PALETTES[0]);
+    setInvoiceLogoFile(null);
   }, [fetchedSettings, currentBranch, tenantInfo]);
 
 
@@ -521,12 +549,44 @@ const AdminSettings = () => {
     if (!settings?.id || !currentBranch?.id) return;
     setIsSavingInvoice(true);
 
+    let nextInvoiceLogoUrl = invoiceLogoUrl;
+
+    if (invoiceLogoFile) {
+      setIsUploadingInvoiceLogo(true);
+      try {
+        const ext = invoiceLogoFile.name.split(".").pop() || "png";
+        const path = `${currentBranch.id}/invoice-logo.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("branch-logos")
+          .upload(path, invoiceLogoFile, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage.from("branch-logos").getPublicUrl(path);
+        nextInvoiceLogoUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      } catch (error: any) {
+        setIsSavingInvoice(false);
+        setIsUploadingInvoiceLogo(false);
+        toast.error("Error", { description: error.message || "Failed to upload invoice logo" });
+        return;
+      } finally {
+        setIsUploadingInvoiceLogo(false);
+      }
+    }
+
     const { error } = await supabase
       .from("gym_settings")
       .update({
         invoice_prefix: invoicePrefix || "INV",
         invoice_footer_message: invoiceFooter || null,
         invoice_terms: invoiceTerms || null,
+        invoice_brand_name: invoiceBrandName || gymName || currentBranch.name,
+        invoice_logo_url: nextInvoiceLogoUrl,
+        invoice_palette: {
+          header: invoicePalette.header,
+          accent: invoicePalette.accent,
+          text: invoicePalette.text,
+        },
       })
       .eq("id", settings.id)
       .eq("branch_id", currentBranch.id);
@@ -540,10 +600,31 @@ const AdminSettings = () => {
         description: `Updated invoice settings for ${currentBranch?.name || "branch"}`,
         entityType: "gym_settings", entityId: settings.id,
         entityName: currentBranch?.name || "Gym Settings",
-        newValue: { invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_terms: invoiceTerms },
+        newValue: {
+          invoice_prefix: invoicePrefix,
+          invoice_footer_message: invoiceFooter,
+          invoice_terms: invoiceTerms,
+          invoice_brand_name: invoiceBrandName,
+          invoice_logo_url: nextInvoiceLogoUrl,
+          invoice_palette: invoicePalette,
+        },
         branchId: currentBranch?.id,
       });
-      updateSettingsCache(c => ({ ...c, settings: c.settings ? { ...c.settings, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_terms: invoiceTerms } : c.settings }));
+      setInvoiceLogoUrl(nextInvoiceLogoUrl);
+      setInvoiceLogoFile(null);
+      updateSettingsCache(c => ({ ...c, settings: c.settings ? {
+        ...c.settings,
+        invoice_prefix: invoicePrefix,
+        invoice_footer_message: invoiceFooter,
+        invoice_terms: invoiceTerms,
+        invoice_brand_name: invoiceBrandName || gymName || currentBranch.name,
+        invoice_logo_url: nextInvoiceLogoUrl,
+        invoice_palette: {
+          header: invoicePalette.header,
+          accent: invoicePalette.accent,
+          text: invoicePalette.text,
+        },
+      } : c.settings }));
       toast.success("Invoice settings saved");
       backgroundInvalidate();
     }
@@ -1930,6 +2011,77 @@ const AdminSettings = () => {
                   </CardHeader>
                   <CardContent className="space-y-4 lg:space-y-5 p-4 lg:p-6 pt-0 lg:pt-0">
                     <div className="space-y-1.5 lg:space-y-2">
+                      <Label htmlFor="invoice-brand-name" className="text-xs lg:text-sm font-medium">Invoice Brand Name</Label>
+                      <Input
+                        id="invoice-brand-name"
+                        value={invoiceBrandName}
+                        onChange={(e) => setInvoiceBrandName(e.target.value)}
+                        placeholder="GymKloud Fitness"
+                        className="h-10 lg:h-11 rounded-lg border-border/50 focus:border-primary/40 transition-colors"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs lg:text-sm font-medium">Invoice Logo</Label>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-muted/30">
+                          {invoiceLogoUrl ? (
+                            <img src={invoiceLogoUrl} alt="Invoice logo preview" className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">No logo</span>
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <Input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (file.size > 2 * 1024 * 1024) {
+                                toast.error("Logo must be under 2MB");
+                                return;
+                              }
+                              setInvoiceLogoFile(file);
+                              setInvoiceLogoUrl(URL.createObjectURL(file));
+                            }}
+                            className="h-10 rounded-lg border-border/50 file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-xs"
+                          />
+                          <p className="text-[10px] text-muted-foreground">PNG, JPG, SVG, or WebP up to 2MB.</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs lg:text-sm font-medium">Invoice Color Palette</Label>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {INVOICE_PALETTES.map((palette) => {
+                          const selected = invoicePalette.id === palette.id;
+                          return (
+                            <button
+                              key={palette.id}
+                              type="button"
+                              onClick={() => setInvoicePalette(palette)}
+                              className={cn(
+                                "rounded-xl border p-3 text-left transition-all",
+                                selected ? "border-primary bg-primary/5 shadow-sm" : "border-border/60 bg-background hover:border-primary/40"
+                              )}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-medium text-foreground">{palette.label}</p>
+                                  <p className="text-[11px] text-muted-foreground">Used on invoice header and highlights</p>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="h-5 w-5 rounded-full border border-border/40" style={{ backgroundColor: palette.header }} />
+                                  <span className="h-5 w-5 rounded-full border border-border/40" style={{ backgroundColor: palette.accent }} />
+                                  <span className="h-5 w-5 rounded-full border border-border/40" style={{ backgroundColor: palette.text }} />
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 lg:space-y-2">
                       <Label htmlFor="invoice-prefix" className="text-xs lg:text-sm font-medium">Invoice Prefix</Label>
                       <Input
                         id="invoice-prefix"
@@ -1968,6 +2120,11 @@ const AdminSettings = () => {
                         className="w-full h-10 lg:h-11 text-sm lg:text-base rounded-xl active:scale-[0.98] transition-all duration-200 shadow-sm"
                         onClick={handleSaveInvoice}
                         disabled={isSavingInvoice || (
+                          invoiceBrandName === (settings?.invoice_brand_name || settings?.gym_name || currentBranch?.name || tenantInfo?.name || "") &&
+                          invoiceLogoUrl === (settings?.invoice_logo_url || currentBranch?.logo_url || null) &&
+                          invoicePalette.header === (settings?.invoice_palette?.header || INVOICE_PALETTES[0].header) &&
+                          invoicePalette.accent === (settings?.invoice_palette?.accent || INVOICE_PALETTES[0].accent) &&
+                          invoicePalette.text === (settings?.invoice_palette?.text || INVOICE_PALETTES[0].text) &&
                           invoicePrefix === (settings?.invoice_prefix || "INV") &&
                           invoiceFooter === (settings?.invoice_footer_message || "Thank you for choosing our gym!") &&
                           invoiceTerms === (settings?.invoice_terms || "")

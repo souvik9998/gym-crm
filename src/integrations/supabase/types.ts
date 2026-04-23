@@ -1249,7 +1249,10 @@ export type Database = {
           gym_name: string | null
           gym_phone: string | null
           id: string
+          invoice_brand_name: string | null
           invoice_footer_message: string | null
+          invoice_logo_url: string | null
+          invoice_palette: Json
           invoice_prefix: string
           invoice_show_gst: boolean
           invoice_tax_rate: number
@@ -1271,7 +1274,10 @@ export type Database = {
           gym_name?: string | null
           gym_phone?: string | null
           id?: string
+          invoice_brand_name?: string | null
           invoice_footer_message?: string | null
+          invoice_logo_url?: string | null
+          invoice_palette?: Json
           invoice_prefix?: string
           invoice_show_gst?: boolean
           invoice_tax_rate?: number
@@ -1293,7 +1299,10 @@ export type Database = {
           gym_name?: string | null
           gym_phone?: string | null
           id?: string
+          invoice_brand_name?: string | null
           invoice_footer_message?: string | null
+          invoice_logo_url?: string | null
+          invoice_palette?: Json
           invoice_prefix?: string
           invoice_show_gst?: boolean
           invoice_tax_rate?: number
@@ -1335,7 +1344,10 @@ export type Database = {
           gym_name: string
           gym_phone: string | null
           id: string
+          invoice_brand_name: string | null
+          invoice_logo_url: string | null
           invoice_number: string
+          invoice_palette: Json
           joining_fee: number
           member_id: string | null
           package_name: string | null
@@ -1368,7 +1380,10 @@ export type Database = {
           gym_name: string
           gym_phone?: string | null
           id?: string
+          invoice_brand_name?: string | null
+          invoice_logo_url?: string | null
           invoice_number: string
+          invoice_palette?: Json
           joining_fee?: number
           member_id?: string | null
           package_name?: string | null
@@ -1401,7 +1416,10 @@ export type Database = {
           gym_name?: string
           gym_phone?: string | null
           id?: string
+          invoice_brand_name?: string | null
+          invoice_logo_url?: string | null
           invoice_number?: string
+          invoice_palette?: Json
           joining_fee?: number
           member_id?: string | null
           package_name?: string | null
