@@ -30,13 +30,26 @@ export interface CustomField {
   label: string;
   enabled: boolean;
   input_type: "text" | "number" | "textarea" | "select";
+  kind?: "standard" | "exercise";
+  exercise_mode?: ExerciseInputMode;
   options?: string[];
+}
+
+export type ExerciseInputMode = "reps" | "time" | "reps_sets";
+
+export interface ExerciseFieldValue {
+  mode: ExerciseInputMode;
+  reps?: string;
+  sets?: string;
+  time?: string;
+  unit?: "sec" | "min";
 }
 
 export type AssessmentSettings = Record<string, {
   enabled: boolean;
   fields?: Record<string, boolean>;
   field_labels?: Record<string, string>;
+  field_modes?: Record<string, ExerciseInputMode>;
   custom_fields?: CustomField[];
 }>;
 
@@ -207,9 +220,13 @@ export const getDefaultAssessmentSettings = (): AssessmentSettings => {
     if (section.fields) {
       entry.fields = {};
       entry.field_labels = {};
+      entry.field_modes = {};
       section.fields.forEach((field) => {
         entry.fields![field.key] = true;
         entry.field_labels![field.key] = field.label;
+        if (section.key === "muscle_strength") {
+          entry.field_modes![field.key] = field.key === "plank" ? "time" : "reps";
+        }
       });
     }
     entry.custom_fields = [];
@@ -221,4 +238,16 @@ export const getDefaultAssessmentSettings = (): AssessmentSettings => {
 
 export const getAssessmentFieldMeta = (fieldKey: string): FieldMeta => {
   return ASSESSMENT_FIELD_META[fieldKey] || { inputType: "text" };
+};
+
+export const isExerciseAssessmentSection = (sectionKey: string) => sectionKey === "muscle_strength";
+
+export const getExerciseInputMode = (
+  settings: AssessmentSettings,
+  sectionKey: string,
+  fieldKey: string,
+  customField?: CustomField,
+): ExerciseInputMode => {
+  if (customField?.exercise_mode) return customField.exercise_mode;
+  return settings[sectionKey]?.field_modes?.[fieldKey] || (fieldKey === "plank" ? "time" : "reps");
 };

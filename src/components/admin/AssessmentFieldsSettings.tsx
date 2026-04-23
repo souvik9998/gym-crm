@@ -9,10 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/sonner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, Brain, Eye, EyeOff, Plus, Pencil, Trash2, Check, X, Settings2 } from "lucide-react";
+import { ChevronDown, Brain, Eye, EyeOff, Plus, Pencil, Trash2, Check, X, Settings2, Repeat, TimerReset, Layers3 } from "lucide-react";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { cn } from "@/lib/utils";
-import { ASSESSMENT_SECTIONS, getAssessmentFieldMeta, getDefaultAssessmentSettings, type AssessmentSettings, type CustomField } from "@/components/admin/health/assessmentConfig";
+import { ASSESSMENT_SECTIONS, getAssessmentFieldMeta, getDefaultAssessmentSettings, getExerciseInputMode, isExerciseAssessmentSection, type AssessmentSettings, type CustomField, type ExerciseInputMode } from "@/components/admin/health/assessmentConfig";
 
 export const AssessmentFieldsSettings = () => {
   const { currentBranch } = useBranch();
@@ -24,6 +24,7 @@ export const AssessmentFieldsSettings = () => {
   const [addingToSection, setAddingToSection] = useState<string | null>(null);
   const [newFieldLabel, setNewFieldLabel] = useState("");
   const [newFieldType, setNewFieldType] = useState<"text" | "number" | "textarea">("text");
+  const [newExerciseMode, setNewExerciseMode] = useState<ExerciseInputMode>("reps");
 
   useEffect(() => {
     if (currentBranch?.id) {
@@ -133,6 +134,21 @@ export const AssessmentFieldsSettings = () => {
     });
   };
 
+  const updateExerciseMode = (sectionKey: string, fieldKey: string, mode: ExerciseInputMode) => {
+    setSettings((prev) => {
+      const updated = { ...prev };
+      updated[sectionKey] = {
+        ...updated[sectionKey],
+        field_modes: {
+          ...updated[sectionKey]?.field_modes,
+          [fieldKey]: mode,
+        },
+      };
+      saveSettings(updated);
+      return updated;
+    });
+  };
+
   const startEditLabel = (sectionKey: string, fieldKey: string, currentLabel: string) => {
     setEditingField({ section: sectionKey, key: fieldKey });
     setEditLabel(currentLabel);
@@ -174,6 +190,8 @@ export const AssessmentFieldsSettings = () => {
         label: newFieldLabel.trim(),
         enabled: true,
         input_type: newFieldType,
+        kind: isExerciseAssessmentSection(sectionKey) ? "exercise" : "standard",
+        exercise_mode: isExerciseAssessmentSection(sectionKey) ? newExerciseMode : undefined,
       });
       updated[sectionKey] = { ...section, custom_fields: customFields, enabled: true };
       saveSettings(updated);
@@ -182,8 +200,37 @@ export const AssessmentFieldsSettings = () => {
 
     setNewFieldLabel("");
     setNewFieldType("text");
+    setNewExerciseMode("reps");
     setAddingToSection(null);
   };
+
+  const updateCustomExerciseMode = (sectionKey: string, fieldKey: string, mode: ExerciseInputMode) => {
+    setSettings((prev) => {
+      const updated = { ...prev };
+      const section = updated[sectionKey];
+      if (section.custom_fields) {
+        section.custom_fields = section.custom_fields.map((cf) =>
+          cf.key === fieldKey ? { ...cf, kind: "exercise", exercise_mode: mode } : cf
+        );
+        updated[sectionKey] = { ...section };
+      }
+      saveSettings(updated);
+      return updated;
+    });
+  };
+
+  const renderExerciseModeSelect = (value: ExerciseInputMode, onChange: (mode: ExerciseInputMode) => void) => (
+    <Select value={value} onValueChange={(mode: ExerciseInputMode) => onChange(mode)}>
+      <SelectTrigger className="h-8 w-[138px] text-[11px]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="reps">Reps only</SelectItem>
+        <SelectItem value="reps_sets">Reps + sets</SelectItem>
+        <SelectItem value="time">Time based</SelectItem>
+      </SelectContent>
+    </Select>
+  );
 
   const toggleCustomField = (sectionKey: string, fieldKey: string, enabled: boolean) => {
     setSettings((prev) => {
@@ -342,7 +389,9 @@ export const AssessmentFieldsSettings = () => {
                       const fieldEnabled = sectionSettings.fields?.[field.key] ?? true;
                       const displayLabel = getFieldLabel(section.key, field.key, field.label);
                       const isEditing = editingField?.section === section.key && editingField?.key === field.key;
-                      const meta = getAssessmentFieldMeta(field.key);
+                       const meta = getAssessmentFieldMeta(field.key);
+                       const isExerciseField = isExerciseAssessmentSection(section.key);
+                       const exerciseMode = getExerciseInputMode(settings, section.key, field.key);
 
                       return (
                         <div
@@ -380,9 +429,18 @@ export const AssessmentFieldsSettings = () => {
                                     <Badge variant="outline" className="h-5 rounded-md px-1.5 text-[10px]">{meta.unit}</Badge>
                                   )}
                                 </div>
-                                <p className="mt-1 text-[11px] text-muted-foreground">
+                                 <p className="mt-1 text-[11px] text-muted-foreground">
                                   {meta.helpText || `Visible in ${section.label.toLowerCase()} assessments.`}
                                 </p>
+                                 {isExerciseField && (
+                                   <div className="mt-2 flex flex-wrap items-center gap-2">
+                                     <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">
+                                       {exerciseMode === "time" ? <TimerReset className="mr-1 h-3 w-3" /> : exerciseMode === "reps_sets" ? <Layers3 className="mr-1 h-3 w-3" /> : <Repeat className="mr-1 h-3 w-3" />}
+                                       {exerciseMode === "time" ? "Time" : exerciseMode === "reps_sets" ? "Reps + sets" : "Reps"}
+                                     </Badge>
+                                     {renderExerciseModeSelect(exerciseMode, (mode) => updateExerciseMode(section.key, field.key, mode))}
+                                   </div>
+                                 )}
                               </div>
                             )}
 
@@ -404,7 +462,9 @@ export const AssessmentFieldsSettings = () => {
 
                     {sectionSettings.custom_fields?.map((cf) => {
                       const isEditing = editingField?.section === section.key && editingField?.key === cf.key;
-                      return (
+                       const isExerciseField = isExerciseAssessmentSection(section.key) || cf.kind === "exercise";
+                       const exerciseMode = cf.exercise_mode || "reps";
+                       return (
                         <div
                           key={cf.key}
                           className={cn(
@@ -439,7 +499,16 @@ export const AssessmentFieldsSettings = () => {
                                   <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">Custom</Badge>
                                   <Badge variant="outline" className="h-5 rounded-md px-1.5 text-[10px] capitalize">{cf.input_type}</Badge>
                                 </div>
-                                <p className="mt-1 text-[11px] text-muted-foreground">Custom question added by admin for this section.</p>
+                                 <p className="mt-1 text-[11px] text-muted-foreground">Custom question added by admin for this section.</p>
+                                 {isExerciseField && (
+                                   <div className="mt-2 flex flex-wrap items-center gap-2">
+                                     <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">
+                                       {exerciseMode === "time" ? <TimerReset className="mr-1 h-3 w-3" /> : exerciseMode === "reps_sets" ? <Layers3 className="mr-1 h-3 w-3" /> : <Repeat className="mr-1 h-3 w-3" />}
+                                       {exerciseMode === "time" ? "Time" : exerciseMode === "reps_sets" ? "Reps + sets" : "Reps"}
+                                     </Badge>
+                                     {renderExerciseModeSelect(exerciseMode, (mode) => updateCustomExerciseMode(section.key, cf.key, mode))}
+                                   </div>
+                                 )}
                               </div>
                             )}
 
@@ -467,7 +536,7 @@ export const AssessmentFieldsSettings = () => {
 
                     {addingToSection === section.key ? (
                       <div className="rounded-lg border border-dashed border-border/60 bg-muted/10 p-3">
-                        <div className="grid gap-2 md:grid-cols-[1fr_120px_auto_auto] md:items-center">
+                         <div className="grid gap-2 md:grid-cols-[1fr_120px_auto_auto_auto] md:items-center">
                           <Input
                             value={newFieldLabel}
                             onChange={(e) => setNewFieldLabel(e.target.value)}
@@ -489,6 +558,7 @@ export const AssessmentFieldsSettings = () => {
                               <SelectItem value="textarea">Long Text</SelectItem>
                             </SelectContent>
                           </Select>
+                          {isExerciseAssessmentSection(section.key) && renderExerciseModeSelect(newExerciseMode, setNewExerciseMode)}
                           <button onClick={() => addCustomField(section.key)} className="rounded bg-success/10 p-2 text-success transition-colors hover:bg-success/20">
                             <Check className="h-4 w-4" />
                           </button>
@@ -496,7 +566,7 @@ export const AssessmentFieldsSettings = () => {
                             <X className="h-4 w-4" />
                           </button>
                         </div>
-                        <p className="mt-2 text-[11px] text-muted-foreground">Use custom fields for branch-specific questions that are not part of the default assessment template.</p>
+                         <p className="mt-2 text-[11px] text-muted-foreground">Use custom fields for branch-specific questions that are not part of the default assessment template.</p>
                       </div>
                     ) : (
                       <button
