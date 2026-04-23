@@ -24,7 +24,7 @@ import {
   ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
+import { useAttendanceFilters, formatSlotTime } from "@/hooks/queries/useAttendanceFilters";
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 
