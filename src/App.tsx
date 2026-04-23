@@ -11,6 +11,7 @@ import { PageLoader } from "@/components/ui/skeleton-loaders";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { AdminLayoutRoute } from "@/components/admin/AdminLayoutRoute";
 import { queryClient } from "@/lib/queryClient";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import Index from "./pages/Index";
 import Register from "./pages/Register";
 import Renew from "./pages/Renew";
@@ -21,34 +22,34 @@ import AdminLogin from "./pages/admin/Login";
 import ResetPassword from "./pages/admin/ResetPassword";
 import CheckIn from "./pages/CheckIn";
 import NotFound from "./pages/NotFound";
-const InvoicePage = lazy(() => import("./pages/Invoice"));
+const InvoicePage = lazyWithRetry(() => import("./pages/Invoice"));
 
 // Lazy load admin pages for better initial load time
-const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
-const StaffDashboard = lazy(() => import("./pages/admin/StaffDashboard"));
-const StaffTimeSlots = lazy(() => import("./pages/admin/StaffTimeSlots"));
-const AdminQRCode = lazy(() => import("./pages/admin/QRCode"));
-const AdminSettings = lazy(() => import("./pages/admin/Settings"));
-const AdminAnalytics = lazy(() => import("./pages/admin/Analytics"));
-const BranchAnalytics = lazy(() => import("./pages/admin/BranchAnalytics"));
-const AdminLedger = lazy(() => import("./pages/admin/Ledger"));
-const Logs = lazy(() => import("./pages/admin/Logs"));
-const StaffManagement = lazy(() => import("./pages/admin/StaffManagement"));
-const TrainersPage = lazy(() => import("./pages/admin/Trainers"));
-const Attendance = lazy(() => import("./pages/admin/Attendance"));
-const Events = lazy(() => import("./pages/admin/Events"));
-const EventDetail = lazy(() => import("./pages/admin/EventDetail"));
-const EventRegistration = lazy(() => import("./pages/EventRegistration"));
+const AdminDashboard = lazyWithRetry(() => import("./pages/admin/Dashboard"));
+const StaffDashboard = lazyWithRetry(() => import("./pages/admin/StaffDashboard"));
+const StaffTimeSlots = lazyWithRetry(() => import("./pages/admin/StaffTimeSlots"));
+const AdminQRCode = lazyWithRetry(() => import("./pages/admin/QRCode"));
+const AdminSettings = lazyWithRetry(() => import("./pages/admin/Settings"));
+const AdminAnalytics = lazyWithRetry(() => import("./pages/admin/Analytics"));
+const BranchAnalytics = lazyWithRetry(() => import("./pages/admin/BranchAnalytics"));
+const AdminLedger = lazyWithRetry(() => import("./pages/admin/Ledger"));
+const Logs = lazyWithRetry(() => import("./pages/admin/Logs"));
+const StaffManagement = lazyWithRetry(() => import("./pages/admin/StaffManagement"));
+const TrainersPage = lazyWithRetry(() => import("./pages/admin/Trainers"));
+const Attendance = lazyWithRetry(() => import("./pages/admin/Attendance"));
+const Events = lazyWithRetry(() => import("./pages/admin/Events"));
+const EventDetail = lazyWithRetry(() => import("./pages/admin/EventDetail"));
+const EventRegistration = lazyWithRetry(() => import("./pages/EventRegistration"));
 
 // Lazy load Super Admin pages
-const SuperAdminDashboard = lazy(() => import("./pages/superadmin/Dashboard"));
-const TenantList = lazy(() => import("./pages/superadmin/TenantList"));
-const TenantDetail = lazy(() => import("./pages/superadmin/TenantDetail"));
-const CreateTenant = lazy(() => import("./pages/superadmin/CreateTenant"));
-const AuditLogs = lazy(() => import("./pages/superadmin/AuditLogs"));
-const SuperAdminUsers = lazy(() => import("./pages/superadmin/Users"));
-const SuperAdminAnalytics = lazy(() => import("./pages/superadmin/Analytics"));
-const SuperAdminSettings = lazy(() => import("./pages/superadmin/Settings"));
+const SuperAdminDashboard = lazyWithRetry(() => import("./pages/superadmin/Dashboard"));
+const TenantList = lazyWithRetry(() => import("./pages/superadmin/TenantList"));
+const TenantDetail = lazyWithRetry(() => import("./pages/superadmin/TenantDetail"));
+const CreateTenant = lazyWithRetry(() => import("./pages/superadmin/CreateTenant"));
+const AuditLogs = lazyWithRetry(() => import("./pages/superadmin/AuditLogs"));
+const SuperAdminUsers = lazyWithRetry(() => import("./pages/superadmin/Users"));
+const SuperAdminAnalytics = lazyWithRetry(() => import("./pages/superadmin/Analytics"));
+const SuperAdminSettings = lazyWithRetry(() => import("./pages/superadmin/Settings"));
 
 // Import SuperAdmin layout
 import { SuperAdminLayout } from "@/components/superadmin/SuperAdminLayout";
