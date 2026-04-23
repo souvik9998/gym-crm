@@ -119,7 +119,7 @@ async function generateInvoicePDF(data: {
     bold = false,
   ) => {
     const safeText = sanitizePdfText(text);
-    page.drawText(text, {
+    page.drawText(safeText, {
       x,
       y: pageH - topY - size,
       size,
