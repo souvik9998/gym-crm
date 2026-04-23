@@ -29,6 +29,8 @@ export interface CouponDiscount {
   freeDays: number;
 }
 
+export type CouponContext = "new_registration" | "renewal" | "event" | "pt_renewal";
+
 interface UseCouponValidationProps {
   branchId?: string;
   isNewMember: boolean;
@@ -39,13 +41,13 @@ interface UseCouponValidationProps {
    * `isNewMember` for backward compatibility:
    *   - true  → "new_registration"
    *   - false → "renewal"
-   * Pass "event" explicitly from the event-registration flow.
+   * Pass "event" or "pt_renewal" explicitly when needed.
    */
-  context?: "new_registration" | "renewal" | "event";
+  context?: CouponContext;
 }
 
 export function useCouponValidation({ branchId, isNewMember, memberId, subtotal, context }: UseCouponValidationProps) {
-  const effectiveContext: "new_registration" | "renewal" | "event" =
+  const effectiveContext: CouponContext =
     context ?? (isNewMember ? "new_registration" : "renewal");
   const [couponCode, setCouponCode] = useState("");
   const [isValidating, setIsValidating] = useState(false);
@@ -119,12 +121,12 @@ export function useCouponValidation({ branchId, isNewMember, memberId, subtotal,
         }
       }
 
-      // Parse applicable_on JSON (registration / renewal / event)
+      // Parse applicable_on JSON
       const applicableOn = (typeof coupon.applicable_on === "string"
         ? JSON.parse(coupon.applicable_on)
         : coupon.applicable_on) as Record<string, boolean>;
 
-      // Applicable on check (registration / renewal / event)
+      // Applicable on check
       if (effectiveContext === "new_registration" && applicableOn.new_registration === false) {
         setCouponError("This coupon is not valid for new registrations");
         return;
@@ -137,27 +139,32 @@ export function useCouponValidation({ branchId, isNewMember, memberId, subtotal,
         setCouponError("This coupon is not valid for event registration");
         return;
       }
+      if (effectiveContext === "pt_renewal" && applicableOn.pt_renewal !== true) {
+        setCouponError("This coupon is not valid for PT renewals");
+        return;
+      }
 
-      // User condition checks — these are independent toggles. If MULTIPLE are
-      // enabled, the coupon requires the member to satisfy at least one of them
-      // (logical OR), so admins can target "first-time OR expired" without
-      // creating a contradiction.
+      const contextSupportsFirstTime = effectiveContext === "new_registration";
+      const contextSupportsExisting = effectiveContext === "renewal" || effectiveContext === "pt_renewal";
+      const contextSupportsExpired = effectiveContext === "renewal" || effectiveContext === "pt_renewal";
+
+      // User condition checks — only enforced when meaningful for the selected context.
       const userCondToggles = [
-        coupon.first_time_only,
-        coupon.existing_members_only,
-        coupon.expired_members_only,
+        contextSupportsFirstTime && coupon.first_time_only,
+        contextSupportsExisting && coupon.existing_members_only,
+        contextSupportsExpired && coupon.expired_members_only,
       ].filter(Boolean).length;
 
       if (userCondToggles > 0) {
         const conditionResults: boolean[] = [];
 
-        if (coupon.first_time_only) {
+        if (contextSupportsFirstTime && coupon.first_time_only) {
           conditionResults.push(isNewMember === true);
         }
-        if (coupon.existing_members_only) {
+        if (contextSupportsExisting && coupon.existing_members_only) {
           conditionResults.push(isNewMember === false && !!memberId);
         }
-        if (coupon.expired_members_only) {
+        if (contextSupportsExpired && coupon.expired_members_only) {
           // Member must have a most-recent subscription whose end_date is in the past
           if (!memberId) {
             conditionResults.push(false);
@@ -178,9 +185,9 @@ export function useCouponValidation({ branchId, isNewMember, memberId, subtotal,
         if (!conditionResults.some(Boolean)) {
           // Build a friendly message describing what's required
           const labels: string[] = [];
-          if (coupon.first_time_only) labels.push("first-time users");
-          if (coupon.existing_members_only) labels.push("existing members");
-          if (coupon.expired_members_only) labels.push("expired members");
+          if (contextSupportsFirstTime && coupon.first_time_only) labels.push("first-time users");
+          if (contextSupportsExisting && coupon.existing_members_only) labels.push("existing members");
+          if (contextSupportsExpired && coupon.expired_members_only) labels.push("expired members");
           setCouponError(`This coupon is only for ${labels.join(" / ")}`);
           return;
         }
