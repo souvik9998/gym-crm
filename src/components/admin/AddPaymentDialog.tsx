@@ -423,6 +423,7 @@ export const AddPaymentDialog = ({ open, onOpenChange, onSuccess }: AddPaymentDi
     isNewMember: false,
     memberId: member?.id,
     subtotal: subtotalAmount + taxAmount,
+    context: paymentType === "pt_only" ? "pt_renewal" : "renewal",
   });
 
   const couponDiscount = adminCoupon.appliedCoupon?.discountAmount || 0;

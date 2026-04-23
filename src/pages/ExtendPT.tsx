@@ -7,12 +7,14 @@ import { ArrowLeft, Dumbbell, Calendar, IndianRupee, User, Check, AlertCircle, C
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
+import { useCouponValidation } from "@/hooks/useCouponValidation";
 import { addDays, differenceInDays, format, isBefore, isAfter, parseISO } from "date-fns";
 import { addPackageMonths } from "@/lib/packageDuration";
 import { fetchPublicBranch, fetchPublicTrainers, fetchPublicPackages, invalidatePublicDataCache, PUBLIC_DATA_BUST_EVENT } from "@/api/publicData";
 import { getWhatsAppAutoSendPreference } from "@/utils/whatsappAutoSend";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import RegistrationPageSkeleton from "@/components/registration/RegistrationPageSkeleton";
+import CouponInput from "@/components/ui/coupon-input";
 
 interface Trainer {
   id: string;
@@ -311,7 +313,15 @@ const ExtendPT = () => {
   // Calculate total with GST
   const ptSubtotal = selectedOption?.fee || 0;
   const taxAmount = taxEnabled && taxRate > 0 ? Math.round((ptSubtotal * taxRate) / 100) : 0;
-  const totalWithGst = ptSubtotal + taxAmount;
+  const coupon = useCouponValidation({
+    branchId,
+    isNewMember: false,
+    memberId: member?.id,
+    subtotal: ptSubtotal + taxAmount,
+    context: "pt_renewal",
+  });
+  const couponDiscount = coupon.appliedCoupon?.discountAmount || 0;
+  const totalWithGst = Math.max(0, ptSubtotal + taxAmount - couponDiscount);
 
   const handleSubmit = async () => {
     if (!selectedTrainer || !selectedOption || !member) return;
@@ -604,6 +614,21 @@ const ExtendPT = () => {
                           <IndianRupee className="w-4 h-4" />
                           {taxAmount.toLocaleString("en-IN")}
                         </span>
+                      </div>
+                    )}
+                    <CouponInput
+                      couponCode={coupon.couponCode}
+                      onCouponCodeChange={coupon.setCouponCode}
+                      onApply={coupon.validateCoupon}
+                      onRemove={coupon.removeCoupon}
+                      isValidating={coupon.isValidating}
+                      appliedCoupon={coupon.appliedCoupon}
+                      error={coupon.couponError}
+                    />
+                    {couponDiscount > 0 && (
+                      <div className="flex justify-between items-center text-success">
+                        <span className="text-sm">Coupon ({coupon.appliedCoupon?.coupon.code})</span>
+                        <span className="font-semibold">-₹{couponDiscount.toLocaleString("en-IN")}</span>
                       </div>
                     )}
                     <div className="border-t border-border pt-3">
