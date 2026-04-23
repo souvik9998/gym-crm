@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,9 +16,10 @@ import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import {
   Plus, Search, Pencil, Trash2, Copy, TicketPercent,
-  AlertTriangle, ChevronDown, ChevronUp, Zap, RefreshCw,
+  AlertTriangle, ChevronDown, ChevronUp, RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
+import { z } from "zod";
 
 interface Coupon {
   id: string;
@@ -60,14 +61,10 @@ type CouponForm = {
   is_active: boolean;
   total_usage_limit: string;
   per_user_limit: string;
-  applicable_on_registration: boolean;
-  applicable_on_renewal: boolean;
-  applicable_on_event: boolean;
+  coupon_target: "new_registration" | "renewal" | "event" | "pt_renewal";
   first_time_only: boolean;
   existing_members_only: boolean;
   expired_members_only: boolean;
-  stackable: boolean;
-  auto_apply: boolean;
   notes: string;
 };
 
@@ -82,15 +79,78 @@ const defaultForm: CouponForm = {
   is_active: true,
   total_usage_limit: "",
   per_user_limit: "1",
-  applicable_on_registration: true,
-  applicable_on_renewal: true,
-  applicable_on_event: false,
+  coupon_target: "new_registration",
   first_time_only: false,
   existing_members_only: false,
   expired_members_only: false,
-  stackable: false,
-  auto_apply: false,
   notes: "",
+};
+
+const couponFormSchema = z.object({
+  code: z.string().trim().min(1, "Coupon code is required").max(32, "Coupon code is too long").regex(/^[A-Z0-9_-]+$/, "Coupon code can only use letters, numbers, hyphens, and underscores"),
+  discount_type: z.enum(["percentage", "flat", "free_days"]),
+  discount_value: z.coerce.number().positive("Discount value must be positive"),
+  max_discount_cap: z.union([z.literal(""), z.coerce.number().positive("Max discount cap must be positive")]),
+  min_order_value: z.union([z.literal(""), z.coerce.number().min(0, "Minimum order value cannot be negative")]),
+  start_date: z.string().min(1, "Start date is required"),
+  end_date: z.string().optional(),
+  total_usage_limit: z.union([z.literal(""), z.coerce.number().int().positive("Total usage limit must be positive")]),
+  per_user_limit: z.coerce.number().int().positive("Per user limit must be at least 1"),
+  coupon_target: z.enum(["new_registration", "renewal", "event", "pt_renewal"]),
+  first_time_only: z.boolean(),
+  existing_members_only: z.boolean(),
+  expired_members_only: z.boolean(),
+  is_active: z.boolean(),
+  notes: z.string().max(500, "Notes must be 500 characters or fewer"),
+}).superRefine((data, ctx) => {
+  if (data.discount_type === "percentage" && data.discount_value > 100) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["discount_value"], message: "Percentage cannot exceed 100%" });
+  }
+
+  if (data.end_date && data.end_date < data.start_date) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["end_date"], message: "End date cannot be before start date" });
+  }
+
+  if (data.coupon_target === "new_registration") {
+    if (data.existing_members_only || data.expired_members_only) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["coupon_target"], message: "Registration coupons cannot be restricted to existing or expired members" });
+    }
+  }
+
+  if (data.coupon_target === "event") {
+    if (data.first_time_only || data.existing_members_only || data.expired_members_only) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["coupon_target"], message: "Event coupons do not support member-condition filters" });
+    }
+  }
+
+  if ((data.coupon_target === "renewal" || data.coupon_target === "pt_renewal") && data.first_time_only) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["first_time_only"], message: "Renewal coupons cannot be limited to first-time users" });
+  }
+});
+
+const couponTargetOptions = [
+  { value: "new_registration", label: "New Registration", description: "For brand-new member signups" },
+  { value: "renewal", label: "Membership Renewal", description: "For gym membership renewals only" },
+  { value: "event", label: "Event Registration", description: "For paid event bookings only" },
+  { value: "pt_renewal", label: "PT Renewal", description: "For personal training renewals only" },
+] as const;
+
+const getApplicableOnFromTarget = (target: CouponForm["coupon_target"]) => ({
+  new_registration: target === "new_registration",
+  renewal: target === "renewal",
+  event: target === "event",
+  pt_renewal: target === "pt_renewal",
+});
+
+const getCouponTarget = (applicableOn: any): CouponForm["coupon_target"] => {
+  if (applicableOn?.pt_renewal) return "pt_renewal";
+  if (applicableOn?.event) return "event";
+  if (applicableOn?.renewal) return "renewal";
+  return "new_registration";
+};
+
+const getCouponTargetLabel = (target: CouponForm["coupon_target"]) => {
+  return couponTargetOptions.find((option) => option.value === target)?.label || "New Registration";
 };
 
 const generateCode = () => {
