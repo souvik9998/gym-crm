@@ -164,6 +164,52 @@ export default function EventRegistration() {
       if (coupon.end_date && coupon.end_date < today) { setCouponError("Coupon has expired"); return; }
       if (coupon.total_usage_limit && coupon.usage_count >= coupon.total_usage_limit) { setCouponError("Coupon usage limit reached"); return; }
       if (coupon.applicable_branch_ids?.length > 0 && !coupon.applicable_branch_ids.includes(event?.branch_id)) { setCouponError("Coupon not valid for this branch"); return; }
+
+      const memberConditionResults: boolean[] = [];
+      if (coupon.first_time_only) {
+        memberConditionResults.push(!existingMemberId);
+      }
+      if (coupon.existing_members_only) {
+        memberConditionResults.push(!!existingMemberId);
+      }
+      if (coupon.expired_members_only) {
+        if (!existingMemberId) {
+          memberConditionResults.push(false);
+        } else {
+          const { data: latestSub } = await supabase
+            .from("subscriptions")
+            .select("end_date")
+            .eq("member_id", existingMemberId)
+            .order("end_date", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          memberConditionResults.push(!!latestSub?.end_date && latestSub.end_date < today);
+        }
+      }
+
+      if (memberConditionResults.length > 0 && !memberConditionResults.some(Boolean)) {
+        const labels: string[] = [];
+        if (coupon.first_time_only) labels.push("first-time users");
+        if (coupon.existing_members_only) labels.push("existing members");
+        if (coupon.expired_members_only) labels.push("expired members");
+        setCouponError(`This coupon is only for ${labels.join(" / ")}`);
+        return;
+      }
+
+      if (existingMemberId && coupon.per_user_limit > 0) {
+        const { count } = await supabase
+          .from("coupon_usage")
+          .select("*", { count: "exact", head: true })
+          .eq("coupon_id", coupon.id)
+          .eq("member_id", existingMemberId);
+
+        if (count !== null && count >= coupon.per_user_limit) {
+          setCouponError("You've already used this coupon the maximum number of times");
+          return;
+        }
+      }
+
       const discountAmount = calculateCouponDiscount(coupon, totalBasePrice);
       setAppliedCoupon({ id: coupon.id, code: coupon.code, discount_type: coupon.discount_type, discount_value: coupon.discount_value, max_discount_cap: coupon.max_discount_cap, discountAmount });
     } catch (err: any) {
@@ -785,7 +831,13 @@ export default function EventRegistration() {
                         <span className="flex items-center px-4 bg-muted border border-r-0 border-input rounded-l-lg text-sm text-muted-foreground font-medium">+91</span>
                         <Input
                           value={phone}
-                          onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); setPhoneChecked(false); }}
+                    onChange={(e) => {
+                      setPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
+                      setPhoneChecked(false);
+                      setExistingMemberId(null);
+                      setAppliedCoupon(null);
+                      setCouponError("");
+                    }}
                           placeholder="Enter 10-digit number"
                           className="rounded-l-none"
                           maxLength={10}
