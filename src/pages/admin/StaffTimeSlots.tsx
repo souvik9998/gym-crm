@@ -4,11 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { ClockIcon, UserGroupIcon, LockClosedIcon } from "@heroicons/react/24/outline";
+import { ChartBarIcon, ClockIcon, UserGroupIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { TimeSlotsTab } from "@/components/admin/staff/timeslots/TimeSlotsTab";
 import { SlotMembersTab } from "@/components/admin/staff/timeslots/SlotMembersTab";
+import { TimeSlotAnalyticsTab } from "@/components/admin/staff/timeslots/TimeSlotAnalyticsTab";
 import type { Staff } from "@/pages/admin/StaffManagement";
 
 /**
@@ -160,6 +161,7 @@ const StaffTimeSlots = () => {
 
   // Determine which sub-tabs to show.
   const showMembersTab = canViewMembers || canAssignMembers;
+  const showAnalyticsTab = canView;
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto">
@@ -173,9 +175,9 @@ const StaffTimeSlots = () => {
         </div>
       )}
 
-      {showMembersTab ? (
+      {showMembersTab || showAnalyticsTab ? (
         <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className={`grid w-full ${showMembersTab && showAnalyticsTab ? "max-w-xl grid-cols-3" : "max-w-md grid-cols-2"}`}>
             <TabsTrigger
               value="slots"
               className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3"
@@ -183,13 +185,24 @@ const StaffTimeSlots = () => {
               <ClockIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               <span>Time Slots</span>
             </TabsTrigger>
-            <TabsTrigger
-              value="members"
-              className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3"
-            >
-              <UserGroupIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-              <span>Slot Members</span>
-            </TabsTrigger>
+            {showMembersTab && (
+              <TabsTrigger
+                value="members"
+                className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3"
+              >
+                <UserGroupIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                <span>Slot Members</span>
+              </TabsTrigger>
+            )}
+            {showAnalyticsTab && (
+              <TabsTrigger
+                value="analytics"
+                className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3"
+              >
+                <ChartBarIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                <span>Analytics</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="slots">
@@ -204,15 +217,28 @@ const StaffTimeSlots = () => {
             />
           </TabsContent>
 
-          <TabsContent value="members">
-            <SlotMembersTab
-              trainers={trainers}
-              currentBranch={currentBranch}
-              restrictedTrainerId={restrictedTrainerId}
-              canAssign={canAssignMembers}
-              canRemove={canAssignMembers}
-            />
-          </TabsContent>
+          {showMembersTab && (
+            <TabsContent value="members">
+              <SlotMembersTab
+                trainers={trainers}
+                currentBranch={currentBranch}
+                restrictedTrainerId={restrictedTrainerId}
+                canAssign={canAssignMembers}
+                canRemove={canAssignMembers}
+                trainerNameMap={trainerNameMap}
+              />
+            </TabsContent>
+          )}
+
+          {showAnalyticsTab && (
+            <TabsContent value="analytics">
+              <TimeSlotAnalyticsTab
+                currentBranch={currentBranch}
+                restrictedTrainerId={restrictedTrainerId}
+                trainerNameMap={trainerNameMap}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       ) : (
         <TimeSlotsTab

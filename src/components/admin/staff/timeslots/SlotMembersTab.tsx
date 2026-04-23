@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { createMembershipIncomeEntry, calculateTrainerPercentageExpense } from "@/hooks/useLedger";
@@ -9,23 +9,49 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { Staff } from "@/pages/admin/StaffManagement";
-import { PlusIcon, XMarkIcon, MagnifyingGlassIcon, UserGroupIcon, ExclamationTriangleIcon, ClockIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/outline";
+import {
+  PlusIcon,
+  XMarkIcon,
+  MagnifyingGlassIcon,
+  UserGroupIcon,
+  ExclamationTriangleIcon,
+  ClockIcon,
+  ArrowsRightLeftIcon,
+  FunnelIcon,
+} from "@heroicons/react/24/outline";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TransferSlotDialog } from "./TransferSlotDialog";
+import {
+  AVAILABILITY_OPTIONS,
+  formatTimeLabel,
+  getSlotAvailability,
+  getUtilizationPercent,
+  matchesTimeFilter,
+  TIME_BUCKET_OPTIONS,
+  type SlotAvailability,
+  type TimeBucket,
+} from "./timeSlotUtils";
 
 interface SlotMembersTabProps {
   trainers: Staff[];
   currentBranch: any;
-  /** Restrict trainer dropdown to a single staff trainer ID. */
   restrictedTrainerId?: string | null;
-  /** Permission flag — show "Assign Members" button. */
   canAssign?: boolean;
-  /** Permission flag — show "Remove" button. */
   canRemove?: boolean;
+  trainerNameMap?: Record<string, string>;
 }
 
 interface TimeSlot {
@@ -34,21 +60,31 @@ interface TimeSlot {
   start_time: string;
   end_time: string;
   capacity: number;
+  status?: string | null;
+  trainer_name: string;
+  member_count: number;
+  availability: Exclude<SlotAvailability, "all">;
+  utilization: number;
 }
 
 interface SlotMember {
   id: string;
+  slot_id: string;
+  slot_label: string;
+  trainer_id: string;
+  trainer_name: string;
+  slot_capacity: number;
+  slot_member_count: number;
   member_id: string;
   member_name: string;
   member_phone: string;
   pt_status: string;
   pt_end_date: string | null;
   subscription_status: string | null;
-  /** The member's CURRENT active PT trainer id, regardless of this slot. */
   current_pt_trainer_id: string | null;
   current_pt_trainer_name: string | null;
-  /** True when slot's trainer != member's current active PT trainer. */
   is_trainer_replaced: boolean;
+  hasSlotMemberRow: boolean;
 }
 
 interface AvailableMember {
@@ -70,8 +106,8 @@ export const SlotMembersTab = ({
   restrictedTrainerId = null,
   canAssign = true,
   canRemove = true,
+  trainerNameMap = {},
 }: SlotMembersTabProps) => {
-  const [selectedTrainer, setSelectedTrainer] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [members, setMembers] = useState<SlotMember[]>([]);
@@ -81,101 +117,197 @@ export const SlotMembersTab = ({
   const [availableMembers, setAvailableMembers] = useState<AvailableMember[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
-  const [slotCapacity, setSlotCapacity] = useState(0);
-  const [removeConfirm, setRemoveConfirm] = useState<{ id: string; name: string; memberId: string } | null>(null);
+  const [removeConfirm, setRemoveConfirm] = useState<{ id: string; name: string; memberId: string; slotId: string } | null>(null);
   const [trainerPtId, setTrainerPtId] = useState<string | null>(null);
   const [trainerName, setTrainerName] = useState("");
+  const [filterTrainer, setFilterTrainer] = useState<string>(restrictedTrainerId || "all");
+  const [filterAvailability, setFilterAvailability] = useState<SlotAvailability>("all");
+  const [timeFilter, setTimeFilter] = useState<TimeBucket>("all");
+  const [customStart, setCustomStart] = useState("06:00");
+  const [customEnd, setCustomEnd] = useState("10:00");
+  const [slotSearch, setSlotSearch] = useState("");
 
-  // Transfer state (transfer to a different trainer's slot — used in Add dialog)
-  const [transferConfirm, setTransferConfirm] = useState<{ memberId: string; name: string; fromTrainer: string; fromTrainerId: string; ptSubId: string } | null>(null);
+  const [transferConfirm, setTransferConfirm] = useState<{
+    memberId: string;
+    name: string;
+    fromTrainer: string;
+    fromTrainerId: string;
+    ptSubId: string;
+  } | null>(null);
   const [isTransferring, setIsTransferring] = useState(false);
 
-  // Same-trainer slot move (transfer to another slot of the SAME trainer).
   const [moveSlot, setMoveSlot] = useState<{
     rowId: string;
     memberId: string;
     memberName: string;
     trainerId: string;
     trainerName: string;
+    currentSlotId: string;
   } | null>(null);
 
   const { invalidatePtSubscriptions } = useInvalidateQueries();
 
-  // Auto-select & lock trainer when restricted (staff with assigned-only access).
   useEffect(() => {
-    if (restrictedTrainerId) setSelectedTrainer(restrictedTrainerId);
+    if (restrictedTrainerId) setFilterTrainer(restrictedTrainerId);
   }, [restrictedTrainerId]);
 
-  const resolveTrainerPtId = useCallback(async (staffId: string) => {
-    const { data: staffRec } = await supabase
-      .from("staff" as any)
-      .select("phone, full_name")
-      .eq("id", staffId)
-      .maybeSingle();
-    
-    const staff = staffRec as any;
-    if (!staff?.phone) { setTrainerPtId(null); return; }
-    setTrainerName(staff.full_name || "");
-    
-    const { data: ptProfile } = await supabase
-      .from("personal_trainers")
-      .select("id")
-      .eq("phone", staff.phone)
-      .eq("branch_id", currentBranch.id)
-      .eq("is_active", true)
-      .maybeSingle();
-    
-    setTrainerPtId(ptProfile?.id || null);
-  }, [currentBranch?.id]);
+  const resolveTrainerPtId = useCallback(
+    async (staffId: string) => {
+      const { data: staffRec } = await supabase
+        .from("staff" as any)
+        .select("phone, full_name")
+        .eq("id", staffId)
+        .maybeSingle();
 
-  useEffect(() => {
-    if (!selectedTrainer || !currentBranch?.id) { setSlots([]); setSelectedSlot(""); setTrainerPtId(null); return; }
-    resolveTrainerPtId(selectedTrainer);
-    (async () => {
-      const { data } = await supabase
-        .from("trainer_time_slots")
-        .select("id, trainer_id, start_time, end_time, capacity")
-        .eq("trainer_id", selectedTrainer)
+      const staff = staffRec as any;
+      setTrainerName(staff?.full_name || trainerNameMap[staffId] || "");
+      if (!staff?.phone) {
+        setTrainerPtId(null);
+        return;
+      }
+
+      const { data: ptProfile } = await supabase
+        .from("personal_trainers")
+        .select("id")
+        .eq("phone", staff.phone)
         .eq("branch_id", currentBranch.id)
-        .order("start_time");
-      setSlots(data || []);
+        .eq("is_active", true)
+        .maybeSingle();
+
+      setTrainerPtId(ptProfile?.id || null);
+    },
+    [currentBranch?.id, trainerNameMap],
+  );
+
+  const fetchSlots = useCallback(async () => {
+    if (!currentBranch?.id) {
+      setSlots([]);
+      return;
+    }
+
+    let query = supabase
+      .from("trainer_time_slots")
+      .select("id, trainer_id, start_time, end_time, capacity, status")
+      .eq("branch_id", currentBranch.id)
+      .order("start_time");
+
+    if (restrictedTrainerId) {
+      query = query.eq("trainer_id", restrictedTrainerId);
+    }
+
+    const { data: slotData } = await query;
+    if (!slotData?.length) {
+      setSlots([]);
       setSelectedSlot("");
-    })();
-  }, [selectedTrainer, currentBranch?.id, resolveTrainerPtId]);
+      return;
+    }
+
+    const slotIds = slotData.map((slot) => slot.id);
+    const today = new Date().toISOString().split("T")[0];
+    const [ptRowsResult, namesResult] = await Promise.all([
+      supabase
+        .from("pt_subscriptions")
+        .select("time_slot_id, member_id")
+        .in("time_slot_id", slotIds)
+        .eq("status", "active")
+        .gte("end_date", today),
+      supabase.rpc("get_staff_names_for_branch" as any, { _branch_id: currentBranch.id }),
+    ]);
+
+    const countsBySlot = new Map<string, Set<string>>();
+    ((ptRowsResult.data as any[]) || []).forEach((row) => {
+      if (!row.time_slot_id) return;
+      if (!countsBySlot.has(row.time_slot_id)) countsBySlot.set(row.time_slot_id, new Set());
+      countsBySlot.get(row.time_slot_id)?.add(row.member_id);
+    });
+
+    const rpcNameMap = new Map<string, string>();
+    (((namesResult.data as any[]) || []) as Array<{ id: string; full_name: string }>).forEach((row) => {
+      rpcNameMap.set(row.id, row.full_name);
+    });
+
+    const nextSlots = slotData.map((slot) => {
+      const memberCount = countsBySlot.get(slot.id)?.size ?? 0;
+      return {
+        ...slot,
+        trainer_name:
+          trainers.find((trainer) => trainer.id === slot.trainer_id)?.full_name ||
+          trainerNameMap[slot.trainer_id] ||
+          rpcNameMap.get(slot.trainer_id) ||
+          "Unknown Trainer",
+        member_count: memberCount,
+        availability: getSlotAvailability(memberCount, slot.capacity),
+        utilization: getUtilizationPercent(memberCount, slot.capacity),
+      } as TimeSlot;
+    });
+
+    setSlots(nextSlots);
+    setSelectedSlot((current) => (current && nextSlots.some((slot) => slot.id === current) ? current : ""));
+  }, [currentBranch?.id, restrictedTrainerId, trainerNameMap, trainers]);
 
   useEffect(() => {
-    if (!selectedSlot) { setMembers([]); return; }
-    const slot = slots.find(s => s.id === selectedSlot);
-    setSlotCapacity(slot?.capacity || 0);
-    fetchSlotMembers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSlot, trainerPtId]);
+    fetchSlots();
+  }, [fetchSlots]);
 
-  const fetchSlotMembers = async () => {
-    if (!selectedSlot) return;
+  const filteredSlots = useMemo(() => {
+    return slots.filter((slot) => {
+      if (filterTrainer !== "all" && slot.trainer_id !== filterTrainer) return false;
+      if (filterAvailability !== "all" && slot.availability !== filterAvailability) return false;
+      if (!matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd)) return false;
+      if (!slotSearch) return true;
+      const query = slotSearch.toLowerCase();
+      const slotText = `${slot.trainer_name} ${formatTimeLabel(slot.start_time)} ${formatTimeLabel(slot.end_time)}`.toLowerCase();
+      return slotText.includes(query);
+    });
+  }, [slots, filterTrainer, filterAvailability, timeFilter, customStart, customEnd, slotSearch]);
+
+  const selectedSlotData = useMemo(
+    () => slots.find((slot) => slot.id === selectedSlot) || null,
+    [slots, selectedSlot],
+  );
+
+  useEffect(() => {
+    if (!selectedSlotData) {
+      setTrainerName("");
+      setTrainerPtId(null);
+      return;
+    }
+    setTrainerName(selectedSlotData.trainer_name);
+    resolveTrainerPtId(selectedSlotData.trainer_id);
+  }, [selectedSlotData, resolveTrainerPtId]);
+
+  const visibleSlotIds = useMemo(
+    () => (selectedSlot ? [selectedSlot] : filteredSlots.map((slot) => slot.id)),
+    [selectedSlot, filteredSlots],
+  );
+
+  const fetchVisibleMembers = useCallback(async () => {
+    if (!visibleSlotIds.length) {
+      setMembers([]);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Source of truth: pt_subscriptions (active + non-expired) — matches
-      // TimeSlotFilterDropdown and TimeSlotsTab counts. The legacy
-      // time_slot_members table is only used to recover the row PK so the
-      // existing remove/transfer flows keep working unchanged.
       const today = new Date().toISOString().split("T")[0];
       const { data: ptRows } = await supabase
         .from("pt_subscriptions")
-        .select("member_id, status, end_date, personal_trainer_id, members(name, phone), personal_trainers(name)")
-        .eq("time_slot_id", selectedSlot)
+        .select("member_id, time_slot_id, status, end_date, personal_trainer_id, members(name, phone), personal_trainers(name)")
+        .in("time_slot_id", visibleSlotIds)
         .eq("status", "active")
         .gte("end_date", today);
 
-      if (!ptRows || ptRows.length === 0) { setMembers([]); return; }
+      if (!ptRows?.length) {
+        setMembers([]);
+        return;
+      }
 
-      const memberIds = Array.from(new Set((ptRows as any[]).map((r: any) => r.member_id)));
-
+      const memberIds = Array.from(new Set((ptRows as any[]).map((row: any) => row.member_id)));
       const [tsmRes, subRes] = await Promise.all([
         supabase
           .from("time_slot_members")
-          .select("id, member_id")
-          .eq("time_slot_id", selectedSlot)
+          .select("id, member_id, time_slot_id")
+          .in("time_slot_id", visibleSlotIds)
           .in("member_id", memberIds),
         supabase
           .from("subscriptions")
@@ -185,49 +317,68 @@ export const SlotMembersTab = ({
           .order("end_date", { ascending: false }),
       ]);
 
-      const tsmIdByMember = new Map<string, string>();
-      (tsmRes.data || []).forEach((r: any) => {
-        if (!tsmIdByMember.has(r.member_id)) tsmIdByMember.set(r.member_id, r.id);
+      const slotMap = new Map(slots.map((slot) => [slot.id, slot]));
+      const tsmMap = new Map<string, { id: string; time_slot_id: string }>();
+      ((tsmRes.data as any[]) || []).forEach((row) => {
+        tsmMap.set(`${row.time_slot_id}:${row.member_id}`, { id: row.id, time_slot_id: row.time_slot_id });
       });
 
-      const subMap = new Map<string, string>();
-      subRes.data?.forEach((s: any) => { if (!subMap.has(s.member_id)) subMap.set(s.member_id, s.status); });
+      const subStatusMap = new Map<string, string>();
+      (subRes.data || []).forEach((row: any) => {
+        if (!subStatusMap.has(row.member_id)) subStatusMap.set(row.member_id, row.status);
+      });
 
-      // Dedupe defensively: one row per member.
       const seen = new Set<string>();
-      const list: any[] = [];
-      (ptRows as any[]).forEach((p: any) => {
-        if (seen.has(p.member_id)) return;
-        seen.add(p.member_id);
+      const nextMembers: SlotMember[] = [];
+      (ptRows as any[]).forEach((row: any) => {
+        const compoundKey = `${row.time_slot_id}:${row.member_id}`;
+        if (seen.has(compoundKey)) return;
+        seen.add(compoundKey);
 
-        const currentTrainerId = p.personal_trainer_id;
-        const currentTrainerName = (p.personal_trainers as any)?.name || "Unknown";
-        const isReplaced = !!(trainerPtId && currentTrainerId && currentTrainerId !== trainerPtId);
+        const slot = slotMap.get(row.time_slot_id);
+        if (!slot) return;
+        const rowRef = tsmMap.get(compoundKey);
+        const isTrainerReplaced = !!(row.personal_trainer_id && selectedSlotData?.trainer_id && row.personal_trainer_id !== selectedSlotData.trainer_id);
 
-        list.push({
-          // Fall back to a synthetic id when no time_slot_members row exists yet.
-          id: tsmIdByMember.get(p.member_id) || `pt-${p.member_id}`,
-          member_id: p.member_id,
-          member_name: (p.members as any)?.name || "Unknown",
-          member_phone: (p.members as any)?.phone || "",
-          pt_status: p.status,
-          pt_end_date: p.end_date,
-          subscription_status: subMap.get(p.member_id) || null,
-          current_pt_trainer_id: currentTrainerId,
-          current_pt_trainer_name: currentTrainerName,
-          is_trainer_replaced: isReplaced,
+        nextMembers.push({
+          id: rowRef?.id || `pt-${row.time_slot_id}-${row.member_id}`,
+          slot_id: row.time_slot_id,
+          slot_label: `${formatTimeLabel(slot.start_time)} – ${formatTimeLabel(slot.end_time)}`,
+          trainer_id: slot.trainer_id,
+          trainer_name: slot.trainer_name,
+          slot_capacity: slot.capacity,
+          slot_member_count: slot.member_count,
+          member_id: row.member_id,
+          member_name: row.members?.name || "Unknown",
+          member_phone: row.members?.phone || "",
+          pt_status: row.status,
+          pt_end_date: row.end_date,
+          subscription_status: subStatusMap.get(row.member_id) || null,
+          current_pt_trainer_id: row.personal_trainer_id,
+          current_pt_trainer_name: row.personal_trainers?.name || slot.trainer_name,
+          is_trainer_replaced: isTrainerReplaced,
+          hasSlotMemberRow: !!rowRef,
         });
       });
 
-      setMembers(list);
+      nextMembers.sort((a, b) => {
+        if (a.slot_label !== b.slot_label) return a.slot_label.localeCompare(b.slot_label);
+        return a.member_name.localeCompare(b.member_name);
+      });
+
+      setMembers(nextMembers);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [slots, visibleSlotIds, selectedSlotData?.trainer_id]);
+
+  useEffect(() => {
+    fetchVisibleMembers();
+  }, [fetchVisibleMembers]);
 
   const handleOpenAddMembers = async () => {
-    if (!currentBranch?.id) return;
-    const existingIds = members.map(m => m.member_id);
+    if (!currentBranch?.id || !selectedSlot || !selectedSlotData) return;
+    const existingIds = members.filter((member) => member.slot_id === selectedSlot).map((member) => member.member_id);
 
     const { data } = await supabase
       .from("members")
@@ -237,13 +388,10 @@ export const SlotMembersTab = ({
 
     if (!data) return;
 
-    const available = data.filter(m => !existingIds.includes(m.id));
-    const memberIds = available.map(m => m.id);
+    const available = data.filter((member) => !existingIds.includes(member.id));
+    const memberIds = available.map((member) => member.id);
     const today = new Date().toISOString().split("T")[0];
 
-    // Fetch ACTIVE & non-expired PT subscriptions and ACTIVE gym subscriptions only.
-    // Members with no active gym membership OR fully expired/inactive PT must NOT
-    // appear as candidates for slot assignment.
     const [ptRes, subRes] = await Promise.all([
       supabase
         .from("pt_subscriptions")
@@ -261,41 +409,42 @@ export const SlotMembersTab = ({
     ]);
 
     const ptMap = new Map<string, { trainer_name: string; trainer_id: string; pt_sub_id: string }>();
-    ptRes.data?.forEach((p: any) => {
-      if (!ptMap.has(p.member_id)) {
-        ptMap.set(p.member_id, {
-          trainer_name: (p.personal_trainers as any)?.name || "Unknown",
-          trainer_id: p.personal_trainer_id,
-          pt_sub_id: p.id,
+    ptRes.data?.forEach((row: any) => {
+      if (!ptMap.has(row.member_id)) {
+        ptMap.set(row.member_id, {
+          trainer_name: row.personal_trainers?.name || "Unknown",
+          trainer_id: row.personal_trainer_id,
+          pt_sub_id: row.id,
         });
       }
     });
 
     const subMap = new Map<string, { end_date: string; status: string }>();
-    subRes.data?.forEach((s: any) => { if (!subMap.has(s.member_id)) subMap.set(s.member_id, s); });
+    subRes.data?.forEach((row: any) => {
+      if (!subMap.has(row.member_id)) subMap.set(row.member_id, row);
+    });
 
     const mappedMembers = available
-      // Hide members without an active gym subscription — they cannot train.
-      .filter(m => subMap.has(m.id))
-      .map(m => {
-        const sub = subMap.get(m.id);
-        const ptInfo = ptMap.get(m.id);
+      .filter((member) => subMap.has(member.id))
+      .map((member) => {
+        const subscription = subMap.get(member.id);
+        const ptInfo = ptMap.get(member.id);
         let ptStatus: "same_trainer" | "other_trainer" | "no_pt" = "no_pt";
         if (ptInfo) {
           ptStatus = ptInfo.trainer_id === trainerPtId ? "same_trainer" : "other_trainer";
         }
+
         return {
-          ...m,
+          ...member,
           selected: false,
-          subscription_end_date: sub?.end_date || null,
-          subscription_status: sub?.status || null,
+          subscription_end_date: subscription?.end_date || null,
+          subscription_status: subscription?.status || null,
           pt_status: ptStatus,
           existing_trainer_name: ptInfo?.trainer_name || null,
           existing_trainer_id: ptInfo?.trainer_id || null,
           pt_subscription_id: ptInfo?.pt_sub_id || null,
         };
       })
-      // Sort: same_trainer first (selectable), then no_pt (not selectable), then other_trainer (grayed)
       .sort((a, b) => {
         const order = { same_trainer: 0, no_pt: 1, other_trainer: 2 };
         const diff = order[a.pt_status] - order[b.pt_status];
@@ -308,43 +457,47 @@ export const SlotMembersTab = ({
     setAddDialogOpen(true);
   };
 
-  // Only members with PT under the same trainer can be added (no PT creation)
   const handleAddMembers = async () => {
-    const selected = availableMembers.filter(m => m.selected);
-    if (selected.length === 0) { toast.error("Select at least one member"); return; }
-    if (members.length + selected.length > slotCapacity) {
-      toast.error(`Slot capacity is ${slotCapacity}. Cannot add ${selected.length} more members.`);
+    if (!selectedSlot || !selectedSlotData) return;
+    const selected = availableMembers.filter((member) => member.selected);
+    if (selected.length === 0) {
+      toast.error("Select at least one member");
+      return;
+    }
+
+    const existingCount = members.filter((member) => member.slot_id === selectedSlot).length;
+    if (existingCount + selected.length > selectedSlotData.capacity) {
+      toast.error(`Slot capacity is ${selectedSlotData.capacity}. Cannot add ${selected.length} more members.`);
       return;
     }
 
     setIsProcessing(true);
     try {
-      // Insert into time_slot_members
-      const inserts = selected.map(m => ({
+      const inserts = selected.map((member) => ({
         time_slot_id: selectedSlot,
-        member_id: m.id,
+        member_id: member.id,
         branch_id: currentBranch.id,
       }));
 
       const { error } = await supabase.from("time_slot_members").insert(inserts);
-      if (error) { toast.error("Failed to add members", { description: error.message }); return; }
+      if (error) {
+        toast.error("Failed to add members", { description: error.message });
+        return;
+      }
 
-      // Update pt_subscriptions to link to this time slot
-      for (const m of selected) {
-        if (m.pt_subscription_id) {
-          await supabase
-            .from("pt_subscriptions")
-            .update({ time_slot_id: selectedSlot })
-            .eq("id", m.pt_subscription_id);
+      for (const member of selected) {
+        if (member.pt_subscription_id) {
+          await supabase.from("pt_subscriptions").update({ time_slot_id: selectedSlot }).eq("id", member.pt_subscription_id);
         }
       }
 
-      toast.success(`${selected.length} member(s) assigned to ${trainerName}'s slot`, {
+      toast.success(`${selected.length} member(s) assigned to ${selectedSlotData.trainer_name}'s slot`, {
         description: "Time slot linked to existing PT subscriptions",
       });
 
       setAddDialogOpen(false);
-      fetchSlotMembers();
+      await fetchSlots();
+      await fetchVisibleMembers();
       invalidatePtSubscriptions();
     } finally {
       setIsProcessing(false);
@@ -355,22 +508,23 @@ export const SlotMembersTab = ({
     if (!removeConfirm) return;
     setIsProcessing(true);
     try {
-      // Remove from time_slot_members
-      await supabase.from("time_slot_members").delete().eq("id", removeConfirm.id);
+      if (!removeConfirm.id.startsWith("pt-")) {
+        await supabase.from("time_slot_members").delete().eq("id", removeConfirm.id);
+      }
 
-      // Clear time_slot_id from PT subscription (but keep PT active)
       await supabase
         .from("pt_subscriptions")
         .update({ time_slot_id: null } as any)
         .eq("member_id", removeConfirm.memberId)
-        .eq("time_slot_id", selectedSlot)
+        .eq("time_slot_id", removeConfirm.slotId)
         .eq("status", "active");
 
       toast.success(`${removeConfirm.name} removed from slot`, {
-        description: "PT subscription remains active (no time slot assigned)",
+        description: "PT subscription remains active without a slot assignment",
       });
       setRemoveConfirm(null);
-      fetchSlotMembers();
+      await fetchSlots();
+      await fetchVisibleMembers();
       invalidatePtSubscriptions();
     } finally {
       setIsProcessing(false);
@@ -378,33 +532,25 @@ export const SlotMembersTab = ({
   };
 
   const handleTransferMember = async () => {
-    if (!transferConfirm || !trainerPtId) return;
+    if (!transferConfirm || !trainerPtId || !selectedSlot || !selectedSlotData) return;
     setIsTransferring(true);
     try {
       const today = new Date().toISOString().split("T")[0];
 
-      // 1. Remove from old time_slot_members
-      await supabase
-        .from("time_slot_members")
-        .delete()
-        .eq("member_id", transferConfirm.memberId)
-        .eq("branch_id", currentBranch.id);
+      await supabase.from("time_slot_members").delete().eq("member_id", transferConfirm.memberId).eq("branch_id", currentBranch.id);
 
-      // 2. Deactivate old PT subscription
       await supabase
         .from("pt_subscriptions")
         .update({ status: "inactive", time_slot_id: null } as any)
         .eq("member_id", transferConfirm.memberId)
         .eq("status", "active");
 
-      // 3. Add to new time_slot_members
       await supabase.from("time_slot_members").insert({
         time_slot_id: selectedSlot,
         member_id: transferConfirm.memberId,
         branch_id: currentBranch.id,
       });
 
-      // 4. Create new PT subscription with this trainer
       const { data: subData } = await supabase
         .from("subscriptions")
         .select("end_date")
@@ -415,34 +561,35 @@ export const SlotMembersTab = ({
         .maybeSingle();
 
       const endDate = subData?.end_date || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
-      const months = Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24 * 30)));
+      const months = Math.max(
+        1,
+        Math.ceil((new Date(endDate).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24 * 30)),
+      );
 
-      const { data: ptProfile } = await supabase
-        .from("personal_trainers")
-        .select("monthly_fee")
-        .eq("id", trainerPtId)
-        .maybeSingle();
-
+      const { data: ptProfile } = await supabase.from("personal_trainers").select("monthly_fee").eq("id", trainerPtId).maybeSingle();
       const monthlyFee = ptProfile?.monthly_fee || 0;
 
-      const { data: insertedPt } = await supabase.from("pt_subscriptions").insert({
-        member_id: transferConfirm.memberId,
-        personal_trainer_id: trainerPtId,
-        branch_id: currentBranch.id,
-        start_date: today,
-        end_date: endDate,
-        monthly_fee: monthlyFee,
-        total_fee: months * monthlyFee,
-        status: "active",
-        time_slot_id: selectedSlot,
-      }).select("id").single();
+      const { data: insertedPt } = await supabase
+        .from("pt_subscriptions")
+        .insert({
+          member_id: transferConfirm.memberId,
+          personal_trainer_id: trainerPtId,
+          branch_id: currentBranch.id,
+          start_date: today,
+          end_date: endDate,
+          monthly_fee: monthlyFee,
+          total_fee: months * monthlyFee,
+          status: "active",
+          time_slot_id: selectedSlot,
+        })
+        .select("id")
+        .single();
 
-      // Ledger: PT subscription income + trainer percentage expense
       try {
         await createMembershipIncomeEntry(
           months * monthlyFee,
           "pt_subscription",
-          `PT subscription — ${trainerName} for ${transferConfirm.name} (transferred)`,
+          `PT subscription — ${selectedSlotData.trainer_name} for ${transferConfirm.name} (transferred)`,
           transferConfirm.memberId,
           undefined,
           undefined,
@@ -461,12 +608,13 @@ export const SlotMembersTab = ({
         console.error("Ledger entry (PT transfer) failed:", ledgerErr);
       }
 
-      toast.success(`${transferConfirm.name} transferred to ${trainerName}`, {
+      toast.success(`${transferConfirm.name} transferred to ${selectedSlotData.trainer_name}`, {
         description: `Previous PT with ${transferConfirm.fromTrainer} deactivated`,
       });
       setTransferConfirm(null);
       setAddDialogOpen(false);
-      fetchSlotMembers();
+      await fetchSlots();
+      await fetchVisibleMembers();
       invalidatePtSubscriptions();
     } finally {
       setIsTransferring(false);
@@ -474,409 +622,438 @@ export const SlotMembersTab = ({
   };
 
   const toggleMemberSelection = (memberId: string) => {
-    setAvailableMembers(prev =>
-      prev.map(m => m.id === memberId ? { ...m, selected: !m.selected } : m)
-    );
+    setAvailableMembers((prev) => prev.map((member) => (member.id === memberId ? { ...member, selected: !member.selected } : member)));
   };
 
-  const formatTime = (t: string) => {
-    const [h, m] = t.split(":");
-    const hour = parseInt(h);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    return `${hour % 12 || 12}:${m} ${ampm}`;
-  };
-
-  const filteredMembers = members.filter(m =>
-    !searchFilter || m.member_name.toLowerCase().includes(searchFilter.toLowerCase()) || m.member_phone.includes(searchFilter)
+  const filteredMembers = useMemo(
+    () =>
+      members.filter((member) => {
+        const query = searchFilter.trim().toLowerCase();
+        if (!query) return true;
+        return [member.member_name, member.member_phone, member.trainer_name, member.slot_label]
+          .filter(Boolean)
+          .some((value) => value.toLowerCase().includes(query));
+      }),
+    [members, searchFilter],
   );
 
-  const filteredAvailable = availableMembers.filter(m =>
-    !memberSearch || m.name.toLowerCase().includes(memberSearch.toLowerCase()) || m.phone.includes(memberSearch)
+  const filteredAvailable = useMemo(
+    () =>
+      availableMembers.filter((member) => {
+        const query = memberSearch.trim().toLowerCase();
+        if (!query) return true;
+        return member.name.toLowerCase().includes(query) || member.phone.includes(query);
+      }),
+    [availableMembers, memberSearch],
   );
 
-  const selectedCount = availableMembers.filter(m => m.selected).length;
-  const isFull = members.length >= slotCapacity;
+  const selectedCount = availableMembers.filter((member) => member.selected).length;
+  const selectedSlotCount = selectedSlot ? members.filter((member) => member.slot_id === selectedSlot).length : 0;
+  const isSelectedSlotFull = !!selectedSlotData && selectedSlotCount >= selectedSlotData.capacity;
+  const visibleUtilization = selectedSlotData
+    ? getUtilizationPercent(selectedSlotCount, selectedSlotData.capacity)
+    : filteredSlots.length
+      ? Math.round(filteredSlots.reduce((sum, slot) => sum + slot.utilization, 0) / filteredSlots.length)
+      : 0;
 
   const getPtBadge = (status: string) => {
     switch (status) {
-      case "active": return <Badge className="bg-green-100 text-green-700 text-[10px] border-0">PT Active</Badge>;
-      case "expired": return <Badge className="bg-red-100 text-red-700 text-[10px] border-0">PT Expired</Badge>;
-      case "not_synced": return <Badge className="bg-yellow-100 text-yellow-700 text-[10px] border-0">No PT Record</Badge>;
-      default: return <Badge variant="outline" className="text-[10px]">{status}</Badge>;
+      case "active":
+        return <Badge variant="secondary">PT Active</Badge>;
+      case "expired":
+        return <Badge variant="destructive">PT Expired</Badge>;
+      case "not_synced":
+        return <Badge variant="outline">No PT Record</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
   const getSubBadge = (status: string | null) => {
     if (!status) return null;
     switch (status) {
-      case "active": return <Badge className="bg-blue-100 text-blue-700 text-[10px] border-0">Active</Badge>;
-      case "expiring_soon": return <Badge className="bg-orange-100 text-orange-700 text-[10px] border-0">Expiring</Badge>;
-      case "expired": return <Badge className="bg-red-100 text-red-700 text-[10px] border-0">Expired</Badge>;
-      default: return null;
+      case "active":
+        return <Badge variant="secondary">Gym Active</Badge>;
+      case "expiring_soon":
+        return <Badge variant="outline">Gym Expiring</Badge>;
+      case "expired":
+        return <Badge variant="destructive">Gym Expired</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-base lg:text-lg font-semibold">Slot Member Management</h3>
-        <p className="text-xs lg:text-sm text-muted-foreground">
-          Assign PT members to trainer time slots. Only members with an active PT subscription can be added.
+        <h3 className="text-base font-semibold lg:text-lg">Slot Member Management</h3>
+        <p className="text-xs text-muted-foreground lg:text-sm">
+          Filter members by slot, time window, and trainer. Trainer names stay visible across the branch for quick assignment review.
         </p>
       </div>
 
-      {selectedTrainer && !trainerPtId && (
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800">
-          <ExclamationTriangleIcon className="w-4 h-4 mt-0.5 shrink-0" />
+      <Card className="border-border/60 shadow-sm">
+        <CardContent className="space-y-4 p-4">
+          <div className="flex items-center gap-2">
+            <div className="rounded-md bg-primary/10 p-2 text-primary">
+              <FunnelIcon className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Time-based filters</p>
+              <p className="text-xs text-muted-foreground">Mix time, trainer, availability, and a specific slot when needed.</p>
+            </div>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {TIME_BUCKET_OPTIONS.map((option) => (
+              <Button
+                key={option.value}
+                type="button"
+                variant={timeFilter === option.value ? "default" : "outline"}
+                size="sm"
+                className="shrink-0"
+                onClick={() => setTimeFilter(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            {!restrictedTrainerId && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Trainer</label>
+                <Select value={filterTrainer} onValueChange={setFilterTrainer}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="All trainers" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All trainers</SelectItem>
+                    {trainers.filter((trainer) => trainer.is_active).map((trainer) => (
+                      <SelectItem key={trainer.id} value={trainer.id}>{trainer.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Availability</label>
+              <Select value={filterAvailability} onValueChange={(value) => setFilterAvailability(value as SlotAvailability)}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {AVAILABILITY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1 xl:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground">Search slot or trainer</label>
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search by trainer or time..."
+                  value={slotSearch}
+                  onChange={(e) => setSlotSearch(e.target.value)}
+                  className="h-9 pl-8 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Exact slot</label>
+              <Select value={selectedSlot || "all"} onValueChange={(value) => setSelectedSlot(value === "all" ? "" : value)}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="All filtered slots" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All filtered slots</SelectItem>
+                  {filteredSlots.map((slot) => (
+                    <SelectItem key={slot.id} value={slot.id}>
+                      {slot.trainer_name} • {formatTimeLabel(slot.start_time)} – {formatTimeLabel(slot.end_time)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {timeFilter === "custom" && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:max-w-md">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Start time</label>
+                <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">End time</label>
+                <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 text-sm" />
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline">{filteredSlots.length} slot{filteredSlots.length === 1 ? "" : "s"}</Badge>
+            <Badge variant="outline">{filteredMembers.length} member{filteredMembers.length === 1 ? "" : "s"}</Badge>
+            <Badge variant="outline">{visibleUtilization}% utilization</Badge>
+            {selectedSlotData && <Badge variant="secondary">{selectedSlotData.trainer_name} • {formatTimeLabel(selectedSlotData.start_time)} – {formatTimeLabel(selectedSlotData.end_time)}</Badge>}
+          </div>
+        </CardContent>
+      </Card>
+
+      {selectedSlotData && !trainerPtId && (
+        <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3 text-foreground">
+          <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           <p className="text-xs">
-            This trainer has no active Personal Trainer profile. Only members with an existing PT subscription under this trainer can be assigned to slots.
+            This trainer has no active Personal Trainer profile. Only members with an existing PT subscription under this trainer can be assigned here.
           </p>
         </div>
       )}
 
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Select Trainer</label>
-          <Select value={selectedTrainer} onValueChange={setSelectedTrainer} disabled={!!restrictedTrainerId}>
-            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Choose trainer..." /></SelectTrigger>
-            <SelectContent>
-              {trainers.filter(t => t.is_active).map(t => (
-                <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Select Time Slot</label>
-          <Select value={selectedSlot} onValueChange={setSelectedSlot} disabled={!selectedTrainer || slots.length === 0}>
-            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={slots.length === 0 ? "No slots" : "Choose slot..."} /></SelectTrigger>
-            <SelectContent>
-              {slots.map(s => (
-                <SelectItem key={s.id} value={s.id}>
-                  {formatTime(s.start_time)} – {formatTime(s.end_time)} (Cap: {s.capacity})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Empty state when nothing is selected — colorful, informative panel */}
       {!selectedSlot && (
-        <Card className="border-0 overflow-hidden bg-gradient-to-br from-primary/5 via-background to-purple-500/5">
-          <CardContent className="p-6 lg:p-8">
-            <div className="grid gap-6 lg:grid-cols-[1fr_auto] items-center">
-              {/* Left: heading + steps */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center shadow-lg shadow-primary/20">
-                    <UserGroupIcon className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h4 className="text-base lg:text-lg font-semibold">
-                      {!selectedTrainer ? "Get Started" : "Pick a Time Slot"}
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      {!selectedTrainer
-                        ? "Select a trainer above to view their available time slots"
-                        : "Choose a slot to manage its assigned members"}
-                    </p>
-                  </div>
+        <Card className="border-border/60 bg-muted/20">
+          <CardContent className="grid gap-4 p-5 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl bg-primary/10 p-3 text-primary">
+                  <UserGroupIcon className="h-6 w-6" />
                 </div>
-
-                {/* Step indicators */}
-                <div className="grid sm:grid-cols-3 gap-2.5">
-                  <div className={`flex items-center gap-2.5 p-3 rounded-lg border transition-all ${
-                    selectedTrainer ? "bg-green-50 border-green-200" : "bg-card border-primary/30 ring-2 ring-primary/10"
-                  }`}>
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      selectedTrainer ? "bg-green-500 text-white" : "bg-primary text-primary-foreground"
-                    }`}>
-                      {selectedTrainer ? "✓" : "1"}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold">Choose Trainer</p>
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {selectedTrainer ? trainerName || "Selected" : "Pick from list"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className={`flex items-center gap-2.5 p-3 rounded-lg border transition-all ${
-                    selectedSlot ? "bg-green-50 border-green-200" :
-                    selectedTrainer ? "bg-card border-primary/30 ring-2 ring-primary/10" :
-                    "bg-muted/30 border-border opacity-60"
-                  }`}>
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      selectedSlot ? "bg-green-500 text-white" :
-                      selectedTrainer ? "bg-primary text-primary-foreground" : "bg-muted-foreground/30 text-muted-foreground"
-                    }`}>
-                      {selectedSlot ? "✓" : "2"}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold">Pick Slot</p>
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {selectedTrainer
-                          ? slots.length > 0 ? `${slots.length} slot${slots.length > 1 ? "s" : ""} available` : "No slots yet"
-                          : "Awaiting trainer"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2.5 p-3 rounded-lg border bg-muted/30 border-border opacity-60">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-muted-foreground/30 text-muted-foreground">
-                      3
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold">Assign Members</p>
-                      <p className="text-[10px] text-muted-foreground truncate">Active PT only</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tip strip */}
-                <div className="flex items-start gap-2.5 p-3 rounded-lg bg-blue-50 border border-blue-200">
-                  <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-white text-[10px] font-bold">i</span>
-                  </div>
-                  <p className="text-xs text-blue-900">
-                    <span className="font-semibold">Tip:</span> Members need an active PT subscription with the same trainer to join a slot. Use transfer to move them between trainers.
-                  </p>
+                <div>
+                  <h4 className="text-base font-semibold text-foreground">Browse members by time slot</h4>
+                  <p className="text-xs text-muted-foreground">Pick a time window or specific slot to narrow the list, then select an exact slot when you want to assign or transfer.</p>
                 </div>
               </div>
-
-              {/* Right: decorative info chips */}
-              <div className="hidden lg:flex flex-col gap-2.5 min-w-[180px]">
-                <div className="flex items-center gap-2.5 p-3 rounded-lg bg-card border shadow-sm">
-                  <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center">
-                    <UserGroupIcon className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground">Same Trainer</p>
-                    <p className="text-xs font-semibold">Add directly</p>
-                  </div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <div className="rounded-lg border border-border bg-background p-3">
+                  <p className="text-xs font-medium text-foreground">1. Filter by time</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Morning, afternoon, evening, night, or custom range.</p>
                 </div>
-                <div className="flex items-center gap-2.5 p-3 rounded-lg bg-card border shadow-sm">
-                  <div className="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center">
-                    <ArrowsRightLeftIcon className="w-5 h-5 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground">Other Trainer</p>
-                    <p className="text-xs font-semibold">Transfer over</p>
-                  </div>
+                <div className="rounded-lg border border-border bg-background p-3">
+                  <p className="text-xs font-medium text-foreground">2. Review trainers</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Trainer names stay visible beside every member and slot.</p>
                 </div>
-                <div className="flex items-center gap-2.5 p-3 rounded-lg bg-card border shadow-sm">
-                  <div className="w-9 h-9 rounded-lg bg-yellow-100 flex items-center justify-center">
-                    <ClockIcon className="w-5 h-5 text-yellow-600" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground">Capacity</p>
-                    <p className="text-xs font-semibold">Per slot limit</p>
-                  </div>
+                <div className="rounded-lg border border-border bg-background p-3">
+                  <p className="text-xs font-medium text-foreground">3. Select exact slot</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Required only for assigning, removing, or transferring members.</p>
                 </div>
+              </div>
+            </div>
+            <div className="hidden min-w-[180px] flex-col gap-2 lg:flex">
+              <div className="rounded-lg border border-border bg-background p-3">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Open slots</p>
+                <p className="mt-1 text-xl font-semibold text-foreground">{filteredSlots.filter((slot) => slot.availability === "open").length}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-background p-3">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">High load</p>
+                <p className="mt-1 text-xl font-semibold text-foreground">{filteredSlots.filter((slot) => slot.availability === "high_load").length}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {selectedSlot && (
-        <Card className="border shadow-sm">
-          <CardContent className="p-3 lg:p-4 space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs font-semibold">
-                  {members.length}/{slotCapacity} members
-                </Badge>
-                {isFull && <Badge className="bg-red-100 text-red-700 text-[10px] border-0">Full</Badge>}
-              </div>
-              <div className="flex gap-2">
-                <div className="relative">
-                  <MagnifyingGlassIcon className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search..."
-                    value={searchFilter}
-                    onChange={e => setSearchFilter(e.target.value)}
-                    className="h-7 text-xs pl-8 w-36"
-                  />
-                </div>
-                {canAssign && (
-                  <Button size="sm" className="h-7 text-xs gap-1" onClick={handleOpenAddMembers} disabled={isFull}>
-                    <PlusIcon className="w-3 h-3" /> Assign Members
-                  </Button>
-                )}
-              </div>
+      <Card className="border-border/60 shadow-sm">
+        <CardContent className="space-y-3 p-3 lg:p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">{selectedSlotData ? "Selected slot members" : "Members across filtered slots"}</p>
+              <p className="text-xs text-muted-foreground">
+                {selectedSlotData
+                  ? `${selectedSlotCount}/${selectedSlotData.capacity} assigned • ${selectedSlotData.trainer_name}`
+                  : "Compare members across matching slots and then drill into one slot for actions."}
+              </p>
             </div>
-
-            {isLoading ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Loading...</p>
-            ) : filteredMembers.length === 0 ? (
-              <div className="text-center py-8">
-                <UserGroupIcon className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
-                <p className="text-sm font-medium text-muted-foreground">No members assigned to this slot</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">Only members with active PT can be added here</p>
+            <div className="flex flex-wrap gap-2">
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search members, trainer, phone..."
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  className="h-8 w-56 pl-8 text-xs"
+                />
               </div>
-            ) : (
-              <TooltipProvider delayDuration={150}>
-                <div className="space-y-1.5">
-                  {filteredMembers.map(m => (
-                    <div key={m.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-medium truncate">{m.member_name}</p>
-                          {getPtBadge(m.pt_status)}
-                          {getSubBadge(m.subscription_status)}
-                          {m.is_trainer_replaced && (
+              {canAssign && (
+                <Button size="sm" className="h-8 gap-1 text-xs" onClick={handleOpenAddMembers} disabled={!selectedSlotData || isSelectedSlotFull}>
+                  <PlusIcon className="h-3.5 w-3.5" /> Assign Members
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {selectedSlotData && isSelectedSlotFull && <Badge variant="destructive">This slot is full</Badge>}
+
+          {!selectedSlotData && (
+            <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+              Select an exact slot when you need to assign, remove, or transfer members. Browsing stays enabled across all matching slots.
+            </div>
+          )}
+
+          {isLoading ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Loading members...</p>
+          ) : filteredMembers.length === 0 ? (
+            <div className="py-8 text-center">
+              <UserGroupIcon className="mx-auto mb-2 h-10 w-10 text-muted-foreground/50" />
+              <p className="text-sm font-medium text-muted-foreground">No members found for the current filters</p>
+              <p className="mt-1 text-xs text-muted-foreground/70">Try another time window, trainer, or slot.</p>
+            </div>
+          ) : (
+            <TooltipProvider delayDuration={150}>
+              <div className="space-y-2">
+                <div className="hidden grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground md:grid">
+                  <span>Member</span>
+                  <span>Trainer</span>
+                  <span>Slot</span>
+                  <span className="text-right">Actions</span>
+                </div>
+                {filteredMembers.map((member) => {
+                  const actionsEnabled = !!selectedSlotData && member.slot_id === selectedSlotData.id;
+                  return (
+                    <div key={`${member.slot_id}-${member.member_id}`} className="grid gap-3 rounded-lg border border-border bg-background p-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-sm font-medium text-foreground">{member.member_name}</p>
+                          {getPtBadge(member.pt_status)}
+                          {getSubBadge(member.subscription_status)}
+                          {member.is_trainer_replaced && (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[10px] border-0 gap-1 cursor-help">
-                                  <ExclamationTriangleIcon className="w-3 h-3" />
-                                  Trainer Replaced
-                                </Badge>
+                                <Badge variant="outline" className="cursor-help">Trainer replaced</Badge>
                               </TooltipTrigger>
                               <TooltipContent side="top" className="max-w-[260px]">
                                 <p className="text-xs">
-                                  PT trainer changed to <strong>{m.current_pt_trainer_name}</strong>.
-                                  Use <em>Transfer Slot</em> to move them to one of {m.current_pt_trainer_name}'s slots.
+                                  PT trainer changed to <strong>{member.current_pt_trainer_name}</strong>. Move them to one of that trainer&apos;s slots if needed.
                                 </p>
                               </TooltipContent>
                             </Tooltip>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <p className="text-xs text-muted-foreground">{m.member_phone}</p>
-                          {m.pt_end_date && (
-                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                              <ClockIcon className="w-3 h-3" />
-                              PT ends {new Date(m.pt_end_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span>{member.member_phone}</span>
+                          {member.pt_end_date && (
+                            <span className="inline-flex items-center gap-1">
+                              <ClockIcon className="h-3 w-3" /> PT ends {new Date(member.pt_end_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                             </span>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {canAssign && m.current_pt_trainer_id && (
+
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">{member.trainer_name}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Assigned trainer</p>
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">{member.slot_label}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{member.slot_member_count}/{member.slot_capacity} members</p>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-1">
+                        {actionsEnabled && canAssign && member.current_pt_trainer_id && member.hasSlotMemberRow && (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className={`h-7 px-2 text-xs gap-1 ${
-                                  m.is_trainer_replaced
-                                    ? "text-amber-700 hover:text-amber-800 hover:bg-amber-50"
-                                    : "text-primary hover:text-primary hover:bg-primary/10"
-                                }`}
-                                onClick={() => setMoveSlot({
-                                  rowId: m.id,
-                                  memberId: m.member_id,
-                                  memberName: m.member_name,
-                                  trainerId: m.current_pt_trainer_id!,
-                                  trainerName: m.current_pt_trainer_name || "Trainer",
-                                })}
+                                className="h-8 px-2 text-xs"
+                                onClick={() =>
+                                  setMoveSlot({
+                                    rowId: member.id,
+                                    memberId: member.member_id,
+                                    memberName: member.member_name,
+                                    trainerId: member.current_pt_trainer_id!,
+                                    trainerName: member.current_pt_trainer_name || member.trainer_name,
+                                    currentSlotId: member.slot_id,
+                                  })
+                                }
                               >
-                                <ArrowsRightLeftIcon className="w-3.5 h-3.5" />
+                                <ArrowsRightLeftIcon className="h-3.5 w-3.5" />
                                 <span className="hidden sm:inline">Transfer</span>
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                              <p className="text-xs">
-                                Move to another slot under <strong>{m.current_pt_trainer_name}</strong>
-                              </p>
+                              <p className="text-xs">Move to another slot under <strong>{member.current_pt_trainer_name}</strong></p>
                             </TooltipContent>
                           </Tooltip>
                         )}
-                        {canRemove && (
+                        {actionsEnabled && canRemove && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1"
-                            onClick={() => setRemoveConfirm({ id: m.id, name: m.member_name, memberId: m.member_id })}
+                            className="h-8 px-2 text-xs text-destructive hover:text-destructive"
+                            onClick={() => setRemoveConfirm({ id: member.id, name: member.member_name, memberId: member.member_id, slotId: member.slot_id })}
                           >
-                            <XMarkIcon className="w-3.5 h-3.5" />
+                            <XMarkIcon className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">Remove</span>
                           </Button>
                         )}
+                        {!actionsEnabled && <Badge variant="outline">View only</Badge>}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </TooltipProvider>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                  );
+                })}
+              </div>
+            </TooltipProvider>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Add Members Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="sm:max-w-lg p-4">
+        <DialogContent className="p-4 sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-base flex items-center gap-2">
-              <UserGroupIcon className="w-5 h-5" />
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <UserGroupIcon className="h-5 w-5" />
               Assign Members to Time Slot
             </DialogTitle>
             <DialogDescription className="text-xs">
               Only members with an active PT subscription under <strong>{trainerName}</strong> can be assigned.
-              Members with other trainers can be transferred.
+              Members with other trainers can be transferred into <strong>{selectedSlotData?.trainer_name}</strong>&apos;s selected slot.
             </DialogDescription>
           </DialogHeader>
           <Separator />
           <div className="space-y-3">
             <div className="relative">
-              <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search by name or phone..."
                 value={memberSearch}
-                onChange={e => setMemberSearch(e.target.value)}
-                className="pl-9 h-9 text-sm"
+                onChange={(e) => setMemberSearch(e.target.value)}
+                className="h-9 pl-9 text-sm"
               />
             </div>
-            <div className="max-h-60 overflow-y-auto space-y-1">
+            <div className="max-h-60 space-y-1 overflow-y-auto">
               {filteredAvailable.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No members found</p>
+                <p className="py-4 text-center text-sm text-muted-foreground">No members found</p>
               ) : (
-                filteredAvailable.map(m => {
-                  const isSelectable = m.pt_status === "same_trainer";
-                  const isOtherTrainer = m.pt_status === "other_trainer";
-                  const isNoPt = m.pt_status === "no_pt";
+                filteredAvailable.map((member) => {
+                  const isSelectable = member.pt_status === "same_trainer";
+                  const isOtherTrainer = member.pt_status === "other_trainer";
+                  const isNoPt = member.pt_status === "no_pt";
 
                   return (
                     <div
-                      key={m.id}
-                      className={`flex items-center gap-3 p-2.5 rounded-lg border transition-colors ${
+                      key={member.id}
+                      className={`flex items-center gap-3 rounded-lg border p-2.5 transition-colors ${
                         isSelectable
-                          ? "border-transparent hover:border-border hover:bg-muted/50 cursor-pointer"
-                          : "opacity-50 bg-muted/30 border-border/30 cursor-not-allowed"
+                          ? "cursor-pointer border-transparent hover:border-border hover:bg-muted/50"
+                          : "cursor-not-allowed border-border/30 bg-muted/30 opacity-50"
                       }`}
-                      onClick={() => isSelectable && toggleMemberSelection(m.id)}
+                      onClick={() => isSelectable && toggleMemberSelection(member.id)}
                     >
                       {isSelectable ? (
-                        <Checkbox checked={m.selected} onCheckedChange={() => toggleMemberSelection(m.id)} />
+                        <Checkbox checked={member.selected} onCheckedChange={() => toggleMemberSelection(member.id)} />
                       ) : (
-                        <div className="w-4 h-4 rounded border border-muted-foreground/30 shrink-0" />
+                        <div className="h-4 w-4 shrink-0 rounded border border-muted-foreground/30" />
                       )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className={`text-sm font-medium truncate ${!isSelectable ? "text-muted-foreground" : ""}`}>{m.name}</p>
-                          {isOtherTrainer && (
-                            <Badge className="bg-orange-100 text-orange-700 text-[9px] border-0 shrink-0 px-1.5 py-0">
-                              With {m.existing_trainer_name}
-                            </Badge>
-                          )}
-                          {isNoPt && (
-                            <Badge className="bg-muted text-muted-foreground text-[9px] border-0 shrink-0 px-1.5 py-0">
-                              No PT
-                            </Badge>
-                          )}
-                          {isSelectable && (
-                            <Badge className="bg-green-100 text-green-700 text-[9px] border-0 shrink-0 px-1.5 py-0">
-                              PT Active
-                            </Badge>
-                          )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className={`truncate text-sm font-medium ${!isSelectable ? "text-muted-foreground" : "text-foreground"}`}>{member.name}</p>
+                          {isOtherTrainer && <Badge variant="outline">With {member.existing_trainer_name}</Badge>}
+                          {isNoPt && <Badge variant="outline">No PT</Badge>}
+                          {isSelectable && <Badge variant="secondary">PT Active</Badge>}
                         </div>
                         <div className="flex items-center gap-2">
-                          <p className="text-xs text-muted-foreground">{m.phone}</p>
-                          {m.subscription_end_date && (
+                          <p className="text-xs text-muted-foreground">{member.phone}</p>
+                          {member.subscription_end_date && (
                             <span className="text-[10px] text-muted-foreground">
-                              till {new Date(m.subscription_end_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                              till {new Date(member.subscription_end_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                             </span>
                           )}
                         </div>
@@ -885,19 +1062,19 @@ export const SlotMembersTab = ({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-6 text-[10px] px-2 gap-1 shrink-0"
+                          className="h-6 shrink-0 gap-1 px-2 text-[10px]"
                           onClick={(e) => {
                             e.stopPropagation();
                             setTransferConfirm({
-                              memberId: m.id,
-                              name: m.name,
-                              fromTrainer: m.existing_trainer_name || "Unknown",
-                              fromTrainerId: m.existing_trainer_id || "",
-                              ptSubId: m.pt_subscription_id || "",
+                              memberId: member.id,
+                              name: member.name,
+                              fromTrainer: member.existing_trainer_name || "Unknown",
+                              fromTrainerId: member.existing_trainer_id || "",
+                              ptSubId: member.pt_subscription_id || "",
                             });
                           }}
                         >
-                          <ArrowsRightLeftIcon className="w-3 h-3" />
+                          <ArrowsRightLeftIcon className="h-3 w-3" />
                           Transfer
                         </Button>
                       )}
@@ -907,18 +1084,15 @@ export const SlotMembersTab = ({
               )}
             </div>
             {selectedCount > 0 && (
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2">
                 <p className="text-xs text-foreground">
-                  <strong>{selectedCount}</strong> member{selectedCount > 1 ? "s" : ""} selected —
-                  will be assigned to this time slot
+                  <strong>{selectedCount}</strong> member{selectedCount > 1 ? "s" : ""} selected — will be assigned to this time slot.
                 </p>
               </div>
             )}
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setAddDialogOpen(false)} disabled={isProcessing}>
-              Cancel
-            </Button>
+            <Button variant="outline" size="sm" onClick={() => setAddDialogOpen(false)} disabled={isProcessing}>Cancel</Button>
             <Button size="sm" onClick={handleAddMembers} disabled={isProcessing || selectedCount === 0}>
               {isProcessing ? "Assigning..." : `Assign ${selectedCount > 0 ? selectedCount : ""} Member${selectedCount !== 1 ? "s" : ""}`}
             </Button>
@@ -926,61 +1100,49 @@ export const SlotMembersTab = ({
         </DialogContent>
       </Dialog>
 
-      {/* Remove Confirmation */}
       <AlertDialog open={!!removeConfirm} onOpenChange={(open) => !open && setRemoveConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-base">Remove {removeConfirm?.name} from slot?</AlertDialogTitle>
             <AlertDialogDescription className="text-sm">
-              <strong>{removeConfirm?.name}</strong> will be removed from this time slot.
-              Their PT subscription with {trainerName} will remain active but won't be linked to any slot.
+              <strong>{removeConfirm?.name}</strong> will be removed from this time slot. Their PT subscription with {trainerName || selectedSlotData?.trainer_name} will remain active but won&apos;t be linked to any slot.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleRemoveMember} 
-              disabled={isProcessing}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={handleRemoveMember} disabled={isProcessing} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {isProcessing ? "Removing..." : "Remove from Slot"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Transfer Confirmation */}
       <AlertDialog open={!!transferConfirm} onOpenChange={(open) => !open && setTransferConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-base">Transfer {transferConfirm?.name}?</AlertDialogTitle>
             <AlertDialogDescription className="text-sm">
-              This will transfer <strong>{transferConfirm?.name}</strong> from{" "}
-              <strong>{transferConfirm?.fromTrainer}</strong> to <strong>{trainerName}</strong>.
+              This will transfer <strong>{transferConfirm?.name}</strong> from <strong>{transferConfirm?.fromTrainer}</strong> to <strong>{trainerName || selectedSlotData?.trainer_name}</strong>.
               <br /><br />
               • Previous PT subscription will be deactivated<br />
-              • New PT subscription will be created with {trainerName}<br />
+              • New PT subscription will be created with {trainerName || selectedSlotData?.trainer_name}<br />
               • Member will be assigned to this time slot
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isTransferring}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleTransferMember}
-              disabled={isTransferring}
-            >
+            <AlertDialogAction onClick={handleTransferMember} disabled={isTransferring}>
               {isTransferring ? "Transferring..." : "Transfer Member"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Same-trainer slot move */}
       {moveSlot && (
         <TransferSlotDialog
           open={!!moveSlot}
-          onOpenChange={(o) => !o && setMoveSlot(null)}
-          currentSlotId={selectedSlot}
+          onOpenChange={(open) => !open && setMoveSlot(null)}
+          currentSlotId={moveSlot.currentSlotId}
           slotMemberRowId={moveSlot.rowId}
           memberId={moveSlot.memberId}
           memberName={moveSlot.memberName}
@@ -989,7 +1151,8 @@ export const SlotMembersTab = ({
           branchId={currentBranch?.id}
           onTransferred={() => {
             setMoveSlot(null);
-            fetchSlotMembers();
+            fetchSlots();
+            fetchVisibleMembers();
           }}
         />
       )}
