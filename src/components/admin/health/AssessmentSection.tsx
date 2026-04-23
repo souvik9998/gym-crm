@@ -179,14 +179,14 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     const value = getExerciseValue(fieldKey, mode);
 
     return (
-      <div key={fieldKey} className="rounded-lg border border-border/50 bg-background/80 p-3">
+      <div key={fieldKey} className="rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3">
         <div className="flex flex-wrap items-center gap-2">
           <Label className="text-xs font-medium text-foreground">{label}</Label>
           <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">
             {mode === "time" ? "Time" : mode === "reps_sets" ? "Reps + sets" : "Reps"}
           </Badge>
         </div>
-        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="mt-2 grid grid-cols-1 gap-2 min-[440px]:grid-cols-2">
           {mode !== "time" && (
             <div>
               <Label className="text-[11px] text-muted-foreground">Reps</Label>
@@ -208,7 +208,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
               <div>
                 <Label className="text-[11px] text-muted-foreground">Unit</Label>
                 <Select value={value.unit || "sec"} onValueChange={(unit: "sec" | "min") => updateExerciseField(fieldKey, { mode, unit })}>
-                  <SelectTrigger className="mt-1 h-10 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1 h-10 w-full text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="sec">Seconds</SelectItem>
                     <SelectItem value="min">Minutes</SelectItem>
@@ -240,7 +240,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       if (inputType === "select" && options?.length) {
         return (
           <Select value={formData[fieldKey] || ""} onValueChange={(value) => updateField(fieldKey, value)}>
-            <SelectTrigger className="mt-1 h-10 text-sm">
+            <SelectTrigger className="mt-1 h-10 w-full text-sm">
               <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
             </SelectTrigger>
             <SelectContent>
@@ -258,7 +258,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
             value={formData[fieldKey] || ""}
             onChange={(e) => updateField(fieldKey, e.target.value)}
             placeholder={placeholder}
-            className="mt-1 min-h-[84px] text-sm"
+            className="mt-1 min-h-[96px] resize-y text-sm leading-5"
           />
         );
       }
@@ -282,7 +282,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     })();
 
     return (
-      <div key={fieldKey} className="rounded-lg border border-border/50 bg-background/80 p-3">
+      <div key={fieldKey} className="rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3">
         <div className="flex flex-wrap items-center gap-2">
           <Label className="text-xs font-medium text-foreground">{label}</Label>
           {unit && <Badge variant="outline" className="h-5 rounded-md px-1.5 text-[10px]">{unit}</Badge>}
@@ -358,8 +358,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       )}
 
       {showForm && (
-        <div className="space-y-3 rounded-xl border border-accent/20 bg-accent/5 p-3 sm:p-4 max-h-[70vh] overflow-y-auto">
-          <div className="rounded-lg border border-border/50 bg-background/70 p-3">
+        <div className="space-y-3 rounded-xl border border-accent/20 bg-accent/5 p-2 sm:p-3 lg:p-4 max-h-[76vh] overflow-y-auto overscroll-contain pr-1 sm:pr-2">
+          <div className="rounded-lg border border-border/50 bg-background/80 p-2.5 sm:p-3">
             <div className="flex items-start gap-2">
               <Info className="mt-0.5 h-4 w-4 text-accent" />
               <div>
@@ -369,7 +369,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
             </div>
           </div>
 
-          <div className="rounded-lg border border-border/50 bg-background/80 p-3">
+          <div className="rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3">
             <Label className="text-xs font-medium text-foreground">Assessed By *</Label>
             <Input
               value={formData.assessed_by || ""}
@@ -385,12 +385,12 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
             const Icon = section.icon;
 
             return (
-              <div key={section.key} className="rounded-xl border border-border/50 bg-background/70 p-3 sm:p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 text-accent">
+              <div key={section.key} className="rounded-xl border border-border/50 bg-background/80 p-2.5 sm:p-3 lg:p-3.5 space-y-3">
+                <div className="flex items-start gap-2.5 sm:gap-3">
+                  <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-accent/10 text-accent">
                     <Icon className="h-4 w-4" />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-semibold text-foreground">{section.label}</p>
                       <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">
@@ -402,20 +402,20 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
                 </div>
 
                 {hasFields ? (
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-2 min-[560px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                     {fields.map((field) => {
                       const customField = config[section.key]?.custom_fields?.find((item) => item.key === field.key);
                       return renderFieldInput(section.key, field.key, field.label, customField);
                     })}
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-border/50 bg-background/80 p-3">
+                  <div className="rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3">
                     <Label className="text-xs font-medium text-foreground">{section.label}</Label>
                     <Textarea
                       value={formData[section.key] || ""}
                       onChange={(e) => updateField(section.key, e.target.value)}
                       placeholder={`Enter ${section.label.toLowerCase()}...`}
-                      className="mt-1 min-h-[96px] text-sm"
+                      className="mt-1 min-h-[112px] resize-y text-sm leading-5"
                     />
                   </div>
                 )}
@@ -423,7 +423,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
             );
           })}
 
-          <div className="flex gap-2 pt-1">
+          <div className="sticky bottom-0 flex gap-2 border-t border-border/40 bg-background/95 px-1 pt-3 pb-1 backdrop-blur supports-[backdrop-filter]:bg-background/80">
             <Button size="sm" onClick={handleSave} disabled={isSaving} className="flex-1 rounded-lg">
               {isSaving ? <><ButtonSpinner /> Saving...</> : "Save Assessment"}
             </Button>
