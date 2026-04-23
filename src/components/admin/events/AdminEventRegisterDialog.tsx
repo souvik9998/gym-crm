@@ -648,7 +648,7 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
                   />
                   <Button
                     size="sm"
-                    onClick={handleSearch}
+                    onClick={() => handleSearch()}
                     disabled={isSearchingMembers || memberSearch.trim().length < 2}
                     className="rounded-xl"
                   >
