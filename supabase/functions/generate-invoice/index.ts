@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { PDFDocument, StandardFonts, rgb } from "npm:pdf-lib@1.17.1";
 import { enforceRateLimit } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
@@ -7,10 +8,11 @@ const corsHeaders = {
 };
 
 // Generate PDF invoice matching the web invoice view design
-function generateInvoicePDF(data: {
+async function generateInvoicePDF(data: {
   invoiceNumber: string;
   gymName: string;
   invoiceBrandName: string;
+  invoiceLogoUrl: string | null;
   gymAddress: string;
   gymPhone: string;
   gymEmail: string;
@@ -41,34 +43,8 @@ function generateInvoicePDF(data: {
     text: string;
   };
 }): Uint8Array {
-  const content: string[] = [];
   const pageW = 612;
   const pageH = 842;
-  const leftMargin = 50;
-  const rightMargin = 562;
-  const contentWidth = rightMargin - leftMargin;
-
-  const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-
-  const addText = (x: number, y: number, text: string, fontSize: number = 10, bold = false) => {
-    const font = bold ? "/F2" : "/F1";
-    content.push(`BT ${font} ${fontSize} Tf ${x} ${y} Td (${esc(text)}) Tj ET`);
-  };
-
-  const addColorText = (x: number, y: number, text: string, fontSize: number, bold: boolean, r: number, g: number, b: number) => {
-    const font = bold ? "/F2" : "/F1";
-    content.push(`BT ${r} ${g} ${b} rg ${font} ${fontSize} Tf ${x} ${y} Td (${esc(text)}) Tj ET`);
-    content.push(`0 0 0 rg`);
-  };
-
-  const addLine = (x1: number, y1: number, x2: number, y2: number, r = 0.85, g = 0.85, b = 0.85) => {
-    content.push(`${r} ${g} ${b} RG 0.5 w ${x1} ${y1} m ${x2} ${y2} l S 0 0 0 RG`);
-  };
-
-  const addRect = (x: number, y: number, w: number, h: number, r: number, g: number, b: number) => {
-    content.push(`${r} ${g} ${b} rg ${x} ${y} ${w} ${h} re f 0 0 0 rg`);
-  };
-
   const hexToRgb = (hex: string, fallback: [number, number, number]) => {
     const safe = hex?.replace("#", "") || "";
     const full = safe.length === 3 ? safe.split("").map((char) => char + char).join("") : safe;
@@ -80,210 +56,230 @@ function generateInvoicePDF(data: {
     ] as const;
   };
 
-  const addRoundBadge = (x: number, y: number, text: string, r: number, g: number, b: number) => {
-    // Simple rect badge (rounded corners not available in basic PDF)
-    const badgeW = 60;
-    const badgeH = 18;
-    addRect(x, y - 4, badgeW, badgeH, r, g, b);
-    addColorText(x + 12, y, text, 9, true, 1, 1, 1);
+  const wrapText = (text: string, maxChars: number) => {
+    return text
+      .split(/\n+/)
+      .flatMap((line) => {
+        const words = line.trim().split(/\s+/).filter(Boolean);
+        if (!words.length) return [""];
+        const rows: string[] = [];
+        let current = "";
+        for (const word of words) {
+          const next = current ? `${current} ${word}` : word;
+          if (next.length > maxChars && current) {
+            rows.push(current);
+            current = word;
+          } else {
+            current = next;
+          }
+        }
+        if (current) rows.push(current);
+        return rows;
+      })
+      .slice(0, 6);
   };
-
-  let yPos = pageH;
 
   const [headerR, headerG, headerB] = hexToRgb(data.invoicePalette.header, [0.12, 0.24, 0.43]);
   const [accentR, accentG, accentB] = hexToRgb(data.invoicePalette.accent, [0.88, 0.94, 0.98]);
   const [textR, textG, textB] = hexToRgb(data.invoicePalette.text, [0.11, 0.16, 0.33]);
-
   const invoiceTitle = data.gymGst ? "TAX INVOICE" : "INVOICE";
+
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([pageW, pageH]);
+  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
   const outerX = 28;
   const outerY = 28;
   const outerW = pageW - 56;
   const outerH = pageH - 56;
-  const rightColX = 330;
-  const totalRowsStartY = 264;
+  const leftColW = 302;
+  const rightColX = outerX + leftColW;
+  const headerY = pageH - 80;
+  const businessTop = headerY - 108;
+  const billTop = businessTop - 102;
+  const tableTop = billTop - 36;
+  const tableBottom = 360;
+  const termsTop = tableBottom;
+  const termsBottom = 314;
+  const totalsBottom = 250;
 
-  content.push(`0 0 0 RG 1 w ${outerX} ${outerY} ${outerW} ${outerH} re S`);
-  addRect(outerX, 760, outerW, 30, headerR, headerG, headerB);
-  addColorText(240, 770, invoiceTitle, 17, true, 1, 1, 1);
-  addColorText(470, 775, `INVOICE NO : ${data.invoiceNumber}`, 8, true, 1, 1, 1);
-  addColorText(470, 764, `DATE : ${data.paymentDate}`, 8, true, 1, 1, 1);
-
-  addColorText(170, 735, data.invoiceBrandName || data.gymName, 22, true, 0, 0, 0);
-  let hy = 718;
-  if (data.gymAddress) {
-    addColorText(150, hy, data.gymAddress, 10, false, 0.2, 0.2, 0.2);
-    hy -= 13;
-  }
-  if (data.gymGst) {
-    addColorText(205, hy, `GSTIN: ${data.gymGst}`, 9, false, 0.2, 0.2, 0.2);
-    hy -= 12;
-  }
-  if (data.gymEmail) {
-    addColorText(185, hy, `Email ID: ${data.gymEmail}`, 9, false, 0.2, 0.2, 0.2);
-    hy -= 12;
-  }
-  if (data.gymPhone) {
-    addColorText(200, hy, `Phone: ${data.gymPhone}`, 9, false, 0.2, 0.2, 0.2);
-  }
-
-  addLine(outerX, 682, outerX + outerW, 682, 0, 0, 0);
-  addRect(outerX, 580, 290, 102, accentR, accentG, accentB);
-  addRect(rightColX, 580, outerX + outerW - rightColX, 102, accentR, accentG, accentB);
-  addLine(rightColX, 580, rightColX, 682, 0, 0, 0);
-  addLine(outerX, 580, outerX + outerW, 580, 0, 0, 0);
-
-  addText(32, 662, "Bill To:", 10, true);
-  addText(32, 645, data.memberName, 10, false);
-  if (data.memberPhone) addText(32, 630, `Phone: ${data.memberPhone}`, 9, false);
-  if (data.memberId) addText(32, 616, `ID: ${data.memberId.slice(0, 8).toUpperCase()}`, 9, false);
-  if (data.branchName) addText(32, 602, `Branch: ${data.branchName}`, 9, false);
-
-  addText(334, 645, `Payment Date: ${data.paymentDate}`, 10, false);
-  addText(334, 630, `Payment Mode: ${data.paymentMode}`, 10, false);
-  if (data.razorpayPaymentId) addText(334, 615, `Txn No: ${data.razorpayPaymentId}`, 9, false);
-  addRoundBadge(334, 595, "PAID", headerR, headerG, headerB);
-
-  addLine(outerX, 550, outerX + outerW, 550, 0, 0, 0);
-  addLine(320, 360, 320, 580, 0, 0, 0);
-  addLine(380, 360, 380, 580, 0, 0, 0);
-  addLine(435, 360, 435, 580, 0, 0, 0);
-  addLine(500, 360, 500, 580, 0, 0, 0);
-  addLine(outerX, 360, outerX + outerW, 360, 0, 0, 0);
-  addLine(outerX, 550, outerX + outerW, 550, 0, 0, 0);
-  addLine(outerX, 520, outerX + outerW, 520, 0, 0, 0);
-
-  addText(32, 535, "Description", 9, true);
-  addText(338, 535, "Duration", 9, true);
-  addText(398, 535, "Qty", 9, true);
-  addText(470, 535, "Amount", 9, true);
-
-  let tableRowY = 490;
-
-  // Gym Fee row
-  if (data.gymFee > 0) {
-    const packageLabel = data.packageName || "Gym Membership";
-      addText(32, tableRowY, packageLabel, 9, true);
-    if (data.startDate && data.endDate) {
-        addColorText(338, tableRowY, `${data.startDate} - ${data.endDate}`, 8, false, 0.4, 0.4, 0.4);
-    }
-      addText(405, tableRowY, "1", 9, false);
-      addText(470, tableRowY, `Rs.${data.gymFee.toLocaleString("en-IN")}`, 9, true);
-      tableRowY -= 22;
-  }
-
-  // Joining Fee row
-  if (data.joiningFee > 0) {
-      addText(32, tableRowY, "Joining Fee", 9, false);
-      addColorText(338, tableRowY, "-", 8, false, 0.5, 0.5, 0.5);
-      addText(405, tableRowY, "1", 9, false);
-      addText(470, tableRowY, `Rs.${data.joiningFee.toLocaleString("en-IN")}`, 9, true);
-      tableRowY -= 22;
-  }
-
-  // Trainer Fee row
-  if (data.trainerFee > 0) {
-      addText(32, tableRowY, "Personal Training Fee", 9, false);
-    if (data.startDate && data.endDate) {
-        addColorText(338, tableRowY, `${data.startDate} - ${data.endDate}`, 8, false, 0.5, 0.5, 0.5);
-    }
-      addText(405, tableRowY, "1", 9, false);
-      addText(470, tableRowY, `Rs.${data.trainerFee.toLocaleString("en-IN")}`, 9, true);
-      tableRowY -= 22;
-  }
-
-  // If no breakdown, show single line
-  if (data.gymFee === 0 && data.joiningFee === 0 && data.trainerFee === 0) {
-    const label = data.packageName || "Payment";
-      addText(32, tableRowY, label, 9, true);
-      addColorText(338, tableRowY, "-", 8, false, 0.5, 0.5, 0.5);
-      addText(405, tableRowY, "1", 9, false);
-      addText(470, tableRowY, `Rs.${data.amount.toLocaleString("en-IN")}`, 9, true);
-      tableRowY -= 22;
-  }
-
-  addRect(outerX, 314, 292, 46, accentR, accentG, accentB);
-  addLine(rightColX, 314, rightColX, 360, 0, 0, 0);
-  addLine(outerX, 314, outerX + outerW, 314, 0, 0, 0);
-  addText(32, 345, "Terms & conditions", 9, true);
-
-  const termLines = (data.invoiceTerms || "Fees once paid are non-refundable.")
-    .split(/\n+/)
-    .flatMap((line) => line.match(/.{1,55}(\s|$)/g) || [line])
-    .slice(0, 5);
-  termLines.forEach((line, index) => {
-    addText(36, 328 - index * 12, `${index + 1}. ${line.trim()}`, 8, false);
-  });
-
-  let totalsY = totalRowsStartY;
-
-  if (data.subtotal > 0 && data.subtotal !== data.amount) {
-    addText(rightColX + 5, totalsY, "Subtotal", 9, true);
-    addText(515, totalsY, `Rs.${data.subtotal.toLocaleString("en-IN")}`, 9, true);
-    totalsY -= 18;
-  }
-
-  if (data.discount > 0) {
-    addText(rightColX + 5, totalsY, "Discount", 9, true);
-    addText(510, totalsY, `-Rs.${data.discount.toLocaleString("en-IN")}`, 9, true);
-    totalsY -= 18;
-  }
-
-  if (data.tax > 0) {
-    addText(rightColX + 5, totalsY, "GST / Tax", 9, true);
-    addText(515, totalsY, `Rs.${data.tax.toLocaleString("en-IN")}`, 9, true);
-    totalsY -= 18;
-  }
-
-  addRect(rightColX, 250, outerX + outerW - rightColX, 24, headerR, headerG, headerB);
-  addColorText(rightColX + 5, 258, "Grand Total", 10, true, 1, 1, 1);
-  addColorText(500, 258, `Rs.${data.amount.toLocaleString("en-IN")}`, 10, true, 1, 1, 1);
-
-  addLine(outerX, 220, outerX + outerW, 220, 0, 0, 0);
-  addText(32, 206, "Total Amount (₹ - In Words):", 9, true);
-  addText(32, 180, `For : ${data.invoiceBrandName || data.gymName}`, 10, true);
-  addColorText(32, 150, "Authorised Signatory", 10, true, textR, textG, textB);
-
-  if (data.footerMessage) {
-    addColorText(165, 120, `"${data.footerMessage}"`, 9, false, 0.5, 0.5, 0.5);
-  }
-  addColorText(150, 105, "This is a computer-generated invoice. No signature required.", 7, false, 0.7, 0.7, 0.7);
-
-  // ===== BUILD PDF =====
-  const contentStream = content.join("\n");
-  const contentBytes = new TextEncoder().encode(contentStream);
-  const objects: string[] = [];
-  let objCount = 0;
-
-  const addObj = (obj: string): number => {
-    objCount++;
-    objects.push(obj);
-    return objCount;
+  const drawTopText = (
+    x: number,
+    topY: number,
+    text: string,
+    size = 10,
+    color = rgb(0, 0, 0),
+    bold = false,
+  ) => {
+    page.drawText(text, {
+      x,
+      y: pageH - topY - size,
+      size,
+      font: bold ? fontBold : fontRegular,
+      color,
+    });
   };
 
-  addObj(`1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj`);
-  addObj(`2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj`);
-  addObj(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>\nendobj`);
-  addObj(`4 0 obj\n<< /Length ${contentBytes.length} >>\nstream\n${contentStream}\nendstream\nendobj`);
-  addObj(`5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj`);
-  addObj(`6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\nendobj`);
+  const drawTopLine = (x1: number, topY1: number, x2: number, topY2: number, thickness = 1, color = rgb(0, 0, 0)) => {
+    page.drawLine({
+      start: { x: x1, y: pageH - topY1 },
+      end: { x: x2, y: pageH - topY2 },
+      thickness,
+      color,
+    });
+  };
 
-  let pdf = `%PDF-1.4\n`;
-  const objOffsets: number[] = [];
+  const drawTopRect = (
+    x: number,
+    topY: number,
+    w: number,
+    h: number,
+    fill?: ReturnType<typeof rgb>,
+    border = true,
+  ) => {
+    page.drawRectangle({
+      x,
+      y: pageH - topY - h,
+      width: w,
+      height: h,
+      color: fill,
+      borderColor: border ? rgb(0, 0, 0) : undefined,
+      borderWidth: border ? 1 : 0,
+    });
+  };
 
-  for (let i = 0; i < objects.length; i++) {
-    objOffsets.push(pdf.length);
-    pdf += objects[i] + "\n";
+  drawTopRect(outerX, 28, outerW, outerH, undefined, true);
+  drawTopRect(outerX, 28, outerW, 30, rgb(headerR, headerG, headerB), false);
+  drawTopText(240, 36, invoiceTitle, 17, rgb(1, 1, 1), true);
+  drawTopText(450, 34, `INVOICE NO : ${data.invoiceNumber}`, 8, rgb(1, 1, 1), true);
+  drawTopText(450, 46, `DATE : ${data.paymentDate}`, 8, rgb(1, 1, 1), true);
+
+  let logoOffsetX = 0;
+  if (data.invoiceLogoUrl) {
+    try {
+      const response = await fetch(data.invoiceLogoUrl);
+      if (response.ok) {
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        let image;
+        try {
+          image = await pdfDoc.embedPng(bytes);
+        } catch {
+          image = await pdfDoc.embedJpg(bytes);
+        }
+        const scaled = image.scale(Math.min(64 / image.width, 64 / image.height));
+        page.drawImage(image, {
+          x: outerX + 22,
+          y: pageH - 82 - scaled.height,
+          width: scaled.width,
+          height: scaled.height,
+        });
+        logoOffsetX = 80;
+      }
+    } catch (error) {
+      console.error("Invoice logo embed error:", error);
+    }
   }
 
-  const xrefOffset = pdf.length;
-  pdf += `xref\n0 ${objCount + 1}\n`;
-  pdf += `0000000000 65535 f \n`;
-  for (const offset of objOffsets) {
-    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
-  }
+  drawTopText(outerX + 24 + logoOffsetX, 72, data.invoiceBrandName || data.gymName, 22, rgb(0, 0, 0), true);
+  const businessLines = [data.gymAddress, data.gymGst ? `GSTIN: ${data.gymGst}` : "", data.gymEmail ? `Email ID: ${data.gymEmail}` : "", data.gymPhone ? `Phone: ${data.gymPhone}` : ""].filter(Boolean);
+  businessLines.forEach((line, index) => drawTopText(outerX + 24 + logoOffsetX, 100 + index * 14, line, 9, rgb(0.25, 0.25, 0.25), false));
 
-  pdf += `trailer\n<< /Size ${objCount + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-  return new TextEncoder().encode(pdf);
+  drawTopLine(outerX, businessTop, outerX + outerW, businessTop);
+  drawTopRect(outerX, businessTop, leftColW, 102, rgb(accentR, accentG, accentB), false);
+  drawTopRect(rightColX, businessTop, outerX + outerW - rightColX, 102, rgb(accentR, accentG, accentB), false);
+  drawTopLine(rightColX, businessTop, rightColX, billTop);
+  drawTopLine(outerX, billTop, outerX + outerW, billTop);
+
+  drawTopText(outerX + 4, 184, "Bill To:", 10, rgb(0, 0, 0), true);
+  drawTopText(outerX + 4, 202, data.memberName, 10, rgb(0, 0, 0), false);
+  if (data.memberPhone) drawTopText(outerX + 4, 217, `Phone: ${data.memberPhone}`, 9, rgb(0, 0, 0), false);
+  if (data.memberId) drawTopText(outerX + 4, 231, `ID: ${data.memberId.slice(0, 8).toUpperCase()}`, 9, rgb(0, 0, 0), false);
+  if (data.branchName) drawTopText(outerX + 4, 245, `Branch: ${data.branchName}`, 9, rgb(0, 0, 0), false);
+
+  drawTopText(rightColX + 8, 202, `Payment Date: ${data.paymentDate}`, 10, rgb(0, 0, 0), false);
+  drawTopText(rightColX + 8, 217, `Payment Mode: ${data.paymentMode}`, 10, rgb(0, 0, 0), false);
+  if (data.razorpayPaymentId) drawTopText(rightColX + 8, 231, `Txn No: ${data.razorpayPaymentId}`, 9, rgb(0, 0, 0), false);
+  drawTopRect(rightColX + 8, 248, 60, 18, rgb(headerR, headerG, headerB), false);
+  drawTopText(rightColX + 20, 252, "PAID", 9, rgb(1, 1, 1), true);
+
+  drawTopLine(outerX, tableTop, outerX + outerW, tableTop);
+  drawTopLine(outerX, tableBottom, outerX + outerW, tableBottom);
+  const col1 = outerX;
+  const col2 = outerX + 292;
+  const col3 = outerX + 372;
+  const col4 = outerX + 432;
+  const col5 = outerX + 497;
+  [col2, col3, col4, col5].forEach((x) => drawTopLine(x, tableTop, x, tableBottom));
+  drawTopLine(outerX, tableTop + 30, outerX + outerW, tableTop + 30);
+
+  drawTopText(col1 + 8, 301, "Description", 9, rgb(textR, textG, textB), true);
+  drawTopText(col2 + 8, 301, "Duration", 9, rgb(textR, textG, textB), true);
+  drawTopText(col3 + 18, 301, "Qty", 9, rgb(textR, textG, textB), true);
+  drawTopText(col5 - 38, 301, "Amount", 9, rgb(textR, textG, textB), true);
+
+  const items: Array<{ description: string; duration: string; qty: string; amount: string }> = [];
+  if (data.gymFee > 0) items.push({ description: data.packageName || "Gym Membership", duration: data.startDate && data.endDate ? `${data.startDate} - ${data.endDate}` : "-", qty: "1", amount: `Rs.${data.gymFee.toLocaleString("en-IN")}` });
+  if (data.joiningFee > 0) items.push({ description: "Joining Fee", duration: "-", qty: "1", amount: `Rs.${data.joiningFee.toLocaleString("en-IN")}` });
+  if (data.trainerFee > 0) items.push({ description: "Personal Training Fee", duration: data.startDate && data.endDate ? `${data.startDate} - ${data.endDate}` : "-", qty: "1", amount: `Rs.${data.trainerFee.toLocaleString("en-IN")}` });
+  if (items.length === 0) items.push({ description: data.packageName || "Payment", duration: "-", qty: "1", amount: `Rs.${data.amount.toLocaleString("en-IN")}` });
+
+  items.forEach((item, index) => {
+    const rowTop = 334 + index * 26;
+    drawTopText(col1 + 8, rowTop, item.description, 9, rgb(0, 0, 0), index === 0);
+    drawTopText(col2 + 8, rowTop, item.duration, 8, rgb(0.4, 0.4, 0.4), false);
+    drawTopText(col3 + 24, rowTop, item.qty, 9, rgb(0, 0, 0), false);
+    drawTopText(col5 - 30, rowTop, item.amount, 9, rgb(0, 0, 0), true);
+  });
+
+  drawTopRect(outerX, termsTop, leftColW, 46, rgb(accentR, accentG, accentB), false);
+  drawTopLine(rightColX, termsTop, rightColX, tableBottom);
+  drawTopLine(outerX, termsBottom, outerX + outerW, termsBottom);
+  drawTopText(outerX + 4, 490, "Terms & conditions", 9, rgb(0, 0, 0), true);
+  wrapText(data.invoiceTerms || "Fees once paid are non-refundable.", 46)
+    .slice(0, 5)
+    .forEach((line, index) => drawTopText(outerX + 8, 508 + index * 12, `${index + 1}. ${line}`, 8, rgb(0, 0, 0), false));
+
+  let totalsTop = 488;
+  const pushTotalRow = (label: string, value: string) => {
+    drawTopText(rightColX + 8, totalsTop, label, 9, rgb(0, 0, 0), true);
+    drawTopText(outerX + outerW - 72, totalsTop, value, 9, rgb(0, 0, 0), true);
+    totalsTop += 18;
+  };
+  if (data.subtotal > 0 && data.subtotal !== data.amount) pushTotalRow("Subtotal", `Rs.${data.subtotal.toLocaleString("en-IN")}`);
+  if (data.discount > 0) pushTotalRow("Discount", `-Rs.${data.discount.toLocaleString("en-IN")}`);
+  if (data.tax > 0) pushTotalRow("GST / Tax", `Rs.${data.tax.toLocaleString("en-IN")}`);
+
+  drawTopRect(rightColX, 564, outerX + outerW - rightColX, 24, rgb(headerR, headerG, headerB), false);
+  drawTopText(rightColX + 8, 570, "Grand Total", 10, rgb(1, 1, 1), true);
+  drawTopText(outerX + outerW - 72, 570, `Rs.${data.amount.toLocaleString("en-IN")}`, 10, rgb(1, 1, 1), true);
+
+  const amountInWords = wrapText((() => {
+    const value = Math.round(Number(data.amount));
+    if (!Number.isFinite(value) || value <= 0) return "Zero rupees only";
+    const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    const toWords = (num: number): string => {
+      if (num === 0) return "";
+      if (num < 20) return ones[num];
+      if (num < 100) return `${tens[Math.floor(num / 10)]}${num % 10 ? ` ${ones[num % 10]}` : ""}`;
+      if (num < 1000) return `${ones[Math.floor(num / 100)]} Hundred${num % 100 ? ` ${toWords(num % 100)}` : ""}`;
+      if (num < 100000) return `${toWords(Math.floor(num / 1000))} Thousand${num % 1000 ? ` ${toWords(num % 1000)}` : ""}`;
+      if (num < 10000000) return `${toWords(Math.floor(num / 100000))} Lakh${num % 100000 ? ` ${toWords(num % 100000)}` : ""}`;
+      return `${toWords(Math.floor(num / 10000000))} Crore${num % 10000000 ? ` ${toWords(num % 10000000)}` : ""}`;
+    };
+    return `${toWords(value).trim()} rupees only`;
+  })(), 70);
+
+  drawTopLine(outerX, 622, outerX + outerW, 622);
+  drawTopText(outerX + 4, 634, "Total Amount (₹ - In Words):", 9, rgb(0, 0, 0), true);
+  amountInWords.slice(0, 2).forEach((line, index) => drawTopText(outerX + 10, 650 + index * 12, line, 8, rgb(0.2, 0.2, 0.2), false));
+  drawTopText(outerX + 4, 690, `For : ${data.invoiceBrandName || data.gymName}`, 10, rgb(0, 0, 0), true);
+  drawTopText(outerX + 4, 736, "Authorised Signatory", 10, rgb(textR, textG, textB), true);
+  if (data.footerMessage) drawTopText(165, 706, `"${data.footerMessage}"`, 9, rgb(0.45, 0.45, 0.45), false);
+  drawTopText(150, 722, "This is a computer-generated invoice. No signature required.", 7, rgb(0.7, 0.7, 0.7), false);
+
+  return await pdfDoc.save();
 }
 
 Deno.serve(async (req) => {
@@ -371,29 +367,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    const formatAmountInWords = (amount: number) => {
-      const value = Math.round(Number(amount));
-      if (!Number.isFinite(value) || value <= 0) return "Zero rupees only";
-
-      const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
-      const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
-
-      const toWords = (num: number): string => {
-        if (num === 0) return "";
-        if (num < 20) return ones[num];
-        if (num < 100) return `${tens[Math.floor(num / 10)]}${num % 10 ? ` ${ones[num % 10]}` : ""}`;
-        if (num < 1000) return `${ones[Math.floor(num / 100)]} Hundred${num % 100 ? ` ${toWords(num % 100)}` : ""}`;
-        if (num < 100000) return `${toWords(Math.floor(num / 1000))} Thousand${num % 1000 ? ` ${toWords(num % 1000)}` : ""}`;
-        if (num < 10000000) return `${toWords(Math.floor(num / 100000))} Lakh${num % 100000 ? ` ${toWords(num % 100000)}` : ""}`;
-        return `${toWords(Math.floor(num / 10000000))} Crore${num % 10000000 ? ` ${toWords(num % 10000000)}` : ""}`;
-      };
-
-      return `${toWords(value).trim()} rupees only`;
-    };
-
     // Fetch gym settings for branding
     let gymName = "Pro Plus Fitness";
     let invoiceBrandName = "";
+    let invoiceLogoUrl: string | null = null;
     let gymAddress = "";
     let gymPhone = "";
     let gymEmail = "";
@@ -420,7 +397,7 @@ Deno.serve(async (req) => {
 
       const { data: settings } = await supabase
         .from("gym_settings")
-        .select("gym_name, gym_address, gym_phone, gym_email, gym_gst, invoice_prefix, invoice_footer_message, invoice_tax_rate, invoice_show_gst, invoice_terms, invoice_brand_name, invoice_palette")
+        .select("gym_name, gym_address, gym_phone, gym_email, gym_gst, invoice_prefix, invoice_footer_message, invoice_tax_rate, invoice_show_gst, invoice_terms, invoice_brand_name, invoice_logo_url, invoice_palette")
         .eq("branch_id", effectiveBranchId)
         .maybeSingle();
 
@@ -435,6 +412,7 @@ Deno.serve(async (req) => {
         footerMessage = settings.invoice_footer_message || footerMessage;
         invoiceTerms = settings.invoice_terms || "";
         invoiceBrandName = settings.invoice_brand_name || settings.gym_name || "";
+        invoiceLogoUrl = settings.invoice_logo_url || null;
         invoicePalette = {
           header: settings.invoice_palette?.header || invoicePalette.header,
           accent: settings.invoice_palette?.accent || invoicePalette.accent,
@@ -536,10 +514,11 @@ Deno.serve(async (req) => {
     if (subscription?.is_custom_package && subscription?.custom_days) packageName += ` (${subscription.custom_days} Days)`;
 
     // Generate PDF
-    const pdfBytes = generateInvoicePDF({
+    const pdfBytes = await generateInvoicePDF({
       invoiceNumber,
       gymName,
       invoiceBrandName: invoiceBrandName || gymName,
+      invoiceLogoUrl,
       gymAddress,
       gymPhone,
       gymEmail,
@@ -614,6 +593,7 @@ Deno.serve(async (req) => {
       footer_message: footerMessage,
       invoice_terms: invoiceTerms || null,
       invoice_brand_name: invoiceBrandName || gymName,
+      invoice_logo_url: invoiceLogoUrl,
       invoice_palette: invoicePalette,
     };
 
