@@ -3,10 +3,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -18,20 +19,38 @@ import {
   ClockIcon,
   UserGroupIcon,
   CheckBadgeIcon,
+  FunnelIcon,
+  ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import { AttendanceDatePicker } from "./AttendanceDatePicker";
-import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
-import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
 import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import { useMembersQuery } from "@/hooks/queries/useMembers";
+import { TIME_BUCKET_OPTIONS, formatTimeLabel, matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
 type AttendanceStatus = "present" | "absent" | "late";
 
-const STATUS_COLORS: Record<AttendanceStatus, string> = {
-  present: "bg-green-500 text-white shadow-green-500/30",
-  late: "bg-amber-500 text-white shadow-amber-500/30",
-  absent: "bg-red-500/80 text-white shadow-red-500/20",
+type AttendanceMemberRow = {
+  memberId: string;
+  memberName: string;
+  memberPhone: string;
+  slotId: string;
+  slotLabel: string;
+  trainerId: string;
+  trainerName: string;
+  status: AttendanceStatus;
+};
+
+const STATUS_STYLES: Record<AttendanceStatus, string> = {
+  present: "border-success/25 bg-success/10 text-foreground",
+  late: "border-warning/25 bg-warning/10 text-foreground",
+  absent: "border-destructive/20 bg-destructive/10 text-foreground",
+};
+
+const STATUS_BUTTON_STYLES: Record<AttendanceStatus, string> = {
+  present: "border-success/30 bg-success text-success-foreground shadow-sm",
+  late: "border-warning/30 bg-warning text-warning-foreground shadow-sm",
+  absent: "border-destructive/25 bg-destructive text-destructive-foreground shadow-sm",
 };
 
 export const SlotAttendanceTab = () => {
@@ -43,57 +62,97 @@ export const SlotAttendanceTab = () => {
 
   const today = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(today);
-  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
-  const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
+  const [selectedSlotId, setSelectedSlotId] = useState<string>("all");
+  const [selectedTrainerId, setSelectedTrainerId] = useState<string>("all");
+  const [timeFilter, setTimeFilter] = useState<TimeBucket>("all");
+  const [customStart, setCustomStart] = useState("06:00");
+  const [customEnd, setCustomEnd] = useState("10:00");
   const [search, setSearch] = useState("");
+  const [slotSearch, setSlotSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [localAttendance, setLocalAttendance] = useState<Map<string, AttendanceStatus>>(new Map());
-  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set());
+
   const { assignedMemberIds } = useAssignedMemberIds();
   const { data: scopedMembers = [], isLoading: loadingMembers } = useMembersQuery();
+  const { trainers, allSlots, isLimitedAccess, staffTrainerId } = useAttendanceFilters();
 
   const isFutureDate = selectedDate > today;
-  const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
-
-  const { allSlots } = useAttendanceFilters();
-
-  // Filter slots by selected trainer for auto-select fallback
-  const timeSlots = useMemo(() => {
-    if (selectedTrainerId) return allSlots.filter(s => s.trainer_id === selectedTrainerId);
-    return allSlots;
-  }, [allSlots, selectedTrainerId]);
 
   useEffect(() => {
-    if (timeSlots.length > 0 && !selectedSlotId) setSelectedSlotId(timeSlots[0].id);
-  }, [timeSlots, selectedSlotId]);
+    if (staffTrainerId) {
+      setSelectedTrainerId(staffTrainerId);
+    }
+  }, [staffTrainerId]);
+
+  const filteredSlots = useMemo(() => {
+    return allSlots.filter((slot) => {
+      if (selectedTrainerId !== "all" && slot.trainer_id !== selectedTrainerId) return false;
+      if (!matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd)) return false;
+      if (!slotSearch.trim()) return true;
+
+      const query = slotSearch.toLowerCase();
+      const slotText = `${slot.trainer_name} ${formatTimeLabel(slot.start_time)} ${formatTimeLabel(slot.end_time)}`.toLowerCase();
+      return slotText.includes(query);
+    });
+  }, [allSlots, selectedTrainerId, timeFilter, customStart, customEnd, slotSearch]);
 
   useEffect(() => {
-    if (timeSlots.length > 0 && selectedSlotId && !timeSlots.find((s: any) => s.id === selectedSlotId))
-      setSelectedSlotId(timeSlots[0].id);
-  }, [timeSlots, selectedSlotId]);
+    if (selectedSlotId === "all") return;
+    if (!filteredSlots.some((slot) => slot.id === selectedSlotId)) {
+      setSelectedSlotId("all");
+    }
+  }, [filteredSlots, selectedSlotId]);
+
+  const visibleSlots = useMemo(() => {
+    if (selectedSlotId === "all") return filteredSlots;
+    return filteredSlots.filter((slot) => slot.id === selectedSlotId);
+  }, [filteredSlots, selectedSlotId]);
+
+  const visibleSlotIds = useMemo(() => visibleSlots.map((slot) => slot.id), [visibleSlots]);
+
+  const slotLookup = useMemo(() => {
+    const map = new Map<string, { slotLabel: string; trainerName: string; trainerId: string }>();
+    allSlots.forEach((slot) => {
+      map.set(slot.id, {
+        slotLabel: `${formatTimeLabel(slot.start_time)} – ${formatTimeLabel(slot.end_time)}`,
+        trainerName: slot.trainer_name,
+        trainerId: slot.trainer_id,
+      });
+    });
+    return map;
+  }, [allSlots]);
 
   const slotMembers = useMemo(() => {
-    if (!selectedSlotId) return [];
+    if (visibleSlotIds.length === 0) return [];
 
     return scopedMembers.filter((member) => {
       const subscriptionStatus = member.subscription?.status;
-      if (subscriptionStatus !== "active" && subscriptionStatus !== "expiring_soon") {
-        return false;
-      }
+      if (subscriptionStatus !== "active" && subscriptionStatus !== "expiring_soon") return false;
 
-      return member.activePT?.time_slot_id === selectedSlotId;
+      const slotId = member.activePT?.time_slot_id;
+      return !!slotId && visibleSlotIds.includes(slotId);
     });
-  }, [scopedMembers, selectedSlotId]);
+  }, [scopedMembers, visibleSlotIds]);
 
-  const { data: existingRecords = [], isLoading: loadingRecords } = useQuery({
-    queryKey: ["daily-attendance-slot", branchId, selectedDate, selectedSlotId, isLimitedAccess ? (assignedMemberIds ?? []).join(",") : "all"],
+  const { data: existingRecords = [], isLoading: loadingRecords, isFetching: fetchingRecords } = useQuery({
+    queryKey: [
+      "daily-attendance-slot",
+      branchId,
+      selectedDate,
+      visibleSlotIds.join(","),
+      isLimitedAccess ? (assignedMemberIds ?? []).join(",") : "all",
+    ],
     queryFn: async () => {
-      if (!branchId || !selectedSlotId) return [];
+      if (!branchId || visibleSlotIds.length === 0) return [];
       if (assignedMemberIds !== null && assignedMemberIds.length === 0) return [];
 
-      let query = supabase.from("daily_attendance")
-        .select("id, member_id, status").eq("branch_id", branchId)
-        .eq("date", selectedDate).eq("time_slot_id", selectedSlotId);
+      let query = supabase
+        .from("daily_attendance")
+        .select("id, member_id, status, time_slot_id")
+        .eq("branch_id", branchId)
+        .eq("date", selectedDate)
+        .in("time_slot_id", visibleSlotIds);
 
       if (assignedMemberIds !== null) {
         query = query.in("member_id", assignedMemberIds);
@@ -103,333 +162,519 @@ export const SlotAttendanceTab = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!branchId && !!selectedSlotId && (!isLimitedAccess || assignedMemberIds !== undefined),
+    enabled: !!branchId && visibleSlotIds.length > 0 && (!isLimitedAccess || assignedMemberIds !== undefined),
   });
 
   useEffect(() => {
-    const map = new Map<string, AttendanceStatus>();
-    existingRecords.forEach((r: any) => { map.set(r.member_id, r.status as AttendanceStatus); });
-    setLocalAttendance(map);
+    const next = new Map<string, AttendanceStatus>();
+    existingRecords.forEach((record: any) => {
+      next.set(`${record.time_slot_id}:${record.member_id}`, record.status as AttendanceStatus);
+    });
+    setLocalAttendance(next);
   }, [existingRecords]);
 
-  const memberList = useMemo(() => {
-    return slotMembers.map((m: any) => ({
-      memberId: m.id, memberName: m.name, memberPhone: m.phone,
-      status: (localAttendance.get(m.id) || "absent") as AttendanceStatus,
-    }));
-  }, [slotMembers, localAttendance]);
+  const memberList = useMemo<AttendanceMemberRow[]>(() => {
+    return slotMembers
+      .map((member: any) => {
+        const slotId = member.activePT?.time_slot_id;
+        if (!slotId) return null;
+
+        const slotMeta = slotLookup.get(slotId);
+        if (!slotMeta) return null;
+
+        return {
+          memberId: member.id,
+          memberName: member.name,
+          memberPhone: member.phone,
+          slotId,
+          slotLabel: slotMeta.slotLabel,
+          trainerId: slotMeta.trainerId,
+          trainerName: slotMeta.trainerName,
+          status: (localAttendance.get(`${slotId}:${member.id}`) || "absent") as AttendanceStatus,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        if (a!.slotLabel !== b!.slotLabel) return a!.slotLabel.localeCompare(b!.slotLabel);
+        return a!.memberName.localeCompare(b!.memberName);
+      }) as AttendanceMemberRow[];
+  }, [slotMembers, slotLookup, localAttendance]);
 
   const filteredList = useMemo(() => {
-    let list = memberList;
-    if (statusFilter !== "all") list = list.filter((m) => m.status === statusFilter);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter((m) => m.memberName.toLowerCase().includes(q) || m.memberPhone.includes(q));
-    }
-    return list;
+    return memberList.filter((member) => {
+      if (statusFilter !== "all" && member.status !== statusFilter) return false;
+      if (!search.trim()) return true;
+
+      const query = search.toLowerCase();
+      return [member.memberName, member.memberPhone, member.trainerName, member.slotLabel]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(query));
+    });
   }, [memberList, search, statusFilter]);
 
   const stats = useMemo(() => ({
     total: memberList.length,
-    present: memberList.filter((m) => m.status === "present").length,
-    late: memberList.filter((m) => m.status === "late").length,
-    absent: memberList.filter((m) => m.status === "absent").length,
+    present: memberList.filter((member) => member.status === "present").length,
+    late: memberList.filter((member) => member.status === "late").length,
+    absent: memberList.filter((member) => member.status === "absent").length,
   }), [memberList]);
 
-  // Auto-save a single member status
-  const persistStatus = useCallback(async (memberId: string, status: AttendanceStatus) => {
-    if (!branchId || !selectedSlotId || isFutureDate) return;
-    setSavingIds((prev) => { const n = new Set(prev); n.add(memberId); return n; });
+  const setSavingState = (keys: string[], isSaving: boolean) => {
+    setSavingKeys((prev) => {
+      const next = new Set(prev);
+      keys.forEach((key) => {
+        if (isSaving) next.add(key);
+        else next.delete(key);
+      });
+      return next;
+    });
+  };
+
+  const persistStatus = useCallback(async (memberId: string, slotId: string, status: AttendanceStatus) => {
+    if (!branchId || isFutureDate) return;
+    const recordKey = `${slotId}:${memberId}`;
+    setSavingState([recordKey], true);
+
     try {
       await supabase
-        .from("daily_attendance").delete()
-        .eq("branch_id", branchId).eq("date", selectedDate).eq("time_slot_id", selectedSlotId)
+        .from("daily_attendance")
+        .delete()
+        .eq("branch_id", branchId)
+        .eq("date", selectedDate)
+        .eq("time_slot_id", slotId)
         .eq("member_id", memberId);
+
       const { error } = await supabase.from("daily_attendance").insert({
-        member_id: memberId, branch_id: branchId, date: selectedDate,
-        status, time_slot_id: selectedSlotId,
+        member_id: memberId,
+        branch_id: branchId,
+        date: selectedDate,
+        status,
+        time_slot_id: slotId,
         marked_by: staffUser?.id || null,
         marked_by_type: isStaffLoggedIn ? "staff" : "admin",
       });
+
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ["daily-attendance-slot", branchId, selectedDate, selectedSlotId] });
+
+      queryClient.invalidateQueries({ queryKey: ["daily-attendance-slot", branchId, selectedDate] });
       queryClient.invalidateQueries({ queryKey: ["attendance-history"] });
     } catch (err: any) {
-      toast({ title: "Couldn't save", description: err.message || "Try again", variant: "destructive" });
+      toast({ title: "Couldn't save attendance", description: err.message || "Try again", variant: "destructive" });
     } finally {
-      setSavingIds((prev) => { const n = new Set(prev); n.delete(memberId); return n; });
+      setSavingState([recordKey], false);
     }
-  }, [branchId, selectedSlotId, selectedDate, isFutureDate, staffUser?.id, isStaffLoggedIn, queryClient]);
+  }, [branchId, isFutureDate, selectedDate, staffUser?.id, isStaffLoggedIn, queryClient]);
 
-  const toggleStatus = useCallback((memberId: string, newStatus: AttendanceStatus) => {
+  const toggleStatus = useCallback((member: AttendanceMemberRow, nextStatus: AttendanceStatus) => {
     if (isFutureDate) return;
-    const cur = localAttendance.get(memberId) || "absent";
-    const finalStatus: AttendanceStatus = cur === newStatus ? "absent" : newStatus;
-    setLocalAttendance((prev) => { const next = new Map(prev); next.set(memberId, finalStatus); return next; });
-    persistStatus(memberId, finalStatus);
+
+    const recordKey = `${member.slotId}:${member.memberId}`;
+    const currentStatus = localAttendance.get(recordKey) || "absent";
+    const finalStatus: AttendanceStatus = currentStatus === nextStatus ? "absent" : nextStatus;
+
+    setLocalAttendance((prev) => {
+      const next = new Map(prev);
+      next.set(recordKey, finalStatus);
+      return next;
+    });
+
+    persistStatus(member.memberId, member.slotId, finalStatus);
   }, [isFutureDate, localAttendance, persistStatus]);
 
   const markAll = useCallback(async (status: AttendanceStatus) => {
-    if (isFutureDate || !branchId || !selectedSlotId) return;
-    const ids = slotMembers.map((m: any) => m.id);
-    if (ids.length === 0) return;
+    if (isFutureDate || !branchId || filteredList.length === 0) return;
+
+    const recordKeys = filteredList.map((member) => `${member.slotId}:${member.memberId}`);
     setLocalAttendance((prev) => {
       const next = new Map(prev);
-      ids.forEach((id) => next.set(id, status));
+      filteredList.forEach((member) => next.set(`${member.slotId}:${member.memberId}`, status));
       return next;
     });
-    setSavingIds((prev) => { const n = new Set(prev); ids.forEach((id) => n.add(id)); return n; });
+    setSavingState(recordKeys, true);
+
     try {
+      const slotIds = Array.from(new Set(filteredList.map((member) => member.slotId)));
+      const memberIds = filteredList.map((member) => member.memberId);
+
       await supabase
-        .from("daily_attendance").delete()
-        .eq("branch_id", branchId).eq("date", selectedDate).eq("time_slot_id", selectedSlotId);
-      const records = ids.map((id) => ({
-        member_id: id, branch_id: branchId, date: selectedDate, status,
-        time_slot_id: selectedSlotId,
+        .from("daily_attendance")
+        .delete()
+        .eq("branch_id", branchId)
+        .eq("date", selectedDate)
+        .in("time_slot_id", slotIds)
+        .in("member_id", memberIds);
+
+      const records = filteredList.map((member) => ({
+        member_id: member.memberId,
+        branch_id: branchId,
+        date: selectedDate,
+        status,
+        time_slot_id: member.slotId,
         marked_by: staffUser?.id || null,
         marked_by_type: isStaffLoggedIn ? "staff" : "admin",
       }));
+
       const { error } = await supabase.from("daily_attendance").insert(records);
       if (error) throw error;
-      toast({ title: "Marked all", description: `${ids.length} members marked ${status}.` });
-      queryClient.invalidateQueries({ queryKey: ["daily-attendance-slot", branchId, selectedDate, selectedSlotId] });
+
+      toast({
+        title: "Attendance updated",
+        description: `${filteredList.length} filtered member${filteredList.length === 1 ? "" : "s"} marked ${status}.`,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["daily-attendance-slot", branchId, selectedDate] });
       queryClient.invalidateQueries({ queryKey: ["attendance-history"] });
     } catch (err: any) {
-      toast({ title: "Couldn't mark all", description: err.message, variant: "destructive" });
+      toast({ title: "Couldn't update filtered members", description: err.message || "Try again", variant: "destructive" });
     } finally {
-      setSavingIds((prev) => { const n = new Set(prev); ids.forEach((id) => n.delete(id)); return n; });
+      setSavingState(recordKeys, false);
     }
-  }, [slotMembers, isFutureDate, branchId, selectedSlotId, selectedDate, staffUser?.id, isStaffLoggedIn, queryClient]);
+  }, [isFutureDate, branchId, filteredList, selectedDate, staffUser?.id, isStaffLoggedIn, queryClient]);
+
+  const getTimeFilterButtonClass = (option: TimeBucket) => {
+    if (timeFilter !== option) {
+      return "shrink-0 border-border/70 bg-background/70 text-muted-foreground backdrop-blur-sm hover:border-primary/30 hover:bg-primary/5 hover:text-foreground";
+    }
+
+    switch (option) {
+      case "morning":
+        return "shrink-0 border-warning/35 bg-warning/12 text-foreground shadow-sm backdrop-blur-sm hover:bg-warning/18";
+      case "afternoon":
+        return "shrink-0 border-accent/35 bg-accent/12 text-foreground shadow-sm backdrop-blur-sm hover:bg-accent/18";
+      case "evening":
+        return "shrink-0 border-primary/35 bg-primary/12 text-foreground shadow-sm backdrop-blur-sm hover:bg-primary/18";
+      case "night":
+        return "shrink-0 border-secondary/70 bg-secondary text-secondary-foreground shadow-sm backdrop-blur-sm hover:bg-secondary/90";
+      case "custom":
+        return "shrink-0 border-success/35 bg-success/12 text-foreground shadow-sm backdrop-blur-sm hover:bg-success/18";
+      case "all":
+      default:
+        return "shrink-0 border-primary/35 bg-primary text-primary-foreground shadow-sm backdrop-blur-sm hover:bg-primary/90";
+    }
+  };
 
   const isLoading = loadingMembers || loadingRecords;
-  const MobileMemberCard = ({ member, idx }: { member: any; idx: number }) => (
+
+  const MobileMemberCard = ({ member, idx }: { member: AttendanceMemberRow; idx: number }) => (
     <div
       className={cn(
-        "bg-card rounded-xl border p-3 transition-all duration-200 animate-fade-in",
-        member.status === "present" ? "border-green-200 dark:border-green-900/40" :
-        member.status === "late" ? "border-amber-200 dark:border-amber-900/40" :
-        "border-border/40",
-        isFutureDate && "opacity-50 pointer-events-none"
+        "rounded-xl border bg-card p-3 transition-all duration-200 animate-fade-in",
+        member.status === "present" ? "border-success/25 bg-success/5" : member.status === "late" ? "border-warning/25 bg-warning/5" : "border-border/50",
+        isFutureDate && "pointer-events-none opacity-60",
       )}
       style={{ animationDelay: `${Math.min(idx * 30, 300)}ms` }}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className={cn(
-            "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors duration-300",
-            member.status === "present" ? "bg-green-500/20 text-green-700 dark:text-green-400" :
-            member.status === "late" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" :
-            "bg-muted text-muted-foreground"
-          )}>
-            {member.memberName.charAt(0).toUpperCase()}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+              {member.memberName.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-foreground">{member.memberName}</p>
+              <p className="text-[11px] text-muted-foreground">{member.memberPhone}</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{member.memberName}</p>
-            <p className="text-[10px] text-muted-foreground">{member.memberPhone}</p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <Badge variant="outline" className="border-primary/20 bg-primary/5 text-[10px] text-foreground">{member.slotLabel}</Badge>
+            <Badge variant="outline" className="border-accent/20 bg-accent/5 text-[10px] text-foreground">{member.trainerName}</Badge>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          {(["present", "late", "absent"] as const).map((s) => (
-            <button key={s} onClick={() => toggleStatus(member.memberId, s)} disabled={isFutureDate}
-              className={cn(
-                "w-9 h-9 rounded-lg text-xs font-bold transition-all duration-200 border active:scale-90",
-                member.status === s
-                  ? STATUS_COLORS[s] + " border-transparent shadow-md"
-                  : "bg-transparent text-muted-foreground border-border/50 hover:bg-muted/50"
-              )}>
-              {s === "present" ? "P" : s === "late" ? "L" : "A"}
-            </button>
-          ))}
-        </div>
+        <Badge variant="outline" className={cn("text-[10px]", STATUS_STYLES[member.status])}>
+          {member.status}
+        </Badge>
+      </div>
+
+      <div className="mt-3 flex items-center gap-1.5">
+        {(["present", "late", "absent"] as const).map((status) => (
+          <button
+            key={status}
+            onClick={() => toggleStatus(member, status)}
+            disabled={isFutureDate}
+            className={cn(
+              "flex h-9 min-w-[44px] flex-1 items-center justify-center rounded-lg border text-[11px] font-semibold transition-all duration-200 active:scale-95",
+              member.status === status
+                ? STATUS_BUTTON_STYLES[status]
+                : "border-border/50 bg-background text-muted-foreground hover:border-primary/30 hover:bg-muted/40 hover:text-foreground",
+            )}
+          >
+            {status === "present" ? "Present" : status === "late" ? "Late" : "Absent"}
+          </button>
+        ))}
       </div>
     </div>
   );
 
   return (
-    <div className="space-y-3 animate-fade-in">
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-2">
+    <div className="space-y-4 animate-fade-in">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {[
-          { label: "Present", count: stats.present, icon: CheckCircleIcon, color: "text-green-600", bg: "bg-green-500/10" },
-          { label: "Late", count: stats.late, icon: ClockIcon, color: "text-amber-600", bg: "bg-amber-500/10" },
-          { label: "Absent", count: stats.absent, icon: XCircleIcon, color: "text-red-500", bg: "bg-red-500/10" },
-          { label: "Total", count: stats.total, icon: UserGroupIcon, color: "text-foreground", bg: "bg-primary/10" },
-        ].map((s, idx) => (
-          <Card key={s.label} className="border border-border/40 animate-fade-in" style={{ animationDelay: `${idx * 50}ms` }}>
-            <CardContent className="p-2.5 lg:p-3">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <div className={cn("w-6 h-6 lg:w-7 lg:h-7 rounded-lg flex items-center justify-center", s.bg)}>
-                  <s.icon className={cn("w-3.5 h-3.5", s.color)} />
+          { label: "Present", count: stats.present, icon: CheckCircleIcon, tone: "bg-success/10 text-success" },
+          { label: "Late", count: stats.late, icon: ClockIcon, tone: "bg-warning/10 text-warning" },
+          { label: "Absent", count: stats.absent, icon: XCircleIcon, tone: "bg-destructive/10 text-destructive" },
+          { label: "Filtered", count: filteredList.length, icon: UserGroupIcon, tone: "bg-primary/10 text-primary" },
+        ].map((stat, idx) => (
+          <Card key={stat.label} className="border-border/50 shadow-sm animate-fade-in" style={{ animationDelay: `${idx * 40}ms` }}>
+            <CardContent className="p-3">
+              <div className="mb-1.5 flex items-center gap-2">
+                <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", stat.tone)}>
+                  <stat.icon className="h-4 w-4" />
                 </div>
-                <span className="text-[10px] lg:text-xs text-muted-foreground">{s.label}</span>
+                <span className="text-xs text-muted-foreground">{stat.label}</span>
               </div>
-              <p className={cn("text-lg lg:text-xl font-bold", s.color)}>{s.count}</p>
+              <p className="text-xl font-semibold text-foreground">{stat.count}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Controls */}
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-xs rounded-lg" />
+      <Card className="border-border/60 bg-card/75 shadow-sm backdrop-blur-sm supports-[backdrop-filter]:bg-card/65">
+        <CardContent className="space-y-4 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-md bg-primary/10 p-2 text-primary">
+              <FunnelIcon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-foreground">Time-based attendance filters</p>
+                {fetchingRecords && <ArrowPathIcon className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+              </div>
+              <p className="text-xs text-muted-foreground">Filter members by time window, trainer, and slot, then mark attendance only for the visible set.</p>
+            </div>
           </div>
-          <AttendanceDatePicker value={selectedDate} onChange={(v) => { setSelectedDate(v); setSearch(""); }} className="w-[130px] lg:min-w-[150px]" disableFuture />
-        </div>
 
-        {/* Status filter chips */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          {[
-            { key: "all", label: "All" },
-            { key: "present", label: "Present" },
-            { key: "late", label: "Late" },
-            { key: "absent", label: "Absent" },
-          ].map((s) => (
-            <button key={s.key} onClick={() => setStatusFilter(s.key)}
-              className={cn(
-                "px-2.5 py-1 rounded-full text-[10px] lg:text-xs font-medium transition-all duration-200 border shrink-0 active:scale-95",
-                statusFilter === s.key
-                  ? "bg-foreground text-background border-foreground"
-                  : "bg-card border-border text-muted-foreground hover:text-foreground"
-              )}>
-              {s.label}
-            </button>
-          ))}
-          {isFutureDate && <Badge variant="destructive" className="text-[10px] h-5 ml-1 animate-fade-in">Future dates blocked</Badge>}
-        </div>
-      </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {TIME_BUCKET_OPTIONS.map((option) => (
+              <Button
+                key={option.value}
+                type="button"
+                variant={timeFilter === option.value ? "default" : "outline"}
+                size="sm"
+                className={getTimeFilterButtonClass(option.value)}
+                onClick={() => setTimeFilter(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
 
-      {/* Trainer & Slot Filters */}
-      <div className="flex items-center gap-1.5">
-        <TrainerFilterDropdown
-          value={selectedTrainerId}
-          onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }}
-          compact={isMobile}
-        />
-        <TimeSlotFilterDropdown
-          value={selectedSlotId}
-          onChange={(v) => { setSelectedSlotId(v); setSearch(""); }}
-          trainerFilter={selectedTrainerId}
-          compact={isMobile}
-        />
-      </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Date</label>
+              <AttendanceDatePicker value={selectedDate} onChange={setSelectedDate} className="w-full" disableFuture />
+            </div>
 
-      {timeSlots.length === 0 ? (
-        <Card className="border border-border/40 animate-fade-in">
-          <CardContent className="py-10 text-center">
-            <ClockIcon className="w-10 h-10 mx-auto text-muted-foreground/30 mb-2" />
-            <p className="text-sm text-muted-foreground">
-              {isLimitedAccess ? "No time slots assigned to you." : "No time slots configured."}
-            </p>
+            {!isLimitedAccess && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Trainer</label>
+                <Select value={selectedTrainerId} onValueChange={setSelectedTrainerId}>
+                  <SelectTrigger className="h-10 border-border/70 bg-background/70 text-sm backdrop-blur-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All trainers</SelectItem>
+                    {trainers.map((trainer) => (
+                      <SelectItem key={trainer.id} value={trainer.id}>{trainer.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-1 xl:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground">Search slot or member</label>
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search trainer, time, member, or phone..."
+                  value={selectedSlotId === "all" ? `${slotSearch}${search ? ` ${search}` : ""}`.trim() : search}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSearch(value);
+                    if (selectedSlotId === "all") setSlotSearch(value);
+                  }}
+                  className="h-10 border-border/70 bg-background/70 pl-8 text-sm backdrop-blur-sm"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Exact slot</label>
+              <Select value={selectedSlotId} onValueChange={setSelectedSlotId}>
+                <SelectTrigger className="h-10 border-border/70 bg-background/70 text-sm backdrop-blur-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All filtered slots</SelectItem>
+                  {filteredSlots.map((slot) => (
+                    <SelectItem key={slot.id} value={slot.id}>
+                      {slot.trainer_name} • {formatTimeLabel(slot.start_time)} – {formatTimeLabel(slot.end_time)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {timeFilter === "custom" && (
+            <div className="grid gap-3 rounded-xl border border-success/20 bg-success/5 p-3 sm:grid-cols-2 lg:max-w-md">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Start time</label>
+                <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 border-border/70 bg-background/70 text-sm backdrop-blur-sm" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">End time</label>
+                <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 border-border/70 bg-background/70 text-sm backdrop-blur-sm" />
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline" className="border-primary/20 bg-primary/5 text-foreground">{filteredSlots.length} slot{filteredSlots.length === 1 ? "" : "s"}</Badge>
+            <Badge variant="outline" className="border-accent/20 bg-accent/5 text-foreground">{filteredList.length} visible member{filteredList.length === 1 ? "" : "s"}</Badge>
+            {selectedSlotId !== "all" && visibleSlots[0] && (
+              <Badge variant="secondary" className="border border-primary/20 bg-primary/12 text-foreground">
+                {visibleSlots[0].trainer_name} • {formatTimeLabel(visibleSlots[0].start_time)} – {formatTimeLabel(visibleSlots[0].end_time)}
+              </Badge>
+            )}
+            {isFutureDate && <Badge variant="destructive">Future dates blocked</Badge>}
+          </div>
+        </CardContent>
+      </Card>
+
+      {visibleSlots.length === 0 ? (
+        <Card className="border-border/50 shadow-sm">
+          <CardContent className="py-12 text-center">
+            <ClockIcon className="mx-auto mb-2 h-10 w-10 text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">{isLimitedAccess ? "No time slots assigned to you in this filter." : "No time slots match the current filters."}</p>
           </CardContent>
         </Card>
       ) : (
         <>
-          {/* Quick Actions */}
-          {!isFutureDate && stats.total > 0 && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-muted-foreground">Quick:</span>
-              <Button variant="outline" size="sm" className="gap-1 text-[10px] h-7 px-2 text-green-700 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 active:scale-95 transition-transform" onClick={() => markAll("present")}>
-                <CheckBadgeIcon className="w-3 h-3" /> All P
+          {!isFutureDate && filteredList.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Quick mark visible:</span>
+              <Button variant="outline" size="sm" className="gap-1 border-success/25 text-success hover:bg-success/10" onClick={() => markAll("present")}>
+                <CheckBadgeIcon className="h-3.5 w-3.5" /> All Present
               </Button>
-              <Button variant="outline" size="sm" className="gap-1 text-[10px] h-7 px-2 text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 active:scale-95 transition-transform" onClick={() => markAll("absent")}>
-                <XCircleIcon className="w-3 h-3" /> All A
+              <Button variant="outline" size="sm" className="gap-1 border-warning/25 text-foreground hover:bg-warning/10" onClick={() => markAll("late")}>
+                <ClockIcon className="h-3.5 w-3.5" /> All Late
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1 border-destructive/25 text-destructive hover:bg-destructive/10" onClick={() => markAll("absent")}>
+                <XCircleIcon className="h-3.5 w-3.5" /> All Absent
               </Button>
             </div>
           )}
 
-          {/* Members */}
-          {(loadingMembers || loadingRecords) ? (
-            <div className="py-10 text-center text-muted-foreground text-sm animate-fade-in">Loading...</div>
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+            {[
+              { key: "all", label: "All" },
+              { key: "present", label: "Present" },
+              { key: "late", label: "Late" },
+              { key: "absent", label: "Absent" },
+            ].map((item) => (
+              <button
+                key={item.key}
+                onClick={() => setStatusFilter(item.key)}
+                className={cn(
+                  "shrink-0 rounded-full border px-3 py-1 text-[11px] font-medium transition-all duration-200 active:scale-95",
+                  statusFilter === item.key
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground",
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          {isLoading ? (
+            <Card className="border-border/50 shadow-sm">
+              <CardContent className="py-12 text-center text-sm text-muted-foreground">Loading attendance list...</CardContent>
+            </Card>
           ) : filteredList.length === 0 ? (
-            <div className="py-10 text-center space-y-2 animate-fade-in">
-              <UserGroupIcon className="w-10 h-10 mx-auto text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">{search ? "No members match." : "No members in this slot."}</p>
-            </div>
+            <Card className="border-border/50 shadow-sm">
+              <CardContent className="py-12 text-center">
+                <UserGroupIcon className="mx-auto mb-2 h-10 w-10 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">{search ? "No filtered members match this search." : "No members available for the current slot filter."}</p>
+              </CardContent>
+            </Card>
           ) : isMobile ? (
             <div className="space-y-2">
-              {filteredList.map((member, idx) => (
-                <MobileMemberCard key={member.memberId} member={member} idx={idx} />
-              ))}
+              {filteredList.map((member, idx) => <MobileMemberCard key={`${member.slotId}:${member.memberId}`} member={member} idx={idx} />)}
             </div>
           ) : (
-            <Card className="border border-border/40 shadow-sm overflow-hidden animate-fade-in">
+            <Card className="overflow-hidden border-border/50 shadow-sm animate-fade-in">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[840px]">
                   <thead>
                     <tr className="border-b border-border/40 bg-muted/30">
-                      <th className="text-left text-xs font-medium text-muted-foreground px-3 py-2.5">Member</th>
-                      <th className="text-left text-xs font-medium text-muted-foreground px-3 py-2.5 hidden sm:table-cell">Phone</th>
-                      <th className="text-center text-xs font-medium text-muted-foreground px-3 py-2.5">Status</th>
-                      <th className="text-center text-xs font-medium text-muted-foreground px-3 py-2.5 w-[120px]">Actions</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Member</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Phone</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Trainer</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground">Time Slot</th>
+                      <th className="px-3 py-3 text-center text-xs font-medium text-muted-foreground">Status</th>
+                      <th className="px-3 py-3 text-center text-xs font-medium text-muted-foreground w-[180px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/30">
-                    {filteredList.map((member) => (
-                      <tr key={member.memberId} className={cn(
-                        "transition-colors duration-150 hover:bg-muted/10",
-                        member.status === "present" && "bg-green-500/[0.03]",
-                        member.status === "late" && "bg-amber-500/[0.03]",
-                        isFutureDate && "opacity-50 pointer-events-none",
-                      )}>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <div className={cn(
-                              "w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 transition-colors duration-300",
-                              member.status === "present" ? "bg-green-500/20 text-green-700 dark:text-green-400" :
-                              member.status === "late" ? "bg-amber-500/20 text-amber-700" :
-                              "bg-muted text-muted-foreground"
-                            )}>
-                              {member.memberName.charAt(0).toUpperCase()}
+                    {filteredList.map((member) => {
+                      const recordKey = `${member.slotId}:${member.memberId}`;
+                      const isSavingRow = savingKeys.has(recordKey);
+
+                      return (
+                        <tr
+                          key={recordKey}
+                          className={cn(
+                            "transition-colors duration-150 hover:bg-muted/10",
+                            member.status === "present" && "bg-success/5",
+                            member.status === "late" && "bg-warning/5",
+                            isFutureDate && "pointer-events-none opacity-60",
+                          )}
+                        >
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                                {member.memberName.charAt(0).toUpperCase()}
+                              </div>
+                              <p className="text-sm font-medium text-foreground">{member.memberName}</p>
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-medium truncate">{member.memberName}</p>
-                              <p className="text-[10px] text-muted-foreground sm:hidden">{member.memberPhone}</p>
+                          </td>
+                          <td className="px-3 py-2.5 text-sm text-muted-foreground">{member.memberPhone}</td>
+                          <td className="px-3 py-2.5 text-sm text-foreground">{member.trainerName}</td>
+                          <td className="px-3 py-2.5 text-sm text-muted-foreground">{member.slotLabel}</td>
+                          <td className="px-3 py-2.5 text-center">
+                            <Badge variant="outline" className={cn("text-[11px] capitalize", STATUS_STYLES[member.status])}>{member.status}</Badge>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center justify-center gap-1">
+                              {(["present", "late", "absent"] as const).map((status) => (
+                                <button
+                                  key={status}
+                                  onClick={() => toggleStatus(member, status)}
+                                  disabled={isFutureDate}
+                                  className={cn(
+                                    "h-8 rounded-md border px-2.5 text-[11px] font-semibold transition-all duration-200 active:scale-95",
+                                    member.status === status
+                                      ? STATUS_BUTTON_STYLES[status]
+                                      : "border-border/50 bg-background text-muted-foreground hover:border-primary/30 hover:bg-muted/40 hover:text-foreground",
+                                  )}
+                                >
+                                  {status === "present" ? "P" : status === "late" ? "L" : "A"}
+                                </button>
+                              ))}
+                              {isSavingRow && <ButtonSpinner />}
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 hidden sm:table-cell">
-                          <span className="text-xs text-muted-foreground">{member.memberPhone}</span>
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <Badge className={cn("text-[10px] font-medium transition-all duration-200",
-                            member.status === "present" ? "bg-green-500/10 text-green-600 border-green-200"
-                              : member.status === "late" ? "bg-amber-500/10 text-amber-600 border-amber-200"
-                              : "bg-red-500/10 text-red-500 border-red-200"
-                          )}>
-                            {member.status === "present" ? "Present" : member.status === "late" ? "Late" : "Absent"}
-                          </Badge>
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center justify-center gap-0.5">
-                            {(["present", "late", "absent"] as const).map((s) => (
-                              <button key={s} onClick={() => toggleStatus(member.memberId, s)} disabled={isFutureDate}
-                                className={cn(
-                                  "w-7 h-7 rounded-md text-[10px] font-bold transition-all duration-200 border active:scale-90",
-                                  member.status === s
-                                    ? STATUS_COLORS[s] + " border-transparent shadow-sm"
-                                    : "bg-transparent text-muted-foreground border-border/40 hover:border-primary/30 hover:bg-muted/30"
-                                )}>
-                                {s[0].toUpperCase()}
-                              </button>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </Card>
           )}
 
-          {/* Auto-save indicator */}
-          {savingIds.size > 0 && (
+          {savingKeys.size > 0 && (
             <div className="sticky bottom-2 z-20 px-1 pointer-events-none">
-              <div className="mx-auto w-fit flex items-center gap-2 px-3 py-1.5 rounded-full bg-foreground/90 text-background text-xs shadow-lg backdrop-blur animate-fade-in">
-                <ButtonSpinner /> Saving…
+              <div className="mx-auto flex w-fit items-center gap-2 rounded-full bg-foreground px-3 py-1.5 text-xs text-background shadow-lg backdrop-blur animate-fade-in">
+                <ButtonSpinner /> Saving attendance…
               </div>
             </div>
           )}
