@@ -39,6 +39,7 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
   const { isStaffLoggedIn, staffUser } = useStaffAuth();
   const { isAdmin } = useIsAdmin();
   const [mode, setMode] = useState<"search" | "new">("search");
+  const [memberSearch, setMemberSearch] = useState("");
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -46,6 +47,8 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [customResponses, setCustomResponses] = useState<Record<string, string>>({});
   const [foundMember, setFoundMember] = useState<any>(null);
+  const [memberResults, setMemberResults] = useState<any[]>([]);
+  const [isSearchingMembers, setIsSearchingMembers] = useState(false);
   const [searchDone, setSearchDone] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<"success" | "pending">("success");
   const [freeForExisting, setFreeForExisting] = useState(false);
@@ -156,10 +159,10 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
   };
 
   const resetForm = () => {
-    setPhone(""); setName(""); setEmail("");
+    setMemberSearch(""); setPhone(""); setName(""); setEmail("");
     setSelectedPricingId(pricingOptions[0]?.id || "");
     setSelectedItemIds(new Set());
-    setCustomResponses({}); setFoundMember(null);
+    setCustomResponses({}); setFoundMember(null); setMemberResults([]); setIsSearchingMembers(false);
     setSearchDone(false); setMode("search");
     setPaymentStatus("success"); setFreeForExisting(false);
     setNotifyMember(false);
@@ -229,19 +232,70 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
   };
 
   const handleSearch = async () => {
-    if (phone.length !== 10 || !/^[6-9]/.test(phone)) {
-      toast.error("Enter a valid 10-digit phone number"); return;
+    const searchValue = memberSearch.trim();
+    if (searchValue.length < 2) {
+      toast.error("Enter at least 2 characters to search");
+      return;
     }
-    const { data: existing } = await supabase
-      .from("event_registrations").select("id")
-      .eq("event_id", event.id).eq("phone", phone).eq("payment_status", "success").maybeSingle();
-    if (existing) { toast.error("This phone number is already registered for this event"); return; }
 
-    const { data: member } = await supabase
-      .from("members").select("id, name, email, phone")
-      .eq("phone", phone).eq("branch_id", event.branch_id).maybeSingle();
-    if (member) { setFoundMember(member); setName(member.name); setEmail(member.email || ""); }
-    else { setFoundMember(null); setName(""); setEmail(""); }
+    setIsSearchingMembers(true);
+    setSearchDone(false);
+    setFoundMember(null);
+    setMemberResults([]);
+    setFreeForExisting(false);
+
+    try {
+      const normalizedDigits = searchValue.replace(/\D/g, "").slice(0, 10);
+      let query = supabase
+        .from("members")
+        .select("id, name, email, phone")
+        .eq("branch_id", event.branch_id)
+        .limit(8);
+
+      query = normalizedDigits.length >= 2
+        ? query.or(`name.ilike.%${searchValue}%,phone.ilike.%${normalizedDigits}%`)
+        : query.ilike("name", `%${searchValue}%`);
+
+      const { data: members, error } = await query.order("name", { ascending: true });
+      if (error) throw error;
+
+      const results = members || [];
+      setMemberResults(results);
+
+      if (results.length === 0) {
+        setPhone(normalizedDigits);
+        setName("");
+        setEmail("");
+      }
+
+      setSearchDone(true);
+    } catch (err: any) {
+      toast.error("Member search failed", { description: err.message });
+    } finally {
+      setIsSearchingMembers(false);
+    }
+  };
+
+  const handleSelectMember = async (member: any) => {
+    const { data: existing } = await supabase
+      .from("event_registrations")
+      .select("id")
+      .eq("event_id", event.id)
+      .eq("phone", member.phone)
+      .eq("payment_status", "success")
+      .maybeSingle();
+
+    if (existing) {
+      toast.error("This member is already registered for this event");
+      return;
+    }
+
+    setFoundMember(member);
+    setPhone(member.phone || "");
+    setName(member.name || "");
+    setEmail(member.email || "");
+    setMemberSearch(`${member.name} • ${member.phone}`);
+    setMemberResults([]);
     setSearchDone(true);
   };
 
