@@ -47,6 +47,41 @@ interface InvoiceData {
   payment_id: string | null;
 }
 
+const normalizeInvoiceData = (data: Record<string, unknown>): InvoiceData => ({
+  id: String(data.id ?? ""),
+  invoice_number: String(data.invoice_number ?? ""),
+  customer_name: String(data.customer_name ?? ""),
+  customer_phone: (data.customer_phone as string | null) ?? null,
+  gym_name: String(data.gym_name ?? ""),
+  gym_address: (data.gym_address as string | null) ?? null,
+  gym_phone: (data.gym_phone as string | null) ?? null,
+  gym_email: (data.gym_email as string | null) ?? null,
+  gym_gst: (data.gym_gst as string | null) ?? null,
+  branch_name: (data.branch_name as string | null) ?? null,
+  amount: Number(data.amount ?? 0),
+  subtotal: Number(data.subtotal ?? 0),
+  discount: Number(data.discount ?? 0),
+  tax: Number(data.tax ?? 0),
+  gym_fee: Number(data.gym_fee ?? 0),
+  joining_fee: Number(data.joining_fee ?? 0),
+  trainer_fee: Number(data.trainer_fee ?? 0),
+  package_name: (data.package_name as string | null) ?? null,
+  start_date: (data.start_date as string | null) ?? null,
+  end_date: (data.end_date as string | null) ?? null,
+  payment_mode: (data.payment_mode as string | null) ?? null,
+  payment_date: (data.payment_date as string | null) ?? null,
+  transaction_id: (data.transaction_id as string | null) ?? null,
+  pdf_url: (data.pdf_url as string | null) ?? null,
+  footer_message: (data.footer_message as string | null) ?? null,
+  invoice_terms: (data.invoice_terms as string | null) ?? null,
+  invoice_brand_name: (data.invoice_brand_name as string | null) ?? null,
+  invoice_logo_url: (data.invoice_logo_url as string | null) ?? null,
+  invoice_palette: (data.invoice_palette as InvoiceData["invoice_palette"]) ?? null,
+  created_at: String(data.created_at ?? ""),
+  member_id: (data.member_id as string | null) ?? null,
+  payment_id: (data.payment_id as string | null) ?? null,
+});
+
 export default function Invoice() {
   const { invoiceId } = useParams<{ invoiceId: string }>();
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
@@ -86,7 +121,7 @@ export default function Invoice() {
         return;
       }
 
-      setInvoice(data as InvoiceData);
+      setInvoice(normalizeInvoiceData(data as Record<string, unknown>));
     } catch (err: any) {
       setError("Unable to load invoice");
     } finally {
