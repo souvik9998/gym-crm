@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,9 +16,10 @@ import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import {
   Plus, Search, Pencil, Trash2, Copy, TicketPercent,
-  AlertTriangle, ChevronDown, ChevronUp, Zap, RefreshCw,
+  AlertTriangle, ChevronDown, ChevronUp, RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
+import { z } from "zod";
 
 interface Coupon {
   id: string;
@@ -60,14 +61,10 @@ type CouponForm = {
   is_active: boolean;
   total_usage_limit: string;
   per_user_limit: string;
-  applicable_on_registration: boolean;
-  applicable_on_renewal: boolean;
-  applicable_on_event: boolean;
+  coupon_target: "new_registration" | "renewal" | "event" | "pt_renewal";
   first_time_only: boolean;
   existing_members_only: boolean;
   expired_members_only: boolean;
-  stackable: boolean;
-  auto_apply: boolean;
   notes: string;
 };
 
@@ -82,15 +79,78 @@ const defaultForm: CouponForm = {
   is_active: true,
   total_usage_limit: "",
   per_user_limit: "1",
-  applicable_on_registration: true,
-  applicable_on_renewal: true,
-  applicable_on_event: false,
+  coupon_target: "new_registration",
   first_time_only: false,
   existing_members_only: false,
   expired_members_only: false,
-  stackable: false,
-  auto_apply: false,
   notes: "",
+};
+
+const couponFormSchema = z.object({
+  code: z.string().trim().min(1, "Coupon code is required").max(32, "Coupon code is too long").regex(/^[A-Z0-9_-]+$/, "Coupon code can only use letters, numbers, hyphens, and underscores"),
+  discount_type: z.enum(["percentage", "flat", "free_days"]),
+  discount_value: z.coerce.number().positive("Discount value must be positive"),
+  max_discount_cap: z.union([z.literal(""), z.coerce.number().positive("Max discount cap must be positive")]),
+  min_order_value: z.union([z.literal(""), z.coerce.number().min(0, "Minimum order value cannot be negative")]),
+  start_date: z.string().min(1, "Start date is required"),
+  end_date: z.string().optional(),
+  total_usage_limit: z.union([z.literal(""), z.coerce.number().int().positive("Total usage limit must be positive")]),
+  per_user_limit: z.coerce.number().int().positive("Per user limit must be at least 1"),
+  coupon_target: z.enum(["new_registration", "renewal", "event", "pt_renewal"]),
+  first_time_only: z.boolean(),
+  existing_members_only: z.boolean(),
+  expired_members_only: z.boolean(),
+  is_active: z.boolean(),
+  notes: z.string().max(500, "Notes must be 500 characters or fewer"),
+}).superRefine((data, ctx) => {
+  if (data.discount_type === "percentage" && data.discount_value > 100) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["discount_value"], message: "Percentage cannot exceed 100%" });
+  }
+
+  if (data.end_date && data.end_date < data.start_date) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["end_date"], message: "End date cannot be before start date" });
+  }
+
+  if (data.coupon_target === "new_registration") {
+    if (data.existing_members_only || data.expired_members_only) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["coupon_target"], message: "Registration coupons cannot be restricted to existing or expired members" });
+    }
+  }
+
+  if (data.coupon_target === "event") {
+    if (data.first_time_only || data.existing_members_only || data.expired_members_only) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["coupon_target"], message: "Event coupons do not support member-condition filters" });
+    }
+  }
+
+  if ((data.coupon_target === "renewal" || data.coupon_target === "pt_renewal") && data.first_time_only) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["first_time_only"], message: "Renewal coupons cannot be limited to first-time users" });
+  }
+});
+
+const couponTargetOptions = [
+  { value: "new_registration", label: "New Registration", description: "For brand-new member signups" },
+  { value: "renewal", label: "Membership Renewal", description: "For gym membership renewals only" },
+  { value: "event", label: "Event Registration", description: "For paid event bookings only" },
+  { value: "pt_renewal", label: "PT Renewal", description: "For personal training renewals only" },
+] as const;
+
+const getApplicableOnFromTarget = (target: CouponForm["coupon_target"]) => ({
+  new_registration: target === "new_registration",
+  renewal: target === "renewal",
+  event: target === "event",
+  pt_renewal: target === "pt_renewal",
+});
+
+const getCouponTarget = (applicableOn: any): CouponForm["coupon_target"] => {
+  if (applicableOn?.pt_renewal) return "pt_renewal";
+  if (applicableOn?.event) return "event";
+  if (applicableOn?.renewal) return "renewal";
+  return "new_registration";
+};
+
+const getCouponTargetLabel = (target: CouponForm["coupon_target"]) => {
+  return couponTargetOptions.find((option) => option.value === target)?.label || "New Registration";
 };
 
 const generateCode = () => {
@@ -132,6 +192,13 @@ export const CouponsDiscountsTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [form, setForm] = useState<CouponForm>(defaultForm);
+  const selectedTargetMeta = useMemo(
+    () => couponTargetOptions.find((option) => option.value === form.coupon_target) ?? couponTargetOptions[0],
+    [form.coupon_target]
+  );
+  const showFirstTimeCondition = form.coupon_target === "new_registration";
+  const showExistingCondition = form.coupon_target === "renewal" || form.coupon_target === "pt_renewal";
+  const showExpiredCondition = form.coupon_target === "renewal" || form.coupon_target === "pt_renewal";
 
   const fetchCoupons = useCallback(async () => {
     if (!currentBranch) return;
@@ -187,27 +254,35 @@ export const CouponsDiscountsTab = () => {
       is_active: coupon.is_active,
       total_usage_limit: coupon.total_usage_limit ? String(coupon.total_usage_limit) : "",
       per_user_limit: String(coupon.per_user_limit),
-      applicable_on_registration: coupon.applicable_on?.new_registration !== false,
-      applicable_on_renewal: coupon.applicable_on?.renewal !== false,
-      applicable_on_event: coupon.applicable_on?.event === true,
+      coupon_target: getCouponTarget(coupon.applicable_on),
       first_time_only: coupon.first_time_only,
       existing_members_only: coupon.existing_members_only,
       expired_members_only: coupon.expired_members_only,
-      stackable: coupon.stackable,
-      auto_apply: coupon.auto_apply,
       notes: coupon.notes || "",
     });
     setShowForm(true);
   };
 
   const handleSave = async () => {
-    if (!form.code.trim()) { toast.error("Coupon code is required"); return; }
-    if (!form.discount_value || Number(form.discount_value) <= 0) { toast.error("Discount value must be positive"); return; }
-    if (form.discount_type === "percentage" && Number(form.discount_value) > 100) { toast.error("Percentage cannot exceed 100%"); return; }
     if (!currentBranch) return;
 
     setIsSaving(true);
     try {
+      const normalizedForm = {
+        ...form,
+        code: form.code.toUpperCase().trim(),
+        notes: form.notes.trim(),
+        first_time_only: showFirstTimeCondition ? form.first_time_only : false,
+        existing_members_only: showExistingCondition ? form.existing_members_only : false,
+        expired_members_only: showExpiredCondition ? form.expired_members_only : false,
+      };
+
+      const parsed = couponFormSchema.safeParse(normalizedForm);
+      if (!parsed.success) {
+        toast.error(parsed.error.issues[0]?.message || "Please check the coupon details");
+        return;
+      }
+
       // Get tenant_id from branch
       const { data: branchData } = await supabase
         .from("branches")
@@ -216,23 +291,23 @@ export const CouponsDiscountsTab = () => {
         .single();
 
       const payload = {
-        code: form.code.toUpperCase().trim(),
-        discount_type: form.discount_type,
-        discount_value: Number(form.discount_value),
-        max_discount_cap: form.max_discount_cap ? Number(form.max_discount_cap) : null,
-        min_order_value: form.min_order_value ? Number(form.min_order_value) : 0,
-        start_date: form.start_date,
-        end_date: form.end_date || null,
-        is_active: form.is_active,
-        total_usage_limit: form.total_usage_limit ? Number(form.total_usage_limit) : null,
-        per_user_limit: Number(form.per_user_limit) || 1,
-        applicable_on: { new_registration: form.applicable_on_registration, renewal: form.applicable_on_renewal, event: form.applicable_on_event },
-        first_time_only: form.first_time_only,
-        existing_members_only: form.existing_members_only,
-        expired_members_only: form.expired_members_only,
-        stackable: form.stackable,
-        auto_apply: form.auto_apply,
-        notes: form.notes || null,
+        code: parsed.data.code,
+        discount_type: parsed.data.discount_type,
+        discount_value: parsed.data.discount_value,
+        max_discount_cap: parsed.data.max_discount_cap === "" ? null : parsed.data.max_discount_cap,
+        min_order_value: parsed.data.min_order_value === "" ? 0 : parsed.data.min_order_value,
+        start_date: parsed.data.start_date,
+        end_date: parsed.data.end_date || null,
+        is_active: parsed.data.is_active,
+        total_usage_limit: parsed.data.total_usage_limit === "" ? null : parsed.data.total_usage_limit,
+        per_user_limit: parsed.data.per_user_limit,
+        applicable_on: getApplicableOnFromTarget(parsed.data.coupon_target),
+        first_time_only: parsed.data.first_time_only,
+        existing_members_only: parsed.data.existing_members_only,
+        expired_members_only: parsed.data.expired_members_only,
+        stackable: false,
+        auto_apply: false,
+        notes: parsed.data.notes || null,
         branch_id: currentBranch.id,
         tenant_id: branchData?.tenant_id || null,
       };
@@ -487,20 +562,28 @@ export const CouponsDiscountsTab = () => {
 
             {/* Applicability */}
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Applicable On</Label>
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.applicable_on_registration} onCheckedChange={v => setForm(f => ({ ...f, applicable_on_registration: v }))} />
-                  New Registration
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.applicable_on_renewal} onCheckedChange={v => setForm(f => ({ ...f, applicable_on_renewal: v }))} />
-                  Membership Renewal
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.applicable_on_event} onCheckedChange={v => setForm(f => ({ ...f, applicable_on_event: v }))} />
-                  Event Registration
-                </label>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Coupon Type</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {couponTargetOptions.map((option) => {
+                  const isSelected = form.coupon_target === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setForm(f => ({
+                        ...f,
+                        coupon_target: option.value,
+                        first_time_only: option.value === "new_registration" ? f.first_time_only : false,
+                        existing_members_only: option.value === "renewal" || option.value === "pt_renewal" ? f.existing_members_only : false,
+                        expired_members_only: option.value === "renewal" || option.value === "pt_renewal" ? f.expired_members_only : false,
+                      }))}
+                      className={`rounded-xl border px-3 py-3 text-left transition-all ${isSelected ? "border-accent bg-accent/10 shadow-sm" : "border-border bg-background hover:border-accent/40"}`}
+                    >
+                      <p className="text-sm font-medium text-foreground">{option.label}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{option.description}</p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -508,43 +591,40 @@ export const CouponsDiscountsTab = () => {
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">User Conditions</Label>
               <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.first_time_only} onCheckedChange={v => setForm(f => ({ ...f, first_time_only: v }))} />
-                  First-time users only
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.existing_members_only} onCheckedChange={v => setForm(f => ({ ...f, existing_members_only: v }))} />
-                  Existing members only
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.expired_members_only} onCheckedChange={v => setForm(f => ({ ...f, expired_members_only: v }))} />
-                  Expired members only
-                </label>
+                {showFirstTimeCondition && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <Switch checked={form.first_time_only} onCheckedChange={v => setForm(f => ({ ...f, first_time_only: v }))} />
+                    First-time users only
+                  </label>
+                )}
+                {showExistingCondition && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <Switch checked={form.existing_members_only} onCheckedChange={v => setForm(f => ({ ...f, existing_members_only: v }))} />
+                    Existing members only
+                  </label>
+                )}
+                {showExpiredCondition && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <Switch checked={form.expired_members_only} onCheckedChange={v => setForm(f => ({ ...f, expired_members_only: v }))} />
+                    Expired members only
+                  </label>
+                )}
               </div>
-              {(form.first_time_only || form.existing_members_only || form.expired_members_only) && (
+              {!showFirstTimeCondition && !showExistingCondition && !showExpiredCondition ? (
+                <p className="text-[11px] text-muted-foreground">No extra user conditions apply to {selectedTargetMeta.label.toLowerCase()} coupons.</p>
+              ) : (form.first_time_only || form.existing_members_only || form.expired_members_only) && (
                 <p className="text-[11px] text-muted-foreground italic pl-1">
                   💡 If multiple conditions are enabled, the coupon applies to members matching <strong>any one</strong> of them.
                 </p>
               )}
             </div>
 
-            {/* Advanced */}
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Advanced</Label>
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.stackable} onCheckedChange={v => setForm(f => ({ ...f, stackable: v }))} />
-                  Stackable
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.auto_apply} onCheckedChange={v => setForm(f => ({ ...f, auto_apply: v }))} />
-                  Auto Apply
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.is_active} onCheckedChange={v => setForm(f => ({ ...f, is_active: v }))} />
-                  Enabled
-                </label>
-              </div>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</Label>
+              <label className="flex items-center gap-2 text-sm">
+                <Switch checked={form.is_active} onCheckedChange={v => setForm(f => ({ ...f, is_active: v }))} />
+                Enabled
+              </label>
             </div>
 
             {/* Notes */}
@@ -601,11 +681,6 @@ export const CouponsDiscountsTab = () => {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold font-mono tracking-wider">{coupon.code}</span>
                           <Badge variant={status.variant} className="text-[10px] px-1.5 py-0">{status.label}</Badge>
-                          {coupon.auto_apply && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/30 text-amber-600">
-                              <Zap className="w-2.5 h-2.5 mr-0.5" />Auto
-                            </Badge>
-                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {discountLabel(coupon)} • Used {coupon.usage_count}{coupon.total_usage_limit ? `/${coupon.total_usage_limit}` : ""} times
@@ -652,13 +727,13 @@ export const CouponsDiscountsTab = () => {
                       <div className="bg-muted/30 rounded-lg p-2">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Applies To</p>
                         <p className="font-medium">
-                          {[coupon.applicable_on?.new_registration && "Registration", coupon.applicable_on?.renewal && "Renewal", coupon.applicable_on?.event && "Event"].filter(Boolean).join(", ") || "All"}
+                          {getCouponTargetLabel(getCouponTarget(coupon.applicable_on))}
                         </p>
                       </div>
                       <div className="bg-muted/30 rounded-lg p-2">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Conditions</p>
                         <p className="font-medium">
-                          {[coupon.first_time_only && "First-time", coupon.existing_members_only && "Existing", coupon.expired_members_only && "Expired"].filter(Boolean).join(", ") || "None"}
+                          {[coupon.first_time_only && "First-time", coupon.existing_members_only && "Existing", coupon.expired_members_only && "Expired"].filter(Boolean).join(", ") || "No restrictions"}
                         </p>
                       </div>
                       <div className="bg-muted/30 rounded-lg p-2">
