@@ -1139,6 +1139,20 @@ export const MemberActivityDialog = ({
           </Tabs>
         )}
 
+        {member && renewalPrefill && (
+          <AddMemberDialog
+            open={showRenewMember}
+            onOpenChange={setShowRenewMember}
+            onSuccess={() => {
+              setShowRenewMember(false);
+              fetchMemberData();
+              invalidatePtSubscriptions();
+            }}
+            initialExistingMember={renewalPrefill}
+            initialAction="renew_gym"
+          />
+        )}
+
         <style>{`
           @keyframes memberDialogFadeSlide {
             0% { opacity: 0; transform: translateY(8px); }
