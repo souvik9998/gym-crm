@@ -562,20 +562,28 @@ export const CouponsDiscountsTab = () => {
 
             {/* Applicability */}
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Applicable On</Label>
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.applicable_on_registration} onCheckedChange={v => setForm(f => ({ ...f, applicable_on_registration: v }))} />
-                  New Registration
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.applicable_on_renewal} onCheckedChange={v => setForm(f => ({ ...f, applicable_on_renewal: v }))} />
-                  Membership Renewal
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.applicable_on_event} onCheckedChange={v => setForm(f => ({ ...f, applicable_on_event: v }))} />
-                  Event Registration
-                </label>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Coupon Type</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {couponTargetOptions.map((option) => {
+                  const isSelected = form.coupon_target === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setForm(f => ({
+                        ...f,
+                        coupon_target: option.value,
+                        first_time_only: option.value === "new_registration" ? f.first_time_only : false,
+                        existing_members_only: option.value === "renewal" || option.value === "pt_renewal" ? f.existing_members_only : false,
+                        expired_members_only: option.value === "renewal" || option.value === "pt_renewal" ? f.expired_members_only : false,
+                      }))}
+                      className={`rounded-xl border px-3 py-3 text-left transition-all ${isSelected ? "border-accent bg-accent/10 shadow-sm" : "border-border bg-background hover:border-accent/40"}`}
+                    >
+                      <p className="text-sm font-medium text-foreground">{option.label}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{option.description}</p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -583,43 +591,40 @@ export const CouponsDiscountsTab = () => {
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">User Conditions</Label>
               <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.first_time_only} onCheckedChange={v => setForm(f => ({ ...f, first_time_only: v }))} />
-                  First-time users only
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.existing_members_only} onCheckedChange={v => setForm(f => ({ ...f, existing_members_only: v }))} />
-                  Existing members only
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.expired_members_only} onCheckedChange={v => setForm(f => ({ ...f, expired_members_only: v }))} />
-                  Expired members only
-                </label>
+                {showFirstTimeCondition && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <Switch checked={form.first_time_only} onCheckedChange={v => setForm(f => ({ ...f, first_time_only: v }))} />
+                    First-time users only
+                  </label>
+                )}
+                {showExistingCondition && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <Switch checked={form.existing_members_only} onCheckedChange={v => setForm(f => ({ ...f, existing_members_only: v }))} />
+                    Existing members only
+                  </label>
+                )}
+                {showExpiredCondition && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <Switch checked={form.expired_members_only} onCheckedChange={v => setForm(f => ({ ...f, expired_members_only: v }))} />
+                    Expired members only
+                  </label>
+                )}
               </div>
-              {(form.first_time_only || form.existing_members_only || form.expired_members_only) && (
+              {!showFirstTimeCondition && !showExistingCondition && !showExpiredCondition ? (
+                <p className="text-[11px] text-muted-foreground">No extra user conditions apply to {selectedTargetMeta.label.toLowerCase()} coupons.</p>
+              ) : (form.first_time_only || form.existing_members_only || form.expired_members_only) && (
                 <p className="text-[11px] text-muted-foreground italic pl-1">
                   💡 If multiple conditions are enabled, the coupon applies to members matching <strong>any one</strong> of them.
                 </p>
               )}
             </div>
 
-            {/* Advanced */}
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Advanced</Label>
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.stackable} onCheckedChange={v => setForm(f => ({ ...f, stackable: v }))} />
-                  Stackable
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.auto_apply} onCheckedChange={v => setForm(f => ({ ...f, auto_apply: v }))} />
-                  Auto Apply
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={form.is_active} onCheckedChange={v => setForm(f => ({ ...f, is_active: v }))} />
-                  Enabled
-                </label>
-              </div>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</Label>
+              <label className="flex items-center gap-2 text-sm">
+                <Switch checked={form.is_active} onCheckedChange={v => setForm(f => ({ ...f, is_active: v }))} />
+                Enabled
+              </label>
             </div>
 
             {/* Notes */}
