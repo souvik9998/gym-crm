@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Dumbbell, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Dumbbell, AlertTriangle, Scale, Repeat, Layers3 } from "lucide-react";
 import type { ExercisePlan } from "./MemberHealthTab";
 
 interface ExerciseRegimeSectionProps {
@@ -21,11 +22,14 @@ interface ExerciseFormItem {
   exercise_name: string;
   sets: number;
   reps: string;
+  weight_value: string;
+  weight_unit: string;
   notes: string;
 }
 
 const GOALS = ["Weight Loss", "Muscle Gain", "General Fitness", "Rehab", "Endurance", "Strength"];
 const SPLITS = ["Full Body", "Push-Pull-Legs", "Upper-Lower", "Bro Split", "Custom"];
+const WEIGHT_UNITS = ["kg", "lb", "bodyweight", "band", "machine"];
 
 export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: ExerciseRegimeSectionProps) => {
   const [showForm, setShowForm] = useState(false);
@@ -37,34 +41,42 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
   const [workoutSplit, setWorkoutSplit] = useState("Full Body");
   const [createdBy, setCreatedBy] = useState("");
   const [exercises, setExercises] = useState<ExerciseFormItem[]>([
-    { exercise_name: "", sets: 3, reps: "10", notes: "" },
+    { exercise_name: "", sets: 3, reps: "10", weight_value: "", weight_unit: "kg", notes: "" },
   ]);
 
   const addExercise = () => {
-    setExercises([...exercises, { exercise_name: "", sets: 3, reps: "10", notes: "" }]);
+    setExercises((prev) => [...prev, { exercise_name: "", sets: 3, reps: "10", weight_value: "", weight_unit: "kg", notes: "" }]);
   };
 
   const removeExercise = (index: number) => {
-    if (exercises.length > 1) setExercises(exercises.filter((_, i) => i !== index));
+    if (exercises.length > 1) {
+      setExercises((prev) => prev.filter((_, i) => i !== index));
+    }
   };
 
-  const updateExercise = (index: number, field: keyof ExerciseFormItem, value: any) => {
-    setExercises(exercises.map((e, i) => i === index ? { ...e, [field]: value } : e));
+  const updateExercise = (index: number, field: keyof ExerciseFormItem, value: string | number) => {
+    setExercises((prev) => prev.map((exercise, i) => (i === index ? { ...exercise, [field]: value } : exercise)));
   };
 
   const handleSave = async () => {
-    if (!planName.trim()) { toast.error("Plan name is required"); return; }
-    if (!createdBy.trim()) { toast.error("Created by is required"); return; }
-    const validExercises = exercises.filter(e => e.exercise_name.trim());
-    if (validExercises.length === 0) { toast.error("Add at least one exercise"); return; }
+    if (!planName.trim()) {
+      toast.error("Plan name is required");
+      return;
+    }
+    if (!createdBy.trim()) {
+      toast.error("Created by is required");
+      return;
+    }
+
+    const validExercises = exercises.filter((exercise) => exercise.exercise_name.trim());
+    if (validExercises.length === 0) {
+      toast.error("Add at least one exercise");
+      return;
+    }
 
     setIsSaving(true);
     try {
-      await supabase
-        .from("member_exercise_plans")
-        .update({ is_active: false })
-        .eq("member_id", memberId)
-        .eq("is_active", true);
+      await supabase.from("member_exercise_plans").update({ is_active: false }).eq("member_id", memberId).eq("is_active", true);
 
       const { data: plan, error: planError } = await supabase
         .from("member_exercise_plans")
@@ -82,23 +94,25 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
 
       if (planError) throw planError;
 
-      const exerciseRows = validExercises.map((e, i) => ({
+      const exerciseRows = validExercises.map((exercise, index) => ({
         plan_id: plan.id,
-        exercise_name: e.exercise_name,
-        sets: e.sets,
-        reps: e.reps,
-        notes: e.notes || null,
-        sort_order: i,
+        exercise_name: exercise.exercise_name,
+        sets: exercise.sets,
+        reps: exercise.reps,
+        weight_value: exercise.weight_value ? Number(exercise.weight_value) : null,
+        weight_unit: exercise.weight_value ? exercise.weight_unit : null,
+        notes: exercise.notes || null,
+        sort_order: index,
       }));
 
-      const { error: exError } = await supabase.from("member_exercise_items").insert(exerciseRows);
-      if (exError) throw exError;
+      const { error: exerciseError } = await supabase.from("member_exercise_items").insert(exerciseRows as any);
+      if (exerciseError) throw exerciseError;
 
       toast.success("Exercise plan saved");
       setShowForm(false);
       setPlanName("");
       setCreatedBy("");
-      setExercises([{ exercise_name: "", sets: 3, reps: "10", notes: "" }]);
+      setExercises([{ exercise_name: "", sets: 3, reps: "10", weight_value: "", weight_unit: "kg", notes: "" }]);
       await onRefresh();
     } catch (err: any) {
       toast.error("Error saving plan", { description: err.message });
@@ -122,8 +136,14 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
     }
   };
 
-  const activePlan = plans.find(p => p.is_active);
-  const pastPlans = plans.filter(p => !p.is_active);
+  const activePlan = plans.find((plan) => plan.is_active);
+  const pastPlans = plans.filter((plan) => !plan.is_active);
+
+  const formatLoad = (weightValue?: number | null, weightUnit?: string | null) => {
+    if (!weightValue && weightUnit === "bodyweight") return "Bodyweight";
+    if (!weightValue) return "—";
+    return `${weightValue} ${weightUnit || "kg"}`;
+  };
 
   const DeleteConfirmBanner = ({ planId, label }: { planId: string; label: string }) => (
     <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg p-2 mb-2 animate-in fade-in duration-200">
@@ -145,57 +165,112 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
       )}
 
       {showForm && (
-        <div className="space-y-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="space-y-4 rounded-xl border border-accent/20 bg-accent/5 p-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="rounded-lg border border-border/50 bg-background/70 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Exercise details</p>
+              <p className="mt-1 text-xs text-muted-foreground">Each row can include the movement name, sets, reps, and optional load.</p>
+            </div>
+            <div className="rounded-lg border border-border/50 bg-background/70 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Load tracking</p>
+              <p className="mt-1 text-xs text-muted-foreground">Use kg/lb for weights or choose bodyweight, band, or machine when needed.</p>
+            </div>
+            <div className="rounded-lg border border-border/50 bg-background/70 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Coach notes</p>
+              <p className="mt-1 text-xs text-muted-foreground">Add cues like tempo, hold time, side split, or machine setting.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Plan Name *</Label>
-              <Input value={planName} onChange={e => setPlanName(e.target.value)} placeholder="e.g. Beginner Strength" className="h-8 text-xs mt-0.5" />
+              <Input value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="e.g. Beginner Strength" className="h-10 text-sm mt-1" />
             </div>
             <div>
               <Label className="text-xs">Created By *</Label>
-              <Input value={createdBy} onChange={e => setCreatedBy(e.target.value)} placeholder="Trainer name" className="h-8 text-xs mt-0.5" />
+              <Input value={createdBy} onChange={(e) => setCreatedBy(e.target.value)} placeholder="Trainer name" className="h-10 text-sm mt-1" />
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Goal</Label>
               <Select value={goal} onValueChange={setGoal}>
-                <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-10 text-sm mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {GOALS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                  {GOALS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label className="text-xs">Workout Split</Label>
               <Select value={workoutSplit} onValueChange={setWorkoutSplit}>
-                <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-10 text-sm mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {SPLITS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {SPLITS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div>
-            <Label className="text-xs font-semibold">Exercises</Label>
-            <div className="space-y-2 mt-1">
-              {exercises.map((ex, i) => (
-                <div key={i} className="flex items-start gap-1.5 bg-background/50 rounded-lg p-2">
-                  <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-1.5 min-w-0">
-                    <Input value={ex.exercise_name} onChange={e => updateExercise(i, "exercise_name", e.target.value)} placeholder="Exercise" className="h-7 text-xs col-span-2" />
-                    <Input type="number" value={ex.sets} onChange={e => updateExercise(i, "sets", Number(e.target.value))} placeholder="Sets" className="h-7 text-xs" />
-                    <Input value={ex.reps} onChange={e => updateExercise(i, "reps", e.target.value)} placeholder="Reps" className="h-7 text-xs" />
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div>
+                <Label className="text-xs font-semibold">Exercises</Label>
+                <p className="text-[11px] text-muted-foreground mt-1">Add one line per exercise with sets, reps, and optional training load.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={addExercise} className="rounded-lg">
+                <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Exercise
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {exercises.map((exercise, index) => (
+                <div key={index} className="rounded-xl border border-border/50 bg-background/80 p-3">
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10 text-accent text-xs font-semibold">{index + 1}</div>
+                      <span className="text-sm font-medium text-foreground">Exercise {index + 1}</span>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => removeExercise(index)} className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" disabled={exercises.length === 1}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => removeExercise(i)} className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive flex-shrink-0" disabled={exercises.length === 1}>
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
+
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+                    <div className="lg:col-span-4">
+                      <Label className="text-xs">Exercise Name</Label>
+                      <Input value={exercise.exercise_name} onChange={(e) => updateExercise(index, "exercise_name", e.target.value)} placeholder="Goblet squat, incline press..." className="h-10 text-sm mt-1" />
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Label className="text-xs flex items-center gap-1"><Layers3 className="h-3 w-3" /> Sets</Label>
+                      <Input type="number" value={exercise.sets} onChange={(e) => updateExercise(index, "sets", Number(e.target.value))} placeholder="3" className="h-10 text-sm mt-1" />
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Label className="text-xs flex items-center gap-1"><Repeat className="h-3 w-3" /> Reps</Label>
+                      <Input value={exercise.reps} onChange={(e) => updateExercise(index, "reps", e.target.value)} placeholder="10 or 30 sec" className="h-10 text-sm mt-1" />
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Label className="text-xs flex items-center gap-1"><Scale className="h-3 w-3" /> Weight</Label>
+                      <Input value={exercise.weight_value} onChange={(e) => updateExercise(index, "weight_value", e.target.value)} placeholder="Optional" className="h-10 text-sm mt-1" />
+                    </div>
+                    <div className="lg:col-span-2">
+                      <Label className="text-xs">Unit</Label>
+                      <Select value={exercise.weight_unit} onValueChange={(value) => updateExercise(index, "weight_unit", value)}>
+                        <SelectTrigger className="h-10 text-sm mt-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {WEIGHT_UNITS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="lg:col-span-12">
+                      <Label className="text-xs">Notes</Label>
+                      <Textarea value={exercise.notes} onChange={(e) => updateExercise(index, "notes", e.target.value)} placeholder="Tempo, rest time, machine pin, side-specific note, hold duration..." className="mt-1 min-h-[76px] text-sm" />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
-            <Button variant="ghost" size="sm" onClick={addExercise} className="mt-1 h-7 text-xs text-accent">
-              <Plus className="w-3 h-3 mr-1" /> Add Exercise
-            </Button>
           </div>
 
           <div className="flex gap-2">
@@ -207,60 +282,69 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
         </div>
       )}
 
-      {/* Active Plan */}
       {activePlan && (
-        <div className="rounded-xl border-2 border-emerald-500/30 bg-emerald-500/5 p-3">
+        <div className="rounded-xl border border-success/30 bg-success/5 p-3">
           {confirmDeleteId === activePlan.id && <DeleteConfirmBanner planId={activePlan.id} label={activePlan.plan_name} />}
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-2 flex-wrap min-w-0">
-              <Dumbbell className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-              <span className="text-sm font-semibold truncate">{activePlan.plan_name}</span>
-              <Badge className="bg-emerald-500/10 text-emerald-600 text-[10px] px-1.5 py-0 border-emerald-500/20 flex-shrink-0">Active</Badge>
+              <Dumbbell className="w-4 h-4 text-success flex-shrink-0" />
+              <span className="text-sm font-semibold truncate text-foreground">{activePlan.plan_name}</span>
+              <Badge className="bg-success/10 text-success border-success/20 text-[10px] px-1.5 py-0">Active</Badge>
             </div>
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive flex-shrink-0" onClick={() => setConfirmDeleteId(confirmDeleteId === activePlan.id ? null : activePlan.id)}>
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </div>
-          <div className="flex items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mb-2 flex-wrap">
+          <div className="flex items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mb-3 flex-wrap">
             <span>🎯 {activePlan.goal}</span>
             <span>📋 {activePlan.workout_split}</span>
             <span>By {activePlan.created_by}</span>
           </div>
+
           {activePlan.exercises.length > 0 && (
             <>
-              {/* Mobile: card list */}
-              <div className="space-y-1.5 sm:hidden">
-                {activePlan.exercises.map((ex) => (
-                  <div key={ex.id} className="rounded-lg border border-border/40 bg-background/50 p-2">
-                    <p className="text-xs font-medium mb-1 break-words">{ex.exercise_name}</p>
-                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                      <span><span className="font-semibold text-foreground">{ex.sets}</span> sets</span>
-                      <span><span className="font-semibold text-foreground">{ex.reps}</span> reps</span>
+              <div className="space-y-2 sm:hidden">
+                {activePlan.exercises.map((exercise) => (
+                  <div key={exercise.id} className="rounded-lg border border-border/40 bg-background/50 p-3">
+                    <p className="text-xs font-medium mb-2 break-words text-foreground">{exercise.exercise_name}</p>
+                    <div className="grid grid-cols-3 gap-2 text-[10px]">
+                      <div className="rounded-md bg-muted/30 p-2">
+                        <p className="text-muted-foreground">Sets</p>
+                        <p className="font-semibold text-foreground mt-0.5">{exercise.sets}</p>
+                      </div>
+                      <div className="rounded-md bg-muted/30 p-2">
+                        <p className="text-muted-foreground">Reps</p>
+                        <p className="font-semibold text-foreground mt-0.5">{exercise.reps}</p>
+                      </div>
+                      <div className="rounded-md bg-muted/30 p-2">
+                        <p className="text-muted-foreground">Load</p>
+                        <p className="font-semibold text-foreground mt-0.5">{formatLoad(exercise.weight_value, exercise.weight_unit)}</p>
+                      </div>
                     </div>
-                    {ex.notes && (
-                      <p className="text-[10px] text-muted-foreground mt-1 break-words italic">{ex.notes}</p>
-                    )}
+                    {exercise.notes && <p className="text-[10px] text-muted-foreground mt-2 break-words italic">{exercise.notes}</p>}
                   </div>
                 ))}
               </div>
-              {/* Tablet/Desktop: table */}
+
               <div className="hidden sm:block rounded-lg border border-border/40 overflow-hidden">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/40">
-                      <th className="text-left p-1.5 pl-2.5 font-medium">Exercise</th>
-                      <th className="text-center p-1.5 font-medium w-14">Sets</th>
-                      <th className="text-center p-1.5 font-medium w-14">Reps</th>
-                      <th className="text-left p-1.5 font-medium">Notes</th>
+                      <th className="text-left p-2 pl-3 font-medium">Exercise</th>
+                      <th className="text-center p-2 font-medium w-16">Sets</th>
+                      <th className="text-center p-2 font-medium w-20">Reps</th>
+                      <th className="text-center p-2 font-medium w-24">Load</th>
+                      <th className="text-left p-2 font-medium">Notes</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {activePlan.exercises.map((ex, i) => (
-                      <tr key={ex.id} className={i % 2 === 0 ? "bg-background/50" : ""}>
-                        <td className="p-1.5 pl-2.5 font-medium">{ex.exercise_name}</td>
-                        <td className="text-center p-1.5">{ex.sets}</td>
-                        <td className="text-center p-1.5">{ex.reps}</td>
-                        <td className="p-1.5 text-muted-foreground">{ex.notes || "—"}</td>
+                    {activePlan.exercises.map((exercise, index) => (
+                      <tr key={exercise.id} className={index % 2 === 0 ? "bg-background/50" : "bg-muted/10"}>
+                        <td className="p-2 pl-3 font-medium text-foreground">{exercise.exercise_name}</td>
+                        <td className="text-center p-2">{exercise.sets}</td>
+                        <td className="text-center p-2">{exercise.reps}</td>
+                        <td className="text-center p-2">{formatLoad(exercise.weight_value, exercise.weight_unit)}</td>
+                        <td className="p-2 text-muted-foreground">{exercise.notes || "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -271,15 +355,14 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
         </div>
       )}
 
-      {/* Past Plans */}
       {pastPlans.length > 0 && (
         <div className="space-y-2">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Previous Plans</p>
-          {pastPlans.map(plan => (
+          {pastPlans.map((plan) => (
             <div key={plan.id} className="rounded-lg border border-border/40 bg-card/30 p-2.5">
               {confirmDeleteId === plan.id && <DeleteConfirmBanner planId={plan.id} label={plan.plan_name} />}
               <div className="flex items-start justify-between gap-2 flex-wrap">
-                <span className="text-xs font-medium break-words min-w-0 flex-1">{plan.plan_name}</span>
+                <span className="text-xs font-medium break-words min-w-0 flex-1 text-foreground">{plan.plan_name}</span>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-[10px] text-muted-foreground">{plan.goal} • {plan.workout_split}</span>
                   <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive" onClick={() => setConfirmDeleteId(confirmDeleteId === plan.id ? null : plan.id)}>

@@ -5,11 +5,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle, Info } from "lucide-react";
 import type { MemberAssessment } from "./MemberHealthTab";
-import { ASSESSMENT_SECTIONS, type AssessmentSettings, type CustomField } from "@/components/admin/AssessmentFieldsSettings";
+import { ASSESSMENT_SECTIONS, getAssessmentFieldMeta, getDefaultAssessmentSettings, type AssessmentSettings } from "@/components/admin/health/assessmentConfig";
 
 interface AssessmentSectionProps {
   assessments: MemberAssessment[];
@@ -18,90 +19,13 @@ interface AssessmentSectionProps {
   onRefresh: () => Promise<void>;
 }
 
-// Field metadata for rendering the right input type
-const FIELD_INPUT_TYPE: Record<string, "number" | "text" | "select" | "textarea"> = {
-  weight: "number",
-  height: "number",
-  mode_of_training: "text",
-  diet_type: "select",
-  alcohol: "select",
-  smoking: "select",
-  physical_activity_current: "textarea",
-  physical_activity_past: "textarea",
-  deficiency: "text",
-  medication: "text",
-  health_conditions: "textarea",
-  injuries_pain: "textarea",
-  bp: "text",
-  rhr: "number",
-  spo2: "number",
-  grip_strength: "text",
-  pushups: "number",
-  landmine: "number",
-  pullups: "number",
-  squats: "number",
-  sit_to_stand: "number",
-  glute_bridge: "number",
-  leg_raises: "number",
-  plank: "text",
-  calf_raises: "number",
-  neck: "number",
-  chest: "number",
-  arms: "text",
-  upper_abdomen: "number",
-  lower_abdomen: "number",
-  hips: "number",
-  upper_thighs: "text",
-  lower_thighs: "text",
-  calf: "text",
-};
-
-const SELECT_OPTIONS: Record<string, string[]> = {
-  diet_type: ["Vegetarian", "Non-Vegetarian", "Vegan", "Eggetarian"],
-  alcohol: ["None", "Occasional", "Regular"],
-  smoking: ["None", "Occasional", "Regular"],
-};
-
-const FIELD_PLACEHOLDERS: Record<string, string> = {
-  weight: "e.g. 70",
-  height: "e.g. 175",
-  mode_of_training: "e.g. Strength, Cardio",
-  bp: "e.g. 120/80",
-  rhr: "e.g. 72",
-  spo2: "e.g. 98",
-  grip_strength: "e.g. L:30 R:32 kg",
-  plank: "e.g. 60 sec",
-  arms: "e.g. L:12 R:12.5 in",
-  upper_thighs: "e.g. L:22 R:22 in",
-  lower_thighs: "e.g. L:16 R:16 in",
-  calf: "e.g. L:14 R:14 in",
-};
-
-const getDefaultConfig = (): AssessmentSettings => {
-  const defaults: AssessmentSettings = {};
-  ASSESSMENT_SECTIONS.forEach((section) => {
-    const entry: AssessmentSettings[string] = { enabled: true };
-    if (section.fields) {
-      entry.fields = {};
-      entry.field_labels = {};
-      section.fields.forEach((f) => {
-        entry.fields![f.key] = true;
-        entry.field_labels![f.key] = f.label;
-      });
-    }
-    entry.custom_fields = [];
-    defaults[section.key] = entry;
-  });
-  return defaults;
-};
-
 export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }: AssessmentSectionProps) => {
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [config, setConfig] = useState<AssessmentSettings>(getDefaultConfig());
+  const [config, setConfig] = useState<AssessmentSettings>(getDefaultAssessmentSettings());
   const [formData, setFormData] = useState<Record<string, string>>({ assessed_by: "" });
 
   useEffect(() => {
@@ -115,11 +39,12 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
         .select("assessment_field_settings")
         .eq("branch_id", branchId)
         .maybeSingle();
+
       if (data?.assessment_field_settings) {
         const parsed = typeof data.assessment_field_settings === "string"
           ? JSON.parse(data.assessment_field_settings)
           : data.assessment_field_settings;
-        const merged = getDefaultConfig();
+        const merged = getDefaultAssessmentSettings();
         Object.keys(parsed).forEach((key) => {
           merged[key] = { ...merged[key], ...parsed[key] };
         });
@@ -130,42 +55,32 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     }
   };
 
-  const getEnabledSections = () => {
-    return ASSESSMENT_SECTIONS.filter((s) => config[s.key]?.enabled);
-  };
+  const getEnabledSections = () => ASSESSMENT_SECTIONS.filter((section) => config[section.key]?.enabled);
 
   const getEnabledFields = (sectionKey: string): { key: string; label: string }[] => {
-    const section = ASSESSMENT_SECTIONS.find((s) => s.key === sectionKey);
+    const section = ASSESSMENT_SECTIONS.find((item) => item.key === sectionKey);
     const sectionConfig = config[sectionKey];
     const result: { key: string; label: string }[] = [];
 
-    // Built-in fields
     if (section?.fields) {
-      section.fields.forEach((f) => {
-        if (sectionConfig?.fields?.[f.key] !== false) {
-          const label = sectionConfig?.field_labels?.[f.key] || f.label;
-          result.push({ key: f.key, label });
+      section.fields.forEach((field) => {
+        if (sectionConfig?.fields?.[field.key] !== false) {
+          result.push({ key: field.key, label: sectionConfig?.field_labels?.[field.key] || field.label });
         }
       });
     }
 
-    // Custom fields
-    if (sectionConfig?.custom_fields) {
-      sectionConfig.custom_fields.forEach((cf) => {
-        if (cf.enabled) {
-          result.push({ key: cf.key, label: cf.label });
-        }
-      });
-    }
+    sectionConfig?.custom_fields?.forEach((field) => {
+      if (field.enabled) result.push({ key: field.key, label: field.label });
+    });
 
     return result;
   };
 
   const getCustomFieldInputType = (fieldKey: string): "text" | "number" | "textarea" | "select" => {
-    // Search through all sections for the custom field
     for (const sectionKey of Object.keys(config)) {
-      const cf = config[sectionKey]?.custom_fields?.find((c) => c.key === fieldKey);
-      if (cf) return cf.input_type;
+      const field = config[sectionKey]?.custom_fields?.find((item) => item.key === fieldKey);
+      if (field) return field.input_type;
     }
     return "text";
   };
@@ -179,26 +94,29 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       toast.error("Please enter assessor name");
       return;
     }
+
     setIsSaving(true);
     try {
       const { assessed_by, ...rest } = formData;
-      const assessmentData: Record<string, any> = {};
+      const assessmentData: Record<string, string> = {};
 
       getEnabledSections().forEach((section) => {
-        const enabledFields = getEnabledFields(section.key);
+        const fields = getEnabledFields(section.key);
         if (section.fields || config[section.key]?.custom_fields?.length) {
-          enabledFields.forEach((field) => {
-            if (rest[field.key]) assessmentData[field.key] = rest[field.key];
+          fields.forEach((field) => {
+            if (rest[field.key]) {
+              assessmentData[field.key] = rest[field.key];
+            }
           });
-        } else {
-          if (rest[section.key]) assessmentData[section.key] = rest[section.key];
+        } else if (rest[section.key]) {
+          assessmentData[section.key] = rest[section.key];
         }
       });
 
       const { error } = await supabase.from("member_assessments").insert({
         member_id: memberId,
         branch_id: branchId,
-        assessed_by: assessed_by,
+        assessed_by,
         assessment_data: assessmentData,
         current_condition: assessmentData.health_conditions || null,
         injuries_health_issues: assessmentData.injuries_pain || null,
@@ -206,6 +124,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
         allowed_exercises: null,
         notes: assessmentData.notes || null,
       });
+
       if (error) throw error;
       toast.success("Assessment saved");
       setFormData({ assessed_by: "" });
@@ -233,77 +152,87 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     }
   };
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  const formatDate = (date: string) => new Date(date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
   const renderFieldInput = (fieldKey: string, label: string) => {
-    // Check custom field type first, then fall back to built-in map
     const isCustom = fieldKey.startsWith("custom_");
-    const inputType = isCustom ? getCustomFieldInputType(fieldKey) : (FIELD_INPUT_TYPE[fieldKey] || "text");
-    const placeholder = FIELD_PLACEHOLDERS[fieldKey] || "";
+    const meta = isCustom ? { inputType: getCustomFieldInputType(fieldKey) } : getAssessmentFieldMeta(fieldKey);
+    const inputType = meta.inputType || "text";
+    const unit = !isCustom ? meta.unit : undefined;
+    const helpText = !isCustom ? meta.helpText : undefined;
+    const placeholder = meta.placeholder || `Enter ${label.toLowerCase()}`;
+    const options = !isCustom ? meta.options : undefined;
 
-    if (inputType === "select" && SELECT_OPTIONS[fieldKey]) {
-      return (
-        <div key={fieldKey}>
-          <Label className="text-xs">{label}</Label>
-          <Select value={formData[fieldKey] || ""} onValueChange={(v) => updateField(fieldKey, v)}>
-            <SelectTrigger className="mt-1 h-8 text-sm">
+    const fieldControl = (() => {
+      if (inputType === "select" && options?.length) {
+        return (
+          <Select value={formData[fieldKey] || ""} onValueChange={(value) => updateField(fieldKey, value)}>
+            <SelectTrigger className="mt-1 h-10 text-sm">
               <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
             </SelectTrigger>
             <SelectContent>
-              {SELECT_OPTIONS[fieldKey].map((opt) => (
-                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              {options.map((option) => (
+                <SelectItem key={option} value={option}>{option}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-        </div>
-      );
-    }
+        );
+      }
 
-    if (inputType === "textarea") {
-      return (
-        <div key={fieldKey}>
-          <Label className="text-xs">{label}</Label>
+      if (inputType === "textarea") {
+        return (
           <Textarea
             value={formData[fieldKey] || ""}
             onChange={(e) => updateField(fieldKey, e.target.value)}
-            placeholder={placeholder || `Enter ${label.toLowerCase()}...`}
-            className="mt-1 text-sm min-h-[60px]"
+            placeholder={placeholder}
+            className="mt-1 min-h-[84px] text-sm"
           />
+        );
+      }
+
+      return (
+        <div className="relative mt-1">
+          <Input
+            type={inputType === "number" ? "number" : "text"}
+            value={formData[fieldKey] || ""}
+            onChange={(e) => updateField(fieldKey, e.target.value)}
+            placeholder={placeholder}
+            className={unit ? "h-10 pr-14 text-sm" : "h-10 text-sm"}
+          />
+          {unit && (
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-muted-foreground">
+              {unit}
+            </span>
+          )}
         </div>
       );
-    }
+    })();
 
     return (
-      <div key={fieldKey}>
-        <Label className="text-xs">{label}</Label>
-        <Input
-          type={inputType === "number" ? "number" : "text"}
-          value={formData[fieldKey] || ""}
-          onChange={(e) => updateField(fieldKey, e.target.value)}
-          placeholder={placeholder || `Enter ${label.toLowerCase()}`}
-          className="mt-1 h-8 text-sm"
-        />
+      <div key={fieldKey} className="rounded-lg border border-border/50 bg-background/80 p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Label className="text-xs font-medium text-foreground">{label}</Label>
+          {unit && <Badge variant="outline" className="h-5 rounded-md px-1.5 text-[10px]">{unit}</Badge>}
+        </div>
+        {fieldControl}
+        {helpText && <p className="mt-2 text-[11px] text-muted-foreground">{helpText}</p>}
       </div>
     );
   };
 
-  const getAssessmentDisplayData = (a: any): { label: string; value: string }[] => {
-    const data = a.assessment_data || {};
+  const getAssessmentDisplayData = (assessment: MemberAssessment): { label: string; value: string }[] => {
+    const data = assessment.assessment_data || {};
     const items: { label: string; value: string }[] = [];
-
-    // Build label map from config (includes custom labels & custom fields)
     const labelMap: Record<string, string> = {};
+
     ASSESSMENT_SECTIONS.forEach((section) => {
       const sectionConfig = config[section.key];
-      if (section.fields) {
-        section.fields.forEach((f) => {
-          labelMap[f.key] = sectionConfig?.field_labels?.[f.key] || f.label;
-        });
-      }
+      section.fields?.forEach((field) => {
+        labelMap[field.key] = sectionConfig?.field_labels?.[field.key] || field.label;
+      });
       labelMap[section.key] = section.label;
-      // Custom fields
-      sectionConfig?.custom_fields?.forEach((cf) => {
-        labelMap[cf.key] = cf.label;
+      sectionConfig?.custom_fields?.forEach((field) => {
+        labelMap[field.key] = field.label;
       });
     });
 
@@ -313,13 +242,12 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       }
     });
 
-    // Legacy fields fallback
     if (items.length === 0) {
-      if (a.current_condition) items.push({ label: "Condition", value: a.current_condition });
-      if (a.injuries_health_issues) items.push({ label: "Injuries", value: a.injuries_health_issues });
-      if (a.mobility_limitations) items.push({ label: "Mobility", value: a.mobility_limitations });
-      if (a.allowed_exercises) items.push({ label: "Allowed Exercises", value: a.allowed_exercises });
-      if (a.notes) items.push({ label: "Notes", value: a.notes });
+      if (assessment.current_condition) items.push({ label: "Condition", value: assessment.current_condition });
+      if (assessment.injuries_health_issues) items.push({ label: "Injuries", value: assessment.injuries_health_issues });
+      if (assessment.mobility_limitations) items.push({ label: "Mobility", value: assessment.mobility_limitations });
+      if (assessment.allowed_exercises) items.push({ label: "Allowed Exercises", value: assessment.allowed_exercises });
+      if (assessment.notes) items.push({ label: "Notes", value: assessment.notes });
     }
 
     return items;
@@ -336,39 +264,63 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       )}
 
       {showForm && (
-        <div className="space-y-3 rounded-xl border border-accent/20 bg-accent/5 p-3 max-h-[60vh] overflow-y-auto">
-          <div>
-            <Label className="text-xs">Assessed By *</Label>
+        <div className="space-y-4 rounded-xl border border-accent/20 bg-accent/5 p-4 max-h-[70vh] overflow-y-auto">
+          <div className="rounded-lg border border-border/50 bg-background/70 p-3">
+            <div className="flex items-start gap-2">
+              <Info className="mt-0.5 h-4 w-4 text-accent" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Assessment form preview</p>
+                <p className="text-xs text-muted-foreground">Only the enabled sections and fields from settings are shown here, with their configured labels and units.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border/50 bg-background/80 p-3">
+            <Label className="text-xs font-medium text-foreground">Assessed By *</Label>
             <Input
               value={formData.assessed_by || ""}
               onChange={(e) => updateField("assessed_by", e.target.value)}
               placeholder="Trainer / Admin name"
-              className="mt-1 h-8 text-sm"
+              className="mt-1 h-10 text-sm"
             />
           </div>
 
           {enabledSections.map((section) => {
             const fields = getEnabledFields(section.key);
-            const hasFields = section.fields || config[section.key]?.custom_fields?.length;
+            const hasFields = !!section.fields || !!config[section.key]?.custom_fields?.length;
             const Icon = section.icon;
 
             return (
-              <div key={section.key} className="space-y-2">
-                <div className="flex items-center gap-2 pt-1 border-t border-border/30">
-                  <Icon className="w-3.5 h-3.5 text-accent" />
-                  <p className="text-xs font-semibold text-foreground">{section.label}</p>
+              <div key={section.key} className="rounded-xl border border-border/50 bg-background/70 p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground">{section.label}</p>
+                      <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">
+                        {hasFields ? `${fields.length} fields` : "Notes"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{section.purpose}</p>
+                  </div>
                 </div>
+
                 {hasFields ? (
-                  <div className={fields.length <= 3 ? "space-y-2" : "grid grid-cols-1 sm:grid-cols-2 gap-2"}>
-                    {fields.map((f) => renderFieldInput(f.key, f.label))}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {fields.map((field) => renderFieldInput(field.key, field.label))}
                   </div>
                 ) : (
-                  <Textarea
-                    value={formData[section.key] || ""}
-                    onChange={(e) => updateField(section.key, e.target.value)}
-                    placeholder={`Enter ${section.label.toLowerCase()}...`}
-                    className="text-sm min-h-[60px]"
-                  />
+                  <div className="rounded-lg border border-border/50 bg-background/80 p-3">
+                    <Label className="text-xs font-medium text-foreground">{section.label}</Label>
+                    <Textarea
+                      value={formData[section.key] || ""}
+                      onChange={(e) => updateField(section.key, e.target.value)}
+                      placeholder={`Enter ${section.label.toLowerCase()}...`}
+                      className="mt-1 min-h-[96px] text-sm"
+                    />
+                  </div>
                 )}
               </div>
             );
@@ -389,32 +341,32 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
           <p className="text-sm">No assessments added yet</p>
         </div>
       ) : (
-        assessments.map((a) => {
-          const displayData = getAssessmentDisplayData(a);
+        assessments.map((assessment) => {
+          const displayData = getAssessmentDisplayData(assessment);
           return (
-            <div key={a.id} className="rounded-xl border border-border/60 bg-card/50 p-3 hover:border-border transition-colors">
-              {confirmDeleteId === a.id && (
+            <div key={assessment.id} className="rounded-xl border border-border/60 bg-card/50 p-3 hover:border-border transition-colors">
+              {confirmDeleteId === assessment.id && (
                 <div className="flex flex-wrap items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg p-2.5 mb-2 animate-in fade-in duration-200">
                   <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0" />
                   <span className="text-xs text-destructive font-medium flex-1 min-w-0">Delete this assessment?</span>
                   <div className="flex gap-2 ml-auto">
-                    <Button size="sm" variant="destructive" className="h-6 text-xs px-2 rounded-md" onClick={() => handleDelete(a.id)} disabled={deletingId === a.id}>
-                      {deletingId === a.id ? <ButtonSpinner /> : "Delete"}
+                    <Button size="sm" variant="destructive" className="h-6 text-xs px-2 rounded-md" onClick={() => handleDelete(assessment.id)} disabled={deletingId === assessment.id}>
+                      {deletingId === assessment.id ? <ButtonSpinner /> : "Delete"}
                     </Button>
                     <Button size="sm" variant="outline" className="h-6 text-xs px-2 rounded-md" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
                   </div>
                 </div>
               )}
               <div className="flex items-center justify-between gap-2">
-                <button onClick={() => setExpandedId(expandedId === a.id ? null : a.id)} className="flex items-center gap-1.5 sm:gap-2.5 text-left flex-1 min-w-0 flex-wrap">
+                <button onClick={() => setExpandedId(expandedId === assessment.id ? null : assessment.id)} className="flex items-center gap-1.5 sm:gap-2.5 text-left flex-1 min-w-0 flex-wrap">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Calendar className="w-3 h-3 flex-shrink-0" />
-                    <span className="truncate">{formatDate(a.assessment_date)}</span>
+                    <span className="truncate">{formatDate(assessment.assessment_date)}</span>
                   </div>
                   <span className="text-xs text-muted-foreground hidden sm:inline">•</span>
                   <div className="flex items-center gap-1.5 text-xs font-medium min-w-0">
                     <User className="w-3 h-3 flex-shrink-0" />
-                    <span className="truncate">{a.assessed_by}</span>
+                    <span className="truncate">{assessment.assessed_by}</span>
                   </div>
                   {displayData.length > 0 && (
                     <span className="text-[10px] text-muted-foreground/70 flex-shrink-0">{displayData.length} fields</span>
@@ -425,23 +377,23 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
                     variant="ghost"
                     size="sm"
                     className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => setConfirmDeleteId(confirmDeleteId === a.id ? null : a.id)}
-                    disabled={deletingId === a.id}
+                    onClick={() => setConfirmDeleteId(confirmDeleteId === assessment.id ? null : assessment.id)}
+                    disabled={deletingId === assessment.id}
                   >
                     <Trash2 className="w-3 h-3" />
                   </Button>
-                  <button onClick={() => setExpandedId(expandedId === a.id ? null : a.id)} className="p-1">
-                    {expandedId === a.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  <button onClick={() => setExpandedId(expandedId === assessment.id ? null : assessment.id)} className="p-1">
+                    {expandedId === assessment.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </div>
               </div>
-              {expandedId === a.id && (
-                <div className="mt-3 space-y-2 text-sm">
+              {expandedId === assessment.id && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {displayData.map((item, idx) => (
                     <DetailRow key={idx} label={item.label} value={item.value} />
                   ))}
                   {displayData.length === 0 && (
-                    <p className="text-xs text-muted-foreground italic">No assessment data recorded</p>
+                    <p className="text-xs text-muted-foreground italic sm:col-span-2">No assessment data recorded</p>
                   )}
                 </div>
               )}
