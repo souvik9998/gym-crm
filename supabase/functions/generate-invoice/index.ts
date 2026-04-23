@@ -371,8 +371,29 @@ Deno.serve(async (req) => {
       }
     }
 
+    const formatAmountInWords = (amount: number) => {
+      const value = Math.round(Number(amount));
+      if (!Number.isFinite(value) || value <= 0) return "Zero rupees only";
+
+      const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+      const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+      const toWords = (num: number): string => {
+        if (num === 0) return "";
+        if (num < 20) return ones[num];
+        if (num < 100) return `${tens[Math.floor(num / 10)]}${num % 10 ? ` ${ones[num % 10]}` : ""}`;
+        if (num < 1000) return `${ones[Math.floor(num / 100)]} Hundred${num % 100 ? ` ${toWords(num % 100)}` : ""}`;
+        if (num < 100000) return `${toWords(Math.floor(num / 1000))} Thousand${num % 1000 ? ` ${toWords(num % 1000)}` : ""}`;
+        if (num < 10000000) return `${toWords(Math.floor(num / 100000))} Lakh${num % 100000 ? ` ${toWords(num % 100000)}` : ""}`;
+        return `${toWords(Math.floor(num / 10000000))} Crore${num % 10000000 ? ` ${toWords(num % 10000000)}` : ""}`;
+      };
+
+      return `${toWords(value).trim()} rupees only`;
+    };
+
     // Fetch gym settings for branding
     let gymName = "Pro Plus Fitness";
+    let invoiceBrandName = "";
     let gymAddress = "";
     let gymPhone = "";
     let gymEmail = "";
@@ -381,6 +402,12 @@ Deno.serve(async (req) => {
     let footerMessage = "Thank you for choosing our gym!";
     let invoicePrefix = "INV";
     let invoiceTaxRate = 0;
+    let invoiceTerms = "";
+    let invoicePalette = {
+      header: "#1d4ed8",
+      accent: "#dbeafe",
+      text: "#172554",
+    };
 
     if (effectiveBranchId) {
       const { data: branch } = await supabase
@@ -393,7 +420,7 @@ Deno.serve(async (req) => {
 
       const { data: settings } = await supabase
         .from("gym_settings")
-        .select("gym_name, gym_address, gym_phone, gym_email, gym_gst, invoice_prefix, invoice_footer_message, invoice_tax_rate, invoice_show_gst")
+        .select("gym_name, gym_address, gym_phone, gym_email, gym_gst, invoice_prefix, invoice_footer_message, invoice_tax_rate, invoice_show_gst, invoice_terms, invoice_brand_name, invoice_palette")
         .eq("branch_id", effectiveBranchId)
         .maybeSingle();
 
@@ -406,6 +433,13 @@ Deno.serve(async (req) => {
         gymGst = settings.gym_gst || "";
         invoicePrefix = settings.invoice_prefix || "INV";
         footerMessage = settings.invoice_footer_message || footerMessage;
+        invoiceTerms = settings.invoice_terms || "";
+        invoiceBrandName = settings.invoice_brand_name || settings.gym_name || "";
+        invoicePalette = {
+          header: settings.invoice_palette?.header || invoicePalette.header,
+          accent: settings.invoice_palette?.accent || invoicePalette.accent,
+          text: settings.invoice_palette?.text || invoicePalette.text,
+        };
         // GST: only apply if both show_gst is enabled AND tax_rate > 0
         if (settings.invoice_show_gst === true && (settings.invoice_tax_rate || 0) > 0) {
           invoiceTaxRate = settings.invoice_tax_rate;
@@ -505,6 +539,7 @@ Deno.serve(async (req) => {
     const pdfBytes = generateInvoicePDF({
       invoiceNumber,
       gymName,
+      invoiceBrandName: invoiceBrandName || gymName,
       gymAddress,
       gymPhone,
       gymEmail,
@@ -528,6 +563,8 @@ Deno.serve(async (req) => {
       tax: taxOnInvoice,
       branchName: branchName || gymName,
       footerMessage,
+      invoiceTerms,
+      invoicePalette,
     });
 
     // Upload to storage
@@ -575,6 +612,9 @@ Deno.serve(async (req) => {
       transaction_id: transactionId,
       pdf_url: pdfUrl,
       footer_message: footerMessage,
+      invoice_terms: invoiceTerms || null,
+      invoice_brand_name: invoiceBrandName || gymName,
+      invoice_palette: invoicePalette,
     };
 
     if (existingInvoice?.id) {
