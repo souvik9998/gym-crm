@@ -727,13 +727,13 @@ export const CouponsDiscountsTab = () => {
                       <div className="bg-muted/30 rounded-lg p-2">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Applies To</p>
                         <p className="font-medium">
-                          {[coupon.applicable_on?.new_registration && "Registration", coupon.applicable_on?.renewal && "Renewal", coupon.applicable_on?.event && "Event"].filter(Boolean).join(", ") || "All"}
+                          {getCouponTargetLabel(getCouponTarget(coupon.applicable_on))}
                         </p>
                       </div>
                       <div className="bg-muted/30 rounded-lg p-2">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Conditions</p>
                         <p className="font-medium">
-                          {[coupon.first_time_only && "First-time", coupon.existing_members_only && "Existing", coupon.expired_members_only && "Expired"].filter(Boolean).join(", ") || "None"}
+                          {[coupon.first_time_only && "First-time", coupon.existing_members_only && "Existing", coupon.expired_members_only && "Expired"].filter(Boolean).join(", ") || "No restrictions"}
                         </p>
                       </div>
                       <div className="bg-muted/30 rounded-lg p-2">
