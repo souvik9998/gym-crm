@@ -307,17 +307,17 @@ export const AssessmentFieldsSettings = () => {
 
     if (sectionKey === "basic_info" && unitOptions.length > 0) {
       const safeValue = unitOptions.some((option) => option.value === currentValue)
-        ? currentValue
-        : unitOptions[0].value;
+        ? currentValue || "__none__"
+        : unitOptions[0].value || "__none__";
 
       return (
-        <Select value={safeValue} onValueChange={(value) => updateFieldUnit(sectionKey, fieldKey, value)}>
+        <Select value={safeValue} onValueChange={(value) => updateFieldUnit(sectionKey, fieldKey, value === "__none__" ? "" : value)}>
           <SelectTrigger className="h-8 w-[170px] text-[11px]">
             <SelectValue placeholder="Select unit" />
           </SelectTrigger>
           <SelectContent>
             {unitOptions.map((option) => (
-              <SelectItem key={`${fieldKey}-${option.value || "none"}`} value={option.value}>
+              <SelectItem key={`${fieldKey}-${option.value || "none"}`} value={option.value || "__none__"}>
                 {option.label}
               </SelectItem>
             ))}
