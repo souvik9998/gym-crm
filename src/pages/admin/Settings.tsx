@@ -86,7 +86,21 @@ interface GymSettings {
   invoice_tax_rate: number | null;
   invoice_terms: string | null;
   invoice_show_gst: boolean | null;
+  invoice_brand_name: string | null;
+  invoice_logo_url: string | null;
+  invoice_palette: {
+    header?: string;
+    accent?: string;
+    text?: string;
+  } | null;
 }
+
+const INVOICE_PALETTES = [
+  { id: "emerald", label: "Emerald", header: "#166534", accent: "#dcfce7", text: "#052e16" },
+  { id: "blue", label: "Ocean", header: "#1d4ed8", accent: "#dbeafe", text: "#172554" },
+  { id: "amber", label: "Amber", header: "#b45309", accent: "#fef3c7", text: "#78350f" },
+  { id: "rose", label: "Rose", header: "#be123c", accent: "#ffe4e6", text: "#881337" },
+] as const;
 
 /** Skeleton for Packages tab */
 const SettingsPackagesSkeleton = memo(() => (
