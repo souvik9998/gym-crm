@@ -140,6 +140,16 @@ interface UploadedDoc {
   size: number;
 }
 
+const parseDateOnly = (dateStr?: string | null): Date | null => {
+  if (!dateStr) return null;
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+};
+
 const STEPS = [
   { id: 1, title: "Contact", icon: Phone },
   { id: 2, title: "Personal", icon: IdCard },
@@ -466,7 +476,7 @@ export const AddMemberDialog = ({
   const gymMembershipEndDate = (() => {
     if (isPTOnly && existingMember?.subscription?.end_date) {
       // For PT-only on existing member, cap to their gym membership end date
-      return new Date(existingMember.subscription.end_date);
+      return parseDateOnly(existingMember.subscription.end_date);
     }
     if (selectedAction === "renew_gym_pt" && selectedPackage) {
       // For renew + PT, cap to the new gym end date
@@ -482,6 +492,27 @@ export const AddMemberDialog = ({
     }
     return null;
   })();
+
+  const minAllowedStartDate = (() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if ((selectedAction === "renew_gym" || selectedAction === "renew_gym_pt") && existingMember?.subscription?.end_date) {
+      const subscriptionEnd = parseDateOnly(existingMember.subscription.end_date);
+      if (subscriptionEnd) {
+        return addDays(subscriptionEnd, 1);
+      }
+    }
+
+    return today;
+  })();
+
+  useEffect(() => {
+    if (!open) return;
+    if (startDate < minAllowedStartDate) {
+      setStartDate(minAllowedStartDate);
+    }
+  }, [open, minAllowedStartDate, startDate]);
 
   const ptMonthOptions: number[] = [];
   if (gymMembershipEndDate) {
@@ -959,6 +990,14 @@ export const AddMemberDialog = ({
     try {
       const gymStartDate = new Date(startDate);
       gymStartDate.setHours(0, 0, 0, 0);
+
+      if ((selectedAction === "renew_gym" || selectedAction === "renew_gym_pt") && gymStartDate < minAllowedStartDate) {
+        toast.error("Renewal start date is invalid", {
+          description: `The next membership must start on ${format(minAllowedStartDate, "d MMM yyyy")} or later.`,
+        });
+        setStartDate(minAllowedStartDate);
+        return;
+      }
 
       // Renew Gym Membership
       if (selectedAction === "renew_gym" || selectedAction === "renew_gym_pt") {
@@ -1738,20 +1777,29 @@ export const AddMemberDialog = ({
                         </button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0 rounded-xl" align="start">
-                        <CalendarComponent
+                          <CalendarComponent
                           mode="single"
                           selected={startDate}
                           onSelect={(date) => {
                             if (date) { setStartDate(date); setShowDatePicker(false); }
                           }}
                           disabled={(date) => {
-                            const today = new Date(); today.setHours(0, 0, 0, 0);
-                            return date < today;
+                              const candidate = new Date(date);
+                              candidate.setHours(0, 0, 0, 0);
+                              const minDate = new Date(minAllowedStartDate);
+                              minDate.setHours(0, 0, 0, 0);
+                              return candidate < minDate;
                           }}
+                            defaultMonth={startDate < minAllowedStartDate ? minAllowedStartDate : startDate}
                           initialFocus
                         />
                       </PopoverContent>
                     </Popover>
+                    {(selectedAction === "renew_gym" || selectedAction === "renew_gym_pt") && existingMember?.subscription?.end_date && (
+                      <p className="text-xs text-muted-foreground">
+                        Current membership ends on {format(parseDateOnly(existingMember.subscription.end_date) || minAllowedStartDate, "d MMM yyyy")}. Renewal can start from {format(minAllowedStartDate, "d MMM yyyy")}. 
+                      </p>
+                    )}
                   </div>
                   
                   {/* Duration - only for gym actions */}

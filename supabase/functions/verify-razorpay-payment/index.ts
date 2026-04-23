@@ -60,6 +60,26 @@ function toIsoDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+async function getNextMembershipStartDate(supabase: any, memberId?: string | null) {
+  const todayIso = toIsoDate(startOfTodayUtc());
+  if (!memberId) return todayIso;
+
+  const { data: activeSubscription } = await supabase
+    .from("subscriptions")
+    .select("end_date")
+    .eq("member_id", memberId)
+    .eq("status", "active")
+    .gte("end_date", todayIso)
+    .order("end_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!activeSubscription?.end_date) return todayIso;
+
+  const nextStart = addDaysUtc(parseDateOnly(activeSubscription.end_date) ?? startOfTodayUtc(), 1);
+  return toIsoDate(nextStart);
+}
+
 // Helper to create ledger entries
 async function createLedgerEntry(
   supabase: any,
@@ -524,8 +544,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Determine gym start date: for renewals, use gymStartDate (day after existing end); otherwise today
-    const startDate = parseDateOnly(gymStartDate) ?? startOfTodayUtc();
+    const requiredGymStartDateIso = await getNextMembershipStartDate(supabase, finalMemberId);
+    const requestedGymStartDateIso = toIsoDate(parseDateOnly(gymStartDate) ?? startOfTodayUtc());
+
+    if (!isNewMember && requestedGymStartDateIso < requiredGymStartDateIso) {
+      throw new Error(`Membership renewal must start on ${requiredGymStartDateIso} or later`);
+    }
+
+    // Determine gym start date: for renewals, use validated gymStartDate (day after existing end); otherwise today
+    const startDate = parseDateOnly(isNewMember ? requestedGymStartDateIso : requiredGymStartDateIso) ?? startOfTodayUtc();
 
     // Determine if this is PT-only (extension) or includes gym membership
     const isPTOnlyPurchase = trainerId && customDays && customDays > 0 && (!months || months === 0);

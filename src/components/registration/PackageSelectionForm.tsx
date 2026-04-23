@@ -161,9 +161,6 @@ const PackageSelectionForm = ({
     if (existingMembershipEndDate) {
       const endDate = new Date(existingMembershipEndDate);
       endDate.setHours(0, 0, 0, 0);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (endDate < today) return addDays(endDate, 1);
       return addDays(endDate, 1);
     }
     const today = new Date();
@@ -179,10 +176,10 @@ const PackageSelectionForm = ({
   });
   
   useEffect(() => {
-    if (!isExpiredMembership && selectedStartDate < minStartDate) {
+    if (selectedStartDate < minStartDate) {
       setSelectedStartDate(minStartDate);
     }
-  }, [minStartDate, isExpiredMembership]);
+  }, [minStartDate, selectedStartDate]);
 
   useEffect(() => {
     fetchData();
@@ -551,11 +548,9 @@ const PackageSelectionForm = ({
             </PopoverContent>
           </Popover>
           <p className="text-xs text-muted-foreground">
-            {hasActiveMembership 
-              ? `Minimum start date: ${format(minStartDate, "d MMM yyyy")} (day after current membership ends)`
-              : isExpiredMembership
-                ? `Select any date from ${format(minStartDate, "d MMM yyyy")} to today`
-                : "Select when your membership should begin"}
+            {existingMembershipEndDate
+              ? `Your next membership can start from ${format(minStartDate, "d MMM yyyy")} (the day after the current plan ends).`
+              : "Select when your membership should begin"}
           </p>
         </div>
 
