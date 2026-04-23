@@ -25,6 +25,7 @@ export const AssessmentFieldsSettings = () => {
   const [newFieldLabel, setNewFieldLabel] = useState("");
   const [newFieldType, setNewFieldType] = useState<"text" | "number" | "textarea">("text");
   const [newExerciseMode, setNewExerciseMode] = useState<ExerciseInputMode>("reps");
+  const [newFieldUnit, setNewFieldUnit] = useState("");
 
   useEffect(() => {
     if (currentBranch?.id) {
@@ -262,6 +263,10 @@ export const AssessmentFieldsSettings = () => {
 
   const getFieldLabel = (sectionKey: string, fieldKey: string, defaultLabel: string) => {
     return settings[sectionKey]?.field_labels?.[fieldKey] || defaultLabel;
+  };
+
+  const getFieldUnit = (sectionKey: string, fieldKey: string, defaultUnit?: string) => {
+    return settings[sectionKey]?.field_units?.[fieldKey] || defaultUnit || "";
   };
 
   if (isLoading) {

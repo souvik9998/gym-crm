@@ -85,6 +85,14 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     return "text";
   };
 
+  const getCustomFieldUnit = (fieldKey: string) => {
+    for (const sectionKey of Object.keys(config)) {
+      const field = config[sectionKey]?.custom_fields?.find((item) => item.key === fieldKey);
+      if (field?.unit) return field.unit;
+    }
+    return "";
+  };
+
   const updateField = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
