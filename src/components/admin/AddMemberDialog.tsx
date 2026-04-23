@@ -150,6 +150,8 @@ const parseDateOnly = (dateStr?: string | null): Date | null => {
   return parsed;
 };
 
+const formatDateOnly = (date: Date): string => format(date, "yyyy-MM-dd");
+
 const STEPS = [
   { id: 1, title: "Contact", icon: Phone },
   { id: 2, title: "Personal", icon: IdCard },
@@ -812,8 +814,8 @@ export const AddMemberDialog = ({
         .from("subscriptions")
         .insert({
           member_id: member.id,
-          start_date: gymStartDate.toISOString().split("T")[0],
-          end_date: endDate.toISOString().split("T")[0],
+          start_date: formatDateOnly(gymStartDate),
+          end_date: formatDateOnly(endDate),
           plan_months: selectedPackage?.months || 1,
           status: "active",
           personal_trainer_id: wantsPT ? selectedTrainerId : null,
@@ -829,8 +831,8 @@ export const AddMemberDialog = ({
         await supabase.from("pt_subscriptions").insert({
           member_id: member.id,
           personal_trainer_id: selectedTrainerId,
-          start_date: gymStartDate.toISOString().split("T")[0],
-          end_date: ptEndDate.toISOString().split("T")[0],
+          start_date: formatDateOnly(gymStartDate),
+          end_date: formatDateOnly(ptEndDate),
           monthly_fee: selectedTrainer?.monthly_fee || 0,
           total_fee: ptFee,
           status: "active",
@@ -1007,8 +1009,8 @@ export const AddMemberDialog = ({
           .from("subscriptions")
           .insert({
             member_id: existingMember.id,
-            start_date: gymStartDate.toISOString().split("T")[0],
-            end_date: gymEndDate.toISOString().split("T")[0],
+            start_date: formatDateOnly(gymStartDate),
+            end_date: formatDateOnly(gymEndDate),
             plan_months: selectedPackage?.months || 1,
             status: "active",
             personal_trainer_id: (selectedAction === "renew_gym_pt" && selectedTrainerId) ? selectedTrainerId : null,
@@ -1078,8 +1080,8 @@ export const AddMemberDialog = ({
           await supabase.from("pt_subscriptions").insert({
             member_id: existingMember.id,
             personal_trainer_id: selectedTrainerId,
-            start_date: gymStartDate.toISOString().split("T")[0],
-            end_date: ptEndDate.toISOString().split("T")[0],
+            start_date: formatDateOnly(gymStartDate),
+            end_date: formatDateOnly(ptEndDate),
             monthly_fee: selectedTrainer?.monthly_fee || 0,
             total_fee: ptFee,
             status: "active",
@@ -1115,8 +1117,8 @@ export const AddMemberDialog = ({
         await supabase.from("pt_subscriptions").insert({
           member_id: existingMember.id,
           personal_trainer_id: selectedTrainerId,
-          start_date: gymStartDate.toISOString().split("T")[0],
-          end_date: ptEndDate.toISOString().split("T")[0],
+          start_date: formatDateOnly(gymStartDate),
+          end_date: formatDateOnly(ptEndDate),
           monthly_fee: selectedTrainer?.monthly_fee || 0,
           total_fee: ptFee,
           status: "active",
@@ -1206,8 +1208,8 @@ export const AddMemberDialog = ({
         const { data: { session } } = await supabase.auth.getSession();
         const adminUserId = session?.user?.id || null;
         const endDateStr = selectedAction === "add_pt" 
-          ? addPackageMonths(new Date(startDate), ptMonths).toISOString().split("T")[0]
-          : addPackageMonths(new Date(startDate), selectedPackage?.months || 1).toISOString().split("T")[0];
+          ? formatDateOnly(addPackageMonths(new Date(startDate), ptMonths))
+          : formatDateOnly(addPackageMonths(new Date(startDate), selectedPackage?.months || 1));
         
         const notificationType = selectedAction === "add_pt" ? "pt_extension" : "renewal";
         if (notifyWhatsApp) {
