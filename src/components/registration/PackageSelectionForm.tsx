@@ -22,6 +22,16 @@ import {
   type PublicTaxSettings,
 } from "@/api/publicData";
 
+const parseDateOnly = (dateStr?: string | null): Date | null => {
+  if (!dateStr) return null;
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+};
+
 interface Trainer {
   id: string;
   name: string;
@@ -149,8 +159,8 @@ const PackageSelectionForm = ({
   
   const isExpiredMembership = useMemo(() => {
     if (!existingMembershipEndDate) return false;
-    const endDate = new Date(existingMembershipEndDate);
-    endDate.setHours(0, 0, 0, 0);
+    const endDate = parseDateOnly(existingMembershipEndDate);
+    if (!endDate) return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return endDate < today;
@@ -159,9 +169,8 @@ const PackageSelectionForm = ({
   const minStartDate = useMemo(() => {
     if (propMinStartDate) return propMinStartDate;
     if (existingMembershipEndDate) {
-      const endDate = new Date(existingMembershipEndDate);
-      endDate.setHours(0, 0, 0, 0);
-      return addDays(endDate, 1);
+      const endDate = parseDateOnly(existingMembershipEndDate);
+      if (endDate) return addDays(endDate, 1);
     }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -344,9 +353,7 @@ const PackageSelectionForm = ({
 
   const ptStartDate = useMemo(() => {
     if (propPtStartDate) {
-      const ptStart = new Date(propPtStartDate);
-      ptStart.setHours(0, 0, 0, 0);
-      return ptStart;
+      return parseDateOnly(propPtStartDate) ?? selectedStartDate;
     }
     const start = new Date(selectedStartDate);
     start.setHours(0, 0, 0, 0);
@@ -435,8 +442,8 @@ const PackageSelectionForm = ({
   const couponDiscount = coupon.appliedCoupon?.discountAmount || 0;
   const totalAmount = Math.max(0, subtotal + taxAmount - couponDiscount);
 
-  const parsedExistingMembershipEndDate = existingMembershipEndDate ? new Date(existingMembershipEndDate) : null;
-  const parsedExistingPTEndDate = existingPTEndDate ? new Date(existingPTEndDate) : null;
+  const parsedExistingMembershipEndDate = existingMembershipEndDate ? parseDateOnly(existingMembershipEndDate) : null;
+  const parsedExistingPTEndDate = existingPTEndDate ? parseDateOnly(existingPTEndDate) : null;
 
   const hasActiveMembership = useMemo(() => {
     if (!parsedExistingMembershipEndDate) return false;
@@ -745,7 +752,7 @@ const PackageSelectionForm = ({
                     </span>
                     {propPtStartDate && (
                       <span className="text-xs text-muted-foreground ml-1">
-                        (New PT starts {format(new Date(propPtStartDate), "d MMM yyyy")})
+                        (New PT starts {format(parseDateOnly(propPtStartDate) ?? ptStartDate, "d MMM yyyy")})
                       </span>
                     )}
                   </span>
