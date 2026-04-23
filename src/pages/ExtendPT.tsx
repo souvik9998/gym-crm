@@ -346,6 +346,32 @@ const ExtendPT = () => {
       branchId: branchId || undefined,
       onSuccess: async (data) => {
         try {
+          if (coupon.appliedCoupon && data.memberId) {
+            try {
+              await supabase.from("coupon_usage").insert({
+                coupon_id: coupon.appliedCoupon.coupon.id,
+                member_id: data.memberId,
+                discount_applied: couponDiscount,
+                branch_id: branchId,
+              });
+
+              const { data: couponData } = await supabase
+                .from("coupons")
+                .select("usage_count")
+                .eq("id", coupon.appliedCoupon.coupon.id)
+                .single();
+
+              if (couponData) {
+                await supabase
+                  .from("coupons")
+                  .update({ usage_count: couponData.usage_count + 1 })
+                  .eq("id", coupon.appliedCoupon.coupon.id);
+              }
+            } catch (couponError) {
+              console.error("Failed to record PT coupon usage:", couponError);
+            }
+          }
+
           const shouldAutoSend = await getWhatsAppAutoSendPreference(branchId, "pt_extension");
           if (shouldAutoSend) {
             await supabase.functions.invoke("send-whatsapp", {
