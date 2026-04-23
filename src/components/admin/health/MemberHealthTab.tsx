@@ -60,6 +60,8 @@ export interface ExerciseItem {
   exercise_name: string;
   sets: number;
   reps: string;
+  weight_value?: number | null;
+  weight_unit?: string | null;
   notes: string | null;
   sort_order: number;
 }
