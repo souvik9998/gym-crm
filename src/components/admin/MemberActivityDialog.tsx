@@ -816,10 +816,13 @@ export const MemberActivityDialog = ({
                   <div className="flex justify-end">
                     <Button
                       size="sm"
-                      className="gap-1.5 text-xs"
-                      onClick={() => setShowRenewMember(true)}
+                      className="h-10 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 ring-1 ring-primary/20 transition-all duration-200 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setShowRenewMember(true);
+                      }}
                     >
-                      <RefreshCw className="w-3.5 h-3.5" />
+                      <RefreshCw className="h-4 w-4" />
                       Renew Member
                     </Button>
                   </div>
@@ -992,20 +995,6 @@ export const MemberActivityDialog = ({
                 />
               )}
 
-              {member && renewalPrefill && (
-                <AddMemberDialog
-                  open={showRenewMember}
-                  onOpenChange={setShowRenewMember}
-                  onSuccess={() => {
-                    setShowRenewMember(false);
-                    fetchMemberData();
-                    invalidatePtSubscriptions();
-                  }}
-                  initialExistingMember={renewalPrefill}
-                  initialAction="renew_gym"
-                />
-              )}
-
               {/* Assign Time Slot Dialog */}
               {assigningSlotForPt && (
                 <Dialog open={!!assigningSlotForPt} onOpenChange={(open) => !open && setAssigningSlotForPt(null)}>
@@ -1148,6 +1137,20 @@ export const MemberActivityDialog = ({
               </div>
             </TabsContent>
           </Tabs>
+        )}
+
+        {member && renewalPrefill && (
+          <AddMemberDialog
+            open={showRenewMember}
+            onOpenChange={setShowRenewMember}
+            onSuccess={() => {
+              setShowRenewMember(false);
+              fetchMemberData();
+              invalidatePtSubscriptions();
+            }}
+            initialExistingMember={renewalPrefill}
+            initialAction="renew_gym"
+          />
         )}
 
         <style>{`
