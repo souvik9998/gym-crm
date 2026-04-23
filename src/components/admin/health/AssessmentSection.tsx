@@ -179,14 +179,14 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     const value = getExerciseValue(fieldKey, mode);
 
     return (
-      <div key={fieldKey} className="rounded-lg border border-border/50 bg-background/80 p-3">
+      <div key={fieldKey} className="rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3">
         <div className="flex flex-wrap items-center gap-2">
           <Label className="text-xs font-medium text-foreground">{label}</Label>
           <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">
             {mode === "time" ? "Time" : mode === "reps_sets" ? "Reps + sets" : "Reps"}
           </Badge>
         </div>
-        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="mt-2 grid grid-cols-1 gap-2 min-[440px]:grid-cols-2">
           {mode !== "time" && (
             <div>
               <Label className="text-[11px] text-muted-foreground">Reps</Label>
@@ -208,7 +208,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
               <div>
                 <Label className="text-[11px] text-muted-foreground">Unit</Label>
                 <Select value={value.unit || "sec"} onValueChange={(unit: "sec" | "min") => updateExerciseField(fieldKey, { mode, unit })}>
-                  <SelectTrigger className="mt-1 h-10 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1 h-10 w-full text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="sec">Seconds</SelectItem>
                     <SelectItem value="min">Minutes</SelectItem>
@@ -240,7 +240,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       if (inputType === "select" && options?.length) {
         return (
           <Select value={formData[fieldKey] || ""} onValueChange={(value) => updateField(fieldKey, value)}>
-            <SelectTrigger className="mt-1 h-10 text-sm">
+            <SelectTrigger className="mt-1 h-10 w-full text-sm">
               <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
             </SelectTrigger>
             <SelectContent>
@@ -258,7 +258,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
             value={formData[fieldKey] || ""}
             onChange={(e) => updateField(fieldKey, e.target.value)}
             placeholder={placeholder}
-            className="mt-1 min-h-[84px] text-sm"
+            className="mt-1 min-h-[96px] resize-y text-sm leading-5"
           />
         );
       }
@@ -282,7 +282,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     })();
 
     return (
-      <div key={fieldKey} className="rounded-lg border border-border/50 bg-background/80 p-3">
+      <div key={fieldKey} className="rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3">
         <div className="flex flex-wrap items-center gap-2">
           <Label className="text-xs font-medium text-foreground">{label}</Label>
           {unit && <Badge variant="outline" className="h-5 rounded-md px-1.5 text-[10px]">{unit}</Badge>}
