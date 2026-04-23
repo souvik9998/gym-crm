@@ -31,8 +31,8 @@
     --muted: 220 10% 94%;
     --muted-foreground: 220 10% 45%;
 
-    /* Accent: Vibrant amber/gold */
-    --accent: 0 72% 51%;
+    /* Accent: modern coral rose */
+    --accent: 8 78% 60%;
     --accent-foreground: 0 0% 98%;
 
     /* Success Green */
@@ -50,14 +50,14 @@
     /* Borders & Input */
     --border: 220 10% 90%;
     --input: 220 10% 90%;
-    --ring: 220 60% 50%;
+    --ring: 8 78% 60%;
 
     --radius: 0.625rem;
 
     /* Sidebar - Light Mode */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 220 20% 15%;
-    --sidebar-primary: 220 60% 50%;
+    --sidebar-primary: 8 78% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 10% 95%;
     --sidebar-accent-foreground: 220 20% 15%;
@@ -89,8 +89,8 @@
     --muted: 220 15% 15%;
     --muted-foreground: 220 10% 55%;
 
-    /* Accent: Vibrant amber */
-    --accent: 38 92% 50%;
+    /* Accent: modern coral rose */
+    --accent: 8 78% 64%;
     --accent-foreground: 220 15% 8%;
 
     /* Success */
@@ -108,12 +108,12 @@
     /* Borders & Input */
     --border: 220 15% 18%;
     --input: 220 15% 18%;
-    --ring: 220 80% 60%;
+    --ring: 8 78% 64%;
 
     /* Sidebar - Dark Mode */
     --sidebar-background: 220 15% 9%;
     --sidebar-foreground: 220 10% 90%;
-    --sidebar-primary: 220 80% 60%;
+    --sidebar-primary: 8 78% 64%;
     --sidebar-primary-foreground: 220 15% 8%;
     --sidebar-accent: 220 15% 14%;
     --sidebar-accent-foreground: 220 10% 95%;

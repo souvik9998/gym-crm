@@ -85,6 +85,14 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     return "text";
   };
 
+  const getCustomFieldUnit = (fieldKey: string) => {
+    for (const sectionKey of Object.keys(config)) {
+      const field = config[sectionKey]?.custom_fields?.find((item) => item.key === fieldKey);
+      if (field?.unit) return field.unit;
+    }
+    return "";
+  };
+
   const updateField = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
@@ -218,7 +226,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     const isCustom = fieldKey.startsWith("custom_");
     const meta = isCustom ? { inputType: getCustomFieldInputType(fieldKey) } : getAssessmentFieldMeta(fieldKey);
     const inputType = meta.inputType || "text";
-    const unit = !isCustom ? meta.unit : undefined;
+    const unit = isCustom ? getCustomFieldUnit(fieldKey) : config[sectionKey]?.field_units?.[fieldKey] || meta.unit;
     const helpText = !isCustom ? meta.helpText : undefined;
     const placeholder = meta.placeholder || `Enter ${label.toLowerCase()}`;
     const options = !isCustom ? meta.options : undefined;

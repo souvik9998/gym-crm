@@ -25,6 +25,7 @@ export const AssessmentFieldsSettings = () => {
   const [newFieldLabel, setNewFieldLabel] = useState("");
   const [newFieldType, setNewFieldType] = useState<"text" | "number" | "textarea">("text");
   const [newExerciseMode, setNewExerciseMode] = useState<ExerciseInputMode>("reps");
+  const [newFieldUnit, setNewFieldUnit] = useState("");
 
   useEffect(() => {
     if (currentBranch?.id) {
@@ -149,6 +150,21 @@ export const AssessmentFieldsSettings = () => {
     });
   };
 
+  const updateFieldUnit = (sectionKey: string, fieldKey: string, unit: string) => {
+    setSettings((prev) => {
+      const updated = { ...prev };
+      updated[sectionKey] = {
+        ...updated[sectionKey],
+        field_units: {
+          ...updated[sectionKey]?.field_units,
+          [fieldKey]: unit.trim(),
+        },
+      };
+      saveSettings(updated);
+      return updated;
+    });
+  };
+
   const startEditLabel = (sectionKey: string, fieldKey: string, currentLabel: string) => {
     setEditingField({ section: sectionKey, key: fieldKey });
     setEditLabel(currentLabel);
@@ -192,6 +208,7 @@ export const AssessmentFieldsSettings = () => {
         input_type: newFieldType,
         kind: isExerciseAssessmentSection(sectionKey) ? "exercise" : "standard",
         exercise_mode: isExerciseAssessmentSection(sectionKey) ? newExerciseMode : undefined,
+        unit: newFieldUnit.trim() || undefined,
       });
       updated[sectionKey] = { ...section, custom_fields: customFields, enabled: true };
       saveSettings(updated);
@@ -201,6 +218,7 @@ export const AssessmentFieldsSettings = () => {
     setNewFieldLabel("");
     setNewFieldType("text");
     setNewExerciseMode("reps");
+    setNewFieldUnit("");
     setAddingToSection(null);
   };
 
@@ -211,6 +229,21 @@ export const AssessmentFieldsSettings = () => {
       if (section.custom_fields) {
         section.custom_fields = section.custom_fields.map((cf) =>
           cf.key === fieldKey ? { ...cf, kind: "exercise", exercise_mode: mode } : cf
+        );
+        updated[sectionKey] = { ...section };
+      }
+      saveSettings(updated);
+      return updated;
+    });
+  };
+
+  const updateCustomFieldUnit = (sectionKey: string, fieldKey: string, unit: string) => {
+    setSettings((prev) => {
+      const updated = { ...prev };
+      const section = updated[sectionKey];
+      if (section.custom_fields) {
+        section.custom_fields = section.custom_fields.map((cf) =>
+          cf.key === fieldKey ? { ...cf, unit: unit.trim() || undefined } : cf
         );
         updated[sectionKey] = { ...section };
       }
@@ -262,6 +295,10 @@ export const AssessmentFieldsSettings = () => {
 
   const getFieldLabel = (sectionKey: string, fieldKey: string, defaultLabel: string) => {
     return settings[sectionKey]?.field_labels?.[fieldKey] || defaultLabel;
+  };
+
+  const getFieldUnit = (sectionKey: string, fieldKey: string, defaultUnit?: string) => {
+    return settings[sectionKey]?.field_units?.[fieldKey] || defaultUnit || "";
   };
 
   if (isLoading) {
@@ -344,7 +381,8 @@ export const AssessmentFieldsSettings = () => {
                 )}
               >
                 <div className="flex items-start justify-between gap-3 p-3 lg:p-4">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <CollapsibleTrigger asChild>
+                    <button type="button" className="flex items-start gap-3 flex-1 min-w-0 text-left rounded-lg transition-colors hover:bg-background/50 -m-1 p-1">
                     <div
                       className={cn(
                         "mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg",
@@ -368,15 +406,14 @@ export const AssessmentFieldsSettings = () => {
                       <p className="text-xs text-muted-foreground">{section.description}</p>
                       <p className="text-[11px] text-muted-foreground/90">{section.purpose}</p>
                     </div>
-                  </div>
+                  </button>
+                  </CollapsibleTrigger>
 
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <CollapsibleTrigger asChild>
-                      <button className="flex h-8 w-8 items-center justify-center rounded-md border border-border/50 bg-background/70 transition-colors hover:bg-muted/50">
+                      <button type="button" onClick={() => setOpenSections((prev) => isOpen ? prev.filter((item) => item !== section.key) : [...prev, section.key])} className="flex h-8 w-8 items-center justify-center rounded-md border border-border/50 bg-background/70 transition-colors hover:bg-muted/50">
                         <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")} />
                       </button>
-                    </CollapsibleTrigger>
-                    <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/70 px-2 py-1">
+                    <div className={cn("flex items-center gap-2 rounded-lg border px-2 py-1 transition-colors", sectionSettings.enabled ? "border-accent/20 bg-background/80" : "border-border/50 bg-background/70")}>
                       {sectionSettings.enabled ? <Eye className="h-3.5 w-3.5 text-accent" /> : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}
                       <Switch checked={sectionSettings.enabled} onCheckedChange={(value) => toggleSection(section.key, value)} />
                     </div>
@@ -423,15 +460,23 @@ export const AssessmentFieldsSettings = () => {
                               </div>
                             ) : (
                               <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <div className="flex flex-wrap items-center gap-1.5">
                                   <Label className="cursor-pointer truncate text-xs lg:text-sm font-medium text-foreground">{displayLabel}</Label>
-                                  {meta.unit && (
-                                    <Badge variant="outline" className="h-5 rounded-md px-1.5 text-[10px]">{meta.unit}</Badge>
+                                   {getFieldUnit(section.key, field.key, meta.unit) && (
+                                     <Badge variant="outline" className="h-5 rounded-md px-1.5 text-[10px]">{getFieldUnit(section.key, field.key, meta.unit)}</Badge>
                                   )}
                                 </div>
                                  <p className="mt-1 text-[11px] text-muted-foreground">
                                   {meta.helpText || `Visible in ${section.label.toLowerCase()} assessments.`}
                                 </p>
+                                 <div className="mt-2 flex flex-wrap items-center gap-2">
+                                   <Input
+                                     value={getFieldUnit(section.key, field.key, meta.unit)}
+                                     onChange={(e) => updateFieldUnit(section.key, field.key, e.target.value)}
+                                     placeholder="Unit e.g. kg, cm, mmHg"
+                                     className="h-8 w-[150px] text-[11px]"
+                                   />
+                                 </div>
                                  {isExerciseField && (
                                    <div className="mt-2 flex flex-wrap items-center gap-2">
                                      <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">
@@ -498,8 +543,17 @@ export const AssessmentFieldsSettings = () => {
                                   <Label className="cursor-pointer truncate text-xs lg:text-sm font-medium text-foreground">{cf.label}</Label>
                                   <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">Custom</Badge>
                                   <Badge variant="outline" className="h-5 rounded-md px-1.5 text-[10px] capitalize">{cf.input_type}</Badge>
+                                  {cf.unit && <Badge variant="outline" className="h-5 rounded-md px-1.5 text-[10px]">{cf.unit}</Badge>}
                                 </div>
                                  <p className="mt-1 text-[11px] text-muted-foreground">Custom question added by admin for this section.</p>
+                                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    <Input
+                                      value={cf.unit || ""}
+                                      onChange={(e) => updateCustomFieldUnit(section.key, cf.key, e.target.value)}
+                                      placeholder="Unit e.g. kg, cm, bpm"
+                                      className="h-8 w-[150px] text-[11px]"
+                                    />
+                                  </div>
                                  {isExerciseField && (
                                    <div className="mt-2 flex flex-wrap items-center gap-2">
                                      <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">
@@ -536,7 +590,7 @@ export const AssessmentFieldsSettings = () => {
 
                     {addingToSection === section.key ? (
                       <div className="rounded-lg border border-dashed border-border/60 bg-muted/10 p-3">
-                         <div className="grid gap-2 md:grid-cols-[1fr_120px_auto_auto_auto] md:items-center">
+                         <div className="grid gap-2 md:grid-cols-[1fr_120px_130px_auto_auto_auto] md:items-center">
                           <Input
                             value={newFieldLabel}
                             onChange={(e) => setNewFieldLabel(e.target.value)}
@@ -558,6 +612,12 @@ export const AssessmentFieldsSettings = () => {
                               <SelectItem value="textarea">Long Text</SelectItem>
                             </SelectContent>
                           </Select>
+                          <Input
+                            value={newFieldUnit}
+                            onChange={(e) => setNewFieldUnit(e.target.value)}
+                            placeholder="Unit"
+                            className="h-9 text-xs"
+                          />
                           {isExerciseAssessmentSection(section.key) && renderExerciseModeSelect(newExerciseMode, setNewExerciseMode)}
                           <button onClick={() => addCustomField(section.key)} className="rounded bg-success/10 p-2 text-success transition-colors hover:bg-success/20">
                             <Check className="h-4 w-4" />
