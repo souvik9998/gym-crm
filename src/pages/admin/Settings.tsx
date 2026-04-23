@@ -549,12 +549,44 @@ const AdminSettings = () => {
     if (!settings?.id || !currentBranch?.id) return;
     setIsSavingInvoice(true);
 
+    let nextInvoiceLogoUrl = invoiceLogoUrl;
+
+    if (invoiceLogoFile) {
+      setIsUploadingInvoiceLogo(true);
+      try {
+        const ext = invoiceLogoFile.name.split(".").pop() || "png";
+        const path = `${currentBranch.id}/invoice-logo.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("branch-logos")
+          .upload(path, invoiceLogoFile, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage.from("branch-logos").getPublicUrl(path);
+        nextInvoiceLogoUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      } catch (error: any) {
+        setIsSavingInvoice(false);
+        setIsUploadingInvoiceLogo(false);
+        toast.error("Error", { description: error.message || "Failed to upload invoice logo" });
+        return;
+      } finally {
+        setIsUploadingInvoiceLogo(false);
+      }
+    }
+
     const { error } = await supabase
       .from("gym_settings")
       .update({
         invoice_prefix: invoicePrefix || "INV",
         invoice_footer_message: invoiceFooter || null,
         invoice_terms: invoiceTerms || null,
+        invoice_brand_name: invoiceBrandName || gymName || currentBranch.name,
+        invoice_logo_url: nextInvoiceLogoUrl,
+        invoice_palette: {
+          header: invoicePalette.header,
+          accent: invoicePalette.accent,
+          text: invoicePalette.text,
+        },
       })
       .eq("id", settings.id)
       .eq("branch_id", currentBranch.id);
@@ -568,10 +600,31 @@ const AdminSettings = () => {
         description: `Updated invoice settings for ${currentBranch?.name || "branch"}`,
         entityType: "gym_settings", entityId: settings.id,
         entityName: currentBranch?.name || "Gym Settings",
-        newValue: { invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_terms: invoiceTerms },
+        newValue: {
+          invoice_prefix: invoicePrefix,
+          invoice_footer_message: invoiceFooter,
+          invoice_terms: invoiceTerms,
+          invoice_brand_name: invoiceBrandName,
+          invoice_logo_url: nextInvoiceLogoUrl,
+          invoice_palette: invoicePalette,
+        },
         branchId: currentBranch?.id,
       });
-      updateSettingsCache(c => ({ ...c, settings: c.settings ? { ...c.settings, invoice_prefix: invoicePrefix, invoice_footer_message: invoiceFooter, invoice_terms: invoiceTerms } : c.settings }));
+      setInvoiceLogoUrl(nextInvoiceLogoUrl);
+      setInvoiceLogoFile(null);
+      updateSettingsCache(c => ({ ...c, settings: c.settings ? {
+        ...c.settings,
+        invoice_prefix: invoicePrefix,
+        invoice_footer_message: invoiceFooter,
+        invoice_terms: invoiceTerms,
+        invoice_brand_name: invoiceBrandName || gymName || currentBranch.name,
+        invoice_logo_url: nextInvoiceLogoUrl,
+        invoice_palette: {
+          header: invoicePalette.header,
+          accent: invoicePalette.accent,
+          text: invoicePalette.text,
+        },
+      } : c.settings }));
       toast.success("Invoice settings saved");
       backgroundInvalidate();
     }
