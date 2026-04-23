@@ -118,8 +118,8 @@ const couponFormSchema = z.object({
   }
 
   if (data.coupon_target === "event") {
-    if (data.first_time_only || data.existing_members_only || data.expired_members_only) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["coupon_target"], message: "Event coupons do not support member-condition filters" });
+    if (data.first_time_only || data.expired_members_only) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["coupon_target"], message: "Event coupons only support the existing member condition" });
     }
   }
 
@@ -197,7 +197,7 @@ export const CouponsDiscountsTab = () => {
     [form.coupon_target]
   );
   const showFirstTimeCondition = form.coupon_target === "new_registration";
-  const showExistingCondition = form.coupon_target === "renewal" || form.coupon_target === "pt_renewal";
+  const showExistingCondition = form.coupon_target === "renewal" || form.coupon_target === "pt_renewal" || form.coupon_target === "event";
   const showExpiredCondition = form.coupon_target === "renewal" || form.coupon_target === "pt_renewal";
 
   const fetchCoupons = useCallback(async () => {
@@ -574,7 +574,7 @@ export const CouponsDiscountsTab = () => {
                         ...f,
                         coupon_target: option.value,
                         first_time_only: option.value === "new_registration" ? f.first_time_only : false,
-                        existing_members_only: option.value === "renewal" || option.value === "pt_renewal" ? f.existing_members_only : false,
+                        existing_members_only: option.value === "renewal" || option.value === "pt_renewal" || option.value === "event" ? f.existing_members_only : false,
                         expired_members_only: option.value === "renewal" || option.value === "pt_renewal" ? f.expired_members_only : false,
                       }))}
                       className={`rounded-xl border px-3 py-3 text-left transition-all ${isSelected ? "border-accent bg-accent/10 shadow-sm" : "border-border bg-background hover:border-accent/40"}`}
