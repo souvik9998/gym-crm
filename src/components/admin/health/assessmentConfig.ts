@@ -65,6 +65,11 @@ export interface FieldMeta {
   options?: string[];
 }
 
+export interface UnitOption {
+  value: string;
+  label: string;
+}
+
 export const ASSESSMENT_SECTIONS: SectionConfig[] = [
   {
     key: "basic_info",
@@ -214,6 +219,43 @@ export const ASSESSMENT_FIELD_META: Record<string, FieldMeta> = {
   calf: { inputType: "text", unit: "cm", placeholder: "L: 36, R: 36", helpText: "Left and right calf" },
 };
 
+export const ASSESSMENT_FIELD_UNIT_OPTIONS: Record<string, UnitOption[]> = {
+  weight: [
+    { value: "kg", label: "Kilograms (kg)" },
+    { value: "lb", label: "Pounds (lb)" },
+  ],
+  height: [
+    { value: "cm", label: "Centimeters (cm)" },
+    { value: "m", label: "Meters (m)" },
+    { value: "ft", label: "Feet (ft)" },
+    { value: "in", label: "Inches (in)" },
+  ],
+  mode_of_training: [
+    { value: "", label: "No unit" },
+    { value: "focus", label: "Training focus" },
+    { value: "style", label: "Training style" },
+    { value: "level", label: "Training level" },
+  ],
+  diet_type: [
+    { value: "", label: "No unit" },
+    { value: "preference", label: "Diet preference" },
+    { value: "plan", label: "Diet plan" },
+    { value: "type", label: "Diet type" },
+  ],
+  alcohol: [
+    { value: "", label: "No unit" },
+    { value: "frequency", label: "Frequency" },
+    { value: "drinks/week", label: "Drinks per week" },
+    { value: "drinks/day", label: "Drinks per day" },
+  ],
+  smoking: [
+    { value: "", label: "No unit" },
+    { value: "frequency", label: "Frequency" },
+    { value: "cigarettes/day", label: "Cigarettes per day" },
+    { value: "packs/day", label: "Packs per day" },
+  ],
+};
+
 export const getDefaultAssessmentSettings = (): AssessmentSettings => {
   const defaults: AssessmentSettings = {};
 
@@ -245,6 +287,10 @@ export const getDefaultAssessmentSettings = (): AssessmentSettings => {
 
 export const getAssessmentFieldMeta = (fieldKey: string): FieldMeta => {
   return ASSESSMENT_FIELD_META[fieldKey] || { inputType: "text" };
+};
+
+export const getAssessmentFieldUnitOptions = (fieldKey: string): UnitOption[] => {
+  return ASSESSMENT_FIELD_UNIT_OPTIONS[fieldKey] || [];
 };
 
 export const isExerciseAssessmentSection = (sectionKey: string) => sectionKey === "muscle_strength";
