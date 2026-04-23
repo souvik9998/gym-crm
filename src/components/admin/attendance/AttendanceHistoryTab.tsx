@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
+import { exportToExcel } from "@/utils/exportToExcel";
+import { toast } from "sonner";
 import {
   MagnifyingGlassIcon,
   CalendarDaysIcon,
@@ -18,6 +20,7 @@ import {
   ExclamationTriangleIcon,
   UserIcon,
   ChartBarIcon,
+  ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAttendanceFilters, formatSlotTime } from "@/hooks/queries/useAttendanceFilters";
@@ -184,6 +187,71 @@ export const AttendanceHistoryTab = () => {
       weekday: isMobile ? "short" : "long", day: "numeric", month: "short",
     });
 
+  const handleExport = () => {
+    try {
+      if (monthRecords.length === 0) {
+        toast.error("No attendance data", {
+          description: "There are no attendance records available for the selected period.",
+        });
+        return;
+      }
+
+      const slotLabelMap = new Map(
+        allSlots.map((slot) => [slot.id, `${formatSlotTime(slot.start_time)} - ${formatSlotTime(slot.end_time)}`])
+      );
+      const trainerLabelMap = new Map(allSlots.map((slot) => [slot.id, slot.trainer_name || "-"]));
+
+      const exportData = [...monthRecords]
+        .sort((a: any, b: any) => {
+          if (a.date !== b.date) return a.date.localeCompare(b.date);
+          const aName = a.members?.name || "";
+          const bName = b.members?.name || "";
+          return aName.localeCompare(bName);
+        })
+        .map((record: any) => ({
+          Date: new Date(record.date + "T00:00:00").toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          }),
+          Member: record.members?.name || "-",
+          Phone: record.members?.phone || "-",
+          Status:
+            record.status === "present"
+              ? "Present"
+              : record.status === "late"
+                ? "Late"
+                : "Absent",
+          Trainer: record.time_slot_id ? trainerLabelMap.get(record.time_slot_id) || "-" : "-",
+          "Time Slot": record.time_slot_id ? slotLabelMap.get(record.time_slot_id) || "-" : "-",
+          "Marked Via": record.marked_by_type || "-",
+          "Created At": record.created_at
+            ? new Date(record.created_at).toLocaleString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "-",
+        }));
+
+      exportToExcel(
+        exportData,
+        `attendance_history_${currentMonth.year}_${String(currentMonth.month + 1).padStart(2, "0")}`,
+        "Attendance History"
+      );
+
+      toast.success("Export successful", {
+        description: `Exported ${exportData.length} attendance record(s) for the selected period.`,
+      });
+    } catch (error: any) {
+      toast.error("Export failed", {
+        description: error?.message || "Failed to export attendance history.",
+      });
+    }
+  };
+
   const getHeatColor = (date: string) => {
     const s = daySummary[date];
     if (!s || s.total === 0) return "";
@@ -199,7 +267,7 @@ export const AttendanceHistoryTab = () => {
   return (
     <div className="space-y-3 animate-fade-in">
       {/* Month Nav + Stats */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-1.5">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigateMonth("prev")}>
             <ChevronLeftIcon className="w-4 h-4" />
@@ -210,15 +278,21 @@ export const AttendanceHistoryTab = () => {
             <ChevronRightIcon className="w-4 h-4" />
           </Button>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center justify-between gap-2 lg:justify-end">
           <div className="flex items-center gap-1 text-[10px]">
             <span className="px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/20 text-green-700 font-medium">{monthTotals.present}P</span>
             <span className="px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/20 text-amber-700 font-medium">{monthTotals.late}L</span>
             <span className="px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/20 text-red-600 font-medium">{monthTotals.absent}A</span>
           </div>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => refetch()}>
-            <ArrowPathIcon className="w-3.5 h-3.5" />
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2.5 text-[10px] lg:text-xs" onClick={handleExport}>
+              <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+              Export Excel
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => refetch()}>
+              <ArrowPathIcon className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
       </div>
 
