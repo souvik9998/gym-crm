@@ -91,7 +91,7 @@ interface PersonalTrainer {
   specialization: string | null;
 }
 
-interface ExistingMember {
+export interface ExistingMember {
   id: string;
   name: string;
   phone: string;
@@ -109,6 +109,8 @@ interface AddMemberDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  initialExistingMember?: ExistingMember | null;
+  initialAction?: "renew_gym" | "add_pt" | "renew_gym_pt" | null;
 }
 
 interface FieldSetting {
@@ -144,7 +146,13 @@ const STEPS = [
   { id: 3, title: "Package", icon: Calendar },
 ] as const;
 
-export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDialogProps) => {
+export const AddMemberDialog = ({
+  open,
+  onOpenChange,
+  onSuccess,
+  initialExistingMember = null,
+  initialAction = null,
+}: AddMemberDialogProps) => {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn, staffUser } = useStaffAuth();
   const navigate = useNavigate();
@@ -307,6 +315,19 @@ export const AddMemberDialog = ({ open, onOpenChange, onSuccess }: AddMemberDial
       setCurrentStep(1);
     }
   }, [open, currentBranch]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!initialExistingMember || !initialAction) return;
+
+    setPhone(initialExistingMember.phone);
+    setName(initialExistingMember.name);
+    setExistingMember(initialExistingMember);
+    setSelectedAction(initialAction);
+    setWantsPT(initialAction === "add_pt" || initialAction === "renew_gym_pt");
+    setSlideDirection("left");
+    setCurrentStep(3);
+  }, [open, initialExistingMember, initialAction]);
 
   const fetchFieldSettings = async () => {
     if (!currentBranch) return;
