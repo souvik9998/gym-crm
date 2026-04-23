@@ -567,14 +567,14 @@ const PackageSelectionForm = ({
             if (v === "custom" && hasActiveMembership) return;
             setPackageType(v as "monthly" | "custom");
           }}>
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className={cn("grid w-full", allowDailyPass ? "grid-cols-2" : "grid-cols-1")}>
               <TabsTrigger value="monthly" className="gap-2">
                 <Calendar className="w-4 h-4" />
                 Monthly
               </TabsTrigger>
               <TabsTrigger 
                 value="custom" 
-                className={hasActiveMembership || !allowDailyPass ? "gap-2 opacity-50 cursor-not-allowed hidden" : "gap-2"}
+                className={hasActiveMembership || !allowDailyPass ? "hidden gap-2 opacity-50 cursor-not-allowed" : "gap-2"}
                 disabled={hasActiveMembership || !allowDailyPass}
               >
                 <Sparkles className="w-4 h-4" />
