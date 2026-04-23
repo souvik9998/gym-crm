@@ -49,6 +49,7 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
   const [searchDone, setSearchDone] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<"success" | "pending">("success");
   const [freeForExisting, setFreeForExisting] = useState(false);
+  const [notifyMember, setNotifyMember] = useState(false);
 
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
@@ -161,7 +162,70 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
     setCustomResponses({}); setFoundMember(null);
     setSearchDone(false); setMode("search");
     setPaymentStatus("success"); setFreeForExisting(false);
+    setNotifyMember(false);
     setCouponCode(""); setAppliedCoupon(null); setCouponError("");
+  };
+
+  const formatEventDateTime = () => {
+    if (!event?.event_date) return { dateLabel: "TBA", timeLabel: "TBA" };
+
+    const start = new Date(event.event_date);
+    const end = event.event_end_date ? new Date(event.event_end_date) : null;
+
+    const dateLabel = start.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    const startTime = start.toLocaleTimeString("en-IN", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    const endTime = end
+      ? end.toLocaleTimeString("en-IN", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })
+      : null;
+
+    return {
+      dateLabel,
+      timeLabel: endTime ? `${startTime} – ${endTime}` : startTime,
+    };
+  };
+
+  const buildRegistrationWhatsAppMessage = (effectivePaymentStatus: "success" | "pending", amountToPay: number) => {
+    const { dateLabel, timeLabel } = formatEventDateTime();
+    const selectedItemLabel = selectedItems.length > 0
+      ? selectedItems.map((item: any) => `${item.name}${Number(item.price) > 0 ? ` — ₹${item.price}` : " — Free"}`).join("\n• ")
+      : "General Admission";
+
+    const locationLine = event?.location ? `📍 *Location:* ${event.location}\n` : "";
+    const paymentLine = effectivePaymentStatus === "success"
+      ? `💰 *Amount Paid:* ${amountToPay === 0 ? "Free" : `₹${amountToPay}`}\n✅ *Status:* Confirmed`
+      : `💰 *Amount Due:* ₹${amountToPay}\n⏳ *Status:* Registration saved, payment pending`;
+
+    return [
+      `🎉 *Event Registration ${effectivePaymentStatus === "success" ? "Confirmed" : "Created"}!*`,
+      ``,
+      `Hi ${name.trim()}, 👋`,
+      ``,
+      `You have been registered for *${event?.title || "this event"}*.`,
+      ``,
+      `📅 *Date:* ${dateLabel}`,
+      `🕐 *Time:* ${timeLabel}`,
+      `${locationLine}`.trimEnd(),
+      `🎫 *Selected Option${selectedItems.length > 1 ? "s" : ""}:*`,
+      `• ${selectedItemLabel}`,
+      ``,
+      paymentLine,
+      ``,
+      `Please keep this message for your reference.`,
+    ].filter(Boolean).join("\n");
   };
 
   const handleSearch = async () => {
@@ -297,8 +361,33 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
           console.error("Payment record (event registration) failed:", payErr);
         }
       }
+
+      let notifyFailed = false;
+      if (notifyMember) {
+        try {
+          const customMessage = buildRegistrationWhatsAppMessage(effectivePaymentStatus, amountToPay);
+          const { error: whatsappError } = await supabase.functions.invoke("send-whatsapp", {
+            body: {
+              type: "custom",
+              isManual: true,
+              branchId: event.branch_id,
+              phone,
+              name: name.trim(),
+              memberIds: foundMember?.id ? [foundMember.id] : undefined,
+              customMessage,
+            },
+          });
+
+          if (whatsappError) throw whatsappError;
+        } catch (whatsappErr) {
+          notifyFailed = true;
+          console.error("Admin event registration WhatsApp failed:", whatsappErr);
+        }
+      }
+
+      return { notifyFailed, notifyAttempted: notifyMember };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["event-registrations", event.id] });
       queryClient.invalidateQueries({ queryKey: ["event-reg-counts", event.id] });
       queryClient.invalidateQueries({ queryKey: ["event-detail", event.id] });
@@ -306,6 +395,13 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast.success("Member registered successfully!");
+      if (result?.notifyAttempted) {
+        if (result.notifyFailed) {
+          toast.error("Registration saved, but WhatsApp notification failed");
+        } else {
+          toast.success("WhatsApp notification sent");
+        }
+      }
 
       const desc = `${isStaffLoggedIn ? `Staff "${staffUser?.fullName}"` : "Admin"} registered "${name}" for event "${event.title}"`;
       if (isStaffLoggedIn && staffUser) {
@@ -616,6 +712,14 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
               </Select>
             </div>
           )}
+
+          <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-3 py-3">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Notify Member</p>
+              <p className="text-xs text-muted-foreground">Send event registration details on WhatsApp after saving</p>
+            </div>
+            <Switch checked={notifyMember} onCheckedChange={setNotifyMember} />
+          </div>
 
           <Button
             onClick={() => registerMutation.mutate()}
