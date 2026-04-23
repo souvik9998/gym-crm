@@ -681,11 +681,6 @@ export const CouponsDiscountsTab = () => {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold font-mono tracking-wider">{coupon.code}</span>
                           <Badge variant={status.variant} className="text-[10px] px-1.5 py-0">{status.label}</Badge>
-                          {coupon.auto_apply && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/30 text-amber-600">
-                              <Zap className="w-2.5 h-2.5 mr-0.5" />Auto
-                            </Badge>
-                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {discountLabel(coupon)} • Used {coupon.usage_count}{coupon.total_usage_limit ? `/${coupon.total_usage_limit}` : ""} times
