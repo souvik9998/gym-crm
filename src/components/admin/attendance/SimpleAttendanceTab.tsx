@@ -26,6 +26,7 @@ import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdow
 import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
 import { useMembersQuery } from "@/hooks/queries/useMembers";
+import { TIME_BUCKET_OPTIONS, matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
 type AttendanceStatus = "present" | "absent" | "late";
 
@@ -174,6 +175,9 @@ export const SimpleAttendanceTab = () => {
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [timeFilter, setTimeFilter] = useState<TimeBucket>("all");
+  const [customStart, setCustomStart] = useState("06:00");
+  const [customEnd, setCustomEnd] = useState("10:00");
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "all">("all");
   const { assignedMemberIds } = useAssignedMemberIds();
   const { allSlots } = useAttendanceFilters();
@@ -181,12 +185,22 @@ export const SimpleAttendanceTab = () => {
 
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
 
+  const timeFilteredSlots = useMemo(() => {
+    return allSlots.filter((slot) => matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd));
+  }, [allSlots, timeFilter, customStart, customEnd]);
+
+  const filteredSlotIds = useMemo(() => timeFilteredSlots.map((slot) => slot.id), [timeFilteredSlots]);
+
   const trainerSlotIds = useMemo(() => {
-    if (!selectedTrainerId) return null;
-    return allSlots
-      .filter((slot) => slot.trainer_id === selectedTrainerId)
+    const scopedSlots = selectedTrainerId
+      ? timeFilteredSlots.filter((slot) => slot.trainer_id === selectedTrainerId)
+      : timeFilteredSlots;
+
+    if (!selectedTrainerId) return scopedSlots.map((slot) => slot.id);
+
+    return scopedSlots
       .map((slot) => slot.id);
-  }, [allSlots, selectedTrainerId]);
+  }, [timeFilteredSlots, selectedTrainerId]);
 
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
   const isFutureDate = selectedDate > today;
@@ -209,6 +223,18 @@ export const SimpleAttendanceTab = () => {
     return nextMonday <= today;
   })();
 
+  useEffect(() => {
+    if (!selectedSlotId) return;
+
+    const isValidSlot = timeFilteredSlots.some((slot) => {
+      if (slot.id !== selectedSlotId) return false;
+      if (!selectedTrainerId) return true;
+      return slot.trainer_id === selectedTrainerId;
+    });
+
+    if (!isValidSlot) setSelectedSlotId(null);
+  }, [selectedSlotId, selectedTrainerId, timeFilteredSlots]);
+
   const activeMembers = useMemo(() => {
     return scopedMembers.filter((member) => {
       const subscriptionStatus = member.subscription?.status;
@@ -221,22 +247,16 @@ export const SimpleAttendanceTab = () => {
         return member.activePT?.time_slot_id === selectedSlotId;
       }
 
-      // Trainer filter: include ALL members assigned to this trainer (with or without slot)
-      if (selectedTrainerId) {
-        // Check if member has activePT and if trainer matches via slot or direct assignment
-        if (!member.activePT) return false;
-        // If member has a slot assigned to this trainer, include
-        if (trainerSlotIds && member.activePT.time_slot_id && trainerSlotIds.includes(member.activePT.time_slot_id)) {
-          return true;
-        }
-        // Also include members whose PT trainer matches (even without slot)
-        // The activePT is populated from pt_subscriptions which is our source of truth
-        return !!member.activePT.trainer_name;
+      if (selectedTrainerId || timeFilter !== "all") {
+        const slotId = member.activePT?.time_slot_id;
+        if (!slotId) return false;
+        if (!filteredSlotIds.includes(slotId)) return false;
+        if (selectedTrainerId && !trainerSlotIds.includes(slotId)) return false;
       }
 
       return true;
     });
-  }, [scopedMembers, selectedSlotId, selectedTrainerId, trainerSlotIds]);
+  }, [scopedMembers, selectedSlotId, selectedTrainerId, trainerSlotIds, filteredSlotIds, timeFilter]);
 
   const { data: weekRecords = [], isLoading: loadingRecords } = useQuery({
     queryKey: ["daily-attendance-week", branchId, weekDates[0], weekDates[6], isLimitedAccess ? (assignedMemberIds ?? []).join(",") : "all"],
