@@ -12,7 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown, Brain, Eye, EyeOff, Plus, Pencil, Trash2, Check, X, Settings2, Repeat, TimerReset, Layers3 } from "lucide-react";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { cn } from "@/lib/utils";
-import { ASSESSMENT_SECTIONS, getAssessmentFieldMeta, getDefaultAssessmentSettings, getExerciseInputMode, isExerciseAssessmentSection, type AssessmentSettings, type CustomField, type ExerciseInputMode } from "@/components/admin/health/assessmentConfig";
+import { ASSESSMENT_SECTIONS, getAssessmentFieldMeta, getAssessmentFieldUnitOptions, getDefaultAssessmentSettings, getExerciseInputMode, isExerciseAssessmentSection, type AssessmentSettings, type CustomField, type ExerciseInputMode } from "@/components/admin/health/assessmentConfig";
 
 export const AssessmentFieldsSettings = () => {
   const { currentBranch } = useBranch();
@@ -301,6 +301,41 @@ export const AssessmentFieldsSettings = () => {
     return settings[sectionKey]?.field_units?.[fieldKey] || defaultUnit || "";
   };
 
+  const renderFieldUnitControl = (sectionKey: string, fieldKey: string, defaultUnit?: string) => {
+    const unitOptions = getAssessmentFieldUnitOptions(fieldKey);
+    const currentValue = getFieldUnit(sectionKey, fieldKey, defaultUnit);
+
+    if (sectionKey === "basic_info" && unitOptions.length > 0) {
+      const safeValue = unitOptions.some((option) => option.value === currentValue)
+        ? currentValue
+        : unitOptions[0].value;
+
+      return (
+        <Select value={safeValue} onValueChange={(value) => updateFieldUnit(sectionKey, fieldKey, value)}>
+          <SelectTrigger className="h-8 w-[170px] text-[11px]">
+            <SelectValue placeholder="Select unit" />
+          </SelectTrigger>
+          <SelectContent>
+            {unitOptions.map((option) => (
+              <SelectItem key={`${fieldKey}-${option.value || "none"}`} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    }
+
+    return (
+      <Input
+        value={currentValue}
+        onChange={(e) => updateFieldUnit(sectionKey, fieldKey, e.target.value)}
+        placeholder="Unit e.g. kg, cm, mmHg"
+        className="h-8 w-[150px] text-[11px]"
+      />
+    );
+  };
+
   if (isLoading) {
     return (
       <Card className="border border-border/40 shadow-sm">
@@ -469,14 +504,9 @@ export const AssessmentFieldsSettings = () => {
                                  <p className="mt-1 text-[11px] text-muted-foreground">
                                   {meta.helpText || `Visible in ${section.label.toLowerCase()} assessments.`}
                                 </p>
-                                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                                   <Input
-                                     value={getFieldUnit(section.key, field.key, meta.unit)}
-                                     onChange={(e) => updateFieldUnit(section.key, field.key, e.target.value)}
-                                     placeholder="Unit e.g. kg, cm, mmHg"
-                                     className="h-8 w-[150px] text-[11px]"
-                                   />
-                                 </div>
+                                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    {renderFieldUnitControl(section.key, field.key, meta.unit)}
+                                  </div>
                                  {isExerciseField && (
                                    <div className="mt-2 flex flex-wrap items-center gap-2">
                                      <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">
