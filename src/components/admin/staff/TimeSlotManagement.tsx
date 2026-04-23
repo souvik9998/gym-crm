@@ -4,7 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Staff } from "@/pages/admin/StaffManagement";
 import { TimeSlotsTab } from "./timeslots/TimeSlotsTab";
 import { SlotMembersTab } from "./timeslots/SlotMembersTab";
-import { ClockIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { TimeSlotAnalyticsTab } from "./timeslots/TimeSlotAnalyticsTab";
+import { ChartBarIcon, ClockIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 
 interface TimeSlotManagementProps {
   trainers: Staff[];
@@ -12,7 +13,7 @@ interface TimeSlotManagementProps {
   allStaff: Staff[];
 }
 
-const VALID_SUBS = new Set(["slots", "members"]);
+const VALID_SUBS = new Set(["slots", "members", "analytics"]);
 
 export const TimeSlotManagement = ({
   trainers,
@@ -40,10 +41,15 @@ export const TimeSlotManagement = ({
     [setSearchParams],
   );
 
+  const trainerNameMap = allStaff.reduce<Record<string, string>>((acc, staff) => {
+    acc[staff.id] = staff.full_name;
+    return acc;
+  }, {});
+
   return (
     <div className="space-y-4">
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-xl grid-cols-3">
           <TabsTrigger value="slots" className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3">
             <ClockIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
             <span>Time Slots</span>
@@ -52,6 +58,10 @@ export const TimeSlotManagement = ({
             <UserGroupIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
             <span>Slot Members</span>
           </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3">
+            <ChartBarIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+            <span>Analytics</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="slots" forceMount hidden={activeSubTab !== "slots"}>
@@ -59,7 +69,11 @@ export const TimeSlotManagement = ({
         </TabsContent>
 
         <TabsContent value="members" forceMount hidden={activeSubTab !== "members"}>
-          <SlotMembersTab trainers={trainers} currentBranch={currentBranch} />
+          <SlotMembersTab trainers={trainers} currentBranch={currentBranch} trainerNameMap={trainerNameMap} />
+        </TabsContent>
+
+        <TabsContent value="analytics" forceMount hidden={activeSubTab !== "analytics"}>
+          <TimeSlotAnalyticsTab currentBranch={currentBranch} trainerNameMap={trainerNameMap} />
         </TabsContent>
       </Tabs>
     </div>
