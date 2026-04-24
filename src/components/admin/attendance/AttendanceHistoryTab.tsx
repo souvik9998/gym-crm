@@ -189,9 +189,9 @@ export const AttendanceHistoryTab = () => {
 
   const selectedStats = useMemo(() => {
     const present = selectedRecords.filter((r: any) => r.status === "present").length;
-    const late = selectedRecords.filter((r: any) => r.status === "late" || r.status === "skipped").length;
+    const skipped = selectedRecords.filter((r: any) => r.status === "late" || r.status === "skipped").length;
     const absent = selectedRecords.filter((r: any) => r.status === "absent").length;
-    return { present, late, absent, total: selectedRecords.length };
+    return { present, skipped, absent, total: selectedRecords.length };
   }, [selectedRecords]);
 
   const formatDateDisplay = (d: string) =>
@@ -338,7 +338,7 @@ export const AttendanceHistoryTab = () => {
   const getHeatColor = (date: string) => {
     const s = daySummary[date];
     if (!s || s.total === 0) return "";
-    const rate = (s.present + s.late) / s.total;
+    const rate = (s.present + s.skipped) / s.total;
     if (rate >= 0.8) return "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300";
     if (rate >= 0.5) return "bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300";
     return "bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300";
@@ -364,7 +364,7 @@ export const AttendanceHistoryTab = () => {
         <div className="flex items-center justify-between gap-2 lg:justify-end">
           <div className="flex items-center gap-1 text-[10px]">
             <span className="px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/20 text-green-700 font-medium">{monthTotals.present}P</span>
-            <span className="px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/20 text-amber-700 font-medium">{monthTotals.late}L</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 font-medium">{monthTotals.skipped}S</span>
             <span className="px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/20 text-red-600 font-medium">{monthTotals.absent}A</span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -506,8 +506,8 @@ export const AttendanceHistoryTab = () => {
                                   )}
                                   {summary && summary.total > 0 && isMobile && (
                                     <div className={cn("w-1.5 h-1.5 rounded-full mt-0.5",
-                                      (summary.present + summary.late) / summary.total >= 0.8 ? "bg-green-500" :
-                                      (summary.present + summary.late) / summary.total >= 0.5 ? "bg-amber-500" : "bg-red-500"
+                                      (summary.present + summary.skipped) / summary.total >= 0.8 ? "bg-green-500" :
+                                      (summary.present + summary.skipped) / summary.total >= 0.5 ? "bg-amber-500" : "bg-red-500"
                                     )} />
                                   )}
                                 </button>
@@ -541,7 +541,7 @@ export const AttendanceHistoryTab = () => {
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] shrink-0">
                   <span className="text-green-600 font-medium">{selectedStats.present}P</span>
-                  <span className="text-amber-600 font-medium">{selectedStats.late}L</span>
+                  <span className="text-slate-600 dark:text-slate-300 font-medium">{selectedStats.skipped}S</span>
                   <span className="text-red-500 font-medium">{selectedStats.absent}A</span>
                 </div>
               </div>
@@ -560,12 +560,15 @@ export const AttendanceHistoryTab = () => {
                   <div className="py-6 text-center text-muted-foreground text-xs">No records.</div>
                 ) : (
                   <div className="divide-y divide-border/20">
-                    {selectedRecords.map((r: any, idx: number) => (
+                    {selectedRecords.map((r: any, idx: number) => {
+                      const isSkipped = r.status === "late" || r.status === "skipped";
+                      const isPresent = r.status === "present";
+                      return (
                       <div key={r.id} className="flex items-center justify-between px-3 py-2 hover:bg-muted/10 animate-fade-in"
                         style={{ animationDelay: `${Math.min(idx * 20, 200)}ms` }}>
                         <div className="flex items-center gap-2 min-w-0">
                           <div className={cn("w-1.5 h-1.5 rounded-full shrink-0",
-                            r.status === "present" ? "bg-green-500" : r.status === "late" ? "bg-amber-500" : "bg-red-500"
+                            isPresent ? "bg-green-500" : isSkipped ? "bg-slate-500" : "bg-red-500"
                           )} />
                           <div className="min-w-0">
                             <span className="text-xs font-medium truncate block">{r.members?.name || "—"}</span>
@@ -575,15 +578,16 @@ export const AttendanceHistoryTab = () => {
                         <div className="flex items-center gap-2 shrink-0">
                           {!isMobile && <span className="text-[10px] text-muted-foreground">{r.members?.phone || ""}</span>}
                           <Badge className={cn("text-[9px] px-1.5",
-                            r.status === "present" ? "bg-green-500/10 text-green-600 border-green-200" :
-                            r.status === "late" ? "bg-amber-500/10 text-amber-600 border-amber-200" :
+                            isPresent ? "bg-green-500/10 text-green-600 border-green-200" :
+                            isSkipped ? "bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-300/40" :
                             "bg-red-500/10 text-red-500 border-red-200"
                           )}>
-                            {r.status === "present" ? "P" : r.status === "late" ? "L" : "A"}
+                            {isPresent ? "P" : isSkipped ? "S" : "A"}
                           </Badge>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -606,7 +610,7 @@ export const AttendanceHistoryTab = () => {
             /* Mobile: Card per member with dot grid */
             <div className="space-y-2">
               {memberRanking.map((m, idx) => {
-                const attendRate = m.total > 0 ? Math.round(((m.present + m.late) / m.total) * 100) : 0;
+                const attendRate = m.total > 0 ? Math.round(((m.present + m.skipped) / m.total) * 100) : 0;
                 return (
                   <Card key={m.id} className="border border-border/40 animate-fade-in" style={{ animationDelay: `${Math.min(idx * 30, 300)}ms` }}>
                     <CardContent className="p-3">
@@ -623,7 +627,7 @@ export const AttendanceHistoryTab = () => {
                       </div>
                       <div className="flex items-center gap-2 text-[10px] mb-2">
                         <span className="text-green-600">{m.present}P</span>
-                        {m.late > 0 && <span className="text-amber-600">{m.late}L</span>}
+                        {m.skipped > 0 && <span className="text-slate-600 dark:text-slate-300">{m.skipped}S</span>}
                         <span className="text-red-500">{m.absent}A</span>
                       </div>
                       {/* Dot grid of dates */}
@@ -633,7 +637,7 @@ export const AttendanceHistoryTab = () => {
                           return (
                             <div key={d} className={cn("w-4 h-4 rounded-sm text-[7px] font-bold flex items-center justify-center transition-colors",
                               st === "present" ? "bg-green-500/20 text-green-700" :
-                              st === "late" ? "bg-amber-500/20 text-amber-700" :
+                              st === "skipped" ? "bg-slate-500/25 text-slate-700 dark:text-slate-300" :
                               st === "absent" ? "bg-red-500/20 text-red-600" :
                               "bg-muted/30"
                             )} title={d}>
@@ -667,7 +671,7 @@ export const AttendanceHistoryTab = () => {
                   </thead>
                   <tbody className="divide-y divide-border/20">
                     {memberRanking.map((m) => {
-                      const attendRate = m.total > 0 ? Math.round(((m.present + m.late) / m.total) * 100) : 0;
+                      const attendRate = m.total > 0 ? Math.round(((m.present + m.skipped) / m.total) * 100) : 0;
                       return (
                         <tr key={m.id} className="hover:bg-muted/10 transition-colors duration-150">
                           <td className="px-3 py-1.5 sticky left-0 bg-background">
@@ -681,16 +685,16 @@ export const AttendanceHistoryTab = () => {
                                 {st ? (
                                   <div className={cn("w-5 h-5 rounded-sm mx-auto flex items-center justify-center text-[8px] font-bold transition-colors duration-200",
                                     st === "present" ? "bg-green-500/20 text-green-700 dark:text-green-400" :
-                                    st === "late" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" :
+                                    st === "skipped" ? "bg-slate-500/25 text-slate-700 dark:text-slate-300" :
                                     "bg-red-500/20 text-red-600 dark:text-red-400"
                                   )}>
-                                    {st[0].toUpperCase()}
+                                    {st === "skipped" ? "S" : st[0].toUpperCase()}
                                   </div>
                                 ) : <div className="w-5 h-5 rounded-sm mx-auto bg-muted/20" />}
                               </td>
                             );
                           })}
-                          <td className="text-center px-2 py-1.5"><span className="text-green-600 font-semibold text-[11px]">{m.present + m.late}</span></td>
+                          <td className="text-center px-2 py-1.5"><span className="text-green-600 font-semibold text-[11px]">{m.present + m.skipped}</span></td>
                           <td className="text-center px-2 py-1.5"><span className="text-red-500 font-semibold text-[11px]">{m.absent}</span></td>
                           <td className="text-center px-2 py-1.5">
                             <span className={cn("text-[11px] font-bold",
@@ -718,7 +722,7 @@ export const AttendanceHistoryTab = () => {
               {/* Top absentees */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {memberRanking.filter(m => m.absent > 0).slice(0, 6).map((m, idx) => {
-                  const attendRate = m.total > 0 ? Math.round(((m.present + m.late) / m.total) * 100) : 0;
+                  const attendRate = m.total > 0 ? Math.round(((m.present + m.skipped) / m.total) * 100) : 0;
                   return (
                     <Card key={m.id}
                       className={cn("border shadow-sm animate-fade-in", idx < 3 ? "border-red-200 dark:border-red-900/30" : "border-border/40")}
@@ -744,12 +748,12 @@ export const AttendanceHistoryTab = () => {
                         </div>
                         <div className="mt-2 flex items-center gap-2 text-[10px]">
                           <span className="text-green-600">{m.present}P</span>
-                          {m.late > 0 && <span className="text-amber-600">{m.late}L</span>}
+                          {m.skipped > 0 && <span className="text-slate-600 dark:text-slate-300">{m.skipped}S</span>}
                           <span className="text-red-500 font-semibold">{m.absent}A</span>
                         </div>
                         <div className="mt-1.5 w-full h-1 rounded-full bg-muted/50 overflow-hidden flex">
                           {m.present > 0 && <div className="bg-green-500 h-full transition-all duration-500" style={{ width: `${(m.present / m.total) * 100}%` }} />}
-                          {m.late > 0 && <div className="bg-amber-500 h-full transition-all duration-500" style={{ width: `${(m.late / m.total) * 100}%` }} />}
+                          {m.skipped > 0 && <div className="bg-slate-500 h-full transition-all duration-500" style={{ width: `${(m.skipped / m.total) * 100}%` }} />}
                           {m.absent > 0 && <div className="bg-red-400 h-full transition-all duration-500" style={{ width: `${(m.absent / m.total) * 100}%` }} />}
                         </div>
                       </CardContent>
@@ -768,7 +772,7 @@ export const AttendanceHistoryTab = () => {
                 <div className="max-h-[350px] overflow-y-auto">
                   <div className="divide-y divide-border/20">
                     {memberRanking.map((m, idx) => {
-                      const attendRate = m.total > 0 ? Math.round(((m.present + m.late) / m.total) * 100) : 0;
+                      const attendRate = m.total > 0 ? Math.round(((m.present + m.skipped) / m.total) * 100) : 0;
                       return (
                         <div key={m.id} className="flex items-center justify-between px-3 py-2 hover:bg-muted/10 transition-colors">
                           <div className="flex items-center gap-2 min-w-0">
