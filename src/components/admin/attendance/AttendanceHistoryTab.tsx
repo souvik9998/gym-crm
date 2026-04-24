@@ -125,7 +125,7 @@ export const AttendanceHistoryTab = () => {
     enabled: !!branchId && (assignedMemberIds === null || assignedMemberIds !== undefined),
   });
 
-  // Filter records by selected trainer/slot
+  // Filter records by selected trainer/slot/time-of-day bucket
   const monthRecords = useMemo(() => {
     let records = rawMonthRecords;
     if (selectedSlotId) {
@@ -134,8 +134,16 @@ export const AttendanceHistoryTab = () => {
       const trainerSlotIds = new Set(allSlots.filter(s => s.trainer_id === selectedTrainerId).map(s => s.id));
       records = records.filter((r: any) => r.time_slot_id && trainerSlotIds.has(r.time_slot_id));
     }
+    if (timeBucket !== "all") {
+      const bucketSlotIds = new Set(
+        allSlots
+          .filter((s) => matchesTimeFilter(s.start_time, timeBucket, customStart, customEnd))
+          .map((s) => s.id),
+      );
+      records = records.filter((r: any) => r.time_slot_id && bucketSlotIds.has(r.time_slot_id));
+    }
     return records;
-  }, [rawMonthRecords, selectedSlotId, selectedTrainerId, allSlots]);
+  }, [rawMonthRecords, selectedSlotId, selectedTrainerId, allSlots, timeBucket, customStart, customEnd]);
 
   const daySummary = useMemo(() => {
     const map: Record<string, { present: number; skipped: number; absent: number; total: number }> = {};
