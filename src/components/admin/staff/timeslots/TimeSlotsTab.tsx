@@ -21,6 +21,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { TimeSlotDetailDialog } from "./TimeSlotDetailDialog";
+import { TrainerSlotsDialog } from "./TrainerSlotsDialog";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
