@@ -248,7 +248,7 @@ export function useCouponValidation({ branchId, isNewMember, memberId, subtotal,
     } finally {
       setIsValidating(false);
     }
-  }, [couponCode, branchId, isNewMember, memberId, subtotal, calculateDiscount]);
+  }, [couponCode, branchId, isNewMember, memberId, subtotal, effectiveContext, calculateDiscount]);
 
   const removeCoupon = useCallback(() => {
     setAppliedCoupon(null);

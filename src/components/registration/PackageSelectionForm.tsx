@@ -64,6 +64,8 @@ interface PTDurationOption {
 interface PackageSelectionFormProps {
   isNewMember: boolean;
   memberName: string;
+  /** Existing member id — required for renewal coupon checks (per-user limit, expired-only, etc.) */
+  memberId?: string;
   onSubmit: (data: PackageSelectionData) => void;
   onBack: () => void;
   isLoading: boolean;
@@ -131,6 +133,7 @@ const TrainerSkeleton = () => (
 const PackageSelectionForm = ({ 
   isNewMember, 
   memberName, 
+  memberId,
   onSubmit, 
   onBack,
   isLoading,
@@ -436,8 +439,39 @@ const PackageSelectionForm = ({
   const coupon = useCouponValidation({
     branchId,
     isNewMember,
+    memberId,
     subtotal: subtotal + taxAmount,
   });
+
+  // Enforce plan-id restriction client-side: if a coupon is restricted to
+  // specific monthly packages and the user picks a different one (or a
+  // custom package), surface the issue and detach the coupon.
+  useEffect(() => {
+    const applied = coupon.appliedCoupon;
+    if (!applied) return;
+    const planIds = applied.coupon.applicable_plan_ids;
+    if (!planIds || planIds.length === 0) return;
+    const currentPlanId = isCustom ? null : selectedMonthlyPackage?.id ?? null;
+    if (!currentPlanId || !planIds.includes(currentPlanId)) {
+      coupon.removeCoupon();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMonthlyPackage?.id, isCustom, coupon.appliedCoupon?.coupon.id]);
+
+  // Keep discount in sync when subtotal/trainer/tax recalc; also re-checks
+  // min-order constraint as the basket changes.
+  useEffect(() => {
+    if (coupon.appliedCoupon) {
+      const newSubtotal = subtotal + taxAmount;
+      const minOrder = coupon.appliedCoupon.coupon.min_order_value;
+      if (minOrder && newSubtotal < minOrder) {
+        coupon.removeCoupon();
+      } else {
+        coupon.recalculateDiscount(newSubtotal);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtotal, taxAmount]);
 
   const couponDiscount = coupon.appliedCoupon?.discountAmount || 0;
   const totalAmount = Math.max(0, subtotal + taxAmount - couponDiscount);
