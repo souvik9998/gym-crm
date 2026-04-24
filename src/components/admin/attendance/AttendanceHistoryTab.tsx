@@ -283,7 +283,7 @@ export const AttendanceHistoryTab = () => {
       if (timeBucket !== "all") {
         const bucketSlotIds = new Set(
           allSlots
-            .filter((s) => matchesTimeFilter(s.start_time, timeBucket, customStart, customEnd))
+            .filter((s) => matchesTimeFilter(s.start_time, timeBucket, customStart, customEnd, s.end_time))
             .map((s) => s.id),
         );
         exportRecords = exportRecords.filter((r: any) => r.time_slot_id && bucketSlotIds.has(r.time_slot_id));
