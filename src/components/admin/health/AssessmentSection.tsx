@@ -627,10 +627,10 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
           {isSaving ? <><ButtonSpinner /> Saving...</> : <><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Save Assessment</>}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => {
-          if (expanded) setIsFormExpanded(false);
-          else setShowForm(false);
-        }} className="rounded-lg">
-          {expanded ? "Back" : "Close"}
+          // Auto-draft on close so accidental exits don't lose work.
+          autoSaveDraftAndClose();
+        }} className="rounded-lg" disabled={isSaving || isSavingDraft}>
+          {expanded ? "Exit" : "Close"}
         </Button>
       </div>
     </div>
