@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,16 +8,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Plus, Download, FileText, Upload, Heart, Trash2, AlertTriangle, Loader2 } from "lucide-react";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import type { MemberDocument, HealthDetails } from "./MemberHealthTab";
 
 interface HealthFilesSectionProps {
   documents: MemberDocument[];
   healthDetails: HealthDetails | null;
   memberId: string;
+  branchId?: string;
   onRefresh: () => void;
 }
 
-export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefresh }: HealthFilesSectionProps) => {
+export const HealthFilesSection = ({ documents, healthDetails, memberId, branchId, onRefresh }: HealthFilesSectionProps) => {
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
   const [showUpload, setShowUpload] = useState(false);
   const [showHealthForm, setShowHealthForm] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -38,6 +43,45 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
     emergency_contact_name: healthDetails?.emergency_contact_name || null,
     emergency_contact_phone: healthDetails?.emergency_contact_phone || null,
   });
+
+  const [memberName, setMemberName] = useState<string>("");
+  useEffect(() => {
+    if (!memberId) return;
+    supabase.from("members").select("name").eq("id", memberId).maybeSingle().then(({ data }) => {
+      if (data?.name) setMemberName(data.name);
+    });
+  }, [memberId]);
+
+  const logHealthActivity = async (
+    activityType: "health_details_updated" | "health_document_uploaded" | "health_document_deleted",
+    description: string,
+    extra: { entityId?: string; metadata?: Record<string, any> } = {},
+  ) => {
+    try {
+      const base = {
+        type: activityType as any,
+        description,
+        entityType: activityType === "health_details_updated" ? "member_details" : "member_document",
+        entityId: extra.entityId,
+        entityName: memberName || "Member",
+        branchId,
+        metadata: { member_id: memberId, member_name: memberName, ...(extra.metadata || {}) },
+      };
+      if (isStaffLoggedIn && staffUser) {
+        await logStaffActivity({
+          ...base,
+          category: "members",
+          staffId: staffUser.id,
+          staffName: staffUser.fullName,
+          staffPhone: (staffUser as any).phone,
+        });
+      } else {
+        await logAdminActivity({ ...base, category: "members" });
+      }
+    } catch (err) {
+      console.warn("Health activity log failed", err);
+    }
+  };
 
   const getStoragePath = (fileUrl: string): string => {
     const marker = "/object/public/member-documents/";
@@ -88,6 +132,14 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
       const { error } = await supabase.from("member_documents").delete().eq("id", doc.id);
       if (error) throw error;
       toast.success("Document deleted");
+      void logHealthActivity(
+        "health_document_deleted",
+        `Deleted health document "${doc.file_name}" for ${memberName || "member"}`,
+        {
+          entityId: doc.id,
+          metadata: { document_type: doc.document_type, file_name: doc.file_name, file_size: doc.file_size },
+        },
+      );
       onRefresh();
     } catch (err: any) {
       toast.error("Error deleting document", { description: err.message });
@@ -106,17 +158,25 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
       const { error: storageError } = await supabase.storage.from("member-documents").upload(path, file);
       if (storageError) throw storageError;
 
-      const { error: dbError } = await supabase.from("member_documents").insert({
+      const { data: inserted, error: dbError } = await supabase.from("member_documents").insert({
         member_id: memberId,
         document_type: docType,
         file_name: file.name,
         file_url: path,
         file_size: file.size,
         uploaded_by: docNotes || "Admin",
-      });
+      }).select("id").single();
       if (dbError) throw dbError;
 
       toast.success("Document uploaded");
+      void logHealthActivity(
+        "health_document_uploaded",
+        `Uploaded health document "${file.name}" for ${memberName || "member"}`,
+        {
+          entityId: inserted?.id,
+          metadata: { document_type: docType, file_name: file.name, file_size: file.size, notes: docNotes || null },
+        },
+      );
       setFile(null);
       setDocNotes("");
       setShowUpload(false);
@@ -156,6 +216,20 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefre
       }
 
       toast.success("Health details saved");
+      void logHealthActivity(
+        "health_details_updated",
+        `${existing ? "Updated" : "Added"} health details for ${memberName || "member"}`,
+        {
+          entityId: existing?.id,
+          metadata: {
+            blood_group: healthForm.blood_group,
+            height_cm: healthForm.height_cm,
+            weight_kg: healthForm.weight_kg,
+            has_emergency_contact: !!healthForm.emergency_contact_name,
+            action: existing ? "update" : "create",
+          },
+        },
+      );
       setShowHealthForm(false);
       onRefresh();
     } catch (err: any) {

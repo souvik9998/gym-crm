@@ -72,7 +72,20 @@ export type StaffActivityType =
   | "event_deleted"
   | "event_registration_added"
   | "event_registration_updated"
-  | "event_registration_deleted";
+  | "event_registration_deleted"
+  // Assessments
+  | "assessment_saved"
+  | "assessment_finalized"
+  | "assessment_draft_saved"
+  | "assessment_deleted"
+  // Exercise plans
+  | "exercise_plan_created"
+  | "exercise_plan_replaced"
+  | "exercise_plan_deleted"
+  // Health files & details
+  | "health_details_updated"
+  | "health_document_uploaded"
+  | "health_document_deleted";
 
 interface LogStaffActivityParams {
   category: StaffActivityCategory;

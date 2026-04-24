@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Dumbbell, AlertTriangle, Scale, Repeat, Layers3 } from "lucide-react";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import type { ExercisePlan } from "./MemberHealthTab";
 
 interface ExerciseRegimeSectionProps {
@@ -56,6 +58,45 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
     { exercise_name: "", sets: 3, reps: "10", weight_value: "", weight_unit: "kg", notes: "" },
   ]);
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
+  const [memberName, setMemberName] = useState<string>("");
+
+  useEffect(() => {
+    if (!memberId) return;
+    supabase.from("members").select("name").eq("id", memberId).maybeSingle().then(({ data }) => {
+      if (data?.name) setMemberName(data.name);
+    });
+  }, [memberId]);
+
+  const logExercisePlanActivity = async (
+    activityType: "exercise_plan_created" | "exercise_plan_replaced" | "exercise_plan_deleted",
+    description: string,
+    extra: { entityId?: string; metadata?: Record<string, any> } = {},
+  ) => {
+    try {
+      const base = {
+        type: activityType as any,
+        description,
+        entityType: "exercise_plan",
+        entityId: extra.entityId,
+        entityName: memberName || "Member",
+        branchId,
+        metadata: { member_id: memberId, member_name: memberName, ...(extra.metadata || {}) },
+      };
+      if (isStaffLoggedIn && staffUser) {
+        await logStaffActivity({
+          ...base,
+          category: "members",
+          staffId: staffUser.id,
+          staffName: staffUser.fullName,
+          staffPhone: (staffUser as any).phone,
+        });
+      } else {
+        await logAdminActivity({ ...base, category: "members" });
+      }
+    } catch (err) {
+      console.warn("Exercise plan activity log failed", err);
+    }
+  };
 
   useEffect(() => {
     if (!showForm) return;
@@ -170,6 +211,7 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
     }
 
     setIsSaving(true);
+    const previousActivePlan = plans.find((p) => p.is_active);
     try {
       await supabase.from("member_exercise_plans").update({ is_active: false }).eq("member_id", memberId).eq("is_active", true);
 
@@ -204,6 +246,24 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
       if (exerciseError) throw exerciseError;
 
       toast.success("Exercise plan saved");
+      void logExercisePlanActivity(
+        previousActivePlan ? "exercise_plan_replaced" : "exercise_plan_created",
+        previousActivePlan
+          ? `Replaced exercise plan with "${planName}" for ${memberName || "member"}`
+          : `New exercise plan "${planName}" created for ${memberName || "member"}`,
+        {
+          entityId: plan.id,
+          metadata: {
+            plan_name: planName,
+            goal,
+            workout_split: workoutSplit,
+            created_by: createdBy,
+            exercise_count: validExercises.length,
+            replaced_plan_id: previousActivePlan?.id || null,
+            replaced_plan_name: previousActivePlan?.plan_name || null,
+          },
+        },
+      );
       setShowForm(false);
       setPlanName("");
       setCreatedBy("");
@@ -220,9 +280,22 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
     setDeletingId(planId);
     setConfirmDeleteId(null);
     try {
+      const target = plans.find((p) => p.id === planId);
       const { error } = await supabase.from("member_exercise_plans").delete().eq("id", planId);
       if (error) throw error;
       toast.success("Plan deleted");
+      void logExercisePlanActivity(
+        "exercise_plan_deleted",
+        `Exercise plan "${target?.plan_name || "Unnamed"}" deleted for ${memberName || "member"}`,
+        {
+          entityId: planId,
+          metadata: {
+            plan_name: target?.plan_name || null,
+            goal: target?.goal || null,
+            was_active: target?.is_active || false,
+          },
+        },
+      );
       await onRefresh();
     } catch (err: any) {
       toast.error("Error deleting plan", { description: err.message });

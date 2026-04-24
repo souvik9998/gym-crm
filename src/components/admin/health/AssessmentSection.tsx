@@ -12,6 +12,8 @@ import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle, Info, Maximize2, Minimize2, PanelTopOpen, FileEdit, CheckCircle2, Save } from "lucide-react";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import type { MemberAssessment } from "./MemberHealthTab";
 import { ASSESSMENT_SECTIONS, getAssessmentFieldMeta, getDefaultAssessmentSettings, getExerciseInputMode, isExerciseAssessmentSection, type AssessmentSettings, type CustomField, type ExerciseFieldValue, type ExerciseInputMode } from "@/components/admin/health/assessmentConfig";
 
@@ -54,8 +56,49 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   const hydratedOnOpenRef = useRef(false);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const formScrollRef = useRef<HTMLDivElement | null>(null);
+  const [memberName, setMemberName] = useState<string>("");
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
   const draftStorageKey = useMemo(() => `assessment-draft:${memberId}`, [memberId]);
+
+  // Fetch member name once for activity logs
+  useEffect(() => {
+    if (!memberId) return;
+    supabase.from("members").select("name").eq("id", memberId).maybeSingle().then(({ data }) => {
+      if (data?.name) setMemberName(data.name);
+    });
+  }, [memberId]);
+
+  // Unified activity logger — routes to admin or staff log
+  const logAssessmentActivity = async (
+    activityType: "assessment_saved" | "assessment_finalized" | "assessment_draft_saved" | "assessment_deleted",
+    description: string,
+    extra: { entityId?: string; metadata?: Record<string, any> } = {},
+  ) => {
+    try {
+      const base = {
+        type: activityType as any,
+        description,
+        entityType: "member_assessment",
+        entityId: extra.entityId,
+        entityName: memberName || "Member",
+        branchId,
+        metadata: { member_id: memberId, member_name: memberName, ...(extra.metadata || {}) },
+      };
+      if (isStaffLoggedIn && staffUser) {
+        await logStaffActivity({
+          ...base,
+          category: "members",
+          staffId: staffUser.id,
+          staffName: staffUser.fullName,
+          staffPhone: (staffUser as any).phone,
+        });
+      } else {
+        await logAdminActivity({ ...base, category: "members" });
+      }
+    } catch (err) {
+      console.warn("Assessment activity log failed", err);
+    }
+  };
 
   // Find the most recent draft for this member from props
   const existingDraft = useMemo(() => assessments.find((a) => a.is_draft), [assessments]);
@@ -431,9 +474,24 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     }
 
     setIsSaving(true);
+    const wasDraft = !!draftId;
     try {
       await persistAssessment(false);
-      toast.success(draftId ? "Draft finalized & saved" : "Assessment saved");
+      const savedId = draftIdRef.current;
+      toast.success(wasDraft ? "Draft finalized & saved" : "Assessment saved");
+      void logAssessmentActivity(
+        wasDraft ? "assessment_finalized" : "assessment_saved",
+        wasDraft
+          ? `Finalized assessment for ${memberName || "member"} (assessed by ${formData.assessed_by})`
+          : `New assessment saved for ${memberName || "member"} (assessed by ${formData.assessed_by})`,
+        {
+          entityId: savedId || undefined,
+          metadata: {
+            assessed_by: formData.assessed_by,
+            field_count: Object.keys(formData).filter((k) => k !== "assessed_by" && formData[k]).length,
+          },
+        },
+      );
       resetForm();
       setShowForm(false);
       setIsFormExpanded(false);
@@ -456,6 +514,17 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       await persistAssessment(true);
       setLastSavedAt(new Date());
       toast.success("Draft saved");
+      void logAssessmentActivity(
+        "assessment_draft_saved",
+        `Draft assessment saved for ${memberName || "member"}`,
+        {
+          entityId: draftIdRef.current || undefined,
+          metadata: {
+            assessed_by: formData.assessed_by || null,
+            trigger: closeAfter ? "save_and_close" : "save_draft",
+          },
+        },
+      );
       await onRefresh();
       if (closeAfter) {
         setShowForm(false);
@@ -482,6 +551,14 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       await persistAssessment(true);
       setLastSavedAt(new Date());
       toast.success("Draft auto-saved", { description: "Your progress is safe. Continue anytime." });
+      void logAssessmentActivity(
+        "assessment_draft_saved",
+        `Draft auto-saved for ${memberName || "member"} on close`,
+        {
+          entityId: draftIdRef.current || undefined,
+          metadata: { trigger: "auto_save_on_close" },
+        },
+      );
       await onRefresh();
     } catch (err: any) {
       toast.error("Couldn't auto-save draft", { description: err?.message });
@@ -495,9 +572,22 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     setDeletingId(id);
     setConfirmDeleteId(null);
     try {
+      const target = assessments.find((a) => a.id === id);
       const { error } = await supabase.from("member_assessments").delete().eq("id", id);
       if (error) throw error;
       toast.success("Assessment deleted");
+      void logAssessmentActivity(
+        "assessment_deleted",
+        `Assessment deleted for ${memberName || "member"}${target?.is_draft ? " (draft)" : ""}`,
+        {
+          entityId: id,
+          metadata: {
+            was_draft: target?.is_draft || false,
+            assessed_by: target?.assessed_by || null,
+            assessment_date: target?.assessment_date || null,
+          },
+        },
+      );
       await onRefresh();
     } catch (err: any) {
       toast.error("Error deleting assessment", { description: err.message });
