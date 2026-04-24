@@ -25,6 +25,8 @@ import { TrainerSlotsDialog } from "./TrainerSlotsDialog";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
+import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
+import { matchesTimeFilter, type TimeBucket } from "./timeSlotUtils";
 
 interface TimeSlot {
   id: string;
@@ -85,7 +87,9 @@ export const TimeSlotsTab = ({
   // Filters
   const [filterTrainer, setFilterTrainer] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "available" | "full" | "empty">("all");
-  const [filterTime, setFilterTime] = useState<"all" | "morning" | "afternoon" | "evening">("all");
+  const [filterTime, setFilterTime] = useState<TimeBucket>("all");
+  const [customStart, setCustomStart] = useState("06:00");
+  const [customEnd, setCustomEnd] = useState("10:00");
   const [filterRecurring, setFilterRecurring] = useState<"all" | "recurring" | "one_time">("all");
   const [search, setSearch] = useState("");
 
@@ -324,19 +328,14 @@ export const TimeSlotsTab = ({
       if (filterStatus === "empty" && filled !== 0) return false;
       if (filterRecurring === "recurring" && !s.is_recurring) return false;
       if (filterRecurring === "one_time" && s.is_recurring) return false;
-      if (filterTime !== "all") {
-        const startHour = parseInt(s.start_time.split(":")[0]);
-        if (filterTime === "morning" && (startHour < 5 || startHour >= 12)) return false;
-        if (filterTime === "afternoon" && (startHour < 12 || startHour >= 17)) return false;
-        if (filterTime === "evening" && (startHour < 17 || startHour >= 23)) return false;
-      }
+      if (!matchesTimeFilter(s.start_time, filterTime, customStart, customEnd)) return false;
       if (search) {
         const q = search.toLowerCase();
         if (!(s.trainer_name || "").toLowerCase().includes(q)) return false;
       }
       return true;
     });
-  }, [slots, filterTrainer, filterStatus, filterRecurring, filterTime, search]);
+  }, [slots, filterTrainer, filterStatus, filterRecurring, filterTime, customStart, customEnd, search]);
 
   // Group filtered slots by trainer for the per-trainer card view.
   // Each trainer becomes a single card listing all of their slots; clicking it
