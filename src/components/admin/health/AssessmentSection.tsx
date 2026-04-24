@@ -927,8 +927,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     // Compact (non-expanded) layout — flex column so the footer pins to the
     // bottom of the form area while the body scrolls independently.
     return (
-      <div className="flex max-h-[78vh] flex-col overflow-hidden rounded-xl border border-accent/20 bg-accent/5">
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 sm:p-3 lg:p-4 space-y-3">
+      <div className="flex max-h-[82vh] flex-col overflow-hidden rounded-xl border border-accent/20 bg-accent/5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-smooth p-3 sm:p-4 lg:p-5 space-y-3.5">
           <div className="rounded-lg border border-border/50 bg-background/80 p-2.5 sm:p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-2">
