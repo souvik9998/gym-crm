@@ -10,27 +10,39 @@ interface TimePicker12hProps {
   className?: string;
   placeholder?: string;
   disabled?: boolean;
-  /** Compact size, defaults to "sm" (h-9). Use "md" for h-10. */
   size?: "sm" | "md";
 }
 
 const HOURS_12 = Array.from({ length: 12 }, (_, i) => i + 1); // 1..12
 const MINUTES = Array.from({ length: 60 }, (_, i) => i); // 0..59
 const PERIODS = ["AM", "PM"] as const;
+type Period = (typeof PERIODS)[number];
 
-function parse24h(value: string): { hour12: number; minute: number; period: "AM" | "PM" } {
+const PRESETS: Array<{ label: string; value: string }> = [
+  { label: "6 AM", value: "06:00" },
+  { label: "9 AM", value: "09:00" },
+  { label: "12 PM", value: "12:00" },
+  { label: "4 PM", value: "16:00" },
+  { label: "6 PM", value: "18:00" },
+  { label: "9 PM", value: "21:00" },
+];
+
+const ITEM_HEIGHT = 40; // px per row in the wheel
+const VISIBLE_ROWS = 5; // odd number so center is highlighted
+
+function parse24h(value: string): { hour12: number; minute: number; period: Period } {
   if (!value || !/^\d{1,2}:\d{2}/.test(value)) {
     return { hour12: 6, minute: 0, period: "AM" };
   }
   const [hStr, mStr] = value.split(":");
   const h = Number(hStr);
   const m = Number(mStr);
-  const period: "AM" | "PM" = h >= 12 ? "PM" : "AM";
+  const period: Period = h >= 12 ? "PM" : "AM";
   const hour12 = h % 12 === 0 ? 12 : h % 12;
   return { hour12, minute: Math.max(0, Math.min(59, m || 0)), period };
 }
 
-function to24h(hour12: number, minute: number, period: "AM" | "PM"): string {
+function to24h(hour12: number, minute: number, period: Period): string {
   let h = hour12 % 12;
   if (period === "PM") h += 12;
   return `${String(h).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
@@ -42,37 +54,121 @@ function formatLabel(value: string): string {
   return `${hour12}:${String(minute).padStart(2, "0")} ${period}`;
 }
 
-/**
- * 12-hour AM/PM time picker with smooth scroll columns.
- * Emits values in 24h "HH:mm" format for compatibility with existing logic.
- */
+/** A snap-scroll wheel column. */
+interface WheelProps<T> {
+  items: T[];
+  value: T;
+  onChange: (next: T) => void;
+  format?: (item: T) => string;
+  ariaLabel: string;
+}
+
+function Wheel<T>({ items, value, onChange, format, ariaLabel }: WheelProps<T>) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const scrollTimer = React.useRef<number | null>(null);
+  const isProgrammatic = React.useRef(false);
+
+  const padCount = Math.floor(VISIBLE_ROWS / 2);
+  const selectedIndex = items.indexOf(value);
+
+  // Programmatically scroll to the selected item when value changes externally.
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el || selectedIndex < 0) return;
+    const target = selectedIndex * ITEM_HEIGHT;
+    if (Math.abs(el.scrollTop - target) < 1) return;
+    isProgrammatic.current = true;
+    el.scrollTo({ top: target, behavior: "smooth" });
+    // Clear flag after smooth scroll completes
+    window.setTimeout(() => {
+      isProgrammatic.current = false;
+    }, 350);
+  }, [selectedIndex]);
+
+  const handleScroll = () => {
+    if (isProgrammatic.current) return;
+    const el = containerRef.current;
+    if (!el) return;
+    if (scrollTimer.current) window.clearTimeout(scrollTimer.current);
+    scrollTimer.current = window.setTimeout(() => {
+      const idx = Math.round(el.scrollTop / ITEM_HEIGHT);
+      const clamped = Math.max(0, Math.min(items.length - 1, idx));
+      const target = clamped * ITEM_HEIGHT;
+      // snap
+      el.scrollTo({ top: target, behavior: "smooth" });
+      const next = items[clamped];
+      if (next !== value) onChange(next);
+    }, 80);
+  };
+
+  const handleItemClick = (item: T, idx: number) => {
+    onChange(item);
+    const el = containerRef.current;
+    if (el) {
+      isProgrammatic.current = true;
+      el.scrollTo({ top: idx * ITEM_HEIGHT, behavior: "smooth" });
+      window.setTimeout(() => {
+        isProgrammatic.current = false;
+      }, 350);
+    }
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      onScroll={handleScroll}
+      role="listbox"
+      aria-label={ariaLabel}
+      className={cn(
+        "relative flex-1 overflow-y-auto overscroll-contain",
+        "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+        "snap-y snap-mandatory scroll-smooth",
+      )}
+      style={{ height: ITEM_HEIGHT * VISIBLE_ROWS }}
+    >
+      {/* top spacer */}
+      <div style={{ height: ITEM_HEIGHT * padCount }} aria-hidden />
+
+      {items.map((item, idx) => {
+        const distance = Math.abs(idx - selectedIndex);
+        const isActive = idx === selectedIndex;
+        const opacity = isActive ? 1 : Math.max(0.25, 1 - distance * 0.28);
+        const scale = isActive ? 1 : Math.max(0.85, 1 - distance * 0.06);
+        return (
+          <button
+            key={String(item)}
+            type="button"
+            onClick={() => handleItemClick(item, idx)}
+            className={cn(
+              "flex w-full snap-center items-center justify-center text-base tabular-nums transition-[color,font-weight] duration-150",
+              isActive ? "font-semibold text-foreground" : "font-normal text-foreground",
+            )}
+            style={{
+              height: ITEM_HEIGHT,
+              opacity,
+              transform: `scale(${scale})`,
+              transition: "opacity 150ms ease, transform 150ms ease, color 150ms ease",
+            }}
+            aria-selected={isActive}
+            role="option"
+          >
+            {format ? format(item) : String(item)}
+          </button>
+        );
+      })}
+
+      {/* bottom spacer */}
+      <div style={{ height: ITEM_HEIGHT * padCount }} aria-hidden />
+    </div>
+  );
+}
+
 export const TimePicker12h = React.forwardRef<HTMLButtonElement, TimePicker12hProps>(
   ({ value, onChange, className, placeholder = "Select time", disabled, size = "sm" }, ref) => {
     const [open, setOpen] = React.useState(false);
     const { hour12, minute, period } = parse24h(value);
 
-    const hourRef = React.useRef<HTMLDivElement>(null);
-    const minuteRef = React.useRef<HTMLDivElement>(null);
-
-    const scrollIntoView = React.useCallback((container: HTMLDivElement | null, selector: string) => {
-      if (!container) return;
-      const el = container.querySelector<HTMLElement>(selector);
-      if (el) {
-        container.scrollTo({ top: el.offsetTop - 8, behavior: "smooth" });
-      }
-    }, []);
-
-    React.useEffect(() => {
-      if (!open) return;
-      // Defer to next frame so popover content is mounted
-      const id = requestAnimationFrame(() => {
-        scrollIntoView(hourRef.current, `[data-hour="${hour12}"]`);
-        scrollIntoView(minuteRef.current, `[data-minute="${minute}"]`);
-      });
-      return () => cancelAnimationFrame(id);
-    }, [open, hour12, minute, scrollIntoView]);
-
-    const update = (next: Partial<{ hour12: number; minute: number; period: "AM" | "PM" }>) => {
+    const update = (next: Partial<{ hour12: number; minute: number; period: Period }>) => {
       const merged = {
         hour12: next.hour12 ?? hour12,
         minute: next.minute ?? minute,
@@ -109,79 +205,103 @@ export const TimePicker12h = React.forwardRef<HTMLButtonElement, TimePicker12hPr
         <PopoverContent
           align="start"
           sideOffset={6}
-          className="w-[240px] p-0 overflow-hidden border-border/70 shadow-lg animate-in fade-in-0 zoom-in-95 duration-150"
+          className="w-[300px] p-0 overflow-hidden border-border/70 shadow-xl animate-in fade-in-0 zoom-in-95 duration-150"
         >
-          <div className="flex items-stretch divide-x divide-border/60">
-            {/* Hours */}
-            <ScrollColumn ref={hourRef} label="Hour">
-              {HOURS_12.map((h) => {
-                const active = h === hour12;
-                return (
-                  <ColumnItem
-                    key={h}
-                    active={active}
-                    data-hour={h}
-                    onClick={() => update({ hour12: h })}
-                  >
-                    {String(h).padStart(2, "0")}
-                  </ColumnItem>
-                );
-              })}
-            </ScrollColumn>
-
-            {/* Minutes */}
-            <ScrollColumn ref={minuteRef} label="Min">
-              {MINUTES.map((m) => {
-                const active = m === minute;
-                return (
-                  <ColumnItem
-                    key={m}
-                    active={active}
-                    data-minute={m}
-                    onClick={() => update({ minute: m })}
-                  >
-                    {String(m).padStart(2, "0")}
-                  </ColumnItem>
-                );
-              })}
-            </ScrollColumn>
-
-            {/* Period */}
-            <div className="flex flex-col">
-              <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                AM/PM
-              </div>
-              <div className="flex flex-1 flex-col gap-1 p-2">
-                {PERIODS.map((p) => {
-                  const active = p === period;
-                  return (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => update({ period: p })}
-                      className={cn(
-                        "rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
-                        "hover:bg-accent active:scale-[0.97]",
-                        active
-                          ? "bg-foreground text-background shadow-sm"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {p}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-muted/30 px-3 py-2">
-            <span className="text-xs text-muted-foreground tabular-nums">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-border/60 px-4 py-2.5">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Time
+            </span>
+            <span className="text-sm font-semibold tabular-nums text-foreground">
               {formatLabel(value)}
             </span>
+          </div>
+
+          {/* Wheels */}
+          <div className="relative px-2 pt-2">
+            {/* Center selection band */}
+            <div
+              className="pointer-events-none absolute inset-x-2 z-0 rounded-lg bg-muted/60"
+              style={{
+                top: `calc(50% - ${ITEM_HEIGHT / 2}px + 8px)`,
+                height: ITEM_HEIGHT,
+              }}
+              aria-hidden
+            />
+            {/* Top/bottom fade masks */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-8 bg-gradient-to-b from-popover to-transparent" aria-hidden />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-popover to-transparent" aria-hidden />
+
+            <div className="relative z-[5] flex items-stretch gap-1">
+              <Wheel
+                items={HOURS_12}
+                value={hour12}
+                onChange={(h) => update({ hour12: h })}
+                format={(n) => String(n).padStart(2, "0")}
+                ariaLabel="Hour"
+              />
+              <div
+                className="flex items-center justify-center text-base font-semibold text-foreground"
+                aria-hidden
+              >
+                :
+              </div>
+              <Wheel
+                items={[...MINUTES]}
+                value={minute}
+                onChange={(m) => update({ minute: m })}
+                format={(n) => String(n).padStart(2, "0")}
+                ariaLabel="Minute"
+              />
+              <Wheel
+                items={[...PERIODS]}
+                value={period}
+                onChange={(p) => update({ period: p })}
+                ariaLabel="AM or PM"
+              />
+            </div>
+          </div>
+
+          {/* Presets */}
+          <div className="border-t border-border/60 px-3 pt-2.5 pb-2">
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Presets
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {PRESETS.map((preset) => {
+                const active = value === preset.value;
+                return (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => onChange(preset.value)}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-xs font-medium transition-all duration-150 active:scale-95",
+                      active
+                        ? "border-foreground bg-foreground text-background shadow-sm"
+                        : "border-border bg-background text-foreground/80 hover:border-foreground/40 hover:bg-accent",
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-2 border-t border-border/60 bg-muted/30 px-3 py-2">
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-md bg-foreground px-3 py-1 text-xs font-medium text-background transition-all duration-150 hover:opacity-90 active:scale-[0.97]"
+              className="rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-md bg-foreground px-4 py-1.5 text-xs font-medium text-background transition-all duration-150 hover:opacity-90 active:scale-[0.97]"
             >
               Done
             </button>
@@ -192,41 +312,3 @@ export const TimePicker12h = React.forwardRef<HTMLButtonElement, TimePicker12hPr
   },
 );
 TimePicker12h.displayName = "TimePicker12h";
-
-const ScrollColumn = React.forwardRef<
-  HTMLDivElement,
-  { label: string; children: React.ReactNode }
->(({ label, children }, ref) => (
-  <div className="flex flex-1 flex-col">
-    <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-      {label}
-    </div>
-    <div
-      ref={ref}
-      className="h-[180px] overflow-y-auto scroll-smooth p-1.5 [scrollbar-width:thin]"
-    >
-      <div className="flex flex-col gap-0.5">{children}</div>
-    </div>
-  </div>
-));
-ScrollColumn.displayName = "ScrollColumn";
-
-interface ColumnItemProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  active?: boolean;
-}
-const ColumnItem = ({ active, className, children, ...props }: ColumnItemProps) => (
-  <button
-    type="button"
-    className={cn(
-      "rounded-md px-3 py-1.5 text-sm tabular-nums transition-all duration-150",
-      "hover:bg-accent active:scale-[0.97]",
-      active
-        ? "bg-foreground text-background shadow-sm"
-        : "text-foreground/80",
-      className,
-    )}
-    {...props}
-  >
-    {children}
-  </button>
-);
