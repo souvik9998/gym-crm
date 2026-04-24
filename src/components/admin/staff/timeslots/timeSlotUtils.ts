@@ -58,6 +58,33 @@ export function getTimeBucketForMinutes(minutes: number): Exclude<TimeBucket, "a
   return "night";
 }
 
+/** Returns the [startMinutes, endMinutes) range for a given preset bucket. */
+function getBucketRange(bucket: Exclude<TimeBucket, "all" | "custom">): [number, number] {
+  switch (bucket) {
+    case "morning":
+      return [300, 720]; // 5:00 AM – 12:00 PM
+    case "afternoon":
+      return [720, 1020]; // 12:00 PM – 5:00 PM
+    case "evening":
+      return [1020, 1260]; // 5:00 PM – 9:00 PM
+    case "night":
+      return [1260, 1740]; // 9:00 PM – 5:00 AM (next day, +24h on end)
+  }
+}
+
+/**
+ * True if [aStart, aEnd) overlaps [bStart, bEnd).
+ * Treats end-before-start as wrap-around (overnight).
+ */
+function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
+  // Normalize wrap-arounds by extending end past 24h when needed.
+  const aE = aEnd <= aStart ? aEnd + 1440 : aEnd;
+  const bE = bEnd <= bStart ? bEnd + 1440 : bEnd;
+  // Compare both as-is and shifted to catch overnight intersections.
+  return (aStart < bE && bStart < aE) ||
+    (aStart + 1440 < bE && bStart < aE + 1440);
+}
+
 export function getTimeBucketLabel(bucket: Exclude<TimeBucket, "all" | "custom">) {
   switch (bucket) {
     case "morning":
