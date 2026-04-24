@@ -26,7 +26,8 @@ import { AttendanceDatePicker } from "./AttendanceDatePicker";
 import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
 import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import { useMembersQuery } from "@/hooks/queries/useMembers";
-import { TIME_BUCKET_OPTIONS, formatTimeLabel, matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
+import { formatTimeLabel, matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
+import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
 
 type AttendanceStatus = "present" | "absent" | "skipped";
 
@@ -443,20 +444,7 @@ export const SlotAttendanceTab = () => {
             </div>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {TIME_BUCKET_OPTIONS.map((option) => (
-              <Button
-                key={option.value}
-                type="button"
-                variant={timeFilter === option.value ? "default" : "outline"}
-                size="sm"
-                className={getTimeFilterButtonClass(option.value)}
-                onClick={() => setTimeFilter(option.value)}
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
+          <TimeBucketChips value={timeFilter} onChange={setTimeFilter} />
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             <div className="space-y-1">
