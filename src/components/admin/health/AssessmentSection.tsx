@@ -54,6 +54,15 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   // Track whether the form has been opened in this mount cycle so we hydrate
   // exactly once on open and never again until it's closed + reopened.
   const hydratedOnOpenRef = useRef(false);
+  // Snapshot of formData taken at the moment of hydration. Used to detect
+  // whether the user actually modified anything before closing — if not, we
+  // must NOT auto-save (which would convert a finalized assessment back to
+  // a draft, or create a phantom draft from an unchanged record).
+  const originalSnapshotRef = useRef<string>("");
+  // Tracks whether the record being edited was already a finalized (non-draft)
+  // assessment. When true, autosave/unmount-save is suppressed unless the user
+  // makes real changes — preventing accidental draft downgrade.
+  const editingFinalizedRef = useRef(false);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const formScrollRef = useRef<HTMLDivElement | null>(null);
   const [memberName, setMemberName] = useState<string>("");
