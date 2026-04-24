@@ -816,8 +816,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
         {hasFields ? (
           <div className={expanded
-            ? "grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3"
-            : "grid grid-cols-1 gap-2 min-[560px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+            ? "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+            : "grid grid-cols-1 gap-2.5 min-[640px]:grid-cols-2 xl:grid-cols-3"
           }>
             {fields.map((field) => {
               const customField = config[section.key]?.custom_fields?.find((item) => item.key === field.key);
