@@ -23,10 +23,11 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
+import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
 import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
 import { useMembersQuery } from "@/hooks/queries/useMembers";
-import { TIME_BUCKET_OPTIONS, matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
+import { matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
 type AttendanceStatus = "present" | "absent" | "skipped";
 
@@ -190,17 +191,16 @@ export const SimpleAttendanceTab = () => {
   }, [allSlots, timeFilter, customStart, customEnd]);
 
   const filteredSlotIds = useMemo(() => timeFilteredSlots.map((slot) => slot.id), [timeFilteredSlots]);
+  const filteredSlotIdSet = useMemo(() => new Set(filteredSlotIds), [filteredSlotIds]);
 
   const trainerSlotIds = useMemo(() => {
     const scopedSlots = selectedTrainerId
       ? timeFilteredSlots.filter((slot) => slot.trainer_id === selectedTrainerId)
       : timeFilteredSlots;
 
-    if (!selectedTrainerId) return scopedSlots.map((slot) => slot.id);
-
-    return scopedSlots
-      .map((slot) => slot.id);
+    return scopedSlots.map((slot) => slot.id);
   }, [timeFilteredSlots, selectedTrainerId]);
+  const trainerSlotIdSet = useMemo(() => new Set(trainerSlotIds), [trainerSlotIds]);
 
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
   const isFutureDate = selectedDate > today;
@@ -242,16 +242,21 @@ export const SimpleAttendanceTab = () => {
         return false;
       }
 
-      // Specific slot filter: only members in that slot
+      const slotId = member.activePT?.time_slot_id;
+
+      // Specific slot filter: only members in that slot, but the slot must still
+      // belong to the current time/trainer filtered set.
       if (selectedSlotId) {
-        return member.activePT?.time_slot_id === selectedSlotId;
+        if (!slotId || slotId !== selectedSlotId) return false;
+        if (!filteredSlotIdSet.has(slotId)) return false;
+        if (selectedTrainerId && !trainerSlotIdSet.has(slotId)) return false;
+        return true;
       }
 
       if (selectedTrainerId || timeFilter !== "all") {
-        const slotId = member.activePT?.time_slot_id;
         if (!slotId) return false;
-        if (!filteredSlotIds.includes(slotId)) return false;
-        if (selectedTrainerId && !trainerSlotIds.includes(slotId)) return false;
+        if (!filteredSlotIdSet.has(slotId)) return false;
+        if (selectedTrainerId && !trainerSlotIdSet.has(slotId)) return false;
       }
 
       return true;
@@ -565,27 +570,13 @@ export const SimpleAttendanceTab = () => {
         <div className="w-px h-8 bg-border/60 shrink-0" />
 
         {/* Filters */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide rounded-lg border border-border/50 bg-background/70 px-1 py-1">
-            {TIME_BUCKET_OPTIONS.map((option) => {
-              const active = timeFilter === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setTimeFilter(option.value)}
-                  className={cn(
-                    "shrink-0 rounded-md px-2 py-1 text-[10px] font-medium transition-all duration-200",
-                    active
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
+        <div className="flex items-start gap-2 shrink-0">
+          <TimeBucketChips
+            value={timeFilter}
+            onChange={setTimeFilter}
+            compact
+            className="max-w-[640px]"
+          />
           <TrainerFilterDropdown
             value={selectedTrainerId}
             onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }}
@@ -739,26 +730,11 @@ export const SimpleAttendanceTab = () => {
           </Button>
         </div>
         <div className="flex flex-col gap-2">
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide rounded-xl border border-border/50 bg-background/70 p-1.5">
-            {TIME_BUCKET_OPTIONS.map((option) => {
-              const active = timeFilter === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setTimeFilter(option.value)}
-                    className={cn(
-                      "shrink-0 rounded-lg px-3 py-1.5 text-[10px] font-medium transition-all duration-200",
-                    active
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
+          <TimeBucketChips
+            value={timeFilter}
+            onChange={setTimeFilter}
+            className="w-full"
+          />
           <div className="grid grid-cols-2 gap-2">
             <TrainerFilterDropdown value={selectedTrainerId} onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }} compact />
             <TimeSlotFilterDropdown value={selectedSlotId} onChange={setSelectedSlotId} trainerFilter={selectedTrainerId} compact />
