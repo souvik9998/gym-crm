@@ -133,6 +133,7 @@ const TrainerSkeleton = () => (
 const PackageSelectionForm = ({ 
   isNewMember, 
   memberName, 
+  memberId,
   onSubmit, 
   onBack,
   isLoading,
