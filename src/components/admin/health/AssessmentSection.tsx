@@ -822,8 +822,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   return (
     <div className="space-y-3">
       {!showForm && existingDraft && (
-        <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-2.5">
-          <FileEdit className="h-4 w-4 text-amber-600 flex-shrink-0" />
+        <div className="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/5 p-2.5">
+          <FileEdit className="h-4 w-4 text-warning flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-foreground">Draft assessment in progress</p>
             <p className="text-[11px] text-muted-foreground truncate">Started {formatDate(existingDraft.assessment_date)} — pick up where you left off.</p>
