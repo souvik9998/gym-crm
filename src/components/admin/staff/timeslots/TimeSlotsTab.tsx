@@ -557,6 +557,29 @@ export const TimeSlotsTab = ({
             </Card>
           </div>
 
+          {/* Time-of-day chips */}
+          <div className="rounded-2xl border border-border/60 bg-card/60 p-3 lg:p-4 shadow-sm animate-fade-in">
+            <div className="flex items-center justify-between gap-2 mb-2.5">
+              <p className="text-xs font-medium text-foreground">Filter by time of day</p>
+              <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                Tap a chip to narrow slots — hover to see the exact window.
+              </span>
+            </div>
+            <TimeBucketChips value={filterTime} onChange={setFilterTime} />
+            {filterTime === "custom" && (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 sm:max-w-md">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Start</label>
+                  <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">End</label>
+                  <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 text-sm" />
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Filters */}
           <div className="flex flex-wrap gap-2 items-center animate-fade-in">
             <div className="relative flex-1 min-w-[200px]">
@@ -586,15 +609,6 @@ export const TimeSlotsTab = ({
                 <SelectItem value="available">Available</SelectItem>
                 <SelectItem value="full">Full</SelectItem>
                 <SelectItem value="empty">Empty</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterTime} onValueChange={(v) => setFilterTime(v as any)}>
-              <SelectTrigger className="h-9 w-auto min-w-[120px] text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Times</SelectItem>
-                <SelectItem value="morning">Morning (5–12)</SelectItem>
-                <SelectItem value="afternoon">Afternoon (12–17)</SelectItem>
-                <SelectItem value="evening">Evening (17–23)</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterRecurring} onValueChange={(v) => setFilterRecurring(v as any)}>
