@@ -285,9 +285,46 @@ export const AssignTrainerDialog = ({
     if (!startDate || !endDate || !monthlyFee) return 0;
     const start = new Date(startDate);
     const end = new Date(endDate);
+    if (isExtendMode) {
+      // Day-prorated billing (matches public ExtendPT). Uses inclusive day count.
+      const days = Math.max(
+        1,
+        Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+      );
+      const dailyRate = Number(monthlyFee) / 30;
+      return Math.ceil(dailyRate * days);
+    }
     const months = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30)));
     return months * Number(monthlyFee);
   };
+
+  // Memoised totals for extend-mode summary + coupon recalculation
+  const extendSubtotal = useMemo(() => (isExtendMode ? calculateTotalFee() : 0), [isExtendMode, startDate, endDate, monthlyFee]);
+  const extendTax = useMemo(
+    () => (isExtendMode && taxEnabled && taxRate > 0 ? Math.round((extendSubtotal * taxRate) / 100) : 0),
+    [isExtendMode, taxEnabled, taxRate, extendSubtotal],
+  );
+
+  // Coupon support — only meaningful in extend mode (admin assign/replace flows
+  // remain plain cash to avoid behaviour changes).
+  const coupon = useCouponValidation({
+    branchId,
+    isNewMember: false,
+    memberId,
+    subtotal: extendSubtotal + extendTax,
+    context: "pt_renewal",
+  });
+  const couponDiscount = isExtendMode ? coupon.appliedCoupon?.discountAmount || 0 : 0;
+  const extendTotal = Math.max(0, extendSubtotal + extendTax - couponDiscount);
+
+  // Recalculate coupon discount when fees/subtotal change so the displayed
+  // discount stays correct as admin tweaks dates or fees.
+  useEffect(() => {
+    if (isExtendMode && coupon.appliedCoupon) {
+      coupon.recalculateDiscount(extendSubtotal + extendTax);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extendSubtotal, extendTax]);
 
   const handleSubmit = async () => {
     if (!selectedTrainerId || !startDate || !endDate || !monthlyFee) {
