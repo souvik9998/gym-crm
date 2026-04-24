@@ -10,13 +10,22 @@ export interface TimeSlotLite {
   status?: string | null;
 }
 
-export const TIME_BUCKET_OPTIONS: Array<{ value: TimeBucket; label: string }> = [
-  { value: "all", label: "All times" },
-  { value: "morning", label: "Morning" },
-  { value: "afternoon", label: "Afternoon" },
-  { value: "evening", label: "Evening" },
-  { value: "night", label: "Night" },
-  { value: "custom", label: "Custom range" },
+export interface TimeBucketOption {
+  value: TimeBucket;
+  label: string;
+  /** Short human-readable time-window hint shown beneath the label. */
+  range: string;
+  /** Optional emoji to add visual personality to each chip. */
+  emoji: string;
+}
+
+export const TIME_BUCKET_OPTIONS: TimeBucketOption[] = [
+  { value: "all", label: "All times", range: "Any time of day", emoji: "🕘" },
+  { value: "morning", label: "Morning", range: "5:00 AM – 12:00 PM", emoji: "🌅" },
+  { value: "afternoon", label: "Afternoon", range: "12:00 PM – 5:00 PM", emoji: "☀️" },
+  { value: "evening", label: "Evening", range: "5:00 PM – 9:00 PM", emoji: "🌆" },
+  { value: "night", label: "Night", range: "9:00 PM – 5:00 AM", emoji: "🌙" },
+  { value: "custom", label: "Custom range", range: "Pick your own window", emoji: "🎯" },
 ];
 
 export const AVAILABILITY_OPTIONS: Array<{ value: SlotAvailability; label: string }> = [

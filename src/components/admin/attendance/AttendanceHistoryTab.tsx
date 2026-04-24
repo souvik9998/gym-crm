@@ -27,6 +27,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAttendanceFilters, formatSlotTime } from "@/hooks/queries/useAttendanceFilters";
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
+import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
+import { matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
 function getMonthDates(year: number, month: number): (string | null)[][] {
   const first = new Date(year, month, 1);
@@ -65,6 +67,9 @@ export const AttendanceHistoryTab = () => {
   const [activeView, setActiveView] = useState("calendar");
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [timeBucket, setTimeBucket] = useState<TimeBucket>("all");
+  const [customStart, setCustomStart] = useState("06:00");
+  const [customEnd, setCustomEnd] = useState("10:00");
   const [exportPeriod, setExportPeriod] = useState<"1w" | "1m" | "3m">("1m");
   const [isExporting, setIsExporting] = useState(false);
 
@@ -120,7 +125,7 @@ export const AttendanceHistoryTab = () => {
     enabled: !!branchId && (assignedMemberIds === null || assignedMemberIds !== undefined),
   });
 
-  // Filter records by selected trainer/slot
+  // Filter records by selected trainer/slot/time-of-day bucket
   const monthRecords = useMemo(() => {
     let records = rawMonthRecords;
     if (selectedSlotId) {
@@ -129,8 +134,16 @@ export const AttendanceHistoryTab = () => {
       const trainerSlotIds = new Set(allSlots.filter(s => s.trainer_id === selectedTrainerId).map(s => s.id));
       records = records.filter((r: any) => r.time_slot_id && trainerSlotIds.has(r.time_slot_id));
     }
+    if (timeBucket !== "all") {
+      const bucketSlotIds = new Set(
+        allSlots
+          .filter((s) => matchesTimeFilter(s.start_time, timeBucket, customStart, customEnd))
+          .map((s) => s.id),
+      );
+      records = records.filter((r: any) => r.time_slot_id && bucketSlotIds.has(r.time_slot_id));
+    }
     return records;
-  }, [rawMonthRecords, selectedSlotId, selectedTrainerId, allSlots]);
+  }, [rawMonthRecords, selectedSlotId, selectedTrainerId, allSlots, timeBucket, customStart, customEnd]);
 
   const daySummary = useMemo(() => {
     const map: Record<string, { present: number; skipped: number; absent: number; total: number }> = {};
@@ -267,6 +280,14 @@ export const AttendanceHistoryTab = () => {
         const trainerSlotIds = new Set(allSlots.filter((s) => s.trainer_id === selectedTrainerId).map((s) => s.id));
         exportRecords = exportRecords.filter((r: any) => r.time_slot_id && trainerSlotIds.has(r.time_slot_id));
       }
+      if (timeBucket !== "all") {
+        const bucketSlotIds = new Set(
+          allSlots
+            .filter((s) => matchesTimeFilter(s.start_time, timeBucket, customStart, customEnd))
+            .map((s) => s.id),
+        );
+        exportRecords = exportRecords.filter((r: any) => r.time_slot_id && bucketSlotIds.has(r.time_slot_id));
+      }
 
       if (exportRecords.length === 0) {
         toast.error("No attendance data", {
@@ -387,6 +408,37 @@ export const AttendanceHistoryTab = () => {
             </Button>
           </div>
         </div>
+      </div>
+
+      {/* Time-of-day chips */}
+      <div className="rounded-2xl border border-border/50 bg-card/60 p-3 lg:p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-2 mb-2.5">
+          <p className="text-xs font-medium text-foreground">Filter by time of day</p>
+          {timeBucket !== "all" && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 rounded-full px-2.5 text-[11px]"
+              onClick={() => setTimeBucket("all")}
+            >
+              Reset
+            </Button>
+          )}
+        </div>
+        <TimeBucketChips value={timeBucket} onChange={setTimeBucket} compact />
+        {timeBucket === "custom" && (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 sm:max-w-md">
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Start</label>
+              <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">End</label>
+              <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 text-sm" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Trainer & Slot Filters */}

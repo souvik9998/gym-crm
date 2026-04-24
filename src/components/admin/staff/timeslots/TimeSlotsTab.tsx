@@ -25,6 +25,8 @@ import { TrainerSlotsDialog } from "./TrainerSlotsDialog";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
+import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
+import { matchesTimeFilter, type TimeBucket } from "./timeSlotUtils";
 
 interface TimeSlot {
   id: string;
@@ -85,7 +87,9 @@ export const TimeSlotsTab = ({
   // Filters
   const [filterTrainer, setFilterTrainer] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "available" | "full" | "empty">("all");
-  const [filterTime, setFilterTime] = useState<"all" | "morning" | "afternoon" | "evening">("all");
+  const [filterTime, setFilterTime] = useState<TimeBucket>("all");
+  const [customStart, setCustomStart] = useState("06:00");
+  const [customEnd, setCustomEnd] = useState("10:00");
   const [filterRecurring, setFilterRecurring] = useState<"all" | "recurring" | "one_time">("all");
   const [search, setSearch] = useState("");
 
@@ -324,19 +328,14 @@ export const TimeSlotsTab = ({
       if (filterStatus === "empty" && filled !== 0) return false;
       if (filterRecurring === "recurring" && !s.is_recurring) return false;
       if (filterRecurring === "one_time" && s.is_recurring) return false;
-      if (filterTime !== "all") {
-        const startHour = parseInt(s.start_time.split(":")[0]);
-        if (filterTime === "morning" && (startHour < 5 || startHour >= 12)) return false;
-        if (filterTime === "afternoon" && (startHour < 12 || startHour >= 17)) return false;
-        if (filterTime === "evening" && (startHour < 17 || startHour >= 23)) return false;
-      }
+      if (!matchesTimeFilter(s.start_time, filterTime, customStart, customEnd)) return false;
       if (search) {
         const q = search.toLowerCase();
         if (!(s.trainer_name || "").toLowerCase().includes(q)) return false;
       }
       return true;
     });
-  }, [slots, filterTrainer, filterStatus, filterRecurring, filterTime, search]);
+  }, [slots, filterTrainer, filterStatus, filterRecurring, filterTime, customStart, customEnd, search]);
 
   // Group filtered slots by trainer for the per-trainer card view.
   // Each trainer becomes a single card listing all of their slots; clicking it
@@ -558,6 +557,29 @@ export const TimeSlotsTab = ({
             </Card>
           </div>
 
+          {/* Time-of-day chips */}
+          <div className="rounded-2xl border border-border/60 bg-card/60 p-3 lg:p-4 shadow-sm animate-fade-in">
+            <div className="flex items-center justify-between gap-2 mb-2.5">
+              <p className="text-xs font-medium text-foreground">Filter by time of day</p>
+              <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                Tap a chip to narrow slots — hover to see the exact window.
+              </span>
+            </div>
+            <TimeBucketChips value={filterTime} onChange={setFilterTime} />
+            {filterTime === "custom" && (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 sm:max-w-md">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Start</label>
+                  <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">End</label>
+                  <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 text-sm" />
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Filters */}
           <div className="flex flex-wrap gap-2 items-center animate-fade-in">
             <div className="relative flex-1 min-w-[200px]">
@@ -587,15 +609,6 @@ export const TimeSlotsTab = ({
                 <SelectItem value="available">Available</SelectItem>
                 <SelectItem value="full">Full</SelectItem>
                 <SelectItem value="empty">Empty</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterTime} onValueChange={(v) => setFilterTime(v as any)}>
-              <SelectTrigger className="h-9 w-auto min-w-[120px] text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Times</SelectItem>
-                <SelectItem value="morning">Morning (5–12)</SelectItem>
-                <SelectItem value="afternoon">Afternoon (12–17)</SelectItem>
-                <SelectItem value="evening">Evening (17–23)</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterRecurring} onValueChange={(v) => setFilterRecurring(v as any)}>

@@ -26,7 +26,8 @@ import { AttendanceDatePicker } from "./AttendanceDatePicker";
 import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
 import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import { useMembersQuery } from "@/hooks/queries/useMembers";
-import { TIME_BUCKET_OPTIONS, formatTimeLabel, matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
+import { formatTimeLabel, matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
+import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
 
 type AttendanceStatus = "present" | "absent" | "skipped";
 
@@ -331,28 +332,6 @@ export const SlotAttendanceTab = () => {
     }
   }, [isFutureDate, branchId, filteredList, selectedDate, staffUser?.id, isStaffLoggedIn, queryClient]);
 
-  const getTimeFilterButtonClass = (option: TimeBucket) => {
-    if (timeFilter !== option) {
-      return "shrink-0 border-border/70 bg-background/70 text-muted-foreground backdrop-blur-sm hover:border-primary/30 hover:bg-primary/5 hover:text-foreground";
-    }
-
-    switch (option) {
-      case "morning":
-        return "shrink-0 border-warning/35 bg-warning/12 text-foreground shadow-sm backdrop-blur-sm hover:bg-warning/18";
-      case "afternoon":
-        return "shrink-0 border-accent/35 bg-accent/12 text-foreground shadow-sm backdrop-blur-sm hover:bg-accent/18";
-      case "evening":
-        return "shrink-0 border-primary/35 bg-primary/12 text-foreground shadow-sm backdrop-blur-sm hover:bg-primary/18";
-      case "night":
-        return "shrink-0 border-secondary/70 bg-secondary text-secondary-foreground shadow-sm backdrop-blur-sm hover:bg-secondary/90";
-      case "custom":
-        return "shrink-0 border-success/35 bg-success/12 text-foreground shadow-sm backdrop-blur-sm hover:bg-success/18";
-      case "all":
-      default:
-        return "shrink-0 border-primary/35 bg-primary text-primary-foreground shadow-sm backdrop-blur-sm hover:bg-primary/90";
-    }
-  };
-
   const isLoading = loadingMembers || loadingRecords;
 
   const MobileMemberCard = ({ member, idx }: { member: AttendanceMemberRow; idx: number }) => (
@@ -443,20 +422,7 @@ export const SlotAttendanceTab = () => {
             </div>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {TIME_BUCKET_OPTIONS.map((option) => (
-              <Button
-                key={option.value}
-                type="button"
-                variant={timeFilter === option.value ? "default" : "outline"}
-                size="sm"
-                className={getTimeFilterButtonClass(option.value)}
-                onClick={() => setTimeFilter(option.value)}
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
+          <TimeBucketChips value={timeFilter} onChange={setTimeFilter} />
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             <div className="space-y-1">
