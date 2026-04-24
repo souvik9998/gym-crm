@@ -780,11 +780,13 @@ export const AssignTrainerDialog = ({
                     {/* Coupon input — extend-mode only (mirrors public PT renewal flow) */}
                     <div className="animate-fade-in" style={{ animationDelay: "175ms", animationFillMode: "backwards" }}>
                       <CouponInput
-                        appliedCoupon={coupon.appliedCoupon}
-                        availableCoupons={coupon.availableCoupons}
-                        onApply={coupon.applyCoupon}
+                        couponCode={coupon.couponCode}
+                        onCouponCodeChange={coupon.setCouponCode}
+                        onApply={coupon.validateCoupon}
                         onRemove={coupon.removeCoupon}
                         isValidating={coupon.isValidating}
+                        appliedCoupon={coupon.appliedCoupon}
+                        error={coupon.couponError || null}
                       />
                     </div>
 
