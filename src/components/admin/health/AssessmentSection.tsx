@@ -585,25 +585,25 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
         );
       }
 
-      if (inputType === "textarea") {
+    if (inputType === "textarea") {
         return (
           <Textarea
             value={formData[fieldKey] || ""}
             onChange={(e) => updateField(fieldKey, e.target.value)}
             placeholder={placeholder}
-            className="mt-1 min-h-[96px] resize-y text-sm leading-5"
+            className="mt-1.5 min-h-[88px] w-full resize-y text-sm leading-5"
           />
         );
       }
 
       return (
-        <div className="relative mt-1">
+        <div className="relative mt-1.5">
           <Input
             type={inputType === "number" ? "number" : "text"}
             value={formData[fieldKey] || ""}
             onChange={(e) => updateField(fieldKey, e.target.value)}
             placeholder={placeholder}
-            className={unit ? "h-10 pr-14 text-sm" : "h-10 text-sm"}
+            className={unit ? "h-10 w-full pr-12 text-sm" : "h-10 w-full text-sm"}
           />
           {unit && (
             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-muted-foreground">
@@ -614,14 +614,19 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       );
     })();
 
+    const isWide = inputType === "textarea";
+
     return (
-      <div key={fieldKey} className="rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Label className="text-xs font-medium text-foreground">{label}</Label>
+      <div
+        key={fieldKey}
+        className={`flex min-w-0 flex-col rounded-lg border border-border/50 bg-background/90 p-3 ${isWide ? "sm:col-span-2 xl:col-span-2" : ""}`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Label className="text-xs font-medium leading-tight text-foreground">{label}</Label>
           {unit && <Badge variant="outline" className="h-5 rounded-md px-1.5 text-[10px]">{unit}</Badge>}
         </div>
         {fieldControl}
-        {helpText && <p className="mt-2 text-[11px] text-muted-foreground">{helpText}</p>}
+        {helpText && <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">{helpText}</p>}
       </div>
     );
   };
