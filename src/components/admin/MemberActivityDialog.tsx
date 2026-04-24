@@ -1147,6 +1147,22 @@ export const MemberActivityDialog = ({
                 </Button>
               </div>
             )}
+
+            {activeTab === "pt" && member && activePT && (
+              <div className="sticky bottom-0 z-20 -mx-5 mt-3 border-t border-border/60 bg-background/95 px-5 pb-1 pt-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
+                <Button
+                  className="h-11 w-full gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 ring-1 ring-primary/20 transition-all duration-200 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setAssignMode("extend");
+                    setShowAssignTrainer(true);
+                  }}
+                >
+                  <Dumbbell className="h-4 w-4" />
+                  Extend PT
+                </Button>
+              </div>
+            )}
           </Tabs>
         )}
 
