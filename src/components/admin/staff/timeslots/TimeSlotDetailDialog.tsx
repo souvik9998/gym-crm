@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TimePicker12h } from "@/components/ui/time-picker-12h";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -860,11 +861,11 @@ export const TimeSlotDetailDialog = ({
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Start Time</Label>
-                    <Input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} className="h-9 text-sm" />
+                    <TimePicker12h value={editStartTime} onChange={setEditStartTime} />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">End Time</Label>
-                    <Input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} className="h-9 text-sm" />
+                    <TimePicker12h value={editEndTime} onChange={setEditEndTime} />
                   </div>
                 </div>
                 <div className="space-y-1.5">

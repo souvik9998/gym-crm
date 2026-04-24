@@ -28,6 +28,7 @@ import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
 import { useMembersQuery } from "@/hooks/queries/useMembers";
 import { matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
+import { TimePicker12h } from "@/components/ui/time-picker-12h";
 
 type AttendanceStatus = "present" | "absent" | "skipped";
 
@@ -592,11 +593,11 @@ export const SimpleAttendanceTab = () => {
         <div className="hidden lg:grid gap-3 rounded-xl border border-border/50 bg-card/60 p-3 sm:grid-cols-2 lg:max-w-md animate-fade-in">
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">Start time</label>
-            <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 text-sm" />
+            <TimePicker12h value={customStart} onChange={setCustomStart} />
           </div>
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">End time</label>
-            <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 text-sm" />
+            <TimePicker12h value={customEnd} onChange={setCustomEnd} />
           </div>
         </div>
       )}
@@ -742,11 +743,11 @@ export const SimpleAttendanceTab = () => {
             <div className="grid gap-2 rounded-xl border border-border/50 bg-card/60 p-3 sm:grid-cols-2 animate-fade-in">
               <div className="space-y-1">
                 <label className="text-[11px] font-medium text-muted-foreground">Start time</label>
-                <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 text-sm" />
+                <TimePicker12h value={customStart} onChange={setCustomStart} />
               </div>
               <div className="space-y-1">
                 <label className="text-[11px] font-medium text-muted-foreground">End time</label>
-                <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 text-sm" />
+                <TimePicker12h value={customEnd} onChange={setCustomEnd} />
               </div>
             </div>
           )}
