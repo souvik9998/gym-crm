@@ -92,6 +92,7 @@ export type ActivityType =
   // PT Assignment
   | "pt_assigned"
   | "pt_replaced"
+  | "pt_extended"
   | "pt_whatsapp_sent"
   // Events
   | "event_created"
