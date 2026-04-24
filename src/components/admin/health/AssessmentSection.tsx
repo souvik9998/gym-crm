@@ -604,6 +604,14 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       setIsFormExpanded(false);
       return;
     }
+    // Editing a finalized assessment but the user didn't change anything —
+    // close silently without writing a draft (which would downgrade the
+    // saved record's status).
+    if (editingFinalizedRef.current && !hasUserChanges(formData)) {
+      setShowForm(false);
+      setIsFormExpanded(false);
+      return;
+    }
     try {
       await persistAssessment(true);
       setLastSavedAt(new Date());
