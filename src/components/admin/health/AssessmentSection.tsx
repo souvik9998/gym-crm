@@ -103,7 +103,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showForm, existingDraft?.id]);
 
-  // Auto-save to localStorage as user types
+  // Auto-save to localStorage as user types (instant, synchronous safety net)
   useEffect(() => {
     if (!showForm) return;
     const hasContent = Object.entries(formData).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
@@ -112,6 +112,51 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       localStorage.setItem(draftStorageKey, JSON.stringify(formData));
     } catch {}
   }, [formData, showForm, draftStorageKey]);
+
+  // Always-fresh refs so unmount/cleanup logic can read latest values without
+  // re-creating the cleanup effect on every keystroke (which would mean the
+  // cleanup runs on every render and never on real unmount).
+  const formDataRef = useRef(formData);
+  const draftIdRef = useRef(draftId);
+  const showFormRef = useRef(showForm);
+  useEffect(() => { formDataRef.current = formData; }, [formData]);
+  useEffect(() => { draftIdRef.current = draftId; }, [draftId]);
+  useEffect(() => { showFormRef.current = showForm; }, [showForm]);
+
+  // Debounced silent auto-save to DB. Persists every ~1.2s of inactivity so
+  // the user's typed values survive even when the parent dialog is closed
+  // before they hit "Save Draft".
+  useEffect(() => {
+    if (!showForm) return;
+    const hasContent = Object.entries(formData).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
+    if (!hasContent) return;
+    const timer = window.setTimeout(() => {
+      // Fire-and-forget; UI feedback is intentionally absent for autosave.
+      persistAssessment(true).then(() => {
+        setLastSavedAt(new Date());
+      }).catch((err) => {
+        console.warn("Assessment autosave failed", err);
+      });
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [formData, showForm]);
+
+  // On unmount (e.g., parent dialog closed via outer X), best-effort persist
+  // any unsaved input so the user's data is never lost.
+  useEffect(() => {
+    return () => {
+      if (!showFormRef.current) return;
+      const fd = formDataRef.current;
+      const hasContent = Object.entries(fd).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
+      if (!hasContent) return;
+      // Snapshot to localStorage immediately (synchronous safety net)
+      try { localStorage.setItem(draftStorageKey, JSON.stringify(fd)); } catch {}
+      // Fire async DB save. The promise will resolve even after this component
+      // has unmounted because supabase-js doesn't tie requests to React lifecycle.
+      void persistAssessmentSnapshot(fd, draftIdRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Warn the user before unloading if they have unsaved changes in the form,
   // and persist the latest snapshot to localStorage as a safety net.
