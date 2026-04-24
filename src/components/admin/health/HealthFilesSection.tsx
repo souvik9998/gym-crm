@@ -132,6 +132,14 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, branchI
       const { error } = await supabase.from("member_documents").delete().eq("id", doc.id);
       if (error) throw error;
       toast.success("Document deleted");
+      void logHealthActivity(
+        "health_document_deleted",
+        `Deleted health document "${doc.file_name}" for ${memberName || "member"}`,
+        {
+          entityId: doc.id,
+          metadata: { document_type: doc.document_type, file_name: doc.file_name, file_size: doc.file_size },
+        },
+      );
       onRefresh();
     } catch (err: any) {
       toast.error("Error deleting document", { description: err.message });
@@ -150,17 +158,25 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, branchI
       const { error: storageError } = await supabase.storage.from("member-documents").upload(path, file);
       if (storageError) throw storageError;
 
-      const { error: dbError } = await supabase.from("member_documents").insert({
+      const { data: inserted, error: dbError } = await supabase.from("member_documents").insert({
         member_id: memberId,
         document_type: docType,
         file_name: file.name,
         file_url: path,
         file_size: file.size,
         uploaded_by: docNotes || "Admin",
-      });
+      }).select("id").single();
       if (dbError) throw dbError;
 
       toast.success("Document uploaded");
+      void logHealthActivity(
+        "health_document_uploaded",
+        `Uploaded health document "${file.name}" for ${memberName || "member"}`,
+        {
+          entityId: inserted?.id,
+          metadata: { document_type: docType, file_name: file.name, file_size: file.size, notes: docNotes || null },
+        },
+      );
       setFile(null);
       setDocNotes("");
       setShowUpload(false);
@@ -200,6 +216,20 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, branchI
       }
 
       toast.success("Health details saved");
+      void logHealthActivity(
+        "health_details_updated",
+        `${existing ? "Updated" : "Added"} health details for ${memberName || "member"}`,
+        {
+          entityId: existing?.id,
+          metadata: {
+            blood_group: healthForm.blood_group,
+            height_cm: healthForm.height_cm,
+            weight_kg: healthForm.weight_kg,
+            has_emergency_contact: !!healthForm.emergency_contact_name,
+            action: existing ? "update" : "create",
+          },
+        },
+      );
       setShowHealthForm(false);
       onRefresh();
     } catch (err: any) {
