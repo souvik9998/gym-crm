@@ -738,7 +738,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => setIsFormExpanded(false)}
+                onClick={() => autoSaveDraftAndClose()}
+                disabled={isSaving || isSavingDraft}
                 className="h-8 rounded-lg px-2.5 text-[11px]"
               >
                 <Minimize2 className="h-3.5 w-3.5" />
