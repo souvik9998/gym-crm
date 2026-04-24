@@ -94,6 +94,21 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     } catch {}
   }, [formData, showForm, draftStorageKey]);
 
+  // Warn the user before unloading if they have unsaved changes in the form,
+  // and persist the latest snapshot to localStorage as a safety net.
+  useEffect(() => {
+    if (!showForm) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      const hasContent = Object.entries(formData).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
+      if (!hasContent) return;
+      try { localStorage.setItem(draftStorageKey, JSON.stringify(formData)); } catch {}
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [showForm, formData, draftStorageKey]);
+
   useEffect(() => {
     if (!showForm || assessorOptions.length === 0) return;
 
