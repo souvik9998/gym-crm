@@ -491,10 +491,11 @@ export const AssignTrainerDialog = ({
       try {
         const trainerForLedger = trainers.find(t => t.id === selectedTrainerId);
         const trainerLabel = trainerForLedger?.name || "Trainer";
+        const ledgerLabel = isExtendMode ? "PT extension" : "PT subscription";
         await createMembershipIncomeEntry(
-          totalFee,
+          paymentAmount,
           "pt_subscription",
-          `PT subscription — ${trainerLabel}${memberName ? ` for ${memberName}` : ""}`,
+          `${ledgerLabel} — ${trainerLabel}${memberName ? ` for ${memberName}` : ""}`,
           memberId,
           undefined,
           undefined,
@@ -502,7 +503,7 @@ export const AssignTrainerDialog = ({
         );
         await calculateTrainerPercentageExpense(
           selectedTrainerId,
-          totalFee,
+          grossFee,
           memberId,
           undefined,
           insertedPt?.id,
