@@ -1035,31 +1035,31 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     // bottom of the form area while the body scrolls independently.
     return (
       <div className="relative flex flex-col rounded-xl border border-accent/20 bg-accent/5">
-        {/* Sticky top action bar — keeps Save / Save Draft / Close in reach without scrolling */}
-        <div className="sticky top-0 z-20 -mx-px flex items-center gap-2 border-b border-border/40 bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/85 rounded-t-xl shadow-[0_4px_12px_-6px_hsl(var(--foreground)/0.08)]">
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => setIsFormExpanded(true)}
-            className="h-8 rounded-lg px-2 text-[11px] shrink-0"
-          >
-            <Maximize2 className="h-3.5 w-3.5" />
-            <span className="ml-1 hidden sm:inline">Enlarge</span>
-          </Button>
-          <div className="flex-1 min-w-0">
-            <SaveActions expanded={false} />
-          </div>
+        {/* Sticky top action bar — Save / Save Draft / Close always reachable */}
+        <div className="sticky top-0 z-20 -mx-px border-b border-border/40 bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/85 rounded-t-xl shadow-[0_4px_12px_-6px_hsl(var(--foreground)/0.08)]">
+          <SaveActions expanded={false} />
         </div>
 
         <div className="p-3 sm:p-4 lg:p-5 space-y-3.5">
           <div className="rounded-lg border border-border/50 bg-background/80 p-2.5 sm:p-3">
-            <div className="flex items-start gap-2">
-              <Info className="mt-0.5 h-4 w-4 text-accent shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-foreground">{draftId ? "Continuing draft" : "Assessment form"}</p>
-                <p className="text-xs text-muted-foreground">Drafts auto-save as you type. Open the large view for a side-by-side layout.</p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2 min-w-0">
+                <Info className="mt-0.5 h-4 w-4 text-accent shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{draftId ? "Continuing draft" : "Assessment form"}</p>
+                  <p className="text-xs text-muted-foreground">Drafts auto-save as you type. Open the large view for a side-by-side layout.</p>
+                </div>
               </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsFormExpanded(true)}
+                className="h-8 rounded-lg px-2.5 text-[11px] shrink-0"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+                <span className="ml-1">Enlarge</span>
+              </Button>
             </div>
           </div>
 
