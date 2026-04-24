@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle, Info, Maximize2, Minimize2, PanelTopOpen, FileEdit, CheckCircle2, Save } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle, Info, Maximize2, Minimize2, PanelTopOpen, FileEdit, CheckCircle2, Save, X } from "lucide-react";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
@@ -811,55 +811,58 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   };
 
   const SaveActions = ({ expanded }: { expanded: boolean }) => (
-    <div className="flex w-full items-center gap-2 sm:gap-3 overflow-x-auto sm:overflow-visible">
-      <div className="flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground">
-        {draftId && (
-          <Badge variant="secondary" className="gap-1 rounded-md text-[10px] whitespace-nowrap">
-            <FileEdit className="h-3 w-3" /> Editing draft
-          </Badge>
-        )}
-        {lastSavedAt && (
-          <span className="whitespace-nowrap hidden sm:inline">
-            Saved {lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </span>
-        )}
-      </div>
-      <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            // Auto-draft on close so accidental exits don't lose work.
-            autoSaveDraftAndClose();
-          }}
-          className="h-8 rounded-lg px-2.5 text-xs"
-          disabled={isSaving || isSavingDraft}
-        >
-          {expanded ? "Exit" : "Close"}
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => handleSaveDraft(false)}
-          disabled={isSavingDraft || isSaving}
-          className="h-8 rounded-lg px-2.5 text-xs whitespace-nowrap"
-        >
-          {isSavingDraft ? <ButtonSpinner /> : <Save className="h-3.5 w-3.5" />}
-          <span className="ml-1.5">Save Draft</span>
-        </Button>
-        <Button
-          size="sm"
-          onClick={handleSave}
-          disabled={isSaving || isSavingDraft}
-          className="h-8 rounded-lg px-2.5 text-xs whitespace-nowrap"
-        >
-          {isSaving ? (
-            <><ButtonSpinner /> Saving</>
-          ) : (
-            <><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Save Assessment</>
+    <div className="flex w-full flex-col gap-1">
+      {/* Single horizontal action row — left meta, right buttons */}
+      <div className="flex w-full items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {draftId && (
+            <Badge variant="secondary" className="gap-1 rounded-md text-[10px] whitespace-nowrap shrink-0">
+              <FileEdit className="h-3 w-3" /> Editing draft
+            </Badge>
           )}
-        </Button>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => autoSaveDraftAndClose()}
+            className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground"
+            disabled={isSaving || isSavingDraft}
+            aria-label={expanded ? "Exit" : "Close"}
+            title={expanded ? "Exit" : "Close"}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleSaveDraft(false)}
+            disabled={isSavingDraft || isSaving}
+            className="h-8 rounded-lg px-2.5 text-xs whitespace-nowrap"
+          >
+            {isSavingDraft ? <ButtonSpinner /> : <Save className="h-3.5 w-3.5" />}
+            <span className="ml-1.5">Save Draft</span>
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving || isSavingDraft}
+            className="h-8 rounded-lg px-2.5 text-xs whitespace-nowrap"
+          >
+            {isSaving ? (
+              <><ButtonSpinner /> Saving</>
+            ) : (
+              <><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Save Assessment</>
+            )}
+          </Button>
+        </div>
       </div>
+      {/* Timestamp row — sits below so it never crowds the buttons */}
+      {lastSavedAt && (
+        <p className="text-[10px] text-muted-foreground leading-none pl-0.5">
+          Saved {lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </p>
+      )}
     </div>
   );
 
