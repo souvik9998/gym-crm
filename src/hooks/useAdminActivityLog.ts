@@ -103,6 +103,18 @@ export type ActivityType =
   | "event_registration_deleted"
   // Assessment
   | "assessment_fields_updated"
+  | "assessment_saved"
+  | "assessment_finalized"
+  | "assessment_draft_saved"
+  | "assessment_deleted"
+  // Exercise plans
+  | "exercise_plan_created"
+  | "exercise_plan_replaced"
+  | "exercise_plan_deleted"
+  // Health files & details
+  | "health_details_updated"
+  | "health_document_uploaded"
+  | "health_document_deleted"
   // Role Conversion
   | "staff_role_converted";
 
