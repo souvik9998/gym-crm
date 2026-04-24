@@ -346,6 +346,9 @@ export const AssignTrainerDialog = ({
 
     setIsLoading(true);
     try {
+      // Replace mode → deactivate the old PT subscription and clean its time slot.
+      // Extend mode → preserve the existing PT subscription (it is still active
+      // until its own end_date). The new row simply starts the day after.
       if (mode === "replace" && existingPtId) {
         // 1. Deactivate the old PT subscription AND clear its time_slot_id so
         //    the slot listing (driven by pt_subscriptions.time_slot_id) no
