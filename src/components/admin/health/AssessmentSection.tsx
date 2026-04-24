@@ -467,6 +467,25 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     try { localStorage.removeItem(draftStorageKey); } catch {}
   };
 
+  // Load a saved (or draft) assessment into the form for editing.
+  // Reuses the existing save pipeline by treating the assessment id as the
+  // current `draftId`, so subsequent saves UPDATE rather than INSERT.
+  const handleEditAssessment = (assessment: MemberAssessment) => {
+    const data: Record<string, string> = { assessed_by: assessment.assessed_by || "" };
+    const ad = (assessment.assessment_data || {}) as Record<string, any>;
+    Object.entries(ad).forEach(([k, v]) => {
+      if (v === null || v === undefined) return;
+      data[k] = typeof v === "string" ? v : JSON.stringify(v);
+    });
+    setFormData(data);
+    setDraftId(assessment.id);
+    draftIdRef.current = assessment.id;
+    hydratedDraftRef.current = assessment.id;
+    hydratedOnOpenRef.current = true; // prevent the open-effect from clobbering
+    setExpandedId(null);
+    setShowForm(true);
+  };
+
   const handleSave = async () => {
     if (!formData.assessed_by?.trim()) {
       toast.error("Please select who took this assessment");
