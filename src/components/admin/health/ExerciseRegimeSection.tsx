@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Dumbbell, AlertTriangle, Scale, Repeat, Layers3 } from "lucide-react";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import type { ExercisePlan } from "./MemberHealthTab";
 
 interface ExerciseRegimeSectionProps {
