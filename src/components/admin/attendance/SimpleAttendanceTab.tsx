@@ -28,7 +28,7 @@ import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
 import { useMembersQuery } from "@/hooks/queries/useMembers";
 import { TIME_BUCKET_OPTIONS, matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
-type AttendanceStatus = "present" | "absent" | "late";
+type AttendanceStatus = "present" | "absent" | "skipped";
 
 interface MemberAttendance {
   memberId: string;
@@ -38,7 +38,7 @@ interface MemberAttendance {
 
 const STATUS_COLORS: Record<AttendanceStatus, string> = {
   present: "bg-green-500 text-white shadow-green-500/30",
-  late: "bg-amber-500 text-white shadow-amber-500/30",
+  skipped: "bg-slate-500 text-white shadow-slate-500/30",
   absent: "bg-red-500/80 text-white shadow-red-500/20",
 };
 
