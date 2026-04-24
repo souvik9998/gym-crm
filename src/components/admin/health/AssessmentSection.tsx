@@ -711,7 +711,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
         {hasFields ? (
           <div className={expanded
-            ? "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3"
+            ? "grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3"
             : "grid grid-cols-1 gap-2 min-[560px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
           }>
             {fields.map((field) => {
