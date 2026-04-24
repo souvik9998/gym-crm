@@ -78,7 +78,7 @@ export const AbsentAnalyticsTab = () => {
       const entry = map.get(id)!;
       entry.dates.add(r.date);
       if (r.status === "present") entry.present++;
-      else if (r.status === "late") entry.late++;
+      else if (r.status === "late" || r.status === "skipped") entry.late++;
       else entry.absent++;
     });
 

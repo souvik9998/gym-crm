@@ -28,7 +28,7 @@ import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
 import { useMembersQuery } from "@/hooks/queries/useMembers";
 import { TIME_BUCKET_OPTIONS, matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
-type AttendanceStatus = "present" | "absent" | "late";
+type AttendanceStatus = "present" | "absent" | "skipped";
 
 interface MemberAttendance {
   memberId: string;
@@ -38,7 +38,7 @@ interface MemberAttendance {
 
 const STATUS_COLORS: Record<AttendanceStatus, string> = {
   present: "bg-green-500 text-white shadow-green-500/30",
-  late: "bg-amber-500 text-white shadow-amber-500/30",
+  skipped: "bg-slate-500 text-white shadow-slate-500/30",
   absent: "bg-red-500/80 text-white shadow-red-500/20",
 };
 
@@ -316,14 +316,14 @@ export const SimpleAttendanceTab = () => {
   const stats = useMemo(() => {
     const source = searchedList;
     const total = source.length;
-    let present = 0, late = 0, absent = 0;
+    let present = 0, skipped = 0, absent = 0;
     source.forEach((m) => {
       const s = localAttendance.get(m.memberId) || "absent";
       if (s === "present") present++;
-      else if (s === "late") late++;
+      else if (s === "skipped") skipped++;
       else absent++;
     });
-    return { total, present, late, absent };
+    return { total, present, skipped, absent };
   }, [searchedList, localAttendance]);
 
   // Visible list — applies the status filter card on top of search
@@ -408,7 +408,7 @@ export const SimpleAttendanceTab = () => {
   const formatDayNum = (d: string) => new Date(d + "T00:00:00").getDate();
   const formatFullDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   const formatTime = (iso: string | null) => iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true }) : null;
-  const statusLabel = (s: AttendanceStatus | null) => s === "present" ? "Present" : s === "late" ? "Late" : s === "absent" ? "Absent" : "Not marked";
+  const statusLabel = (s: AttendanceStatus | null) => s === "present" ? "Present" : s === "skipped" ? "Skipped" : s === "absent" ? "Absent" : "Not marked";
 
   // ── Mobile card-based member row ──
   const MobileMemberCard = ({ member }: { member: MemberAttendance }) => {
@@ -417,7 +417,7 @@ export const SimpleAttendanceTab = () => {
       <div className={cn(
         "bg-card rounded-xl border p-3 transition-all duration-200",
         currentStatus === "present" ? "border-green-200 dark:border-green-900/40" :
-        currentStatus === "late" ? "border-amber-200 dark:border-amber-900/40" :
+        currentStatus === "skipped" ? "border-slate-300 dark:border-slate-700/60" :
         "border-border/40",
         isFutureDate && "opacity-50 pointer-events-none"
       )}>
@@ -426,7 +426,7 @@ export const SimpleAttendanceTab = () => {
             <div className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors duration-300",
               currentStatus === "present" ? "bg-green-500/20 text-green-700 dark:text-green-400" :
-              currentStatus === "late" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" :
+              currentStatus === "skipped" ? "bg-slate-500/20 text-slate-700 dark:text-slate-300" :
               "bg-muted text-muted-foreground"
             )}>
               {member.memberName.charAt(0).toUpperCase()}
@@ -437,11 +437,12 @@ export const SimpleAttendanceTab = () => {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {(["present", "late", "absent"] as const).map((s) => (
+            {(["present", "skipped", "absent"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => toggleStatus(member.memberId, s)}
                 disabled={isFutureDate}
+                title={s === "present" ? "Present" : s === "skipped" ? "Skipped" : "Absent"}
                 className={cn(
                   "w-9 h-9 rounded-lg text-xs font-bold transition-all duration-200 border active:scale-90",
                   currentStatus === s
@@ -449,7 +450,7 @@ export const SimpleAttendanceTab = () => {
                     : "bg-transparent text-muted-foreground border-border/50 hover:bg-muted/50"
                 )}
               >
-                {s === "present" ? "P" : s === "late" ? "L" : "A"}
+                {s === "present" ? "P" : s === "skipped" ? "S" : "A"}
               </button>
             ))}
           </div>
@@ -482,7 +483,7 @@ export const SimpleAttendanceTab = () => {
                     <div className={cn(
                       "w-4 h-4 rounded-full mt-0.5 transition-colors duration-300",
                       st === "present" ? "bg-green-500" :
-                      st === "late" ? "bg-amber-500" :
+                      st === "skipped" ? "bg-slate-500" :
                       st === "absent" ? "bg-red-400" :
                       "bg-muted/60"
                     )} />
@@ -636,14 +637,14 @@ export const SimpleAttendanceTab = () => {
             dotActive: "bg-white",
           },
           {
-            key: "late",
-            label: "Late",
-            count: stats.late,
-            inactive: "text-amber-700 dark:text-amber-400 hover:bg-amber-500/10",
-            active: "bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30",
+            key: "skipped",
+            label: "Skipped",
+            count: stats.skipped,
+            inactive: "text-slate-700 dark:text-slate-300 hover:bg-slate-500/10",
+            active: "bg-gradient-to-br from-slate-500 to-slate-600 text-white shadow-md shadow-slate-500/30",
             badgeActive: "bg-white/20 text-white",
-            badgeInactive: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
-            dot: "bg-amber-500",
+            badgeInactive: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+            dot: "bg-slate-500",
             dotActive: "bg-white",
           },
           {
@@ -868,7 +869,7 @@ export const SimpleAttendanceTab = () => {
                           <div className={cn(
                             "w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0 transition-colors duration-300",
                             currentStatus === "present" ? "bg-green-500/20 text-green-700 dark:text-green-400" :
-                            currentStatus === "late" ? "bg-amber-500/20 text-amber-700" :
+                            currentStatus === "skipped" ? "bg-slate-500/20 text-slate-700" :
                             "bg-muted text-muted-foreground"
                           )}>
                             {member.memberName.charAt(0).toUpperCase()}
@@ -901,12 +902,12 @@ export const SimpleAttendanceTab = () => {
                                     isSel && "ring-1 ring-primary/40",
                                     isFuture && "opacity-40 cursor-not-allowed",
                                     status === "present" ? "bg-green-500/20 text-green-700 dark:text-green-400" :
-                                    status === "late" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" :
+                                    status === "skipped" ? "bg-slate-500/20 text-slate-700 dark:text-slate-300" :
                                     status === "absent" ? "bg-red-500/20 text-red-600 dark:text-red-400" :
                                     "bg-transparent text-muted-foreground/40 hover:bg-muted/50"
                                   )}
                                 >
-                                  {status === "present" ? "P" : status === "late" ? "L" : status === "absent" ? "A" : "—"}
+                                  {status === "present" ? "P" : status === "skipped" ? "S" : status === "absent" ? "A" : "—"}
                                 </button>
                               </TooltipTrigger>
                               <TooltipContent side="top" className="text-xs">
@@ -921,8 +922,9 @@ export const SimpleAttendanceTab = () => {
                       })}
                       <td className="px-2 py-2 text-center">
                         <div className="flex items-center justify-center gap-0.5">
-                          {(["present", "late", "absent"] as const).map((s) => (
+                          {(["present", "skipped", "absent"] as const).map((s) => (
                             <button key={s} onClick={() => toggleStatus(member.memberId, s)} disabled={isFutureDate}
+                              title={s === "present" ? "Present" : s === "skipped" ? "Skipped" : "Absent"}
                               className={cn(
                                 "w-7 h-7 rounded-md text-[10px] font-bold transition-all duration-200 border active:scale-90",
                                 currentStatus === s
@@ -930,7 +932,7 @@ export const SimpleAttendanceTab = () => {
                                   : "bg-transparent text-muted-foreground border-border/40 hover:border-primary/30 hover:bg-muted/30"
                               )}
                             >
-                              {s === "present" ? "P" : s === "late" ? "L" : "A"}
+                              {s === "present" ? "P" : s === "skipped" ? "S" : "A"}
                             </button>
                           ))}
                         </div>
