@@ -227,6 +227,7 @@ export const StaffOtherTab = ({
         } as Staff;
 
         setExistingStaffDialog({ open: true, existingStaff: existingMapped });
+        toast.dismiss(loadingToastId);
         return;
       }
 
@@ -243,12 +244,13 @@ export const StaffOtherTab = ({
         
         if (existingInBranch) {
           const branchName = branches.find(b => b.id === existingInBranch.branch_id)?.name || "selected branch";
-          toast.error(`A staff member with this phone already exists in ${branchName}`);
+          toast.error(`A staff member with this phone already exists in ${branchName}`, { id: loadingToastId });
           return;
         }
       }
 
       // Insert staff record (without password - will be set via edge function)
+      toast.loading("Creating staff record...", { id: loadingToastId });
       const { data: staffData, error: staffError } = await supabase
         .from("staff")
         .insert({
@@ -264,12 +266,13 @@ export const StaffOtherTab = ({
         .single();
 
       if (staffError) {
-        toast.error("Error adding staff", { description: staffError.message });
+        toast.error("Error adding staff", { id: loadingToastId, description: staffError.message });
         return;
       }
 
       // Set password via edge function if login is enabled
       if (newStaff.enableLogin && newStaff.password) {
+        toast.loading("Setting up login access...", { id: loadingToastId });
         const { error: passwordError } = await supabase.functions.invoke("staff-auth?action=set-password", {
           body: {
             staffId: staffData.id,
@@ -287,6 +290,7 @@ export const StaffOtherTab = ({
       }
 
       // Add branch assignments (reuse branchesToAssign from validation)
+      toast.loading("Assigning branches & permissions...", { id: loadingToastId });
       const branchNames: string[] = [];
       if (branchesToAssign.length > 0) {
         const assignments = branchesToAssign.map((branchId, index) => ({
@@ -320,6 +324,7 @@ export const StaffOtherTab = ({
       // Send WhatsApp credentials if enabled and login is enabled
       let whatsAppSent = false;
       if (newStaff.enableLogin && newStaff.sendWhatsApp && newStaff.password && cleanPhone) {
+        toast.loading("Sending login credentials via WhatsApp...", { id: loadingToastId });
         whatsAppSent = await sendStaffCredentialsWhatsApp(
           { full_name: newStaff.full_name, phone: cleanPhone, role: newStaff.role },
           newStaff.password,
@@ -330,6 +335,7 @@ export const StaffOtherTab = ({
       }
 
       toast.success("Staff member added successfully", {
+        id: loadingToastId,
         description: newStaff.enableLogin && newStaff.sendWhatsApp
           ? whatsAppSent
             ? "Login credentials sent via WhatsApp"
@@ -351,6 +357,11 @@ export const StaffOtherTab = ({
         sendWhatsApp: true,
       });
       await refreshAll();
+    } catch (err: any) {
+      toast.error("Failed to add staff member", {
+        id: loadingToastId,
+        description: err?.message || "An unexpected error occurred. Please try again.",
+      });
     } finally {
       setIsAddingStaff(false);
       addingRef.current = false;
