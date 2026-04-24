@@ -573,7 +573,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       if (inputType === "select" && options?.length) {
         return (
           <Select value={formData[fieldKey] || ""} onValueChange={(value) => updateField(fieldKey, value)}>
-            <SelectTrigger className="mt-1 h-10 w-full text-sm">
+            <SelectTrigger className="mt-1.5 h-10 w-full text-sm">
               <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
             </SelectTrigger>
             <SelectContent>
@@ -585,25 +585,25 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
         );
       }
 
-      if (inputType === "textarea") {
+    if (inputType === "textarea") {
         return (
           <Textarea
             value={formData[fieldKey] || ""}
             onChange={(e) => updateField(fieldKey, e.target.value)}
             placeholder={placeholder}
-            className="mt-1 min-h-[96px] resize-y text-sm leading-5"
+            className="mt-1.5 min-h-[88px] w-full resize-y text-sm leading-5"
           />
         );
       }
 
       return (
-        <div className="relative mt-1">
+        <div className="relative mt-1.5">
           <Input
             type={inputType === "number" ? "number" : "text"}
             value={formData[fieldKey] || ""}
             onChange={(e) => updateField(fieldKey, e.target.value)}
             placeholder={placeholder}
-            className={unit ? "h-10 pr-14 text-sm" : "h-10 text-sm"}
+            className={unit ? "h-10 w-full pr-12 text-sm" : "h-10 w-full text-sm"}
           />
           {unit && (
             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-muted-foreground">
@@ -614,14 +614,19 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       );
     })();
 
+    const isWide = inputType === "textarea";
+
     return (
-      <div key={fieldKey} className="rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Label className="text-xs font-medium text-foreground">{label}</Label>
+      <div
+        key={fieldKey}
+        className={`flex min-w-0 flex-col rounded-lg border border-border/50 bg-background/90 p-3 ${isWide ? "sm:col-span-2 xl:col-span-2" : ""}`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Label className="text-xs font-medium leading-tight text-foreground">{label}</Label>
           {unit && <Badge variant="outline" className="h-5 rounded-md px-1.5 text-[10px]">{unit}</Badge>}
         </div>
         {fieldControl}
-        {helpText && <p className="mt-2 text-[11px] text-muted-foreground">{helpText}</p>}
+        {helpText && <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">{helpText}</p>}
       </div>
     );
   };
@@ -791,7 +796,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
         ref={(el) => { sectionRefs.current[section.key] = el; }}
         className={expanded
           ? "rounded-2xl border border-border/50 bg-background/95 p-4 lg:p-5 space-y-4 shadow-sm scroll-mt-4"
-          : "rounded-xl border border-border/50 bg-background/80 p-2.5 sm:p-3 lg:p-3.5 space-y-3"
+          : "rounded-xl border border-border/50 bg-background/80 p-3 sm:p-4 lg:p-5 space-y-3.5"
         }
       >
         <div className="flex items-start gap-2.5 sm:gap-3">
@@ -811,8 +816,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
         {hasFields ? (
           <div className={expanded
-            ? "grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3"
-            : "grid grid-cols-1 gap-2 min-[560px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+            ? "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+            : "grid grid-cols-1 gap-2.5 min-[640px]:grid-cols-2 xl:grid-cols-3"
           }>
             {fields.map((field) => {
               const customField = config[section.key]?.custom_fields?.find((item) => item.key === field.key);
@@ -922,8 +927,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     // Compact (non-expanded) layout — flex column so the footer pins to the
     // bottom of the form area while the body scrolls independently.
     return (
-      <div className="flex max-h-[78vh] flex-col overflow-hidden rounded-xl border border-accent/20 bg-accent/5">
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 sm:p-3 lg:p-4 space-y-3">
+      <div className="flex max-h-[82vh] flex-col overflow-hidden rounded-xl border border-accent/20 bg-accent/5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-smooth p-3 sm:p-4 lg:p-5 space-y-3.5">
           <div className="rounded-lg border border-border/50 bg-background/80 p-2.5 sm:p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-2">
