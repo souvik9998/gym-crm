@@ -1579,6 +1579,7 @@ export type Database = {
           current_condition: string | null
           id: string
           injuries_health_issues: string | null
+          is_draft: boolean
           member_id: string
           mobility_limitations: string | null
           notes: string | null
@@ -1594,6 +1595,7 @@ export type Database = {
           current_condition?: string | null
           id?: string
           injuries_health_issues?: string | null
+          is_draft?: boolean
           member_id: string
           mobility_limitations?: string | null
           notes?: string | null
@@ -1609,6 +1611,7 @@ export type Database = {
           current_condition?: string | null
           id?: string
           injuries_health_issues?: string | null
+          is_draft?: boolean
           member_id?: string
           mobility_limitations?: string | null
           notes?: string | null
