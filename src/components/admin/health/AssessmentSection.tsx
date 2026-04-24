@@ -796,7 +796,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
         ref={(el) => { sectionRefs.current[section.key] = el; }}
         className={expanded
           ? "rounded-2xl border border-border/50 bg-background/95 p-4 lg:p-5 space-y-4 shadow-sm scroll-mt-4"
-          : "rounded-xl border border-border/50 bg-background/80 p-2.5 sm:p-3 lg:p-3.5 space-y-3"
+          : "rounded-xl border border-border/50 bg-background/80 p-3 sm:p-4 lg:p-5 space-y-3.5"
         }
       >
         <div className="flex items-start gap-2.5 sm:gap-3">
