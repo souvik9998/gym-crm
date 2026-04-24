@@ -402,6 +402,37 @@ export const AttendanceHistoryTab = () => {
         </div>
       </div>
 
+      {/* Time-of-day chips */}
+      <div className="rounded-2xl border border-border/50 bg-card/60 p-3 lg:p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-2 mb-2.5">
+          <p className="text-xs font-medium text-foreground">Filter by time of day</p>
+          {timeBucket !== "all" && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 rounded-full px-2.5 text-[11px]"
+              onClick={() => setTimeBucket("all")}
+            >
+              Reset
+            </Button>
+          )}
+        </div>
+        <TimeBucketChips value={timeBucket} onChange={setTimeBucket} compact />
+        {timeBucket === "custom" && (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 sm:max-w-md">
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Start</label>
+              <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">End</label>
+              <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 text-sm" />
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Trainer & Slot Filters */}
       {(trainers.length > 0 || allSlots.length > 0) && !isLimitedAccess && (
         <div className="rounded-2xl border border-border/50 bg-card/60 p-3 lg:p-4 shadow-sm">
