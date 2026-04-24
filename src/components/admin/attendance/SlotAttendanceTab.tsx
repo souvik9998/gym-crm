@@ -28,6 +28,7 @@ import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import { useMembersQuery } from "@/hooks/queries/useMembers";
 import { formatTimeLabel, matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
 import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
+import { TimePicker12h } from "@/components/ui/time-picker-12h";
 
 type AttendanceStatus = "present" | "absent" | "skipped";
 
@@ -482,11 +483,11 @@ export const SlotAttendanceTab = () => {
             <div className="grid gap-3 rounded-xl border border-success/20 bg-success/5 p-3 sm:grid-cols-2 lg:max-w-md">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Start time</label>
-                <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 border-border/70 bg-background/70 text-sm backdrop-blur-sm" />
+                <TimePicker12h value={customStart} onChange={setCustomStart} />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">End time</label>
-                <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 border-border/70 bg-background/70 text-sm backdrop-blur-sm" />
+                <TimePicker12h value={customEnd} onChange={setCustomEnd} />
               </div>
             </div>
           )}

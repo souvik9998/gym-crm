@@ -27,6 +27,7 @@ import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 
 import { matchesTimeFilter, type TimeBucket } from "./timeSlotUtils";
+import { TimePicker12h } from "@/components/ui/time-picker-12h";
 
 interface TimeSlot {
   id: string;
@@ -885,11 +886,11 @@ export const TimeSlotsTab = ({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Start Time *</Label>
-                <Input type="time" value={form.start_time} onChange={e => setForm({ ...form, start_time: e.target.value })} className="h-9 text-sm" />
+                <TimePicker12h value={form.start_time} onChange={(v) => setForm({ ...form, start_time: v })} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">End Time *</Label>
-                <Input type="time" value={form.end_time} onChange={e => setForm({ ...form, end_time: e.target.value })} className="h-9 text-sm" />
+                <TimePicker12h value={form.end_time} onChange={(v) => setForm({ ...form, end_time: v })} />
               </div>
             </div>
             <div className="space-y-1">

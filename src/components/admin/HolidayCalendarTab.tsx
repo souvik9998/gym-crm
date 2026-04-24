@@ -28,6 +28,7 @@ import {
   ChatBubbleLeftEllipsisIcon,
 } from "@heroicons/react/24/outline";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { TimePicker12h } from "@/components/ui/time-picker-12h";
 import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
 
@@ -797,44 +798,24 @@ const HolidayCalendarTab = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">{formType === "full_day" ? "Closed From" : "Open From"}</Label>
-                    <Input
-                      type="time"
-                      value={formStartTime}
-                      onChange={e => setFormStartTime(e.target.value)}
-                      className="h-10 rounded-lg"
-                    />
+                    <TimePicker12h value={formStartTime} onChange={setFormStartTime} size="md" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">{formType === "full_day" ? "Closed Till" : "Close At"}</Label>
-                    <Input
-                      type="time"
-                      value={formEndTime}
-                      onChange={e => setFormEndTime(e.target.value)}
-                      className="h-10 rounded-lg"
-                    />
+                    <TimePicker12h value={formEndTime} onChange={setFormEndTime} size="md" />
                   </div>
                 </div>
               )}
               {formType === "late_opening" && (
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Opens At</Label>
-                  <Input
-                    type="time"
-                    value={formOpenTime}
-                    onChange={e => setFormOpenTime(e.target.value)}
-                    className="h-10 rounded-lg"
-                  />
+                  <TimePicker12h value={formOpenTime} onChange={setFormOpenTime} size="md" />
                 </div>
               )}
               {formType === "early_closing" && (
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Closes At</Label>
-                  <Input
-                    type="time"
-                    value={formCloseTime}
-                    onChange={e => setFormCloseTime(e.target.value)}
-                    className="h-10 rounded-lg"
-                  />
+                  <TimePicker12h value={formCloseTime} onChange={setFormCloseTime} size="md" />
                 </div>
               )}
               <p className="text-[9px] text-muted-foreground">

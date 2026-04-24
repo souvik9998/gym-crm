@@ -28,6 +28,7 @@ import { useAttendanceFilters, formatSlotTime } from "@/hooks/queries/useAttenda
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
+import { TimePicker12h } from "@/components/ui/time-picker-12h";
 import { matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
 function getMonthDates(year: number, month: number): (string | null)[][] {
@@ -431,11 +432,11 @@ export const AttendanceHistoryTab = () => {
           <div className="mt-3 grid gap-2 sm:grid-cols-2 sm:max-w-md">
             <div className="space-y-1">
               <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Start</label>
-              <Input type="time" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-9 text-sm" />
+              <TimePicker12h value={customStart} onChange={setCustomStart} />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">End</label>
-              <Input type="time" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-9 text-sm" />
+              <TimePicker12h value={customEnd} onChange={setCustomEnd} />
             </div>
           </div>
         )}
