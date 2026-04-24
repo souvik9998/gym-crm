@@ -811,36 +811,53 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   };
 
   const SaveActions = ({ expanded }: { expanded: boolean }) => (
-    <div className={expanded ? "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" : "flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"}>
-      <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+    <div className="flex w-full items-center gap-2 sm:gap-3 overflow-x-auto sm:overflow-visible">
+      <div className="flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground">
         {draftId && (
-          <Badge variant="secondary" className="gap-1 rounded-md text-[10px]">
+          <Badge variant="secondary" className="gap-1 rounded-md text-[10px] whitespace-nowrap">
             <FileEdit className="h-3 w-3" /> Editing draft
           </Badge>
         )}
         {lastSavedAt && (
-          <span>Draft saved {lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+          <span className="whitespace-nowrap hidden sm:inline">
+            Saved {lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </span>
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            // Auto-draft on close so accidental exits don't lose work.
+            autoSaveDraftAndClose();
+          }}
+          className="h-8 rounded-lg px-2.5 text-xs"
+          disabled={isSaving || isSavingDraft}
+        >
+          {expanded ? "Exit" : "Close"}
+        </Button>
         <Button
           size="sm"
           variant="outline"
           onClick={() => handleSaveDraft(false)}
           disabled={isSavingDraft || isSaving}
-          className="rounded-lg"
+          className="h-8 rounded-lg px-2.5 text-xs whitespace-nowrap"
         >
           {isSavingDraft ? <ButtonSpinner /> : <Save className="h-3.5 w-3.5" />}
           <span className="ml-1.5">Save Draft</span>
         </Button>
-        <Button size="sm" onClick={handleSave} disabled={isSaving || isSavingDraft} className="rounded-lg">
-          {isSaving ? <><ButtonSpinner /> Saving...</> : <><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Save Assessment</>}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => {
-          // Auto-draft on close so accidental exits don't lose work.
-          autoSaveDraftAndClose();
-        }} className="rounded-lg" disabled={isSaving || isSavingDraft}>
-          {expanded ? "Exit" : "Close"}
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={isSaving || isSavingDraft}
+          className="h-8 rounded-lg px-2.5 text-xs whitespace-nowrap"
+        >
+          {isSaving ? (
+            <><ButtonSpinner /> Saving</>
+          ) : (
+            <><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Save Assessment</>
+          )}
         </Button>
       </div>
     </div>
@@ -1017,8 +1034,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     // Compact (non-expanded) layout — flex column so the footer pins to the
     // bottom of the form area while the body scrolls independently.
     return (
-      <div className="flex max-h-[82vh] flex-col overflow-hidden rounded-xl border border-accent/20 bg-accent/5">
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-smooth p-3 sm:p-4 lg:p-5 space-y-3.5">
+      <div className="relative flex flex-col rounded-xl border border-accent/20 bg-accent/5">
+        <div className="p-3 sm:p-4 lg:p-5 space-y-3.5 pb-20">
           <div className="rounded-lg border border-border/50 bg-background/80 p-2.5 sm:p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-2">
@@ -1047,8 +1064,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
           </div>
         </div>
 
-        {/* Sticky footer (pinned at the bottom of the form panel) */}
-        <div className="shrink-0 border-t border-border/40 bg-background/95 px-3 py-2.5 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] backdrop-blur supports-[backdrop-filter]:bg-background/85">
+        {/* Sticky footer — pinned to the dialog's scroll viewport so it stays visible while scrolling through long forms */}
+        <div className="sticky bottom-0 z-20 -mx-px border-t border-border/40 bg-background/95 px-3 py-2.5 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] backdrop-blur supports-[backdrop-filter]:bg-background/85 rounded-b-xl shadow-[0_-4px_12px_-6px_hsl(var(--foreground)/0.08)]">
           <SaveActions expanded={false} />
         </div>
       </div>
