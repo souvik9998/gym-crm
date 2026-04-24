@@ -539,25 +539,39 @@ export const StaffTrainersTab = ({
       description: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
       variant: "destructive",
       onConfirm: async () => {
-        // Delete from personal_trainers first (by phone match)
-        const trainerToDelete = trainers.find(t => t.id === id);
-        if (trainerToDelete?.phone) {
-          await supabase.from("personal_trainers").delete().eq("phone", trainerToDelete.phone);
-        }
-        await supabase.from("staff").delete().eq("id", id);
-        
-        await logAdminActivity({
-          category: "staff",
-          type: "staff_deleted",
-          description: `Deleted trainer "${name}"`,
-          entityType: "staff",
-          entityId: id,
-          entityName: name,
-          branchId: currentBranch?.id,
+        const loadingToastId = toast.loading(`Removing trainer "${name}"…`, {
+          description: "Cleaning up assignments and login access.",
         });
+        try {
+          // Delete from personal_trainers first (by phone match)
+          const trainerToDelete = trainers.find(t => t.id === id);
+          if (trainerToDelete?.phone) {
+            await supabase.from("personal_trainers").delete().eq("phone", trainerToDelete.phone);
+          }
+          await supabase.from("staff").delete().eq("id", id);
 
-        toast.success("Trainer deleted");
-        await refreshAll();
+          await logAdminActivity({
+            category: "staff",
+            type: "staff_deleted",
+            description: `Deleted trainer "${name}"`,
+            entityType: "staff",
+            entityId: id,
+            entityName: name,
+            branchId: currentBranch?.id,
+          });
+
+          toast.error(`Trainer "${name}" deleted`, {
+            id: loadingToastId,
+            description: "All branch assignments and permissions were removed.",
+            duration: 3500,
+          });
+          await refreshAll();
+        } catch (err: any) {
+          toast.error("Failed to delete trainer", {
+            id: loadingToastId,
+            description: err?.message || "Please try again.",
+          });
+        }
       },
     });
   };
