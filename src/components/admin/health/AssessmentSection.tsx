@@ -183,13 +183,27 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   useEffect(() => { draftIdRef.current = draftId; }, [draftId]);
   useEffect(() => { showFormRef.current = showForm; }, [showForm]);
 
+  // Detect whether the user actually changed anything since the form was
+  // hydrated. Compares a JSON snapshot of formData against the original
+  // captured at open / edit-load time.
+  const hasUserChanges = (fd: Record<string, string>) => {
+    try {
+      return JSON.stringify(fd) !== originalSnapshotRef.current;
+    } catch {
+      return true;
+    }
+  };
+
   // Debounced silent auto-save to DB. Persists every ~1.2s of inactivity so
   // the user's typed values survive even when the parent dialog is closed
-  // before they hit "Save Draft".
+  // before they hit "Save Draft". Skipped when editing a finalized assessment
+  // and the user hasn't actually modified anything yet — prevents silent
+  // downgrade of saved records into drafts.
   useEffect(() => {
     if (!showForm) return;
     const hasContent = Object.entries(formData).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
     if (!hasContent) return;
+    if (editingFinalizedRef.current && !hasUserChanges(formData)) return;
     const timer = window.setTimeout(() => {
       // Fire-and-forget; UI feedback is intentionally absent for autosave.
       persistAssessment(true).then(() => {
@@ -202,13 +216,15 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   }, [formData, showForm]);
 
   // On unmount (e.g., parent dialog closed via outer X), best-effort persist
-  // any unsaved input so the user's data is never lost.
+  // any unsaved input so the user's data is never lost. Skipped when editing
+  // a finalized assessment with no actual changes.
   useEffect(() => {
     return () => {
       if (!showFormRef.current) return;
       const fd = formDataRef.current;
       const hasContent = Object.entries(fd).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
       if (!hasContent) return;
+      if (editingFinalizedRef.current && !hasUserChanges(fd)) return;
       // Snapshot to localStorage immediately (synchronous safety net)
       try { localStorage.setItem(draftStorageKey, JSON.stringify(fd)); } catch {}
       // Fire async DB save. The promise will resolve even after this component
