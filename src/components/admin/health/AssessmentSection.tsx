@@ -709,14 +709,14 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     return (
       <div
         key={fieldKey}
-        className={`flex min-w-0 flex-col rounded-lg border border-border/50 bg-background/90 p-3 ${isWide ? "sm:col-span-2 xl:col-span-2" : ""}`}
+        className={`flex min-w-0 flex-col rounded-lg border border-border/50 bg-background/90 p-2 sm:p-2.5 ${isWide ? "sm:col-span-2 xl:col-span-2" : ""}`}
       >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Label className="text-xs font-medium leading-tight text-foreground">{label}</Label>
-          {unit && <Badge variant="outline" className="h-5 rounded-md px-1.5 text-[10px]">{unit}</Badge>}
+        <div className="flex flex-wrap items-center justify-between gap-1.5">
+          <Label className="text-[11px] font-medium leading-tight text-foreground">{label}</Label>
+          {unit && <Badge variant="outline" className="h-4 rounded-md px-1 text-[10px]">{unit}</Badge>}
         </div>
         {fieldControl}
-        {helpText && <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">{helpText}</p>}
+        {helpText && <p className="mt-1 text-[10px] leading-snug text-muted-foreground">{helpText}</p>}
       </div>
     );
   };
