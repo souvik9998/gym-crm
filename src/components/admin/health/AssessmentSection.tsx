@@ -292,17 +292,13 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     const { assessed_by, ...rest } = formData;
     const assessmentData: Record<string, string> = {};
 
-    getEnabledSections().forEach((section) => {
-      const fields = getEnabledFields(section.key);
-      if (section.fields || config[section.key]?.custom_fields?.length) {
-        fields.forEach((field) => {
-          if (rest[field.key]) {
-            assessmentData[field.key] = rest[field.key];
-          }
-        });
-      } else if (rest[section.key]) {
-        assessmentData[section.key] = rest[section.key];
-      }
+    // Persist EVERY non-empty field the user typed so drafts never lose data,
+    // even if the section/field happens to be disabled in current config.
+    Object.entries(rest).forEach(([key, value]) => {
+      if (value === undefined || value === null) return;
+      const str = String(value);
+      if (!str.trim()) return;
+      assessmentData[key] = str;
     });
 
     return {
@@ -331,8 +327,18 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       const { error } = await supabase.from("member_assessments").update(payload as any).eq("id", draftId);
       if (error) throw error;
     } else {
-      const { error } = await supabase.from("member_assessments").insert(payload as any);
+      // Capture the inserted row id so subsequent saves UPDATE instead of
+      // creating duplicate draft rows.
+      const { data, error } = await supabase
+        .from("member_assessments")
+        .insert(payload as any)
+        .select("id")
+        .single();
       if (error) throw error;
+      if (data?.id) {
+        setDraftId(data.id);
+        hydratedDraftRef.current = data.id;
+      }
     }
   };
 
