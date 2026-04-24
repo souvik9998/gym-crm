@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useStaffMutationsRefresh } from "@/hooks/useStaffMutationsRefresh";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { InformationCircleIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
@@ -70,18 +71,16 @@ export const StaffTrainersTab = ({
 }: StaffTrainersTabProps) => {
   const queryClient = useQueryClient();
   const isCompact = useIsTabletOrBelow();
+  const { refreshStaffData } = useStaffMutationsRefresh();
   const [infoDialog, setInfoDialog] = useState<{ open: boolean; trainer: Staff | null }>({ open: false, trainer: null });
   const [conversionDialog, setConversionDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
   const [changePhoneDialog, setChangePhoneDialog] = useState<{ open: boolean; staff: Staff | null }>({ open: false, staff: null });
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Centralized invalidation so every dependent surface (filters, time slots,
+  // attendance, member trainer names, activity logs, etc.) updates instantly.
   const refreshAll = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["staff-page-data"], refetchType: "all" }),
-      queryClient.invalidateQueries({ queryKey: ["trainer-filter-list"], refetchType: "all" }),
-      queryClient.invalidateQueries({ queryKey: ["time-slot-members"], refetchType: "all" }),
-      queryClient.invalidateQueries({ queryKey: ["assigned-members"], refetchType: "all" }),
-    ]);
+    await refreshStaffData();
     onRefresh();
   };
 
