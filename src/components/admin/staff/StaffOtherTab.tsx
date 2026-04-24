@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useStaffMutationsRefresh } from "@/hooks/useStaffMutationsRefresh";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { InformationCircleIcon, ArrowsRightLeftIcon, DevicePhoneMobileIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
@@ -76,12 +77,12 @@ export const StaffOtherTab = ({
 }: StaffOtherTabProps) => {
   const queryClient = useQueryClient();
   const isCompact = useIsTabletOrBelow();
+  const { refreshStaffData } = useStaffMutationsRefresh();
 
+  // Centralized invalidation so every dependent surface (filters, time slots,
+  // attendance, activity logs, etc.) updates instantly after any mutation.
   const refreshAll = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["staff-page-data"], refetchType: "all" }),
-      queryClient.invalidateQueries({ queryKey: ["trainer-filter-list"], refetchType: "all" }),
-    ]);
+    await refreshStaffData();
     onRefresh();
   };
 
