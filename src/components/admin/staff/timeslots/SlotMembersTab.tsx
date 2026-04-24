@@ -43,10 +43,10 @@ import {
   getSlotAvailability,
   getUtilizationPercent,
   matchesTimeFilter,
-  TIME_BUCKET_OPTIONS,
   type SlotAvailability,
   type TimeBucket,
 } from "./timeSlotUtils";
+import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
 
 interface SlotMembersTabProps {
   trainers: Staff[];
