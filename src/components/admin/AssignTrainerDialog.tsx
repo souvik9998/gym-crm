@@ -775,12 +775,51 @@ export const AssignTrainerDialog = ({
               </div>
 
               {monthlyFee && startDate && endDate && (
-                <div className="rounded-lg bg-muted/50 p-3 text-sm animate-fade-in">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total Fee</span>
-                    <span className="font-semibold">₹{calculateTotalFee().toLocaleString("en-IN")}</span>
+                isExtendMode ? (
+                  <>
+                    {/* Coupon input — extend-mode only (mirrors public PT renewal flow) */}
+                    <div className="animate-fade-in" style={{ animationDelay: "175ms", animationFillMode: "backwards" }}>
+                      <CouponInput
+                        appliedCoupon={coupon.appliedCoupon}
+                        availableCoupons={coupon.availableCoupons}
+                        onApply={coupon.applyCoupon}
+                        onRemove={coupon.removeCoupon}
+                        isValidating={coupon.isValidating}
+                      />
+                    </div>
+
+                    {/* Itemised price summary */}
+                    <div className="rounded-lg border border-border/60 bg-muted/40 p-3 text-sm space-y-1.5 animate-fade-in">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">PT Fee (prorated)</span>
+                        <span className="font-medium tabular-nums">₹{extendSubtotal.toLocaleString("en-IN")}</span>
+                      </div>
+                      {taxEnabled && extendTax > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">GST ({taxRate}%)</span>
+                          <span className="font-medium tabular-nums">₹{extendTax.toLocaleString("en-IN")}</span>
+                        </div>
+                      )}
+                      {couponDiscount > 0 && (
+                        <div className="flex justify-between text-emerald-600">
+                          <span>Coupon ({coupon.appliedCoupon?.coupon.code})</span>
+                          <span className="font-medium tabular-nums">−₹{couponDiscount.toLocaleString("en-IN")}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between pt-1.5 border-t border-border/60">
+                        <span className="font-semibold">Total</span>
+                        <span className="font-bold text-accent tabular-nums">₹{extendTotal.toLocaleString("en-IN")}</span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="rounded-lg bg-muted/50 p-3 text-sm animate-fade-in">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total Fee</span>
+                      <span className="font-semibold">₹{calculateTotalFee().toLocaleString("en-IN")}</span>
+                    </div>
                   </div>
-                </div>
+                )
               )}
 
               <div
@@ -808,7 +847,7 @@ export const AssignTrainerDialog = ({
                 </Button>
                 <Button className="flex-1 transition-all duration-200" onClick={handleSubmit} disabled={isLoading || !selectedTrainerId}>
                   {isLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                  {mode === "assign" ? "Assign" : "Replace"}
+                  {mode === "assign" ? "Assign" : mode === "extend" ? "Extend PT" : "Replace"}
                 </Button>
               </div>
             </>
