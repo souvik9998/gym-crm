@@ -130,7 +130,7 @@ export const MemberActivityDialog = ({
   const [activeTab, setActiveTab] = useState("overview");
   const [showAssignTrainer, setShowAssignTrainer] = useState(false);
   const [showRenewMember, setShowRenewMember] = useState(false);
-  const [assignMode, setAssignMode] = useState<"assign" | "replace">("assign");
+  const [assignMode, setAssignMode] = useState<"assign" | "replace" | "extend">("assign");
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState<string | null>(null);
   const [assigningSlotForPt, setAssigningSlotForPt] = useState<PTSubscription | null>(null);
   const [availableSlots, setAvailableSlots] = useState<any[]>([]);
@@ -962,7 +962,7 @@ export const MemberActivityDialog = ({
                 )}
               </div>
 
-              {/* Assign Trainer Dialog */}
+              {/* Assign / Extend Trainer Dialog */}
               {member && (
                 <AssignTrainerDialog
                   open={showAssignTrainer}
@@ -974,6 +974,18 @@ export const MemberActivityDialog = ({
                   mode={assignMode}
                   existingPtId={activePT?.id}
                   existingTrainerId={activePT?.personal_trainer?.id}
+                  existingTrainer={
+                    assignMode === "extend" && activePT?.personal_trainer
+                      ? {
+                          id: activePT.personal_trainer.id,
+                          name: activePT.personal_trainer.name,
+                          monthly_fee: Number(activePT.monthly_fee) || 0,
+                          specialization: activePT.personal_trainer.specialization,
+                          phone: null,
+                        }
+                      : null
+                  }
+                  existingPtEndDate={assignMode === "extend" ? activePT?.end_date : undefined}
                   membershipEndDate={subscriptions.find(s => s.status === "active" || s.status === "expiring_soon")?.end_date}
                   onSuccess={() => { fetchMemberData(); invalidatePtSubscriptions(); }}
                 />
