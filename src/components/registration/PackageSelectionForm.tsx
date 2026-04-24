@@ -458,6 +458,21 @@ const PackageSelectionForm = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonthlyPackage?.id, isCustom, coupon.appliedCoupon?.coupon.id]);
 
+  // Keep discount in sync when subtotal/trainer/tax recalc; also re-checks
+  // min-order constraint as the basket changes.
+  useEffect(() => {
+    if (coupon.appliedCoupon) {
+      const newSubtotal = subtotal + taxAmount;
+      const minOrder = coupon.appliedCoupon.coupon.min_order_value;
+      if (minOrder && newSubtotal < minOrder) {
+        coupon.removeCoupon();
+      } else {
+        coupon.recalculateDiscount(newSubtotal);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtotal, taxAmount]);
+
   const couponDiscount = coupon.appliedCoupon?.discountAmount || 0;
   const totalAmount = Math.max(0, subtotal + taxAmount - couponDiscount);
 
