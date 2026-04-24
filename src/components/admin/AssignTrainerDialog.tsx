@@ -71,6 +71,8 @@ export const AssignTrainerDialog = ({
   mode,
   existingPtId,
   existingTrainerId,
+  existingTrainer,
+  existingPtEndDate,
   membershipEndDate,
   onSuccess,
 }: AssignTrainerDialogProps) => {
@@ -85,21 +87,66 @@ export const AssignTrainerDialog = ({
   const [notifyWhatsApp, setNotifyWhatsApp] = useState(false);
   const [isFetchingTrainers, setIsFetchingTrainers] = useState(true);
   const [isFetchingSlots, setIsFetchingSlots] = useState(false);
+  const [taxRate, setTaxRate] = useState(0);
+  const [taxEnabled, setTaxEnabled] = useState(false);
   const queryClient = useQueryClient();
+
+  const isExtendMode = mode === "extend";
+
+  // Compute earliest start date for extend mode = day after current PT end
+  const computeExtendStart = (ptEnd?: string): string => {
+    if (!ptEnd) return new Date().toISOString().split("T")[0];
+    const d = new Date(ptEnd);
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split("T")[0];
+  };
 
   useEffect(() => {
     if (open) {
       fetchTrainers();
-      const today = new Date().toISOString().split("T")[0];
-      setStartDate(today);
-      setEndDate(membershipEndDate || "");
-      setSelectedTrainerId("");
+      if (isExtendMode) {
+        const extStart = computeExtendStart(existingPtEndDate);
+        setStartDate(extStart);
+        setEndDate(membershipEndDate || extStart);
+        // Lock trainer to existing PT trainer
+        if (existingTrainer?.id) {
+          setSelectedTrainerId(existingTrainer.id);
+          setMonthlyFee(existingTrainer.monthly_fee.toString());
+          // Slots will be fetched once `trainers` is loaded (see effect below)
+        }
+      } else {
+        const today = new Date().toISOString().split("T")[0];
+        setStartDate(today);
+        setEndDate(membershipEndDate || "");
+        setSelectedTrainerId("");
+        setMonthlyFee("");
+      }
       setSelectedTimeSlotId("");
-      setMonthlyFee("");
       setNotifyWhatsApp(false);
       setTimeSlots([]);
+      // Fetch tax settings (used in extend mode for GST display)
+      fetchTaxSettings();
     }
-  }, [open, branchId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, branchId, isExtendMode, existingTrainer?.id, existingPtEndDate, membershipEndDate]);
+
+  const fetchTaxSettings = async () => {
+    if (!branchId) return;
+    const { data } = await supabase
+      .from("gym_settings")
+      .select("invoice_tax_rate, invoice_show_gst")
+      .eq("branch_id", branchId)
+      .maybeSingle();
+    if (data) {
+      const rate = (data as any).invoice_tax_rate || 0;
+      const enabled = (data as any).invoice_show_gst === true && rate > 0;
+      setTaxRate(rate);
+      setTaxEnabled(enabled);
+    } else {
+      setTaxRate(0);
+      setTaxEnabled(false);
+    }
+  };
 
   const fetchTrainers = async () => {
     setIsFetchingTrainers(true);
