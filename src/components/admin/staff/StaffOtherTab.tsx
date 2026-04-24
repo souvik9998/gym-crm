@@ -199,12 +199,17 @@ export const StaffOtherTab = ({
     addingRef.current = true;
     setIsAddingStaff(true);
 
+    const loadingToastId = toast.loading("Adding staff member...", {
+      description: "Please wait while we set things up.",
+    });
+
     try {
       const branchesToAssign = newStaff.selected_branches.length > 0 
         ? newStaff.selected_branches 
         : currentBranch?.id ? [currentBranch.id] : [];
 
       // Check if staff with this phone already exists globally
+      toast.loading("Checking for existing staff...", { id: loadingToastId });
       const { data: existingStaffData } = await supabase
         .from("staff")
         .select("*, staff_permissions(*), staff_branch_assignments(*, branches(name))")
