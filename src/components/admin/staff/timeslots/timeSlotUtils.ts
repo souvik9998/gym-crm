@@ -111,28 +111,41 @@ export function getTimeBucketLabel(bucket: Exclude<TimeBucket, "all" | "custom">
   }
 }
 
+/**
+ * Strict containment by START time:
+ *   bucketStart <= slot.start_time < bucketEnd
+ *
+ * A slot belongs to a bucket only when its start time falls inside the
+ * bucket's window. The end time is intentionally ignored — a 4–6 PM slot
+ * starts in the afternoon and never in the night, even though it crosses
+ * into the evening boundary.
+ */
+function isStartInIntervals(startMinutes: number, intervals: Array<[number, number]>): boolean {
+  for (const [s, e] of intervals) {
+    if (startMinutes >= s && startMinutes < e) return true;
+  }
+  return false;
+}
+
 export function matchesTimeFilter(
   startTime: string,
   timeFilter: TimeBucket,
   customStart?: string,
   customEnd?: string,
-  endTime?: string,
+  _endTime?: string,
 ) {
   if (timeFilter === "all") return true;
 
   const startMinutes = parseTimeToMinutes(startTime);
-  const endMinutes = endTime ? parseTimeToMinutes(endTime) : startMinutes;
-  const slotIntervals = getSlotIntervals(startMinutes, endMinutes);
 
   if (timeFilter !== "custom") {
-    return intervalsOverlap(slotIntervals, getBucketIntervals(timeFilter));
+    return isStartInIntervals(startMinutes, getBucketIntervals(timeFilter));
   }
 
   if (!customStart || !customEnd) return true;
   const cs = parseTimeToMinutes(customStart);
   const ce = parseTimeToMinutes(customEnd);
-  const customIntervals = getSlotIntervals(cs, ce);
-  return intervalsOverlap(slotIntervals, customIntervals);
+  return isStartInIntervals(startMinutes, getSlotIntervals(cs, ce));
 }
 
 export function getSlotAvailability(memberCount: number, capacity: number): Exclude<SlotAvailability, "all"> {
