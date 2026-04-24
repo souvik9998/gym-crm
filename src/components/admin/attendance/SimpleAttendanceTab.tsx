@@ -24,6 +24,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
+import { TimeBucketDropdown } from "@/components/admin/TimeBucketDropdown";
 import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
 import { useMembersQuery } from "@/hooks/queries/useMembers";
@@ -730,12 +731,19 @@ export const SimpleAttendanceTab = () => {
           </Button>
         </div>
         <div className="flex flex-col gap-2">
-          <TimeBucketChips
-            value={timeFilter}
-            onChange={setTimeFilter}
-            className="w-full"
-          />
-          <div className="grid grid-cols-2 gap-2">
+          {/* Desktop & tablet: full chip strip */}
+          <div className="hidden sm:block">
+            <TimeBucketChips
+              value={timeFilter}
+              onChange={setTimeFilter}
+              className="w-full"
+            />
+          </div>
+          {/* Mobile: 3-up dropdown row aligned with Trainer + Slot */}
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-2">
+            <div className="sm:hidden">
+              <TimeBucketDropdown value={timeFilter} onChange={setTimeFilter} />
+            </div>
             <TrainerFilterDropdown value={selectedTrainerId} onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }} compact />
             <TimeSlotFilterDropdown value={selectedSlotId} onChange={setSelectedSlotId} trainerFilter={selectedTrainerId} compact />
           </div>
