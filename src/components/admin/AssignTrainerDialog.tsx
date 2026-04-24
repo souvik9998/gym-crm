@@ -401,7 +401,11 @@ export const AssignTrainerDialog = ({
         }
       }
 
-      const totalFee = calculateTotalFee();
+      // For extend mode, total_fee on pt_subscriptions captures gross PT fee
+      // (subtotal). Tax + coupon adjustments only affect the recorded payment
+      // amount, mirroring the public ExtendPT flow's economics.
+      const grossFee = calculateTotalFee();
+      const paymentAmount = isExtendMode ? extendTotal : grossFee;
 
       const insertData: any = {
         member_id: memberId,
@@ -410,7 +414,7 @@ export const AssignTrainerDialog = ({
         start_date: startDate,
         end_date: endDate,
         monthly_fee: Number(monthlyFee),
-        total_fee: totalFee,
+        total_fee: grossFee,
         status: "active",
       };
 
@@ -443,18 +447,44 @@ export const AssignTrainerDialog = ({
 
       // Record the cash payment so it appears in the Payments tab
       try {
+        const noteLabel = isExtendMode ? "PT extension" : "PT subscription";
         await supabase.from("payments").insert({
           member_id: memberId,
           subscription_id: null,
-          amount: totalFee,
+          amount: paymentAmount,
           payment_mode: "cash",
           status: "success",
-          payment_type: "pt_subscription",
+          payment_type: isExtendMode ? "pt_extension" : "pt_subscription",
           branch_id: branchId,
-          notes: `PT subscription cash payment via admin${memberName ? ` for ${memberName}` : ""}`,
+          notes: `${noteLabel} cash payment via admin${memberName ? ` for ${memberName}` : ""}${couponDiscount > 0 ? ` (coupon ${coupon.appliedCoupon?.coupon.code} -₹${couponDiscount})` : ""}`,
         });
       } catch (payErr) {
         console.error("Payment record (PT assign) failed:", payErr);
+      }
+
+      // Record coupon usage (extend mode only)
+      if (isExtendMode && coupon.appliedCoupon && couponDiscount > 0) {
+        try {
+          await supabase.from("coupon_usage").insert({
+            coupon_id: coupon.appliedCoupon.coupon.id,
+            member_id: memberId,
+            discount_applied: couponDiscount,
+            branch_id: branchId,
+          });
+          const { data: cd } = await supabase
+            .from("coupons")
+            .select("usage_count")
+            .eq("id", coupon.appliedCoupon.coupon.id)
+            .single();
+          if (cd) {
+            await supabase
+              .from("coupons")
+              .update({ usage_count: (cd.usage_count || 0) + 1 })
+              .eq("id", coupon.appliedCoupon.coupon.id);
+          }
+        } catch (cErr) {
+          console.error("Failed to record PT extend coupon usage:", cErr);
+        }
       }
 
       // Ledger: PT subscription income + (optional) trainer percentage expense
