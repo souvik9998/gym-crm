@@ -523,7 +523,9 @@ export const AssignTrainerDialog = ({
             ? `\nTime Slot: ${formatTime(selectedSlot.start_time)} – ${formatTime(selectedSlot.end_time)}`
             : "";
           const formatDateStr = (d: string) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-          const message = `Hi ${memberName}, your personal trainer *${trainerName}* has been assigned.${slotInfo}\nPeriod: ${formatDateStr(startDate)} to ${formatDateStr(endDate)}`;
+          const message = isExtendMode
+            ? `Hi ${memberName}, your personal training with *${trainerName}* has been extended.${slotInfo}\nNew period: ${formatDateStr(startDate)} to ${formatDateStr(endDate)}`
+            : `Hi ${memberName}, your personal trainer *${trainerName}* has been assigned.${slotInfo}\nPeriod: ${formatDateStr(startDate)} to ${formatDateStr(endDate)}`;
 
           await supabase.functions.invoke("send-whatsapp", {
             body: {
