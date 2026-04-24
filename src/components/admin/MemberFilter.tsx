@@ -484,12 +484,12 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
                   isActive && [
                     category.hoverColor,
                     category.hoverTextColor,
-                    "border-2 ring-2 ring-offset-1 ring-offset-background shadow-md scale-[1.02] font-semibold",
-                    category.category === "all" && "border-blue-500 ring-blue-400/40 dark:border-blue-400 dark:ring-blue-500/30",
-                    category.category === "active" && "border-green-500 ring-green-400/40 dark:border-green-400 dark:ring-green-500/30",
-                    category.category === "expiring_soon" && "border-amber-500 ring-amber-400/40 dark:border-amber-400 dark:ring-amber-500/30",
-                    category.category === "expired" && "border-red-500 ring-red-400/40 dark:border-red-400 dark:ring-red-500/30",
-                    category.category === "inactive" && "border-slate-500 ring-slate-400/40 dark:border-slate-400 dark:ring-slate-500/30",
+                    "border-2 ring-1 ring-offset-0 shadow-sm scale-[1.01] font-semibold",
+                    category.category === "all" && "border-blue-500 ring-blue-400/20 dark:border-blue-400 dark:ring-blue-500/15",
+                    category.category === "active" && "border-green-500 ring-green-400/20 dark:border-green-400 dark:ring-green-500/15",
+                    category.category === "expiring_soon" && "border-amber-500 ring-amber-400/20 dark:border-amber-400 dark:ring-amber-500/15",
+                    category.category === "expired" && "border-red-500 ring-red-400/20 dark:border-red-400 dark:ring-red-500/15",
+                    category.category === "inactive" && "border-slate-500 ring-slate-400/20 dark:border-slate-400 dark:ring-slate-500/15",
                   ],
                   !isActive && "border"
                 )}
