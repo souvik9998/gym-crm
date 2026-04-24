@@ -28,7 +28,7 @@ import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import { useMembersQuery } from "@/hooks/queries/useMembers";
 import { TIME_BUCKET_OPTIONS, formatTimeLabel, matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
-type AttendanceStatus = "present" | "absent" | "late";
+type AttendanceStatus = "present" | "absent" | "skipped";
 
 type AttendanceMemberRow = {
   memberId: string;
@@ -43,13 +43,13 @@ type AttendanceMemberRow = {
 
 const STATUS_STYLES: Record<AttendanceStatus, string> = {
   present: "border-success/25 bg-success/10 text-foreground",
-  late: "border-warning/25 bg-warning/10 text-foreground",
+  skipped: "border-muted-foreground/25 bg-muted/40 text-foreground",
   absent: "border-destructive/20 bg-destructive/10 text-foreground",
 };
 
 const STATUS_BUTTON_STYLES: Record<AttendanceStatus, string> = {
   present: "border-success/30 bg-success text-success-foreground shadow-sm",
-  late: "border-warning/30 bg-warning text-warning-foreground shadow-sm",
+  skipped: "border-muted-foreground/30 bg-muted-foreground text-background shadow-sm",
   absent: "border-destructive/25 bg-destructive text-destructive-foreground shadow-sm",
 };
 
@@ -215,7 +215,7 @@ export const SlotAttendanceTab = () => {
   const stats = useMemo(() => ({
     total: memberList.length,
     present: memberList.filter((member) => member.status === "present").length,
-    late: memberList.filter((member) => member.status === "late").length,
+    skipped: memberList.filter((member) => member.status === "skipped").length,
     absent: memberList.filter((member) => member.status === "absent").length,
   }), [memberList]);
 
@@ -359,7 +359,7 @@ export const SlotAttendanceTab = () => {
     <div
       className={cn(
         "rounded-xl border bg-card p-3 transition-all duration-200 animate-fade-in",
-        member.status === "present" ? "border-success/25 bg-success/5" : member.status === "late" ? "border-warning/25 bg-warning/5" : "border-border/50",
+        member.status === "present" ? "border-success/25 bg-success/5" : member.status === "skipped" ? "border-muted-foreground/25 bg-muted/30" : "border-border/50",
         isFutureDate && "pointer-events-none opacity-60",
       )}
       style={{ animationDelay: `${Math.min(idx * 30, 300)}ms` }}
@@ -386,7 +386,7 @@ export const SlotAttendanceTab = () => {
       </div>
 
       <div className="mt-3 flex items-center gap-1.5">
-        {(["present", "late", "absent"] as const).map((status) => (
+        {(["present", "skipped", "absent"] as const).map((status) => (
           <button
             key={status}
             onClick={() => toggleStatus(member, status)}
@@ -398,7 +398,7 @@ export const SlotAttendanceTab = () => {
                 : "border-border/50 bg-background text-muted-foreground hover:border-primary/30 hover:bg-muted/40 hover:text-foreground",
             )}
           >
-            {status === "present" ? "Present" : status === "late" ? "Late" : "Absent"}
+            {status === "present" ? "Present" : status === "skipped" ? "Skip" : "Absent"}
           </button>
         ))}
       </div>
@@ -410,7 +410,7 @@ export const SlotAttendanceTab = () => {
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {[
           { label: "Present", count: stats.present, icon: CheckCircleIcon, tone: "bg-success/10 text-success" },
-          { label: "Late", count: stats.late, icon: ClockIcon, tone: "bg-warning/10 text-warning" },
+          { label: "Skipped", count: stats.skipped, icon: ClockIcon, tone: "bg-muted-foreground/10 text-muted-foreground" },
           { label: "Absent", count: stats.absent, icon: XCircleIcon, tone: "bg-destructive/10 text-destructive" },
           { label: "Filtered", count: filteredList.length, icon: UserGroupIcon, tone: "bg-primary/10 text-primary" },
         ].map((stat, idx) => (
@@ -554,8 +554,8 @@ export const SlotAttendanceTab = () => {
               <Button variant="outline" size="sm" className="gap-1 border-success/25 text-success hover:bg-success/10 h-10 rounded-xl" onClick={() => markAll("present")}>
                 <CheckBadgeIcon className="h-3.5 w-3.5" /> All Present
               </Button>
-              <Button variant="outline" size="sm" className="gap-1 border-warning/25 text-foreground hover:bg-warning/10 h-10 rounded-xl" onClick={() => markAll("late")}>
-                <ClockIcon className="h-3.5 w-3.5" /> All Late
+              <Button variant="outline" size="sm" className="gap-1 border-muted-foreground/25 text-foreground hover:bg-muted/40 h-10 rounded-xl" onClick={() => markAll("skipped")}>
+                <ClockIcon className="h-3.5 w-3.5" /> All Skip
               </Button>
               <Button variant="outline" size="sm" className="gap-1 border-destructive/25 text-destructive hover:bg-destructive/10 h-10 rounded-xl" onClick={() => markAll("absent")}>
                 <XCircleIcon className="h-3.5 w-3.5" /> All Absent
@@ -568,7 +568,7 @@ export const SlotAttendanceTab = () => {
             {[
               { key: "all", label: "All" },
               { key: "present", label: "Present" },
-              { key: "late", label: "Late" },
+              { key: "skipped", label: "Skipped" },
               { key: "absent", label: "Absent" },
             ].map((item) => (
               <button
@@ -626,7 +626,7 @@ export const SlotAttendanceTab = () => {
                           className={cn(
                             "transition-colors duration-150 hover:bg-muted/10",
                             member.status === "present" && "bg-success/5",
-                            member.status === "late" && "bg-warning/5",
+                            member.status === "skipped" && "bg-muted/30",
                             isFutureDate && "pointer-events-none opacity-60",
                           )}
                         >
@@ -646,11 +646,12 @@ export const SlotAttendanceTab = () => {
                           </td>
                           <td className="px-3 py-2.5">
                             <div className="flex items-center justify-center gap-1">
-                              {(["present", "late", "absent"] as const).map((status) => (
+                              {(["present", "skipped", "absent"] as const).map((status) => (
                                 <button
                                   key={status}
                                   onClick={() => toggleStatus(member, status)}
                                   disabled={isFutureDate}
+                                  title={status === "present" ? "Present" : status === "skipped" ? "Skipped" : "Absent"}
                                   className={cn(
                                     "h-8 rounded-md border px-2.5 text-[11px] font-semibold transition-all duration-200 active:scale-95",
                                     member.status === status
@@ -658,7 +659,7 @@ export const SlotAttendanceTab = () => {
                                       : "border-border/50 bg-background text-muted-foreground hover:border-primary/30 hover:bg-muted/40 hover:text-foreground",
                                   )}
                                 >
-                                  {status === "present" ? "P" : status === "late" ? "L" : "A"}
+                                  {status === "present" ? "P" : status === "skipped" ? "S" : "A"}
                                 </button>
                               ))}
                               {isSavingRow && <ButtonSpinner />}
