@@ -599,17 +599,19 @@ export const AssignTrainerDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Dumbbell className="w-4 h-4 text-accent" />
-            {mode === "assign" ? "Assign Trainer" : "Replace Trainer"}
+            {mode === "assign" ? "Assign Trainer" : mode === "extend" ? "Extend Personal Training" : "Replace Trainer"}
           </DialogTitle>
           <DialogDescription className="text-xs">
             {mode === "assign"
               ? "Select a trainer, time slot, and set the training period"
+              : mode === "extend"
+              ? "Extend the current PT — start date is locked to the day after the active PT ends. End date can go up to membership expiry."
               : "Choose a new trainer to replace the current one"}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
-          {/* Trainer Selection */}
+          {/* Trainer Selection — locked card in extend mode */}
           <div className="space-y-1.5 animate-fade-in" style={{ animationDelay: "0ms" }}>
             <Label className="text-sm font-medium">Trainer</Label>
             {isFetchingTrainers ? (
@@ -619,6 +621,20 @@ export const AssignTrainerDialog = ({
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">Loading trainers...</span>
                 </div>
+              </div>
+            ) : isExtendMode && existingTrainer ? (
+              <div className="rounded-md border border-accent/30 bg-accent/5 px-3 py-2.5 flex items-center gap-3">
+                <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-accent/10">
+                  <Dumbbell className="w-4 h-4 text-accent" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold truncate">{existingTrainer.name}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">
+                    {existingTrainer.specialization ? `${existingTrainer.specialization} • ` : ""}
+                    ₹{existingTrainer.monthly_fee}/mo
+                  </div>
+                </div>
+                <span className="text-[10px] text-muted-foreground rounded-full border border-border/60 px-2 py-0.5">Locked</span>
               </div>
             ) : (
               <Select value={selectedTrainerId} onValueChange={handleTrainerChange}>
