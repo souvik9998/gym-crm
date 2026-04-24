@@ -566,27 +566,13 @@ export const SimpleAttendanceTab = () => {
         <div className="w-px h-8 bg-border/60 shrink-0" />
 
         {/* Filters */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide rounded-lg border border-border/50 bg-background/70 px-1 py-1">
-            {TIME_BUCKET_OPTIONS.map((option) => {
-              const active = timeFilter === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setTimeFilter(option.value)}
-                  className={cn(
-                    "shrink-0 rounded-md px-2 py-1 text-[10px] font-medium transition-all duration-200",
-                    active
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
+        <div className="flex items-start gap-2 shrink-0">
+          <TimeBucketChips
+            value={timeFilter}
+            onChange={setTimeFilter}
+            compact
+            className="max-w-[640px]"
+          />
           <TrainerFilterDropdown
             value={selectedTrainerId}
             onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }}
