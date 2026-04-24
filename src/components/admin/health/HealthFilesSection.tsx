@@ -44,6 +44,45 @@ export const HealthFilesSection = ({ documents, healthDetails, memberId, branchI
     emergency_contact_phone: healthDetails?.emergency_contact_phone || null,
   });
 
+  const [memberName, setMemberName] = useState<string>("");
+  useEffect(() => {
+    if (!memberId) return;
+    supabase.from("members").select("name").eq("id", memberId).maybeSingle().then(({ data }) => {
+      if (data?.name) setMemberName(data.name);
+    });
+  }, [memberId]);
+
+  const logHealthActivity = async (
+    activityType: "health_details_updated" | "health_document_uploaded" | "health_document_deleted",
+    description: string,
+    extra: { entityId?: string; metadata?: Record<string, any> } = {},
+  ) => {
+    try {
+      const base = {
+        type: activityType as any,
+        description,
+        entityType: activityType === "health_details_updated" ? "member_details" : "member_document",
+        entityId: extra.entityId,
+        entityName: memberName || "Member",
+        branchId,
+        metadata: { member_id: memberId, member_name: memberName, ...(extra.metadata || {}) },
+      };
+      if (isStaffLoggedIn && staffUser) {
+        await logStaffActivity({
+          ...base,
+          category: "members",
+          staffId: staffUser.id,
+          staffName: staffUser.fullName,
+          staffPhone: (staffUser as any).phone,
+        });
+      } else {
+        await logAdminActivity({ ...base, category: "members" });
+      }
+    } catch (err) {
+      console.warn("Health activity log failed", err);
+    }
+  };
+
   const getStoragePath = (fileUrl: string): string => {
     const marker = "/object/public/member-documents/";
     const idx = fileUrl.indexOf(marker);
