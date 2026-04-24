@@ -283,7 +283,26 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
             </div>
             <div>
               <Label className="text-xs">Created By *</Label>
-              <Input value={createdBy} onChange={(e) => setCreatedBy(e.target.value)} placeholder="Trainer name" className="h-10 text-sm mt-1" />
+              <Select value={createdBy || undefined} onValueChange={setCreatedBy} disabled={loadingCreators || creatorOptions.length === 0}>
+                <SelectTrigger className="h-10 text-sm mt-1">
+                  <SelectValue placeholder={loadingCreators ? "Loading trainers / staff..." : creatorOptions.length === 0 ? "No allowed trainer / staff" : "Select trainer / staff"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {creatorOptions.map((option) => (
+                    <SelectItem key={option.id} value={option.name}>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="truncate">{option.name}</span>
+                        {option.role && (
+                          <span className="text-[10px] capitalize text-muted-foreground">{option.role}</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {isLimitedAccess ? "Restricted staff can only create plans under their own name." : "Trainers and staff allowed for this branch."}
+              </p>
             </div>
           </div>
 
