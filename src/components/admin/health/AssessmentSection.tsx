@@ -1174,13 +1174,26 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={(e) => { e.stopPropagation(); handleEditAssessment(assessment); }}
+                    disabled={deletingId === assessment.id}
+                    aria-label="Edit assessment"
+                    title="Edit assessment"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                     onClick={() => setConfirmDeleteId(confirmDeleteId === assessment.id ? null : assessment.id)}
                     disabled={deletingId === assessment.id}
+                    aria-label="Delete assessment"
+                    title="Delete assessment"
                   >
                     <Trash2 className="w-3 h-3" />
                   </Button>
-                  <button onClick={() => setExpandedId(expandedId === assessment.id ? null : assessment.id)} className="p-1">
+                  <button onClick={() => setExpandedId(expandedId === assessment.id ? null : assessment.id)} className="p-1" aria-label="Toggle details">
                     {expandedId === assessment.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </div>
