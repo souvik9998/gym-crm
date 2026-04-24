@@ -1845,8 +1845,8 @@ export const AddMemberDialog = ({
                         </Select>
                       </div>
 
-                      {/* Editable Fees */}
-                      <div className="grid grid-cols-2 gap-3">
+                      {/* Editable Fees — joining fee is hidden for renewals/PT-only */}
+                      <div className={cn("grid gap-3", isExistingMemberAction ? "grid-cols-1" : "grid-cols-2")}>
                         <div className="space-y-1.5">
                           <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                             <IndianRupee className="w-3 h-3" />
@@ -1862,25 +1862,27 @@ export const AddMemberDialog = ({
                             className="h-10 text-sm rounded-xl disabled:opacity-60"
                           />
                         </div>
-                        <div className="space-y-1.5">
-                          <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                            <IndianRupee className="w-3 h-3" />
-                            Joining Fee
-                          </Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={registerFree ? 0 : joiningFee}
-                            disabled={registerFree}
-                            onChange={(e) => {
-                              // joining fee can be 0 (some packages have no joining fee), but never negative
-                              const v = e.target.value === "" ? 0 : Math.max(0, Number(e.target.value) || 0);
-                              setJoiningFee(v);
-                            }}
-                            className="h-10 text-sm rounded-xl disabled:opacity-60"
-                          />
-                        </div>
+                        {!isExistingMemberAction && (
+                          <div className="space-y-1.5">
+                            <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                              <IndianRupee className="w-3 h-3" />
+                              Joining Fee
+                            </Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={registerFree ? 0 : joiningFee}
+                              disabled={registerFree}
+                              onChange={(e) => {
+                                // joining fee can be 0 (some packages have no joining fee), but never negative
+                                const v = e.target.value === "" ? 0 : Math.max(0, Number(e.target.value) || 0);
+                                setJoiningFee(v);
+                              }}
+                              className="h-10 text-sm rounded-xl disabled:opacity-60"
+                            />
+                          </div>
+                        )}
                       </div>
                     </>
                   )}
