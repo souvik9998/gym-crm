@@ -25,7 +25,7 @@ import { TrainerSlotsDialog } from "./TrainerSlotsDialog";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
-import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
+
 import { matchesTimeFilter, type TimeBucket } from "./timeSlotUtils";
 
 interface TimeSlot {
