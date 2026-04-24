@@ -219,7 +219,7 @@ export const SlotMembersTab = ({
     return slots.filter((slot) => {
       if (filterTrainer !== "all" && slot.trainer_id !== filterTrainer) return false;
       if (filterAvailability !== "all" && slot.availability !== filterAvailability) return false;
-      if (!matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd)) return false;
+      if (!matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd, slot.end_time)) return false;
       if (!slotSearch) return true;
       const query = slotSearch.toLowerCase();
       const slotText = `${slot.trainer_name} ${formatTimeLabel(slot.start_time)} ${formatTimeLabel(slot.end_time)}`.toLowerCase();
