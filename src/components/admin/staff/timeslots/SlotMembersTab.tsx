@@ -725,20 +725,7 @@ export const SlotMembersTab = ({
                 </div>
               </div>
 
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {TIME_BUCKET_OPTIONS.map((option) => (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    variant={timeFilter === option.value ? "default" : "outline"}
-                    size="sm"
-                    className={getTimeFilterButtonClass(option.value)}
-                    onClick={() => setTimeFilter(option.value)}
-                  >
-                    {option.label}
-                  </Button>
-                ))}
-              </div>
+              <TimeBucketChips value={timeFilter} onChange={setTimeFilter} />
 
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                 {!restrictedTrainerId && (
