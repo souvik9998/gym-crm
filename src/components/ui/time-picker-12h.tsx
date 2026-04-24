@@ -66,6 +66,7 @@ interface WheelProps<T> {
 function Wheel<T>({ items, value, onChange, format, ariaLabel }: WheelProps<T>) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const scrollTimer = React.useRef<number | null>(null);
+  const wheelAccum = React.useRef(0);
   const isProgrammatic = React.useRef(false);
 
   const padCount = Math.floor(VISIBLE_ROWS / 2);
@@ -79,7 +80,6 @@ function Wheel<T>({ items, value, onChange, format, ariaLabel }: WheelProps<T>) 
     if (Math.abs(el.scrollTop - target) < 1) return;
     isProgrammatic.current = true;
     el.scrollTo({ top: target, behavior: "smooth" });
-    // Clear flag after smooth scroll completes
     window.setTimeout(() => {
       isProgrammatic.current = false;
     }, 350);
@@ -94,12 +94,32 @@ function Wheel<T>({ items, value, onChange, format, ariaLabel }: WheelProps<T>) 
       const idx = Math.round(el.scrollTop / ITEM_HEIGHT);
       const clamped = Math.max(0, Math.min(items.length - 1, idx));
       const target = clamped * ITEM_HEIGHT;
-      // snap
       el.scrollTo({ top: target, behavior: "smooth" });
       const next = items[clamped];
       if (next !== value) onChange(next);
     }, 80);
   };
+
+  // Native wheel handler — works reliably inside Radix Popover on desktop.
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      wheelAccum.current += e.deltaY;
+      const threshold = 30; // pixels of wheel travel per step
+      if (Math.abs(wheelAccum.current) < threshold) return;
+      const step = wheelAccum.current > 0 ? 1 : -1;
+      wheelAccum.current = 0;
+      const nextIdx = Math.max(0, Math.min(items.length - 1, selectedIndex + step));
+      if (nextIdx !== selectedIndex) {
+        onChange(items[nextIdx]);
+      }
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [items, selectedIndex, onChange]);
 
   const handleItemClick = (item: T, idx: number) => {
     onChange(item);
@@ -113,14 +133,28 @@ function Wheel<T>({ items, value, onChange, format, ariaLabel }: WheelProps<T>) 
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const next = Math.min(items.length - 1, selectedIndex + 1);
+      if (next !== selectedIndex) onChange(items[next]);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const next = Math.max(0, selectedIndex - 1);
+      if (next !== selectedIndex) onChange(items[next]);
+    }
+  };
+
   return (
     <div
       ref={containerRef}
       onScroll={handleScroll}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
       role="listbox"
       aria-label={ariaLabel}
       className={cn(
-        "relative flex-1 overflow-y-auto overscroll-contain",
+        "relative flex-1 overflow-y-auto overscroll-contain outline-none",
         "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
         "snap-y snap-mandatory scroll-smooth",
       )}
