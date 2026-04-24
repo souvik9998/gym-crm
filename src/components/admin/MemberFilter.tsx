@@ -533,27 +533,6 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
                   }
                 }}
               >
-                {/* Active indicator dot — pulsing in top-right */}
-                {isActive && (
-                  <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                    <span className={cn(
-                      "absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping",
-                      category.category === "all" && "bg-blue-500",
-                      category.category === "active" && "bg-green-500",
-                      category.category === "expiring_soon" && "bg-amber-500",
-                      category.category === "expired" && "bg-red-500",
-                      category.category === "inactive" && "bg-slate-500",
-                    )} />
-                    <span className={cn(
-                      "relative inline-flex rounded-full h-2.5 w-2.5 ring-2 ring-background",
-                      category.category === "all" && "bg-blue-500",
-                      category.category === "active" && "bg-green-500",
-                      category.category === "expiring_soon" && "bg-amber-500",
-                      category.category === "expired" && "bg-red-500",
-                      category.category === "inactive" && "bg-slate-500",
-                    )} />
-                  </span>
-                )}
                 <div className="flex items-center gap-1 lg:gap-1.5">
                   <span className={cn("transition-colors [&>svg]:w-3.5 [&>svg]:h-3.5 lg:[&>svg]:w-4 lg:[&>svg]:h-4", category.color, category.hoverTextColor)}>
                   {category.icon}
