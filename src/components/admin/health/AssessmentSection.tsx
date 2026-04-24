@@ -141,6 +141,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       setDraftId(existingDraft.id);
       hydratedDraftRef.current = existingDraft.id;
       hydratedOnOpenRef.current = true;
+      originalSnapshotRef.current = JSON.stringify(data);
+      editingFinalizedRef.current = false; // it IS a draft
       return;
     }
 
@@ -149,8 +151,14 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed && typeof parsed === "object") setFormData(parsed);
+        originalSnapshotRef.current = stored;
+      } else {
+        originalSnapshotRef.current = JSON.stringify({ assessed_by: "" });
       }
-    } catch {}
+    } catch {
+      originalSnapshotRef.current = JSON.stringify({ assessed_by: "" });
+    }
+    editingFinalizedRef.current = false;
     hydratedOnOpenRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showForm, existingDraft?.id]);
