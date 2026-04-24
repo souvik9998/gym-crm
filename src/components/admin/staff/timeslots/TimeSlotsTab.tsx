@@ -21,6 +21,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useIsTabletOrBelow } from "@/hooks/use-mobile";
 import { TimeSlotDetailDialog } from "./TimeSlotDetailDialog";
+import { TrainerSlotsDialog } from "./TrainerSlotsDialog";
 import { useInvalidateQueries } from "@/hooks/useQueryCache";
 import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
@@ -74,6 +75,9 @@ export const TimeSlotsTab = ({
   const [editingSlot, setEditingSlot] = useState<TimeSlot | null>(null);
   const [detailSlot, setDetailSlot] = useState<TimeSlot | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  // Trainer-grouped dialog: opened when clicking a trainer card.
+  const [activeTrainerId, setActiveTrainerId] = useState<string | null>(null);
+  const [trainerDialogOpen, setTrainerDialogOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean; title: string; description: string; onConfirm: () => void;
   }>({ open: false, title: "", description: "", onConfirm: () => {} });
@@ -334,6 +338,54 @@ export const TimeSlotsTab = ({
     });
   }, [slots, filterTrainer, filterStatus, filterRecurring, filterTime, search]);
 
+  // Group filtered slots by trainer for the per-trainer card view.
+  // Each trainer becomes a single card listing all of their slots; clicking it
+  // opens the TrainerSlotsDialog where individual slots can be inspected.
+  type TrainerGroup = {
+    trainer_id: string;
+    trainer_name: string;
+    slots: TimeSlot[];
+    totalCapacity: number;
+    totalFilled: number;
+    fullCount: number;
+    fillPct: number;
+  };
+  const trainerGroups = useMemo<TrainerGroup[]>(() => {
+    const map = new Map<string, TrainerGroup>();
+    for (const s of filteredSlots) {
+      const key = s.trainer_id;
+      let g = map.get(key);
+      if (!g) {
+        g = {
+          trainer_id: s.trainer_id,
+          trainer_name: s.trainer_name || "Unknown",
+          slots: [],
+          totalCapacity: 0,
+          totalFilled: 0,
+          fullCount: 0,
+          fillPct: 0,
+        };
+        map.set(key, g);
+      }
+      g.slots.push(s);
+      g.totalCapacity += s.capacity;
+      g.totalFilled += s.member_count || 0;
+      if ((s.member_count || 0) >= s.capacity) g.fullCount += 1;
+    }
+    const arr = Array.from(map.values()).map((g) => ({
+      ...g,
+      // Sort slots within a trainer chronologically.
+      slots: g.slots.sort((a, b) => a.start_time.localeCompare(b.start_time)),
+      fillPct:
+        g.totalCapacity > 0
+          ? Math.min((g.totalFilled / g.totalCapacity) * 100, 100)
+          : 0,
+    }));
+    // Stable trainer-name ordering.
+    arr.sort((a, b) => a.trainer_name.localeCompare(b.trainer_name));
+    return arr;
+  }, [filteredSlots]);
+
   // Summary stats across all slots (not just filtered)
   const summary = useMemo(() => {
     const total = slots.length;
@@ -582,17 +634,18 @@ export const TimeSlotsTab = ({
             </Card>
           ) : (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 pt-2">
-              {filteredSlots.map((slot, index) => {
-                const filled = slot.member_count || 0;
-                const isFull = filled >= slot.capacity;
+              {trainerGroups.map((group, index) => {
+                const totalCap = group.totalCapacity;
+                const filled = group.totalFilled;
+                const fillPct = group.fillPct;
+                const allFull = filled >= totalCap && totalCap > 0;
                 const isEmpty = filled === 0;
-                const fillPct = Math.min((filled / slot.capacity) * 100, 100);
 
-                // Status-driven palette:
-                //  - Full       → strong danger (red/rose)
-                //  - Filling    → warning (amber/orange)
-                //  - Available  → neutral (slate) blends with background
-                const accent = isFull
+                // Status-driven palette mirrors the per-slot card:
+                //  - All slots full       → danger (red)
+                //  - Filling (≥70%)       → warning (amber)
+                //  - Mixed/available      → calm (emerald)
+                const accent = allFull
                   ? {
                       bar: "bg-red-500",
                       bg: "bg-red-50/80 dark:bg-red-950/30",
@@ -602,7 +655,6 @@ export const TimeSlotsTab = ({
                       badge: "bg-red-500 text-white dark:bg-red-600",
                       border: "border-red-300/80 dark:border-red-800/60",
                       borderHover: "hover:border-red-400 dark:hover:border-red-700",
-                      ring: "ring-red-200/50 dark:ring-red-900/40",
                     }
                   : fillPct >= 70
                   ? {
@@ -614,7 +666,6 @@ export const TimeSlotsTab = ({
                       badge: "bg-amber-500 text-white dark:bg-amber-600",
                       border: "border-amber-300/70 dark:border-amber-800/50",
                       borderHover: "hover:border-amber-400 dark:hover:border-amber-700",
-                      ring: "ring-amber-200/50 dark:ring-amber-900/40",
                     }
                   : {
                       bar: "bg-emerald-500",
@@ -625,35 +676,49 @@ export const TimeSlotsTab = ({
                       badge: "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/50",
                       border: "border-emerald-300 dark:border-emerald-800/70",
                       borderHover: "hover:border-emerald-400 dark:hover:border-emerald-700",
-                      ring: "ring-emerald-200/50 dark:ring-emerald-900/40",
                     };
 
-                const statusLabel = isFull ? "Full" : isEmpty ? "Empty" : fillPct >= 70 ? "Filling" : "Available";
+                const statusLabel = allFull
+                  ? "All Full"
+                  : isEmpty
+                  ? "Open"
+                  : fillPct >= 70
+                  ? "Filling"
+                  : "Available";
 
                 return (
                   <Card
-                    key={slot.id}
+                    key={group.trainer_id}
                     className={cn(
                       "cursor-pointer transition-all duration-300 animate-fade-in group relative rounded-2xl",
                       "border-2 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06),0_4px_16px_-4px_rgba(0,0,0,0.04)]",
                       "hover:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.12),0_4px_12px_-4px_rgba(0,0,0,0.06)] hover:-translate-y-1",
                       accent.bg,
                       accent.border,
-                      accent.borderHover
+                      accent.borderHover,
                     )}
                     style={{ animationDelay: `${index * 40}ms`, animationFillMode: "backwards" }}
-                    onClick={() => handleCardClick(slot)}
+                    onClick={() => {
+                      setActiveTrainerId(group.trainer_id);
+                      setTrainerDialogOpen(true);
+                    }}
                   >
                     <CardHeader className="p-5 pb-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <CardTitle className="text-lg font-semibold truncate flex items-center gap-1.5 text-foreground">
                             <UserGroupIcon className={cn("w-4 h-4 shrink-0", accent.icon)} />
-                            {slot.trainer_name}
+                            {group.trainer_name}
                           </CardTitle>
                           <CardDescription className="text-xs flex items-center gap-1 mt-1 text-muted-foreground">
                             <ClockIcon className="w-3 h-3 shrink-0" />
-                            {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
+                            {group.slots.length}{" "}
+                            {group.slots.length === 1 ? "time slot" : "time slots"}
+                            {group.fullCount > 0 && (
+                              <span className="text-rose-600 dark:text-rose-400 font-medium ml-1">
+                                · {group.fullCount} full
+                              </span>
+                            )}
                           </CardDescription>
                         </div>
                         <Badge className={cn("text-[10px] border-0 shrink-0 font-medium", accent.badge)}>
@@ -662,11 +727,48 @@ export const TimeSlotsTab = ({
                       </div>
                     </CardHeader>
                     <CardContent className="p-5 pt-2 space-y-3">
-                      <div className="flex items-end justify-between">
-                        <span className="text-xs text-muted-foreground">Capacity</span>
+                      {/* Compact list of this trainer's slot timings — capped at 3, with overflow hint. */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {group.slots.slice(0, 3).map((s) => {
+                          const sFilled = s.member_count || 0;
+                          const sFull = sFilled >= s.capacity;
+                          return (
+                            <span
+                              key={s.id}
+                              className={cn(
+                                "inline-flex items-center gap-1 text-[11px] font-medium rounded-md px-2 py-0.5",
+                                sFull
+                                  ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                                  : sFilled === 0
+                                  ? "bg-muted text-muted-foreground"
+                                  : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300",
+                              )}
+                            >
+                              <ClockIcon className="w-2.5 h-2.5" />
+                              {formatTime(s.start_time)}
+                              <span className="opacity-60">·</span>
+                              <span className="tabular-nums">
+                                {sFilled}/{s.capacity}
+                              </span>
+                            </span>
+                          );
+                        })}
+                        {group.slots.length > 3 && (
+                          <span className="inline-flex items-center text-[11px] font-medium rounded-md px-2 py-0.5 bg-primary/10 text-primary">
+                            +{group.slots.length - 3} more
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-end justify-between pt-1">
+                        <span className="text-xs text-muted-foreground">Total seats filled</span>
                         <div className="flex items-baseline gap-1">
-                          <span className={cn("text-2xl font-bold tabular-nums leading-none", accent.text)}>{filled}</span>
-                          <span className="text-sm text-muted-foreground font-normal">/{slot.capacity}</span>
+                          <span className={cn("text-2xl font-bold tabular-nums leading-none", accent.text)}>
+                            {filled}
+                          </span>
+                          <span className="text-sm text-muted-foreground font-normal">
+                            /{totalCap}
+                          </span>
                         </div>
                       </div>
                       <div className="w-full bg-white/60 dark:bg-white/5 rounded-full h-1.5 overflow-hidden">
@@ -675,47 +777,23 @@ export const TimeSlotsTab = ({
                           style={{ width: `${fillPct}%` }}
                         />
                       </div>
-                      {slot.is_recurring && slot.recurring_days && slot.recurring_days.length > 0 && (
-                        <div className="flex flex-wrap gap-1 pt-0.5">
-                          {DAY_LABELS.map((label, d) => (
-                            <span
-                              key={d}
-                              className={cn(
-                                "text-[10px] px-1.5 py-0.5 rounded font-medium transition-colors",
-                                slot.recurring_days?.includes(d)
-                                  ? cn(accent.numBg, accent.text)
-                                  : "bg-white/50 dark:bg-white/5 text-muted-foreground/50"
-                              )}
-                            >
-                              {label}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {canEditDelete && (
-                        <div className="flex gap-2 pt-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className={cn(
-                              "flex-1 text-xs h-8 bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/15",
-                              accent.border,
-                              accent.text
-                            )}
-                            onClick={(e) => handleOpenEdit(slot, e)}
-                          >
-                            <PencilIcon className="w-3 h-3 mr-1" /> Edit
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs h-8 bg-white/80 dark:bg-white/10 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-500 hover:text-rose-600 border-rose-200 dark:border-rose-900/50"
-                            onClick={(e) => handleDelete(slot, e)}
-                          >
-                            <TrashIcon className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      )}
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "w-full text-xs h-8 mt-1 bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/15",
+                          accent.border,
+                          accent.text,
+                        )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveTrainerId(group.trainer_id);
+                          setTrainerDialogOpen(true);
+                        }}
+                      >
+                        View {group.slots.length === 1 ? "slot" : "all slots"} & members
+                      </Button>
                     </CardContent>
                   </Card>
                 );
@@ -724,6 +802,55 @@ export const TimeSlotsTab = ({
           )}
         </>
       )}
+
+      {/* Trainer-grouped dialog: opens when clicking a trainer card.
+          Lists every slot for that trainer; clicking a slot opens the existing
+          per-slot detail dialog with the full member-management UX. */}
+      <TrainerSlotsDialog
+        open={trainerDialogOpen}
+        onOpenChange={(o) => {
+          setTrainerDialogOpen(o);
+          if (!o) setActiveTrainerId(null);
+        }}
+        trainerName={
+          trainerGroups.find((g) => g.trainer_id === activeTrainerId)?.trainer_name ||
+          "Trainer"
+        }
+        trainerId={activeTrainerId || ""}
+        slots={
+          trainerGroups.find((g) => g.trainer_id === activeTrainerId)?.slots || []
+        }
+        branchId={currentBranch?.id || ""}
+        onUpdated={fetchSlots}
+        onAddSlot={(trainerId) => {
+          // Pre-fill the create form with this trainer.
+          resetForm();
+          setForm((prev) => ({ ...prev, trainer_id: trainerId }));
+          setDialogOpen(true);
+        }}
+        onEditSlot={(slot) => {
+          setEditingSlot(slot as TimeSlot);
+          setForm({
+            trainer_id: slot.trainer_id,
+            start_time: slot.start_time.slice(0, 5),
+            end_time: slot.end_time.slice(0, 5),
+            capacity: slot.capacity,
+            is_recurring: slot.is_recurring,
+            recurring_days: slot.recurring_days || [],
+          });
+          setDialogOpen(true);
+        }}
+        onDeleteSlot={(slot) => {
+          // Reuse the same confirm flow as the per-card delete.
+          handleDelete(slot as TimeSlot, {
+            stopPropagation: () => {},
+          } as unknown as React.MouseEvent);
+        }}
+        canCreate={canCreate}
+        canEditDelete={canEditDelete}
+        canViewMembers={canViewMembers}
+        canAssignMembers={canCreate || canEditDelete}
+      />
 
       {/* Detail Dialog */}
       <TimeSlotDetailDialog
