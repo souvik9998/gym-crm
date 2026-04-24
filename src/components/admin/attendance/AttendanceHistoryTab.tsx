@@ -138,7 +138,7 @@ export const AttendanceHistoryTab = () => {
       if (!map[r.date]) map[r.date] = { present: 0, late: 0, absent: 0, total: 0 };
       map[r.date].total++;
       if (r.status === "present") map[r.date].present++;
-      else if (r.status === "late") map[r.date].late++;
+      else if (r.status === "late" || r.status === "skipped") map[r.date].late++;
       else map[r.date].absent++;
     });
     return map;
@@ -152,7 +152,7 @@ export const AttendanceHistoryTab = () => {
       if (!map[id]) map[id] = { name: r.members?.name || "Unknown", phone: r.members?.phone || "", present: 0, late: 0, absent: 0, total: 0, dates: {} };
       map[id].total++;
       if (r.status === "present") map[id].present++;
-      else if (r.status === "late") map[id].late++;
+      else if (r.status === "late" || r.status === "skipped") map[id].late++;
       else map[id].absent++;
       map[id].dates[r.date] = r.status;
     });
@@ -170,7 +170,7 @@ export const AttendanceHistoryTab = () => {
     let present = 0, late = 0, absent = 0;
     monthRecords.forEach((r: any) => {
       if (r.status === "present") present++;
-      else if (r.status === "late") late++;
+      else if (r.status === "late" || r.status === "skipped") late++;
       else absent++;
     });
     return { present, late, absent, total: monthRecords.length };
@@ -188,7 +188,7 @@ export const AttendanceHistoryTab = () => {
 
   const selectedStats = useMemo(() => {
     const present = selectedRecords.filter((r: any) => r.status === "present").length;
-    const late = selectedRecords.filter((r: any) => r.status === "late").length;
+    const late = selectedRecords.filter((r: any) => r.status === "late" || r.status === "skipped").length;
     const absent = selectedRecords.filter((r: any) => r.status === "absent").length;
     return { present, late, absent, total: selectedRecords.length };
   }, [selectedRecords]);
@@ -297,9 +297,11 @@ export const AttendanceHistoryTab = () => {
           Status:
             record.status === "present"
               ? "Present"
-              : record.status === "late"
-                ? "Late"
-                : "Absent",
+              : record.status === "skipped"
+                ? "Skipped"
+                : record.status === "late"
+                  ? "Late"
+                  : "Absent",
           Trainer: record.time_slot_id ? trainerLabelMap.get(record.time_slot_id) || "-" : "-",
           "Time Slot": record.time_slot_id ? slotLabelMap.get(record.time_slot_id) || "-" : "-",
           "Marked Via": record.marked_by_type || "-",
