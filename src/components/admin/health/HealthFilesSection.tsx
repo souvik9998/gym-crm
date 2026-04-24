@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,16 +8,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Plus, Download, FileText, Upload, Heart, Trash2, AlertTriangle, Loader2 } from "lucide-react";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import type { MemberDocument, HealthDetails } from "./MemberHealthTab";
 
 interface HealthFilesSectionProps {
   documents: MemberDocument[];
   healthDetails: HealthDetails | null;
   memberId: string;
+  branchId?: string;
   onRefresh: () => void;
 }
 
-export const HealthFilesSection = ({ documents, healthDetails, memberId, onRefresh }: HealthFilesSectionProps) => {
+export const HealthFilesSection = ({ documents, healthDetails, memberId, branchId, onRefresh }: HealthFilesSectionProps) => {
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
   const [showUpload, setShowUpload] = useState(false);
   const [showHealthForm, setShowHealthForm] = useState(false);
   const [isUploading, setIsUploading] = useState(false);

@@ -190,6 +190,7 @@ export const MemberHealthTab = ({ memberId, branchId }: MemberHealthTabProps) =>
             documents={documents}
             healthDetails={healthDetails}
             memberId={memberId}
+            branchId={branchId}
             onRefresh={() => { fetchDocuments(); fetchHealthDetails(); }}
           />
         </AccordionContent>
