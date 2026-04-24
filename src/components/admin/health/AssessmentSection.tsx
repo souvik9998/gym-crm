@@ -56,8 +56,49 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   const hydratedOnOpenRef = useRef(false);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const formScrollRef = useRef<HTMLDivElement | null>(null);
+  const [memberName, setMemberName] = useState<string>("");
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
   const draftStorageKey = useMemo(() => `assessment-draft:${memberId}`, [memberId]);
+
+  // Fetch member name once for activity logs
+  useEffect(() => {
+    if (!memberId) return;
+    supabase.from("members").select("name").eq("id", memberId).maybeSingle().then(({ data }) => {
+      if (data?.name) setMemberName(data.name);
+    });
+  }, [memberId]);
+
+  // Unified activity logger — routes to admin or staff log
+  const logAssessmentActivity = async (
+    activityType: "assessment_saved" | "assessment_finalized" | "assessment_draft_saved" | "assessment_deleted",
+    description: string,
+    extra: { entityId?: string; metadata?: Record<string, any> } = {},
+  ) => {
+    try {
+      const base = {
+        type: activityType as any,
+        description,
+        entityType: "member_assessment",
+        entityId: extra.entityId,
+        entityName: memberName || "Member",
+        branchId,
+        metadata: { member_id: memberId, member_name: memberName, ...(extra.metadata || {}) },
+      };
+      if (isStaffLoggedIn && staffUser) {
+        await logStaffActivity({
+          ...base,
+          category: "members",
+          staffId: staffUser.id,
+          staffName: staffUser.fullName,
+          staffPhone: (staffUser as any).phone,
+        });
+      } else {
+        await logAdminActivity({ ...base, category: "members" });
+      }
+    } catch (err) {
+      console.warn("Assessment activity log failed", err);
+    }
+  };
 
   // Find the most recent draft for this member from props
   const existingDraft = useMemo(() => assessments.find((a) => a.is_draft), [assessments]);
