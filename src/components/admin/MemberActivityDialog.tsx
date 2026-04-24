@@ -130,7 +130,7 @@ export const MemberActivityDialog = ({
   const [activeTab, setActiveTab] = useState("overview");
   const [showAssignTrainer, setShowAssignTrainer] = useState(false);
   const [showRenewMember, setShowRenewMember] = useState(false);
-  const [assignMode, setAssignMode] = useState<"assign" | "replace">("assign");
+  const [assignMode, setAssignMode] = useState<"assign" | "replace" | "extend">("assign");
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState<string | null>(null);
   const [assigningSlotForPt, setAssigningSlotForPt] = useState<PTSubscription | null>(null);
   const [availableSlots, setAvailableSlots] = useState<any[]>([]);
@@ -962,7 +962,7 @@ export const MemberActivityDialog = ({
                 )}
               </div>
 
-              {/* Assign Trainer Dialog */}
+              {/* Assign / Extend Trainer Dialog */}
               {member && (
                 <AssignTrainerDialog
                   open={showAssignTrainer}
@@ -974,6 +974,18 @@ export const MemberActivityDialog = ({
                   mode={assignMode}
                   existingPtId={activePT?.id}
                   existingTrainerId={activePT?.personal_trainer?.id}
+                  existingTrainer={
+                    assignMode === "extend" && activePT?.personal_trainer
+                      ? {
+                          id: activePT.personal_trainer.id,
+                          name: activePT.personal_trainer.name,
+                          monthly_fee: Number(activePT.monthly_fee) || 0,
+                          specialization: activePT.personal_trainer.specialization,
+                          phone: null,
+                        }
+                      : null
+                  }
+                  existingPtEndDate={assignMode === "extend" ? activePT?.end_date : undefined}
                   membershipEndDate={subscriptions.find(s => s.status === "active" || s.status === "expiring_soon")?.end_date}
                   onSuccess={() => { fetchMemberData(); invalidatePtSubscriptions(); }}
                 />
@@ -1132,6 +1144,22 @@ export const MemberActivityDialog = ({
                 >
                   <RefreshCw className="h-4 w-4" />
                   Renew Member
+                </Button>
+              </div>
+            )}
+
+            {activeTab === "pt" && member && activePT && (
+              <div className="sticky bottom-0 z-20 -mx-5 mt-3 border-t border-border/60 bg-background/95 px-5 pb-1 pt-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
+                <Button
+                  className="h-11 w-full gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 ring-1 ring-primary/20 transition-all duration-200 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setAssignMode("extend");
+                    setShowAssignTrainer(true);
+                  }}
+                >
+                  <Dumbbell className="h-4 w-4" />
+                  Extend PT
                 </Button>
               </div>
             )}

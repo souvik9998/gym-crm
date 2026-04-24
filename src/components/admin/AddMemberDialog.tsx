@@ -388,7 +388,9 @@ export const AddMemberDialog = ({
       setMonthlyPackages(data);
       setSelectedPackageId(data[0].id);
       setMonthlyFee(Number(data[0].price));
-      setJoiningFee(Number(data[0].joining_fee));
+      // Joining fee only applies to NEW members. Renewals (existing members)
+      // should never be charged a joining fee — it's a one-time onboarding cost.
+      setJoiningFee(isExistingMemberAction ? 0 : Number(data[0].joining_fee));
     } else {
       setMonthlyPackages([]);
       setSelectedPackageId("");
@@ -421,7 +423,9 @@ export const AddMemberDialog = ({
     const pkg = monthlyPackages.find((p) => p.id === packageId);
     if (pkg) {
       setMonthlyFee(Number(pkg.price));
-      setJoiningFee(Number(pkg.joining_fee));
+      // Suppress joining fee on renewals — it's a one-time onboarding charge
+      // applied only when registering a brand-new member.
+      setJoiningFee(isExistingMemberAction ? 0 : Number(pkg.joining_fee));
       if (ptMonths > pkg.months) setPtMonths(pkg.months);
     }
   };
@@ -446,6 +450,20 @@ export const AddMemberDialog = ({
   const showGymSection = !selectedAction || selectedAction === "new" || selectedAction === "renew_gym" || selectedAction === "renew_gym_pt";
   const showPTSection = !selectedAction || selectedAction === "new" || selectedAction === "add_pt" || selectedAction === "renew_gym_pt";
   const isPTOnly = selectedAction === "add_pt";
+
+  // Joining fee is a one-time charge applied only to BRAND-NEW members.
+  // Force it to 0 whenever the flow is any kind of existing-member action
+  // (renew gym, add PT, renew gym + PT). When the user toggles back to
+  // "new" we restore the package's configured joining fee.
+  useEffect(() => {
+    if (isExistingMemberAction) {
+      if (joiningFee !== 0) setJoiningFee(0);
+    } else if (selectedAction === "new") {
+      const pkg = monthlyPackages.find((p) => p.id === selectedPackageId);
+      if (pkg) setJoiningFee(Number(pkg.joining_fee));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAction, selectedPackageId, monthlyPackages]);
 
   const gymTotal = showGymSection ? monthlyFee + joiningFee : 0;
   const ptTotal = (wantsPT || isPTOnly) ? ptFee : 0;
@@ -1819,15 +1837,16 @@ export const AddMemberDialog = ({
                           <SelectContent className="rounded-xl">
                             {monthlyPackages.map((pkg) => (
                               <SelectItem key={pkg.id} value={pkg.id}>
-                                {pkg.months} {pkg.months === 1 ? "Month" : "Months"} - ₹{pkg.price} + ₹{pkg.joining_fee} joining
+                                {pkg.months} {pkg.months === 1 ? "Month" : "Months"} - ₹{pkg.price}
+                                {!isExistingMemberAction && pkg.joining_fee > 0 ? ` + ₹${pkg.joining_fee} joining` : ""}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
 
-                      {/* Editable Fees */}
-                      <div className="grid grid-cols-2 gap-3">
+                      {/* Editable Fees — joining fee is hidden for renewals/PT-only */}
+                      <div className={cn("grid gap-3", isExistingMemberAction ? "grid-cols-1" : "grid-cols-2")}>
                         <div className="space-y-1.5">
                           <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                             <IndianRupee className="w-3 h-3" />
@@ -1843,25 +1862,27 @@ export const AddMemberDialog = ({
                             className="h-10 text-sm rounded-xl disabled:opacity-60"
                           />
                         </div>
-                        <div className="space-y-1.5">
-                          <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                            <IndianRupee className="w-3 h-3" />
-                            Joining Fee
-                          </Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={registerFree ? 0 : joiningFee}
-                            disabled={registerFree}
-                            onChange={(e) => {
-                              // joining fee can be 0 (some packages have no joining fee), but never negative
-                              const v = e.target.value === "" ? 0 : Math.max(0, Number(e.target.value) || 0);
-                              setJoiningFee(v);
-                            }}
-                            className="h-10 text-sm rounded-xl disabled:opacity-60"
-                          />
-                        </div>
+                        {!isExistingMemberAction && (
+                          <div className="space-y-1.5">
+                            <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                              <IndianRupee className="w-3 h-3" />
+                              Joining Fee
+                            </Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={registerFree ? 0 : joiningFee}
+                              disabled={registerFree}
+                              onChange={(e) => {
+                                // joining fee can be 0 (some packages have no joining fee), but never negative
+                                const v = e.target.value === "" ? 0 : Math.max(0, Number(e.target.value) || 0);
+                                setJoiningFee(v);
+                              }}
+                              className="h-10 text-sm rounded-xl disabled:opacity-60"
+                            />
+                          </div>
+                        )}
                       </div>
                     </>
                   )}

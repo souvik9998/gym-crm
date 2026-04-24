@@ -547,10 +547,12 @@ export const AssignTrainerDialog = ({
 
       // Log activity
       await logAdminActivity({
-        category: mode === "assign" ? "trainers" : "trainers",
-        type: mode === "assign" ? "pt_assigned" : "pt_replaced",
+        category: "trainers",
+        type: mode === "assign" ? "pt_assigned" : mode === "extend" ? "pt_extended" : "pt_replaced",
         description: mode === "assign"
           ? `Assigned trainer ${trainerName} to ${memberName || "member"}`
+          : mode === "extend"
+          ? `Extended PT with ${trainerName} for ${memberName || "member"} until ${new Date(endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
           : `Replaced trainer for ${memberName || "member"} with ${trainerName}`,
         entityType: "member",
         entityId: memberId,
@@ -569,6 +571,8 @@ export const AssignTrainerDialog = ({
       toast.success(
         mode === "assign"
           ? "Trainer assigned successfully"
+          : mode === "extend"
+          ? "PT extended successfully"
           : "Trainer replaced successfully"
       );
       queryClient.invalidateQueries({ queryKey: ["payments"] });
@@ -595,17 +599,19 @@ export const AssignTrainerDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Dumbbell className="w-4 h-4 text-accent" />
-            {mode === "assign" ? "Assign Trainer" : "Replace Trainer"}
+            {mode === "assign" ? "Assign Trainer" : mode === "extend" ? "Extend Personal Training" : "Replace Trainer"}
           </DialogTitle>
           <DialogDescription className="text-xs">
             {mode === "assign"
               ? "Select a trainer, time slot, and set the training period"
+              : mode === "extend"
+              ? "Extend the current PT — start date is locked to the day after the active PT ends. End date can go up to membership expiry."
               : "Choose a new trainer to replace the current one"}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
-          {/* Trainer Selection */}
+          {/* Trainer Selection — locked card in extend mode */}
           <div className="space-y-1.5 animate-fade-in" style={{ animationDelay: "0ms" }}>
             <Label className="text-sm font-medium">Trainer</Label>
             {isFetchingTrainers ? (
@@ -615,6 +621,20 @@ export const AssignTrainerDialog = ({
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">Loading trainers...</span>
                 </div>
+              </div>
+            ) : isExtendMode && existingTrainer ? (
+              <div className="rounded-md border border-accent/30 bg-accent/5 px-3 py-2.5 flex items-center gap-3">
+                <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-accent/10">
+                  <Dumbbell className="w-4 h-4 text-accent" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold truncate">{existingTrainer.name}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">
+                    {existingTrainer.specialization ? `${existingTrainer.specialization} • ` : ""}
+                    ₹{existingTrainer.monthly_fee}/mo
+                  </div>
+                </div>
+                <span className="text-[10px] text-muted-foreground rounded-full border border-border/60 px-2 py-0.5">Locked</span>
               </div>
             ) : (
               <Select value={selectedTrainerId} onValueChange={handleTrainerChange}>
@@ -755,12 +775,53 @@ export const AssignTrainerDialog = ({
               </div>
 
               {monthlyFee && startDate && endDate && (
-                <div className="rounded-lg bg-muted/50 p-3 text-sm animate-fade-in">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total Fee</span>
-                    <span className="font-semibold">₹{calculateTotalFee().toLocaleString("en-IN")}</span>
+                isExtendMode ? (
+                  <>
+                    {/* Coupon input — extend-mode only (mirrors public PT renewal flow) */}
+                    <div className="animate-fade-in" style={{ animationDelay: "175ms", animationFillMode: "backwards" }}>
+                      <CouponInput
+                        couponCode={coupon.couponCode}
+                        onCouponCodeChange={coupon.setCouponCode}
+                        onApply={coupon.validateCoupon}
+                        onRemove={coupon.removeCoupon}
+                        isValidating={coupon.isValidating}
+                        appliedCoupon={coupon.appliedCoupon}
+                        error={coupon.couponError || null}
+                      />
+                    </div>
+
+                    {/* Itemised price summary */}
+                    <div className="rounded-lg border border-border/60 bg-muted/40 p-3 text-sm space-y-1.5 animate-fade-in">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">PT Fee (prorated)</span>
+                        <span className="font-medium tabular-nums">₹{extendSubtotal.toLocaleString("en-IN")}</span>
+                      </div>
+                      {taxEnabled && extendTax > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">GST ({taxRate}%)</span>
+                          <span className="font-medium tabular-nums">₹{extendTax.toLocaleString("en-IN")}</span>
+                        </div>
+                      )}
+                      {couponDiscount > 0 && (
+                        <div className="flex justify-between text-emerald-600">
+                          <span>Coupon ({coupon.appliedCoupon?.coupon.code})</span>
+                          <span className="font-medium tabular-nums">−₹{couponDiscount.toLocaleString("en-IN")}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between pt-1.5 border-t border-border/60">
+                        <span className="font-semibold">Total</span>
+                        <span className="font-bold text-accent tabular-nums">₹{extendTotal.toLocaleString("en-IN")}</span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="rounded-lg bg-muted/50 p-3 text-sm animate-fade-in">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total Fee</span>
+                      <span className="font-semibold">₹{calculateTotalFee().toLocaleString("en-IN")}</span>
+                    </div>
                   </div>
-                </div>
+                )
               )}
 
               <div
@@ -788,7 +849,7 @@ export const AssignTrainerDialog = ({
                 </Button>
                 <Button className="flex-1 transition-all duration-200" onClick={handleSubmit} disabled={isLoading || !selectedTrainerId}>
                   {isLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                  {mode === "assign" ? "Assign" : "Replace"}
+                  {mode === "assign" ? "Assign" : mode === "extend" ? "Extend PT" : "Replace"}
                 </Button>
               </div>
             </>
