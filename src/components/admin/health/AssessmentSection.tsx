@@ -94,6 +94,21 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     } catch {}
   }, [formData, showForm, draftStorageKey]);
 
+  // Warn the user before unloading if they have unsaved changes in the form,
+  // and persist the latest snapshot to localStorage as a safety net.
+  useEffect(() => {
+    if (!showForm) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      const hasContent = Object.entries(formData).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
+      if (!hasContent) return;
+      try { localStorage.setItem(draftStorageKey, JSON.stringify(formData)); } catch {}
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [showForm, formData, draftStorageKey]);
+
   useEffect(() => {
     if (!showForm || assessorOptions.length === 0) return;
 
@@ -353,6 +368,29 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     }
   };
 
+  // Silently auto-save a draft when the user closes the form / dialog
+  // without explicitly saving. Keeps their work safe.
+  const autoSaveDraftAndClose = async () => {
+    const hasContent = Object.entries(formData).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
+    if (!hasContent) {
+      // Nothing meaningful entered — just close without persisting.
+      setShowForm(false);
+      setIsFormExpanded(false);
+      return;
+    }
+    try {
+      await persistAssessment(true);
+      setLastSavedAt(new Date());
+      toast.success("Draft auto-saved", { description: "Your progress is safe. Continue anytime." });
+      await onRefresh();
+    } catch (err: any) {
+      toast.error("Couldn't auto-save draft", { description: err?.message });
+    } finally {
+      setShowForm(false);
+      setIsFormExpanded(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     setConfirmDeleteId(null);
@@ -604,10 +642,10 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
           {isSaving ? <><ButtonSpinner /> Saving...</> : <><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Save Assessment</>}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => {
-          if (expanded) setIsFormExpanded(false);
-          else setShowForm(false);
-        }} className="rounded-lg">
-          {expanded ? "Back" : "Close"}
+          // Auto-draft on close so accidental exits don't lose work.
+          autoSaveDraftAndClose();
+        }} className="rounded-lg" disabled={isSaving || isSavingDraft}>
+          {expanded ? "Exit" : "Close"}
         </Button>
       </div>
     </div>
@@ -673,7 +711,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
         {hasFields ? (
           <div className={expanded
-            ? "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3"
+            ? "grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3"
             : "grid grid-cols-1 gap-2 min-[560px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
           }>
             {fields.map((field) => {
@@ -715,7 +753,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => setIsFormExpanded(false)}
+                onClick={() => autoSaveDraftAndClose()}
+                disabled={isSaving || isSavingDraft}
                 className="h-8 rounded-lg px-2.5 text-[11px]"
               >
                 <Minimize2 className="h-3.5 w-3.5" />
@@ -764,8 +803,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
             </aside>
 
             {/* Main scrollable area */}
-            <div ref={formScrollRef} className="min-h-0 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-4">
-              <div className="mx-auto w-full max-w-3xl space-y-4">
+            <div ref={formScrollRef} className="min-h-0 overflow-y-auto overscroll-contain px-3 py-3 sm:px-6 sm:py-5">
+              <div className="mx-auto w-full max-w-[1100px] space-y-4">
                 {renderAssessorPicker(true)}
                 {enabledSections.map((section) => renderSection(section, true))}
               </div>
@@ -846,7 +885,10 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       {showForm && !isFormExpanded && renderAssessmentForm(false)}
 
       <Dialog open={showForm && isFormExpanded} onOpenChange={(open) => {
-        if (!open) setIsFormExpanded(false);
+        if (!open) {
+          // Closed via ESC, overlay click, or X button — auto-save draft.
+          autoSaveDraftAndClose();
+        }
       }}>
         <DialogContent className="h-[calc(100dvh-0.75rem)] max-h-[calc(100dvh-0.75rem)] w-[calc(100vw-0.75rem)] max-w-[1240px] gap-0 overflow-hidden border-border/60 p-0 sm:h-[92vh] sm:max-h-[92vh] sm:w-[min(96vw,1240px)]">
           {renderAssessmentForm(true)}
