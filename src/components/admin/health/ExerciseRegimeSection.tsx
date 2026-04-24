@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,8 @@ import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Dumbbell, AlertTriangle, Scale, Repeat, Layers3 } from "lucide-react";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import type { ExercisePlan } from "./MemberHealthTab";
 
 interface ExerciseRegimeSectionProps {
@@ -27,11 +29,19 @@ interface ExerciseFormItem {
   notes: string;
 }
 
+interface CreatorOption {
+  id: string;
+  name: string;
+  role?: string;
+}
+
 const GOALS = ["Weight Loss", "Muscle Gain", "General Fitness", "Rehab", "Endurance", "Strength"];
 const SPLITS = ["Full Body", "Push-Pull-Legs", "Upper-Lower", "Bro Split", "Custom"];
 const WEIGHT_UNITS = ["kg", "lb", "bodyweight", "band", "machine"];
 
 export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: ExerciseRegimeSectionProps) => {
+  const { isAdmin } = useIsAdmin();
+  const { isStaffLoggedIn, staffUser, permissions } = useStaffAuth();
   const [showForm, setShowForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -40,9 +50,94 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
   const [goal, setGoal] = useState("General Fitness");
   const [workoutSplit, setWorkoutSplit] = useState("Full Body");
   const [createdBy, setCreatedBy] = useState("");
+  const [creatorOptions, setCreatorOptions] = useState<CreatorOption[]>([]);
+  const [loadingCreators, setLoadingCreators] = useState(false);
   const [exercises, setExercises] = useState<ExerciseFormItem[]>([
     { exercise_name: "", sets: 3, reps: "10", weight_value: "", weight_unit: "kg", notes: "" },
   ]);
+  const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
+
+  useEffect(() => {
+    if (!showForm) return;
+    fetchCreators();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showForm, branchId, isStaffLoggedIn, staffUser?.id]);
+
+  useEffect(() => {
+    if (!showForm || creatorOptions.length === 0) return;
+    if (createdBy && creatorOptions.some((c) => c.name === createdBy)) return;
+    if (isStaffLoggedIn && staffUser?.fullName) {
+      const self = creatorOptions.find((c) => c.id === staffUser.id || c.name === staffUser.fullName);
+      if (self) { setCreatedBy(self.name); return; }
+    }
+    if (creatorOptions.length === 1) setCreatedBy(creatorOptions[0].name);
+  }, [showForm, creatorOptions, createdBy, isStaffLoggedIn, staffUser?.id, staffUser?.fullName]);
+
+  const fetchCreators = async () => {
+    if (!branchId) return;
+    setLoadingCreators(true);
+    try {
+      // Restricted staff can only assign plans under their own name
+      if (isLimitedAccess && staffUser) {
+        setCreatorOptions([{ id: staffUser.id, name: staffUser.fullName, role: staffUser.role }]);
+        return;
+      }
+
+      const [{ data: branchStaffNames }, { data: assignments }, { data: trainers }] = await Promise.all([
+        supabase.rpc("get_staff_names_for_branch" as any, { _branch_id: branchId }),
+        supabase
+          .from("staff_branch_assignments")
+          .select("staff_id, staff!inner(id, full_name, role, is_active)")
+          .eq("branch_id", branchId),
+        supabase
+          .from("personal_trainers")
+          .select("id, name, is_active")
+          .eq("branch_id", branchId)
+          .eq("is_active", true),
+      ]);
+
+      const roleMap = new Map<string, { id: string; role?: string }>();
+      ((assignments as any[]) || []).forEach((assignment) => {
+        const staff = assignment.staff;
+        if (staff?.id && staff?.full_name && staff?.is_active) {
+          roleMap.set(String(staff.full_name).trim().toLowerCase(), { id: staff.id, role: staff.role });
+        }
+      });
+
+      const deduped = new Map<string, CreatorOption>();
+      ((branchStaffNames as any[]) || []).forEach((item) => {
+        if (!item?.full_name || !item?.id) return;
+        const normalizedName = String(item.full_name).trim();
+        const roleInfo = roleMap.get(normalizedName.toLowerCase());
+        const optionId = roleInfo?.id || item.id;
+        if (!deduped.has(optionId)) {
+          deduped.set(optionId, { id: optionId, name: normalizedName, role: roleInfo?.role });
+        }
+      });
+
+      ((trainers as any[]) || []).forEach((trainer) => {
+        if (!trainer?.name) return;
+        const normalizedName = String(trainer.name).trim();
+        const lowerKey = `pt_${normalizedName.toLowerCase()}`;
+        if (![...deduped.values()].some((opt) => opt.name.toLowerCase() === normalizedName.toLowerCase())) {
+          deduped.set(lowerKey, { id: trainer.id, name: normalizedName, role: "trainer" });
+        }
+      });
+
+      if (isStaffLoggedIn && staffUser && !deduped.has(staffUser.id)) {
+        deduped.set(staffUser.id, { id: staffUser.id, name: staffUser.fullName, role: staffUser.role });
+      }
+
+      setCreatorOptions(Array.from(deduped.values()).sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (err) {
+      console.error("Error fetching creators:", err);
+      if (isStaffLoggedIn && staffUser) {
+        setCreatorOptions([{ id: staffUser.id, name: staffUser.fullName, role: staffUser.role }]);
+      }
+    } finally {
+      setLoadingCreators(false);
+    }
+  };
 
   const addExercise = () => {
     setExercises((prev) => [...prev, { exercise_name: "", sets: 3, reps: "10", weight_value: "", weight_unit: "kg", notes: "" }]);
