@@ -466,20 +466,34 @@ export const StaffOtherTab = ({
       description: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
       variant: "destructive",
       onConfirm: async () => {
-        await supabase.from("staff").delete().eq("id", id);
-
-        await logAdminActivity({
-          category: "staff",
-          type: "staff_deleted",
-          description: `Deleted staff "${name}"`,
-          entityType: "staff",
-          entityId: id,
-          entityName: name,
-          branchId: currentBranch?.id,
+        const loadingToastId = toast.loading(`Removing staff "${name}"…`, {
+          description: "Cleaning up assignments and login access.",
         });
+        try {
+          await supabase.from("staff").delete().eq("id", id);
 
-        toast.success("Staff member deleted");
-        await refreshAll();
+          await logAdminActivity({
+            category: "staff",
+            type: "staff_deleted",
+            description: `Deleted staff "${name}"`,
+            entityType: "staff",
+            entityId: id,
+            entityName: name,
+            branchId: currentBranch?.id,
+          });
+
+          toast.error(`Staff "${name}" deleted`, {
+            id: loadingToastId,
+            description: "All branch assignments and permissions were removed.",
+            duration: 3500,
+          });
+          await refreshAll();
+        } catch (err: any) {
+          toast.error("Failed to delete staff", {
+            id: loadingToastId,
+            description: err?.message || "Please try again.",
+          });
+        }
       },
     });
   };
