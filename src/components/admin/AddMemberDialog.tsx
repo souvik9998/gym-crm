@@ -1837,7 +1837,8 @@ export const AddMemberDialog = ({
                           <SelectContent className="rounded-xl">
                             {monthlyPackages.map((pkg) => (
                               <SelectItem key={pkg.id} value={pkg.id}>
-                                {pkg.months} {pkg.months === 1 ? "Month" : "Months"} - ₹{pkg.price} + ₹{pkg.joining_fee} joining
+                                {pkg.months} {pkg.months === 1 ? "Month" : "Months"} - ₹{pkg.price}
+                                {!isExistingMemberAction && pkg.joining_fee > 0 ? ` + ₹${pkg.joining_fee} joining` : ""}
                               </SelectItem>
                             ))}
                           </SelectContent>
