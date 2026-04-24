@@ -117,11 +117,52 @@ const Toaster = ({ ...props }: ToasterProps) => {
           color: white !important;
         }
 
-        /* ============ LOADING ============ */
+        /* ============ LOADING — soft indigo with shimmer ============ */
+        [data-sonner-toast][data-type="loading"] {
+          background: linear-gradient(
+            110deg,
+            hsl(231 100% 98% / 0.92) 0%,
+            hsl(231 100% 96% / 0.92) 40%,
+            hsl(231 95% 94% / 0.92) 50%,
+            hsl(231 100% 96% / 0.92) 60%,
+            hsl(231 100% 98% / 0.92) 100%
+          ) !important;
+          background-size: 220% 100% !important;
+          border-color: hsl(231 80% 70% / 0.45) !important;
+          box-shadow:
+            0 0 0 1px hsl(231 80% 65% / 0.18),
+            0 6px 22px -8px hsl(231 80% 50% / 0.30) !important;
+          animation: toast-loading-shimmer 1.6s ease-in-out infinite;
+        }
+        [data-sonner-toast][data-type="loading"] [data-title],
+        [data-sonner-toast][data-type="loading"] [data-description] {
+          color: hsl(231 60% 24%) !important;
+        }
         [data-sonner-toast][data-type="loading"] [data-icon] {
-          background: transparent !important;
-          color: hsl(222 47% 30%) !important;
+          background: hsl(231 90% 60%) !important;
+          color: white !important;
           animation: none;
+        }
+        [data-sonner-toast][data-type="loading"] [data-icon] svg {
+          animation: toast-spinner-rotate 0.9s linear infinite;
+          color: white !important;
+        }
+
+        .dark [data-sonner-toast][data-type="loading"] {
+          background: linear-gradient(
+            110deg,
+            hsl(231 50% 12% / 0.9) 0%,
+            hsl(231 50% 14% / 0.9) 40%,
+            hsl(231 60% 18% / 0.9) 50%,
+            hsl(231 50% 14% / 0.9) 60%,
+            hsl(231 50% 12% / 0.9) 100%
+          ) !important;
+          background-size: 220% 100% !important;
+          border-color: hsl(231 70% 50% / 0.45) !important;
+        }
+        .dark [data-sonner-toast][data-type="loading"] [data-title],
+        .dark [data-sonner-toast][data-type="loading"] [data-description] {
+          color: hsl(231 90% 92%) !important;
         }
 
         /* ============ Dark mode ============ */
