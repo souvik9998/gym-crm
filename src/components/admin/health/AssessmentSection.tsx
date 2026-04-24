@@ -693,10 +693,10 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
             value={formData[fieldKey] || ""}
             onChange={(e) => updateField(fieldKey, e.target.value)}
             placeholder={placeholder}
-            className={unit ? "h-10 w-full pr-12 text-sm" : "h-10 w-full text-sm"}
+            className={unit ? "h-10 w-full pr-14 text-sm truncate" : "h-10 w-full text-sm truncate"}
           />
           {unit && (
-            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-muted-foreground">
+            <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-[10px] font-medium text-muted-foreground bg-background/80 px-1 rounded">
               {unit}
             </span>
           )}
