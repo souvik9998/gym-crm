@@ -54,6 +54,15 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   // Track whether the form has been opened in this mount cycle so we hydrate
   // exactly once on open and never again until it's closed + reopened.
   const hydratedOnOpenRef = useRef(false);
+  // Snapshot of formData taken at the moment of hydration. Used to detect
+  // whether the user actually modified anything before closing — if not, we
+  // must NOT auto-save (which would convert a finalized assessment back to
+  // a draft, or create a phantom draft from an unchanged record).
+  const originalSnapshotRef = useRef<string>("");
+  // Tracks whether the record being edited was already a finalized (non-draft)
+  // assessment. When true, autosave/unmount-save is suppressed unless the user
+  // makes real changes — preventing accidental draft downgrade.
+  const editingFinalizedRef = useRef(false);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const formScrollRef = useRef<HTMLDivElement | null>(null);
   const [memberName, setMemberName] = useState<string>("");
@@ -132,6 +141,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       setDraftId(existingDraft.id);
       hydratedDraftRef.current = existingDraft.id;
       hydratedOnOpenRef.current = true;
+      originalSnapshotRef.current = JSON.stringify(data);
+      editingFinalizedRef.current = false; // it IS a draft
       return;
     }
 
@@ -140,8 +151,14 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed && typeof parsed === "object") setFormData(parsed);
+        originalSnapshotRef.current = stored;
+      } else {
+        originalSnapshotRef.current = JSON.stringify({ assessed_by: "" });
       }
-    } catch {}
+    } catch {
+      originalSnapshotRef.current = JSON.stringify({ assessed_by: "" });
+    }
+    editingFinalizedRef.current = false;
     hydratedOnOpenRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showForm, existingDraft?.id]);
@@ -166,13 +183,27 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   useEffect(() => { draftIdRef.current = draftId; }, [draftId]);
   useEffect(() => { showFormRef.current = showForm; }, [showForm]);
 
+  // Detect whether the user actually changed anything since the form was
+  // hydrated. Compares a JSON snapshot of formData against the original
+  // captured at open / edit-load time.
+  const hasUserChanges = (fd: Record<string, string>) => {
+    try {
+      return JSON.stringify(fd) !== originalSnapshotRef.current;
+    } catch {
+      return true;
+    }
+  };
+
   // Debounced silent auto-save to DB. Persists every ~1.2s of inactivity so
   // the user's typed values survive even when the parent dialog is closed
-  // before they hit "Save Draft".
+  // before they hit "Save Draft". Skipped when editing a finalized assessment
+  // and the user hasn't actually modified anything yet — prevents silent
+  // downgrade of saved records into drafts.
   useEffect(() => {
     if (!showForm) return;
     const hasContent = Object.entries(formData).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
     if (!hasContent) return;
+    if (editingFinalizedRef.current && !hasUserChanges(formData)) return;
     const timer = window.setTimeout(() => {
       // Fire-and-forget; UI feedback is intentionally absent for autosave.
       persistAssessment(true).then(() => {
@@ -185,13 +216,15 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   }, [formData, showForm]);
 
   // On unmount (e.g., parent dialog closed via outer X), best-effort persist
-  // any unsaved input so the user's data is never lost.
+  // any unsaved input so the user's data is never lost. Skipped when editing
+  // a finalized assessment with no actual changes.
   useEffect(() => {
     return () => {
       if (!showFormRef.current) return;
       const fd = formDataRef.current;
       const hasContent = Object.entries(fd).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
       if (!hasContent) return;
+      if (editingFinalizedRef.current && !hasUserChanges(fd)) return;
       // Snapshot to localStorage immediately (synchronous safety net)
       try { localStorage.setItem(draftStorageKey, JSON.stringify(fd)); } catch {}
       // Fire async DB save. The promise will resolve even after this component
@@ -482,6 +515,11 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     draftIdRef.current = assessment.id;
     hydratedDraftRef.current = assessment.id;
     hydratedOnOpenRef.current = true; // prevent the open-effect from clobbering
+    // Capture baseline so we can detect whether the user actually edits
+    // anything. If they close without changes we must NOT auto-save (which
+    // would silently downgrade a finalized assessment to a draft).
+    originalSnapshotRef.current = JSON.stringify(data);
+    editingFinalizedRef.current = !assessment.is_draft;
     setExpandedId(null);
     setShowForm(true);
   };
@@ -562,6 +600,14 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     const hasContent = Object.entries(formData).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
     if (!hasContent) {
       // Nothing meaningful entered — just close without persisting.
+      setShowForm(false);
+      setIsFormExpanded(false);
+      return;
+    }
+    // Editing a finalized assessment but the user didn't change anything —
+    // close silently without writing a draft (which would downgrade the
+    // saved record's status).
+    if (editingFinalizedRef.current && !hasUserChanges(formData)) {
       setShowForm(false);
       setIsFormExpanded(false);
       return;
