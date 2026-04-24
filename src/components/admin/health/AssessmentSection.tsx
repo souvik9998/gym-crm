@@ -1034,8 +1034,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     // Compact (non-expanded) layout — flex column so the footer pins to the
     // bottom of the form area while the body scrolls independently.
     return (
-      <div className="flex max-h-[82vh] flex-col overflow-hidden rounded-xl border border-accent/20 bg-accent/5">
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-smooth p-3 sm:p-4 lg:p-5 space-y-3.5">
+      <div className="relative flex flex-col rounded-xl border border-accent/20 bg-accent/5">
+        <div className="p-3 sm:p-4 lg:p-5 space-y-3.5 pb-20">
           <div className="rounded-lg border border-border/50 bg-background/80 p-2.5 sm:p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-2">
@@ -1064,8 +1064,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
           </div>
         </div>
 
-        {/* Sticky footer (pinned at the bottom of the form panel) */}
-        <div className="shrink-0 border-t border-border/40 bg-background/95 px-3 py-2.5 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] backdrop-blur supports-[backdrop-filter]:bg-background/85">
+        {/* Sticky footer — pinned to the dialog's scroll viewport so it stays visible while scrolling through long forms */}
+        <div className="sticky bottom-0 z-20 -mx-px border-t border-border/40 bg-background/95 px-3 py-2.5 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] backdrop-blur supports-[backdrop-filter]:bg-background/85 rounded-b-xl shadow-[0_-4px_12px_-6px_hsl(var(--foreground)/0.08)]">
           <SaveActions expanded={false} />
         </div>
       </div>
