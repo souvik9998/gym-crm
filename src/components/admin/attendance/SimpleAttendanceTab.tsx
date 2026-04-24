@@ -242,16 +242,21 @@ export const SimpleAttendanceTab = () => {
         return false;
       }
 
-      // Specific slot filter: only members in that slot
+      const slotId = member.activePT?.time_slot_id;
+
+      // Specific slot filter: only members in that slot, but the slot must still
+      // belong to the current time/trainer filtered set.
       if (selectedSlotId) {
-        return member.activePT?.time_slot_id === selectedSlotId;
+        if (!slotId || slotId !== selectedSlotId) return false;
+        if (!filteredSlotIdSet.has(slotId)) return false;
+        if (selectedTrainerId && !trainerSlotIdSet.has(slotId)) return false;
+        return true;
       }
 
       if (selectedTrainerId || timeFilter !== "all") {
-        const slotId = member.activePT?.time_slot_id;
         if (!slotId) return false;
-        if (!filteredSlotIds.includes(slotId)) return false;
-        if (selectedTrainerId && !trainerSlotIds.includes(slotId)) return false;
+        if (!filteredSlotIdSet.has(slotId)) return false;
+        if (selectedTrainerId && !trainerSlotIdSet.has(slotId)) return false;
       }
 
       return true;
