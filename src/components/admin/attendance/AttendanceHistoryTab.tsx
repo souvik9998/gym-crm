@@ -27,6 +27,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAttendanceFilters, formatSlotTime } from "@/hooks/queries/useAttendanceFilters";
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
+import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
+import { matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
 function getMonthDates(year: number, month: number): (string | null)[][] {
   const first = new Date(year, month, 1);
@@ -65,6 +67,9 @@ export const AttendanceHistoryTab = () => {
   const [activeView, setActiveView] = useState("calendar");
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [timeBucket, setTimeBucket] = useState<TimeBucket>("all");
+  const [customStart, setCustomStart] = useState("06:00");
+  const [customEnd, setCustomEnd] = useState("10:00");
   const [exportPeriod, setExportPeriod] = useState<"1w" | "1m" | "3m">("1m");
   const [isExporting, setIsExporting] = useState(false);
 
