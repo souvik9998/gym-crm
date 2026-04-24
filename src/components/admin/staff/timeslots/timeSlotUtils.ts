@@ -103,21 +103,25 @@ export function matchesTimeFilter(
   timeFilter: TimeBucket,
   customStart?: string,
   customEnd?: string,
+  endTime?: string,
 ) {
-  const startMinutes = parseTimeToMinutes(startTime);
-
   if (timeFilter === "all") return true;
-  if (timeFilter !== "custom") return getTimeBucketForMinutes(startMinutes) === timeFilter;
-  if (!customStart || !customEnd) return true;
 
-  const customStartMinutes = parseTimeToMinutes(customStart);
-  const customEndMinutes = parseTimeToMinutes(customEnd);
+  const startMinutes = parseTimeToMinutes(startTime);
+  // If no end time provided, treat the slot as a single point in time.
+  const endMinutes = endTime ? parseTimeToMinutes(endTime) : startMinutes;
+  // Equal start/end is treated as instantaneous; nudge by 1 minute so overlap math works.
+  const effectiveEnd = endTime && endMinutes === startMinutes ? startMinutes + 1 : endMinutes;
 
-  if (customStartMinutes <= customEndMinutes) {
-    return startMinutes >= customStartMinutes && startMinutes <= customEndMinutes;
+  if (timeFilter !== "custom") {
+    const [bStart, bEnd] = getBucketRange(timeFilter);
+    return rangesOverlap(startMinutes, effectiveEnd, bStart, bEnd);
   }
 
-  return startMinutes >= customStartMinutes || startMinutes <= customEndMinutes;
+  if (!customStart || !customEnd) return true;
+  const cs = parseTimeToMinutes(customStart);
+  const ce = parseTimeToMinutes(customEnd);
+  return rangesOverlap(startMinutes, effectiveEnd, cs, ce);
 }
 
 export function getSlotAvailability(memberCount: number, capacity: number): Exclude<SlotAvailability, "all"> {
