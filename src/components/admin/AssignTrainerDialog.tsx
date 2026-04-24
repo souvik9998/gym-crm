@@ -50,9 +50,13 @@ interface AssignTrainerDialogProps {
   memberName?: string;
   memberPhone?: string;
   branchId: string;
-  mode: "assign" | "replace";
+  mode: "assign" | "replace" | "extend";
   existingPtId?: string;
   existingTrainerId?: string;
+  /** Required for extend mode: trainer object to lock the selection to. */
+  existingTrainer?: { id: string; name: string; monthly_fee: number; specialization: string | null; phone: string | null } | null;
+  /** Required for extend mode: end date of the currently active PT subscription. New PT starts day after this. */
+  existingPtEndDate?: string;
   membershipEndDate?: string;
   onSuccess: () => void;
 }
