@@ -211,6 +211,7 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
     }
 
     setIsSaving(true);
+    const previousActivePlan = plans.find((p) => p.is_active);
     try {
       await supabase.from("member_exercise_plans").update({ is_active: false }).eq("member_id", memberId).eq("is_active", true);
 
@@ -245,6 +246,24 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
       if (exerciseError) throw exerciseError;
 
       toast.success("Exercise plan saved");
+      void logExercisePlanActivity(
+        previousActivePlan ? "exercise_plan_replaced" : "exercise_plan_created",
+        previousActivePlan
+          ? `Replaced exercise plan with "${planName}" for ${memberName || "member"}`
+          : `New exercise plan "${planName}" created for ${memberName || "member"}`,
+        {
+          entityId: plan.id,
+          metadata: {
+            plan_name: planName,
+            goal,
+            workout_split: workoutSplit,
+            created_by: createdBy,
+            exercise_count: validExercises.length,
+            replaced_plan_id: previousActivePlan?.id || null,
+            replaced_plan_name: previousActivePlan?.plan_name || null,
+          },
+        },
+      );
       setShowForm(false);
       setPlanName("");
       setCreatedBy("");
@@ -261,9 +280,22 @@ export const ExerciseRegimeSection = ({ plans, memberId, branchId, onRefresh }: 
     setDeletingId(planId);
     setConfirmDeleteId(null);
     try {
+      const target = plans.find((p) => p.id === planId);
       const { error } = await supabase.from("member_exercise_plans").delete().eq("id", planId);
       if (error) throw error;
       toast.success("Plan deleted");
+      void logExercisePlanActivity(
+        "exercise_plan_deleted",
+        `Exercise plan "${target?.plan_name || "Unnamed"}" deleted for ${memberName || "member"}`,
+        {
+          entityId: planId,
+          metadata: {
+            plan_name: target?.plan_name || null,
+            goal: target?.goal || null,
+            was_active: target?.is_active || false,
+          },
+        },
+      );
       await onRefresh();
     } catch (err: any) {
       toast.error("Error deleting plan", { description: err.message });
