@@ -133,28 +133,29 @@ export const AttendanceHistoryTab = () => {
   }, [rawMonthRecords, selectedSlotId, selectedTrainerId, allSlots]);
 
   const daySummary = useMemo(() => {
-    const map: Record<string, { present: number; late: number; absent: number; total: number }> = {};
+    const map: Record<string, { present: number; skipped: number; absent: number; total: number }> = {};
     monthRecords.forEach((r: any) => {
-      if (!map[r.date]) map[r.date] = { present: 0, late: 0, absent: 0, total: 0 };
+      if (!map[r.date]) map[r.date] = { present: 0, skipped: 0, absent: 0, total: 0 };
       map[r.date].total++;
       if (r.status === "present") map[r.date].present++;
-      else if (r.status === "late" || r.status === "skipped") map[r.date].late++;
+      else if (r.status === "late" || r.status === "skipped") map[r.date].skipped++;
       else map[r.date].absent++;
     });
     return map;
   }, [monthRecords]);
 
   const memberStats = useMemo(() => {
-    const map: Record<string, { name: string; phone: string; present: number; late: number; absent: number; total: number; dates: Record<string, string> }> = {};
+    const map: Record<string, { name: string; phone: string; present: number; skipped: number; absent: number; total: number; dates: Record<string, string> }> = {};
     monthRecords.forEach((r: any) => {
       const id = r.member_id;
       if (!id) return;
-      if (!map[id]) map[id] = { name: r.members?.name || "Unknown", phone: r.members?.phone || "", present: 0, late: 0, absent: 0, total: 0, dates: {} };
+      if (!map[id]) map[id] = { name: r.members?.name || "Unknown", phone: r.members?.phone || "", present: 0, skipped: 0, absent: 0, total: 0, dates: {} };
       map[id].total++;
       if (r.status === "present") map[id].present++;
-      else if (r.status === "late" || r.status === "skipped") map[id].late++;
+      else if (r.status === "late" || r.status === "skipped") map[id].skipped++;
       else map[id].absent++;
-      map[id].dates[r.date] = r.status;
+      // Normalize legacy "late" to "skipped" for display consistency
+      map[id].dates[r.date] = r.status === "late" ? "skipped" : r.status;
     });
     return map;
   }, [monthRecords]);
@@ -167,13 +168,13 @@ export const AttendanceHistoryTab = () => {
   }, [memberStats, memberSearch]);
 
   const monthTotals = useMemo(() => {
-    let present = 0, late = 0, absent = 0;
+    let present = 0, skipped = 0, absent = 0;
     monthRecords.forEach((r: any) => {
       if (r.status === "present") present++;
-      else if (r.status === "late" || r.status === "skipped") late++;
+      else if (r.status === "late" || r.status === "skipped") skipped++;
       else absent++;
     });
-    return { present, late, absent, total: monthRecords.length };
+    return { present, skipped, absent, total: monthRecords.length };
   }, [monthRecords]);
 
   const selectedRecords = useMemo(() => {
