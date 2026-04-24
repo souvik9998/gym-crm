@@ -254,6 +254,61 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     return { mode, unit: "sec" };
   };
 
+  const buildAssessmentPayload = () => {
+    const { assessed_by, ...rest } = formData;
+    const assessmentData: Record<string, string> = {};
+
+    getEnabledSections().forEach((section) => {
+      const fields = getEnabledFields(section.key);
+      if (section.fields || config[section.key]?.custom_fields?.length) {
+        fields.forEach((field) => {
+          if (rest[field.key]) {
+            assessmentData[field.key] = rest[field.key];
+          }
+        });
+      } else if (rest[section.key]) {
+        assessmentData[section.key] = rest[section.key];
+      }
+    });
+
+    return {
+      assessed_by: assessed_by || "Draft",
+      assessmentData,
+    };
+  };
+
+  const persistAssessment = async (isDraft: boolean) => {
+    const { assessed_by, assessmentData } = buildAssessmentPayload();
+
+    const payload = {
+      member_id: memberId,
+      branch_id: branchId,
+      assessed_by,
+      assessment_data: assessmentData,
+      current_condition: assessmentData.health_conditions || null,
+      injuries_health_issues: assessmentData.injuries_pain || null,
+      mobility_limitations: null,
+      allowed_exercises: null,
+      notes: assessmentData.notes || null,
+      is_draft: isDraft,
+    };
+
+    if (draftId) {
+      const { error } = await supabase.from("member_assessments").update(payload as any).eq("id", draftId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("member_assessments").insert(payload as any);
+      if (error) throw error;
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({ assessed_by: "" });
+    setDraftId(null);
+    setLastSavedAt(null);
+    try { localStorage.removeItem(draftStorageKey); } catch {}
+  };
+
   const handleSave = async () => {
     if (!formData.assessed_by?.trim()) {
       toast.error("Please select who took this assessment");
@@ -262,37 +317,9 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
     setIsSaving(true);
     try {
-      const { assessed_by, ...rest } = formData;
-      const assessmentData: Record<string, string> = {};
-
-      getEnabledSections().forEach((section) => {
-        const fields = getEnabledFields(section.key);
-        if (section.fields || config[section.key]?.custom_fields?.length) {
-          fields.forEach((field) => {
-            if (rest[field.key]) {
-              assessmentData[field.key] = rest[field.key];
-            }
-          });
-        } else if (rest[section.key]) {
-          assessmentData[section.key] = rest[section.key];
-        }
-      });
-
-      const { error } = await supabase.from("member_assessments").insert({
-        member_id: memberId,
-        branch_id: branchId,
-        assessed_by,
-        assessment_data: assessmentData,
-        current_condition: assessmentData.health_conditions || null,
-        injuries_health_issues: assessmentData.injuries_pain || null,
-        mobility_limitations: null,
-        allowed_exercises: null,
-        notes: assessmentData.notes || null,
-      });
-
-      if (error) throw error;
-      toast.success("Assessment saved");
-      setFormData({ assessed_by: "" });
+      await persistAssessment(false);
+      toast.success(draftId ? "Draft finalized & saved" : "Assessment saved");
+      resetForm();
       setShowForm(false);
       setIsFormExpanded(false);
       await onRefresh();
@@ -300,6 +327,29 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       toast.error("Error saving assessment", { description: err.message });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveDraft = async (closeAfter = false) => {
+    const hasContent = Object.values(formData).some((v) => v && String(v).trim());
+    if (!hasContent) {
+      toast.error("Add some details before saving as draft");
+      return;
+    }
+    setIsSavingDraft(true);
+    try {
+      await persistAssessment(true);
+      setLastSavedAt(new Date());
+      toast.success("Draft saved");
+      await onRefresh();
+      if (closeAfter) {
+        setShowForm(false);
+        setIsFormExpanded(false);
+      }
+    } catch (err: any) {
+      toast.error("Error saving draft", { description: err.message });
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
