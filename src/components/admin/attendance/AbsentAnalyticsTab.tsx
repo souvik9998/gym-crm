@@ -23,7 +23,7 @@ interface MemberAbsentStats {
   totalDays: number;
   absentDays: number;
   presentDays: number;
-  lateDays: number;
+  skippedDays: number;
   attendanceRate: number;
 }
 
@@ -63,7 +63,7 @@ export const AbsentAnalyticsTab = () => {
   });
 
   const memberStats = useMemo((): MemberAbsentStats[] => {
-    const map = new Map<string, { name: string; phone: string; present: number; absent: number; late: number; dates: Set<string> }>();
+    const map = new Map<string, { name: string; phone: string; present: number; absent: number; skipped: number; dates: Set<string> }>();
 
     records.forEach((r: any) => {
       const id = r.member_id;
@@ -71,14 +71,14 @@ export const AbsentAnalyticsTab = () => {
         map.set(id, {
           name: r.members?.name || "Unknown",
           phone: r.members?.phone || "",
-          present: 0, absent: 0, late: 0,
+          present: 0, absent: 0, skipped: 0,
           dates: new Set(),
         });
       }
       const entry = map.get(id)!;
       entry.dates.add(r.date);
       if (r.status === "present") entry.present++;
-      else if (r.status === "late" || r.status === "skipped") entry.late++;
+      else if (r.status === "late" || r.status === "skipped") entry.skipped++;
       else entry.absent++;
     });
 
@@ -90,9 +90,9 @@ export const AbsentAnalyticsTab = () => {
         totalDays: data.dates.size,
         absentDays: data.absent,
         presentDays: data.present,
-        lateDays: data.late,
+        skippedDays: data.skipped,
         attendanceRate: data.dates.size > 0
-          ? Math.round(((data.present + data.late) / data.dates.size) * 100)
+          ? Math.round(((data.present + data.skipped) / data.dates.size) * 100)
           : 0,
       }))
       .sort((a, b) => a.attendanceRate - b.attendanceRate); // Worst attendance first
@@ -206,7 +206,7 @@ export const AbsentAnalyticsTab = () => {
                     </div>
                     <div className="flex gap-2 mt-1 text-[9px] lg:text-[10px] text-muted-foreground">
                       <span className="text-green-600">{member.presentDays}P</span>
-                      <span className="text-amber-600">{member.lateDays}L</span>
+                      <span className="text-slate-600 dark:text-slate-300">{member.skippedDays}S</span>
                       <span className="text-red-500">{member.absentDays}A</span>
                       <span>/ {member.totalDays} days</span>
                     </div>
