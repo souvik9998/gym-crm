@@ -817,11 +817,29 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     );
   };
 
+  const finalAssessments = assessments.filter((a) => !a.is_draft);
+
   return (
     <div className="space-y-3">
+      {!showForm && existingDraft && (
+        <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-2.5">
+          <FileEdit className="h-4 w-4 text-amber-600 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-foreground">Draft assessment in progress</p>
+            <p className="text-[11px] text-muted-foreground truncate">Started {formatDate(existingDraft.assessment_date)} — pick up where you left off.</p>
+          </div>
+          <Button size="sm" variant="outline" className="h-7 rounded-lg text-[11px]" onClick={() => setShowForm(true)}>
+            Continue
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={() => setConfirmDeleteId(existingDraft.id)}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+
       {!showForm && (
         <Button variant="outline" size="sm" onClick={() => setShowForm(true)} className="w-full rounded-lg">
-          <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Assessment
+          <Plus className="w-3.5 h-3.5 mr-1.5" /> {existingDraft ? "Continue Draft" : "Add Assessment"}
         </Button>
       )}
 
@@ -830,18 +848,18 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       <Dialog open={showForm && isFormExpanded} onOpenChange={(open) => {
         if (!open) setIsFormExpanded(false);
       }}>
-        <DialogContent className="h-[calc(100dvh-0.75rem)] max-h-[calc(100dvh-0.75rem)] w-[calc(100vw-0.75rem)] max-w-[1180px] gap-0 overflow-hidden border-border/60 p-0 sm:h-[92vh] sm:max-h-[92vh] sm:w-[min(96vw,1180px)]">
+        <DialogContent className="h-[calc(100dvh-0.75rem)] max-h-[calc(100dvh-0.75rem)] w-[calc(100vw-0.75rem)] max-w-[1240px] gap-0 overflow-hidden border-border/60 p-0 sm:h-[92vh] sm:max-h-[92vh] sm:w-[min(96vw,1240px)]">
           {renderAssessmentForm(true)}
         </DialogContent>
       </Dialog>
 
-      {assessments.length === 0 && !showForm ? (
+      {finalAssessments.length === 0 && !showForm && !existingDraft ? (
         <div className="text-center py-8 text-muted-foreground">
           <ClipboardListIcon className="w-8 h-8 mx-auto mb-2 opacity-30" />
           <p className="text-sm">No assessments added yet</p>
         </div>
       ) : (
-        assessments.map((assessment) => {
+        finalAssessments.map((assessment) => {
           const displayData = getAssessmentDisplayData(assessment);
           return (
             <div key={assessment.id} className="rounded-xl border border-border/60 bg-card/50 p-3 hover:border-border transition-colors">
