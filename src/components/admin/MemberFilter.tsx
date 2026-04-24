@@ -471,7 +471,7 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
               <Button
                 variant="outline"
                 className={cn(
-                  "h-7 lg:h-8 px-1.5 rounded-lg border transition-all duration-200 shadow-sm",
+                  "relative h-7 lg:h-8 px-1.5 rounded-lg border transition-all duration-200 shadow-sm",
                   "focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none",
                   "focus:ring-0 focus:ring-offset-0 focus:outline-none",
                   category.bgColor,
@@ -480,11 +480,18 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
                   category.hoverTextColor,
                   category.hoverBorderColor,
                   "hover:shadow-md hover:scale-[1.02]",
-                  // Active state - same as hover state
-                  isActive && category.hoverColor,
-                  isActive && category.hoverTextColor,
-                  isActive && category.hoverBorderColor,
-                  isActive && "shadow-md"
+                  // Active state — distinct from hover: bolder border, ring, slight scale, persistent shadow
+                  isActive && [
+                    category.hoverColor,
+                    category.hoverTextColor,
+                    "border-2 ring-2 ring-offset-1 ring-offset-background shadow-md scale-[1.02] font-semibold",
+                    category.category === "all" && "border-blue-500 ring-blue-400/40 dark:border-blue-400 dark:ring-blue-500/30",
+                    category.category === "active" && "border-green-500 ring-green-400/40 dark:border-green-400 dark:ring-green-500/30",
+                    category.category === "expiring_soon" && "border-amber-500 ring-amber-400/40 dark:border-amber-400 dark:ring-amber-500/30",
+                    category.category === "expired" && "border-red-500 ring-red-400/40 dark:border-red-400 dark:ring-red-500/30",
+                    category.category === "inactive" && "border-slate-500 ring-slate-400/40 dark:border-slate-400 dark:ring-slate-500/30",
+                  ],
+                  !isActive && "border"
                 )}
                 onMouseEnter={() => {
                   if (hasSubFilters) {
@@ -526,6 +533,27 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
                   }
                 }}
               >
+                {/* Active indicator dot — pulsing in top-right */}
+                {isActive && (
+                  <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                    <span className={cn(
+                      "absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping",
+                      category.category === "all" && "bg-blue-500",
+                      category.category === "active" && "bg-green-500",
+                      category.category === "expiring_soon" && "bg-amber-500",
+                      category.category === "expired" && "bg-red-500",
+                      category.category === "inactive" && "bg-slate-500",
+                    )} />
+                    <span className={cn(
+                      "relative inline-flex rounded-full h-2.5 w-2.5 ring-2 ring-background",
+                      category.category === "all" && "bg-blue-500",
+                      category.category === "active" && "bg-green-500",
+                      category.category === "expiring_soon" && "bg-amber-500",
+                      category.category === "expired" && "bg-red-500",
+                      category.category === "inactive" && "bg-slate-500",
+                    )} />
+                  </span>
+                )}
                 <div className="flex items-center gap-1 lg:gap-1.5">
                   <span className={cn("transition-colors [&>svg]:w-3.5 [&>svg]:h-3.5 lg:[&>svg]:w-4 lg:[&>svg]:h-4", category.color, category.hoverTextColor)}>
                   {category.icon}
@@ -539,7 +567,8 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
                       category.bgColor,
                       category.color,
                       category.hoverTextColor,
-                      "hover:bg-opacity-80"
+                      "hover:bg-opacity-80",
+                      isActive && "bg-background/70 dark:bg-background/40 shadow-inner"
                     )}>
                       {category.category === "all" && counts.all !== undefined && counts.all}
                       {category.category === "active" && counts.active !== undefined && counts.active}
@@ -549,7 +578,7 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
                     </span>
                   )}
                   {hasSubFilters && (
-                    <ChevronDown className={cn("w-3 h-3 ml-0.5 transition-colors", category.color, category.hoverTextColor)} />
+                    <ChevronDown className={cn("w-3 h-3 ml-0.5 transition-colors", category.color, category.hoverTextColor, isActive && "rotate-180")} />
                   )}
                 </div>
               </Button>
