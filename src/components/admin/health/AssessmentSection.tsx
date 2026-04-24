@@ -354,6 +354,37 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
   const persistAssessment = async (isDraft: boolean) => {
     const { assessed_by, assessmentData } = buildAssessmentPayload();
+    return persistAssessmentSnapshot(
+      { assessed_by, assessment_data: assessmentData } as any,
+      draftId,
+      isDraft,
+    );
+  };
+
+  // Pure helper: persist a given snapshot (form values + draftId) regardless
+  // of current React state. Safe to call from unmount cleanup.
+  const persistAssessmentSnapshot = async (
+    snapshot: Record<string, any> | { assessed_by: string; assessment_data: Record<string, string> },
+    knownDraftId: string | null,
+    isDraft = true,
+  ) => {
+    let assessed_by: string;
+    let assessmentData: Record<string, string>;
+
+    if ("assessment_data" in snapshot) {
+      assessed_by = (snapshot as any).assessed_by || "Draft";
+      assessmentData = (snapshot as any).assessment_data || {};
+    } else {
+      const { assessed_by: ab, ...rest } = snapshot as Record<string, any>;
+      assessed_by = ab || "Draft";
+      assessmentData = {};
+      Object.entries(rest).forEach(([k, v]) => {
+        if (v === undefined || v === null) return;
+        const str = String(v);
+        if (!str.trim()) return;
+        assessmentData[k] = str;
+      });
+    }
 
     const payload = {
       member_id: memberId,
@@ -368,12 +399,10 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       is_draft: isDraft,
     };
 
-    if (draftId) {
-      const { error } = await supabase.from("member_assessments").update(payload as any).eq("id", draftId);
+    if (knownDraftId) {
+      const { error } = await supabase.from("member_assessments").update(payload as any).eq("id", knownDraftId);
       if (error) throw error;
     } else {
-      // Capture the inserted row id so subsequent saves UPDATE instead of
-      // creating duplicate draft rows.
       const { data, error } = await supabase
         .from("member_assessments")
         .insert(payload as any)
@@ -382,6 +411,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       if (error) throw error;
       if (data?.id) {
         setDraftId(data.id);
+        draftIdRef.current = data.id;
         hydratedDraftRef.current = data.id;
       }
     }
