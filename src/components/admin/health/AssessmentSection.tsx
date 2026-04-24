@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle, Info, Maximize2, Minimize2, PanelTopOpen, FileEdit, CheckCircle2, Save, X } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle, Info, Maximize2, Minimize2, PanelTopOpen, FileEdit, CheckCircle2, Save, X, Pencil } from "lucide-react";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
@@ -465,6 +465,25 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     setDraftId(null);
     setLastSavedAt(null);
     try { localStorage.removeItem(draftStorageKey); } catch {}
+  };
+
+  // Load a saved (or draft) assessment into the form for editing.
+  // Reuses the existing save pipeline by treating the assessment id as the
+  // current `draftId`, so subsequent saves UPDATE rather than INSERT.
+  const handleEditAssessment = (assessment: MemberAssessment) => {
+    const data: Record<string, string> = { assessed_by: assessment.assessed_by || "" };
+    const ad = (assessment.assessment_data || {}) as Record<string, any>;
+    Object.entries(ad).forEach(([k, v]) => {
+      if (v === null || v === undefined) return;
+      data[k] = typeof v === "string" ? v : JSON.stringify(v);
+    });
+    setFormData(data);
+    setDraftId(assessment.id);
+    draftIdRef.current = assessment.id;
+    hydratedDraftRef.current = assessment.id;
+    hydratedOnOpenRef.current = true; // prevent the open-effect from clobbering
+    setExpandedId(null);
+    setShowForm(true);
   };
 
   const handleSave = async () => {
@@ -1155,13 +1174,26 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                    onClick={(e) => { e.stopPropagation(); handleEditAssessment(assessment); }}
+                    disabled={deletingId === assessment.id}
+                    aria-label="Edit assessment"
+                    title="Edit assessment"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                     onClick={() => setConfirmDeleteId(confirmDeleteId === assessment.id ? null : assessment.id)}
                     disabled={deletingId === assessment.id}
+                    aria-label="Delete assessment"
+                    title="Delete assessment"
                   >
                     <Trash2 className="w-3 h-3" />
                   </Button>
-                  <button onClick={() => setExpandedId(expandedId === assessment.id ? null : assessment.id)} className="p-1">
+                  <button onClick={() => setExpandedId(expandedId === assessment.id ? null : assessment.id)} className="p-1" aria-label="Toggle details">
                     {expandedId === assessment.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </button>
                 </div>
