@@ -474,9 +474,24 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     }
 
     setIsSaving(true);
+    const wasDraft = !!draftId;
     try {
       await persistAssessment(false);
-      toast.success(draftId ? "Draft finalized & saved" : "Assessment saved");
+      const savedId = draftIdRef.current;
+      toast.success(wasDraft ? "Draft finalized & saved" : "Assessment saved");
+      void logAssessmentActivity(
+        wasDraft ? "assessment_finalized" : "assessment_saved",
+        wasDraft
+          ? `Finalized assessment for ${memberName || "member"} (assessed by ${formData.assessed_by})`
+          : `New assessment saved for ${memberName || "member"} (assessed by ${formData.assessed_by})`,
+        {
+          entityId: savedId || undefined,
+          metadata: {
+            assessed_by: formData.assessed_by,
+            field_count: Object.keys(formData).filter((k) => k !== "assessed_by" && formData[k]).length,
+          },
+        },
+      );
       resetForm();
       setShowForm(false);
       setIsFormExpanded(false);
@@ -499,6 +514,17 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       await persistAssessment(true);
       setLastSavedAt(new Date());
       toast.success("Draft saved");
+      void logAssessmentActivity(
+        "assessment_draft_saved",
+        `Draft assessment saved for ${memberName || "member"}`,
+        {
+          entityId: draftIdRef.current || undefined,
+          metadata: {
+            assessed_by: formData.assessed_by || null,
+            trigger: closeAfter ? "save_and_close" : "save_draft",
+          },
+        },
+      );
       await onRefresh();
       if (closeAfter) {
         setShowForm(false);
@@ -525,6 +551,14 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       await persistAssessment(true);
       setLastSavedAt(new Date());
       toast.success("Draft auto-saved", { description: "Your progress is safe. Continue anytime." });
+      void logAssessmentActivity(
+        "assessment_draft_saved",
+        `Draft auto-saved for ${memberName || "member"} on close`,
+        {
+          entityId: draftIdRef.current || undefined,
+          metadata: { trigger: "auto_save_on_close" },
+        },
+      );
       await onRefresh();
     } catch (err: any) {
       toast.error("Couldn't auto-save draft", { description: err?.message });
@@ -538,9 +572,22 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     setDeletingId(id);
     setConfirmDeleteId(null);
     try {
+      const target = assessments.find((a) => a.id === id);
       const { error } = await supabase.from("member_assessments").delete().eq("id", id);
       if (error) throw error;
       toast.success("Assessment deleted");
+      void logAssessmentActivity(
+        "assessment_deleted",
+        `Assessment deleted for ${memberName || "member"}${target?.is_draft ? " (draft)" : ""}`,
+        {
+          entityId: id,
+          metadata: {
+            was_draft: target?.is_draft || false,
+            assessed_by: target?.assessed_by || null,
+            assessment_date: target?.assessment_date || null,
+          },
+        },
+      );
       await onRefresh();
     } catch (err: any) {
       toast.error("Error deleting assessment", { description: err.message });
