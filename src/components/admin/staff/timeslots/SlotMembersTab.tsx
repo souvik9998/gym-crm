@@ -621,30 +621,6 @@ export const SlotMembersTab = ({
       ? Math.round(filteredSlots.reduce((sum, slot) => sum + slot.utilization, 0) / filteredSlots.length)
       : 0;
 
-  const getTimeFilterButtonClass = (option: TimeBucket) => {
-    const isActive = timeFilter === option;
-
-    if (!isActive) {
-      return "shrink-0 border-border/70 bg-background/70 text-muted-foreground backdrop-blur-sm hover:border-primary/30 hover:bg-primary/5 hover:text-foreground";
-    }
-
-    switch (option) {
-      case "morning":
-        return "shrink-0 border-warning/40 bg-warning/15 text-foreground shadow-sm backdrop-blur-sm hover:bg-warning/20";
-      case "afternoon":
-        return "shrink-0 border-accent/35 bg-accent/12 text-foreground shadow-sm backdrop-blur-sm hover:bg-accent/18";
-      case "evening":
-        return "shrink-0 border-primary/35 bg-primary/12 text-foreground shadow-sm backdrop-blur-sm hover:bg-primary/18";
-      case "night":
-        return "shrink-0 border-secondary-foreground/15 bg-secondary text-secondary-foreground shadow-sm backdrop-blur-sm hover:bg-secondary";
-      case "custom":
-        return "shrink-0 border-success/35 bg-success/12 text-foreground shadow-sm backdrop-blur-sm hover:bg-success/18";
-      case "all":
-      default:
-        return "shrink-0 border-primary/35 bg-primary text-primary-foreground shadow-sm backdrop-blur-sm hover:bg-primary/90";
-    }
-  };
-
   const getPtBadge = (status: string) => {
     switch (status) {
       case "active":
