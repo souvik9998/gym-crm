@@ -1264,7 +1264,9 @@ Deno.serve(async (req) => {
           (sum: number, e: any) => sum + Number(e.amount || 0), 0
         );
 
-        return jsonResponse({ staff: filteredStaff, totalPaidToStaff }, 60);
+        // No HTTP cache: staff/trainer data mutates frequently (add/edit/delete/permissions)
+        // and clients must see updates immediately after a mutation.
+        return jsonResponse({ staff: filteredStaff, totalPaidToStaff });
       }
 
       case "branch-analytics-data": {
