@@ -158,12 +158,62 @@ export const AssignTrainerDialog = ({
       .order("name");
 
     if (data) {
-      const filtered = existingTrainerId
+      // Replace mode: hide the current trainer (forcing a switch).
+      // Extend mode: keep the current trainer (we lock to it).
+      const filtered = existingTrainerId && mode === "replace"
         ? data.filter((t) => t.id !== existingTrainerId)
         : data;
       setTrainers(filtered);
+
+      // In extend mode, eagerly load slots for the locked trainer once we
+      // have its phone (needed by fetchTimeSlots → staff lookup).
+      if (isExtendMode && existingTrainer?.id) {
+        const trainerInList = filtered.find((t) => t.id === existingTrainer.id);
+        if (trainerInList) {
+          fetchTimeSlotsFor(trainerInList);
+        }
+      }
     }
     setIsFetchingTrainers(false);
+  };
+
+  // Extracted variant that doesn't rely on `trainers` state (useful right after fetch).
+  const fetchTimeSlotsFor = async (trainer: Trainer) => {
+    setIsFetchingSlots(true);
+    setTimeSlots([]);
+    if (!trainer.phone) {
+      setIsFetchingSlots(false);
+      return;
+    }
+    const { data: staffData } = await supabase
+      .from("staff")
+      .select("id")
+      .eq("phone", trainer.phone)
+      .eq("role", "trainer")
+      .eq("is_active", true)
+      .maybeSingle();
+    if (!staffData) {
+      setIsFetchingSlots(false);
+      return;
+    }
+    const { data: slots } = await supabase
+      .from("trainer_time_slots")
+      .select("id, start_time, end_time, capacity")
+      .eq("trainer_id", staffData.id)
+      .eq("branch_id", branchId);
+    if (slots) {
+      const slotsWithCounts: TimeSlot[] = await Promise.all(
+        slots.map(async (slot) => {
+          const { count } = await supabase
+            .from("time_slot_members")
+            .select("*", { count: "exact", head: true })
+            .eq("time_slot_id", slot.id);
+          return { ...slot, current_count: count || 0 };
+        })
+      );
+      setTimeSlots(slotsWithCounts);
+    }
+    setIsFetchingSlots(false);
   };
 
   const fetchTimeSlots = async (trainerId: string) => {
