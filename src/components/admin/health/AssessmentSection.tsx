@@ -573,7 +573,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       if (inputType === "select" && options?.length) {
         return (
           <Select value={formData[fieldKey] || ""} onValueChange={(value) => updateField(fieldKey, value)}>
-            <SelectTrigger className="mt-1 h-10 w-full text-sm">
+            <SelectTrigger className="mt-1.5 h-10 w-full text-sm">
               <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
             </SelectTrigger>
             <SelectContent>
