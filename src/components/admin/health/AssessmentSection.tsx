@@ -803,8 +803,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
             </aside>
 
             {/* Main scrollable area */}
-            <div ref={formScrollRef} className="min-h-0 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-4">
-              <div className="mx-auto w-full max-w-3xl space-y-4">
+            <div ref={formScrollRef} className="min-h-0 overflow-y-auto overscroll-contain px-3 py-3 sm:px-6 sm:py-5">
+              <div className="mx-auto w-full max-w-[1100px] space-y-4">
                 {renderAssessorPicker(true)}
                 {enabledSections.map((section) => renderSection(section, true))}
               </div>
