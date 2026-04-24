@@ -353,6 +353,29 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     }
   };
 
+  // Silently auto-save a draft when the user closes the form / dialog
+  // without explicitly saving. Keeps their work safe.
+  const autoSaveDraftAndClose = async () => {
+    const hasContent = Object.entries(formData).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
+    if (!hasContent) {
+      // Nothing meaningful entered — just close without persisting.
+      setShowForm(false);
+      setIsFormExpanded(false);
+      return;
+    }
+    try {
+      await persistAssessment(true);
+      setLastSavedAt(new Date());
+      toast.success("Draft auto-saved", { description: "Your progress is safe. Continue anytime." });
+      await onRefresh();
+    } catch (err: any) {
+      toast.error("Couldn't auto-save draft", { description: err?.message });
+    } finally {
+      setShowForm(false);
+      setIsFormExpanded(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     setConfirmDeleteId(null);
