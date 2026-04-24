@@ -590,16 +590,21 @@ export const SlotMembersTab = ({
     setAvailableMembers((prev) => prev.map((member) => (member.id === memberId ? { ...member, selected: !member.selected } : member)));
   };
 
+  const visibleSlotIdSet = useMemo(() => new Set(visibleSlotIds), [visibleSlotIds]);
+
   const filteredMembers = useMemo(
     () =>
       members.filter((member) => {
+        // Guard against stale placeholderData when filters narrow to zero slots —
+        // ensures Night/Custom filters never leak in members from a prior selection.
+        if (!visibleSlotIdSet.has(member.slot_id)) return false;
         const query = searchFilter.trim().toLowerCase();
         if (!query) return true;
         return [member.member_name, member.member_phone, member.trainer_name, member.slot_label]
           .filter(Boolean)
           .some((value) => value.toLowerCase().includes(query));
       }),
-    [members, searchFilter],
+    [members, searchFilter, visibleSlotIdSet],
   );
 
   const filteredAvailable = useMemo(
