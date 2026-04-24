@@ -328,7 +328,7 @@ export const TimeSlotsTab = ({
       if (filterStatus === "empty" && filled !== 0) return false;
       if (filterRecurring === "recurring" && !s.is_recurring) return false;
       if (filterRecurring === "one_time" && s.is_recurring) return false;
-      if (!matchesTimeFilter(s.start_time, filterTime, customStart, customEnd)) return false;
+      if (!matchesTimeFilter(s.start_time, filterTime, customStart, customEnd, s.end_time)) return false;
       if (search) {
         const q = search.toLowerCase();
         if (!(s.trainer_name || "").toLowerCase().includes(q)) return false;
