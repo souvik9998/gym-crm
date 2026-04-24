@@ -773,7 +773,7 @@ export const TimeSlotsTab = ({
                         variant="outline"
                         size="sm"
                         className={cn(
-                          "w-full text-xs h-8 mt-1 bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/15",
+                          "w-full text-xs h-8 mt-1 font-medium bg-white dark:bg-white/10 hover:bg-foreground dark:hover:bg-white/20 hover:text-background dark:hover:text-foreground transition-colors",
                           accent.border,
                           accent.text,
                         )}
