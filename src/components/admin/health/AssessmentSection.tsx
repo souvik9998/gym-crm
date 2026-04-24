@@ -515,6 +515,11 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     draftIdRef.current = assessment.id;
     hydratedDraftRef.current = assessment.id;
     hydratedOnOpenRef.current = true; // prevent the open-effect from clobbering
+    // Capture baseline so we can detect whether the user actually edits
+    // anything. If they close without changes we must NOT auto-save (which
+    // would silently downgrade a finalized assessment to a draft).
+    originalSnapshotRef.current = JSON.stringify(data);
+    editingFinalizedRef.current = !assessment.is_draft;
     setExpandedId(null);
     setShowForm(true);
   };
