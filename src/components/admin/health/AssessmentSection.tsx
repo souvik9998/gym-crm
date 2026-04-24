@@ -45,6 +45,13 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   const [draftId, setDraftId] = useState<string | null>(null);
   const [activeSectionKey, setActiveSectionKey] = useState<string>("");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  // Track which draft id we've already hydrated into formData to prevent the
+  // load effect from clobbering the user's in-progress edits whenever
+  // `assessments` (and therefore `existingDraft`) refreshes.
+  const hydratedDraftRef = useRef<string | null>(null);
+  // Track whether the form has been opened in this mount cycle so we hydrate
+  // exactly once on open and never again until it's closed + reopened.
+  const hydratedOnOpenRef = useRef(false);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const formScrollRef = useRef<HTMLDivElement | null>(null);
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
@@ -61,19 +68,30 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     fetchAssessors();
   }, [branchId, isStaffLoggedIn, staffUser?.id, staffUser?.fullName, permissions?.member_access_type, isAdmin]);
 
-  // Load draft (DB takes priority, then localStorage) when form opens
+  // Hydrate the form ONCE per open. DB draft takes priority over localStorage.
+  // Re-runs of this effect after a save (when existingDraft.id changes) will
+  // not overwrite user input because we gate on hydratedOnOpenRef.
   useEffect(() => {
-    if (!showForm) return;
+    if (!showForm) {
+      hydratedOnOpenRef.current = false;
+      return;
+    }
+    if (hydratedOnOpenRef.current) return;
+
     if (existingDraft) {
       const data: Record<string, string> = { assessed_by: existingDraft.assessed_by || "" };
       const ad = (existingDraft.assessment_data || {}) as Record<string, any>;
       Object.entries(ad).forEach(([k, v]) => {
+        if (v === null || v === undefined) return;
         data[k] = typeof v === "string" ? v : JSON.stringify(v);
       });
       setFormData(data);
       setDraftId(existingDraft.id);
+      hydratedDraftRef.current = existingDraft.id;
+      hydratedOnOpenRef.current = true;
       return;
     }
+
     try {
       const stored = localStorage.getItem(draftStorageKey);
       if (stored) {
@@ -81,6 +99,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
         if (parsed && typeof parsed === "object") setFormData(parsed);
       }
     } catch {}
+    hydratedOnOpenRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showForm, existingDraft?.id]);
 
