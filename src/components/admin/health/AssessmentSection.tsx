@@ -709,14 +709,14 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     return (
       <div
         key={fieldKey}
-        className={`flex min-w-0 flex-col rounded-lg border border-border/50 bg-background/90 p-3 ${isWide ? "sm:col-span-2 xl:col-span-2" : ""}`}
+        className={`flex min-w-0 flex-col rounded-lg border border-border/50 bg-background/90 p-2 sm:p-2.5 ${isWide ? "sm:col-span-2 xl:col-span-2" : ""}`}
       >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Label className="text-xs font-medium leading-tight text-foreground">{label}</Label>
-          {unit && <Badge variant="outline" className="h-5 rounded-md px-1.5 text-[10px]">{unit}</Badge>}
+        <div className="flex flex-wrap items-center justify-between gap-1.5">
+          <Label className="text-[11px] font-medium leading-tight text-foreground">{label}</Label>
+          {unit && <Badge variant="outline" className="h-4 rounded-md px-1 text-[10px]">{unit}</Badge>}
         </div>
         {fieldControl}
-        {helpText && <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">{helpText}</p>}
+        {helpText && <p className="mt-1 text-[10px] leading-snug text-muted-foreground">{helpText}</p>}
       </div>
     );
   };
@@ -886,11 +886,11 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
         ref={(el) => { sectionRefs.current[section.key] = el; }}
         className={expanded
           ? "rounded-2xl border border-border/50 bg-background/95 p-4 lg:p-5 space-y-4 shadow-sm scroll-mt-4"
-          : "rounded-xl border border-border/50 bg-background/80 p-3 sm:p-4 lg:p-5 space-y-3.5"
+          : "rounded-xl border border-border/50 bg-background/80 p-2.5 sm:p-3 space-y-3"
         }
       >
-        <div className="flex items-start gap-2.5 sm:gap-3">
-          <div className={expanded ? "flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 text-accent" : "flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-accent/10 text-accent"}>
+        <div className="flex items-start gap-2 sm:gap-2.5">
+          <div className={expanded ? "flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 text-accent" : "flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-accent/10 text-accent"}>
             <Icon className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
@@ -900,14 +900,14 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
                 {hasFields ? `${completion.filled}/${completion.total}` : completion.filled ? "Filled" : "Empty"}
               </Badge>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{section.purpose}</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{section.purpose}</p>
           </div>
         </div>
 
         {hasFields ? (
           <div className={expanded
             ? "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
-            : "grid grid-cols-1 gap-2.5 min-[640px]:grid-cols-2 xl:grid-cols-3"
+            : "grid grid-cols-1 gap-2 min-[760px]:grid-cols-2 min-[1100px]:grid-cols-3"
           }>
             {fields.map((field) => {
               const customField = config[section.key]?.custom_fields?.find((item) => item.key === field.key);
