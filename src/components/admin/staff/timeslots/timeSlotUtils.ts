@@ -58,31 +58,44 @@ export function getTimeBucketForMinutes(minutes: number): Exclude<TimeBucket, "a
   return "night";
 }
 
-/** Returns the [startMinutes, endMinutes) range for a given preset bucket. */
-function getBucketRange(bucket: Exclude<TimeBucket, "all" | "custom">): [number, number] {
+/**
+ * Returns one or more non-wrapping [start, end) minute intervals on a 24h day for the bucket.
+ * Overnight buckets (Night) are returned as two intervals so we never need wrap math.
+ */
+function getBucketIntervals(bucket: Exclude<TimeBucket, "all" | "custom">): Array<[number, number]> {
   switch (bucket) {
     case "morning":
-      return [300, 720]; // 5:00 AM – 12:00 PM
+      return [[300, 720]]; // 5:00 AM – 12:00 PM
     case "afternoon":
-      return [720, 1020]; // 12:00 PM – 5:00 PM
+      return [[720, 1020]]; // 12:00 PM – 5:00 PM
     case "evening":
-      return [1020, 1260]; // 5:00 PM – 9:00 PM
+      return [[1020, 1260]]; // 5:00 PM – 9:00 PM
     case "night":
-      return [1260, 1740]; // 9:00 PM – 5:00 AM (next day, +24h on end)
+      // 9:00 PM – 12:00 AM and 12:00 AM – 5:00 AM
+      return [[1260, 1440], [0, 300]];
   }
 }
 
 /**
- * True if [aStart, aEnd) overlaps [bStart, bEnd).
- * Treats end-before-start as wrap-around (overnight).
+ * Splits a slot [start, end) into one or two non-wrapping intervals on [0, 1440).
+ * Equal start/end is treated as a 1-minute point.
  */
-function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
-  // Normalize wrap-arounds by extending end past 24h when needed.
-  const aE = aEnd <= aStart ? aEnd + 1440 : aEnd;
-  const bE = bEnd <= bStart ? bEnd + 1440 : bEnd;
-  // Compare both as-is and shifted to catch overnight intersections.
-  return (aStart < bE && bStart < aE) ||
-    (aStart + 1440 < bE && bStart < aE + 1440);
+function getSlotIntervals(startMinutes: number, endMinutes: number): Array<[number, number]> {
+  const s = ((startMinutes % 1440) + 1440) % 1440;
+  let e = ((endMinutes % 1440) + 1440) % 1440;
+  if (e === s) e = s + 1; // instantaneous
+  if (e > s) return [[s, e]];
+  // wraps midnight
+  return [[s, 1440], [0, e]];
+}
+
+function intervalsOverlap(a: Array<[number, number]>, b: Array<[number, number]>): boolean {
+  for (const [aS, aE] of a) {
+    for (const [bS, bE] of b) {
+      if (aS < bE && bS < aE) return true;
+    }
+  }
+  return false;
 }
 
 export function getTimeBucketLabel(bucket: Exclude<TimeBucket, "all" | "custom">) {
@@ -108,20 +121,18 @@ export function matchesTimeFilter(
   if (timeFilter === "all") return true;
 
   const startMinutes = parseTimeToMinutes(startTime);
-  // If no end time provided, treat the slot as a single point in time.
   const endMinutes = endTime ? parseTimeToMinutes(endTime) : startMinutes;
-  // Equal start/end is treated as instantaneous; nudge by 1 minute so overlap math works.
-  const effectiveEnd = endTime && endMinutes === startMinutes ? startMinutes + 1 : endMinutes;
+  const slotIntervals = getSlotIntervals(startMinutes, endMinutes);
 
   if (timeFilter !== "custom") {
-    const [bStart, bEnd] = getBucketRange(timeFilter);
-    return rangesOverlap(startMinutes, effectiveEnd, bStart, bEnd);
+    return intervalsOverlap(slotIntervals, getBucketIntervals(timeFilter));
   }
 
   if (!customStart || !customEnd) return true;
   const cs = parseTimeToMinutes(customStart);
   const ce = parseTimeToMinutes(customEnd);
-  return rangesOverlap(startMinutes, effectiveEnd, cs, ce);
+  const customIntervals = getSlotIntervals(cs, ce);
+  return intervalsOverlap(slotIntervals, customIntervals);
 }
 
 export function getSlotAvailability(memberCount: number, capacity: number): Exclude<SlotAvailability, "all"> {
