@@ -64,6 +64,8 @@ interface PTDurationOption {
 interface PackageSelectionFormProps {
   isNewMember: boolean;
   memberName: string;
+  /** Existing member id — required for renewal coupon checks (per-user limit, expired-only, etc.) */
+  memberId?: string;
   onSubmit: (data: PackageSelectionData) => void;
   onBack: () => void;
   isLoading: boolean;
