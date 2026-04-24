@@ -203,12 +203,17 @@ export const StaffTrainersTab = ({
     addingRef.current = true;
     setIsAddingTrainer(true);
 
+    const loadingToastId = toast.loading("Adding trainer...", {
+      description: "Please wait while we set things up.",
+    });
+
     try {
       const branchesToAssign = newTrainer.selected_branches.length > 0 
         ? newTrainer.selected_branches 
         : currentBranch?.id ? [currentBranch.id] : [];
 
       // Check if staff with this phone already exists globally
+      toast.loading("Checking for existing trainer...", { id: loadingToastId });
       const { data: existingStaffData } = await supabase
         .from("staff")
         .select("*, staff_permissions(*), staff_branch_assignments(*, branches(name))")
@@ -226,6 +231,7 @@ export const StaffTrainersTab = ({
         } as Staff;
 
         setExistingStaffDialog({ open: true, existingStaff: existingMapped });
+        toast.dismiss(loadingToastId);
         return;
       }
 
@@ -242,12 +248,13 @@ export const StaffTrainersTab = ({
         
         if (existingInBranch) {
           const branchName = branches.find(b => b.id === existingInBranch.branch_id)?.name || "selected branch";
-          toast.error(`A trainer with this phone already exists in ${branchName}`);
+          toast.error(`A trainer with this phone already exists in ${branchName}`, { id: loadingToastId });
           return;
         }
       }
 
       // Insert staff record (without password - will be set via edge function)
+      toast.loading("Creating trainer record...", { id: loadingToastId });
       const { data: staffData, error: staffError } = await supabase
         .from("staff")
         .insert({
@@ -266,12 +273,13 @@ export const StaffTrainersTab = ({
         .single();
 
       if (staffError) {
-        toast.error("Error adding trainer", { description: staffError.message });
+        toast.error("Error adding trainer", { id: loadingToastId, description: staffError.message });
         return;
       }
 
       // Set password via edge function if login is enabled
       if (newTrainer.enableLogin && newTrainer.password) {
+        toast.loading("Setting up login access...", { id: loadingToastId });
         const { error: passwordError } = await supabase.functions.invoke("staff-auth?action=set-password", {
           body: {
             staffId: staffData.id,
@@ -289,6 +297,7 @@ export const StaffTrainersTab = ({
       }
 
       // Add branch assignments (reuse branchesToAssign from validation)
+      toast.loading("Assigning branches & permissions...", { id: loadingToastId });
       const branchNames: string[] = [];
       if (branchesToAssign.length > 0) {
         const assignments = branchesToAssign.map((branchId, index) => ({
@@ -338,6 +347,7 @@ export const StaffTrainersTab = ({
       // Send WhatsApp credentials if enabled and login is enabled
       let whatsAppSent = false;
       if (newTrainer.enableLogin && newTrainer.sendWhatsApp && newTrainer.password && cleanPhone) {
+        toast.loading("Sending login credentials via WhatsApp...", { id: loadingToastId });
         whatsAppSent = await sendStaffCredentialsWhatsApp(
           { full_name: newTrainer.full_name, phone: cleanPhone, role: "trainer" },
           newTrainer.password,
@@ -348,6 +358,7 @@ export const StaffTrainersTab = ({
       }
 
       toast.success("Trainer added successfully", {
+        id: loadingToastId,
         description: newTrainer.enableLogin && newTrainer.sendWhatsApp
           ? whatsAppSent
             ? "Login credentials sent via WhatsApp"
@@ -373,6 +384,11 @@ export const StaffTrainersTab = ({
         sendWhatsApp: true,
       });
       await refreshAll();
+    } catch (err: any) {
+      toast.error("Failed to add trainer", {
+        id: loadingToastId,
+        description: err?.message || "An unexpected error occurred. Please try again.",
+      });
     } finally {
       setIsAddingTrainer(false);
       addingRef.current = false;
