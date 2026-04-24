@@ -264,6 +264,7 @@ const Renew = () => {
         <PackageSelectionForm
           isNewMember={false}
           memberName={member.name}
+          memberId={member.id}
           onSubmit={handlePackageSubmit}
           onBack={() => navigate(stateBranchSlug ? `/b/${stateBranchSlug}` : branchId ? `/b/${branchId}` : "/admin/login", { state: { returnToOptions: true, phone: member.phone } })}
           isLoading={isPaymentLoading}
