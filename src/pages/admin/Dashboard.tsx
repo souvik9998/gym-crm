@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useMemo, memo, Fragment } from "react
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -425,13 +426,17 @@ const AdminDashboard = () => {
                   
                   {/* Search Bar - Desktop (between tabs and actions) */}
                   {(activeTab === "members" || activeTab === "daily_pass") && (
-                    <div className="relative flex-1 max-w-md group">
-                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200 z-10" />
-                      <Input
+                    <div className="flex-1 max-w-md">
+                      <SearchInput
                         placeholder="Search by name or phone..."
-                        className="pl-10 h-9 text-sm bg-muted/40 border border-border/50 hover:bg-muted/60 hover:border-border focus:bg-background focus:border-border focus:ring-2 focus:ring-ring/20 shadow-sm hover:shadow transition-all duration-200"
                         value={activeTab === "members" ? searchInput : dailyPassSearchInput}
                         onChange={(e) => activeTab === "members" ? setSearchInput(e.target.value) : setDailyPassSearchInput(e.target.value)}
+                        onClear={() => activeTab === "members" ? setSearchInput("") : setDailyPassSearchInput("")}
+                        isSearching={
+                          activeTab === "members"
+                            ? searchInput !== searchQuery
+                            : dailyPassSearchInput !== dailyPassSearchQuery
+                        }
                       />
                     </div>
                   )}
@@ -498,13 +503,17 @@ const AdminDashboard = () => {
                 {/* Search Bar - Mobile/Tablet only */}
                 {(activeTab === "members" || activeTab === "daily_pass") && (
                   <div className="flex items-center gap-1.5 lg:hidden">
-                    <div className="relative flex-1 group">
-                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-foreground transition-colors duration-200" />
-                      <Input
+                    <div className="flex-1">
+                      <SearchInput
                         placeholder="Search by name or phone..."
-                        className="pl-9 h-9 md:h-10 text-sm bg-muted/30 border-transparent rounded-xl hover:bg-muted/50 hover:border-border focus:bg-background focus:border-border focus:ring-2 focus:ring-ring/20 transition-all duration-200"
                         value={activeTab === "members" ? searchInput : dailyPassSearchInput}
                         onChange={(e) => activeTab === "members" ? setSearchInput(e.target.value) : setDailyPassSearchInput(e.target.value)}
+                        onClear={() => activeTab === "members" ? setSearchInput("") : setDailyPassSearchInput("")}
+                        isSearching={
+                          activeTab === "members"
+                            ? searchInput !== searchQuery
+                            : dailyPassSearchInput !== dailyPassSearchQuery
+                        }
                       />
                     </div>
                     {/* Tablet-only inline action buttons next to search */}
