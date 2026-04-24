@@ -103,7 +103,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showForm, existingDraft?.id]);
 
-  // Auto-save to localStorage as user types
+  // Auto-save to localStorage as user types (instant, synchronous safety net)
   useEffect(() => {
     if (!showForm) return;
     const hasContent = Object.entries(formData).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
@@ -112,6 +112,51 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       localStorage.setItem(draftStorageKey, JSON.stringify(formData));
     } catch {}
   }, [formData, showForm, draftStorageKey]);
+
+  // Always-fresh refs so unmount/cleanup logic can read latest values without
+  // re-creating the cleanup effect on every keystroke (which would mean the
+  // cleanup runs on every render and never on real unmount).
+  const formDataRef = useRef(formData);
+  const draftIdRef = useRef(draftId);
+  const showFormRef = useRef(showForm);
+  useEffect(() => { formDataRef.current = formData; }, [formData]);
+  useEffect(() => { draftIdRef.current = draftId; }, [draftId]);
+  useEffect(() => { showFormRef.current = showForm; }, [showForm]);
+
+  // Debounced silent auto-save to DB. Persists every ~1.2s of inactivity so
+  // the user's typed values survive even when the parent dialog is closed
+  // before they hit "Save Draft".
+  useEffect(() => {
+    if (!showForm) return;
+    const hasContent = Object.entries(formData).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
+    if (!hasContent) return;
+    const timer = window.setTimeout(() => {
+      // Fire-and-forget; UI feedback is intentionally absent for autosave.
+      persistAssessment(true).then(() => {
+        setLastSavedAt(new Date());
+      }).catch((err) => {
+        console.warn("Assessment autosave failed", err);
+      });
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [formData, showForm]);
+
+  // On unmount (e.g., parent dialog closed via outer X), best-effort persist
+  // any unsaved input so the user's data is never lost.
+  useEffect(() => {
+    return () => {
+      if (!showFormRef.current) return;
+      const fd = formDataRef.current;
+      const hasContent = Object.entries(fd).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
+      if (!hasContent) return;
+      // Snapshot to localStorage immediately (synchronous safety net)
+      try { localStorage.setItem(draftStorageKey, JSON.stringify(fd)); } catch {}
+      // Fire async DB save. The promise will resolve even after this component
+      // has unmounted because supabase-js doesn't tie requests to React lifecycle.
+      void persistAssessmentSnapshot(fd, draftIdRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Warn the user before unloading if they have unsaved changes in the form,
   // and persist the latest snapshot to localStorage as a safety net.
@@ -309,6 +354,37 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
   const persistAssessment = async (isDraft: boolean) => {
     const { assessed_by, assessmentData } = buildAssessmentPayload();
+    return persistAssessmentSnapshot(
+      { assessed_by, assessment_data: assessmentData } as any,
+      draftId,
+      isDraft,
+    );
+  };
+
+  // Pure helper: persist a given snapshot (form values + draftId) regardless
+  // of current React state. Safe to call from unmount cleanup.
+  const persistAssessmentSnapshot = async (
+    snapshot: Record<string, any> | { assessed_by: string; assessment_data: Record<string, string> },
+    knownDraftId: string | null,
+    isDraft = true,
+  ) => {
+    let assessed_by: string;
+    let assessmentData: Record<string, string>;
+
+    if ("assessment_data" in snapshot) {
+      assessed_by = (snapshot as any).assessed_by || "Draft";
+      assessmentData = (snapshot as any).assessment_data || {};
+    } else {
+      const { assessed_by: ab, ...rest } = snapshot as Record<string, any>;
+      assessed_by = ab || "Draft";
+      assessmentData = {};
+      Object.entries(rest).forEach(([k, v]) => {
+        if (v === undefined || v === null) return;
+        const str = String(v);
+        if (!str.trim()) return;
+        assessmentData[k] = str;
+      });
+    }
 
     const payload = {
       member_id: memberId,
@@ -323,12 +399,10 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       is_draft: isDraft,
     };
 
-    if (draftId) {
-      const { error } = await supabase.from("member_assessments").update(payload as any).eq("id", draftId);
+    if (knownDraftId) {
+      const { error } = await supabase.from("member_assessments").update(payload as any).eq("id", knownDraftId);
       if (error) throw error;
     } else {
-      // Capture the inserted row id so subsequent saves UPDATE instead of
-      // creating duplicate draft rows.
       const { data, error } = await supabase
         .from("member_assessments")
         .insert(payload as any)
@@ -337,6 +411,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       if (error) throw error;
       if (data?.id) {
         setDraftId(data.id);
+        draftIdRef.current = data.id;
         hydratedDraftRef.current = data.id;
       }
     }
@@ -844,37 +919,41 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       );
     }
 
-    // Compact (non-expanded) layout
+    // Compact (non-expanded) layout — flex column so the footer pins to the
+    // bottom of the form area while the body scrolls independently.
     return (
-      <div className="space-y-3 rounded-xl border border-accent/20 bg-accent/5 p-2 sm:p-3 lg:p-4 max-h-[76vh] overflow-y-auto overscroll-contain pr-1 sm:pr-2">
-        <div className="rounded-lg border border-border/50 bg-background/80 p-2.5 sm:p-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-2">
-              <Info className="mt-0.5 h-4 w-4 text-accent" />
-              <div>
-                <p className="text-sm font-medium text-foreground">{draftId ? "Continuing draft" : "Assessment form"}</p>
-                <p className="text-xs text-muted-foreground">Drafts auto-save as you type. Open the large view for a side-by-side layout.</p>
+      <div className="flex max-h-[78vh] flex-col overflow-hidden rounded-xl border border-accent/20 bg-accent/5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 sm:p-3 lg:p-4 space-y-3">
+          <div className="rounded-lg border border-border/50 bg-background/80 p-2.5 sm:p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2">
+                <Info className="mt-0.5 h-4 w-4 text-accent" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">{draftId ? "Continuing draft" : "Assessment form"}</p>
+                  <p className="text-xs text-muted-foreground">Drafts auto-save as you type. Open the large view for a side-by-side layout.</p>
+                </div>
               </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsFormExpanded(true)}
+                className="h-8 rounded-lg px-2.5 text-[11px]"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+                <span className="ml-1">Enlarge</span>
+              </Button>
             </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => setIsFormExpanded(true)}
-              className="h-8 rounded-lg px-2.5 text-[11px]"
-            >
-              <Maximize2 className="h-3.5 w-3.5" />
-              <span className="ml-1">Enlarge</span>
-            </Button>
+          </div>
+
+          <div className="space-y-3">
+            {renderAssessorPicker(false)}
+            {enabledSections.map((section) => renderSection(section, false))}
           </div>
         </div>
 
-        <div className="space-y-3">
-          {renderAssessorPicker(false)}
-          {enabledSections.map((section) => renderSection(section, false))}
-        </div>
-
-        <div className="sticky bottom-0 border-t border-border/40 bg-background/95 px-1 pt-3 pb-1 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        {/* Sticky footer (pinned at the bottom of the form panel) */}
+        <div className="shrink-0 border-t border-border/40 bg-background/95 px-3 py-2.5 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] backdrop-blur supports-[backdrop-filter]:bg-background/85">
           <SaveActions expanded={false} />
         </div>
       </div>
