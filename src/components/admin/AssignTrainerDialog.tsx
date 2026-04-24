@@ -547,10 +547,12 @@ export const AssignTrainerDialog = ({
 
       // Log activity
       await logAdminActivity({
-        category: mode === "assign" ? "trainers" : "trainers",
-        type: mode === "assign" ? "pt_assigned" : "pt_replaced",
+        category: "trainers",
+        type: mode === "assign" ? "pt_assigned" : mode === "extend" ? "pt_extended" : "pt_replaced",
         description: mode === "assign"
           ? `Assigned trainer ${trainerName} to ${memberName || "member"}`
+          : mode === "extend"
+          ? `Extended PT with ${trainerName} for ${memberName || "member"} until ${new Date(endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
           : `Replaced trainer for ${memberName || "member"} with ${trainerName}`,
         entityType: "member",
         entityId: memberId,
@@ -569,6 +571,8 @@ export const AssignTrainerDialog = ({
       toast.success(
         mode === "assign"
           ? "Trainer assigned successfully"
+          : mode === "extend"
+          ? "PT extended successfully"
           : "Trainer replaced successfully"
       );
       queryClient.invalidateQueries({ queryKey: ["payments"] });
