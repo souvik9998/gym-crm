@@ -510,10 +510,10 @@ export const SimpleAttendanceTab = () => {
   return (
     <TooltipProvider delayDuration={150}>
     <div className="space-y-4 animate-fade-in">
-      {/* Desktop: Week Nav + Filters + Stats in one row */}
-      <div className="hidden lg:flex items-center gap-4">
+      {/* Desktop: Week Nav row + Filters row (separate to prevent overflow/clipping) */}
+      <div className="hidden lg:block space-y-3">
         {/* Week Navigation */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("prev")}>
             <ChevronLeftIcon className="w-4 h-4" />
           </Button>
@@ -566,26 +566,25 @@ export const SimpleAttendanceTab = () => {
           </Button>
         </div>
 
-        {/* Divider */}
-        <div className="w-px h-8 bg-border/60 shrink-0" />
-
-        {/* Filters */}
-        <div className="flex items-start gap-2 shrink-0">
+        {/* Filters: time chips take full row width; trainer + slot dropdowns sit alongside */}
+        <div className="flex items-stretch gap-3">
           <TimeBucketChips
             value={timeFilter}
             onChange={setTimeFilter}
             compact
-            className="max-w-[640px]"
+            className="flex-1 min-w-0"
           />
-          <TrainerFilterDropdown
-            value={selectedTrainerId}
-            onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }}
-          />
-          <TimeSlotFilterDropdown
-            value={selectedSlotId}
-            onChange={setSelectedSlotId}
-            trainerFilter={selectedTrainerId}
-          />
+          <div className="flex items-center gap-2 shrink-0">
+            <TrainerFilterDropdown
+              value={selectedTrainerId}
+              onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }}
+            />
+            <TimeSlotFilterDropdown
+              value={selectedSlotId}
+              onChange={setSelectedSlotId}
+              trainerFilter={selectedTrainerId}
+            />
+          </div>
         </div>
       </div>
 
