@@ -24,6 +24,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
+import { TimeBucketDropdown } from "@/components/admin/TimeBucketDropdown";
 import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
 import { useMembersQuery } from "@/hooks/queries/useMembers";
