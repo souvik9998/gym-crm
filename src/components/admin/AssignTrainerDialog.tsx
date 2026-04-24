@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { createMembershipIncomeEntry, calculateTrainerPercentageExpense } from "@/hooks/useLedger";
+import { useCouponValidation } from "@/hooks/useCouponValidation";
 import {
   Dialog,
   DialogContent,
@@ -22,8 +23,9 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import CouponInput from "@/components/ui/coupon-input";
 import { toast } from "sonner";
-import { Dumbbell, Loader2, Clock, MessageCircle } from "lucide-react";
+import { Dumbbell, Loader2, Clock, MessageCircle, IndianRupee } from "lucide-react";
 
 interface Trainer {
   id: string;
