@@ -21,6 +21,7 @@ export interface MemberAssessment {
   allowed_exercises: string | null;
   notes: string | null;
   assessment_data: any;
+  is_draft?: boolean;
   created_at: string;
 }
 

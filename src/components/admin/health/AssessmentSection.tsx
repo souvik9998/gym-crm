@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle, Info, Maximize2, Minimize2, PanelTopOpen } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, Calendar, User, Trash2, AlertTriangle, Info, Maximize2, Minimize2, PanelTopOpen, FileEdit, CheckCircle2, Save } from "lucide-react";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import type { MemberAssessment } from "./MemberHealthTab";
@@ -35,13 +35,23 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   const [isFormExpanded, setIsFormExpanded] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [config, setConfig] = useState<AssessmentSettings>(getDefaultAssessmentSettings());
   const [assessorOptions, setAssessorOptions] = useState<AssessorOption[]>([]);
   const [loadingAssessors, setLoadingAssessors] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({ assessed_by: "" });
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [activeSectionKey, setActiveSectionKey] = useState<string>("");
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const formScrollRef = useRef<HTMLDivElement | null>(null);
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
+  const draftStorageKey = useMemo(() => `assessment-draft:${memberId}`, [memberId]);
+
+  // Find the most recent draft for this member from props
+  const existingDraft = useMemo(() => assessments.find((a) => a.is_draft), [assessments]);
 
   useEffect(() => {
     fetchConfig();
@@ -50,6 +60,39 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   useEffect(() => {
     fetchAssessors();
   }, [branchId, isStaffLoggedIn, staffUser?.id, staffUser?.fullName, permissions?.member_access_type, isAdmin]);
+
+  // Load draft (DB takes priority, then localStorage) when form opens
+  useEffect(() => {
+    if (!showForm) return;
+    if (existingDraft) {
+      const data: Record<string, string> = { assessed_by: existingDraft.assessed_by || "" };
+      const ad = (existingDraft.assessment_data || {}) as Record<string, any>;
+      Object.entries(ad).forEach(([k, v]) => {
+        data[k] = typeof v === "string" ? v : JSON.stringify(v);
+      });
+      setFormData(data);
+      setDraftId(existingDraft.id);
+      return;
+    }
+    try {
+      const stored = localStorage.getItem(draftStorageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === "object") setFormData(parsed);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showForm, existingDraft?.id]);
+
+  // Auto-save to localStorage as user types
+  useEffect(() => {
+    if (!showForm) return;
+    const hasContent = Object.entries(formData).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
+    if (!hasContent && !formData.assessed_by) return;
+    try {
+      localStorage.setItem(draftStorageKey, JSON.stringify(formData));
+    } catch {}
+  }, [formData, showForm, draftStorageKey]);
 
   useEffect(() => {
     if (!showForm || assessorOptions.length === 0) return;
@@ -211,6 +254,61 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
     return { mode, unit: "sec" };
   };
 
+  const buildAssessmentPayload = () => {
+    const { assessed_by, ...rest } = formData;
+    const assessmentData: Record<string, string> = {};
+
+    getEnabledSections().forEach((section) => {
+      const fields = getEnabledFields(section.key);
+      if (section.fields || config[section.key]?.custom_fields?.length) {
+        fields.forEach((field) => {
+          if (rest[field.key]) {
+            assessmentData[field.key] = rest[field.key];
+          }
+        });
+      } else if (rest[section.key]) {
+        assessmentData[section.key] = rest[section.key];
+      }
+    });
+
+    return {
+      assessed_by: assessed_by || "Draft",
+      assessmentData,
+    };
+  };
+
+  const persistAssessment = async (isDraft: boolean) => {
+    const { assessed_by, assessmentData } = buildAssessmentPayload();
+
+    const payload = {
+      member_id: memberId,
+      branch_id: branchId,
+      assessed_by,
+      assessment_data: assessmentData,
+      current_condition: assessmentData.health_conditions || null,
+      injuries_health_issues: assessmentData.injuries_pain || null,
+      mobility_limitations: null,
+      allowed_exercises: null,
+      notes: assessmentData.notes || null,
+      is_draft: isDraft,
+    };
+
+    if (draftId) {
+      const { error } = await supabase.from("member_assessments").update(payload as any).eq("id", draftId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("member_assessments").insert(payload as any);
+      if (error) throw error;
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({ assessed_by: "" });
+    setDraftId(null);
+    setLastSavedAt(null);
+    try { localStorage.removeItem(draftStorageKey); } catch {}
+  };
+
   const handleSave = async () => {
     if (!formData.assessed_by?.trim()) {
       toast.error("Please select who took this assessment");
@@ -219,37 +317,9 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
     setIsSaving(true);
     try {
-      const { assessed_by, ...rest } = formData;
-      const assessmentData: Record<string, string> = {};
-
-      getEnabledSections().forEach((section) => {
-        const fields = getEnabledFields(section.key);
-        if (section.fields || config[section.key]?.custom_fields?.length) {
-          fields.forEach((field) => {
-            if (rest[field.key]) {
-              assessmentData[field.key] = rest[field.key];
-            }
-          });
-        } else if (rest[section.key]) {
-          assessmentData[section.key] = rest[section.key];
-        }
-      });
-
-      const { error } = await supabase.from("member_assessments").insert({
-        member_id: memberId,
-        branch_id: branchId,
-        assessed_by,
-        assessment_data: assessmentData,
-        current_condition: assessmentData.health_conditions || null,
-        injuries_health_issues: assessmentData.injuries_pain || null,
-        mobility_limitations: null,
-        allowed_exercises: null,
-        notes: assessmentData.notes || null,
-      });
-
-      if (error) throw error;
-      toast.success("Assessment saved");
-      setFormData({ assessed_by: "" });
+      await persistAssessment(false);
+      toast.success(draftId ? "Draft finalized & saved" : "Assessment saved");
+      resetForm();
       setShowForm(false);
       setIsFormExpanded(false);
       await onRefresh();
@@ -257,6 +327,29 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       toast.error("Error saving assessment", { description: err.message });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveDraft = async (closeAfter = false) => {
+    const hasContent = Object.values(formData).some((v) => v && String(v).trim());
+    if (!hasContent) {
+      toast.error("Add some details before saving as draft");
+      return;
+    }
+    setIsSavingDraft(true);
+    try {
+      await persistAssessment(true);
+      setLastSavedAt(new Date());
+      toast.success("Draft saved");
+      await onRefresh();
+      if (closeAfter) {
+        setShowForm(false);
+        setIsFormExpanded(false);
+      }
+    } catch (err: any) {
+      toast.error("Error saving draft", { description: err.message });
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
@@ -451,146 +544,302 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
   const enabledSections = getEnabledSections();
 
-  const renderAssessmentForm = (expanded = false) => (
-    <div
-      className={expanded
-        ? "flex h-full max-h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-accent/20 bg-accent/5"
-        : "space-y-3 rounded-xl border border-accent/20 bg-accent/5 p-2 sm:p-3 lg:p-4 max-h-[76vh] overflow-y-auto overscroll-contain pr-1 sm:pr-2"
-      }
-    >
-      <div className={expanded ? "shrink-0 border-b border-border/40 bg-background/85 px-3 py-3 sm:px-5" : "rounded-lg border border-border/50 bg-background/80 p-2.5 sm:p-3"}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-2">
-            <Info className="mt-0.5 h-4 w-4 text-accent" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Assessment form preview</p>
-              <p className="text-xs text-muted-foreground">Only the enabled sections and fields from settings are shown here, with their configured labels and units.</p>
-            </div>
-          </div>
+  // Compute section completion (used for sidebar nav)
+  const getSectionCompletion = (sectionKey: string): { filled: number; total: number } => {
+    const fields = getEnabledFields(sectionKey);
+    const section = ASSESSMENT_SECTIONS.find((s) => s.key === sectionKey);
+    const hasFields = !!section?.fields || !!config[sectionKey]?.custom_fields?.length;
+    if (!hasFields) {
+      return { filled: formData[sectionKey] && formData[sectionKey].trim() ? 1 : 0, total: 1 };
+    }
+    let filled = 0;
+    fields.forEach((f) => {
+      if (formData[f.key] && String(formData[f.key]).trim()) filled++;
+    });
+    return { filled, total: fields.length };
+  };
 
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setIsFormExpanded((prev) => !prev)}
-            className="h-8 rounded-lg px-2.5 text-[11px]"
-          >
-            {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-            {expanded ? "Exit large view" : "Enlarge"}
-          </Button>
-        </div>
-      </div>
+  // Set initial active section once sections load
+  useEffect(() => {
+    if (showForm && !activeSectionKey && enabledSections[0]) {
+      setActiveSectionKey(enabledSections[0].key);
+    }
+  }, [showForm, enabledSections, activeSectionKey]);
 
-      <div className={expanded ? "min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-3 pb-4 sm:px-5 sm:py-4" : "space-y-3"}>
-        {expanded && (
-          <div className="rounded-xl border border-border/50 bg-background/90 px-4 py-3 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                <PanelTopOpen className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">Focused assessment workspace</p>
-                <p className="text-xs text-muted-foreground">This enlarged view gives the form more room so every field stays readable and easier to complete.</p>
-              </div>
-            </div>
-          </div>
+  const scrollToSection = (key: string) => {
+    setActiveSectionKey(key);
+    const el = sectionRefs.current[key];
+    const container = formScrollRef.current;
+    if (el && container) {
+      container.scrollTo({ top: el.offsetTop - 12, behavior: "smooth" });
+    } else if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const SaveActions = ({ expanded }: { expanded: boolean }) => (
+    <div className={expanded ? "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" : "flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"}>
+      <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+        {draftId && (
+          <Badge variant="secondary" className="gap-1 rounded-md text-[10px]">
+            <FileEdit className="h-3 w-3" /> Editing draft
+          </Badge>
         )}
-
-        <div className={expanded ? "rounded-xl border border-border/50 bg-background/95 p-3 sm:p-4" : "rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3"}>
-          <Label className="text-xs font-medium text-foreground">Assessed By *</Label>
-          <Select value={formData.assessed_by || undefined} onValueChange={(value) => updateField("assessed_by", value)} disabled={loadingAssessors || assessorOptions.length === 0}>
-            <SelectTrigger className={expanded ? "mt-1.5 h-11 text-sm" : "mt-1 h-10 text-sm"}>
-              <SelectValue placeholder={loadingAssessors ? "Loading trainers / staff..." : assessorOptions.length === 0 ? "No allowed assessor available" : "Select trainer / staff"} />
-            </SelectTrigger>
-            <SelectContent>
-              {assessorOptions.map((option) => (
-                <SelectItem key={option.id} value={option.name}>
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="truncate">{option.name}</span>
-                    {option.role && (
-                      <span className="text-[10px] capitalize text-muted-foreground">{option.role}</span>
-                    )}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            {isLimitedAccess
-              ? "Restricted staff can only register assessments under their own name."
-              : "Only trainers and staff allowed for this branch are shown here."}
-          </p>
-        </div>
-
-        {enabledSections.map((section) => {
-          const fields = getEnabledFields(section.key);
-          const hasFields = !!section.fields || !!config[section.key]?.custom_fields?.length;
-          const Icon = section.icon;
-
-          return (
-            <div key={section.key} className={expanded ? "rounded-2xl border border-border/50 bg-background/95 p-3 sm:p-4 lg:p-5 space-y-4 shadow-sm" : "rounded-xl border border-border/50 bg-background/80 p-2.5 sm:p-3 lg:p-3.5 space-y-3"}>
-              <div className="flex items-start gap-2.5 sm:gap-3">
-                <div className={expanded ? "flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 text-accent" : "flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-accent/10 text-accent"}>
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className={expanded ? "text-base font-semibold text-foreground" : "text-sm font-semibold text-foreground"}>{section.label}</p>
-                    <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">
-                      {hasFields ? `${fields.length} fields` : "Notes"}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{section.purpose}</p>
-                </div>
-              </div>
-
-              {hasFields ? (
-                <div className={expanded ? "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" : "grid grid-cols-1 gap-2 min-[560px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"}>
-                  {fields.map((field) => {
-                    const customField = config[section.key]?.custom_fields?.find((item) => item.key === field.key);
-                    return renderFieldInput(section.key, field.key, field.label, customField);
-                  })}
-                </div>
-              ) : (
-                <div className={expanded ? "rounded-xl border border-border/50 bg-background/95 p-3 sm:p-4" : "rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3"}>
-                  <Label className="text-xs font-medium text-foreground">{section.label}</Label>
-                  <Textarea
-                    value={formData[section.key] || ""}
-                    onChange={(e) => updateField(section.key, e.target.value)}
-                    placeholder={`Enter ${section.label.toLowerCase()}...`}
-                    className={expanded ? "mt-1.5 min-h-[144px] resize-y text-sm leading-5" : "mt-1 min-h-[112px] resize-y text-sm leading-5"}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {lastSavedAt && (
+          <span>Draft saved {lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+        )}
       </div>
-
-      <div className={expanded ? "sticky bottom-0 z-10 shrink-0 border-t border-border/40 bg-background/95 px-3 py-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] sm:px-5 backdrop-blur supports-[backdrop-filter]:bg-background/85" : "sticky bottom-0 flex gap-2 border-t border-border/40 bg-background/95 px-1 pt-3 pb-1 backdrop-blur supports-[backdrop-filter]:bg-background/80"}>
-        <div className={expanded ? "flex flex-col gap-2 sm:flex-row" : "flex w-full gap-2"}>
-          <Button size="sm" onClick={handleSave} disabled={isSaving} className="flex-1 rounded-lg">
-            {isSaving ? <><ButtonSpinner /> Saving...</> : "Save Assessment"}
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => {
-            if (expanded) setIsFormExpanded(false);
-            else {
-              setShowForm(false);
-              setFormData({ assessed_by: "" });
-            }
-          }} className="rounded-lg">
-            {expanded ? "Back to dialog" : "Cancel"}
-          </Button>
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => handleSaveDraft(false)}
+          disabled={isSavingDraft || isSaving}
+          className="rounded-lg"
+        >
+          {isSavingDraft ? <ButtonSpinner /> : <Save className="h-3.5 w-3.5" />}
+          <span className="ml-1.5">Save Draft</span>
+        </Button>
+        <Button size="sm" onClick={handleSave} disabled={isSaving || isSavingDraft} className="rounded-lg">
+          {isSaving ? <><ButtonSpinner /> Saving...</> : <><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Save Assessment</>}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => {
+          if (expanded) setIsFormExpanded(false);
+          else setShowForm(false);
+        }} className="rounded-lg">
+          {expanded ? "Back" : "Close"}
+        </Button>
       </div>
     </div>
   );
 
+  const renderAssessorPicker = (expanded: boolean) => (
+    <div className={expanded ? "rounded-xl border border-border/50 bg-background/95 p-3 sm:p-4" : "rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3"}>
+      <Label className="text-xs font-medium text-foreground">Assessed By *</Label>
+      <Select value={formData.assessed_by || undefined} onValueChange={(value) => updateField("assessed_by", value)} disabled={loadingAssessors || assessorOptions.length === 0}>
+        <SelectTrigger className={expanded ? "mt-1.5 h-11 text-sm" : "mt-1 h-10 text-sm"}>
+          <SelectValue placeholder={loadingAssessors ? "Loading trainers / staff..." : assessorOptions.length === 0 ? "No allowed assessor available" : "Select trainer / staff"} />
+        </SelectTrigger>
+        <SelectContent>
+          {assessorOptions.map((option) => (
+            <SelectItem key={option.id} value={option.name}>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate">{option.name}</span>
+                {option.role && (
+                  <span className="text-[10px] capitalize text-muted-foreground">{option.role}</span>
+                )}
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        {isLimitedAccess
+          ? "Restricted staff can only register assessments under their own name."
+          : "Only trainers and staff allowed for this branch are shown here."}
+      </p>
+    </div>
+  );
+
+  const renderSection = (section: typeof ASSESSMENT_SECTIONS[number], expanded: boolean) => {
+    const fields = getEnabledFields(section.key);
+    const hasFields = !!section.fields || !!config[section.key]?.custom_fields?.length;
+    const Icon = section.icon;
+    const completion = getSectionCompletion(section.key);
+
+    return (
+      <div
+        key={section.key}
+        ref={(el) => { sectionRefs.current[section.key] = el; }}
+        className={expanded
+          ? "rounded-2xl border border-border/50 bg-background/95 p-4 lg:p-5 space-y-4 shadow-sm scroll-mt-4"
+          : "rounded-xl border border-border/50 bg-background/80 p-2.5 sm:p-3 lg:p-3.5 space-y-3"
+        }
+      >
+        <div className="flex items-start gap-2.5 sm:gap-3">
+          <div className={expanded ? "flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 text-accent" : "flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-accent/10 text-accent"}>
+            <Icon className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className={expanded ? "text-base font-semibold text-foreground" : "text-sm font-semibold text-foreground"}>{section.label}</p>
+              <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px]">
+                {hasFields ? `${completion.filled}/${completion.total}` : completion.filled ? "Filled" : "Empty"}
+              </Badge>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{section.purpose}</p>
+          </div>
+        </div>
+
+        {hasFields ? (
+          <div className={expanded
+            ? "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3"
+            : "grid grid-cols-1 gap-2 min-[560px]:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+          }>
+            {fields.map((field) => {
+              const customField = config[section.key]?.custom_fields?.find((item) => item.key === field.key);
+              return renderFieldInput(section.key, field.key, field.label, customField);
+            })}
+          </div>
+        ) : (
+          <div className={expanded ? "rounded-xl border border-border/50 bg-background/95 p-3 sm:p-4" : "rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3"}>
+            <Label className="text-xs font-medium text-foreground">{section.label}</Label>
+            <Textarea
+              value={formData[section.key] || ""}
+              onChange={(e) => updateField(section.key, e.target.value)}
+              placeholder={`Enter ${section.label.toLowerCase()}...`}
+              className={expanded ? "mt-1.5 min-h-[144px] resize-y text-sm leading-5" : "mt-1 min-h-[112px] resize-y text-sm leading-5"}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderAssessmentForm = (expanded = false) => {
+    if (expanded) {
+      // Desktop two-column layout: sidebar nav + form workspace
+      return (
+        <div className="flex h-full max-h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-accent/20 bg-accent/5">
+          {/* Header */}
+          <div className="shrink-0 border-b border-border/40 bg-background/85 px-4 py-3 sm:px-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2">
+                <PanelTopOpen className="mt-0.5 h-4 w-4 text-accent" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{draftId ? "Continue draft assessment" : "New assessment"}</p>
+                  <p className="text-xs text-muted-foreground">Use the side menu to jump between sections. Drafts auto-save.</p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsFormExpanded(false)}
+                className="h-8 rounded-lg px-2.5 text-[11px]"
+              >
+                <Minimize2 className="h-3.5 w-3.5" />
+                <span className="ml-1">Exit</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Body: sidebar + scrollable form */}
+          <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)]">
+            {/* Sidebar nav (desktop only) */}
+            <aside className="hidden lg:flex min-h-0 flex-col border-r border-border/40 bg-background/40">
+              <div className="px-3 py-3 border-b border-border/40">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sections</p>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-2 space-y-1">
+                {enabledSections.map((section) => {
+                  const completion = getSectionCompletion(section.key);
+                  const isActive = activeSectionKey === section.key;
+                  const isComplete = completion.total > 0 && completion.filled === completion.total;
+                  const Icon = section.icon;
+                  return (
+                    <button
+                      key={section.key}
+                      type="button"
+                      onClick={() => scrollToSection(section.key)}
+                      className={`group flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
+                        isActive
+                          ? "bg-accent/15 text-foreground"
+                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                      }`}
+                    >
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${isActive ? "bg-accent/20 text-accent" : "bg-muted/40 text-muted-foreground group-hover:text-foreground"}`}>
+                        <Icon className="h-3 w-3" />
+                      </span>
+                      <span className="flex-1 truncate font-medium">{section.label}</span>
+                      {isComplete ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                      ) : completion.filled > 0 ? (
+                        <span className="text-[10px] text-muted-foreground">{completion.filled}/{completion.total}</span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </aside>
+
+            {/* Main scrollable area */}
+            <div ref={formScrollRef} className="min-h-0 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-4">
+              <div className="mx-auto w-full max-w-3xl space-y-4">
+                {renderAssessorPicker(true)}
+                {enabledSections.map((section) => renderSection(section, true))}
+              </div>
+            </div>
+          </div>
+
+          {/* Sticky footer */}
+          <div className="sticky bottom-0 z-10 shrink-0 border-t border-border/40 bg-background/95 px-3 py-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] sm:px-5 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+            <SaveActions expanded={true} />
+          </div>
+        </div>
+      );
+    }
+
+    // Compact (non-expanded) layout
+    return (
+      <div className="space-y-3 rounded-xl border border-accent/20 bg-accent/5 p-2 sm:p-3 lg:p-4 max-h-[76vh] overflow-y-auto overscroll-contain pr-1 sm:pr-2">
+        <div className="rounded-lg border border-border/50 bg-background/80 p-2.5 sm:p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <Info className="mt-0.5 h-4 w-4 text-accent" />
+              <div>
+                <p className="text-sm font-medium text-foreground">{draftId ? "Continuing draft" : "Assessment form"}</p>
+                <p className="text-xs text-muted-foreground">Drafts auto-save as you type. Open the large view for a side-by-side layout.</p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setIsFormExpanded(true)}
+              className="h-8 rounded-lg px-2.5 text-[11px]"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+              <span className="ml-1">Enlarge</span>
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {renderAssessorPicker(false)}
+          {enabledSections.map((section) => renderSection(section, false))}
+        </div>
+
+        <div className="sticky bottom-0 border-t border-border/40 bg-background/95 px-1 pt-3 pb-1 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <SaveActions expanded={false} />
+        </div>
+      </div>
+    );
+  };
+
+  const finalAssessments = assessments.filter((a) => !a.is_draft);
+
   return (
     <div className="space-y-3">
+      {!showForm && existingDraft && (
+        <div className="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/5 p-2.5">
+          <FileEdit className="h-4 w-4 text-warning flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-foreground">Draft assessment in progress</p>
+            <p className="text-[11px] text-muted-foreground truncate">Started {formatDate(existingDraft.assessment_date)} — pick up where you left off.</p>
+          </div>
+          <Button size="sm" variant="outline" className="h-7 rounded-lg text-[11px]" onClick={() => setShowForm(true)}>
+            Continue
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={() => setConfirmDeleteId(existingDraft.id)}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+
       {!showForm && (
         <Button variant="outline" size="sm" onClick={() => setShowForm(true)} className="w-full rounded-lg">
-          <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Assessment
+          <Plus className="w-3.5 h-3.5 mr-1.5" /> {existingDraft ? "Continue Draft" : "Add Assessment"}
         </Button>
       )}
 
@@ -599,18 +848,18 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       <Dialog open={showForm && isFormExpanded} onOpenChange={(open) => {
         if (!open) setIsFormExpanded(false);
       }}>
-        <DialogContent className="h-[calc(100dvh-0.75rem)] max-h-[calc(100dvh-0.75rem)] w-[calc(100vw-0.75rem)] max-w-[1180px] gap-0 overflow-hidden border-border/60 p-0 sm:h-[92vh] sm:max-h-[92vh] sm:w-[min(96vw,1180px)]">
+        <DialogContent className="h-[calc(100dvh-0.75rem)] max-h-[calc(100dvh-0.75rem)] w-[calc(100vw-0.75rem)] max-w-[1240px] gap-0 overflow-hidden border-border/60 p-0 sm:h-[92vh] sm:max-h-[92vh] sm:w-[min(96vw,1240px)]">
           {renderAssessmentForm(true)}
         </DialogContent>
       </Dialog>
 
-      {assessments.length === 0 && !showForm ? (
+      {finalAssessments.length === 0 && !showForm && !existingDraft ? (
         <div className="text-center py-8 text-muted-foreground">
           <ClipboardListIcon className="w-8 h-8 mx-auto mb-2 opacity-30" />
           <p className="text-sm">No assessments added yet</p>
         </div>
       ) : (
-        assessments.map((assessment) => {
+        finalAssessments.map((assessment) => {
           const displayData = getAssessmentDisplayData(assessment);
           return (
             <div key={assessment.id} className="rounded-xl border border-border/60 bg-card/50 p-3 hover:border-border transition-colors">
