@@ -158,7 +158,32 @@ const Renew = () => {
       branchId: branchId || undefined,
       onSuccess: async (data) => {
         const endDate = parseDateOnly(data.endDate) ?? new Date(data.endDate);
-        
+
+        // Record coupon usage if applied (mirrors Register.tsx logic)
+        if (packageData.couponId) {
+          try {
+            await supabase.from("coupon_usage").insert({
+              coupon_id: packageData.couponId,
+              member_id: member.id,
+              discount_applied: packageData.couponDiscount || 0,
+              branch_id: branchId,
+            });
+            const { data: couponData } = await supabase
+              .from("coupons")
+              .select("usage_count")
+              .eq("id", packageData.couponId)
+              .single();
+            if (couponData) {
+              await supabase
+                .from("coupons")
+                .update({ usage_count: (couponData.usage_count || 0) + 1 })
+                .eq("id", packageData.couponId);
+            }
+          } catch (err) {
+            console.error("Failed to record coupon usage:", err);
+          }
+        }
+
         // Send WhatsApp notification for renewal (if auto-send enabled)
         try {
           const shouldAutoSend = await getWhatsAppAutoSendPreference(branchId, "renewal");
