@@ -75,6 +75,9 @@ export const TimeSlotsTab = ({
   const [editingSlot, setEditingSlot] = useState<TimeSlot | null>(null);
   const [detailSlot, setDetailSlot] = useState<TimeSlot | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  // Trainer-grouped dialog: opened when clicking a trainer card.
+  const [activeTrainerId, setActiveTrainerId] = useState<string | null>(null);
+  const [trainerDialogOpen, setTrainerDialogOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean; title: string; description: string; onConfirm: () => void;
   }>({ open: false, title: "", description: "", onConfirm: () => {} });
