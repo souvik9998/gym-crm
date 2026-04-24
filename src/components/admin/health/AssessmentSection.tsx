@@ -35,13 +35,23 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   const [isFormExpanded, setIsFormExpanded] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [config, setConfig] = useState<AssessmentSettings>(getDefaultAssessmentSettings());
   const [assessorOptions, setAssessorOptions] = useState<AssessorOption[]>([]);
   const [loadingAssessors, setLoadingAssessors] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({ assessed_by: "" });
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [activeSectionKey, setActiveSectionKey] = useState<string>("");
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const formScrollRef = useRef<HTMLDivElement | null>(null);
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
+  const draftStorageKey = useMemo(() => `assessment-draft:${memberId}`, [memberId]);
+
+  // Find the most recent draft for this member from props
+  const existingDraft = useMemo(() => assessments.find((a) => a.is_draft), [assessments]);
 
   useEffect(() => {
     fetchConfig();
@@ -50,6 +60,39 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
   useEffect(() => {
     fetchAssessors();
   }, [branchId, isStaffLoggedIn, staffUser?.id, staffUser?.fullName, permissions?.member_access_type, isAdmin]);
+
+  // Load draft (DB takes priority, then localStorage) when form opens
+  useEffect(() => {
+    if (!showForm) return;
+    if (existingDraft) {
+      const data: Record<string, string> = { assessed_by: existingDraft.assessed_by || "" };
+      const ad = (existingDraft.assessment_data || {}) as Record<string, any>;
+      Object.entries(ad).forEach(([k, v]) => {
+        data[k] = typeof v === "string" ? v : JSON.stringify(v);
+      });
+      setFormData(data);
+      setDraftId(existingDraft.id);
+      return;
+    }
+    try {
+      const stored = localStorage.getItem(draftStorageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === "object") setFormData(parsed);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showForm, existingDraft?.id]);
+
+  // Auto-save to localStorage as user types
+  useEffect(() => {
+    if (!showForm) return;
+    const hasContent = Object.entries(formData).some(([k, v]) => k !== "assessed_by" && v && String(v).trim());
+    if (!hasContent && !formData.assessed_by) return;
+    try {
+      localStorage.setItem(draftStorageKey, JSON.stringify(formData));
+    } catch {}
+  }, [formData, showForm, draftStorageKey]);
 
   useEffect(() => {
     if (!showForm || assessorOptions.length === 0) return;
