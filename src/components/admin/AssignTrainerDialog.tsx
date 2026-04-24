@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { createMembershipIncomeEntry, calculateTrainerPercentageExpense } from "@/hooks/useLedger";
+import { useCouponValidation } from "@/hooks/useCouponValidation";
 import {
   Dialog,
   DialogContent,
@@ -22,8 +23,9 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import CouponInput from "@/components/ui/coupon-input";
 import { toast } from "sonner";
-import { Dumbbell, Loader2, Clock, MessageCircle } from "lucide-react";
+import { Dumbbell, Loader2, Clock, MessageCircle, IndianRupee } from "lucide-react";
 
 interface Trainer {
   id: string;
@@ -48,9 +50,13 @@ interface AssignTrainerDialogProps {
   memberName?: string;
   memberPhone?: string;
   branchId: string;
-  mode: "assign" | "replace";
+  mode: "assign" | "replace" | "extend";
   existingPtId?: string;
   existingTrainerId?: string;
+  /** Required for extend mode: trainer object to lock the selection to. */
+  existingTrainer?: { id: string; name: string; monthly_fee: number; specialization: string | null; phone: string | null } | null;
+  /** Required for extend mode: end date of the currently active PT subscription. New PT starts day after this. */
+  existingPtEndDate?: string;
   membershipEndDate?: string;
   onSuccess: () => void;
 }
@@ -65,6 +71,8 @@ export const AssignTrainerDialog = ({
   mode,
   existingPtId,
   existingTrainerId,
+  existingTrainer,
+  existingPtEndDate,
   membershipEndDate,
   onSuccess,
 }: AssignTrainerDialogProps) => {
@@ -79,21 +87,66 @@ export const AssignTrainerDialog = ({
   const [notifyWhatsApp, setNotifyWhatsApp] = useState(false);
   const [isFetchingTrainers, setIsFetchingTrainers] = useState(true);
   const [isFetchingSlots, setIsFetchingSlots] = useState(false);
+  const [taxRate, setTaxRate] = useState(0);
+  const [taxEnabled, setTaxEnabled] = useState(false);
   const queryClient = useQueryClient();
+
+  const isExtendMode = mode === "extend";
+
+  // Compute earliest start date for extend mode = day after current PT end
+  const computeExtendStart = (ptEnd?: string): string => {
+    if (!ptEnd) return new Date().toISOString().split("T")[0];
+    const d = new Date(ptEnd);
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split("T")[0];
+  };
 
   useEffect(() => {
     if (open) {
       fetchTrainers();
-      const today = new Date().toISOString().split("T")[0];
-      setStartDate(today);
-      setEndDate(membershipEndDate || "");
-      setSelectedTrainerId("");
+      if (isExtendMode) {
+        const extStart = computeExtendStart(existingPtEndDate);
+        setStartDate(extStart);
+        setEndDate(membershipEndDate || extStart);
+        // Lock trainer to existing PT trainer
+        if (existingTrainer?.id) {
+          setSelectedTrainerId(existingTrainer.id);
+          setMonthlyFee(existingTrainer.monthly_fee.toString());
+          // Slots will be fetched once `trainers` is loaded (see effect below)
+        }
+      } else {
+        const today = new Date().toISOString().split("T")[0];
+        setStartDate(today);
+        setEndDate(membershipEndDate || "");
+        setSelectedTrainerId("");
+        setMonthlyFee("");
+      }
       setSelectedTimeSlotId("");
-      setMonthlyFee("");
       setNotifyWhatsApp(false);
       setTimeSlots([]);
+      // Fetch tax settings (used in extend mode for GST display)
+      fetchTaxSettings();
     }
-  }, [open, branchId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, branchId, isExtendMode, existingTrainer?.id, existingPtEndDate, membershipEndDate]);
+
+  const fetchTaxSettings = async () => {
+    if (!branchId) return;
+    const { data } = await supabase
+      .from("gym_settings")
+      .select("invoice_tax_rate, invoice_show_gst")
+      .eq("branch_id", branchId)
+      .maybeSingle();
+    if (data) {
+      const rate = (data as any).invoice_tax_rate || 0;
+      const enabled = (data as any).invoice_show_gst === true && rate > 0;
+      setTaxRate(rate);
+      setTaxEnabled(enabled);
+    } else {
+      setTaxRate(0);
+      setTaxEnabled(false);
+    }
+  };
 
   const fetchTrainers = async () => {
     setIsFetchingTrainers(true);
@@ -105,12 +158,62 @@ export const AssignTrainerDialog = ({
       .order("name");
 
     if (data) {
-      const filtered = existingTrainerId
+      // Replace mode: hide the current trainer (forcing a switch).
+      // Extend mode: keep the current trainer (we lock to it).
+      const filtered = existingTrainerId && mode === "replace"
         ? data.filter((t) => t.id !== existingTrainerId)
         : data;
       setTrainers(filtered);
+
+      // In extend mode, eagerly load slots for the locked trainer once we
+      // have its phone (needed by fetchTimeSlots → staff lookup).
+      if (isExtendMode && existingTrainer?.id) {
+        const trainerInList = filtered.find((t) => t.id === existingTrainer.id);
+        if (trainerInList) {
+          fetchTimeSlotsFor(trainerInList);
+        }
+      }
     }
     setIsFetchingTrainers(false);
+  };
+
+  // Extracted variant that doesn't rely on `trainers` state (useful right after fetch).
+  const fetchTimeSlotsFor = async (trainer: Trainer) => {
+    setIsFetchingSlots(true);
+    setTimeSlots([]);
+    if (!trainer.phone) {
+      setIsFetchingSlots(false);
+      return;
+    }
+    const { data: staffData } = await supabase
+      .from("staff")
+      .select("id")
+      .eq("phone", trainer.phone)
+      .eq("role", "trainer")
+      .eq("is_active", true)
+      .maybeSingle();
+    if (!staffData) {
+      setIsFetchingSlots(false);
+      return;
+    }
+    const { data: slots } = await supabase
+      .from("trainer_time_slots")
+      .select("id, start_time, end_time, capacity")
+      .eq("trainer_id", staffData.id)
+      .eq("branch_id", branchId);
+    if (slots) {
+      const slotsWithCounts: TimeSlot[] = await Promise.all(
+        slots.map(async (slot) => {
+          const { count } = await supabase
+            .from("time_slot_members")
+            .select("*", { count: "exact", head: true })
+            .eq("time_slot_id", slot.id);
+          return { ...slot, current_count: count || 0 };
+        })
+      );
+      setTimeSlots(slotsWithCounts);
+    }
+    setIsFetchingSlots(false);
   };
 
   const fetchTimeSlots = async (trainerId: string) => {
@@ -182,9 +285,46 @@ export const AssignTrainerDialog = ({
     if (!startDate || !endDate || !monthlyFee) return 0;
     const start = new Date(startDate);
     const end = new Date(endDate);
+    if (isExtendMode) {
+      // Day-prorated billing (matches public ExtendPT). Uses inclusive day count.
+      const days = Math.max(
+        1,
+        Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+      );
+      const dailyRate = Number(monthlyFee) / 30;
+      return Math.ceil(dailyRate * days);
+    }
     const months = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30)));
     return months * Number(monthlyFee);
   };
+
+  // Memoised totals for extend-mode summary + coupon recalculation
+  const extendSubtotal = useMemo(() => (isExtendMode ? calculateTotalFee() : 0), [isExtendMode, startDate, endDate, monthlyFee]);
+  const extendTax = useMemo(
+    () => (isExtendMode && taxEnabled && taxRate > 0 ? Math.round((extendSubtotal * taxRate) / 100) : 0),
+    [isExtendMode, taxEnabled, taxRate, extendSubtotal],
+  );
+
+  // Coupon support — only meaningful in extend mode (admin assign/replace flows
+  // remain plain cash to avoid behaviour changes).
+  const coupon = useCouponValidation({
+    branchId,
+    isNewMember: false,
+    memberId,
+    subtotal: extendSubtotal + extendTax,
+    context: "pt_renewal",
+  });
+  const couponDiscount = isExtendMode ? coupon.appliedCoupon?.discountAmount || 0 : 0;
+  const extendTotal = Math.max(0, extendSubtotal + extendTax - couponDiscount);
+
+  // Recalculate coupon discount when fees/subtotal change so the displayed
+  // discount stays correct as admin tweaks dates or fees.
+  useEffect(() => {
+    if (isExtendMode && coupon.appliedCoupon) {
+      coupon.recalculateDiscount(extendSubtotal + extendTax);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extendSubtotal, extendTax]);
 
   const handleSubmit = async () => {
     if (!selectedTrainerId || !startDate || !endDate || !monthlyFee) {
@@ -206,6 +346,9 @@ export const AssignTrainerDialog = ({
 
     setIsLoading(true);
     try {
+      // Replace mode → deactivate the old PT subscription and clean its time slot.
+      // Extend mode → preserve the existing PT subscription (it is still active
+      // until its own end_date). The new row simply starts the day after.
       if (mode === "replace" && existingPtId) {
         // 1. Deactivate the old PT subscription AND clear its time_slot_id so
         //    the slot listing (driven by pt_subscriptions.time_slot_id) no
@@ -258,7 +401,11 @@ export const AssignTrainerDialog = ({
         }
       }
 
-      const totalFee = calculateTotalFee();
+      // For extend mode, total_fee on pt_subscriptions captures gross PT fee
+      // (subtotal). Tax + coupon adjustments only affect the recorded payment
+      // amount, mirroring the public ExtendPT flow's economics.
+      const grossFee = calculateTotalFee();
+      const paymentAmount = isExtendMode ? extendTotal : grossFee;
 
       const insertData: any = {
         member_id: memberId,
@@ -267,7 +414,7 @@ export const AssignTrainerDialog = ({
         start_date: startDate,
         end_date: endDate,
         monthly_fee: Number(monthlyFee),
-        total_fee: totalFee,
+        total_fee: grossFee,
         status: "active",
       };
 
@@ -300,28 +447,55 @@ export const AssignTrainerDialog = ({
 
       // Record the cash payment so it appears in the Payments tab
       try {
+        const noteLabel = isExtendMode ? "PT extension" : "PT subscription";
         await supabase.from("payments").insert({
           member_id: memberId,
           subscription_id: null,
-          amount: totalFee,
+          amount: paymentAmount,
           payment_mode: "cash",
           status: "success",
-          payment_type: "pt_subscription",
+          payment_type: isExtendMode ? "pt_extension" : "pt_subscription",
           branch_id: branchId,
-          notes: `PT subscription cash payment via admin${memberName ? ` for ${memberName}` : ""}`,
+          notes: `${noteLabel} cash payment via admin${memberName ? ` for ${memberName}` : ""}${couponDiscount > 0 ? ` (coupon ${coupon.appliedCoupon?.coupon.code} -₹${couponDiscount})` : ""}`,
         });
       } catch (payErr) {
         console.error("Payment record (PT assign) failed:", payErr);
+      }
+
+      // Record coupon usage (extend mode only)
+      if (isExtendMode && coupon.appliedCoupon && couponDiscount > 0) {
+        try {
+          await supabase.from("coupon_usage").insert({
+            coupon_id: coupon.appliedCoupon.coupon.id,
+            member_id: memberId,
+            discount_applied: couponDiscount,
+            branch_id: branchId,
+          });
+          const { data: cd } = await supabase
+            .from("coupons")
+            .select("usage_count")
+            .eq("id", coupon.appliedCoupon.coupon.id)
+            .single();
+          if (cd) {
+            await supabase
+              .from("coupons")
+              .update({ usage_count: (cd.usage_count || 0) + 1 })
+              .eq("id", coupon.appliedCoupon.coupon.id);
+          }
+        } catch (cErr) {
+          console.error("Failed to record PT extend coupon usage:", cErr);
+        }
       }
 
       // Ledger: PT subscription income + (optional) trainer percentage expense
       try {
         const trainerForLedger = trainers.find(t => t.id === selectedTrainerId);
         const trainerLabel = trainerForLedger?.name || "Trainer";
+        const ledgerLabel = isExtendMode ? "PT extension" : "PT subscription";
         await createMembershipIncomeEntry(
-          totalFee,
+          paymentAmount,
           "pt_subscription",
-          `PT subscription — ${trainerLabel}${memberName ? ` for ${memberName}` : ""}`,
+          `${ledgerLabel} — ${trainerLabel}${memberName ? ` for ${memberName}` : ""}`,
           memberId,
           undefined,
           undefined,
@@ -329,7 +503,7 @@ export const AssignTrainerDialog = ({
         );
         await calculateTrainerPercentageExpense(
           selectedTrainerId,
-          totalFee,
+          grossFee,
           memberId,
           undefined,
           insertedPt?.id,
@@ -349,7 +523,9 @@ export const AssignTrainerDialog = ({
             ? `\nTime Slot: ${formatTime(selectedSlot.start_time)} – ${formatTime(selectedSlot.end_time)}`
             : "";
           const formatDateStr = (d: string) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-          const message = `Hi ${memberName}, your personal trainer *${trainerName}* has been assigned.${slotInfo}\nPeriod: ${formatDateStr(startDate)} to ${formatDateStr(endDate)}`;
+          const message = isExtendMode
+            ? `Hi ${memberName}, your personal training with *${trainerName}* has been extended.${slotInfo}\nNew period: ${formatDateStr(startDate)} to ${formatDateStr(endDate)}`
+            : `Hi ${memberName}, your personal trainer *${trainerName}* has been assigned.${slotInfo}\nPeriod: ${formatDateStr(startDate)} to ${formatDateStr(endDate)}`;
 
           await supabase.functions.invoke("send-whatsapp", {
             body: {
