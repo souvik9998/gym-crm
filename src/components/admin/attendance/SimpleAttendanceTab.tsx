@@ -191,17 +191,16 @@ export const SimpleAttendanceTab = () => {
   }, [allSlots, timeFilter, customStart, customEnd]);
 
   const filteredSlotIds = useMemo(() => timeFilteredSlots.map((slot) => slot.id), [timeFilteredSlots]);
+  const filteredSlotIdSet = useMemo(() => new Set(filteredSlotIds), [filteredSlotIds]);
 
   const trainerSlotIds = useMemo(() => {
     const scopedSlots = selectedTrainerId
       ? timeFilteredSlots.filter((slot) => slot.trainer_id === selectedTrainerId)
       : timeFilteredSlots;
 
-    if (!selectedTrainerId) return scopedSlots.map((slot) => slot.id);
-
-    return scopedSlots
-      .map((slot) => slot.id);
+    return scopedSlots.map((slot) => slot.id);
   }, [timeFilteredSlots, selectedTrainerId]);
+  const trainerSlotIdSet = useMemo(() => new Set(trainerSlotIds), [trainerSlotIds]);
 
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
   const isFutureDate = selectedDate > today;
