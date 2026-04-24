@@ -280,6 +280,14 @@ export const AttendanceHistoryTab = () => {
         const trainerSlotIds = new Set(allSlots.filter((s) => s.trainer_id === selectedTrainerId).map((s) => s.id));
         exportRecords = exportRecords.filter((r: any) => r.time_slot_id && trainerSlotIds.has(r.time_slot_id));
       }
+      if (timeBucket !== "all") {
+        const bucketSlotIds = new Set(
+          allSlots
+            .filter((s) => matchesTimeFilter(s.start_time, timeBucket, customStart, customEnd))
+            .map((s) => s.id),
+        );
+        exportRecords = exportRecords.filter((r: any) => r.time_slot_id && bucketSlotIds.has(r.time_slot_id));
+      }
 
       if (exportRecords.length === 0) {
         toast.error("No attendance data", {
