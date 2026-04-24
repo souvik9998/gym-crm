@@ -200,6 +200,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
           60% { transform: scale(1.15); opacity: 1; }
           100% { transform: scale(1); opacity: 1; }
         }
+        @keyframes toast-loading-shimmer {
+          0%   { background-position: 220% 0; }
+          100% { background-position: -120% 0; }
+        }
+        @keyframes toast-spinner-rotate {
+          to { transform: rotate(360deg); }
+        }
 
         /* Faster slide-in: override sonner's default lift duration */
         [data-sonner-toaster] [data-sonner-toast] {
