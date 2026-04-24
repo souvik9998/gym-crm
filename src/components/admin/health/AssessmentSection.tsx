@@ -870,7 +870,10 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       {showForm && !isFormExpanded && renderAssessmentForm(false)}
 
       <Dialog open={showForm && isFormExpanded} onOpenChange={(open) => {
-        if (!open) setIsFormExpanded(false);
+        if (!open) {
+          // Closed via ESC, overlay click, or X button — auto-save draft.
+          autoSaveDraftAndClose();
+        }
       }}>
         <DialogContent className="h-[calc(100dvh-0.75rem)] max-h-[calc(100dvh-0.75rem)] w-[calc(100vw-0.75rem)] max-w-[1240px] gap-0 overflow-hidden border-border/60 p-0 sm:h-[92vh] sm:max-h-[92vh] sm:w-[min(96vw,1240px)]">
           {renderAssessmentForm(true)}
