@@ -388,7 +388,9 @@ export const AddMemberDialog = ({
       setMonthlyPackages(data);
       setSelectedPackageId(data[0].id);
       setMonthlyFee(Number(data[0].price));
-      setJoiningFee(Number(data[0].joining_fee));
+      // Joining fee only applies to NEW members. Renewals (existing members)
+      // should never be charged a joining fee — it's a one-time onboarding cost.
+      setJoiningFee(isExistingMemberAction ? 0 : Number(data[0].joining_fee));
     } else {
       setMonthlyPackages([]);
       setSelectedPackageId("");
@@ -421,7 +423,9 @@ export const AddMemberDialog = ({
     const pkg = monthlyPackages.find((p) => p.id === packageId);
     if (pkg) {
       setMonthlyFee(Number(pkg.price));
-      setJoiningFee(Number(pkg.joining_fee));
+      // Suppress joining fee on renewals — it's a one-time onboarding charge
+      // applied only when registering a brand-new member.
+      setJoiningFee(isExistingMemberAction ? 0 : Number(pkg.joining_fee));
       if (ptMonths > pkg.months) setPtMonths(pkg.months);
     }
   };
