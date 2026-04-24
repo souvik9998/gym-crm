@@ -451,6 +451,20 @@ export const AddMemberDialog = ({
   const showPTSection = !selectedAction || selectedAction === "new" || selectedAction === "add_pt" || selectedAction === "renew_gym_pt";
   const isPTOnly = selectedAction === "add_pt";
 
+  // Joining fee is a one-time charge applied only to BRAND-NEW members.
+  // Force it to 0 whenever the flow is any kind of existing-member action
+  // (renew gym, add PT, renew gym + PT). When the user toggles back to
+  // "new" we restore the package's configured joining fee.
+  useEffect(() => {
+    if (isExistingMemberAction) {
+      if (joiningFee !== 0) setJoiningFee(0);
+    } else if (selectedAction === "new") {
+      const pkg = monthlyPackages.find((p) => p.id === selectedPackageId);
+      if (pkg) setJoiningFee(Number(pkg.joining_fee));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAction, selectedPackageId, monthlyPackages]);
+
   const gymTotal = showGymSection ? monthlyFee + joiningFee : 0;
   const ptTotal = (wantsPT || isPTOnly) ? ptFee : 0;
   const subtotalAmount = gymTotal + ptTotal;
