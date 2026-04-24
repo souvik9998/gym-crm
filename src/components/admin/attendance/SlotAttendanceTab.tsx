@@ -89,7 +89,7 @@ export const SlotAttendanceTab = () => {
   const filteredSlots = useMemo(() => {
     return allSlots.filter((slot) => {
       if (selectedTrainerId !== "all" && slot.trainer_id !== selectedTrainerId) return false;
-      if (!matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd)) return false;
+      if (!matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd, slot.end_time)) return false;
       if (!slotSearch.trim()) return true;
 
       const query = slotSearch.toLowerCase();
