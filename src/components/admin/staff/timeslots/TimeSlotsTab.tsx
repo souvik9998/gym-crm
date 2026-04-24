@@ -338,6 +338,54 @@ export const TimeSlotsTab = ({
     });
   }, [slots, filterTrainer, filterStatus, filterRecurring, filterTime, search]);
 
+  // Group filtered slots by trainer for the per-trainer card view.
+  // Each trainer becomes a single card listing all of their slots; clicking it
+  // opens the TrainerSlotsDialog where individual slots can be inspected.
+  type TrainerGroup = {
+    trainer_id: string;
+    trainer_name: string;
+    slots: TimeSlot[];
+    totalCapacity: number;
+    totalFilled: number;
+    fullCount: number;
+    fillPct: number;
+  };
+  const trainerGroups = useMemo<TrainerGroup[]>(() => {
+    const map = new Map<string, TrainerGroup>();
+    for (const s of filteredSlots) {
+      const key = s.trainer_id;
+      let g = map.get(key);
+      if (!g) {
+        g = {
+          trainer_id: s.trainer_id,
+          trainer_name: s.trainer_name || "Unknown",
+          slots: [],
+          totalCapacity: 0,
+          totalFilled: 0,
+          fullCount: 0,
+          fillPct: 0,
+        };
+        map.set(key, g);
+      }
+      g.slots.push(s);
+      g.totalCapacity += s.capacity;
+      g.totalFilled += s.member_count || 0;
+      if ((s.member_count || 0) >= s.capacity) g.fullCount += 1;
+    }
+    const arr = Array.from(map.values()).map((g) => ({
+      ...g,
+      // Sort slots within a trainer chronologically.
+      slots: g.slots.sort((a, b) => a.start_time.localeCompare(b.start_time)),
+      fillPct:
+        g.totalCapacity > 0
+          ? Math.min((g.totalFilled / g.totalCapacity) * 100, 100)
+          : 0,
+    }));
+    // Stable trainer-name ordering.
+    arr.sort((a, b) => a.trainer_name.localeCompare(b.trainer_name));
+    return arr;
+  }, [filteredSlots]);
+
   // Summary stats across all slots (not just filtered)
   const summary = useMemo(() => {
     const total = slots.length;
