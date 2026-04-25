@@ -5,8 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StaffTrainersTab } from "@/components/admin/staff/StaffTrainersTab";
 import { StaffOtherTab } from "@/components/admin/staff/StaffOtherTab";
 import { StaffOverviewTab } from "@/components/admin/staff/StaffOverviewTab";
-import { TimeSlotManagement } from "@/components/admin/staff/TimeSlotManagement";
-import { AcademicCapIcon, UserGroupIcon, ChartBarIcon, ClockIcon } from "@heroicons/react/24/outline";
+import { AcademicCapIcon, UserGroupIcon, ChartBarIcon } from "@heroicons/react/24/outline";
 import { useStaffPageData } from "@/hooks/queries/useStaffPageData";
 
 export interface Staff {
