@@ -265,8 +265,18 @@ export const AttendanceHistoryTab = () => {
       const q = search.toLowerCase();
       list = list.filter((r: any) => r.members?.name?.toLowerCase().includes(q) || r.members?.phone?.includes(q));
     }
+    if (dayStatusFilter !== "all") {
+      list = list.filter((r: any) => {
+        const isPresent = r.status === "present";
+        const isSkipped = r.status === "late" || r.status === "skipped";
+        const isAbsent = !isPresent && !isSkipped;
+        if (dayStatusFilter === "present") return isPresent;
+        if (dayStatusFilter === "skipped") return isSkipped;
+        return isAbsent;
+      });
+    }
     return list;
-  }, [monthRecords, selectedDate, search]);
+  }, [monthRecords, selectedDate, search, dayStatusFilter]);
 
   const selectedStats = useMemo(() => {
     const present = selectedRecords.filter((r: any) => r.status === "present").length;
