@@ -21,6 +21,7 @@ type Step = "details" | "health" | "package";
 interface BranchInfo {
   id: string;
   name: string;
+  logo_url?: string | null;
 }
 
 interface FieldSetting {
