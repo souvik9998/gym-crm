@@ -58,6 +58,8 @@ export const TimeBucketsSettings = () => {
   const [isResetting, setIsResetting] = useState(false);
   const [resetConfirm, setResetConfirm] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const lastLoadedFor = useRef<string | null>(null);
 
   // Load existing buckets for the current branch on mount / branch switch.
