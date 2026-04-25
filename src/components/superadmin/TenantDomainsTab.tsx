@@ -306,20 +306,20 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
             <ol className="list-decimal pl-5 space-y-1 text-amber-900 dark:text-amber-200">
               <li>
                 Add the domain here <strong>and</strong> add the TXT record at the gym's DNS
-                provider so we can map the hostname to this tenant.
+                provider (Cloudflare) so we can map the hostname to this tenant.
               </li>
               <li>
-                Open <strong>Lovable Project Settings → Domains → Connect Domain</strong> and
-                add the <em>same hostname</em> there. This is what tells Lovable's hosting layer
-                to serve <strong>this React app</strong> at that URL and to issue the SSL
-                certificate. Without this step the domain will keep loading whoever owned it
-                before (Vercel, parking page, 404, etc.) and the gym's portal link will not work.
+                Add a <strong>CNAME</strong> in Cloudflare pointing the gym's hostname at{" "}
+                <code>cname.vercel-dns.com</code> (orange cloud / proxied is fine — Cloudflare
+                will terminate SSL). Then add the same hostname under{" "}
+                <strong>Vercel Project → Settings → Domains</strong> so Vercel accepts the host
+                header and serves <strong>this app</strong>.
               </li>
             </ol>
             <div className="text-amber-800 dark:text-amber-300">
               For subdomains like <code>register.qoremedia.in</code>, the apex
-              (<code>qoremedia.in</code>) can stay on the gym's existing site — only the
-              subdomain needs to point at Lovable.
+              (<code>qoremedia.in</code>) can stay on the gym's existing site (Vercel landing
+              page, etc.) — only the subdomain needs the CNAME above.
             </div>
           </div>
         </div>
