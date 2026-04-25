@@ -650,40 +650,82 @@ export const AttendanceHistoryTab = () => {
                                   }}
                                   disabled={isFuture}
                                   className={cn(
-                                    "w-full rounded-lg flex flex-col items-center justify-center transition-all duration-200 border active:scale-95",
-                                    isMobile ? "h-10 gap-0" : "h-14 gap-0.5",
+                                    "group w-full rounded-lg flex flex-col items-center justify-center transition-all duration-200 border active:scale-95",
+                                    isMobile ? "h-10 gap-0" : "h-16 gap-1 hover:-translate-y-0.5",
                                     isFuture && "opacity-20 cursor-not-allowed",
                                     isSelected
-                                      ? "border-primary bg-primary/10 ring-1 ring-primary shadow-sm"
+                                      ? "border-primary bg-primary/10 ring-2 ring-primary shadow-md"
                                       : heatColor
-                                        ? `${heatColor} border-transparent hover:ring-1 hover:ring-primary/30`
-                                        : "border-border/20 hover:bg-muted/30",
+                                        ? `${heatColor} border-transparent hover:ring-1 hover:ring-primary/40 hover:shadow-sm`
+                                        : "border-border/20 hover:bg-muted/30 hover:border-border/40",
                                     isToday && !isSelected && "ring-1 ring-primary/40"
                                   )}
                                 >
                                   <span className={cn(
-                                    "font-bold",
-                                    isMobile ? "text-[10px]" : "text-xs",
+                                    "font-bold leading-none",
+                                    isMobile ? "text-[10px]" : "text-sm",
                                     isSelected || isToday ? "text-primary" : ""
                                   )}>{dayNum}</span>
                                   {summary && summary.total > 0 && !isMobile && (
                                     <>
-                                      <div className="flex items-center gap-0.5">
-                                        <span className="text-[7px] text-green-600 font-medium">{summary.present}</span>
-                                        <span className="text-[7px] text-red-500">{summary.absent}</span>
+                                      {/* Labeled tally — easier to parse than two bare numbers */}
+                                      <div className="flex items-center gap-1 leading-none">
+                                        <span className="inline-flex items-center gap-0.5 text-[8px] font-semibold text-green-600 dark:text-green-400">
+                                          <span className="w-1 h-1 rounded-full bg-green-500" />{summary.present}
+                                        </span>
+                                        {summary.skipped > 0 && (
+                                          <span className="inline-flex items-center gap-0.5 text-[8px] font-semibold text-slate-600 dark:text-slate-300">
+                                            <span className="w-1 h-1 rounded-full bg-slate-500" />{summary.skipped}
+                                          </span>
+                                        )}
+                                        {summary.absent > 0 && (
+                                          <span className="inline-flex items-center gap-0.5 text-[8px] font-semibold text-red-500">
+                                            <span className="w-1 h-1 rounded-full bg-red-500" />{summary.absent}
+                                          </span>
+                                        )}
                                       </div>
-                                      <div className="w-6 h-0.5 rounded-full bg-muted/50 overflow-hidden flex">
-                                        <div className="bg-green-500 h-full" style={{ width: `${summary.total > 0 ? (summary.present / summary.total) * 100 : 0}%` }} />
+                                      {/* Proportional 3-segment progress bar */}
+                                      <div className="w-8 h-1 rounded-full bg-muted/40 overflow-hidden flex transition-all duration-300 group-hover:w-9">
+                                        {summary.present > 0 && (
+                                          <div className="bg-green-500 h-full transition-all duration-500"
+                                            style={{ width: `${(summary.present / summary.total) * 100}%` }} />
+                                        )}
+                                        {summary.skipped > 0 && (
+                                          <div className="bg-slate-400 h-full transition-all duration-500"
+                                            style={{ width: `${(summary.skipped / summary.total) * 100}%` }} />
+                                        )}
+                                        {summary.absent > 0 && (
+                                          <div className="bg-red-400 h-full transition-all duration-500"
+                                            style={{ width: `${(summary.absent / summary.total) * 100}%` }} />
+                                        )}
                                       </div>
                                     </>
                                   )}
                                   {summary && summary.total > 0 && isMobile && (
-                                    <div className={cn("w-1.5 h-1.5 rounded-full mt-0.5",
+                                    <div className={cn("w-1.5 h-1.5 rounded-full mt-0.5 transition-transform group-hover:scale-125",
                                       (summary.present + summary.skipped) / summary.total >= 0.8 ? "bg-green-500" :
                                       (summary.present + summary.skipped) / summary.total >= 0.5 ? "bg-amber-500" : "bg-red-500"
                                     )} />
                                   )}
                                 </button>
+                                </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {!isMobile && (
+                    <div className="flex items-center justify-center gap-4 mt-2.5 text-[9px] text-muted-foreground">
+                      <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-500" />Present</div>
+                      <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-slate-400" />Skipped</div>
+                      <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-red-400" />Absent</div>
+                      <div className="h-3 w-px bg-border/60" />
+                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded bg-green-100 dark:bg-green-900/20 border border-green-200" />≥80% attendance</div>
+                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded bg-amber-100 dark:bg-amber-900/20 border border-amber-200" />50–80%</div>
+                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded bg-red-100 dark:bg-red-900/20 border border-red-200" />&lt;50%</div>
+                    </div>
+                  )}
                               </td>
                             );
                           })}
