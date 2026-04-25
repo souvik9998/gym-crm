@@ -68,7 +68,7 @@ export const TimeSlotManagement = ({
         </TabsList>
 
         <TabsContent value="slots" forceMount hidden={activeSubTab !== "slots"}>
-          <TimeSlotsTab trainers={trainers} currentBranch={currentBranch} />
+          <TimeSlotsTab trainers={trainers} currentBranch={currentBranch} trainersLoading={trainersLoading} />
         </TabsContent>
 
         <TabsContent value="members" forceMount hidden={activeSubTab !== "members"}>
