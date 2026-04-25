@@ -5,6 +5,8 @@ import { Copy, Download, Share2 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { useRef } from "react";
+import { useTenantPrimaryDomain } from "@/hooks/useTenantPrimaryDomain";
+import { buildPublicUrl } from "@/lib/publicUrl";
 
 interface Props {
   open: boolean;
@@ -14,7 +16,8 @@ interface Props {
 
 export function EventQRDialog({ open, onOpenChange, event }: Props) {
   const qrRef = useRef<HTMLDivElement>(null);
-  const eventUrl = `${window.location.origin}/event/${event.slug || event.id}`;
+  const { data: customDomain } = useTenantPrimaryDomain(event?.branch_id);
+  const eventUrl = buildPublicUrl(`/event/${event.slug || event.id}`, customDomain?.hostname);
 
   const copyLink = () => {
     navigator.clipboard.writeText(eventUrl);

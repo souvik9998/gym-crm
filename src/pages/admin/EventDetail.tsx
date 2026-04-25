@@ -26,6 +26,8 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { AdminEventRegisterDialog } from "@/components/admin/events/AdminEventRegisterDialog";
 import { EventQRDialog } from "@/components/admin/events/EventQRDialog";
 import { CreateEventDialog } from "@/components/admin/events/CreateEventDialog";
+import { useTenantPrimaryDomain } from "@/hooks/useTenantPrimaryDomain";
+import { buildPublicUrl } from "@/lib/publicUrl";
 
 const statusColors: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -84,6 +86,7 @@ export default function EventDetail() {
   });
 
   const isMultiSelect = event?.selection_mode === "multiple";
+  const { data: customDomain } = useTenantPrimaryDomain((event as any)?.branch_id);
 
   const { data: registrations = [], isLoading: regsLoading } = useQuery({
     queryKey: ["event-registrations", eventId],
@@ -317,7 +320,7 @@ export default function EventDetail() {
   const copyEventLink = () => {
     if (!event) return;
     const slug = (event as any).slug || eventId;
-    navigator.clipboard.writeText(`${window.location.origin}/event/${slug}`);
+    navigator.clipboard.writeText(buildPublicUrl(`/event/${slug}`, customDomain?.hostname));
     toast.success("Event link copied!");
   };
 
