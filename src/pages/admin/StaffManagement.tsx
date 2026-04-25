@@ -136,14 +136,6 @@ const StaffManagement = () => {
         />
       </TabsContent>
 
-      <TabsContent value="timeslots" forceMount hidden={activeTab !== "timeslots"}>
-        <TimeSlotManagement
-          trainers={trainers}
-          currentBranch={currentBranch}
-          allStaff={staff}
-        />
-      </TabsContent>
-
       <TabsContent value="overview" forceMount hidden={activeTab !== "overview"}>
         <StaffOverviewTab
           allStaff={staff}
