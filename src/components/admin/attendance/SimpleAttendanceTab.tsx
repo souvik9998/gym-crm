@@ -39,6 +39,7 @@ interface MemberAttendance {
   memberId: string;
   memberName: string;
   memberPhone: string;
+  trainerName?: string | null;
 }
 
 const STATUS_COLORS: Record<AttendanceStatus, string> = {
@@ -314,7 +315,7 @@ export const SimpleAttendanceTab = () => {
   }, [existingRecords]);
 
   const memberList = useMemo((): MemberAttendance[] => {
-    return activeMembers.map((m: any) => ({ memberId: m.id, memberName: m.name, memberPhone: m.phone }));
+    return activeMembers.map((m: any) => ({ memberId: m.id, memberName: m.name, memberPhone: m.phone, trainerName: m.activePT?.trainer_name || null }));
   }, [activeMembers]);
 
   // Base list (search applied) — used for stats so cards reflect totals regardless of active filter
