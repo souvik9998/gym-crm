@@ -498,6 +498,44 @@ export const AddMemberDialog = ({
     return `${h12}:${m} ${ampm}`;
   };
 
+  /**
+   * After a pt_subscriptions row is created, optionally bind the member to
+   * the chosen trainer time slot. No-op when slot selection is empty.
+   * Uses delete+insert (instead of upsert) to mirror AssignTrainerDialog and
+   * avoid duplicate (slot, member) rows protected by the unique constraint.
+   */
+  const bindMemberToTimeSlot = async (
+    ptSubscriptionId: string | undefined,
+    memberId: string,
+  ) => {
+    if (!selectedTimeSlotId || !currentBranch?.id) return;
+    try {
+      // Stamp the pt_subscriptions row with the chosen slot so analytics /
+      // slot-attendance views can correctly attribute this member.
+      if (ptSubscriptionId) {
+        await supabase
+          .from("pt_subscriptions")
+          .update({ time_slot_id: selectedTimeSlotId } as any)
+          .eq("id", ptSubscriptionId);
+      }
+
+      await supabase
+        .from("time_slot_members")
+        .delete()
+        .eq("member_id", memberId)
+        .eq("time_slot_id", selectedTimeSlotId);
+
+      await supabase.from("time_slot_members").insert({
+        time_slot_id: selectedTimeSlotId,
+        member_id: memberId,
+        branch_id: currentBranch.id,
+        assigned_by: "admin",
+      });
+    } catch (e) {
+      console.error("Time slot binding failed (non-fatal):", e);
+    }
+  };
+
   const handlePackageChange = (packageId: string) => {
     setSelectedPackageId(packageId);
     const pkg = monthlyPackages.find((p) => p.id === packageId);
