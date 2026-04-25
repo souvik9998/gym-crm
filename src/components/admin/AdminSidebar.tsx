@@ -161,6 +161,15 @@ const allNavItems: NavItem[] = [
     adminOnly: true, // Only for admin users
     tenantModule: "staff_management",
   },
+  // Time Slots - admin only, separate from Staff Control
+  {
+    title: "Time Slots",
+    href: "/admin/time-slots",
+    icon: ClockIcon,
+    iconSolid: ClockIcon,
+    adminOnly: true,
+    tenantModule: "staff_management",
+  },
   // Activity Logs - admin only
   {
     title: "Activity Logs",

@@ -5,8 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StaffTrainersTab } from "@/components/admin/staff/StaffTrainersTab";
 import { StaffOtherTab } from "@/components/admin/staff/StaffOtherTab";
 import { StaffOverviewTab } from "@/components/admin/staff/StaffOverviewTab";
-import { TimeSlotManagement } from "@/components/admin/staff/TimeSlotManagement";
-import { AcademicCapIcon, UserGroupIcon, ChartBarIcon, ClockIcon } from "@heroicons/react/24/outline";
+import { AcademicCapIcon, UserGroupIcon, ChartBarIcon } from "@heroicons/react/24/outline";
 import { useStaffPageData } from "@/hooks/queries/useStaffPageData";
 
 export interface Staff {
@@ -62,7 +61,7 @@ export interface StaffBranchAssignment {
   branch_name?: string;
 }
 
-const VALID_TABS = new Set(["trainers", "staff", "timeslots", "overview"]);
+const VALID_TABS = new Set(["trainers", "staff", "overview"]);
 
 const StaffManagement = () => {
   const { currentBranch, branches } = useBranch();
@@ -81,9 +80,9 @@ const StaffManagement = () => {
         (prev) => {
           const next = new URLSearchParams(prev);
           next.set("tab", tab);
-          // Clear the time-slot sub-tab when leaving that tab so we don't
-          // surface a stale ?sub= when the user comes back via "Time Slots".
-          if (tab !== "timeslots") next.delete("sub");
+          // Time-slot management lives on its own page now, so always clear
+          // the legacy `?sub=` param so old links don't surface a stale state.
+          next.delete("sub");
           return next;
         },
         { replace: true },
@@ -94,7 +93,7 @@ const StaffManagement = () => {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full max-w-lg grid-cols-4 mb-6">
+      <TabsList className="grid w-full max-w-md grid-cols-3 mb-6">
         <TabsTrigger value="trainers" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
           <AcademicCapIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
           <span>Trainers</span>
@@ -102,10 +101,6 @@ const StaffManagement = () => {
         <TabsTrigger value="staff" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
           <UserGroupIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
           <span>Other Staff</span>
-        </TabsTrigger>
-        <TabsTrigger value="timeslots" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
-          <ClockIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-          <span>Time Slots</span>
         </TabsTrigger>
         <TabsTrigger value="overview" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
           <ChartBarIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
@@ -138,14 +133,6 @@ const StaffManagement = () => {
           onRefresh={() => refetch()}
           isLoading={isLoading}
           onConversionSuccess={() => { refetch(); setActiveTab("trainers"); }}
-        />
-      </TabsContent>
-
-      <TabsContent value="timeslots" forceMount hidden={activeTab !== "timeslots"}>
-        <TimeSlotManagement
-          trainers={trainers}
-          currentBranch={currentBranch}
-          allStaff={staff}
         />
       </TabsContent>
 
