@@ -586,6 +586,14 @@ export const AddMemberDialog = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAction, selectedPackageId, monthlyPackages]);
 
+  // When the admin turns OFF the PT toggle, drop any selected slot so it
+  // doesn't get silently saved if they toggle it back on with a different intent.
+  useEffect(() => {
+    if (!wantsPT && !isPTOnly) {
+      setSelectedTimeSlotId("");
+    }
+  }, [wantsPT, isPTOnly]);
+
   const gymTotal = showGymSection ? monthlyFee + joiningFee : 0;
   const ptTotal = (wantsPT || isPTOnly) ? ptFee : 0;
   const subtotalAmount = gymTotal + ptTotal;
