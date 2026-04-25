@@ -25,6 +25,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AttendanceDatePicker } from "./AttendanceDatePicker";
+import { useStaffPageData } from "@/hooks/queries/useStaffPageData";
 
 type AttendanceStatus = "present" | "absent" | "skipped";
 
