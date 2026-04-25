@@ -483,7 +483,7 @@ export const TimeBucketsSettings = () => {
                       </div>
                     </div>
 
-                    {/* Range preview / overnight hint */}
+                    {/* Range preview / overnight hint / duplicate range warning */}
                     <div className="mt-2.5 flex items-center gap-2 flex-wrap text-[11px]">
                       <span className="rounded-full bg-muted px-2.5 py-1 font-medium tabular-nums text-muted-foreground">
                         {formatTimeLabel(d.start_time)} – {formatTimeLabel(d.end_time)}
@@ -491,6 +491,16 @@ export const TimeBucketsSettings = () => {
                       {overnight && (
                         <span className="rounded-full bg-primary/10 text-primary px-2.5 py-1 font-medium">
                           Wraps past midnight
+                        </span>
+                      )}
+                      {sameTimes && (
+                        <span className="rounded-full bg-destructive/10 text-destructive px-2.5 py-1 font-medium">
+                          Start and end can't be the same
+                        </span>
+                      )}
+                      {dupRange && (
+                        <span className="rounded-full bg-destructive/10 text-destructive px-2.5 py-1 font-medium">
+                          Same time range as another chip — change start or end
                         </span>
                       )}
                     </div>
