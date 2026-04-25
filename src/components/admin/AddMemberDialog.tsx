@@ -425,14 +425,77 @@ export const AddMemberDialog = ({
       .eq("branch_id", currentBranch.id)
       .order("name");
     if (data && data.length > 0) {
-      setTrainers(data);
+      setTrainers(data as PersonalTrainer[]);
       setSelectedTrainerId(data[0].id);
       setPtFee(Number(data[0].monthly_fee));
+      // Pre-fetch slots for the default-selected trainer so the dropdown is
+      // populated as soon as the PT section is opened.
+      fetchTrainerTimeSlots(data[0] as PersonalTrainer);
     } else {
       setTrainers([]);
       setSelectedTrainerId("");
       setPtFee(0);
+      setTrainerTimeSlots([]);
+      setSelectedTimeSlotId("");
     }
+  };
+
+  // Resolve trainer → staff (via shared phone) → trainer_time_slots, mirroring
+  // the AssignTrainerDialog pattern. Returns slots with current member counts.
+  const fetchTrainerTimeSlots = async (trainer: PersonalTrainer) => {
+    if (!currentBranch?.id) return;
+    setIsFetchingTimeSlots(true);
+    setTrainerTimeSlots([]);
+    setSelectedTimeSlotId("");
+    if (!trainer.phone) {
+      setIsFetchingTimeSlots(false);
+      return;
+    }
+    try {
+      const { data: staffData } = await supabase
+        .from("staff")
+        .select("id")
+        .eq("phone", trainer.phone)
+        .eq("role", "trainer")
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (!staffData) {
+        setIsFetchingTimeSlots(false);
+        return;
+      }
+
+      const { data: slots } = await supabase
+        .from("trainer_time_slots")
+        .select("id, start_time, end_time, capacity")
+        .eq("trainer_id", staffData.id)
+        .eq("branch_id", currentBranch.id);
+
+      if (slots && slots.length > 0) {
+        const slotsWithCounts: TrainerTimeSlot[] = await Promise.all(
+          slots.map(async (slot: any) => {
+            const { count } = await supabase
+              .from("time_slot_members")
+              .select("*", { count: "exact", head: true })
+              .eq("time_slot_id", slot.id);
+            return { ...slot, current_count: count || 0 };
+          }),
+        );
+        setTrainerTimeSlots(slotsWithCounts);
+      }
+    } catch (e) {
+      console.error("fetchTrainerTimeSlots failed:", e);
+    } finally {
+      setIsFetchingTimeSlots(false);
+    }
+  };
+
+  const formatSlotTime = (time: string) => {
+    const [h, m] = time.split(":");
+    const hour = parseInt(h);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const h12 = hour % 12 || 12;
+    return `${h12}:${m} ${ampm}`;
   };
 
   const handlePackageChange = (packageId: string) => {
@@ -450,7 +513,10 @@ export const AddMemberDialog = ({
   const handleTrainerChange = (trainerId: string) => {
     setSelectedTrainerId(trainerId);
     const trainer = trainers.find((t) => t.id === trainerId);
-    if (trainer) setPtFee(Number(trainer.monthly_fee) * ptMonths);
+    if (trainer) {
+      setPtFee(Number(trainer.monthly_fee) * ptMonths);
+      fetchTrainerTimeSlots(trainer);
+    }
   };
 
   const handlePtMonthsChange = (months: number) => {
