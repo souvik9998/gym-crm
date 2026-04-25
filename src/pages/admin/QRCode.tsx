@@ -136,6 +136,14 @@ const QRCodePage = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 lg:space-y-8">
+      {customDomain?.hostname && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-900 animate-fade-in">
+          <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-600">Branded link</Badge>
+          <span className="text-sm text-emerald-900 dark:text-emerald-200">
+            Using your custom domain <span className="font-mono font-semibold">{customDomain.hostname}</span>
+          </span>
+        </div>
+      )}
       {/* Tab Switcher */}
       <div className="flex gap-3 animate-fade-in">
         {tabs.map((tab) => (
