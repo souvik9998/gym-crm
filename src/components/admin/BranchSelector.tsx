@@ -33,6 +33,7 @@ import {
   LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
+import { BranchLogo } from "./BranchLogo";
 
 export const BranchSelector = () => {
   const { branches, allBranches, currentBranch, setCurrentBranch, refreshBranches, isStaffRestricted, tenantId } = useBranch();
