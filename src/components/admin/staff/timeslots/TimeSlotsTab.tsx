@@ -459,7 +459,7 @@ export const TimeSlotsTab = ({
             Time Slots
             {/* Subtle background-refresh indicator: shown ONLY when revalidating
                 with cached data already on screen — never causes a layout shift. */}
-            {isFetching && !isLoading && (
+            {isFetching && !showSkeleton && (
               <ArrowPathIcon className="w-3.5 h-3.5 text-muted-foreground animate-spin" aria-label="Refreshing" />
             )}
           </h3>
@@ -473,7 +473,7 @@ export const TimeSlotsTab = ({
       </div>
 
       {/* Loading skeleton */}
-      {isLoading ? (
+      {showSkeleton ? (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
             {Array.from({ length: 4 }).map((_, i) => (
