@@ -375,12 +375,17 @@ export const TimeBucketsSettings = () => {
             <div className="space-y-2.5">
               {drafts.map((d, idx) => {
                 const overnight = isOvernight(d.start_time, d.end_time);
+                const dupLabel = issues.labelIssues.has(d.id);
+                const dupRange = issues.rangeIssues.has(d.id);
+                const sameTimes = issues.sameStartEnd.has(d.id);
+                const hasRowIssue = dupLabel || dupRange || sameTimes;
                 return (
                   <div
                     key={d.id}
                     className={cn(
                       "rounded-xl border border-border/60 bg-card p-3 lg:p-4 shadow-sm transition-shadow hover:shadow-md",
                       d._isNew && "ring-1 ring-primary/30",
+                      hasRowIssue && "border-destructive/60 ring-1 ring-destructive/30",
                     )}
                   >
                     <div className="flex flex-col lg:flex-row lg:items-end gap-3">
