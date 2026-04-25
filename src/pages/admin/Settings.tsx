@@ -1652,6 +1652,11 @@ const AdminSettings = () => {
             </Suspense>
           </TabsContent>
 
+          {/* Time Filters Tab — admin-defined chips for time-of-day filtering */}
+          <TabsContent value="time-filters" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
+            <TimeBucketsSettings />
+          </TabsContent>
+
           {/* WhatsApp Templates */}
           <TabsContent value="whatsapp" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
             {/* WhatsApp Enable/Disable Toggle */}
