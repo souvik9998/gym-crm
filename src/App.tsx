@@ -126,6 +126,11 @@ const PlatformRoutes = () => (
           <Suspense fallback={<PageLoader />}><StaffManagement /></Suspense>
         </ProtectedRoute>
       } />
+      <Route path="/admin/time-slots" element={
+        <ProtectedRoute requiredPermission="admin_only" requiredModule="staff_management">
+          <Suspense fallback={<PageLoader />}><AdminTimeSlots /></Suspense>
+        </ProtectedRoute>
+      } />
       <Route path="/admin/trainers" element={
         <Suspense fallback={<PageLoader />}><TrainersPage /></Suspense>
       } />
