@@ -89,10 +89,12 @@ interface VerifyResponse {
   dns: {
     a_records: string[] | null;
     a_matches: boolean;
+    a_proxied?: boolean;
     txt_records: string[] | null;
     txt_matches: boolean;
   };
   errors: string[];
+  notes?: string[];
 }
 
 const LOVABLE_HOSTING_IP = "185.158.133.1";
@@ -107,6 +109,27 @@ function normalizeHostname(input: string): string {
 }
 
 const HOSTNAME_REGEX = /^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i;
+
+/**
+ * Splits a hostname into the labels you actually type into a DNS panel.
+ * For an apex domain like "5threalm.in" the A record host is "@".
+ * For a subdomain like "register.5threalm.in" the A record host is
+ * "register" (or the full path when the registrar wants the FQDN), and
+ * the TXT verification host is "_lovable.register".
+ */
+function getDnsLabels(hostname: string) {
+  const parts = hostname.split(".");
+  // Treat anything with 3+ labels as a subdomain (works for .in, .co.uk
+  // edge-cases too because we only need a hint for the host column).
+  const isSubdomain = parts.length > 2;
+  const subPrefix = isSubdomain ? parts.slice(0, -2).join(".") : "";
+  return {
+    isSubdomain,
+    aHost: isSubdomain ? subPrefix : "@",
+    wwwHost: isSubdomain ? `www.${subPrefix}` : "www",
+    txtHost: isSubdomain ? `_lovable.${subPrefix}` : "_lovable",
+  };
+}
 
 interface Props {
   tenantId: string;
