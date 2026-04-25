@@ -1217,7 +1217,7 @@ export const AddMemberDialog = ({
         // If also adding PT
         if (selectedAction === "renew_gym_pt" && selectedTrainerId) {
           const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
-          await supabase.from("pt_subscriptions").insert({
+          const { data: insertedPt } = await supabase.from("pt_subscriptions").insert({
             member_id: existingMember.id,
             personal_trainer_id: selectedTrainerId,
             start_date: formatDateOnly(gymStartDate),
@@ -1226,7 +1226,8 @@ export const AddMemberDialog = ({
             total_fee: ptFee,
             status: "active",
             branch_id: currentBranch.id,
-          });
+          }).select("id").maybeSingle();
+          await bindMemberToTimeSlot(insertedPt?.id, existingMember.id);
 
           if (ptFee > 0) {
             await createMembershipIncomeEntry(
