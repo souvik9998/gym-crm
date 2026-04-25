@@ -726,20 +726,6 @@ export const AttendanceHistoryTab = () => {
                       <div className="flex items-center gap-1"><div className="w-2 h-2 rounded bg-red-100 dark:bg-red-900/20 border border-red-200" />&lt;50%</div>
                     </div>
                   )}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {!isMobile && (
-                    <div className="flex items-center justify-center gap-3 mt-2 text-[9px] text-muted-foreground">
-                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded bg-green-100 dark:bg-green-900/20 border border-green-200" />≥80%</div>
-                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded bg-amber-100 dark:bg-amber-900/20 border border-amber-200" />50-80%</div>
-                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded bg-red-100 dark:bg-red-900/20 border border-red-200" />&lt;50%</div>
-                    </div>
-                  )}
                 </div>
               )}
             </CardContent>
