@@ -26,6 +26,8 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { AdminEventRegisterDialog } from "@/components/admin/events/AdminEventRegisterDialog";
 import { EventQRDialog } from "@/components/admin/events/EventQRDialog";
 import { CreateEventDialog } from "@/components/admin/events/CreateEventDialog";
+import { useTenantPrimaryDomain } from "@/hooks/useTenantPrimaryDomain";
+import { buildPublicUrl } from "@/lib/publicUrl";
 
 const statusColors: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
