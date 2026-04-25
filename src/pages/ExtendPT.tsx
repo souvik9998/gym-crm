@@ -49,7 +49,7 @@ const ExtendPT = () => {
   const [selectedOption, setSelectedOption] = useState<PTDurationOption | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [existingPTEndDate, setExistingPTEndDate] = useState<Date | null>(null);
-  const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(null);
+  const [branchInfo, setBranchInfo] = useState<{ id: string; name: string; logo_url?: string | null } | null>(null);
   const [taxRate, setTaxRate] = useState(0);
   const [taxEnabled, setTaxEnabled] = useState(false);
 
