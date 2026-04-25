@@ -28,6 +28,7 @@ import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import { useMembersQuery } from "@/hooks/queries/useMembers";
 import { formatTimeLabel, matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
 import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
+import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
 import { TimePicker12h } from "@/components/ui/time-picker-12h";
 
 type AttendanceStatus = "present" | "absent" | "skipped";
@@ -69,6 +70,7 @@ export const SlotAttendanceTab = () => {
   const [timeFilter, setTimeFilter] = useState<TimeBucket>("all");
   const [customStart, setCustomStart] = useState("06:00");
   const [customEnd, setCustomEnd] = useState("10:00");
+  const { buckets, options: bucketOptions } = useTimeBuckets();
   const [search, setSearch] = useState("");
   const [slotSearch, setSlotSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -90,7 +92,7 @@ export const SlotAttendanceTab = () => {
   const filteredSlots = useMemo(() => {
     return allSlots.filter((slot) => {
       if (selectedTrainerId !== "all" && slot.trainer_id !== selectedTrainerId) return false;
-      if (!matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd, slot.end_time)) return false;
+      if (!matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd, slot.end_time, buckets)) return false;
       if (!slotSearch.trim()) return true;
 
       const query = slotSearch.toLowerCase();

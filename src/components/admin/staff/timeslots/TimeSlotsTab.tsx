@@ -27,6 +27,7 @@ import { STALE_TIMES, GC_TIME } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 
 import { matchesTimeFilter, type TimeBucket } from "./timeSlotUtils";
+import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
 import { TimePicker12h } from "@/components/ui/time-picker-12h";
 
 interface TimeSlot {
@@ -93,6 +94,7 @@ export const TimeSlotsTab = ({
   const [customEnd, setCustomEnd] = useState("10:00");
   const [filterRecurring, setFilterRecurring] = useState<"all" | "recurring" | "one_time">("all");
   const [search, setSearch] = useState("");
+  const { buckets } = useTimeBuckets();
 
   const [form, setForm] = useState({
     trainer_id: "",
@@ -329,14 +331,14 @@ export const TimeSlotsTab = ({
       if (filterStatus === "empty" && filled !== 0) return false;
       if (filterRecurring === "recurring" && !s.is_recurring) return false;
       if (filterRecurring === "one_time" && s.is_recurring) return false;
-      if (!matchesTimeFilter(s.start_time, filterTime, customStart, customEnd, s.end_time)) return false;
+      if (!matchesTimeFilter(s.start_time, filterTime, customStart, customEnd, s.end_time, buckets)) return false;
       if (search) {
         const q = search.toLowerCase();
         if (!(s.trainer_name || "").toLowerCase().includes(q)) return false;
       }
       return true;
     });
-  }, [slots, filterTrainer, filterStatus, filterRecurring, filterTime, customStart, customEnd, search]);
+  }, [slots, filterTrainer, filterStatus, filterRecurring, filterTime, customStart, customEnd, search, buckets]);
 
   // Group filtered slots by trainer for the per-trainer card view.
   // Each trainer becomes a single card listing all of their slots; clicking it
