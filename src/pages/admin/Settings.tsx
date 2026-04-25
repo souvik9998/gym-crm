@@ -55,6 +55,7 @@ import { RegistrationFieldsSettings } from "@/components/admin/RegistrationField
 import { CouponsDiscountsTab } from "@/components/admin/CouponsDiscountsTab";
 import { AssessmentFieldsSettings } from "@/components/admin/AssessmentFieldsSettings";
 import { BackupRestoreTab } from "@/components/admin/backup/BackupRestoreTab";
+import { TimeBucketsSettings } from "@/components/admin/TimeBucketsSettings";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface CustomPackage {
@@ -1213,6 +1214,7 @@ const AdminSettings = () => {
     { value: "assessment", label: "Assessment" },
     { value: "branches", label: "Branches" },
     { value: "holidays", label: "Holidays" },
+    { value: "time-filters", label: "Time Filters" },
     { value: "whatsapp", label: "WhatsApp" },
     { value: "general", label: "General" },
     { value: "coupons", label: "Coupons" },
@@ -1648,6 +1650,11 @@ const AdminSettings = () => {
             <Suspense fallback={<div className="space-y-4"><div className="h-64 bg-muted/30 rounded-xl animate-pulse" /><div className="h-48 bg-muted/30 rounded-xl animate-pulse" /></div>}>
               <HolidayCalendarTab />
             </Suspense>
+          </TabsContent>
+
+          {/* Time Filters Tab — admin-defined chips for time-of-day filtering */}
+          <TabsContent value="time-filters" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
+            <TimeBucketsSettings />
           </TabsContent>
 
           {/* WhatsApp Templates */}
