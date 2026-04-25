@@ -161,9 +161,13 @@ const Success = () => {
           
           {state.branchName && (
             <div className="flex items-center justify-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Building2 className="w-4 h-4 text-primary" />
-              </div>
+              {state.branchLogoUrl ? (
+                <BranchLogo logoUrl={state.branchLogoUrl} name={state.branchName} size="xs" />
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Building2 className="w-4 h-4 text-primary" />
+                </div>
+              )}
               <p className="text-sm font-medium text-foreground">
                 {state.branchName}
               </p>
