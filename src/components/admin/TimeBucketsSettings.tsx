@@ -343,7 +343,7 @@ export const TimeBucketsSettings = () => {
           <div>
             <CardTitle className="text-base lg:text-lg">Your Chips</CardTitle>
             <CardDescription className="mt-1 text-xs lg:text-sm">
-              Reorder, rename, or change time windows. Use "Add chip" for as many as you need.
+              Drag chips to reorder them. Rename or change time windows inline. Use "Add chip" for as many as you need.
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
