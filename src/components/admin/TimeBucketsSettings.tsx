@@ -156,6 +156,53 @@ export const TimeBucketsSettings = () => {
     setIsDirty(true);
   };
 
+  // Per-row validation issues — used for both inline highlights and save-time blocking.
+  const issues = useMemo(() => {
+    const labelIssues = new Set<string>();
+    const rangeIssues = new Set<string>();
+    const sameStartEnd = new Set<string>();
+
+    // Detect duplicate labels (case-insensitive, trimmed, ignoring blanks).
+    const labelMap = new Map<string, string[]>();
+    for (const d of drafts) {
+      const key = d.label.trim().toLowerCase();
+      if (!key) continue;
+      const arr = labelMap.get(key) ?? [];
+      arr.push(d.id);
+      labelMap.set(key, arr);
+    }
+    for (const ids of labelMap.values()) {
+      if (ids.length > 1) ids.forEach((id) => labelIssues.add(id));
+    }
+
+    // Detect exact duplicate time ranges (same start AND same end).
+    const rangeMap = new Map<string, string[]>();
+    for (const d of drafts) {
+      if (!/^\d{2}:\d{2}$/.test(d.start_time) || !/^\d{2}:\d{2}$/.test(d.end_time)) continue;
+      const key = `${d.start_time}_${d.end_time}`;
+      const arr = rangeMap.get(key) ?? [];
+      arr.push(d.id);
+      rangeMap.set(key, arr);
+    }
+    for (const ids of rangeMap.values()) {
+      if (ids.length > 1) ids.forEach((id) => rangeIssues.add(id));
+    }
+
+    // Start time equal to end time on the same chip is meaningless.
+    for (const d of drafts) {
+      if (d.start_time && d.end_time && d.start_time === d.end_time) {
+        sameStartEnd.add(d.id);
+      }
+    }
+
+    return { labelIssues, rangeIssues, sameStartEnd };
+  }, [drafts]);
+
+  const hasIssues =
+    issues.labelIssues.size > 0 ||
+    issues.rangeIssues.size > 0 ||
+    issues.sameStartEnd.size > 0;
+
   const validateAll = (): { ok: boolean; message?: string } => {
     if (drafts.length === 0) {
       return { ok: false, message: "Add at least one chip or reset to defaults." };
@@ -165,6 +212,15 @@ export const TimeBucketsSettings = () => {
       if (!/^\d{2}:\d{2}$/.test(d.start_time) || !/^\d{2}:\d{2}$/.test(d.end_time)) {
         return { ok: false, message: `Invalid time on "${d.label}".` };
       }
+    }
+    if (issues.labelIssues.size > 0) {
+      return { ok: false, message: "Two chips share the same name. Names must be unique (case-insensitive)." };
+    }
+    if (issues.sameStartEnd.size > 0) {
+      return { ok: false, message: "Start and end time can't be the same on a chip." };
+    }
+    if (issues.rangeIssues.size > 0) {
+      return { ok: false, message: "Two chips share the exact same time range. Adjust the start or end time." };
     }
     return { ok: true };
   };
@@ -319,12 +375,17 @@ export const TimeBucketsSettings = () => {
             <div className="space-y-2.5">
               {drafts.map((d, idx) => {
                 const overnight = isOvernight(d.start_time, d.end_time);
+                const dupLabel = issues.labelIssues.has(d.id);
+                const dupRange = issues.rangeIssues.has(d.id);
+                const sameTimes = issues.sameStartEnd.has(d.id);
+                const hasRowIssue = dupLabel || dupRange || sameTimes;
                 return (
                   <div
                     key={d.id}
                     className={cn(
                       "rounded-xl border border-border/60 bg-card p-3 lg:p-4 shadow-sm transition-shadow hover:shadow-md",
                       d._isNew && "ring-1 ring-primary/30",
+                      hasRowIssue && "border-destructive/60 ring-1 ring-destructive/30",
                     )}
                   >
                     <div className="flex flex-col lg:flex-row lg:items-end gap-3">
@@ -375,7 +436,14 @@ export const TimeBucketsSettings = () => {
                           onChange={(e) => updateDraft(d.id, { label: e.target.value })}
                           placeholder="e.g. Morning, Sunrise…"
                           maxLength={24}
+                          className={cn(dupLabel && "border-destructive focus-visible:ring-destructive/30")}
+                          aria-invalid={dupLabel || undefined}
                         />
+                        {dupLabel && (
+                          <p className="text-[11px] text-destructive">
+                            This name is already used. Names must be unique.
+                          </p>
+                        )}
                       </div>
 
                       {/* Start time */}
@@ -415,7 +483,7 @@ export const TimeBucketsSettings = () => {
                       </div>
                     </div>
 
-                    {/* Range preview / overnight hint */}
+                    {/* Range preview / overnight hint / duplicate range warning */}
                     <div className="mt-2.5 flex items-center gap-2 flex-wrap text-[11px]">
                       <span className="rounded-full bg-muted px-2.5 py-1 font-medium tabular-nums text-muted-foreground">
                         {formatTimeLabel(d.start_time)} – {formatTimeLabel(d.end_time)}
@@ -423,6 +491,16 @@ export const TimeBucketsSettings = () => {
                       {overnight && (
                         <span className="rounded-full bg-primary/10 text-primary px-2.5 py-1 font-medium">
                           Wraps past midnight
+                        </span>
+                      )}
+                      {sameTimes && (
+                        <span className="rounded-full bg-destructive/10 text-destructive px-2.5 py-1 font-medium">
+                          Start and end can't be the same
+                        </span>
+                      )}
+                      {dupRange && (
+                        <span className="rounded-full bg-destructive/10 text-destructive px-2.5 py-1 font-medium">
+                          Same time range as another chip — change start or end
                         </span>
                       )}
                     </div>
@@ -437,7 +515,11 @@ export const TimeBucketsSettings = () => {
       {/* Sticky save bar */}
       <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
         <p className="text-xs text-muted-foreground">
-          {isDirty ? (
+          {hasIssues ? (
+            <span className="text-destructive font-medium">
+              Fix the highlighted chips before saving
+            </span>
+          ) : isDirty ? (
             <span className="text-warning font-medium">Unsaved changes</span>
           ) : (
             <>All changes saved</>
@@ -446,7 +528,7 @@ export const TimeBucketsSettings = () => {
         <Button
           type="button"
           onClick={handleSave}
-          disabled={!isDirty || isSaving}
+          disabled={!isDirty || isSaving || hasIssues}
           className="min-w-[140px]"
         >
           {isSaving ? (
