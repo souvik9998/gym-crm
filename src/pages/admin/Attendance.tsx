@@ -113,6 +113,11 @@ const Attendance = () => {
             {isSlotMode ? <SlotAttendanceTab /> : <SimpleAttendanceTab />}
           </TabsContent>
         )}
+        {canManual && (
+          <TabsContent value="staff-mark" className="mt-0 animate-fade-in">
+            <StaffManualAttendanceTab />
+          </TabsContent>
+        )}
         <TabsContent value="history" className="mt-0 animate-fade-in">
           <AttendanceHistoryTab />
         </TabsContent>
