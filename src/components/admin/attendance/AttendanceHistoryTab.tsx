@@ -76,6 +76,7 @@ export const AttendanceHistoryTab = () => {
   const [isExporting, setIsExporting] = useState(false);
 
   const { trainers, allSlots, isLimitedAccess } = useAttendanceFilters();
+  const { buckets, options: bucketOptions } = useTimeBuckets();
   const { assignedMemberIds } = useAssignedMemberIds();
   const filteredSlots = useMemo(() => {
     if (!selectedTrainerId) return allSlots;
@@ -176,7 +177,7 @@ export const AttendanceHistoryTab = () => {
     if (timeBucket !== "all") {
       const bucketSlotIds = new Set(
         allSlots
-          .filter((s) => matchesTimeFilter(s.start_time, timeBucket, customStart, customEnd, s.end_time))
+          .filter((s) => matchesTimeFilter(s.start_time, timeBucket, customStart, customEnd, s.end_time, buckets))
           .map((s) => s.id),
       );
       records = records.filter((r: any) => {
@@ -334,7 +335,7 @@ export const AttendanceHistoryTab = () => {
       if (timeBucket !== "all") {
         const bucketSlotIds = new Set(
           allSlots
-            .filter((s) => matchesTimeFilter(s.start_time, timeBucket, customStart, customEnd, s.end_time))
+            .filter((s) => matchesTimeFilter(s.start_time, timeBucket, customStart, customEnd, s.end_time, buckets))
             .map((s) => s.id),
         );
         exportRecords = exportRecords.filter((r: any) => {
@@ -503,7 +504,7 @@ export const AttendanceHistoryTab = () => {
             </Button>
           )}
         </div>
-        <TimeBucketChips value={timeBucket} onChange={setTimeBucket} compact />
+        <TimeBucketChips value={timeBucket} onChange={setTimeBucket} compact options={bucketOptions} />
         {timeBucket === "custom" && (
           <div className="mt-3 grid gap-2 sm:grid-cols-2 sm:max-w-md">
             <div className="space-y-1">
