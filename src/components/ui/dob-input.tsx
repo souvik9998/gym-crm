@@ -87,7 +87,15 @@ export const DobInput = ({ value, onChange, className, error, onValidityChange }
   );
 
   const handleDayChange = (val: string) => {
-    const clean = val.replace(/\D/g, "").slice(0, 2);
+    let clean = val.replace(/\D/g, "").slice(0, 2);
+    // Block out-of-range day entries (max 31). If first digit > 3, ignore.
+    if (clean.length === 1 && parseInt(clean, 10) > 3) {
+      // Allow only single digits 0-3 as a tens place; reject anything that would exceed 31
+      // But still allow 4-9 as a complete single-digit day (e.g. "5" => 5). Pad on blur.
+    }
+    if (clean.length === 2 && parseInt(clean, 10) > 31) {
+      clean = clean.slice(0, 1);
+    }
     const next = { ...parts, day: clean };
     setParts(next);
     emitChange(next.day, next.month, next.year);
@@ -99,7 +107,11 @@ export const DobInput = ({ value, onChange, className, error, onValidityChange }
   };
 
   const handleMonthChange = (val: string) => {
-    const clean = val.replace(/\D/g, "").slice(0, 2);
+    let clean = val.replace(/\D/g, "").slice(0, 2);
+    // Hard block: month cannot exceed 12. Reject any keystroke that pushes value past 12.
+    if (clean.length === 2 && parseInt(clean, 10) > 12) {
+      clean = clean.slice(0, 1);
+    }
     const next = { ...parts, month: clean };
     setParts(next);
     emitChange(next.day, next.month, next.year);
