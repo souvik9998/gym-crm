@@ -438,7 +438,7 @@ export const TimeBucketsSettings = () => {
       <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
         <p className="text-xs text-muted-foreground">
           {isDirty ? (
-            <span className="text-amber-600 dark:text-amber-400 font-medium">Unsaved changes</span>
+            <span className="text-warning font-medium">Unsaved changes</span>
           ) : (
             <>All changes saved</>
           )}
