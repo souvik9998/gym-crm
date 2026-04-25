@@ -990,7 +990,6 @@ export const StaffTrainersTab = ({
                             </Button>
                             {trainer.auth_user_id ? (
                               <>
-                                <StaffWhatsAppButton staff={trainer} />
                                 <Button
                                   size="sm"
                                   variant="outline"

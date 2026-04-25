@@ -807,7 +807,6 @@ export const StaffOtherTab = ({
                             </Button>
                             {member.auth_user_id ? (
                               <>
-                                <StaffWhatsAppButton staff={member} />
                                 <Button
                                   size="sm"
                                   variant="outline"
