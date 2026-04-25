@@ -294,6 +294,32 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
           </Button>
         </CardHeader>
 
+        <div className="px-6 -mt-2 mb-2">
+          <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 p-3 text-xs space-y-2">
+            <div className="font-semibold text-amber-900 dark:text-amber-100">
+              ⚠️ Two-step setup — both are required
+            </div>
+            <ol className="list-decimal pl-5 space-y-1 text-amber-900 dark:text-amber-200">
+              <li>
+                Add the domain here <strong>and</strong> add the TXT record at the gym's DNS
+                provider so we can map the hostname to this tenant.
+              </li>
+              <li>
+                Open <strong>Lovable Project Settings → Domains → Connect Domain</strong> and
+                add the <em>same hostname</em> there. This is what tells Lovable's hosting layer
+                to serve <strong>this React app</strong> at that URL and to issue the SSL
+                certificate. Without this step the domain will keep loading whoever owned it
+                before (Vercel, parking page, 404, etc.) and the gym's portal link will not work.
+              </li>
+            </ol>
+            <div className="text-amber-800 dark:text-amber-300">
+              For subdomains like <code>register.qoremedia.in</code>, the apex
+              (<code>qoremedia.in</code>) can stay on the gym's existing site — only the
+              subdomain needs to point at Lovable.
+            </div>
+          </div>
+        </div>
+
         <CardContent className="space-y-4">
           {loading ? (
             <div className="text-sm text-muted-foreground py-8 text-center">
@@ -422,20 +448,27 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
                         <p className="text-xs text-muted-foreground">
                           {labels.isSubdomain ? (
                             <>
-                              <strong>Subdomain setup.</strong> Add the TXT record below at the gym's
-                              DNS provider — that's all we need to verify ownership. The A record
-                              should point <code>{labels.aHost}</code> at wherever you want
-                              <code> {d.hostname}</code> to be served from (Lovable's IP for direct
-                              hosting, or keep the existing proxy/CDN). Then add{" "}
-                              <code>{d.hostname}</code> under{" "}
-                              <strong>Lovable Project Settings → Domains</strong> so SSL is issued.
+                              <strong>Subdomain setup.</strong> 1) Add the TXT record below at
+                              the gym's DNS provider — that's all we need to verify ownership.
+                              2) Add an A record so <code>{labels.aHost}</code> resolves to{" "}
+                              <code>{LOVABLE_HOSTING_IP}</code> (or a CNAME to the Lovable host
+                              if using proxy mode). 3){" "}
+                              <strong>
+                                Open Lovable Project Settings → Domains → Connect Domain and add{" "}
+                                <code>{d.hostname}</code>
+                              </strong>{" "}
+                              so SSL is issued and the React app is actually served at this URL.
                             </>
                           ) : (
                             <>
-                              <strong>Apex domain setup.</strong> Add these records at the gym's DNS
-                              provider, then add <code>{d.hostname}</code> under{" "}
-                              <strong>Lovable Project Settings → Domains</strong> so SSL is issued.
-                              Click "Check verification" once DNS has propagated.
+                              <strong>Apex domain setup.</strong> 1) Add these DNS records at the
+                              gym's registrar. 2){" "}
+                              <strong>
+                                Open Lovable Project Settings → Domains → Connect Domain and add{" "}
+                                <code>{d.hostname}</code>
+                              </strong>{" "}
+                              so SSL is issued. 3) Click "Check verification" once DNS has
+                              propagated.
                             </>
                           )}
                         </p>
@@ -453,8 +486,8 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
                           onCopy={(v) => copyText(v, "Value")}
                           hint={
                             labels.isSubdomain
-                              ? "Or keep your existing proxy (Cloudflare, etc.) — verification only needs the TXT record."
-                              : undefined
+                              ? "Required so Lovable can serve the app at this subdomain. If using Cloudflare proxy, use a CNAME instead in Lovable's Connect Domain → Advanced."
+                              : "Also add this same record for the www variant if you want www.<domain> to work."
                           }
                         />
                         {!labels.isSubdomain && (
