@@ -90,6 +90,15 @@ interface PersonalTrainer {
   name: string;
   monthly_fee: number;
   specialization: string | null;
+  phone: string | null;
+}
+
+interface TrainerTimeSlot {
+  id: string;
+  start_time: string;
+  end_time: string;
+  capacity: number;
+  current_count: number;
 }
 
 export interface ExistingMember {
