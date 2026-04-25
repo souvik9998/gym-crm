@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useBranchSlug } from "@/hooks/useBranchSlug";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Dumbbell } from "lucide-react";
+import { BranchLogo } from "@/components/admin/BranchLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
