@@ -6,23 +6,26 @@ import { Clock, ChevronDown, Check } from "lucide-react";
 import {
   TIME_BUCKET_OPTIONS,
   type TimeBucket,
+  type TimeBucketOption,
 } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
 interface TimeBucketDropdownProps {
   value: TimeBucket;
   onChange: (next: TimeBucket) => void;
   className?: string;
+  /** Admin-configurable options. Falls back to defaults when omitted. */
+  options?: TimeBucketOption[];
 }
 
-// Color accents per bucket for the option dots inside the popover.
-const DOT_COLORS: Record<TimeBucket, string> = {
-  all: "bg-foreground/60",
-  morning: "bg-amber-400",
-  afternoon: "bg-sky-400",
-  evening: "bg-violet-500",
-  night: "bg-indigo-600",
-  custom: "bg-emerald-500",
-};
+// Small cycling palette for the inline dot next to each option.
+const DOT_PALETTE = [
+  "bg-amber-400",
+  "bg-sky-400",
+  "bg-violet-500",
+  "bg-indigo-600",
+  "bg-emerald-500",
+  "bg-pink-500",
+];
 
 /**
  * Mobile-only dropdown variant of TimeBucketChips. Visually aligned with
@@ -33,11 +36,12 @@ export const TimeBucketDropdown = ({
   value,
   onChange,
   className,
+  options,
 }: TimeBucketDropdownProps) => {
   const [open, setOpen] = useState(false);
+  const items = options && options.length > 0 ? options : TIME_BUCKET_OPTIONS;
   const isActive = value !== "all";
-  const selected =
-    TIME_BUCKET_OPTIONS.find((o) => o.value === value) ?? TIME_BUCKET_OPTIONS[0];
+  const selected = items.find((o) => o.value === value) ?? items[0];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -73,7 +77,7 @@ export const TimeBucketDropdown = ({
                   : "text-amber-700 dark:text-amber-300",
               )}
             >
-              {selected.label}
+              {selected?.label}
             </span>
           </div>
           <ChevronDown
@@ -107,59 +111,59 @@ export const TimeBucketDropdown = ({
           )}
         </div>
         <div className="p-1.5 space-y-0.5 max-h-[min(60vh,360px)] overflow-y-auto overscroll-contain">
-          {TIME_BUCKET_OPTIONS.map((option, idx) => {
-            const isSelected = value === option.value;
-            return (
-              <button
-                key={option.value}
-                onClick={() => {
-                  onChange(option.value);
-                  setOpen(false);
-                }}
-                className={cn(
-                  "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-200",
-                  "hover:scale-[1.01] active:scale-[0.99] animate-fade-in",
-                  isSelected
-                    ? "bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 shadow-sm ring-1 ring-amber-300/50"
-                    : "border border-transparent hover:bg-muted/50",
-                )}
-                style={{ animationDelay: `${idx * 30}ms` }}
-              >
-                <span
-                  aria-hidden
-                  className="text-base leading-none shrink-0"
+          {(() => {
+            let customIdx = -1;
+            return items.map((option, idx) => {
+              if (option.value !== "all" && option.value !== "custom") customIdx += 1;
+              const dot =
+                option.value === "all"
+                  ? "bg-foreground/60"
+                  : option.value === "custom"
+                    ? "bg-emerald-500"
+                    : DOT_PALETTE[customIdx % DOT_PALETTE.length];
+              const isSelected = value === option.value;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all duration-200",
+                    "hover:scale-[1.01] active:scale-[0.99] animate-fade-in",
+                    isSelected
+                      ? "bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 shadow-sm ring-1 ring-amber-300/50"
+                      : "border border-transparent hover:bg-muted/50",
+                  )}
+                  style={{ animationDelay: `${idx * 30}ms` }}
                 >
-                  {option.emoji}
-                </span>
-                <div className="flex-1 min-w-0 text-left">
-                  <p
-                    className={cn(
-                      "text-xs font-semibold truncate flex items-center gap-2",
-                      isSelected
-                        ? "text-amber-800 dark:text-amber-200"
-                        : "text-foreground",
-                    )}
-                  >
-                    <span
+                  <span aria-hidden className="text-base leading-none shrink-0">
+                    {option.emoji}
+                  </span>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p
                       className={cn(
-                        "inline-block w-1.5 h-1.5 rounded-full",
-                        DOT_COLORS[option.value],
+                        "text-xs font-semibold truncate flex items-center gap-2",
+                        isSelected ? "text-amber-800 dark:text-amber-200" : "text-foreground",
                       )}
-                    />
-                    {option.label}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground tabular-nums">
-                    {option.range}
-                  </p>
-                </div>
-                {isSelected && (
-                  <div className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center animate-scale-in shrink-0">
-                    <Check className="w-3 h-3 text-white" />
+                    >
+                      <span className={cn("inline-block w-1.5 h-1.5 rounded-full", dot)} />
+                      {option.label}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground tabular-nums">
+                      {option.range}
+                    </p>
                   </div>
-                )}
-              </button>
-            );
-          })}
+                  {isSelected && (
+                    <div className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center animate-scale-in shrink-0">
+                      <Check className="w-3 h-3 text-white" />
+                    </div>
+                  )}
+                </button>
+              );
+            });
+          })()}
         </div>
       </PopoverContent>
     </Popover>
