@@ -101,6 +101,13 @@ export const AssignTrainerDialog = ({
     return d.toISOString().split("T")[0];
   };
 
+  // True if member's current PT already runs through (or beyond) the
+  // membership end date — there's nothing to extend in that case.
+  const isPtFullyCoveringMembership = useMemo(() => {
+    if (!isExtendMode || !existingPtEndDate || !membershipEndDate) return false;
+    return new Date(existingPtEndDate) >= new Date(membershipEndDate);
+  }, [isExtendMode, existingPtEndDate, membershipEndDate]);
+
   useEffect(() => {
     if (open) {
       fetchTrainers();
@@ -108,7 +115,7 @@ export const AssignTrainerDialog = ({
         const extStart = computeExtendStart(existingPtEndDate);
         setStartDate(extStart);
         setEndDate(membershipEndDate || extStart);
-        // Lock trainer to existing PT trainer
+        // Default trainer = existing PT trainer (admin can change to any other)
         if (existingTrainer?.id) {
           setSelectedTrainerId(existingTrainer.id);
           setMonthlyFee(existingTrainer.monthly_fee.toString());
@@ -611,7 +618,47 @@ export const AssignTrainerDialog = ({
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
-          {/* Trainer Selection — locked card in extend mode */}
+          {/* Fully-covered banner: nothing to extend if PT already runs to membership end */}
+          {isPtFullyCoveringMembership ? (
+            <>
+              <div
+                className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 animate-fade-in"
+                style={{ animationDelay: "0ms" }}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-500/15 flex-shrink-0">
+                    <Dumbbell className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                      PT already active till membership end
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {existingTrainer?.name ? `${existingTrainer.name}'s ` : "Personal training "}
+                      session covers the full membership through{" "}
+                      <span className="font-medium text-foreground">
+                        {membershipEndDate
+                          ? new Date(membershipEndDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                          : ""}
+                      </span>
+                      . There's nothing to extend right now — renew the gym membership first to extend PT further.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 transition-all duration-200"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Close
+                </Button>
+              </div>
+            </>
+          ) : (
+          <>
+          {/* Trainer Selection — dropdown of all trainers in extend mode (defaults to current PT trainer) */}
           <div className="space-y-1.5 animate-fade-in" style={{ animationDelay: "0ms" }}>
             <Label className="text-sm font-medium">Trainer</Label>
             {isFetchingTrainers ? (
@@ -621,20 +668,6 @@ export const AssignTrainerDialog = ({
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">Loading trainers...</span>
                 </div>
-              </div>
-            ) : isExtendMode && existingTrainer ? (
-              <div className="rounded-md border border-accent/30 bg-accent/5 px-3 py-2.5 flex items-center gap-3">
-                <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-accent/10">
-                  <Dumbbell className="w-4 h-4 text-accent" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold truncate">{existingTrainer.name}</div>
-                  <div className="text-[11px] text-muted-foreground truncate">
-                    {existingTrainer.specialization ? `${existingTrainer.specialization} • ` : ""}
-                    ₹{existingTrainer.monthly_fee}/mo
-                  </div>
-                </div>
-                <span className="text-[10px] text-muted-foreground rounded-full border border-border/60 px-2 py-0.5">Locked</span>
               </div>
             ) : (
               <Select value={selectedTrainerId} onValueChange={handleTrainerChange}>
@@ -649,6 +682,9 @@ export const AssignTrainerDialog = ({
                         <span className="text-muted-foreground ml-1">• {t.specialization}</span>
                       )}
                       <span className="text-muted-foreground ml-1">— ₹{t.monthly_fee}/mo</span>
+                      {isExtendMode && existingTrainer?.id === t.id && (
+                        <span className="text-emerald-600 ml-1 text-[11px]">• Current</span>
+                      )}
                     </SelectItem>
                   ))}
                   {trainers.length === 0 && (
@@ -881,6 +917,8 @@ export const AssignTrainerDialog = ({
                 <Skeleton className="h-10 flex-1 rounded-md" />
               </div>
             </div>
+          )}
+          </>
           )}
         </div>
       </DialogContent>

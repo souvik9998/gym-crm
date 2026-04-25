@@ -2119,21 +2119,12 @@ export const AddMemberDialog = ({
 
             {/* Navigation Buttons */}
             <div className="flex gap-3 py-4 mt-auto flex-shrink-0 sticky bottom-0 bg-background">
-              {currentStep > 1 ? (
+              {currentStep > 1 && !isExistingMemberAction ? (
                 <Button
                   type="button"
                   variant="outline"
                   className="flex-1 h-11 rounded-xl text-sm font-medium active:scale-[0.98] transition-all duration-200"
-                  onClick={() => {
-                    if (isExistingMemberAction) {
-                      setSelectedAction(null);
-                      setWantsPT(false);
-                      setSlideDirection("right");
-                      setCurrentStep(1);
-                    } else {
-                      goToStep(currentStep - 1);
-                    }
-                  }}
+                  onClick={() => goToStep(currentStep - 1)}
                 >
                   <ArrowLeft className="w-4 h-4 mr-1.5" />
                   Back
