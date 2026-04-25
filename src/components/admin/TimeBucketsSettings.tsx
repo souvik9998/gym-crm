@@ -384,37 +384,50 @@ export const TimeBucketsSettings = () => {
                 return (
                   <div
                     key={d.id}
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggingId(d.id);
+                      e.dataTransfer.effectAllowed = "move";
+                      // Required for Firefox to initiate the drag.
+                      try { e.dataTransfer.setData("text/plain", d.id); } catch { /* noop */ }
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (draggingId && draggingId !== d.id && dragOverId !== d.id) {
+                        setDragOverId(d.id);
+                      }
+                    }}
+                    onDragLeave={(e) => {
+                      // Only clear when leaving the row itself, not a child element.
+                      if (e.currentTarget === e.target) setDragOverId(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (draggingId) reorderDrafts(draggingId, d.id);
+                      setDraggingId(null);
+                      setDragOverId(null);
+                    }}
+                    onDragEnd={() => {
+                      setDraggingId(null);
+                      setDragOverId(null);
+                    }}
                     className={cn(
-                      "rounded-xl border border-border/60 bg-card p-3 lg:p-4 shadow-sm transition-shadow hover:shadow-md",
+                      "rounded-xl border border-border/60 bg-card p-3 lg:p-4 shadow-sm transition-all hover:shadow-md cursor-grab active:cursor-grabbing",
                       d._isNew && "ring-1 ring-primary/30",
                       hasRowIssue && "border-destructive/60 ring-1 ring-destructive/30",
+                      draggingId === d.id && "opacity-50",
+                      dragOverId === d.id && draggingId !== d.id && "border-primary/60 ring-2 ring-primary/30",
                     )}
                   >
                     <div className="flex flex-col lg:flex-row lg:items-end gap-3">
-                      {/* Order controls */}
-                      <div className="flex lg:flex-col items-center gap-1 self-start lg:self-end lg:pb-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => moveDraft(d.id, -1)}
-                          disabled={idx === 0}
-                          aria-label="Move up"
-                        >
-                          <ArrowUpIcon className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => moveDraft(d.id, 1)}
-                          disabled={idx === drafts.length - 1}
-                          aria-label="Move down"
-                        >
-                          <ArrowDownIcon className="w-3.5 h-3.5" />
-                        </Button>
+                      {/* Drag handle */}
+                      <div
+                        className="flex items-center justify-center self-start lg:self-end lg:pb-2 text-muted-foreground/60 hover:text-foreground transition-colors shrink-0"
+                        aria-label="Drag to reorder"
+                        title="Drag to reorder"
+                      >
+                        <Bars3Icon className="w-5 h-5" />
                       </div>
 
                       {/* Emoji picker */}
