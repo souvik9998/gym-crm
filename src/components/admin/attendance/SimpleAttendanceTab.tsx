@@ -191,8 +191,8 @@ export const SimpleAttendanceTab = () => {
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
 
   const timeFilteredSlots = useMemo(() => {
-    return allSlots.filter((slot) => matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd, slot.end_time));
-  }, [allSlots, timeFilter, customStart, customEnd]);
+    return allSlots.filter((slot) => matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd, slot.end_time, buckets));
+  }, [allSlots, timeFilter, customStart, customEnd, buckets]);
 
   const filteredSlotIds = useMemo(() => timeFilteredSlots.map((slot) => slot.id), [timeFilteredSlots]);
   const filteredSlotIdSet = useMemo(() => new Set(filteredSlotIds), [filteredSlotIds]);
