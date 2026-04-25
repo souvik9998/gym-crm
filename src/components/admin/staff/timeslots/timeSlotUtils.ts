@@ -1,4 +1,4 @@
-export type TimeBucket = "all" | "morning" | "afternoon" | "evening" | "night" | "custom";
+export type TimeBucket = string; // "all" | bucket-id (uuid-ish from settings)
 export type SlotAvailability = "all" | "open" | "full" | "empty" | "high_load";
 
 export interface TimeSlotLite {
@@ -17,16 +17,73 @@ export interface TimeBucketOption {
   range: string;
   /** Optional emoji to add visual personality to each chip. */
   emoji: string;
+  /** 24h "HH:mm" — present for non-"all" buckets. */
+  start_time?: string;
+  /** 24h "HH:mm" — present for non-"all" buckets. */
+  end_time?: string;
 }
 
-export const TIME_BUCKET_OPTIONS: TimeBucketOption[] = [
-  { value: "all", label: "All times", range: "Any time of day", emoji: "🕘" },
-  { value: "morning", label: "Morning", range: "5:00 AM – 12:00 PM", emoji: "🌅" },
-  { value: "afternoon", label: "Afternoon", range: "12:00 PM – 5:00 PM", emoji: "☀️" },
-  { value: "evening", label: "Evening", range: "5:00 PM – 9:00 PM", emoji: "🌆" },
-  { value: "night", label: "Night", range: "9:00 PM – 5:00 AM", emoji: "🌙" },
-  { value: "custom", label: "Custom range", range: "Pick your own window", emoji: "🎯" },
+/** Persisted shape stored in `gym_settings.time_buckets` jsonb array. */
+export interface CustomTimeBucket {
+  id: string;
+  label: string;
+  emoji: string;
+  start_time: string; // "HH:mm"
+  end_time: string; // "HH:mm"
+  sort_order: number;
+}
+
+// ---- Built-in default chips (used when no custom buckets configured) -------
+export const DEFAULT_TIME_BUCKETS: CustomTimeBucket[] = [
+  { id: "morning", label: "Morning", emoji: "🌅", start_time: "05:00", end_time: "12:00", sort_order: 1 },
+  { id: "afternoon", label: "Afternoon", emoji: "☀️", start_time: "12:00", end_time: "17:00", sort_order: 2 },
+  { id: "evening", label: "Evening", emoji: "🌆", start_time: "17:00", end_time: "21:00", sort_order: 3 },
+  { id: "night", label: "Night", emoji: "🌙", start_time: "21:00", end_time: "05:00", sort_order: 4 },
 ];
+
+export const ALL_BUCKET_OPTION: TimeBucketOption = {
+  value: "all",
+  label: "All times",
+  range: "Any time of day",
+  emoji: "🕘",
+};
+
+const CUSTOM_BUCKET_OPTION: TimeBucketOption = {
+  value: "custom",
+  label: "Custom range",
+  range: "Pick your own window",
+  emoji: "🎯",
+};
+
+/**
+ * @deprecated Kept for backwards compatibility (some files import this name).
+ * Real options are now derived per-branch via `useTimeBuckets()`.
+ */
+export const TIME_BUCKET_OPTIONS: TimeBucketOption[] = [
+  ALL_BUCKET_OPTION,
+  ...DEFAULT_TIME_BUCKETS.map(toBucketOption),
+  CUSTOM_BUCKET_OPTION,
+];
+
+export function toBucketOption(b: CustomTimeBucket): TimeBucketOption {
+  return {
+    value: b.id,
+    label: b.label,
+    range: `${formatTimeLabel(b.start_time)} – ${formatTimeLabel(b.end_time)}`,
+    emoji: b.emoji,
+    start_time: b.start_time,
+    end_time: b.end_time,
+  };
+}
+
+/** Build a chip-options list (All + admin chips + Custom) from the persisted array. */
+export function buildBucketOptions(buckets: CustomTimeBucket[]): TimeBucketOption[] {
+  const chips = (buckets.length > 0 ? buckets : DEFAULT_TIME_BUCKETS)
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map(toBucketOption);
+  return [ALL_BUCKET_OPTION, ...chips, CUSTOM_BUCKET_OPTION];
+}
 
 export const AVAILABILITY_OPTIONS: Array<{ value: SlotAvailability; label: string }> = [
   { value: "all", label: "All availability" },
@@ -51,33 +108,9 @@ export function formatTimeLabel(time: string | null | undefined) {
   return `${twelveHour}:${minutes} ${suffix}`;
 }
 
-export function getTimeBucketForMinutes(minutes: number): Exclude<TimeBucket, "all" | "custom"> {
-  if (minutes >= 300 && minutes < 720) return "morning";
-  if (minutes >= 720 && minutes < 1020) return "afternoon";
-  if (minutes >= 1020 && minutes < 1260) return "evening";
-  return "night";
-}
-
 /**
- * Returns one or more non-wrapping [start, end) minute intervals on a 24h day for the bucket.
- * Overnight buckets (Night) are returned as two intervals so we never need wrap math.
- */
-function getBucketIntervals(bucket: Exclude<TimeBucket, "all" | "custom">): Array<[number, number]> {
-  switch (bucket) {
-    case "morning":
-      return [[300, 720]]; // 5:00 AM – 12:00 PM
-    case "afternoon":
-      return [[720, 1020]]; // 12:00 PM – 5:00 PM
-    case "evening":
-      return [[1020, 1260]]; // 5:00 PM – 9:00 PM
-    case "night":
-      // 9:00 PM – 12:00 AM and 12:00 AM – 5:00 AM
-      return [[1260, 1440], [0, 300]];
-  }
-}
-
-/**
- * Splits a slot [start, end) into one or two non-wrapping intervals on [0, 1440).
+ * Splits a time window [start, end) into one or two non-wrapping intervals on [0, 1440).
+ * If end <= start the window is treated as wrapping past midnight.
  * Equal start/end is treated as a 1-minute point.
  */
 function getSlotIntervals(startMinutes: number, endMinutes: number): Array<[number, number]> {
@@ -87,28 +120,6 @@ function getSlotIntervals(startMinutes: number, endMinutes: number): Array<[numb
   if (e > s) return [[s, e]];
   // wraps midnight
   return [[s, 1440], [0, e]];
-}
-
-function intervalsOverlap(a: Array<[number, number]>, b: Array<[number, number]>): boolean {
-  for (const [aS, aE] of a) {
-    for (const [bS, bE] of b) {
-      if (aS < bE && bS < aE) return true;
-    }
-  }
-  return false;
-}
-
-export function getTimeBucketLabel(bucket: Exclude<TimeBucket, "all" | "custom">) {
-  switch (bucket) {
-    case "morning":
-      return "Morning";
-    case "afternoon":
-      return "Afternoon";
-    case "evening":
-      return "Evening";
-    case "night":
-      return "Night";
-  }
 }
 
 /**
@@ -127,25 +138,41 @@ function isStartInIntervals(startMinutes: number, intervals: Array<[number, numb
   return false;
 }
 
+/**
+ * Match a slot's start time against the active bucket filter.
+ * - "all"    → always match
+ * - "custom" → match against [customStart, customEnd) (overnight wrapping supported)
+ * - other    → look up bucket window in the provided list and match
+ *
+ * NOTE: the legacy signature `(startTime, timeFilter, customStart, customEnd, endTime)` is preserved.
+ * Callers pass the available bucket list as the optional 6th arg; if omitted,
+ * the built-in defaults are used so existing call-sites still behave correctly.
+ */
 export function matchesTimeFilter(
   startTime: string,
   timeFilter: TimeBucket,
   customStart?: string,
   customEnd?: string,
   _endTime?: string,
+  buckets?: CustomTimeBucket[],
 ) {
   if (timeFilter === "all") return true;
 
   const startMinutes = parseTimeToMinutes(startTime);
 
-  if (timeFilter !== "custom") {
-    return isStartInIntervals(startMinutes, getBucketIntervals(timeFilter));
+  if (timeFilter === "custom") {
+    if (!customStart || !customEnd) return true;
+    const cs = parseTimeToMinutes(customStart);
+    const ce = parseTimeToMinutes(customEnd);
+    return isStartInIntervals(startMinutes, getSlotIntervals(cs, ce));
   }
 
-  if (!customStart || !customEnd) return true;
-  const cs = parseTimeToMinutes(customStart);
-  const ce = parseTimeToMinutes(customEnd);
-  return isStartInIntervals(startMinutes, getSlotIntervals(cs, ce));
+  const list = buckets && buckets.length > 0 ? buckets : DEFAULT_TIME_BUCKETS;
+  const bucket = list.find((b) => b.id === timeFilter);
+  if (!bucket) return true; // unknown id → don't filter (defensive)
+  const bs = parseTimeToMinutes(bucket.start_time);
+  const be = parseTimeToMinutes(bucket.end_time);
+  return isStartInIntervals(startMinutes, getSlotIntervals(bs, be));
 }
 
 export function getSlotAvailability(memberCount: number, capacity: number): Exclude<SlotAvailability, "all"> {

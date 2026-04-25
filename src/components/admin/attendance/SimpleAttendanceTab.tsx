@@ -29,6 +29,7 @@ import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import { useAttendanceFilters } from "@/hooks/queries/useAttendanceFilters";
 import { useMembersQuery } from "@/hooks/queries/useMembers";
 import { matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
+import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
 import { TimePicker12h } from "@/components/ui/time-picker-12h";
 
 type AttendanceStatus = "present" | "absent" | "skipped";
@@ -181,6 +182,7 @@ export const SimpleAttendanceTab = () => {
   const [timeFilter, setTimeFilter] = useState<TimeBucket>("all");
   const [customStart, setCustomStart] = useState("06:00");
   const [customEnd, setCustomEnd] = useState("10:00");
+  const { buckets, options: bucketOptions } = useTimeBuckets();
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "all">("all");
   const { assignedMemberIds } = useAssignedMemberIds();
   const { allSlots } = useAttendanceFilters();

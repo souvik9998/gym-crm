@@ -48,6 +48,7 @@ import {
   type TimeBucket,
 } from "./timeSlotUtils";
 import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
+import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
 
 interface SlotMembersTabProps {
   trainers: Staff[];
@@ -132,6 +133,7 @@ export const SlotMembersTab = ({
   const [customStart, setCustomStart] = useState("06:00");
   const [customEnd, setCustomEnd] = useState("10:00");
   const [slotSearch, setSlotSearch] = useState("");
+  const { buckets, options: bucketOptions } = useTimeBuckets();
 
   const [transferConfirm, setTransferConfirm] = useState<{
     memberId: string;
@@ -220,13 +222,13 @@ export const SlotMembersTab = ({
     return slots.filter((slot) => {
       if (filterTrainer !== "all" && slot.trainer_id !== filterTrainer) return false;
       if (filterAvailability !== "all" && slot.availability !== filterAvailability) return false;
-      if (!matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd, slot.end_time)) return false;
+      if (!matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd, slot.end_time, buckets)) return false;
       if (!slotSearch) return true;
       const query = slotSearch.toLowerCase();
       const slotText = `${slot.trainer_name} ${formatTimeLabel(slot.start_time)} ${formatTimeLabel(slot.end_time)}`.toLowerCase();
       return slotText.includes(query);
     });
-  }, [slots, filterTrainer, filterAvailability, timeFilter, customStart, customEnd, slotSearch]);
+  }, [slots, filterTrainer, filterAvailability, timeFilter, customStart, customEnd, slotSearch, buckets]);
 
   useEffect(() => {
     setSelectedSlot((current) => (current && filteredSlots.some((slot) => slot.id === current) ? current : ""));
@@ -731,7 +733,7 @@ export const SlotMembersTab = ({
                 </div>
               </div>
 
-              <TimeBucketChips value={timeFilter} onChange={setTimeFilter} />
+              <TimeBucketChips value={timeFilter} onChange={setTimeFilter} options={bucketOptions} />
 
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                 {!restrictedTrainerId && (

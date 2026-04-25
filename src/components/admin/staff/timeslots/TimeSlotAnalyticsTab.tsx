@@ -10,12 +10,12 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ClockIcon, UserGroupIcon, ChartBarIcon, BoltIcon } from "@heroicons/react/24/outline";
 import {
   formatTimeLabel,
-  getTimeBucketForMinutes,
-  getTimeBucketLabel,
   getUtilizationPercent,
   parseTimeToMinutes,
+  matchesTimeFilter,
   type TimeSlotLite,
 } from "./timeSlotUtils";
+import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
 
 interface TimeSlotAnalyticsTabProps {
   currentBranch: { id?: string | null } | null;
@@ -27,7 +27,8 @@ interface DecoratedSlot extends TimeSlotLite {
   trainer_name: string;
   member_count: number;
   utilization: number;
-  bucket: "morning" | "afternoon" | "evening" | "night";
+  /** Resolved bucket id from the active (admin-configurable) chip set. */
+  bucket: string;
 }
 
 const bucketPalette = [
@@ -43,9 +44,12 @@ export const TimeSlotAnalyticsTab = ({
   trainerNameMap = {},
 }: TimeSlotAnalyticsTabProps) => {
   const isMobile = useIsMobile();
+  // Buckets are configured per-branch in Settings → Time Filters. We resolve a
+  // slot's bucket by checking which configured chip's window contains its start.
+  const { buckets } = useTimeBuckets();
 
   const { data, isLoading } = useQuery<DecoratedSlot[]>({
-    queryKey: ["time-slot-analytics", currentBranch?.id, restrictedTrainerId, Object.keys(trainerNameMap).sort().join(",")],
+    queryKey: ["time-slot-analytics", currentBranch?.id, restrictedTrainerId, Object.keys(trainerNameMap).sort().join(","), buckets.map((b) => b.id).join(",")],
     queryFn: async () => {
       if (!currentBranch?.id) return [];
 
@@ -91,13 +95,17 @@ export const TimeSlotAnalyticsTab = ({
 
       return (slots as TimeSlotLite[]).map((slot) => {
         const memberCount = countsBySlot.get(slot.id)?.size ?? 0;
-        const bucket = getTimeBucketForMinutes(parseTimeToMinutes(slot.start_time));
+        // Pick the first chip whose window contains this slot's start time.
+        // matchesTimeFilter already handles overnight wrapping for us.
+        const matchedBucket =
+          buckets.find((b) => matchesTimeFilter(slot.start_time, b.id, undefined, undefined, undefined, buckets))
+            ?.id ?? buckets[0]?.id ?? "unassigned";
         return {
           ...slot,
           trainer_name: trainerNameMap[slot.trainer_id] || rpcNameMap.get(slot.trainer_id) || "Unknown Trainer",
           member_count: memberCount,
           utilization: getUtilizationPercent(memberCount, slot.capacity),
-          bucket,
+          bucket: matchedBucket,
         };
       });
     },
@@ -114,12 +122,14 @@ export const TimeSlotAnalyticsTab = ({
     const fullSlots = slots.filter((slot) => slot.member_count >= slot.capacity && slot.capacity > 0).length;
 
     const bucketMap = new Map<string, { label: string; members: number; slots: number; utilizationTotal: number }>();
-    ["morning", "afternoon", "evening", "night"].forEach((bucket) => {
-      bucketMap.set(bucket, { label: getTimeBucketLabel(bucket as any), members: 0, slots: 0, utilizationTotal: 0 });
+    // Seed map in the order the admin defined chips so the chart x-axis is consistent.
+    buckets.forEach((b) => {
+      bucketMap.set(b.id, { label: b.label, members: 0, slots: 0, utilizationTotal: 0 });
     });
 
     slots.forEach((slot) => {
-      const entry = bucketMap.get(slot.bucket)!;
+      const entry = bucketMap.get(slot.bucket);
+      if (!entry) return; // slot bucket no longer exists in admin's chip set; skip
       entry.members += slot.member_count;
       entry.slots += 1;
       entry.utilizationTotal += slot.utilization;
@@ -171,7 +181,7 @@ export const TimeSlotAnalyticsTab = ({
       busiestSlots,
       trainerLoad,
     };
-  }, [data]);
+  }, [data, buckets]);
 
   if (isLoading) {
     return (
