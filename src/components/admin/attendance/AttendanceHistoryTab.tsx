@@ -315,12 +315,20 @@ export const AttendanceHistoryTab = () => {
         from += pageSize;
       }
 
+      // Use the member→slot fallback so manual attendance (NULL time_slot_id)
+      // is still scoped correctly by the active chip filters.
+      const resolveExportSlot = (r: any): string | null =>
+        r.time_slot_id || (r.member_id ? memberSlotMap[r.member_id] || null : null);
+
       let exportRecords = allRecords;
       if (selectedSlotId) {
-        exportRecords = exportRecords.filter((r: any) => r.time_slot_id === selectedSlotId);
+        exportRecords = exportRecords.filter((r: any) => resolveExportSlot(r) === selectedSlotId);
       } else if (selectedTrainerId) {
         const trainerSlotIds = new Set(allSlots.filter((s) => s.trainer_id === selectedTrainerId).map((s) => s.id));
-        exportRecords = exportRecords.filter((r: any) => r.time_slot_id && trainerSlotIds.has(r.time_slot_id));
+        exportRecords = exportRecords.filter((r: any) => {
+          const sid = resolveExportSlot(r);
+          return sid && trainerSlotIds.has(sid);
+        });
       }
       if (timeBucket !== "all") {
         const bucketSlotIds = new Set(
@@ -328,7 +336,10 @@ export const AttendanceHistoryTab = () => {
             .filter((s) => matchesTimeFilter(s.start_time, timeBucket, customStart, customEnd, s.end_time))
             .map((s) => s.id),
         );
-        exportRecords = exportRecords.filter((r: any) => r.time_slot_id && bucketSlotIds.has(r.time_slot_id));
+        exportRecords = exportRecords.filter((r: any) => {
+          const sid = resolveExportSlot(r);
+          return sid && bucketSlotIds.has(sid);
+        });
       }
 
       if (exportRecords.length === 0) {
