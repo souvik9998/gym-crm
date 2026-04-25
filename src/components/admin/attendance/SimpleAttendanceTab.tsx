@@ -739,13 +739,14 @@ export const SimpleAttendanceTab = () => {
             <TimeBucketChips
               value={timeFilter}
               onChange={setTimeFilter}
+              options={bucketOptions}
               className="w-full"
             />
           </div>
           {/* Mobile: 3-up dropdown row aligned with Trainer + Slot */}
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-2">
             <div className="sm:hidden">
-              <TimeBucketDropdown value={timeFilter} onChange={setTimeFilter} />
+              <TimeBucketDropdown value={timeFilter} onChange={setTimeFilter} options={bucketOptions} />
             </div>
             <TrainerFilterDropdown value={selectedTrainerId} onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }} compact />
             <TimeSlotFilterDropdown value={selectedSlotId} onChange={setSelectedSlotId} trainerFilter={selectedTrainerId} compact />
