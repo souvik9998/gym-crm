@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Dumbbell } from "lucide-react";
+import { BranchLogo } from "@/components/admin/BranchLogo";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { supabase } from "@/integrations/supabase/client";
