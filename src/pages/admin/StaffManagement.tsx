@@ -93,7 +93,7 @@ const StaffManagement = () => {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full max-w-lg grid-cols-4 mb-6">
+      <TabsList className="grid w-full max-w-md grid-cols-3 mb-6">
         <TabsTrigger value="trainers" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
           <AcademicCapIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
           <span>Trainers</span>
@@ -101,10 +101,6 @@ const StaffManagement = () => {
         <TabsTrigger value="staff" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
           <UserGroupIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
           <span>Other Staff</span>
-        </TabsTrigger>
-        <TabsTrigger value="timeslots" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
-          <ClockIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-          <span>Time Slots</span>
         </TabsTrigger>
         <TabsTrigger value="overview" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
           <ChartBarIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
