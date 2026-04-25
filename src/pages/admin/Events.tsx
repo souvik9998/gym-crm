@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/contexts/BranchContext";
+import { useTenantPrimaryDomain } from "@/hooks/useTenantPrimaryDomain";
+import { buildPublicUrl } from "@/lib/publicUrl";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
@@ -39,6 +41,7 @@ export default function Events() {
     );
   };
   const { currentBranch } = useBranch();
+  const { data: customDomain } = useTenantPrimaryDomain(currentBranch?.id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isStaffLoggedIn, staffUser } = useStaffAuth();
@@ -114,7 +117,7 @@ export default function Events() {
 
   const copyEventLink = (event: any) => {
     const slug = event.slug || event.id;
-    const url = `${window.location.origin}/event/${slug}`;
+    const url = buildPublicUrl(`/event/${slug}`, customDomain?.hostname);
     navigator.clipboard.writeText(url);
     toast.success("Event link copied!");
   };
