@@ -421,8 +421,7 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
                           <div key={i} className="text-amber-900 dark:text-amber-200">• {err}</div>
                         ))}
                         <div className="text-muted-foreground pt-1">
-                          A: {result.dns.a_records?.join(", ") || "—"} • TXT:{" "}
-                          {result.dns.txt_records?.join(", ") || "—"}
+                          TXT: {result.dns.txt_records?.join(", ") || "—"}
                         </div>
                       </div>
                     )}
