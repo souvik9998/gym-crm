@@ -87,9 +87,7 @@ interface VerifyResponse {
   hostname: string;
   expected_token: string;
   dns: {
-    a_records: string[] | null;
-    a_matches: boolean;
-    a_proxied?: boolean;
+    txt_host_checked?: string[];
     txt_records: string[] | null;
     txt_matches: boolean;
   };
