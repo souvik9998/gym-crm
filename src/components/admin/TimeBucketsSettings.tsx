@@ -436,7 +436,14 @@ export const TimeBucketsSettings = () => {
                           onChange={(e) => updateDraft(d.id, { label: e.target.value })}
                           placeholder="e.g. Morning, Sunrise…"
                           maxLength={24}
+                          className={cn(dupLabel && "border-destructive focus-visible:ring-destructive/30")}
+                          aria-invalid={dupLabel || undefined}
                         />
+                        {dupLabel && (
+                          <p className="text-[11px] text-destructive">
+                            This name is already used. Names must be unique.
+                          </p>
+                        )}
                       </div>
 
                       {/* Start time */}
