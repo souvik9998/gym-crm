@@ -12,7 +12,7 @@ import { useStaffPageData } from "@/hooks/queries/useStaffPageData";
  */
 const AdminTimeSlots = () => {
   const { currentBranch } = useBranch();
-  const { staff, trainers } = useStaffPageData();
+  const { staff, trainers, isLoading } = useStaffPageData();
 
   return (
     <div className="w-full">
@@ -20,6 +20,7 @@ const AdminTimeSlots = () => {
         trainers={trainers}
         currentBranch={currentBranch}
         allStaff={staff}
+        trainersLoading={isLoading}
       />
     </div>
   );
