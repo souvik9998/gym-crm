@@ -152,7 +152,7 @@ async function fetchAll(
 // SHA-256 hex helper
 // ----------------------------------------------------------------------------
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", bytes);
+  const buf = await crypto.subtle.digest("SHA-256", bytes as unknown as BufferSource);
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
@@ -333,7 +333,7 @@ Deno.serve(async (req) => {
     } catch (_e) { /* ignore */ }
 
     const filename = `gymkloud-backup-${branch.slug}-${timestampForFilename()}.zip`;
-    return new Response(zipBytes, {
+    return new Response(zipBytes as unknown as BodyInit, {
       status: 200,
       headers: {
         ...corsHeaders,
