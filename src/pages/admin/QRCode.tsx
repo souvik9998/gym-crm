@@ -29,10 +29,12 @@ const QRCodePage = () => {
 
   const getPortalUrl = () => {
     if (!currentBranch || typeof window === "undefined") return "";
-    if (customDomain?.hostname) {
-      return `https://${customDomain.hostname}`;
-    }
     const slug = (currentBranch as any).slug || currentBranch.id;
+    // Always include /b/{slug} so the URL is explicit and works whether the
+    // custom domain is bound to a tenant (multi-branch) or a single branch.
+    if (customDomain?.hostname) {
+      return `https://${customDomain.hostname}/b/${slug}`;
+    }
     return `${window.location.origin}/b/${slug}`;
   };
 
