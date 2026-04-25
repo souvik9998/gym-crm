@@ -10,12 +10,12 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ClockIcon, UserGroupIcon, ChartBarIcon, BoltIcon } from "@heroicons/react/24/outline";
 import {
   formatTimeLabel,
-  getTimeBucketForMinutes,
-  getTimeBucketLabel,
   getUtilizationPercent,
   parseTimeToMinutes,
+  matchesTimeFilter,
   type TimeSlotLite,
 } from "./timeSlotUtils";
+import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
 
 interface TimeSlotAnalyticsTabProps {
   currentBranch: { id?: string | null } | null;
@@ -27,7 +27,8 @@ interface DecoratedSlot extends TimeSlotLite {
   trainer_name: string;
   member_count: number;
   utilization: number;
-  bucket: "morning" | "afternoon" | "evening" | "night";
+  /** Resolved bucket id from the active (admin-configurable) chip set. */
+  bucket: string;
 }
 
 const bucketPalette = [
