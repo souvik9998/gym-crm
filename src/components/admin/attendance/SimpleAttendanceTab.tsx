@@ -31,6 +31,7 @@ import { useMembersQuery } from "@/hooks/queries/useMembers";
 import { matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
 import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
 import { TimePicker12h } from "@/components/ui/time-picker-12h";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type AttendanceStatus = "present" | "absent" | "skipped";
 
