@@ -360,9 +360,18 @@ export const BranchSelector = () => {
             size="sm"
             className="gap-2 h-10 px-3 hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all w-[200px] justify-start"
           >
-            <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <BuildingOffice2Icon className="w-4 h-4 text-primary" />
-            </div>
+            {currentBranch?.logo_url ? (
+              <BranchLogo
+                logoUrl={currentBranch.logo_url}
+                name={currentBranch.name}
+                size="xs"
+                className="w-6 h-6 rounded-md"
+              />
+            ) : (
+              <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <BuildingOffice2Icon className="w-4 h-4 text-primary" />
+              </div>
+            )}
             <div className="flex flex-col items-start flex-1 min-w-0">
               <span className="text-xs text-muted-foreground font-normal leading-none">
                 Branch
