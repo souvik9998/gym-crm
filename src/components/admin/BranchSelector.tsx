@@ -227,9 +227,18 @@ export const BranchSelector = () => {
   if (isStaffRestricted && !isAdmin && displayBranches.length === 1) {
     return (
       <div className="flex items-center gap-2 h-10 px-3 border border-border/50 rounded-md bg-muted/30">
-        <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <BuildingOffice2Icon className="w-4 h-4 text-primary" />
-        </div>
+        {currentBranch?.logo_url || displayBranches[0]?.logo_url ? (
+          <BranchLogo
+            logoUrl={currentBranch?.logo_url ?? displayBranches[0]?.logo_url}
+            name={currentBranch?.name || displayBranches[0]?.name || "Branch"}
+            size="xs"
+            className="w-6 h-6 rounded-md"
+          />
+        ) : (
+          <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <BuildingOffice2Icon className="w-4 h-4 text-primary" />
+          </div>
+        )}
         <div className="flex flex-col items-start flex-1 min-w-0">
           <span className="text-xs text-muted-foreground font-normal leading-none">
             Branch
