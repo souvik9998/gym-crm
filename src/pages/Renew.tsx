@@ -84,7 +84,7 @@ const Renew = () => {
         if (cancelled) return;
 
         if (branch) {
-          setBranchInfo({ id: branch.id, name: stateBranchName || branch.name });
+          setBranchInfo({ id: branch.id, name: stateBranchName || branch.name, logo_url: branch.logo_url ?? null });
           setAllowSelfSelectTrainer(branch.allowSelfSelectTrainer !== false);
           setAllowDailyPass(branch.allowDailyPass !== false);
         } else if (stateBranchName) {
