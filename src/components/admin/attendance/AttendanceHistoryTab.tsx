@@ -722,7 +722,17 @@ export const AttendanceHistoryTab = () => {
                             isPresent ? "bg-green-500" : isSkipped ? "bg-slate-500" : "bg-red-500"
                           )} />
                           <div className="min-w-0">
-                            <span className="text-xs font-medium truncate block">{r.members?.name || "—"}</span>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-xs font-medium truncate">{r.members?.name || "—"}</span>
+                              {(() => {
+                                const tn = resolveTrainerName(r);
+                                return tn ? (
+                                  <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
+                                    <UserIcon className="w-2 h-2 mr-0.5" />{tn}
+                                  </Badge>
+                                ) : null;
+                              })()}
+                            </div>
                             {isMobile && <span className="text-[10px] text-muted-foreground">{r.members?.phone || ""}</span>}
                           </div>
                         </div>
