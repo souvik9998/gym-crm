@@ -36,6 +36,7 @@ const BranchAnalytics = lazyWithRetry(() => import("./pages/admin/BranchAnalytic
 const AdminLedger = lazyWithRetry(() => import("./pages/admin/Ledger"));
 const Logs = lazyWithRetry(() => import("./pages/admin/Logs"));
 const StaffManagement = lazyWithRetry(() => import("./pages/admin/StaffManagement"));
+const AdminTimeSlots = lazyWithRetry(() => import("./pages/admin/AdminTimeSlots"));
 const TrainersPage = lazyWithRetry(() => import("./pages/admin/Trainers"));
 const Attendance = lazyWithRetry(() => import("./pages/admin/Attendance"));
 const Events = lazyWithRetry(() => import("./pages/admin/Events"));
