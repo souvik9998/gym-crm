@@ -126,14 +126,51 @@ export const AttendanceHistoryTab = () => {
     enabled: !!branchId && (assignedMemberIds === null || assignedMemberIds !== undefined),
   });
 
+  // Map member → their active PT time_slot_id for the month range. Most attendance
+  // rows are marked manually with NULL time_slot_id, so trainer/slot/time-of-day
+  // filters need to be resolved through the member's active PT subscription
+  // (mirrors how Mark Attendance scopes members by `activePT.time_slot_id`).
+  const { data: memberSlotMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ["attendance-history-member-slots", branchId, monthStart, monthEnd],
+    queryFn: async () => {
+      if (!branchId) return {};
+      const { data, error } = await supabase
+        .from("pt_subscriptions")
+        .select("member_id, time_slot_id, start_date, end_date, status")
+        .eq("branch_id", branchId)
+        .not("time_slot_id", "is", null)
+        .lte("start_date", monthEnd)
+        .gte("end_date", monthStart);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const row of (data || []) as any[]) {
+        if (row.member_id && row.time_slot_id && !map[row.member_id]) {
+          map[row.member_id] = row.time_slot_id;
+        }
+      }
+      return map;
+    },
+    enabled: !!branchId,
+    staleTime: 60_000,
+  });
+
+  // Resolve a record's effective slot: prefer the row's own time_slot_id
+  // (set when marked via slot view), otherwise fall back to the member's
+  // currently-active PT slot.
+  const resolveSlotId = (r: any): string | null =>
+    r.time_slot_id || (r.member_id ? memberSlotMap[r.member_id] || null : null);
+
   // Filter records by selected trainer/slot/time-of-day bucket
   const monthRecords = useMemo(() => {
     let records = rawMonthRecords;
     if (selectedSlotId) {
-      records = records.filter((r: any) => r.time_slot_id === selectedSlotId);
+      records = records.filter((r: any) => resolveSlotId(r) === selectedSlotId);
     } else if (selectedTrainerId) {
       const trainerSlotIds = new Set(allSlots.filter(s => s.trainer_id === selectedTrainerId).map(s => s.id));
-      records = records.filter((r: any) => r.time_slot_id && trainerSlotIds.has(r.time_slot_id));
+      records = records.filter((r: any) => {
+        const sid = resolveSlotId(r);
+        return sid && trainerSlotIds.has(sid);
+      });
     }
     if (timeBucket !== "all") {
       const bucketSlotIds = new Set(
@@ -141,10 +178,14 @@ export const AttendanceHistoryTab = () => {
           .filter((s) => matchesTimeFilter(s.start_time, timeBucket, customStart, customEnd, s.end_time))
           .map((s) => s.id),
       );
-      records = records.filter((r: any) => r.time_slot_id && bucketSlotIds.has(r.time_slot_id));
+      records = records.filter((r: any) => {
+        const sid = resolveSlotId(r);
+        return sid && bucketSlotIds.has(sid);
+      });
     }
     return records;
-  }, [rawMonthRecords, selectedSlotId, selectedTrainerId, allSlots, timeBucket, customStart, customEnd]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawMonthRecords, selectedSlotId, selectedTrainerId, allSlots, timeBucket, customStart, customEnd, memberSlotMap]);
 
   const daySummary = useMemo(() => {
     const map: Record<string, { present: number; skipped: number; absent: number; total: number }> = {};
