@@ -485,7 +485,8 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
           <DialogHeader>
             <DialogTitle>Add Custom Domain</DialogTitle>
             <DialogDescription>
-              The hostname only — no <code>https://</code> and no path.
+              Hostname only — no <code>https://</code> and no path. Apex domains
+              (<code>5threalm.in</code>) or subdomains (<code>register.5threalm.in</code>) both work.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -493,7 +494,7 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
               <Label htmlFor="new-host">Domain</Label>
               <Input
                 id="new-host"
-                placeholder="5threalm.in"
+                placeholder="register.5threalm.in"
                 value={newHost}
                 onChange={(e) => setNewHost(e.target.value)}
                 autoFocus
