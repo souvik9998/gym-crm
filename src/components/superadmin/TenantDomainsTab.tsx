@@ -97,7 +97,7 @@ interface VerifyResponse {
   notes?: string[];
 }
 
-const LOVABLE_HOSTING_IP = "185.158.133.1";
+// (Vercel CNAME target moved below into the DNS-labels block.)
 
 function normalizeHostname(input: string): string {
   const trimmed = input
