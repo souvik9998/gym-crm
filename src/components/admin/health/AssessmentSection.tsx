@@ -15,7 +15,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import type { MemberAssessment } from "./MemberHealthTab";
-import { ASSESSMENT_SECTIONS, getAssessmentFieldMeta, getDefaultAssessmentSettings, getExerciseInputMode, isExerciseAssessmentSection, type AssessmentSettings, type CustomField, type ExerciseFieldValue, type ExerciseInputMode } from "@/components/admin/health/assessmentConfig";
+import { ASSESSMENT_SECTIONS, getAssessmentFieldMeta, getDefaultAssessmentSettings, getExerciseInputMode, isExerciseAssessmentSection, EXERCISE_WEIGHT_UNIT_OPTIONS, type AssessmentSettings, type CustomField, type ExerciseFieldValue, type ExerciseInputMode, type ExerciseWeightUnit } from "@/components/admin/health/assessmentConfig";
 
 interface AssessmentSectionProps {
   assessments: MemberAssessment[];
