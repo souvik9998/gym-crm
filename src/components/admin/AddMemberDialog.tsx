@@ -1255,7 +1255,7 @@ export const AddMemberDialog = ({
         }
 
         const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
-        await supabase.from("pt_subscriptions").insert({
+        const { data: insertedAddPt } = await supabase.from("pt_subscriptions").insert({
           member_id: existingMember.id,
           personal_trainer_id: selectedTrainerId,
           start_date: formatDateOnly(gymStartDate),
@@ -1264,7 +1264,8 @@ export const AddMemberDialog = ({
           total_fee: ptFee,
           status: "active",
           branch_id: currentBranch.id,
-        });
+        }).select("id").maybeSingle();
+        await bindMemberToTimeSlot(insertedAddPt?.id, existingMember.id);
 
         const couponNotePT = adminCoupon.appliedCoupon
           ? ` (Coupon: ${adminCoupon.appliedCoupon.coupon.code}, -₹${couponDiscount})`
