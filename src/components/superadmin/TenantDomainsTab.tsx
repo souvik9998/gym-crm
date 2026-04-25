@@ -87,9 +87,7 @@ interface VerifyResponse {
   hostname: string;
   expected_token: string;
   dns: {
-    a_records: string[] | null;
-    a_matches: boolean;
-    a_proxied?: boolean;
+    txt_host_checked?: string[];
     txt_records: string[] | null;
     txt_matches: boolean;
   };
@@ -97,7 +95,7 @@ interface VerifyResponse {
   notes?: string[];
 }
 
-const LOVABLE_HOSTING_IP = "185.158.133.1";
+// (Vercel CNAME target moved below into the DNS-labels block.)
 
 function normalizeHostname(input: string): string {
   const trimmed = input
@@ -130,11 +128,15 @@ function getDnsLabels(hostname: string) {
   const subPrefix = isSubdomain ? parts.slice(0, -2).join(".") : "";
   return {
     isSubdomain,
-    aHost: isSubdomain ? subPrefix : "@",
-    wwwHost: isSubdomain ? `www.${subPrefix}` : "www",
-    txtHost: isSubdomain ? `_lovable.${subPrefix}` : "_lovable",
+    cnameHost: isSubdomain ? subPrefix : "@",
+    txtHost: isSubdomain ? `_gymkloud.${subPrefix}` : "_gymkloud",
   };
 }
+
+// Where gyms point their CNAME. Cloudflare proxies the connection, and
+// Vercel (where this app is deployed) accepts the host once it's added
+// under Project → Settings → Domains.
+const VERCEL_CNAME_TARGET = "cname.vercel-dns.com";
 
 interface Props {
   tenantId: string;
@@ -302,20 +304,20 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
             <ol className="list-decimal pl-5 space-y-1 text-amber-900 dark:text-amber-200">
               <li>
                 Add the domain here <strong>and</strong> add the TXT record at the gym's DNS
-                provider so we can map the hostname to this tenant.
+                provider (Cloudflare) so we can map the hostname to this tenant.
               </li>
               <li>
-                Open <strong>Lovable Project Settings → Domains → Connect Domain</strong> and
-                add the <em>same hostname</em> there. This is what tells Lovable's hosting layer
-                to serve <strong>this React app</strong> at that URL and to issue the SSL
-                certificate. Without this step the domain will keep loading whoever owned it
-                before (Vercel, parking page, 404, etc.) and the gym's portal link will not work.
+                Add a <strong>CNAME</strong> in Cloudflare pointing the gym's hostname at{" "}
+                <code>cname.vercel-dns.com</code> (orange cloud / proxied is fine — Cloudflare
+                will terminate SSL). Then add the same hostname under{" "}
+                <strong>Vercel Project → Settings → Domains</strong> so Vercel accepts the host
+                header and serves <strong>this app</strong>.
               </li>
             </ol>
             <div className="text-amber-800 dark:text-amber-300">
               For subdomains like <code>register.qoremedia.in</code>, the apex
-              (<code>qoremedia.in</code>) can stay on the gym's existing site — only the
-              subdomain needs to point at Lovable.
+              (<code>qoremedia.in</code>) can stay on the gym's existing site (Vercel landing
+              page, etc.) — only the subdomain needs the CNAME above.
             </div>
           </div>
         </div>
@@ -419,8 +421,7 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
                           <div key={i} className="text-amber-900 dark:text-amber-200">• {err}</div>
                         ))}
                         <div className="text-muted-foreground pt-1">
-                          A: {result.dns.a_records?.join(", ") || "—"} • TXT:{" "}
-                          {result.dns.txt_records?.join(", ") || "—"}
+                          TXT: {result.dns.txt_records?.join(", ") || "—"}
                         </div>
                       </div>
                     )}
@@ -448,56 +449,41 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
                         <p className="text-xs text-muted-foreground">
                           {labels.isSubdomain ? (
                             <>
-                              <strong>Subdomain setup.</strong> 1) Add the TXT record below at
-                              the gym's DNS provider — that's all we need to verify ownership.
-                              2) Add an A record so <code>{labels.aHost}</code> resolves to{" "}
-                              <code>{LOVABLE_HOSTING_IP}</code> (or a CNAME to the Lovable host
-                              if using proxy mode). 3){" "}
-                              <strong>
-                                Open Lovable Project Settings → Domains → Connect Domain and add{" "}
-                                <code>{d.hostname}</code>
-                              </strong>{" "}
-                              so SSL is issued and the React app is actually served at this URL.
+                              <strong>Subdomain setup (Cloudflare + Vercel).</strong> 1) In
+                              Cloudflare DNS, add the <strong>TXT</strong> record below — that's
+                              all we need to verify ownership. 2) Add a <strong>CNAME</strong>{" "}
+                              from <code>{labels.cnameHost}</code> to{" "}
+                              <code>{VERCEL_CNAME_TARGET}</code> (orange cloud / proxied is
+                              fine). 3) In <strong>Vercel → Project → Settings → Domains</strong>,
+                              add <code>{d.hostname}</code> so Vercel routes the host to this
+                              app. 4) Click "Check verification" once DNS has propagated.
                             </>
                           ) : (
                             <>
-                              <strong>Apex domain setup.</strong> 1) Add these DNS records at the
-                              gym's registrar. 2){" "}
-                              <strong>
-                                Open Lovable Project Settings → Domains → Connect Domain and add{" "}
-                                <code>{d.hostname}</code>
-                              </strong>{" "}
-                              so SSL is issued. 3) Click "Check verification" once DNS has
-                              propagated.
+                              <strong>Apex domain setup (Cloudflare + Vercel).</strong> 1) Add
+                              these DNS records in Cloudflare. 2) In{" "}
+                              <strong>Vercel → Project → Settings → Domains</strong>, add{" "}
+                              <code>{d.hostname}</code>. 3) Click "Check verification" once DNS
+                              has propagated. Note: apex CNAMEs are flattened automatically by
+                              Cloudflare, so a CNAME at <code>@</code> works.
                             </>
                           )}
                         </p>
                         <DnsRecordRow
                           type="TXT"
                           name={labels.txtHost}
-                          value={`lovable_verify=${d.verification_token}`}
+                          value={`gymkloud-verify=${d.verification_token}`}
                           onCopy={(v) => copyText(v, "Value")}
                           required
+                          hint="Add at the gym's DNS provider (Cloudflare). Proves ownership of the hostname."
                         />
                         <DnsRecordRow
-                          type="A"
-                          name={labels.aHost}
-                          value={LOVABLE_HOSTING_IP}
+                          type="CNAME"
+                          name={labels.cnameHost}
+                          value={VERCEL_CNAME_TARGET}
                           onCopy={(v) => copyText(v, "Value")}
-                          hint={
-                            labels.isSubdomain
-                              ? "Required so Lovable can serve the app at this subdomain. If using Cloudflare proxy, use a CNAME instead in Lovable's Connect Domain → Advanced."
-                              : "Also add this same record for the www variant if you want www.<domain> to work."
-                          }
+                          hint="Routes traffic to Vercel where this app is hosted. Cloudflare proxy (orange cloud) is supported."
                         />
-                        {!labels.isSubdomain && (
-                          <DnsRecordRow
-                            type="A"
-                            name={labels.wwwHost}
-                            value={LOVABLE_HOSTING_IP}
-                            onCopy={(v) => copyText(v, "Value")}
-                          />
-                        )}
                       </CollapsibleContent>
                     </Collapsible>
 

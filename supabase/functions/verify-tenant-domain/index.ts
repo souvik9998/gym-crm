@@ -1,18 +1,24 @@
 /**
  * verify-tenant-domain
  *
- * Super-admin gated. Performs DNS lookups for a hostname registered
- * in `public.tenant_domains` and marks it verified when the TXT
- * ownership record is present.
+ * Super-admin gated. Performs a DNS TXT lookup for a hostname
+ * registered in `public.tenant_domains` and marks it verified when
+ * the ownership record is present.
  *
- *   TXT  _lovable.<hostname>   contains   lovable_verify=<token>
+ *   TXT  _gymkloud.<hostname>   contains   gymkloud-verify=<token>
  *
- * The A-record check is informational only — many gyms front their
- * domain with Cloudflare/Vercel proxies, or use subdomains like
- * `register.5threalm.in` that legitimately won't resolve to Lovable's
- * raw IP. Ownership (TXT) is what we actually need to safely route a
- * tenant. Pointing the host at Lovable for SSL/serving is configured
- * separately in Lovable Project Settings → Domains.
+ * For backward compatibility we also accept the older
+ *   TXT  _lovable.<hostname>    contains   lovable_verify=<token>
+ * format used by the previous setup flow.
+ *
+ * The actual hosting/SSL is handled by Vercel + Cloudflare:
+ *   - Cloudflare DNS: CNAME <host> → cname.vercel-dns.com (proxy ok)
+ *   - Vercel Project → Settings → Domains: add the hostname
+ *
+ * That routing is intentionally decoupled from this function — DNS
+ * proxies and CNAME flattening make A-record checks unreliable, so we
+ * only assert ownership here. Routing health is observable directly
+ * (the gym opens the URL).
  *
  * Body: { domain_id: string }
  */
@@ -26,47 +32,17 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const LOVABLE_HOSTING_IP = "185.158.133.1";
-
-// Common proxy providers gyms use in front of their domain. When the A
-// record points to one of these, we treat the routing as "intentionally
-// proxied" and surface an info note instead of an error.
-const PROXY_IP_PREFIXES = [
-  "104.16.", "104.17.", "104.18.", "104.19.", "104.20.", "104.21.",
-  "104.22.", "104.23.", "104.24.", "104.25.", "104.26.", "104.27.",
-  "104.28.", "172.64.", "172.65.", "172.66.", "172.67.", "172.68.",
-  "172.69.", "172.70.", "172.71.", // Cloudflare
-  "76.76.21.", "76.76.19.", // Vercel
-  "151.101.", // Fastly
-];
-
-function isProxiedIp(ip: string): boolean {
-  return PROXY_IP_PREFIXES.some((p) => ip.startsWith(p));
-}
-
 interface VerifyResult {
   verified: boolean;
   hostname: string;
   expected_token: string;
   dns: {
-    a_records: string[] | null;
-    a_matches: boolean;
-    a_proxied: boolean;
+    txt_host_checked: string[];
     txt_records: string[] | null;
     txt_matches: boolean;
   };
   errors: string[];
   notes: string[];
-}
-
-async function lookupA(host: string): Promise<string[] | null> {
-  try {
-    const records = await Deno.resolveDns(host, "A");
-    return records as string[];
-  } catch (e) {
-    console.warn(`A lookup failed for ${host}:`, (e as Error).message);
-    return null;
-  }
 }
 
 async function lookupTxt(host: string): Promise<string[] | null> {
@@ -164,51 +140,35 @@ Deno.serve(async (req) => {
     const errors: string[] = [];
     const notes: string[] = [];
 
-    const [aRecords, txtRecords] = await Promise.all([
-      lookupA(hostname),
-      lookupTxt(`_lovable.${hostname}`),
-    ]);
+    // Check both the new (_gymkloud) and legacy (_lovable) TXT hosts so
+    // older verified domains keep working without re-configuration.
+    const txtHosts = [`_gymkloud.${hostname}`, `_lovable.${hostname}`];
+    const lookups = await Promise.all(txtHosts.map((h) => lookupTxt(h)));
 
-    const aMatches = !!aRecords?.includes(LOVABLE_HOSTING_IP);
-    const aProxied =
-      !aMatches && !!aRecords && aRecords.some((ip) => isProxiedIp(ip));
-    const expectedTxt = `lovable_verify=${expectedToken}`;
-    const txtMatches =
-      !!txtRecords && txtRecords.some((r) => r.includes(expectedTxt));
+    const allRecords = lookups
+      .flatMap((r) => r ?? [])
+      .filter((r) => typeof r === "string");
 
-    // TXT is the only hard requirement — it proves ownership.
-    if (!txtRecords) {
+    const expectedNew = `gymkloud-verify=${expectedToken}`;
+    const expectedLegacy = `lovable_verify=${expectedToken}`;
+    const txtMatches = allRecords.some(
+      (r) => r.includes(expectedNew) || r.includes(expectedLegacy)
+    );
+
+    if (allRecords.length === 0) {
       errors.push(
-        `Could not find TXT record at _lovable.${hostname}. Add a TXT record on the host "_lovable" (or "_lovable.<subdomain>") with the verification token below.`
+        `Could not find a TXT record at _gymkloud.${hostname}. In Cloudflare DNS, add a TXT record on the host "_gymkloud" (or "_gymkloud.<subdomain>") with the verification token below.`
       );
     } else if (!txtMatches) {
       errors.push(
-        `TXT record found but does not contain the expected token. Make sure the value is exactly: ${expectedTxt}`
+        `TXT record found but does not contain the expected token. Make sure the value is exactly: ${expectedNew}`
       );
     }
 
-    // A-record is informational. We surface useful notes but never block.
-    if (aRecords && !aMatches) {
-      if (aProxied) {
-        notes.push(
-          `Domain is proxied (got ${aRecords.join(
-            ", "
-          )}). That's fine — make sure SSL/origin is configured in Lovable Project Settings → Domains for ${hostname}.`
-        );
-      } else {
-        notes.push(
-          `Domain currently resolves to ${aRecords.join(
-            ", "
-          )}. For Lovable to serve this hostname directly, point it at ${LOVABLE_HOSTING_IP} (or front it with your existing CDN/proxy and add the same hostname under Lovable Project Settings → Domains for SSL).`
-        );
-      }
-    } else if (!aRecords) {
-      notes.push(
-        `No A record resolved for ${hostname}. Add the hostname under Lovable Project Settings → Domains so SSL is provisioned.`
-      );
-    }
+    notes.push(
+      `Routing reminder: add a CNAME from ${hostname} → cname.vercel-dns.com in Cloudflare, and add ${hostname} under Vercel → Project → Settings → Domains.`
+    );
 
-    // Verification = ownership proven via TXT. Routing/SSL is decoupled.
     const verified = txtMatches;
 
     if (verified && !row.is_verified) {
@@ -223,10 +183,8 @@ Deno.serve(async (req) => {
       hostname,
       expected_token: expectedToken,
       dns: {
-        a_records: aRecords,
-        a_matches: aMatches,
-        a_proxied: aProxied,
-        txt_records: txtRecords,
+        txt_host_checked: txtHosts,
+        txt_records: allRecords.length ? allRecords : null,
         txt_matches: txtMatches,
       },
       errors,
