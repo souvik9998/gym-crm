@@ -17,6 +17,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   UserGroupIcon,
+  UserIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
@@ -444,7 +445,14 @@ export const SimpleAttendanceTab = () => {
               {member.memberName.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{member.memberName}</p>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <p className="text-sm font-medium truncate">{member.memberName}</p>
+                {member.trainerName && (
+                  <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
+                    <UserIcon className="w-2 h-2 mr-0.5" />{member.trainerName}
+                  </Badge>
+                )}
+              </div>
               <p className="text-[10px] text-muted-foreground">{member.memberPhone}</p>
             </div>
           </div>
@@ -866,7 +874,14 @@ export const SimpleAttendanceTab = () => {
                             {member.memberName.charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-medium truncate max-w-[100px]">{member.memberName}</p>
+                            <div className="flex items-center gap-1 min-w-0">
+                              <p className="text-xs font-medium truncate max-w-[100px]">{member.memberName}</p>
+                              {member.trainerName && (
+                                <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
+                                  <UserIcon className="w-2 h-2 mr-0.5" />{member.trainerName}
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-[10px] text-muted-foreground">{member.memberPhone}</p>
                           </div>
                         </div>
