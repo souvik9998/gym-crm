@@ -60,6 +60,12 @@ interface TimeSlotsTabProps {
    * after RLS hides their staff row). Maps staff.id → full_name.
    */
   trainerNameMap?: Record<string, string>;
+  /**
+   * When the parent is still loading the trainers list, we hold off on
+   * resolving slot → trainer names so we never flash "Unknown" placeholders.
+   * The skeleton stays on screen until trainers AND slots are both ready.
+   */
+  trainersLoading?: boolean;
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -72,6 +78,7 @@ export const TimeSlotsTab = ({
   canEditDelete = true,
   canViewMembers = true,
   trainerNameMap,
+  trainersLoading = false,
 }: TimeSlotsTabProps) => {
   const isCompact = useIsTabletOrBelow();
   const { invalidatePtSubscriptions } = useInvalidateQueries();
@@ -179,11 +186,16 @@ export const TimeSlotsTab = ({
         member_count: memberCounts[slot.id] || 0,
       })) as TimeSlot[];
     },
-    enabled: !!currentBranch?.id,
+    enabled: !!currentBranch?.id && !trainersLoading,
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
     placeholderData: (prev) => prev, // keep showing last data while refetching
   });
+
+  // Combined loading flag: show the skeleton until BOTH the trainer list and
+  // the slot list are ready, so we never resolve a slot's trainer to "Unknown"
+  // just because trainers arrived a moment later than slots.
+  const showSkeleton = isLoading || trainersLoading;
 
   // Refresh helper used after mutations — does NOT flip isLoading,
   // so the UI stays in place while data updates.
@@ -447,7 +459,7 @@ export const TimeSlotsTab = ({
             Time Slots
             {/* Subtle background-refresh indicator: shown ONLY when revalidating
                 with cached data already on screen — never causes a layout shift. */}
-            {isFetching && !isLoading && (
+            {isFetching && !showSkeleton && (
               <ArrowPathIcon className="w-3.5 h-3.5 text-muted-foreground animate-spin" aria-label="Refreshing" />
             )}
           </h3>
@@ -461,7 +473,7 @@ export const TimeSlotsTab = ({
       </div>
 
       {/* Loading skeleton */}
-      {isLoading ? (
+      {showSkeleton ? (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
             {Array.from({ length: 4 }).map((_, i) => (
