@@ -130,11 +130,15 @@ function getDnsLabels(hostname: string) {
   const subPrefix = isSubdomain ? parts.slice(0, -2).join(".") : "";
   return {
     isSubdomain,
-    aHost: isSubdomain ? subPrefix : "@",
-    wwwHost: isSubdomain ? `www.${subPrefix}` : "www",
-    txtHost: isSubdomain ? `_lovable.${subPrefix}` : "_lovable",
+    cnameHost: isSubdomain ? subPrefix : "@",
+    txtHost: isSubdomain ? `_gymkloud.${subPrefix}` : "_gymkloud",
   };
 }
+
+// Where gyms point their CNAME. Cloudflare proxies the connection, and
+// Vercel (where this app is deployed) accepts the host once it's added
+// under Project → Settings → Domains.
+const VERCEL_CNAME_TARGET = "cname.vercel-dns.com";
 
 interface Props {
   tenantId: string;
