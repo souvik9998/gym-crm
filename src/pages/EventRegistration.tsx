@@ -335,6 +335,10 @@ export default function EventRegistration() {
       toast.error("Enter a valid 10-digit phone number");
       return;
     }
+    if (!event?.branch_id) {
+      toast.error("Event details still loading. Please try again.");
+      return;
+    }
     const { data: existingReg } = await supabase
       .from("event_registrations")
       .select("id")
@@ -346,16 +350,19 @@ export default function EventRegistration() {
       toast.error("You are already registered for this event");
       return;
     }
-    const { data } = await supabase
-      .from("members")
-      .select("id, name, email")
-      .eq("phone", phone)
-      .eq("branch_id", event?.branch_id)
-      .maybeSingle();
-    if (data) {
-      setName(data.name);
-      setEmail(data.email || "");
-      setExistingMemberId(data.id);
+    // Use secure RPC for public member lookup (RLS-safe for anonymous users)
+    const { data: rpcData, error: rpcError } = await supabase.rpc("check_phone_exists", {
+      phone_number: phone,
+      p_branch_id: event.branch_id,
+    });
+    if (rpcError) {
+      console.error("Member lookup error:", rpcError);
+    }
+    const member = rpcData?.[0];
+    if (member?.member_exists) {
+      setName(member.member_name || "");
+      setEmail(member.member_email || "");
+      setExistingMemberId(member.member_id);
       toast.success("Member found! Details auto-filled.");
     }
     setPhoneChecked(true);
