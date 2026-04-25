@@ -39,7 +39,7 @@ import { StaffBranchSelector } from "./StaffBranchSelector";
 import { StaffBranchAssignmentDialog } from "./StaffBranchAssignmentDialog";
 import { StaffCredentialsSection } from "./StaffCredentialsSection";
 import { StaffInlinePermissions, InlinePermissions, getDefaultPermissions } from "./StaffInlinePermissions";
-import { StaffWhatsAppButton, sendStaffCredentialsWhatsApp } from "./StaffWhatsAppButton";
+import { sendStaffCredentialsWhatsApp } from "./StaffWhatsAppButton";
 import { StaffRoleConversionDialog } from "./StaffRoleConversionDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChangePhoneDialog } from "./ChangePhoneDialog";
