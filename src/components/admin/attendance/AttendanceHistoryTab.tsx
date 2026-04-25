@@ -777,7 +777,14 @@ export const AttendanceHistoryTab = () => {
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between mb-2">
                         <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{m.name}</p>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <p className="text-sm font-medium truncate">{m.name}</p>
+                            {m.trainer && (
+                              <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
+                                <UserIcon className="w-2 h-2 mr-0.5" />{m.trainer}
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-[10px] text-muted-foreground">{m.phone}</p>
                         </div>
                         <Badge className={cn("text-[10px] shrink-0",
@@ -836,7 +843,14 @@ export const AttendanceHistoryTab = () => {
                       return (
                         <tr key={m.id} className="hover:bg-muted/10 transition-colors duration-150">
                           <td className="px-3 py-1.5 sticky left-0 bg-background">
-                            <div className="truncate font-medium text-xs">{m.name}</div>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <div className="truncate font-medium text-xs">{m.name}</div>
+                              {m.trainer && (
+                                <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
+                                  <UserIcon className="w-2 h-2 mr-0.5" />{m.trainer}
+                                </Badge>
+                              )}
+                            </div>
                             <div className="text-[10px] text-muted-foreground">{m.phone}</div>
                           </td>
                           {datesWithData.map(d => {
@@ -897,7 +911,14 @@ export const AttendanceHistoryTab = () => {
                               idx === 0 ? "bg-red-500/20 text-red-600" : idx === 1 ? "bg-red-400/15 text-red-500" : "bg-muted text-muted-foreground"
                             )}>#{idx + 1}</div>
                             <div className="min-w-0">
-                              <p className="text-sm font-semibold truncate">{m.name}</p>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <p className="text-sm font-semibold truncate">{m.name}</p>
+                                {m.trainer && (
+                                  <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
+                                    <UserIcon className="w-2 h-2 mr-0.5" />{m.trainer}
+                                  </Badge>
+                                )}
+                              </div>
                               <p className="text-[10px] text-muted-foreground">{m.phone}</p>
                             </div>
                           </div>
@@ -939,7 +960,14 @@ export const AttendanceHistoryTab = () => {
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="text-[10px] text-muted-foreground w-5 shrink-0">{idx + 1}</span>
                             <div className="min-w-0">
-                              <span className="text-xs font-medium truncate block">{m.name}</span>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-xs font-medium truncate">{m.name}</span>
+                                {m.trainer && (
+                                  <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
+                                    <UserIcon className="w-2 h-2 mr-0.5" />{m.trainer}
+                                  </Badge>
+                                )}
+                              </div>
                               {isMobile && <span className="text-[10px] text-muted-foreground">{m.phone}</span>}
                             </div>
                           </div>
