@@ -30,6 +30,7 @@ import { formatTimeLabel, matchesTimeFilter, type TimeBucket } from "@/component
 import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
 import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
 import { TimePicker12h } from "@/components/ui/time-picker-12h";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type AttendanceStatus = "present" | "absent" | "skipped";
 
@@ -76,6 +77,7 @@ export const SlotAttendanceTab = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [localAttendance, setLocalAttendance] = useState<Map<string, AttendanceStatus>>(new Map());
   const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set());
+  const [confirmMarkAll, setConfirmMarkAll] = useState<AttendanceStatus | null>(null);
 
   const { assignedMemberIds } = useAssignedMemberIds();
   const { data: scopedMembers = [], isLoading: loadingMembers } = useMembersQuery();
@@ -520,13 +522,13 @@ export const SlotAttendanceTab = () => {
             <div className={cn("gap-2", isMobile ? "grid grid-cols-1" : "flex flex-wrap items-center")}>
               <span className="text-xs text-muted-foreground">Quick mark visible:</span>
               <div className={cn("gap-2", isMobile ? "grid grid-cols-3" : "flex flex-wrap items-center") }>
-              <Button variant="outline" size="sm" className="gap-1 border-success/25 text-success hover:bg-success/10 h-10 rounded-xl" onClick={() => markAll("present")}>
+              <Button variant="outline" size="sm" className="gap-1 border-success/25 text-success hover:bg-success/10 h-10 rounded-xl" onClick={() => setConfirmMarkAll("present")}>
                 <CheckBadgeIcon className="h-3.5 w-3.5" /> All Present
               </Button>
-              <Button variant="outline" size="sm" className="gap-1 border-muted-foreground/25 text-foreground hover:bg-muted/40 h-10 rounded-xl" onClick={() => markAll("skipped")}>
+              <Button variant="outline" size="sm" className="gap-1 border-muted-foreground/25 text-foreground hover:bg-muted/40 h-10 rounded-xl" onClick={() => setConfirmMarkAll("skipped")}>
                 <ClockIcon className="h-3.5 w-3.5" /> All Skip
               </Button>
-              <Button variant="outline" size="sm" className="gap-1 border-destructive/25 text-destructive hover:bg-destructive/10 h-10 rounded-xl" onClick={() => markAll("absent")}>
+              <Button variant="outline" size="sm" className="gap-1 border-destructive/25 text-destructive hover:bg-destructive/10 h-10 rounded-xl" onClick={() => setConfirmMarkAll("absent")}>
                 <XCircleIcon className="h-3.5 w-3.5" /> All Absent
               </Button>
               </div>
@@ -652,6 +654,23 @@ export const SlotAttendanceTab = () => {
           )}
         </>
       )}
+      <ConfirmDialog
+        open={confirmMarkAll !== null}
+        onOpenChange={(open) => { if (!open) setConfirmMarkAll(null); }}
+        title={
+          confirmMarkAll === "present" ? "Mark all visible as Present?" :
+          confirmMarkAll === "absent" ? "Mark all visible as Absent?" :
+          "Mark all visible as Skipped?"
+        }
+        description={`This will mark all ${filteredList.length} visible row(s) as ${confirmMarkAll || ""} for ${selectedDate}. Existing entries will be replaced.`}
+        confirmText={
+          confirmMarkAll === "present" ? "Mark All Present" :
+          confirmMarkAll === "absent" ? "Mark All Absent" :
+          "Mark All Skipped"
+        }
+        variant={confirmMarkAll === "absent" ? "destructive" : "default"}
+        onConfirm={() => { if (confirmMarkAll) markAll(confirmMarkAll); }}
+      />
     </div>
   );
 };
