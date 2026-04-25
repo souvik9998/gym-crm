@@ -918,6 +918,8 @@ export const AssignTrainerDialog = ({
               </div>
             </div>
           )}
+          </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
