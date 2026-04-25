@@ -561,26 +561,43 @@ function DnsRecordRow({
   name,
   value,
   onCopy,
+  required,
+  hint,
 }: {
   type: string;
   name: string;
   value: string;
   onCopy: (v: string) => void;
+  required?: boolean;
+  hint?: string;
 }) {
   return (
-    <div className="grid grid-cols-[60px_80px_1fr_auto] gap-2 items-center text-xs bg-muted/40 rounded p-2 font-mono">
-      <Badge variant="outline" className="font-mono">{type}</Badge>
-      <span>{name}</span>
-      <span className="truncate">{value}</span>
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        className="h-7 w-7 p-0"
-        onClick={() => onCopy(value)}
-      >
-        <ClipboardDocumentIcon className="h-3.5 w-3.5" />
-      </Button>
+    <div className="space-y-1">
+      <div className="grid grid-cols-[60px_minmax(80px,140px)_1fr_auto] gap-2 items-center text-xs bg-muted/40 rounded p-2 font-mono">
+        <Badge variant="outline" className="font-mono">{type}</Badge>
+        <span className="truncate">{name}</span>
+        <span className="truncate">{value}</span>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-7 w-7 p-0"
+          onClick={() => onCopy(value)}
+        >
+          <ClipboardDocumentIcon className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      {(required || hint) && (
+        <div className="text-[11px] text-muted-foreground pl-2">
+          {required && (
+            <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+              Required for verification.
+            </span>
+          )}
+          {required && hint ? " " : ""}
+          {hint}
+        </div>
+      )}
     </div>
   );
 }
