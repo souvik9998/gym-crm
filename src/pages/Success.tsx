@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Calendar, Phone, User, IndianRupee, Building2, FileText, Loader2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import PoweredByBadge from "@/components/PoweredByBadge";
+import { BranchLogo } from "@/components/admin/BranchLogo";
 import { supabase } from "@/integrations/supabase/client";
 
 interface SuccessState {
