@@ -128,7 +128,8 @@ export const TimeSlotAnalyticsTab = ({
     });
 
     slots.forEach((slot) => {
-      const entry = bucketMap.get(slot.bucket)!;
+      const entry = bucketMap.get(slot.bucket);
+      if (!entry) return; // slot bucket no longer exists in admin's chip set; skip
       entry.members += slot.member_count;
       entry.slots += 1;
       entry.utilizationTotal += slot.utilization;
@@ -180,7 +181,7 @@ export const TimeSlotAnalyticsTab = ({
       busiestSlots,
       trainerLoad,
     };
-  }, [data]);
+  }, [data, buckets]);
 
   if (isLoading) {
     return (
