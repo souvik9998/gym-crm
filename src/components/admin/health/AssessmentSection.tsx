@@ -852,13 +852,23 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       if (sectionKey && (isExerciseAssessmentSection(sectionKey) || customField?.kind === "exercise")) {
         try {
           const parsed = typeof value === "string" ? JSON.parse(value) as ExerciseFieldValue : value as ExerciseFieldValue;
-          const formatted = parsed.mode === "time"
+          const base = parsed.mode === "time"
             ? `${parsed.time || "—"} ${parsed.unit || "sec"}`
             : parsed.mode === "reps_sets"
               ? `${parsed.reps || "—"} reps × ${parsed.sets || "—"} sets`
               : `${parsed.reps || "—"} reps`;
 
-          items.push({ label: labelMap[key] || key, value: formatted });
+          // Append load suffix if recorded
+          let loadSuffix = "";
+          const wUnit = parsed.weight_unit;
+          const wVal = parsed.weight && String(parsed.weight).trim();
+          if (wUnit === "bodyweight" || wUnit === "band" || wUnit === "machine") {
+            loadSuffix = ` · ${wUnit === "bodyweight" ? "Bodyweight" : wUnit === "band" ? "Band" : "Machine"}`;
+          } else if (wVal && Number(wVal) > 0) {
+            loadSuffix = ` @ ${wVal} ${wUnit || "kg"}`;
+          }
+
+          items.push({ label: labelMap[key] || key, value: `${base}${loadSuffix}` });
           return;
         } catch {
           // fall through to raw rendering
