@@ -162,6 +162,21 @@ export const AttendanceHistoryTab = () => {
   const resolveSlotId = (r: any): string | null =>
     r.time_slot_id || (r.member_id ? memberSlotMap[r.member_id] || null : null);
 
+  // Map slot_id → trainer_name for badge rendering
+  const slotTrainerMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const s of allSlots) {
+      if (s.id && s.trainer_name) m[s.id] = s.trainer_name;
+    }
+    return m;
+  }, [allSlots]);
+
+  const resolveTrainerName = (r: any): string | null => {
+    const sid = resolveSlotId(r);
+    if (!sid) return null;
+    return slotTrainerMap[sid] || null;
+  };
+
   // Filter records by selected trainer/slot/time-of-day bucket
   const monthRecords = useMemo(() => {
     let records = rawMonthRecords;
@@ -202,11 +217,16 @@ export const AttendanceHistoryTab = () => {
   }, [monthRecords]);
 
   const memberStats = useMemo(() => {
-    const map: Record<string, { name: string; phone: string; present: number; skipped: number; absent: number; total: number; dates: Record<string, string> }> = {};
+    const map: Record<string, { name: string; phone: string; trainer: string | null; present: number; skipped: number; absent: number; total: number; dates: Record<string, string> }> = {};
     monthRecords.forEach((r: any) => {
       const id = r.member_id;
       if (!id) return;
-      if (!map[id]) map[id] = { name: r.members?.name || "Unknown", phone: r.members?.phone || "", present: 0, skipped: 0, absent: 0, total: 0, dates: {} };
+      if (!map[id]) map[id] = { name: r.members?.name || "Unknown", phone: r.members?.phone || "", trainer: null, present: 0, skipped: 0, absent: 0, total: 0, dates: {} };
+      // Capture the first non-null trainer name we see for this member
+      if (!map[id].trainer) {
+        const tn = resolveTrainerName(r);
+        if (tn) map[id].trainer = tn;
+      }
       map[id].total++;
       if (r.status === "present") map[id].present++;
       else if (r.status === "late" || r.status === "skipped") map[id].skipped++;
@@ -215,7 +235,8 @@ export const AttendanceHistoryTab = () => {
       map[id].dates[r.date] = r.status === "late" ? "skipped" : r.status;
     });
     return map;
-  }, [monthRecords]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthRecords, slotTrainerMap, memberSlotMap]);
 
   const memberRanking = useMemo(() => {
     const arr = Object.entries(memberStats).map(([id, s]) => ({ id, ...s, absentRate: s.total > 0 ? s.absent / s.total : 0 }));
@@ -701,7 +722,17 @@ export const AttendanceHistoryTab = () => {
                             isPresent ? "bg-green-500" : isSkipped ? "bg-slate-500" : "bg-red-500"
                           )} />
                           <div className="min-w-0">
-                            <span className="text-xs font-medium truncate block">{r.members?.name || "—"}</span>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-xs font-medium truncate">{r.members?.name || "—"}</span>
+                              {(() => {
+                                const tn = resolveTrainerName(r);
+                                return tn ? (
+                                  <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
+                                    <UserIcon className="w-2 h-2 mr-0.5" />{tn}
+                                  </Badge>
+                                ) : null;
+                              })()}
+                            </div>
                             {isMobile && <span className="text-[10px] text-muted-foreground">{r.members?.phone || ""}</span>}
                           </div>
                         </div>
@@ -746,7 +777,14 @@ export const AttendanceHistoryTab = () => {
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between mb-2">
                         <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{m.name}</p>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <p className="text-sm font-medium truncate">{m.name}</p>
+                            {m.trainer && (
+                              <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
+                                <UserIcon className="w-2 h-2 mr-0.5" />{m.trainer}
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-[10px] text-muted-foreground">{m.phone}</p>
                         </div>
                         <Badge className={cn("text-[10px] shrink-0",
@@ -805,7 +843,14 @@ export const AttendanceHistoryTab = () => {
                       return (
                         <tr key={m.id} className="hover:bg-muted/10 transition-colors duration-150">
                           <td className="px-3 py-1.5 sticky left-0 bg-background">
-                            <div className="truncate font-medium text-xs">{m.name}</div>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <div className="truncate font-medium text-xs">{m.name}</div>
+                              {m.trainer && (
+                                <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
+                                  <UserIcon className="w-2 h-2 mr-0.5" />{m.trainer}
+                                </Badge>
+                              )}
+                            </div>
                             <div className="text-[10px] text-muted-foreground">{m.phone}</div>
                           </td>
                           {datesWithData.map(d => {
@@ -866,7 +911,14 @@ export const AttendanceHistoryTab = () => {
                               idx === 0 ? "bg-red-500/20 text-red-600" : idx === 1 ? "bg-red-400/15 text-red-500" : "bg-muted text-muted-foreground"
                             )}>#{idx + 1}</div>
                             <div className="min-w-0">
-                              <p className="text-sm font-semibold truncate">{m.name}</p>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <p className="text-sm font-semibold truncate">{m.name}</p>
+                                {m.trainer && (
+                                  <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
+                                    <UserIcon className="w-2 h-2 mr-0.5" />{m.trainer}
+                                  </Badge>
+                                )}
+                              </div>
                               <p className="text-[10px] text-muted-foreground">{m.phone}</p>
                             </div>
                           </div>
@@ -908,7 +960,14 @@ export const AttendanceHistoryTab = () => {
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="text-[10px] text-muted-foreground w-5 shrink-0">{idx + 1}</span>
                             <div className="min-w-0">
-                              <span className="text-xs font-medium truncate block">{m.name}</span>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-xs font-medium truncate">{m.name}</span>
+                                {m.trainer && (
+                                  <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
+                                    <UserIcon className="w-2 h-2 mr-0.5" />{m.trainer}
+                                  </Badge>
+                                )}
+                              </div>
                               {isMobile && <span className="text-[10px] text-muted-foreground">{m.phone}</span>}
                             </div>
                           </div>

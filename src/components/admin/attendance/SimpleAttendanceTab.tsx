@@ -31,6 +31,7 @@ import { useMembersQuery } from "@/hooks/queries/useMembers";
 import { matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
 import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
 import { TimePicker12h } from "@/components/ui/time-picker-12h";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type AttendanceStatus = "present" | "absent" | "skipped";
 
@@ -184,6 +185,7 @@ export const SimpleAttendanceTab = () => {
   const [customEnd, setCustomEnd] = useState("10:00");
   const { buckets, options: bucketOptions } = useTimeBuckets();
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "all">("all");
+  const [confirmMarkAll, setConfirmMarkAll] = useState<AttendanceStatus | null>(null);
   const { assignedMemberIds } = useAssignedMemberIds();
   const { allSlots } = useAttendanceFilters();
   const { data: scopedMembers = [], isLoading: loadingMembers } = useMembersQuery();
@@ -774,10 +776,10 @@ export const SimpleAttendanceTab = () => {
         </div>
         {!isFutureDate && stats.total > 0 && (
           <div className="grid grid-cols-2 gap-2 shrink-0 sm:flex sm:items-center">
-            <Button variant="outline" size="sm" className="gap-1 h-10 rounded-xl px-3 text-xs text-green-700 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 active:scale-95 transition-transform" onClick={() => markAll("present")}>
+            <Button variant="outline" size="sm" className="gap-1 h-10 rounded-xl px-3 text-xs text-green-700 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 active:scale-95 transition-transform" onClick={() => setConfirmMarkAll("present")}>
               <CheckCircleIcon className="w-3.5 h-3.5" /> <span>All P</span>
             </Button>
-            <Button variant="outline" size="sm" className="gap-1 h-10 rounded-xl px-3 text-xs text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 active:scale-95 transition-transform" onClick={() => markAll("absent")}>
+            <Button variant="outline" size="sm" className="gap-1 h-10 rounded-xl px-3 text-xs text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 active:scale-95 transition-transform" onClick={() => setConfirmMarkAll("absent")}>
               <XCircleIcon className="w-3.5 h-3.5" /> <span>All A</span>
             </Button>
           </div>
@@ -943,6 +945,15 @@ export const SimpleAttendanceTab = () => {
         </div>
       )}
     </div>
+    <ConfirmDialog
+      open={confirmMarkAll !== null}
+      onOpenChange={(open) => { if (!open) setConfirmMarkAll(null); }}
+      title={confirmMarkAll === "present" ? "Mark all as Present?" : "Mark all as Absent?"}
+      description={`This will mark all ${filteredList.length} visible member(s) as ${confirmMarkAll === "present" ? "Present" : "Absent"} for ${selectedDate}. Existing entries for these members on this date will be replaced.`}
+      confirmText={confirmMarkAll === "present" ? "Mark All Present" : "Mark All Absent"}
+      variant={confirmMarkAll === "absent" ? "destructive" : "default"}
+      onConfirm={() => { if (confirmMarkAll) markAll(confirmMarkAll); }}
+    />
     </TooltipProvider>
   );
 };
