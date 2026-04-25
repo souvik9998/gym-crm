@@ -1395,6 +1395,7 @@ export const AddMemberDialog = ({
     setDateOfBirth(undefined); setSelectedPackageId(""); setMonthlyFee(0);
     setJoiningFee(0); setWantsPT(false); setSelectedTrainerId("");
     setPtMonths(1); setPtFee(0); setCurrentStep(1); setPaymentMode("cash");
+    setTrainerTimeSlots([]); setSelectedTimeSlotId("");
     setExistingMember(null); setSelectedAction(null); setIsCheckingPhone(false);
     setEmail(""); setOccupation("");
     setBloodGroup(""); setHeightCm(""); setWeightKg(""); setMedicalConditions(""); setAllergies("");
