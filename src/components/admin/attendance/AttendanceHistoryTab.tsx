@@ -700,19 +700,68 @@ export const AttendanceHistoryTab = () => {
 
           {/* Day Detail */}
           {selectedDate && (
-            <Card className="border border-border/40 shadow-sm animate-fade-in">
-              <div className="px-3 py-2 border-b border-border/30 flex items-center justify-between">
+            <Card className="border border-border/40 shadow-sm animate-fade-in overflow-hidden">
+              {/* Header — date + Today chip */}
+              <div className="px-3 py-2.5 border-b border-border/30 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <CalendarDaysIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                   <h4 className="text-xs font-semibold truncate">{formatDateDisplay(selectedDate)}</h4>
                   {selectedDate === today && <Badge className="bg-primary/10 text-primary border-primary/20 text-[9px] py-0 h-4">Today</Badge>}
                 </div>
-                <div className="flex items-center gap-1.5 text-[10px] shrink-0">
-                  <span className="text-green-600 font-medium">{selectedStats.present}P</span>
-                  <span className="text-slate-600 dark:text-slate-300 font-medium">{selectedStats.skipped}S</span>
-                  <span className="text-red-500 font-medium">{selectedStats.absent}A</span>
-                </div>
+                <span className="text-[10px] text-muted-foreground shrink-0">
+                  {selectedStats.total} {selectedStats.total === 1 ? "record" : "records"}
+                </span>
               </div>
+
+              {/* Status filter chips — clearer than P/S/A counts and acts as a quick filter */}
+              {selectedStats.total > 0 && (
+                <div className="px-3 pt-2.5 pb-2 border-b border-border/20">
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {([
+                      { key: "all", label: "All", count: selectedStats.total,
+                        active: "bg-foreground text-background border-foreground",
+                        idle: "border-border/60 hover:border-foreground/40 text-foreground",
+                        dot: "bg-foreground/70" },
+                      { key: "present", label: "Present", count: selectedStats.present,
+                        active: "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/40 ring-1 ring-green-500/30",
+                        idle: "border-border/60 hover:border-green-500/40 hover:bg-green-500/5 text-foreground",
+                        dot: "bg-green-500" },
+                      { key: "skipped", label: "Skipped", count: selectedStats.skipped,
+                        active: "bg-slate-500/20 text-slate-700 dark:text-slate-200 border-slate-500/40 ring-1 ring-slate-500/30",
+                        idle: "border-border/60 hover:border-slate-500/40 hover:bg-slate-500/5 text-foreground",
+                        dot: "bg-slate-500" },
+                      { key: "absent", label: "Absent", count: selectedStats.absent,
+                        active: "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/40 ring-1 ring-red-500/30",
+                        idle: "border-border/60 hover:border-red-500/40 hover:bg-red-500/5 text-foreground",
+                        dot: "bg-red-500" },
+                    ] as const).map((opt) => {
+                      const isActive = dayStatusFilter === opt.key;
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setDayStatusFilter(opt.key as typeof dayStatusFilter)}
+                          className={cn(
+                            "group relative flex flex-col items-center justify-center gap-0.5 rounded-lg border px-2 py-1.5 transition-all duration-200",
+                            "active:scale-95 hover:-translate-y-0.5",
+                            isActive ? `${opt.active} shadow-sm` : opt.idle
+                          )}
+                          aria-pressed={isActive}
+                        >
+                          <div className="flex items-center gap-1">
+                            <span className={cn("w-1.5 h-1.5 rounded-full transition-transform", opt.dot, isActive && "scale-125")} />
+                            <span className="text-[10px] font-semibold tabular-nums">{opt.count}</span>
+                          </div>
+                          <span className={cn("text-[9px] uppercase tracking-wide font-medium leading-none",
+                            isActive ? "" : "text-muted-foreground")}>
+                            {opt.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {selectedStats.total > 0 && (
                 <div className="px-3 py-1.5 border-b border-border/20">
@@ -724,18 +773,32 @@ export const AttendanceHistoryTab = () => {
               )}
 
               <div className="max-h-[350px] overflow-y-auto">
-                {selectedRecords.length === 0 ? (
-                  <div className="py-6 text-center text-muted-foreground text-xs">No records.</div>
+                {selectedStats.total === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground text-xs animate-fade-in">
+                    <CalendarDaysIcon className="w-6 h-6 mx-auto mb-1.5 opacity-40" />
+                    No records for this day.
+                  </div>
+                ) : selectedRecords.length === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground text-xs animate-fade-in">
+                    No {dayStatusFilter !== "all" ? dayStatusFilter : ""} records match your filters.
+                    <button
+                      type="button"
+                      onClick={() => { setDayStatusFilter("all"); setSearch(""); }}
+                      className="block mx-auto mt-2 text-primary hover:underline text-[11px] font-medium"
+                    >
+                      Clear filters
+                    </button>
+                  </div>
                 ) : (
                   <div className="divide-y divide-border/20">
                     {selectedRecords.map((r: any, idx: number) => {
                       const isSkipped = r.status === "late" || r.status === "skipped";
                       const isPresent = r.status === "present";
                       return (
-                      <div key={r.id} className="flex items-center justify-between px-3 py-2 hover:bg-muted/10 animate-fade-in"
+                      <div key={r.id} className="flex items-center justify-between px-3 py-2 hover:bg-muted/10 transition-colors animate-fade-in"
                         style={{ animationDelay: `${Math.min(idx * 20, 200)}ms` }}>
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className={cn("w-1.5 h-1.5 rounded-full shrink-0",
+                          <div className={cn("w-1.5 h-1.5 rounded-full shrink-0 transition-transform group-hover:scale-125",
                             isPresent ? "bg-green-500" : isSkipped ? "bg-slate-500" : "bg-red-500"
                           )} />
                           <div className="min-w-0">
@@ -755,12 +818,12 @@ export const AttendanceHistoryTab = () => {
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {!isMobile && <span className="text-[10px] text-muted-foreground">{r.members?.phone || ""}</span>}
-                          <Badge className={cn("text-[9px] px-1.5",
+                          <Badge className={cn("text-[9px] px-1.5 transition-transform hover:scale-105",
                             isPresent ? "bg-green-500/10 text-green-600 border-green-200" :
                             isSkipped ? "bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-300/40" :
                             "bg-red-500/10 text-red-500 border-red-200"
                           )}>
-                            {isPresent ? "P" : isSkipped ? "S" : "A"}
+                            {isPresent ? "Present" : isSkipped ? "Skipped" : "Absent"}
                           </Badge>
                         </div>
                       </div>
