@@ -30,6 +30,7 @@ import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdow
 import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
 import { TimePicker12h } from "@/components/ui/time-picker-12h";
 import { matchesTimeFilter, type TimeBucket } from "@/components/admin/staff/timeslots/timeSlotUtils";
+import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
 
 function getMonthDates(year: number, month: number): (string | null)[][] {
   const first = new Date(year, month, 1);
