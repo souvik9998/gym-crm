@@ -101,6 +101,13 @@ export const AssignTrainerDialog = ({
     return d.toISOString().split("T")[0];
   };
 
+  // True if member's current PT already runs through (or beyond) the
+  // membership end date — there's nothing to extend in that case.
+  const isPtFullyCoveringMembership = useMemo(() => {
+    if (!isExtendMode || !existingPtEndDate || !membershipEndDate) return false;
+    return new Date(existingPtEndDate) >= new Date(membershipEndDate);
+  }, [isExtendMode, existingPtEndDate, membershipEndDate]);
+
   useEffect(() => {
     if (open) {
       fetchTrainers();
@@ -108,7 +115,7 @@ export const AssignTrainerDialog = ({
         const extStart = computeExtendStart(existingPtEndDate);
         setStartDate(extStart);
         setEndDate(membershipEndDate || extStart);
-        // Lock trainer to existing PT trainer
+        // Default trainer = existing PT trainer (admin can change to any other)
         if (existingTrainer?.id) {
           setSelectedTrainerId(existingTrainer.id);
           setMonthlyFee(existingTrainer.monthly_fee.toString());
