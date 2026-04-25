@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MembersAttendanceTab } from "@/components/admin/attendance/MembersAttendanceTab";
 import { StaffAttendanceTab } from "@/components/admin/attendance/StaffAttendanceTab";
+import { StaffManualAttendanceTab } from "@/components/admin/attendance/StaffManualAttendanceTab";
 import { AttendanceInsightsTab } from "@/components/admin/attendance/AttendanceInsightsTab";
 import { BiometricDevicesTab } from "@/components/admin/attendance/BiometricDevicesTab";
 import { SimpleAttendanceTab } from "@/components/admin/attendance/SimpleAttendanceTab";
