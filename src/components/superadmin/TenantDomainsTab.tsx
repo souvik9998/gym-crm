@@ -308,6 +308,7 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
                 const branch = d.branch_id ? branchMap.get(d.branch_id) : null;
                 const result = verifyResults[d.id];
                 const expanded = expandedId === d.id;
+                const labels = getDnsLabels(d.hostname);
                 return (
                   <div
                     key={d.id}
@@ -334,6 +335,9 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
                             </Badge>
                           )}
                           {d.is_primary && <Badge variant="secondary">Primary</Badge>}
+                          {labels.isSubdomain && (
+                            <Badge variant="outline" className="text-xs">Subdomain</Badge>
+                          )}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {branch ? `Branch: ${branch.name}` : "All branches (default)"}
@@ -382,7 +386,7 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
                       </div>
                     </div>
 
-                    {result && !result.verified && (
+                    {result && result.errors.length > 0 && (
                       <div className="text-xs bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded p-2 space-y-1">
                         {result.errors.map((err, i) => (
                           <div key={i} className="text-amber-900 dark:text-amber-200">• {err}</div>
@@ -391,6 +395,14 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
                           A: {result.dns.a_records?.join(", ") || "—"} • TXT:{" "}
                           {result.dns.txt_records?.join(", ") || "—"}
                         </div>
+                      </div>
+                    )}
+
+                    {result && result.notes && result.notes.length > 0 && (
+                      <div className="text-xs bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded p-2 space-y-1">
+                        {result.notes.map((note, i) => (
+                          <div key={i} className="text-blue-900 dark:text-blue-200">ℹ {note}</div>
+                        ))}
                       </div>
                     )}
 
@@ -407,28 +419,51 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
                       </CollapsibleTrigger>
                       <CollapsibleContent className="space-y-3 pt-2">
                         <p className="text-xs text-muted-foreground">
-                          Ask the gym owner to add these records at their domain registrar,
-                          then add this same domain in <strong>Lovable Project Settings → Domains</strong>{" "}
-                          so SSL is provisioned. Click "Check verification" once DNS has propagated.
+                          {labels.isSubdomain ? (
+                            <>
+                              <strong>Subdomain setup.</strong> Add the TXT record below at the gym's
+                              DNS provider — that's all we need to verify ownership. The A record
+                              should point <code>{labels.aHost}</code> at wherever you want
+                              <code> {d.hostname}</code> to be served from (Lovable's IP for direct
+                              hosting, or keep the existing proxy/CDN). Then add{" "}
+                              <code>{d.hostname}</code> under{" "}
+                              <strong>Lovable Project Settings → Domains</strong> so SSL is issued.
+                            </>
+                          ) : (
+                            <>
+                              <strong>Apex domain setup.</strong> Add these records at the gym's DNS
+                              provider, then add <code>{d.hostname}</code> under{" "}
+                              <strong>Lovable Project Settings → Domains</strong> so SSL is issued.
+                              Click "Check verification" once DNS has propagated.
+                            </>
+                          )}
                         </p>
                         <DnsRecordRow
-                          type="A"
-                          name="@"
-                          value={LOVABLE_HOSTING_IP}
-                          onCopy={(v) => copyText(v, "Value")}
-                        />
-                        <DnsRecordRow
-                          type="A"
-                          name="www"
-                          value={LOVABLE_HOSTING_IP}
-                          onCopy={(v) => copyText(v, "Value")}
-                        />
-                        <DnsRecordRow
                           type="TXT"
-                          name="_lovable"
+                          name={labels.txtHost}
                           value={`lovable_verify=${d.verification_token}`}
                           onCopy={(v) => copyText(v, "Value")}
+                          required
                         />
+                        <DnsRecordRow
+                          type="A"
+                          name={labels.aHost}
+                          value={LOVABLE_HOSTING_IP}
+                          onCopy={(v) => copyText(v, "Value")}
+                          hint={
+                            labels.isSubdomain
+                              ? "Or keep your existing proxy (Cloudflare, etc.) — verification only needs the TXT record."
+                              : undefined
+                          }
+                        />
+                        {!labels.isSubdomain && (
+                          <DnsRecordRow
+                            type="A"
+                            name={labels.wwwHost}
+                            value={LOVABLE_HOSTING_IP}
+                            onCopy={(v) => copyText(v, "Value")}
+                          />
+                        )}
                       </CollapsibleContent>
                     </Collapsible>
 
