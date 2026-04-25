@@ -515,7 +515,11 @@ export const TimeBucketsSettings = () => {
       {/* Sticky save bar */}
       <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
         <p className="text-xs text-muted-foreground">
-          {isDirty ? (
+          {hasIssues ? (
+            <span className="text-destructive font-medium">
+              Fix the highlighted chips before saving
+            </span>
+          ) : isDirty ? (
             <span className="text-warning font-medium">Unsaved changes</span>
           ) : (
             <>All changes saved</>
@@ -524,7 +528,7 @@ export const TimeBucketsSettings = () => {
         <Button
           type="button"
           onClick={handleSave}
-          disabled={!isDirty || isSaving}
+          disabled={!isDirty || isSaving || hasIssues}
           className="min-w-[140px]"
         >
           {isSaving ? (
