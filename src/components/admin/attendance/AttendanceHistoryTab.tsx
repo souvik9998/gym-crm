@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
-import { exportToExcel } from "@/utils/exportToExcel";
+import { exportToExcel, exportToExcelMultiSheet } from "@/utils/exportToExcel";
 import { toast } from "sonner";
 import {
   MagnifyingGlassIcon,
@@ -302,51 +302,74 @@ export const AttendanceHistoryTab = () => {
       );
       const trainerLabelMap = new Map(allSlots.map((slot) => [slot.id, slot.trainer_name || "-"]));
 
-      const exportData = [...exportRecords]
-        .sort((a: any, b: any) => {
-          if (a.date !== b.date) return a.date.localeCompare(b.date);
-          const aName = a.members?.name || "";
-          const bName = b.members?.name || "";
-          return aName.localeCompare(bName);
-        })
-        .map((record: any) => ({
-          Date: new Date(record.date + "T00:00:00").toLocaleDateString("en-IN", {
+      const sortedRecords = [...exportRecords].sort((a: any, b: any) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        const aName = a.members?.name || "";
+        const bName = b.members?.name || "";
+        return aName.localeCompare(bName);
+      });
+
+      const formatRow = (record: any) => ({
+        Date: new Date(record.date + "T00:00:00").toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }),
+        Member: record.members?.name || "-",
+        Phone: record.members?.phone || "-",
+        Status:
+          record.status === "present"
+            ? "Present"
+            : record.status === "skipped"
+              ? "Skipped"
+              : record.status === "late"
+                ? "Late"
+                : "Absent",
+        Trainer: record.time_slot_id ? trainerLabelMap.get(record.time_slot_id) || "-" : "-",
+        "Time Slot": record.time_slot_id ? slotLabelMap.get(record.time_slot_id) || "-" : "-",
+        "Marked Via": record.marked_by_type || "-",
+        "Created At": record.created_at
+          ? new Date(record.created_at).toLocaleString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "-",
+      });
+
+      // Group records by date — one sheet per date, sheet named with the date.
+      const groupedByDate = new Map<string, any[]>();
+      sortedRecords.forEach((record: any) => {
+        const dateKey = record.date;
+        if (!groupedByDate.has(dateKey)) groupedByDate.set(dateKey, []);
+        groupedByDate.get(dateKey)!.push(record);
+      });
+
+      const sheets = Array.from(groupedByDate.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([dateKey, records]) => {
+          const sheetName = new Date(dateKey + "T00:00:00").toLocaleDateString("en-IN", {
             day: "2-digit",
             month: "short",
             year: "numeric",
-          }),
-          Member: record.members?.name || "-",
-          Phone: record.members?.phone || "-",
-          Status:
-            record.status === "present"
-              ? "Present"
-              : record.status === "skipped"
-                ? "Skipped"
-                : record.status === "late"
-                  ? "Late"
-                  : "Absent",
-          Trainer: record.time_slot_id ? trainerLabelMap.get(record.time_slot_id) || "-" : "-",
-          "Time Slot": record.time_slot_id ? slotLabelMap.get(record.time_slot_id) || "-" : "-",
-          "Marked Via": record.marked_by_type || "-",
-          "Created At": record.created_at
-            ? new Date(record.created_at).toLocaleString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "-",
-        }));
+          });
+          return {
+            name: sheetName,
+            data: records.map(formatRow),
+          };
+        });
 
-      exportToExcel(
-        exportData,
-        `attendance_history_${exportPeriod}_${startDate}_to_${endDate}`,
-        "Attendance History"
+      exportToExcelMultiSheet(
+        sheets,
+        `attendance_history_${exportPeriod}_${startDate}_to_${endDate}`
       );
 
+      const totalRecords = sortedRecords.length;
+
       toast.success("Export successful", {
-        description: `Exported ${exportData.length} attendance record(s) from ${startDate} to ${endDate}.`,
+        description: `Exported ${totalRecords} attendance record(s) across ${sheets.length} date sheet(s).`,
       });
     } catch (error: any) {
       toast.error("Export failed", {
