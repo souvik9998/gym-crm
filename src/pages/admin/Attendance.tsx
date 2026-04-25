@@ -63,7 +63,7 @@ const Attendance = () => {
     { value: "checkins", icon: UsersIcon, label: isMobile ? "QR" : "QR Check-ins", visible: canQR },
     { value: "analytics", icon: ExclamationTriangleIcon, label: isMobile ? "Absent" : "Absent Analytics", visible: true },
     { value: "staff", icon: UserGroupIcon, label: "Staff", visible: true },
-    { value: "insights", icon: ChartBarIcon, label: "Insights", visible: true },
+    { value: "insights", icon: ChartBarIcon, label: "Insights", visible: canQR || canBiometric },
     { value: "biometric", icon: FingerPrintIcon, label: isMobile ? "Bio" : "Biometric", visible: canBiometric },
   ];
 
@@ -124,9 +124,11 @@ const Attendance = () => {
         <TabsContent value="staff" className="mt-0 animate-fade-in">
           <StaffAttendanceTab />
         </TabsContent>
-        <TabsContent value="insights" className="mt-0 animate-fade-in">
-          <AttendanceInsightsTab />
-        </TabsContent>
+        {(canQR || canBiometric) && (
+          <TabsContent value="insights" className="mt-0 animate-fade-in">
+            <AttendanceInsightsTab />
+          </TabsContent>
+        )}
         {canBiometric && (
           <TabsContent value="biometric" className="mt-0 animate-fade-in">
             <BiometricDevicesTab />
