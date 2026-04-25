@@ -33,6 +33,7 @@ import {
   LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
+import { BranchLogo } from "./BranchLogo";
 
 export const BranchSelector = () => {
   const { branches, allBranches, currentBranch, setCurrentBranch, refreshBranches, isStaffRestricted, tenantId } = useBranch();
@@ -226,9 +227,18 @@ export const BranchSelector = () => {
   if (isStaffRestricted && !isAdmin && displayBranches.length === 1) {
     return (
       <div className="flex items-center gap-2 h-10 px-3 border border-border/50 rounded-md bg-muted/30">
-        <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <BuildingOffice2Icon className="w-4 h-4 text-primary" />
-        </div>
+        {currentBranch?.logo_url || displayBranches[0]?.logo_url ? (
+          <BranchLogo
+            logoUrl={currentBranch?.logo_url ?? displayBranches[0]?.logo_url}
+            name={currentBranch?.name || displayBranches[0]?.name || "Branch"}
+            size="xs"
+            className="w-6 h-6 rounded-md"
+          />
+        ) : (
+          <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <BuildingOffice2Icon className="w-4 h-4 text-primary" />
+          </div>
+        )}
         <div className="flex flex-col items-start flex-1 min-w-0">
           <span className="text-xs text-muted-foreground font-normal leading-none">
             Branch
@@ -350,9 +360,18 @@ export const BranchSelector = () => {
             size="sm"
             className="gap-2 h-10 px-3 hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all w-[200px] justify-start"
           >
-            <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <BuildingOffice2Icon className="w-4 h-4 text-primary" />
-            </div>
+            {currentBranch?.logo_url ? (
+              <BranchLogo
+                logoUrl={currentBranch.logo_url}
+                name={currentBranch.name}
+                size="xs"
+                className="w-6 h-6 rounded-md"
+              />
+            ) : (
+              <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <BuildingOffice2Icon className="w-4 h-4 text-primary" />
+              </div>
+            )}
             <div className="flex flex-col items-start flex-1 min-w-0">
               <span className="text-xs text-muted-foreground font-normal leading-none">
                 Branch
@@ -382,9 +401,12 @@ export const BranchSelector = () => {
               }}
               className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-muted focus:bg-muted transition-colors"
             >
-              <div className="w-8 h-8 rounded-md bg-foreground flex items-center justify-center text-sm font-semibold text-background flex-shrink-0">
-                {branch.name.charAt(0).toUpperCase()}
-              </div>
+              <BranchLogo
+                logoUrl={branch.logo_url}
+                name={branch.name}
+                size="sm"
+                className="w-8 h-8 rounded-md"
+              />
               <div className="flex flex-col flex-1 min-w-0">
                 <span className="font-medium text-foreground truncate text-sm">{branch.name}</span>
                 {branch.address && (

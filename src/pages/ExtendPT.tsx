@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Dumbbell, Calendar, IndianRupee, User, Check, AlertCircle, Clock } from "lucide-react";
+import { BranchLogo } from "@/components/admin/BranchLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
@@ -48,7 +49,7 @@ const ExtendPT = () => {
   const [selectedOption, setSelectedOption] = useState<PTDurationOption | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [existingPTEndDate, setExistingPTEndDate] = useState<Date | null>(null);
-  const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(null);
+  const [branchInfo, setBranchInfo] = useState<{ id: string; name: string; logo_url?: string | null } | null>(null);
   const [taxRate, setTaxRate] = useState(0);
   const [taxEnabled, setTaxEnabled] = useState(false);
 
@@ -77,7 +78,7 @@ const ExtendPT = () => {
         if (cancelled) return;
 
         if (branch) {
-          setBranchInfo({ id: branch.id, name: stateBranchName || branch.name });
+          setBranchInfo({ id: branch.id, name: stateBranchName || branch.name, logo_url: branch.logo_url ?? null });
           if (branch.allowSelfSelectTrainer === false) {
             toast.error("Personal training selection is managed by admin");
             navigate(fallback, { replace: true });
@@ -419,6 +420,7 @@ const ExtendPT = () => {
             trainerName: selectedTrainer.name,
             isPTExtension: true,
             branchName: branchInfo?.name,
+            branchLogoUrl: branchInfo?.logo_url ?? null,
           },
         });
       },
@@ -455,7 +457,11 @@ const ExtendPT = () => {
           </Button>
         </div>
         <div className="flex items-center justify-center gap-2 mt-4">
-          <Dumbbell className="w-6 h-6 text-accent" />
+          {branchInfo ? (
+            <BranchLogo logoUrl={branchInfo.logo_url} name={branchInfo.name} size="sm" />
+          ) : (
+            <Dumbbell className="w-6 h-6 text-accent" />
+          )}
           <span className="text-xl font-semibold text-foreground">Extend Personal Training</span>
         </div>
       </header>

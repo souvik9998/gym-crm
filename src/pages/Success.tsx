@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Calendar, Phone, User, IndianRupee, Building2, FileText, Loader2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import PoweredByBadge from "@/components/PoweredByBadge";
+import { BranchLogo } from "@/components/admin/BranchLogo";
 import { supabase } from "@/integrations/supabase/client";
 
 interface SuccessState {
@@ -14,6 +15,7 @@ interface SuccessState {
   endDate: string;
   isNewMember: boolean;
   branchName?: string;
+  branchLogoUrl?: string | null;
   paymentId?: string;
   branchId?: string;
 }
@@ -159,9 +161,13 @@ const Success = () => {
           
           {state.branchName && (
             <div className="flex items-center justify-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Building2 className="w-4 h-4 text-primary" />
-              </div>
+              {state.branchLogoUrl ? (
+                <BranchLogo logoUrl={state.branchLogoUrl} name={state.branchName} size="xs" />
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Building2 className="w-4 h-4 text-primary" />
+                </div>
+              )}
               <p className="text-sm font-medium text-foreground">
                 {state.branchName}
               </p>

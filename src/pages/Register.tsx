@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useBranchSlug } from "@/hooks/useBranchSlug";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Dumbbell } from "lucide-react";
+import { BranchLogo } from "@/components/admin/BranchLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
@@ -20,6 +21,7 @@ type Step = "details" | "health" | "package";
 interface BranchInfo {
   id: string;
   name: string;
+  logo_url?: string | null;
 }
 
 interface FieldSetting {
@@ -77,7 +79,7 @@ const Register = () => {
       if (cancelled) return;
 
       if (branch) {
-        setBranchInfo({ id: branch.id, name: stateBranchName || branch.name });
+        setBranchInfo({ id: branch.id, name: stateBranchName || branch.name, logo_url: branch.logo_url ?? null });
         setFieldSettings((branch.registrationFieldSettings || null) as RegistrationFieldSettings | null);
       } else if (stateBranchName) {
         setBranchInfo({ id: branchId, name: stateBranchName });
@@ -271,6 +273,7 @@ const Register = () => {
             hasTrainer: packageData.wantsTrainer,
             trainerName: packageData.selectedTrainer?.name,
             branchName: branchInfo?.name,
+            branchLogoUrl: branchInfo?.logo_url ?? null,
           },
         });
       },
@@ -319,7 +322,11 @@ const Register = () => {
           </Button>
         </div>
         <div className="flex items-center justify-center gap-2 mt-4">
-          <Dumbbell className="w-6 h-6 text-accent" />
+          {branchInfo ? (
+            <BranchLogo logoUrl={branchInfo.logo_url} name={branchInfo.name} size="sm" />
+          ) : (
+            <Dumbbell className="w-6 h-6 text-accent" />
+          )}
           <span className="text-xl font-semibold text-foreground">
             New Membership
           </span>

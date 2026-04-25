@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Dumbbell } from "lucide-react";
+import { BranchLogo } from "@/components/admin/BranchLogo";
 import { toast } from "@/components/ui/sonner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,7 +64,7 @@ const Renew = () => {
   const [ptStartDate, setPtStartDate] = useState<string | null>(null);
   const [existingMembershipEndDate, setExistingMembershipEndDate] = useState<string | null>(null);
   const [existingPTEndDate, setExistingPTEndDate] = useState<string | null>(null);
-  const [branchInfo, setBranchInfo] = useState<{ id: string; name: string } | null>(null);
+  const [branchInfo, setBranchInfo] = useState<{ id: string; name: string; logo_url?: string | null } | null>(null);
   const [allowSelfSelectTrainer, setAllowSelfSelectTrainer] = useState(true);
   const [allowDailyPass, setAllowDailyPass] = useState(true);
 
@@ -83,7 +84,7 @@ const Renew = () => {
         if (cancelled) return;
 
         if (branch) {
-          setBranchInfo({ id: branch.id, name: stateBranchName || branch.name });
+          setBranchInfo({ id: branch.id, name: stateBranchName || branch.name, logo_url: branch.logo_url ?? null });
           setAllowSelfSelectTrainer(branch.allowSelfSelectTrainer !== false);
           setAllowDailyPass(branch.allowDailyPass !== false);
         } else if (stateBranchName) {
@@ -237,6 +238,7 @@ const Renew = () => {
             hasTrainer: packageData.wantsTrainer,
             trainerName: packageData.selectedTrainer?.name,
             branchName: branchInfo?.name,
+            branchLogoUrl: branchInfo?.logo_url ?? null,
           },
         });
       },
@@ -277,7 +279,11 @@ const Renew = () => {
           </Button>
         </div>
         <div className="flex items-center justify-center gap-2 mt-4">
-          <Dumbbell className="w-6 h-6 text-accent" />
+          {branchInfo ? (
+            <BranchLogo logoUrl={branchInfo.logo_url} name={branchInfo.name} size="sm" />
+          ) : (
+            <Dumbbell className="w-6 h-6 text-accent" />
+          )}
           <span className="text-xl font-semibold text-foreground">
             Renew Membership
           </span>
