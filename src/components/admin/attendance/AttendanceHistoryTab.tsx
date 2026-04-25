@@ -74,6 +74,9 @@ export const AttendanceHistoryTab = () => {
   const [customEnd, setCustomEnd] = useState("10:00");
   const [exportPeriod, setExportPeriod] = useState<"1w" | "1m" | "3m">("1m");
   const [isExporting, setIsExporting] = useState(false);
+  // Day-detail status filter — lets admins isolate Present / Skipped / Absent
+  // for the selected calendar day without losing the underlying data set.
+  const [dayStatusFilter, setDayStatusFilter] = useState<"all" | "present" | "skipped" | "absent">("all");
 
   const { trainers, allSlots, isLimitedAccess } = useAttendanceFilters();
   const { buckets, options: bucketOptions } = useTimeBuckets();
