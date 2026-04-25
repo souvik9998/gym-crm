@@ -61,7 +61,7 @@ export interface StaffBranchAssignment {
   branch_name?: string;
 }
 
-const VALID_TABS = new Set(["trainers", "staff", "timeslots", "overview"]);
+const VALID_TABS = new Set(["trainers", "staff", "overview"]);
 
 const StaffManagement = () => {
   const { currentBranch, branches } = useBranch();
@@ -80,9 +80,9 @@ const StaffManagement = () => {
         (prev) => {
           const next = new URLSearchParams(prev);
           next.set("tab", tab);
-          // Clear the time-slot sub-tab when leaving that tab so we don't
-          // surface a stale ?sub= when the user comes back via "Time Slots".
-          if (tab !== "timeslots") next.delete("sub");
+          // Time-slot management lives on its own page now, so always clear
+          // the legacy `?sub=` param so old links don't surface a stale state.
+          next.delete("sub");
           return next;
         },
         { replace: true },
