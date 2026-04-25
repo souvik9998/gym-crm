@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { AttendanceDatePicker } from "./AttendanceDatePicker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import {
   ExclamationTriangleIcon,
@@ -143,13 +143,26 @@ export const AbsentAnalyticsTab = () => {
     <TooltipProvider delayDuration={200}>
       <div className="space-y-4">
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex gap-2 lg:gap-3 flex-wrap">
-            <AttendanceDatePicker label="From" value={dateFrom} onChange={setDateFrom} className="min-w-[140px] max-w-[180px]" />
-            <AttendanceDatePicker label="To" value={dateTo} onChange={setDateTo} className="min-w-[140px] max-w-[180px]" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 lg:gap-3 animate-fade-in">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="text-[10px] lg:text-xs text-muted-foreground font-medium shrink-0">Date range</span>
+            <DateRangePicker
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateChange={(from, to) => {
+                setDateFrom(from);
+                setDateTo(to);
+              }}
+              className="w-full sm:w-[260px] h-8 lg:h-9 text-xs lg:text-sm transition-all hover:border-primary/50"
+            />
           </div>
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-1 h-8 text-xs">
-            <ArrowPathIcon className="w-3.5 h-3.5" /> Refresh
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="gap-1 h-8 text-xs transition-all hover:bg-accent hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <ArrowPathIcon className={cn("w-3.5 h-3.5 transition-transform", isLoading && "animate-spin")} /> Refresh
           </Button>
         </div>
 
