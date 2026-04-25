@@ -11,6 +11,8 @@ interface TimeSlotManagementProps {
   trainers: Staff[];
   currentBranch: any;
   allStaff: Staff[];
+  /** Forwarded to children so the trainer-name resolution waits on the parent fetch. */
+  trainersLoading?: boolean;
 }
 
 const VALID_SUBS = new Set(["slots", "members", "analytics"]);
@@ -19,6 +21,7 @@ export const TimeSlotManagement = ({
   trainers,
   currentBranch,
   allStaff,
+  trainersLoading = false,
 }: TimeSlotManagementProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const subParam = searchParams.get("sub");
