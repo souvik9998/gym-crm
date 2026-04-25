@@ -60,6 +60,12 @@ interface TimeSlotsTabProps {
    * after RLS hides their staff row). Maps staff.id → full_name.
    */
   trainerNameMap?: Record<string, string>;
+  /**
+   * When the parent is still loading the trainers list, we hold off on
+   * resolving slot → trainer names so we never flash "Unknown" placeholders.
+   * The skeleton stays on screen until trainers AND slots are both ready.
+   */
+  trainersLoading?: boolean;
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -72,6 +78,7 @@ export const TimeSlotsTab = ({
   canEditDelete = true,
   canViewMembers = true,
   trainerNameMap,
+  trainersLoading = false,
 }: TimeSlotsTabProps) => {
   const isCompact = useIsTabletOrBelow();
   const { invalidatePtSubscriptions } = useInvalidateQueries();
