@@ -642,7 +642,12 @@ export const AttendanceHistoryTab = () => {
                             return (
                               <td key={di} className="p-0.5">
                                 <button
-                                  onClick={() => !isFuture && setSelectedDate(isSelected ? null : date)}
+                                  onClick={() => {
+                                    if (isFuture) return;
+                                    setSelectedDate(isSelected ? null : date);
+                                    setDayStatusFilter("all");
+                                    setSearch("");
+                                  }}
                                   disabled={isFuture}
                                   className={cn(
                                     "w-full rounded-lg flex flex-col items-center justify-center transition-all duration-200 border active:scale-95",
