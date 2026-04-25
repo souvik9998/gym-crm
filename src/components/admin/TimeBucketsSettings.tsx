@@ -123,14 +123,15 @@ export const TimeBucketsSettings = () => {
     setIsDirty(true);
   };
 
-  const moveDraft = (id: string, dir: -1 | 1) => {
+  const reorderDrafts = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
     setDrafts((prev) => {
-      const idx = prev.findIndex((d) => d.id === id);
-      if (idx < 0) return prev;
-      const target = idx + dir;
-      if (target < 0 || target >= prev.length) return prev;
+      const from = prev.findIndex((d) => d.id === sourceId);
+      const to = prev.findIndex((d) => d.id === targetId);
+      if (from < 0 || to < 0) return prev;
       const next = prev.slice();
-      [next[idx], next[target]] = [next[target], next[idx]];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
       return next.map((d, i) => ({ ...d, sort_order: i }));
     });
     setIsDirty(true);
