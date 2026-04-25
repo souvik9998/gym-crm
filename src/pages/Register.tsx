@@ -273,6 +273,7 @@ const Register = () => {
             hasTrainer: packageData.wantsTrainer,
             trainerName: packageData.selectedTrainer?.name,
             branchName: branchInfo?.name,
+            branchLogoUrl: branchInfo?.logo_url ?? null,
           },
         });
       },
