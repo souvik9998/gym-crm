@@ -39,7 +39,7 @@ import { StaffBranchSelector } from "./StaffBranchSelector";
 import { StaffBranchAssignmentDialog } from "./StaffBranchAssignmentDialog";
 import { StaffCredentialsSection } from "./StaffCredentialsSection";
 import { StaffInlinePermissions, InlinePermissions, getDefaultPermissions } from "./StaffInlinePermissions";
-import { StaffWhatsAppButton, sendStaffCredentialsWhatsApp } from "./StaffWhatsAppButton";
+import { sendStaffCredentialsWhatsApp } from "./StaffWhatsAppButton";
 import { StaffRoleConversionDialog } from "./StaffRoleConversionDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronDownIcon, LockClosedIcon } from "@heroicons/react/24/outline";
@@ -807,7 +807,6 @@ export const StaffOtherTab = ({
                             </Button>
                             {member.auth_user_id ? (
                               <>
-                                <StaffWhatsAppButton staff={member} />
                                 <Button
                                   size="sm"
                                   variant="outline"
