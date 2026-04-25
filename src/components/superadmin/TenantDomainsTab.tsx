@@ -61,7 +61,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { invokeEdgeFunction } from "@/api/authenticatedFetch";
+// (uses supabase.functions.invoke directly — no helper needed)
 
 interface Branch {
   id: string;
@@ -204,16 +204,17 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
   const handleVerify = async (domain: TenantDomain) => {
     setVerifyingId(domain.id);
     try {
-      const res = await invokeEdgeFunction<VerifyResponse>("verify-tenant-domain", {
-        method: "POST",
-        body: { domain_id: domain.id },
-      });
-      setVerifyResults((prev) => ({ ...prev, [domain.id]: res }));
-      if (res.verified) {
+      const { data, error } = await supabase.functions.invoke<VerifyResponse>(
+        "verify-tenant-domain",
+        { body: { domain_id: domain.id } }
+      );
+      if (error || !data) throw new Error(error?.message || "Verification request failed");
+      setVerifyResults((prev) => ({ ...prev, [domain.id]: data }));
+      if (data.verified) {
         toast.success("Domain verified successfully");
         loadDomains();
       } else {
-        toast.error(res.errors[0] || "Verification failed — DNS not ready");
+        toast.error(data.errors[0] || "Verification failed — DNS not ready");
       }
     } catch (e: any) {
       toast.error(e?.message || "Verification request failed");
