@@ -377,8 +377,8 @@ export const AttendanceHistoryTab = () => {
               : record.status === "late"
                 ? "Late"
                 : "Absent",
-        Trainer: record.time_slot_id ? trainerLabelMap.get(record.time_slot_id) || "-" : "-",
-        "Time Slot": record.time_slot_id ? slotLabelMap.get(record.time_slot_id) || "-" : "-",
+        Trainer: (() => { const sid = resolveExportSlot(record); return sid ? trainerLabelMap.get(sid) || "-" : "-"; })(),
+        "Time Slot": (() => { const sid = resolveExportSlot(record); return sid ? slotLabelMap.get(sid) || "-" : "-"; })(),
         "Marked Via": record.marked_by_type || "-",
         "Created At": record.created_at
           ? new Date(record.created_at).toLocaleString("en-IN", {
