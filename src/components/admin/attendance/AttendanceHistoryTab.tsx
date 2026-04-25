@@ -162,6 +162,21 @@ export const AttendanceHistoryTab = () => {
   const resolveSlotId = (r: any): string | null =>
     r.time_slot_id || (r.member_id ? memberSlotMap[r.member_id] || null : null);
 
+  // Map slot_id → trainer_name for badge rendering
+  const slotTrainerMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const s of allSlots) {
+      if (s.id && s.trainer_name) m[s.id] = s.trainer_name;
+    }
+    return m;
+  }, [allSlots]);
+
+  const resolveTrainerName = (r: any): string | null => {
+    const sid = resolveSlotId(r);
+    if (!sid) return null;
+    return slotTrainerMap[sid] || null;
+  };
+
   // Filter records by selected trainer/slot/time-of-day bucket
   const monthRecords = useMemo(() => {
     let records = rawMonthRecords;
