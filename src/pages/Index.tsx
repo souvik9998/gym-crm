@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useBranchSlug } from "@/hooks/useBranchSlug";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -22,7 +23,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { branchSlug } = useParams<{ branchSlug?: string }>();
+  const branchSlug = useBranchSlug();
   const [resolvedBranchId, setResolvedBranchId] = useState<string | null>(null);
   const [phone, setPhone] = useState(() => {
     const saved = sessionStorage.getItem(`registration-phone-${branchSlug || "default"}`);
