@@ -420,6 +420,7 @@ const ExtendPT = () => {
             trainerName: selectedTrainer.name,
             isPTExtension: true,
             branchName: branchInfo?.name,
+            branchLogoUrl: branchInfo?.logo_url ?? null,
           },
         });
       },
