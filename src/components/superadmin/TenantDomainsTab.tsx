@@ -294,6 +294,32 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
           </Button>
         </CardHeader>
 
+        <div className="px-6 -mt-2 mb-2">
+          <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 p-3 text-xs space-y-2">
+            <div className="font-semibold text-amber-900 dark:text-amber-100">
+              ⚠️ Two-step setup — both are required
+            </div>
+            <ol className="list-decimal pl-5 space-y-1 text-amber-900 dark:text-amber-200">
+              <li>
+                Add the domain here <strong>and</strong> add the TXT record at the gym's DNS
+                provider so we can map the hostname to this tenant.
+              </li>
+              <li>
+                Open <strong>Lovable Project Settings → Domains → Connect Domain</strong> and
+                add the <em>same hostname</em> there. This is what tells Lovable's hosting layer
+                to serve <strong>this React app</strong> at that URL and to issue the SSL
+                certificate. Without this step the domain will keep loading whoever owned it
+                before (Vercel, parking page, 404, etc.) and the gym's portal link will not work.
+              </li>
+            </ol>
+            <div className="text-amber-800 dark:text-amber-300">
+              For subdomains like <code>register.qoremedia.in</code>, the apex
+              (<code>qoremedia.in</code>) can stay on the gym's existing site — only the
+              subdomain needs to point at Lovable.
+            </div>
+          </div>
+        </div>
+
         <CardContent className="space-y-4">
           {loading ? (
             <div className="text-sm text-muted-foreground py-8 text-center">
