@@ -241,6 +241,13 @@ export const AddMemberDialog = ({
   const [selectedTrainerId, setSelectedTrainerId] = useState("");
   const [ptMonths, setPtMonths] = useState(1);
   const [ptFee, setPtFee] = useState(0);
+
+  // Optional time slot for the selected trainer (mirrors AssignTrainerDialog).
+  // Slot selection is OPTIONAL — leaving it unset still creates the PT subscription
+  // but the member is not bound to a specific slot.
+  const [trainerTimeSlots, setTrainerTimeSlots] = useState<TrainerTimeSlot[]>([]);
+  const [selectedTimeSlotId, setSelectedTimeSlotId] = useState("");
+  const [isFetchingTimeSlots, setIsFetchingTimeSlots] = useState(false);
   
   // Start date selection
   const [startDate, setStartDate] = useState<Date>(() => {
