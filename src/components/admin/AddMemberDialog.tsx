@@ -2071,6 +2071,39 @@ export const AddMemberDialog = ({
                               />
                             </div>
                           </div>
+
+                          {/* Optional Time Slot — only shown when the selected trainer
+                              has configured slots in the schedule. Picking a slot is OPTIONAL. */}
+                          {selectedTrainerId && (isFetchingTimeSlots || trainerTimeSlots.length > 0) && (
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                <Clock className="w-3 h-3" />
+                                Time Slot <span className="text-muted-foreground/70">(optional)</span>
+                              </Label>
+                              <Select
+                                value={selectedTimeSlotId || "none"}
+                                onValueChange={(v) => setSelectedTimeSlotId(v === "none" ? "" : v)}
+                                disabled={isFetchingTimeSlots}
+                              >
+                                <SelectTrigger className="h-10 text-sm rounded-xl">
+                                  <SelectValue placeholder={isFetchingTimeSlots ? "Loading slots…" : "No slot assigned"} />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                  <SelectItem value="none">No slot assigned</SelectItem>
+                                  {trainerTimeSlots.map((slot) => {
+                                    const full = slot.current_count >= slot.capacity;
+                                    return (
+                                      <SelectItem key={slot.id} value={slot.id} disabled={full}>
+                                        {formatSlotTime(slot.start_time)} – {formatSlotTime(slot.end_time)}
+                                        {" · "}{slot.current_count}/{slot.capacity}
+                                        {full ? " (Full)" : ""}
+                                      </SelectItem>
+                                    );
+                                  })}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
                           {gymMembershipEndDate && (
                             <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
                               <Calendar className="w-3 h-3" />
