@@ -99,7 +99,7 @@ export const SlotAttendanceTab = () => {
       const slotText = `${slot.trainer_name} ${formatTimeLabel(slot.start_time)} ${formatTimeLabel(slot.end_time)}`.toLowerCase();
       return slotText.includes(query);
     });
-  }, [allSlots, selectedTrainerId, timeFilter, customStart, customEnd, slotSearch]);
+  }, [allSlots, selectedTrainerId, timeFilter, customStart, customEnd, slotSearch, buckets]);
 
   useEffect(() => {
     if (selectedSlotId === "all") return;
@@ -425,7 +425,7 @@ export const SlotAttendanceTab = () => {
             </div>
           </div>
 
-          <TimeBucketChips value={timeFilter} onChange={setTimeFilter} />
+          <TimeBucketChips value={timeFilter} onChange={setTimeFilter} options={bucketOptions} />
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             <div className="space-y-1">
