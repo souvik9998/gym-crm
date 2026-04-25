@@ -575,6 +575,7 @@ export const SimpleAttendanceTab = () => {
           <TimeBucketChips
             value={timeFilter}
             onChange={setTimeFilter}
+            options={bucketOptions}
             compact
             className="flex-1 min-w-0"
           />
