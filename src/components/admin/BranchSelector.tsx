@@ -401,9 +401,12 @@ export const BranchSelector = () => {
               }}
               className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-muted focus:bg-muted transition-colors"
             >
-              <div className="w-8 h-8 rounded-md bg-foreground flex items-center justify-center text-sm font-semibold text-background flex-shrink-0">
-                {branch.name.charAt(0).toUpperCase()}
-              </div>
+              <BranchLogo
+                logoUrl={branch.logo_url}
+                name={branch.name}
+                size="sm"
+                className="w-8 h-8 rounded-md"
+              />
               <div className="flex flex-col flex-1 min-w-0">
                 <span className="font-medium text-foreground truncate text-sm">{branch.name}</span>
                 {branch.address && (
