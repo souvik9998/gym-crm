@@ -156,6 +156,53 @@ export const TimeBucketsSettings = () => {
     setIsDirty(true);
   };
 
+  // Per-row validation issues — used for both inline highlights and save-time blocking.
+  const issues = useMemo(() => {
+    const labelIssues = new Set<string>();
+    const rangeIssues = new Set<string>();
+    const sameStartEnd = new Set<string>();
+
+    // Detect duplicate labels (case-insensitive, trimmed, ignoring blanks).
+    const labelMap = new Map<string, string[]>();
+    for (const d of drafts) {
+      const key = d.label.trim().toLowerCase();
+      if (!key) continue;
+      const arr = labelMap.get(key) ?? [];
+      arr.push(d.id);
+      labelMap.set(key, arr);
+    }
+    for (const ids of labelMap.values()) {
+      if (ids.length > 1) ids.forEach((id) => labelIssues.add(id));
+    }
+
+    // Detect exact duplicate time ranges (same start AND same end).
+    const rangeMap = new Map<string, string[]>();
+    for (const d of drafts) {
+      if (!/^\d{2}:\d{2}$/.test(d.start_time) || !/^\d{2}:\d{2}$/.test(d.end_time)) continue;
+      const key = `${d.start_time}_${d.end_time}`;
+      const arr = rangeMap.get(key) ?? [];
+      arr.push(d.id);
+      rangeMap.set(key, arr);
+    }
+    for (const ids of rangeMap.values()) {
+      if (ids.length > 1) ids.forEach((id) => rangeIssues.add(id));
+    }
+
+    // Start time equal to end time on the same chip is meaningless.
+    for (const d of drafts) {
+      if (d.start_time && d.end_time && d.start_time === d.end_time) {
+        sameStartEnd.add(d.id);
+      }
+    }
+
+    return { labelIssues, rangeIssues, sameStartEnd };
+  }, [drafts]);
+
+  const hasIssues =
+    issues.labelIssues.size > 0 ||
+    issues.rangeIssues.size > 0 ||
+    issues.sameStartEnd.size > 0;
+
   const validateAll = (): { ok: boolean; message?: string } => {
     if (drafts.length === 0) {
       return { ok: false, message: "Add at least one chip or reset to defaults." };
@@ -165,6 +212,15 @@ export const TimeBucketsSettings = () => {
       if (!/^\d{2}:\d{2}$/.test(d.start_time) || !/^\d{2}:\d{2}$/.test(d.end_time)) {
         return { ok: false, message: `Invalid time on "${d.label}".` };
       }
+    }
+    if (issues.labelIssues.size > 0) {
+      return { ok: false, message: "Two chips share the same name. Names must be unique (case-insensitive)." };
+    }
+    if (issues.sameStartEnd.size > 0) {
+      return { ok: false, message: "Start and end time can't be the same on a chip." };
+    }
+    if (issues.rangeIssues.size > 0) {
+      return { ok: false, message: "Two chips share the exact same time range. Adjust the start or end time." };
     }
     return { ok: true };
   };
