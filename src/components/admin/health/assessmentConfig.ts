@@ -38,13 +38,27 @@ export interface CustomField {
 
 export type ExerciseInputMode = "reps" | "time" | "reps_sets";
 
+export type ExerciseWeightUnit = "kg" | "lb" | "bodyweight" | "band" | "machine";
+
 export interface ExerciseFieldValue {
   mode: ExerciseInputMode;
   reps?: string;
   sets?: string;
   time?: string;
   unit?: "sec" | "min";
+  // Optional load tracking — supports weighted variations of any exercise
+  // (e.g. weighted pull-ups, dumbbell squats, weighted plank).
+  weight?: string;
+  weight_unit?: ExerciseWeightUnit;
 }
+
+export const EXERCISE_WEIGHT_UNIT_OPTIONS: { value: ExerciseWeightUnit; label: string }[] = [
+  { value: "kg", label: "kg" },
+  { value: "lb", label: "lb" },
+  { value: "bodyweight", label: "Bodyweight" },
+  { value: "band", label: "Band" },
+  { value: "machine", label: "Machine" },
+];
 
 export type AssessmentSettings = Record<string, {
   enabled: boolean;

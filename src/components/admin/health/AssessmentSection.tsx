@@ -15,7 +15,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import type { MemberAssessment } from "./MemberHealthTab";
-import { ASSESSMENT_SECTIONS, getAssessmentFieldMeta, getDefaultAssessmentSettings, getExerciseInputMode, isExerciseAssessmentSection, type AssessmentSettings, type CustomField, type ExerciseFieldValue, type ExerciseInputMode } from "@/components/admin/health/assessmentConfig";
+import { ASSESSMENT_SECTIONS, getAssessmentFieldMeta, getDefaultAssessmentSettings, getExerciseInputMode, isExerciseAssessmentSection, EXERCISE_WEIGHT_UNIT_OPTIONS, type AssessmentSettings, type CustomField, type ExerciseFieldValue, type ExerciseInputMode, type ExerciseWeightUnit } from "@/components/admin/health/assessmentConfig";
 
 interface AssessmentSectionProps {
   assessments: MemberAssessment[];
@@ -665,6 +665,8 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
 
   const renderExerciseInput = (fieldKey: string, label: string, mode: ExerciseInputMode) => {
     const value = getExerciseValue(fieldKey, mode);
+    const weightUnit: ExerciseWeightUnit = (value.weight_unit as ExerciseWeightUnit) || "kg";
+    const isLoadlessUnit = weightUnit === "bodyweight" || weightUnit === "band" || weightUnit === "machine";
 
     return (
       <div key={fieldKey} className="rounded-lg border border-border/50 bg-background/90 p-2.5 sm:p-3">
@@ -705,6 +707,43 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
               </div>
             </>
           )}
+        </div>
+        {/* Optional load — supports weighted variations of any exercise */}
+        <div className="mt-2 grid grid-cols-1 gap-2 min-[440px]:grid-cols-2">
+          {!isLoadlessUnit && (
+            <div>
+              <Label className="text-[11px] text-muted-foreground">Weight (optional)</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                value={value.weight || ""}
+                onChange={(e) => updateExerciseField(fieldKey, { mode, weight: e.target.value })}
+                placeholder="0"
+                className="mt-1 h-10 text-sm"
+              />
+            </div>
+          )}
+          <div className={isLoadlessUnit ? "min-[440px]:col-span-2" : ""}>
+            <Label className="text-[11px] text-muted-foreground">Load type</Label>
+            <Select
+              value={weightUnit}
+              onValueChange={(unit: ExerciseWeightUnit) => {
+                // When switching to a load-less type, clear any numeric weight
+                const next: Partial<ExerciseFieldValue> = { mode, weight_unit: unit };
+                if (unit === "bodyweight" || unit === "band" || unit === "machine") {
+                  next.weight = "";
+                }
+                updateExerciseField(fieldKey, next);
+              }}
+            >
+              <SelectTrigger className="mt-1 h-10 w-full text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {EXERCISE_WEIGHT_UNIT_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
     );
@@ -813,13 +852,23 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       if (sectionKey && (isExerciseAssessmentSection(sectionKey) || customField?.kind === "exercise")) {
         try {
           const parsed = typeof value === "string" ? JSON.parse(value) as ExerciseFieldValue : value as ExerciseFieldValue;
-          const formatted = parsed.mode === "time"
+          const base = parsed.mode === "time"
             ? `${parsed.time || "—"} ${parsed.unit || "sec"}`
             : parsed.mode === "reps_sets"
               ? `${parsed.reps || "—"} reps × ${parsed.sets || "—"} sets`
               : `${parsed.reps || "—"} reps`;
 
-          items.push({ label: labelMap[key] || key, value: formatted });
+          // Append load suffix if recorded
+          let loadSuffix = "";
+          const wUnit = parsed.weight_unit;
+          const wVal = parsed.weight && String(parsed.weight).trim();
+          if (wUnit === "bodyweight" || wUnit === "band" || wUnit === "machine") {
+            loadSuffix = ` · ${wUnit === "bodyweight" ? "Bodyweight" : wUnit === "band" ? "Band" : "Machine"}`;
+          } else if (wVal && Number(wVal) > 0) {
+            loadSuffix = ` @ ${wVal} ${wUnit || "kg"}`;
+          }
+
+          items.push({ label: labelMap[key] || key, value: `${base}${loadSuffix}` });
           return;
         } catch {
           // fall through to raw rendering
