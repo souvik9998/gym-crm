@@ -55,6 +55,7 @@ import { RegistrationFieldsSettings } from "@/components/admin/RegistrationField
 import { CouponsDiscountsTab } from "@/components/admin/CouponsDiscountsTab";
 import { AssessmentFieldsSettings } from "@/components/admin/AssessmentFieldsSettings";
 import { BackupRestoreTab } from "@/components/admin/backup/BackupRestoreTab";
+import { TimeBucketsSettings } from "@/components/admin/TimeBucketsSettings";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface CustomPackage {
@@ -1213,6 +1214,7 @@ const AdminSettings = () => {
     { value: "assessment", label: "Assessment" },
     { value: "branches", label: "Branches" },
     { value: "holidays", label: "Holidays" },
+    { value: "time-filters", label: "Time Filters" },
     { value: "whatsapp", label: "WhatsApp" },
     { value: "general", label: "General" },
     { value: "coupons", label: "Coupons" },
