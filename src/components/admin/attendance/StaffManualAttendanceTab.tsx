@@ -79,26 +79,23 @@ export const StaffManualAttendanceTab = () => {
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
   const isFutureDate = selectedDate > today;
 
-  // Load active staff assigned to this branch
-  const { data: staffList = [], isLoading: loadingStaff } = useQuery({
-    queryKey: ["branch-staff", branchId],
-    queryFn: async (): Promise<StaffRow[]> => {
-      if (!branchId) return [];
-      const { data, error } = await supabase
-        .from("staff_branch_assignments")
-        .select("staff:staff_id(id, full_name, phone, role, email, is_active)")
-        .eq("branch_id", branchId);
-      if (error) throw error;
-      const list = (data || [])
-        .map((r: any) => r.staff)
-        .filter((s: any) => s && s.is_active)
-        .map((s: any) => ({ id: s.id, full_name: s.full_name, phone: s.phone, role: s.role, email: s.email })) as StaffRow[];
-      // de-dupe
-      const seen = new Set<string>();
-      return list.filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)));
-    },
-    enabled: !!branchId,
-  });
+  // Use the canonical staff source-of-truth (same as Staff Management page).
+  // Returns ALL active staff + trainers assigned to current branch.
+  const { staff: rawStaff, isLoading: loadingStaff } = useStaffPageData();
+
+  const staffList: StaffRow[] = useMemo(() => {
+    const list = (rawStaff || [])
+      .filter((s: any) => s && s.is_active !== false)
+      .map((s: any) => ({
+        id: s.id,
+        full_name: s.full_name || s.name || "Unknown",
+        phone: s.phone ?? null,
+        role: s.role ?? null,
+        email: s.email ?? null,
+      }));
+    const seen = new Set<string>();
+    return list.filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)));
+  }, [rawStaff]);
 
   // Load week attendance for staff
   const { data: weekRecords = [], isLoading: loadingRecords } = useQuery({
