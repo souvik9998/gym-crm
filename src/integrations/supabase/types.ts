@@ -2763,6 +2763,63 @@ export type Database = {
           },
         ]
       }
+      tenant_domains: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          hostname: string
+          id: string
+          is_primary: boolean
+          is_verified: boolean
+          notes: string | null
+          tenant_id: string
+          updated_at: string
+          verification_token: string
+          verified_at: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          hostname: string
+          id?: string
+          is_primary?: boolean
+          is_verified?: boolean
+          notes?: string | null
+          tenant_id: string
+          updated_at?: string
+          verification_token?: string
+          verified_at?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          hostname?: string
+          id?: string
+          is_primary?: boolean
+          is_verified?: boolean
+          notes?: string | null
+          tenant_id?: string
+          updated_at?: string
+          verification_token?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_domains_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_domains_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_limits: {
         Row: {
           created_at: string
@@ -3382,6 +3439,18 @@ export type Database = {
         Returns: boolean
       }
       refresh_subscription_statuses: { Args: never; Returns: undefined }
+      resolve_tenant_by_hostname: {
+        Args: { _hostname: string }
+        Returns: {
+          branch_id: string
+          branch_logo_url: string
+          branch_name: string
+          branch_slug: string
+          is_verified: boolean
+          tenant_id: string
+          tenant_name: string
+        }[]
+      }
       staff_has_permission: {
         Args: { _permission: string; _staff_id: string }
         Returns: boolean

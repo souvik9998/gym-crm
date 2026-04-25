@@ -17,15 +17,21 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { useBranch } from "@/contexts/BranchContext";
 import { cn } from "@/lib/utils";
+import { useTenantPrimaryDomain } from "@/hooks/useTenantPrimaryDomain";
+import { Badge } from "@/components/ui/badge";
 
 const QRCodePage = () => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"registration" | "attendance">("registration");
   const { branches, currentBranch, isLoading: branchesLoading } = useBranch();
+  const { data: customDomain } = useTenantPrimaryDomain(currentBranch?.id);
 
   const getPortalUrl = () => {
     if (!currentBranch || typeof window === "undefined") return "";
+    if (customDomain?.hostname) {
+      return `https://${customDomain.hostname}`;
+    }
     const slug = (currentBranch as any).slug || currentBranch.id;
     return `${window.location.origin}/b/${slug}`;
   };
@@ -33,8 +39,12 @@ const QRCodePage = () => {
   const getAttendanceUrl = () => {
     if (!currentBranch || typeof window === "undefined") return "";
     const slug = (currentBranch as any).slug || currentBranch.id;
+    if (customDomain?.hostname) {
+      return `https://${customDomain.hostname}/check-in?branch=${slug}`;
+    }
     return `${window.location.origin}/check-in?branch=${slug}`;
   };
+
 
   const handleCopy = async (url: string, key: string) => {
     try {
@@ -126,6 +136,14 @@ const QRCodePage = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 lg:space-y-8">
+      {customDomain?.hostname && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-900 animate-fade-in">
+          <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-600">Branded link</Badge>
+          <span className="text-sm text-emerald-900 dark:text-emerald-200">
+            Using your custom domain <span className="font-mono font-semibold">{customDomain.hostname}</span>
+          </span>
+        </div>
+      )}
       {/* Tab Switcher */}
       <div className="flex gap-3 animate-fade-in">
         {tabs.map((tab) => (

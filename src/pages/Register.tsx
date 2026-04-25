@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useBranchSlug } from "@/hooks/useBranchSlug";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Dumbbell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,7 +47,7 @@ interface RegistrationFieldSettings {
 const Register = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { branchSlug } = useParams<{ branchSlug?: string }>();
+  const branchSlug = useBranchSlug();
   const { initiatePayment, isLoading: isPaymentLoading, paymentStage } = useRazorpay();
   const { phone, branchId: stateBranchId, branchName: stateBranchName } = (location.state as { phone: string; branchId?: string; branchName?: string }) || {};
   const branchId = stateBranchId;
