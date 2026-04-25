@@ -35,6 +35,7 @@ import {
   FileText,
   X,
   MessageCircle,
+  Clock,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -89,6 +90,15 @@ interface PersonalTrainer {
   name: string;
   monthly_fee: number;
   specialization: string | null;
+  phone: string | null;
+}
+
+interface TrainerTimeSlot {
+  id: string;
+  start_time: string;
+  end_time: string;
+  capacity: number;
+  current_count: number;
 }
 
 export interface ExistingMember {
@@ -231,6 +241,13 @@ export const AddMemberDialog = ({
   const [selectedTrainerId, setSelectedTrainerId] = useState("");
   const [ptMonths, setPtMonths] = useState(1);
   const [ptFee, setPtFee] = useState(0);
+
+  // Optional time slot for the selected trainer (mirrors AssignTrainerDialog).
+  // Slot selection is OPTIONAL — leaving it unset still creates the PT subscription
+  // but the member is not bound to a specific slot.
+  const [trainerTimeSlots, setTrainerTimeSlots] = useState<TrainerTimeSlot[]>([]);
+  const [selectedTimeSlotId, setSelectedTimeSlotId] = useState("");
+  const [isFetchingTimeSlots, setIsFetchingTimeSlots] = useState(false);
   
   // Start date selection
   const [startDate, setStartDate] = useState<Date>(() => {
@@ -408,13 +425,114 @@ export const AddMemberDialog = ({
       .eq("branch_id", currentBranch.id)
       .order("name");
     if (data && data.length > 0) {
-      setTrainers(data);
+      setTrainers(data as PersonalTrainer[]);
       setSelectedTrainerId(data[0].id);
       setPtFee(Number(data[0].monthly_fee));
+      // Pre-fetch slots for the default-selected trainer so the dropdown is
+      // populated as soon as the PT section is opened.
+      fetchTrainerTimeSlots(data[0] as PersonalTrainer);
     } else {
       setTrainers([]);
       setSelectedTrainerId("");
       setPtFee(0);
+      setTrainerTimeSlots([]);
+      setSelectedTimeSlotId("");
+    }
+  };
+
+  // Resolve trainer → staff (via shared phone) → trainer_time_slots, mirroring
+  // the AssignTrainerDialog pattern. Returns slots with current member counts.
+  const fetchTrainerTimeSlots = async (trainer: PersonalTrainer) => {
+    if (!currentBranch?.id) return;
+    setIsFetchingTimeSlots(true);
+    setTrainerTimeSlots([]);
+    setSelectedTimeSlotId("");
+    if (!trainer.phone) {
+      setIsFetchingTimeSlots(false);
+      return;
+    }
+    try {
+      const { data: staffData } = await supabase
+        .from("staff")
+        .select("id")
+        .eq("phone", trainer.phone)
+        .eq("role", "trainer")
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (!staffData) {
+        setIsFetchingTimeSlots(false);
+        return;
+      }
+
+      const { data: slots } = await supabase
+        .from("trainer_time_slots")
+        .select("id, start_time, end_time, capacity")
+        .eq("trainer_id", staffData.id)
+        .eq("branch_id", currentBranch.id);
+
+      if (slots && slots.length > 0) {
+        const slotsWithCounts: TrainerTimeSlot[] = await Promise.all(
+          slots.map(async (slot: any) => {
+            const { count } = await supabase
+              .from("time_slot_members")
+              .select("*", { count: "exact", head: true })
+              .eq("time_slot_id", slot.id);
+            return { ...slot, current_count: count || 0 };
+          }),
+        );
+        setTrainerTimeSlots(slotsWithCounts);
+      }
+    } catch (e) {
+      console.error("fetchTrainerTimeSlots failed:", e);
+    } finally {
+      setIsFetchingTimeSlots(false);
+    }
+  };
+
+  const formatSlotTime = (time: string) => {
+    const [h, m] = time.split(":");
+    const hour = parseInt(h);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const h12 = hour % 12 || 12;
+    return `${h12}:${m} ${ampm}`;
+  };
+
+  /**
+   * After a pt_subscriptions row is created, optionally bind the member to
+   * the chosen trainer time slot. No-op when slot selection is empty.
+   * Uses delete+insert (instead of upsert) to mirror AssignTrainerDialog and
+   * avoid duplicate (slot, member) rows protected by the unique constraint.
+   */
+  const bindMemberToTimeSlot = async (
+    ptSubscriptionId: string | undefined,
+    memberId: string,
+  ) => {
+    if (!selectedTimeSlotId || !currentBranch?.id) return;
+    try {
+      // Stamp the pt_subscriptions row with the chosen slot so analytics /
+      // slot-attendance views can correctly attribute this member.
+      if (ptSubscriptionId) {
+        await supabase
+          .from("pt_subscriptions")
+          .update({ time_slot_id: selectedTimeSlotId } as any)
+          .eq("id", ptSubscriptionId);
+      }
+
+      await supabase
+        .from("time_slot_members")
+        .delete()
+        .eq("member_id", memberId)
+        .eq("time_slot_id", selectedTimeSlotId);
+
+      await supabase.from("time_slot_members").insert({
+        time_slot_id: selectedTimeSlotId,
+        member_id: memberId,
+        branch_id: currentBranch.id,
+        assigned_by: "admin",
+      });
+    } catch (e) {
+      console.error("Time slot binding failed (non-fatal):", e);
     }
   };
 
@@ -433,7 +551,10 @@ export const AddMemberDialog = ({
   const handleTrainerChange = (trainerId: string) => {
     setSelectedTrainerId(trainerId);
     const trainer = trainers.find((t) => t.id === trainerId);
-    if (trainer) setPtFee(Number(trainer.monthly_fee) * ptMonths);
+    if (trainer) {
+      setPtFee(Number(trainer.monthly_fee) * ptMonths);
+      fetchTrainerTimeSlots(trainer);
+    }
   };
 
   const handlePtMonthsChange = (months: number) => {
@@ -464,6 +585,14 @@ export const AddMemberDialog = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAction, selectedPackageId, monthlyPackages]);
+
+  // When the admin turns OFF the PT toggle, drop any selected slot so it
+  // doesn't get silently saved if they toggle it back on with a different intent.
+  useEffect(() => {
+    if (!wantsPT && !isPTOnly) {
+      setSelectedTimeSlotId("");
+    }
+  }, [wantsPT, isPTOnly]);
 
   const gymTotal = showGymSection ? monthlyFee + joiningFee : 0;
   const ptTotal = (wantsPT || isPTOnly) ? ptFee : 0;
@@ -846,7 +975,7 @@ export const AddMemberDialog = ({
 
       if (wantsPT && selectedTrainerId) {
         const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
-        await supabase.from("pt_subscriptions").insert({
+        const { data: insertedPt } = await supabase.from("pt_subscriptions").insert({
           member_id: member.id,
           personal_trainer_id: selectedTrainerId,
           start_date: formatDateOnly(gymStartDate),
@@ -855,7 +984,8 @@ export const AddMemberDialog = ({
           total_fee: ptFee,
           status: "active",
           branch_id: currentBranch?.id,
-        });
+        }).select("id").maybeSingle();
+        await bindMemberToTimeSlot(insertedPt?.id, member.id);
       }
 
       const paymentType = wantsPT ? "gym_and_pt" : "gym_membership";
@@ -1095,7 +1225,7 @@ export const AddMemberDialog = ({
         // If also adding PT
         if (selectedAction === "renew_gym_pt" && selectedTrainerId) {
           const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
-          await supabase.from("pt_subscriptions").insert({
+          const { data: insertedPt } = await supabase.from("pt_subscriptions").insert({
             member_id: existingMember.id,
             personal_trainer_id: selectedTrainerId,
             start_date: formatDateOnly(gymStartDate),
@@ -1104,7 +1234,8 @@ export const AddMemberDialog = ({
             total_fee: ptFee,
             status: "active",
             branch_id: currentBranch.id,
-          });
+          }).select("id").maybeSingle();
+          await bindMemberToTimeSlot(insertedPt?.id, existingMember.id);
 
           if (ptFee > 0) {
             await createMembershipIncomeEntry(
@@ -1132,7 +1263,7 @@ export const AddMemberDialog = ({
         }
 
         const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
-        await supabase.from("pt_subscriptions").insert({
+        const { data: insertedAddPt } = await supabase.from("pt_subscriptions").insert({
           member_id: existingMember.id,
           personal_trainer_id: selectedTrainerId,
           start_date: formatDateOnly(gymStartDate),
@@ -1141,7 +1272,8 @@ export const AddMemberDialog = ({
           total_fee: ptFee,
           status: "active",
           branch_id: currentBranch.id,
-        });
+        }).select("id").maybeSingle();
+        await bindMemberToTimeSlot(insertedAddPt?.id, existingMember.id);
 
         const couponNotePT = adminCoupon.appliedCoupon
           ? ` (Coupon: ${adminCoupon.appliedCoupon.coupon.code}, -₹${couponDiscount})`
@@ -1271,6 +1403,7 @@ export const AddMemberDialog = ({
     setDateOfBirth(undefined); setSelectedPackageId(""); setMonthlyFee(0);
     setJoiningFee(0); setWantsPT(false); setSelectedTrainerId("");
     setPtMonths(1); setPtFee(0); setCurrentStep(1); setPaymentMode("cash");
+    setTrainerTimeSlots([]); setSelectedTimeSlotId("");
     setExistingMember(null); setSelectedAction(null); setIsCheckingPhone(false);
     setEmail(""); setOccupation("");
     setBloodGroup(""); setHeightCm(""); setWeightKg(""); setMedicalConditions(""); setAllergies("");
@@ -1947,6 +2080,39 @@ export const AddMemberDialog = ({
                               />
                             </div>
                           </div>
+
+                          {/* Optional Time Slot — only shown when the selected trainer
+                              has configured slots in the schedule. Picking a slot is OPTIONAL. */}
+                          {selectedTrainerId && (isFetchingTimeSlots || trainerTimeSlots.length > 0) && (
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                <Clock className="w-3 h-3" />
+                                Time Slot <span className="text-muted-foreground/70">(optional)</span>
+                              </Label>
+                              <Select
+                                value={selectedTimeSlotId || "none"}
+                                onValueChange={(v) => setSelectedTimeSlotId(v === "none" ? "" : v)}
+                                disabled={isFetchingTimeSlots}
+                              >
+                                <SelectTrigger className="h-10 text-sm rounded-xl">
+                                  <SelectValue placeholder={isFetchingTimeSlots ? "Loading slots…" : "No slot assigned"} />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                  <SelectItem value="none">No slot assigned</SelectItem>
+                                  {trainerTimeSlots.map((slot) => {
+                                    const full = slot.current_count >= slot.capacity;
+                                    return (
+                                      <SelectItem key={slot.id} value={slot.id} disabled={full}>
+                                        {formatSlotTime(slot.start_time)} – {formatSlotTime(slot.end_time)}
+                                        {" · "}{slot.current_count}/{slot.capacity}
+                                        {full ? " (Full)" : ""}
+                                      </SelectItem>
+                                    );
+                                  })}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
                           {gymMembershipEndDate && (
                             <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
                               <Calendar className="w-3 h-3" />
