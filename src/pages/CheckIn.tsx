@@ -22,8 +22,14 @@ type CheckInStatus = "loading" | "login" | "success" | "checked_out" | "expired"
 const CheckIn = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const domain = useDomainContext();
   const branchParam = searchParams.get("branch") || searchParams.get("branch_id") || "";
-  const [branchId, setBranchId] = useState(isUUID(branchParam) ? branchParam : "");
+  const [branchId, setBranchId] = useState(() => {
+    if (isUUID(branchParam)) return branchParam;
+    // On tenant custom domain, fall back to the resolved branch.
+    if (!branchParam && domain.mode === "tenant" && domain.branchId) return domain.branchId;
+    return "";
+  });
 
   const [status, setStatus] = useState<CheckInStatus>("loading");
   const [message, setMessage] = useState("");
