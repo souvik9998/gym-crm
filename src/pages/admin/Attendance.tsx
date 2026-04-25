@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MembersAttendanceTab } from "@/components/admin/attendance/MembersAttendanceTab";
 import { StaffAttendanceTab } from "@/components/admin/attendance/StaffAttendanceTab";
+import { StaffManualAttendanceTab } from "@/components/admin/attendance/StaffManualAttendanceTab";
 import { AttendanceInsightsTab } from "@/components/admin/attendance/AttendanceInsightsTab";
 import { BiometricDevicesTab } from "@/components/admin/attendance/BiometricDevicesTab";
 import { SimpleAttendanceTab } from "@/components/admin/attendance/SimpleAttendanceTab";
@@ -16,6 +17,7 @@ import {
   ClockIcon,
   ClipboardDocumentListIcon,
   ExclamationTriangleIcon,
+  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import { UserGroupIcon } from "@heroicons/react/24/outline";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -59,6 +61,7 @@ const Attendance = () => {
 
   const allTabs = [
     { value: "mark", icon: ClipboardDocumentListIcon, label: isMobile ? "Mark" : "Mark Attendance", visible: canManual },
+    { value: "staff-mark", icon: ShieldCheckIcon, label: isMobile ? "Mark Staff" : "Mark Staff Attendance", visible: canManual && (isSuperAdmin || tenantPermissions.attendance_manual !== false) },
     { value: "history", icon: ClockIcon, label: "History", visible: true },
     { value: "checkins", icon: UsersIcon, label: isMobile ? "QR" : "QR Check-ins", visible: canQR },
     { value: "analytics", icon: ExclamationTriangleIcon, label: isMobile ? "Absent" : "Absent Analytics", visible: true },
@@ -108,6 +111,11 @@ const Attendance = () => {
         {canManual && (
           <TabsContent value="mark" className="mt-0 animate-fade-in">
             {isSlotMode ? <SlotAttendanceTab /> : <SimpleAttendanceTab />}
+          </TabsContent>
+        )}
+        {canManual && (
+          <TabsContent value="staff-mark" className="mt-0 animate-fade-in">
+            <StaffManualAttendanceTab />
           </TabsContent>
         )}
         <TabsContent value="history" className="mt-0 animate-fade-in">

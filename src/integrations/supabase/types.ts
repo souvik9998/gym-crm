@@ -731,8 +731,9 @@ export type Database = {
           id: string
           marked_by: string | null
           marked_by_type: string | null
-          member_id: string
+          member_id: string | null
           notes: string | null
+          staff_id: string | null
           status: string
           time_slot_id: string | null
           updated_at: string
@@ -744,8 +745,9 @@ export type Database = {
           id?: string
           marked_by?: string | null
           marked_by_type?: string | null
-          member_id: string
+          member_id?: string | null
           notes?: string | null
+          staff_id?: string | null
           status?: string
           time_slot_id?: string | null
           updated_at?: string
@@ -757,8 +759,9 @@ export type Database = {
           id?: string
           marked_by?: string | null
           marked_by_type?: string | null
-          member_id?: string
+          member_id?: string | null
           notes?: string | null
+          staff_id?: string | null
           status?: string
           time_slot_id?: string | null
           updated_at?: string
@@ -776,6 +779,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_attendance_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
             referencedColumns: ["id"]
           },
           {
