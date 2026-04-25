@@ -60,6 +60,7 @@ const Attendance = () => {
 
   const allTabs = [
     { value: "mark", icon: ClipboardDocumentListIcon, label: isMobile ? "Mark" : "Mark Attendance", visible: canManual },
+    { value: "staff-mark", icon: ShieldCheckIcon, label: isMobile ? "Mark Staff" : "Mark Staff Attendance", visible: canManual && (isSuperAdmin || tenantPermissions.attendance_manual !== false) },
     { value: "history", icon: ClockIcon, label: "History", visible: true },
     { value: "checkins", icon: UsersIcon, label: isMobile ? "QR" : "QR Check-ins", visible: canQR },
     { value: "analytics", icon: ExclamationTriangleIcon, label: isMobile ? "Absent" : "Absent Analytics", visible: true },
