@@ -17,15 +17,21 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { useBranch } from "@/contexts/BranchContext";
 import { cn } from "@/lib/utils";
+import { useTenantPrimaryDomain } from "@/hooks/useTenantPrimaryDomain";
+import { Badge } from "@/components/ui/badge";
 
 const QRCodePage = () => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"registration" | "attendance">("registration");
   const { branches, currentBranch, isLoading: branchesLoading } = useBranch();
+  const { data: customDomain } = useTenantPrimaryDomain(currentBranch?.id);
 
   const getPortalUrl = () => {
     if (!currentBranch || typeof window === "undefined") return "";
+    if (customDomain?.hostname) {
+      return `https://${customDomain.hostname}`;
+    }
     const slug = (currentBranch as any).slug || currentBranch.id;
     return `${window.location.origin}/b/${slug}`;
   };
@@ -33,8 +39,12 @@ const QRCodePage = () => {
   const getAttendanceUrl = () => {
     if (!currentBranch || typeof window === "undefined") return "";
     const slug = (currentBranch as any).slug || currentBranch.id;
+    if (customDomain?.hostname) {
+      return `https://${customDomain.hostname}/check-in?branch=${slug}`;
+    }
     return `${window.location.origin}/check-in?branch=${slug}`;
   };
+
 
   const handleCopy = async (url: string, key: string) => {
     try {
