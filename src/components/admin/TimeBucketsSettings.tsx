@@ -14,9 +14,8 @@ import {
   PlusIcon,
   TrashIcon,
   ArrowPathIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
   CheckIcon,
+  Bars3Icon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -59,6 +58,8 @@ export const TimeBucketsSettings = () => {
   const [isResetting, setIsResetting] = useState(false);
   const [resetConfirm, setResetConfirm] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const lastLoadedFor = useRef<string | null>(null);
 
   // Load existing buckets for the current branch on mount / branch switch.
@@ -122,14 +123,15 @@ export const TimeBucketsSettings = () => {
     setIsDirty(true);
   };
 
-  const moveDraft = (id: string, dir: -1 | 1) => {
+  const reorderDrafts = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
     setDrafts((prev) => {
-      const idx = prev.findIndex((d) => d.id === id);
-      if (idx < 0) return prev;
-      const target = idx + dir;
-      if (target < 0 || target >= prev.length) return prev;
+      const from = prev.findIndex((d) => d.id === sourceId);
+      const to = prev.findIndex((d) => d.id === targetId);
+      if (from < 0 || to < 0) return prev;
       const next = prev.slice();
-      [next[idx], next[target]] = [next[target], next[idx]];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
       return next.map((d, i) => ({ ...d, sort_order: i }));
     });
     setIsDirty(true);
@@ -341,7 +343,7 @@ export const TimeBucketsSettings = () => {
           <div>
             <CardTitle className="text-base lg:text-lg">Your Chips</CardTitle>
             <CardDescription className="mt-1 text-xs lg:text-sm">
-              Reorder, rename, or change time windows. Use "Add chip" for as many as you need.
+              Drag chips to reorder them. Rename or change time windows inline. Use "Add chip" for as many as you need.
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -382,37 +384,50 @@ export const TimeBucketsSettings = () => {
                 return (
                   <div
                     key={d.id}
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggingId(d.id);
+                      e.dataTransfer.effectAllowed = "move";
+                      // Required for Firefox to initiate the drag.
+                      try { e.dataTransfer.setData("text/plain", d.id); } catch { /* noop */ }
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (draggingId && draggingId !== d.id && dragOverId !== d.id) {
+                        setDragOverId(d.id);
+                      }
+                    }}
+                    onDragLeave={(e) => {
+                      // Only clear when leaving the row itself, not a child element.
+                      if (e.currentTarget === e.target) setDragOverId(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (draggingId) reorderDrafts(draggingId, d.id);
+                      setDraggingId(null);
+                      setDragOverId(null);
+                    }}
+                    onDragEnd={() => {
+                      setDraggingId(null);
+                      setDragOverId(null);
+                    }}
                     className={cn(
-                      "rounded-xl border border-border/60 bg-card p-3 lg:p-4 shadow-sm transition-shadow hover:shadow-md",
+                      "rounded-xl border border-border/60 bg-card p-3 lg:p-4 shadow-sm transition-all hover:shadow-md cursor-grab active:cursor-grabbing",
                       d._isNew && "ring-1 ring-primary/30",
                       hasRowIssue && "border-destructive/60 ring-1 ring-destructive/30",
+                      draggingId === d.id && "opacity-50",
+                      dragOverId === d.id && draggingId !== d.id && "border-primary/60 ring-2 ring-primary/30",
                     )}
                   >
                     <div className="flex flex-col lg:flex-row lg:items-end gap-3">
-                      {/* Order controls */}
-                      <div className="flex lg:flex-col items-center gap-1 self-start lg:self-end lg:pb-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => moveDraft(d.id, -1)}
-                          disabled={idx === 0}
-                          aria-label="Move up"
-                        >
-                          <ArrowUpIcon className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => moveDraft(d.id, 1)}
-                          disabled={idx === drafts.length - 1}
-                          aria-label="Move down"
-                        >
-                          <ArrowDownIcon className="w-3.5 h-3.5" />
-                        </Button>
+                      {/* Drag handle */}
+                      <div
+                        className="flex items-center justify-center self-start lg:self-end lg:pb-2 text-muted-foreground/60 hover:text-foreground transition-colors shrink-0"
+                        aria-label="Drag to reorder"
+                        title="Drag to reorder"
+                      >
+                        <Bars3Icon className="w-5 h-5" />
                       </div>
 
                       {/* Emoji picker */}
