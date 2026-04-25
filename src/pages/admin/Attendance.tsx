@@ -63,7 +63,7 @@ const Attendance = () => {
     { value: "checkins", icon: UsersIcon, label: isMobile ? "QR" : "QR Check-ins", visible: canQR },
     { value: "analytics", icon: ExclamationTriangleIcon, label: isMobile ? "Absent" : "Absent Analytics", visible: true },
     { value: "staff", icon: UserGroupIcon, label: "Staff", visible: true },
-    { value: "insights", icon: ChartBarIcon, label: "Insights", visible: true },
+    { value: "insights", icon: ChartBarIcon, label: "Insights", visible: !isSlotMode ? false : true },
     { value: "biometric", icon: FingerPrintIcon, label: isMobile ? "Bio" : "Biometric", visible: canBiometric },
   ];
 
