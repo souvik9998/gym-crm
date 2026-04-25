@@ -58,6 +58,7 @@ import {
   ArrowPathIcon,
   GlobeAltIcon,
   ChevronDownIcon,
+  BookOpenIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -155,6 +156,7 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
   const [verifyResults, setVerifyResults] = useState<Record<string, VerifyResponse>>({});
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const branchMap = useMemo(() => {
     const m = new Map<string, Branch>();
@@ -320,6 +322,151 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
               page, etc.) — only the subdomain needs the CNAME above.
             </div>
           </div>
+        </div>
+
+        <div className="px-6 mb-4">
+          <Collapsible open={guideOpen} onOpenChange={setGuideOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  <BookOpenIcon className="h-4 w-4" />
+                  Complete Setup Guide (Cloudflare + Vercel)
+                </span>
+                <ChevronDownIcon
+                  className={`h-4 w-4 transition-transform ${guideOpen ? "rotate-180" : ""}`}
+                />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3">
+              <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-5">
+                <div>
+                  <h4 className="font-semibold mb-1">📋 Prerequisites</h4>
+                  <ul className="list-disc pl-5 space-y-0.5 text-muted-foreground text-xs">
+                    <li>Access to the gym's DNS provider (Cloudflare recommended)</li>
+                    <li>Access to the GymKloud Vercel project (Settings → Domains)</li>
+                    <li>Gym's branch already created in GymKloud</li>
+                    <li>Decided on the subdomain (recommended: <code>register.&lt;gymdomain&gt;</code>)</li>
+                  </ul>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    <strong>Why a subdomain?</strong> The gym's main domain usually hosts their landing page elsewhere. A subdomain keeps both running independently.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-1">🟢 Step 1 — Add the Domain in GymKloud</h4>
+                  <ol className="list-decimal pl-5 space-y-0.5 text-xs">
+                    <li>Click <strong>Add Domain</strong> above and enter the full hostname (e.g. <code>register.qoremedia.in</code>).</li>
+                    <li>Pick the branch this domain should resolve to.</li>
+                    <li>GymKloud generates a <strong>TXT verification token</strong> — keep this tab open.</li>
+                  </ol>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-1">🟠 Step 2 — Cloudflare DNS (gym's DNS provider)</h4>
+                  <p className="text-xs mb-2">In Cloudflare → select the gym's domain → <strong>DNS → Records</strong> → add <strong>two records</strong>:</p>
+
+                  <div className="space-y-2">
+                    <div className="rounded border bg-background p-2">
+                      <div className="text-xs font-medium mb-1">A. CNAME record (routes traffic to Vercel)</div>
+                      <ul className="text-xs space-y-0.5 font-mono">
+                        <li>Type: <strong>CNAME</strong></li>
+                        <li>Name: <strong>register</strong> (just the subdomain part)</li>
+                        <li>Target: <strong>cname.vercel-dns.com</strong></li>
+                        <li>Proxy: 🟧 <strong>Proxied</strong> (orange cloud ON)</li>
+                        <li>TTL: Auto</li>
+                      </ul>
+                    </div>
+
+                    <div className="rounded border bg-background p-2">
+                      <div className="text-xs font-medium mb-1">B. TXT record (proves ownership)</div>
+                      <ul className="text-xs space-y-0.5 font-mono">
+                        <li>Type: <strong>TXT</strong></li>
+                        <li>Name: <strong>_gymkloud.register</strong></li>
+                        <li>Content: <strong>gymkloud-verify=&lt;token from Step 1&gt;</strong></li>
+                        <li>Proxy: DNS only</li>
+                      </ul>
+                    </div>
+
+                    <div className="rounded border border-destructive/40 bg-destructive/5 p-2">
+                      <div className="text-xs font-medium mb-1 text-destructive">C. SSL/TLS setting (critical!)</div>
+                      <p className="text-xs">
+                        Go to <strong>SSL/TLS → Overview</strong> and set <strong>Encryption Mode = Full</strong>.
+                      </p>
+                      <p className="text-xs mt-1 text-muted-foreground">
+                        ❌ Do NOT use <code>Flexible</code> — causes redirect loops. ✅ <code>Full</code> or <code>Full (strict)</code> both work.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-1">⬛ Step 3 — Vercel (GymKloud project)</h4>
+                  <ol className="list-decimal pl-5 space-y-0.5 text-xs">
+                    <li>Open Vercel dashboard → <strong>GymKloud project → Settings → Domains</strong>.</li>
+                    <li>Click <strong>Add Domain</strong>.</li>
+                    <li>Enter the full hostname (e.g. <code>register.qoremedia.in</code>) → <strong>Add</strong>.</li>
+                    <li>If Vercel shows <strong>"Proxy Detected"</strong>, ignore it — Cloudflare is handling SSL/DDoS by design.</li>
+                    <li>Wait ~30 seconds → status should show <strong>Production / Valid Configuration</strong>.</li>
+                  </ol>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    No SSL action needed on Vercel — Cloudflare's edge cert handles HTTPS.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-1">✅ Step 4 — Verify in GymKloud</h4>
+                  <ol className="list-decimal pl-5 space-y-0.5 text-xs">
+                    <li>Return to this Domains tab.</li>
+                    <li>Click <strong>Check verification</strong> on the domain row above.</li>
+                    <li>Once the TXT record propagates (usually &lt;1 min on Cloudflare), status flips to <strong>Verified</strong>.</li>
+                  </ol>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-1">🧪 Step 5 — Test</h4>
+                  <p className="text-xs">
+                    Open <code>https://register.&lt;gymdomain&gt;/</code> in an incognito tab. The gym's branded registration page should load (same as <code>/b/&lt;branch-slug&gt;</code> on gymkloud.in), using the gym's database, Razorpay credentials, branding, and packages.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-1">🛠 Troubleshooting</h4>
+                  <div className="overflow-x-auto">
+                    <table className="text-xs w-full border-collapse">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-1.5 font-medium">Symptom</th>
+                          <th className="text-left p-1.5 font-medium">Cause</th>
+                          <th className="text-left p-1.5 font-medium">Fix</th>
+                        </tr>
+                      </thead>
+                      <tbody className="font-mono text-[11px]">
+                        <tr className="border-b"><td className="p-1.5">Vercel 404 DEPLOYMENT_NOT_FOUND</td><td className="p-1.5">Domain not added in Vercel</td><td className="p-1.5">Repeat Step 3</td></tr>
+                        <tr className="border-b"><td className="p-1.5">Cloudflare 525 / 526 error</td><td className="p-1.5">SSL mode is Flexible/Off</td><td className="p-1.5">Set SSL/TLS = Full</td></tr>
+                        <tr className="border-b"><td className="p-1.5">Infinite redirect loop</td><td className="p-1.5">SSL mode = Flexible</td><td className="p-1.5">Set SSL/TLS = Full</td></tr>
+                        <tr className="border-b"><td className="p-1.5">"Domain not configured" page</td><td className="p-1.5">Not verified in GymKloud</td><td className="p-1.5">Repeat Step 4</td></tr>
+                        <tr className="border-b"><td className="p-1.5">TXT verification fails</td><td className="p-1.5">DNS not propagated yet</td><td className="p-1.5">Wait 1–2 min, retry</td></tr>
+                        <tr><td className="p-1.5">Loads gymkloud.in homepage</td><td className="p-1.5">CNAME wrong / not proxied</td><td className="p-1.5">Check Step 2A</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border-2 border-dashed p-3 bg-background">
+                  <h4 className="font-semibold mb-1.5 text-xs">📌 Quick Reference (every new gym)</h4>
+                  <ol className="list-decimal pl-5 space-y-0.5 text-xs font-mono">
+                    <li>GymKloud → add domain + copy TXT token</li>
+                    <li>Cloudflare → CNAME register → cname.vercel-dns.com (Proxied)</li>
+                    <li>Cloudflare → TXT _gymkloud.register = gymkloud-verify=&lt;token&gt;</li>
+                    <li>Cloudflare → SSL/TLS = Full</li>
+                    <li>Vercel → Settings → Domains → Add register.&lt;domain&gt;</li>
+                    <li>GymKloud → Check verification</li>
+                    <li>Test https://register.&lt;domain&gt;/</li>
+                  </ol>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         <CardContent className="space-y-4">
