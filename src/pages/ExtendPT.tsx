@@ -78,7 +78,7 @@ const ExtendPT = () => {
         if (cancelled) return;
 
         if (branch) {
-          setBranchInfo({ id: branch.id, name: stateBranchName || branch.name });
+          setBranchInfo({ id: branch.id, name: stateBranchName || branch.name, logo_url: branch.logo_url ?? null });
           if (branch.allowSelfSelectTrainer === false) {
             toast.error("Personal training selection is managed by admin");
             navigate(fallback, { replace: true });
