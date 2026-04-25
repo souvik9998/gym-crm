@@ -1261,6 +1261,7 @@ export type Database = {
           monthly_fee: number
           monthly_packages: number[] | null
           registration_field_settings: Json
+          time_buckets: Json
           updated_at: string | null
           whatsapp_auto_send: Json
           whatsapp_enabled: boolean | null
@@ -1286,6 +1287,7 @@ export type Database = {
           monthly_fee?: number
           monthly_packages?: number[] | null
           registration_field_settings?: Json
+          time_buckets?: Json
           updated_at?: string | null
           whatsapp_auto_send?: Json
           whatsapp_enabled?: boolean | null
@@ -1311,6 +1313,7 @@ export type Database = {
           monthly_fee?: number
           monthly_packages?: number[] | null
           registration_field_settings?: Json
+          time_buckets?: Json
           updated_at?: string | null
           whatsapp_auto_send?: Json
           whatsapp_enabled?: boolean | null
