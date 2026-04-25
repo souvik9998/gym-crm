@@ -156,6 +156,7 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
   const [verifyResults, setVerifyResults] = useState<Record<string, VerifyResponse>>({});
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const branchMap = useMemo(() => {
     const m = new Map<string, Branch>();
