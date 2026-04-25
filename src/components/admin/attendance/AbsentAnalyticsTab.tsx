@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { AttendanceDatePicker } from "./AttendanceDatePicker";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { useAssignedMemberIds } from "@/hooks/useAssignedMembers";
 import {
   ExclamationTriangleIcon,
