@@ -15,6 +15,7 @@ interface SuccessState {
   endDate: string;
   isNewMember: boolean;
   branchName?: string;
+  branchLogoUrl?: string | null;
   paymentId?: string;
   branchId?: string;
 }
