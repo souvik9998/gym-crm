@@ -38,6 +38,8 @@ import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay
 import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useTenantPrimaryDomain } from "@/hooks/useTenantPrimaryDomain";
+import { buildPublicUrl } from "@/lib/publicUrl";
 
 type PaymentMode = Database["public"]["Enums"]["payment_mode"];
 type PaymentStatus = Database["public"]["Enums"]["payment_status"];
@@ -52,6 +54,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const { currentBranch } = useBranch();
   const { isStaffLoggedIn, permissions } = useStaffAuth();
   const { isAdmin } = useIsAdmin();
+  const { data: customDomain } = useTenantPrimaryDomain(currentBranch?.id);
   const canSendWhatsApp = isAdmin || (isStaffLoggedIn && (permissions as any)?.can_send_whatsapp === true);
   const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null);
   
@@ -339,7 +342,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
         .maybeSingle();
       
       if (data?.invoice_number) {
-        const url = `${window.location.origin}/invoice/${data.invoice_number}`;
+        const url = buildPublicUrl(`/invoice/${data.invoice_number}`, customDomain?.hostname);
         await navigator.clipboard.writeText(url);
         toast.success("Invoice link copied!");
       } else {
@@ -348,7 +351,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
           body: { paymentId, branchId: currentBranch?.id, sendViaWhatsApp: false },
         });
         if (!error && genData?.invoiceNumber) {
-          const url = `${window.location.origin}/invoice/${genData.invoiceNumber}`;
+          const url = buildPublicUrl(`/invoice/${genData.invoiceNumber}`, customDomain?.hostname);
           await navigator.clipboard.writeText(url);
           toast.success("Invoice link copied!");
         } else {
