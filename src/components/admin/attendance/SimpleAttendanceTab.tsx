@@ -185,6 +185,7 @@ export const SimpleAttendanceTab = () => {
   const [customEnd, setCustomEnd] = useState("10:00");
   const { buckets, options: bucketOptions } = useTimeBuckets();
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "all">("all");
+  const [confirmMarkAll, setConfirmMarkAll] = useState<AttendanceStatus | null>(null);
   const { assignedMemberIds } = useAssignedMemberIds();
   const { allSlots } = useAttendanceFilters();
   const { data: scopedMembers = [], isLoading: loadingMembers } = useMembersQuery();
