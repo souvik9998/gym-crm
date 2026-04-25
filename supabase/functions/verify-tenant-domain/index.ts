@@ -2,11 +2,17 @@
  * verify-tenant-domain
  *
  * Super-admin gated. Performs DNS lookups for a hostname registered
- * in `public.tenant_domains` and marks it verified when:
- *   - The TXT record at `_lovable.<hostname>` contains
- *     `lovable_verify=<verification_token>`, AND
- *   - The A record for `<hostname>` resolves to Lovable's hosting IP
- *     (185.158.133.1) — soft check, returns details either way.
+ * in `public.tenant_domains` and marks it verified when the TXT
+ * ownership record is present.
+ *
+ *   TXT  _lovable.<hostname>   contains   lovable_verify=<token>
+ *
+ * The A-record check is informational only — many gyms front their
+ * domain with Cloudflare/Vercel proxies, or use subdomains like
+ * `register.5threalm.in` that legitimately won't resolve to Lovable's
+ * raw IP. Ownership (TXT) is what we actually need to safely route a
+ * tenant. Pointing the host at Lovable for SSL/serving is configured
+ * separately in Lovable Project Settings → Domains.
  *
  * Body: { domain_id: string }
  */
@@ -22,6 +28,22 @@ const corsHeaders = {
 
 const LOVABLE_HOSTING_IP = "185.158.133.1";
 
+// Common proxy providers gyms use in front of their domain. When the A
+// record points to one of these, we treat the routing as "intentionally
+// proxied" and surface an info note instead of an error.
+const PROXY_IP_PREFIXES = [
+  "104.16.", "104.17.", "104.18.", "104.19.", "104.20.", "104.21.",
+  "104.22.", "104.23.", "104.24.", "104.25.", "104.26.", "104.27.",
+  "104.28.", "172.64.", "172.65.", "172.66.", "172.67.", "172.68.",
+  "172.69.", "172.70.", "172.71.", // Cloudflare
+  "76.76.21.", "76.76.19.", // Vercel
+  "151.101.", // Fastly
+];
+
+function isProxiedIp(ip: string): boolean {
+  return PROXY_IP_PREFIXES.some((p) => ip.startsWith(p));
+}
+
 interface VerifyResult {
   verified: boolean;
   hostname: string;
@@ -29,10 +51,12 @@ interface VerifyResult {
   dns: {
     a_records: string[] | null;
     a_matches: boolean;
+    a_proxied: boolean;
     txt_records: string[] | null;
     txt_matches: boolean;
   };
   errors: string[];
+  notes: string[];
 }
 
 async function lookupA(host: string): Promise<string[] | null> {
@@ -48,7 +72,6 @@ async function lookupA(host: string): Promise<string[] | null> {
 async function lookupTxt(host: string): Promise<string[] | null> {
   try {
     const records = await Deno.resolveDns(host, "TXT");
-    // resolveDns returns string[][] for TXT — flatten each entry
     return (records as string[][]).map((parts) => parts.join(""));
   } catch (e) {
     console.warn(`TXT lookup failed for ${host}:`, (e as Error).message);
@@ -81,7 +104,6 @@ Deno.serve(async (req) => {
     });
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Validate caller
     const token = authHeader.replace("Bearer ", "").trim();
     let userId: string | undefined;
     try {
@@ -99,7 +121,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Super admin gate
     const { data: isSuper } = await adminClient.rpc("is_super_admin", {
       _user_id: userId,
     });
@@ -141,33 +162,54 @@ Deno.serve(async (req) => {
     const hostname = row.hostname.toLowerCase().trim();
     const expectedToken = row.verification_token;
     const errors: string[] = [];
+    const notes: string[] = [];
 
-    // DNS lookups in parallel
     const [aRecords, txtRecords] = await Promise.all([
       lookupA(hostname),
       lookupTxt(`_lovable.${hostname}`),
     ]);
 
     const aMatches = !!aRecords?.includes(LOVABLE_HOSTING_IP);
+    const aProxied =
+      !aMatches && !!aRecords && aRecords.some((ip) => isProxiedIp(ip));
     const expectedTxt = `lovable_verify=${expectedToken}`;
     const txtMatches =
       !!txtRecords && txtRecords.some((r) => r.includes(expectedTxt));
 
-    if (!aRecords) errors.push("Could not resolve A record");
-    else if (!aMatches)
+    // TXT is the only hard requirement — it proves ownership.
+    if (!txtRecords) {
       errors.push(
-        `A record does not point to ${LOVABLE_HOSTING_IP} (got: ${aRecords.join(
-          ", "
-        )})`
+        `Could not find TXT record at _lovable.${hostname}. Add a TXT record on the host "_lovable" (or "_lovable.<subdomain>") with the verification token below.`
       );
+    } else if (!txtMatches) {
+      errors.push(
+        `TXT record found but does not contain the expected token. Make sure the value is exactly: ${expectedTxt}`
+      );
+    }
 
-    if (!txtRecords) errors.push(`Could not resolve TXT at _lovable.${hostname}`);
-    else if (!txtMatches)
-      errors.push(`TXT record missing expected value: ${expectedTxt}`);
+    // A-record is informational. We surface useful notes but never block.
+    if (aRecords && !aMatches) {
+      if (aProxied) {
+        notes.push(
+          `Domain is proxied (got ${aRecords.join(
+            ", "
+          )}). That's fine — make sure SSL/origin is configured in Lovable Project Settings → Domains for ${hostname}.`
+        );
+      } else {
+        notes.push(
+          `Domain currently resolves to ${aRecords.join(
+            ", "
+          )}. For Lovable to serve this hostname directly, point it at ${LOVABLE_HOSTING_IP} (or front it with your existing CDN/proxy and add the same hostname under Lovable Project Settings → Domains for SSL).`
+        );
+      }
+    } else if (!aRecords) {
+      notes.push(
+        `No A record resolved for ${hostname}. Add the hostname under Lovable Project Settings → Domains so SSL is provisioned.`
+      );
+    }
 
-    // We mark verified when ownership (TXT) is proven AND the host points
-    // at Lovable. Both are required for the public link to actually serve.
-    const verified = txtMatches && aMatches;
+    // Verification = ownership proven via TXT. Routing/SSL is decoupled.
+    const verified = txtMatches;
 
     if (verified && !row.is_verified) {
       await adminClient
@@ -183,10 +225,12 @@ Deno.serve(async (req) => {
       dns: {
         a_records: aRecords,
         a_matches: aMatches,
+        a_proxied: aProxied,
         txt_records: txtRecords,
         txt_matches: txtMatches,
       },
       errors,
+      notes,
     };
 
     return new Response(JSON.stringify(result), {

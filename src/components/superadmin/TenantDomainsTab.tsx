@@ -89,24 +89,52 @@ interface VerifyResponse {
   dns: {
     a_records: string[] | null;
     a_matches: boolean;
+    a_proxied?: boolean;
     txt_records: string[] | null;
     txt_matches: boolean;
   };
   errors: string[];
+  notes?: string[];
 }
 
 const LOVABLE_HOSTING_IP = "185.158.133.1";
 
 function normalizeHostname(input: string): string {
-  return input
+  const trimmed = input
     .trim()
     .toLowerCase()
     .replace(/^https?:\/\//, "")
-    .replace(/\/.*$/, "")
-    .replace(/^www\./, "");
+    .replace(/\/.*$/, "");
+  // Only strip leading "www." when the host is exactly an apex+www
+  // (e.g. "www.example.com"). Preserve real subdomains like
+  // "www.register.example.com" or "register.example.com" untouched.
+  return trimmed.split(".").length === 3 && trimmed.startsWith("www.")
+    ? trimmed.slice(4)
+    : trimmed;
 }
 
 const HOSTNAME_REGEX = /^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i;
+
+/**
+ * Splits a hostname into the labels you actually type into a DNS panel.
+ * For an apex domain like "5threalm.in" the A record host is "@".
+ * For a subdomain like "register.5threalm.in" the A record host is
+ * "register" (or the full path when the registrar wants the FQDN), and
+ * the TXT verification host is "_lovable.register".
+ */
+function getDnsLabels(hostname: string) {
+  const parts = hostname.split(".");
+  // Treat anything with 3+ labels as a subdomain (works for .in, .co.uk
+  // edge-cases too because we only need a hint for the host column).
+  const isSubdomain = parts.length > 2;
+  const subPrefix = isSubdomain ? parts.slice(0, -2).join(".") : "";
+  return {
+    isSubdomain,
+    aHost: isSubdomain ? subPrefix : "@",
+    wwwHost: isSubdomain ? `www.${subPrefix}` : "www",
+    txtHost: isSubdomain ? `_lovable.${subPrefix}` : "_lovable",
+  };
+}
 
 interface Props {
   tenantId: string;
@@ -254,9 +282,10 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
               Custom Domains
             </CardTitle>
             <CardDescription>
-              Connect the gym's own website (e.g. <code>5threalm.in</code>) so member
-              registration runs from their branded domain. Payments will then originate
-              from this domain — required by Razorpay/RBI for separate merchant credentials.
+              Connect the gym's own domain or subdomain (e.g. <code>5threalm.in</code> or
+              <code> register.5threalm.in</code>) so member registration runs from their branded
+              URL. Payments will then originate from this domain — required by Razorpay/RBI for
+              separate merchant credentials.
             </CardDescription>
           </div>
           <Button onClick={() => setAddOpen(true)} size="sm">
@@ -280,6 +309,7 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
                 const branch = d.branch_id ? branchMap.get(d.branch_id) : null;
                 const result = verifyResults[d.id];
                 const expanded = expandedId === d.id;
+                const labels = getDnsLabels(d.hostname);
                 return (
                   <div
                     key={d.id}
@@ -306,6 +336,9 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
                             </Badge>
                           )}
                           {d.is_primary && <Badge variant="secondary">Primary</Badge>}
+                          {labels.isSubdomain && (
+                            <Badge variant="outline" className="text-xs">Subdomain</Badge>
+                          )}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {branch ? `Branch: ${branch.name}` : "All branches (default)"}
@@ -354,7 +387,7 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
                       </div>
                     </div>
 
-                    {result && !result.verified && (
+                    {result && result.errors.length > 0 && (
                       <div className="text-xs bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded p-2 space-y-1">
                         {result.errors.map((err, i) => (
                           <div key={i} className="text-amber-900 dark:text-amber-200">• {err}</div>
@@ -363,6 +396,14 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
                           A: {result.dns.a_records?.join(", ") || "—"} • TXT:{" "}
                           {result.dns.txt_records?.join(", ") || "—"}
                         </div>
+                      </div>
+                    )}
+
+                    {result && result.notes && result.notes.length > 0 && (
+                      <div className="text-xs bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded p-2 space-y-1">
+                        {result.notes.map((note, i) => (
+                          <div key={i} className="text-blue-900 dark:text-blue-200">ℹ {note}</div>
+                        ))}
                       </div>
                     )}
 
@@ -379,28 +420,51 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
                       </CollapsibleTrigger>
                       <CollapsibleContent className="space-y-3 pt-2">
                         <p className="text-xs text-muted-foreground">
-                          Ask the gym owner to add these records at their domain registrar,
-                          then add this same domain in <strong>Lovable Project Settings → Domains</strong>{" "}
-                          so SSL is provisioned. Click "Check verification" once DNS has propagated.
+                          {labels.isSubdomain ? (
+                            <>
+                              <strong>Subdomain setup.</strong> Add the TXT record below at the gym's
+                              DNS provider — that's all we need to verify ownership. The A record
+                              should point <code>{labels.aHost}</code> at wherever you want
+                              <code> {d.hostname}</code> to be served from (Lovable's IP for direct
+                              hosting, or keep the existing proxy/CDN). Then add{" "}
+                              <code>{d.hostname}</code> under{" "}
+                              <strong>Lovable Project Settings → Domains</strong> so SSL is issued.
+                            </>
+                          ) : (
+                            <>
+                              <strong>Apex domain setup.</strong> Add these records at the gym's DNS
+                              provider, then add <code>{d.hostname}</code> under{" "}
+                              <strong>Lovable Project Settings → Domains</strong> so SSL is issued.
+                              Click "Check verification" once DNS has propagated.
+                            </>
+                          )}
                         </p>
                         <DnsRecordRow
-                          type="A"
-                          name="@"
-                          value={LOVABLE_HOSTING_IP}
-                          onCopy={(v) => copyText(v, "Value")}
-                        />
-                        <DnsRecordRow
-                          type="A"
-                          name="www"
-                          value={LOVABLE_HOSTING_IP}
-                          onCopy={(v) => copyText(v, "Value")}
-                        />
-                        <DnsRecordRow
                           type="TXT"
-                          name="_lovable"
+                          name={labels.txtHost}
                           value={`lovable_verify=${d.verification_token}`}
                           onCopy={(v) => copyText(v, "Value")}
+                          required
                         />
+                        <DnsRecordRow
+                          type="A"
+                          name={labels.aHost}
+                          value={LOVABLE_HOSTING_IP}
+                          onCopy={(v) => copyText(v, "Value")}
+                          hint={
+                            labels.isSubdomain
+                              ? "Or keep your existing proxy (Cloudflare, etc.) — verification only needs the TXT record."
+                              : undefined
+                          }
+                        />
+                        {!labels.isSubdomain && (
+                          <DnsRecordRow
+                            type="A"
+                            name={labels.wwwHost}
+                            value={LOVABLE_HOSTING_IP}
+                            onCopy={(v) => copyText(v, "Value")}
+                          />
+                        )}
                       </CollapsibleContent>
                     </Collapsible>
 
@@ -421,7 +485,8 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
           <DialogHeader>
             <DialogTitle>Add Custom Domain</DialogTitle>
             <DialogDescription>
-              The hostname only — no <code>https://</code> and no path.
+              Hostname only — no <code>https://</code> and no path. Apex domains
+              (<code>5threalm.in</code>) or subdomains (<code>register.5threalm.in</code>) both work.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -429,7 +494,7 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
               <Label htmlFor="new-host">Domain</Label>
               <Input
                 id="new-host"
-                placeholder="5threalm.in"
+                placeholder="register.5threalm.in"
                 value={newHost}
                 onChange={(e) => setNewHost(e.target.value)}
                 autoFocus
@@ -498,26 +563,43 @@ function DnsRecordRow({
   name,
   value,
   onCopy,
+  required,
+  hint,
 }: {
   type: string;
   name: string;
   value: string;
   onCopy: (v: string) => void;
+  required?: boolean;
+  hint?: string;
 }) {
   return (
-    <div className="grid grid-cols-[60px_80px_1fr_auto] gap-2 items-center text-xs bg-muted/40 rounded p-2 font-mono">
-      <Badge variant="outline" className="font-mono">{type}</Badge>
-      <span>{name}</span>
-      <span className="truncate">{value}</span>
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        className="h-7 w-7 p-0"
-        onClick={() => onCopy(value)}
-      >
-        <ClipboardDocumentIcon className="h-3.5 w-3.5" />
-      </Button>
+    <div className="space-y-1">
+      <div className="grid grid-cols-[60px_minmax(80px,140px)_1fr_auto] gap-2 items-center text-xs bg-muted/40 rounded p-2 font-mono">
+        <Badge variant="outline" className="font-mono">{type}</Badge>
+        <span className="truncate">{name}</span>
+        <span className="truncate">{value}</span>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-7 w-7 p-0"
+          onClick={() => onCopy(value)}
+        >
+          <ClipboardDocumentIcon className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      {(required || hint) && (
+        <div className="text-[11px] text-muted-foreground pl-2">
+          {required && (
+            <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+              Required for verification.
+            </span>
+          )}
+          {required && hint ? " " : ""}
+          {hint}
+        </div>
+      )}
     </div>
   );
 }
