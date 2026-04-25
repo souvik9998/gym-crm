@@ -321,7 +321,11 @@ const Register = () => {
           </Button>
         </div>
         <div className="flex items-center justify-center gap-2 mt-4">
-          <Dumbbell className="w-6 h-6 text-accent" />
+          {branchInfo ? (
+            <BranchLogo logoUrl={branchInfo.logo_url} name={branchInfo.name} size="sm" />
+          ) : (
+            <Dumbbell className="w-6 h-6 text-accent" />
+          )}
           <span className="text-xl font-semibold text-foreground">
             New Membership
           </span>
