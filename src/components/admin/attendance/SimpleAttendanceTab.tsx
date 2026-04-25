@@ -191,8 +191,8 @@ export const SimpleAttendanceTab = () => {
   const isLimitedAccess = isStaffLoggedIn && permissions?.member_access_type === "assigned";
 
   const timeFilteredSlots = useMemo(() => {
-    return allSlots.filter((slot) => matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd, slot.end_time));
-  }, [allSlots, timeFilter, customStart, customEnd]);
+    return allSlots.filter((slot) => matchesTimeFilter(slot.start_time, timeFilter, customStart, customEnd, slot.end_time, buckets));
+  }, [allSlots, timeFilter, customStart, customEnd, buckets]);
 
   const filteredSlotIds = useMemo(() => timeFilteredSlots.map((slot) => slot.id), [timeFilteredSlots]);
   const filteredSlotIdSet = useMemo(() => new Set(filteredSlotIds), [filteredSlotIds]);
@@ -575,6 +575,7 @@ export const SimpleAttendanceTab = () => {
           <TimeBucketChips
             value={timeFilter}
             onChange={setTimeFilter}
+            options={bucketOptions}
             compact
             className="flex-1 min-w-0"
           />
@@ -738,13 +739,14 @@ export const SimpleAttendanceTab = () => {
             <TimeBucketChips
               value={timeFilter}
               onChange={setTimeFilter}
+              options={bucketOptions}
               className="w-full"
             />
           </div>
           {/* Mobile: 3-up dropdown row aligned with Trainer + Slot */}
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-2">
             <div className="sm:hidden">
-              <TimeBucketDropdown value={timeFilter} onChange={setTimeFilter} />
+              <TimeBucketDropdown value={timeFilter} onChange={setTimeFilter} options={bucketOptions} />
             </div>
             <TrainerFilterDropdown value={selectedTrainerId} onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }} compact />
             <TimeSlotFilterDropdown value={selectedSlotId} onChange={setSelectedSlotId} trainerFilter={selectedTrainerId} compact />
