@@ -15,6 +15,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import { fetchPublicBranch } from "@/api/publicData";
+import { useDomainContext } from "@/contexts/DomainContext";
 import { isUUID } from "@/lib/slugResolver";
 
 type CheckInStatus = "loading" | "login" | "success" | "checked_out" | "expired" | "duplicate" | "device_mismatch" | "not_found" | "error";
