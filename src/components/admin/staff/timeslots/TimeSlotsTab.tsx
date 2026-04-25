@@ -186,11 +186,16 @@ export const TimeSlotsTab = ({
         member_count: memberCounts[slot.id] || 0,
       })) as TimeSlot[];
     },
-    enabled: !!currentBranch?.id,
+    enabled: !!currentBranch?.id && !trainersLoading,
     staleTime: STALE_TIMES.DYNAMIC,
     gcTime: GC_TIME,
     placeholderData: (prev) => prev, // keep showing last data while refetching
   });
+
+  // Combined loading flag: show the skeleton until BOTH the trainer list and
+  // the slot list are ready, so we never resolve a slot's trainer to "Unknown"
+  // just because trainers arrived a moment later than slots.
+  const showSkeleton = isLoading || trainersLoading;
 
   // Refresh helper used after mutations — does NOT flip isLoading,
   // so the UI stays in place while data updates.
