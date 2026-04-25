@@ -78,6 +78,12 @@ const TenantDomainRoutes = () => (
     <Route path="/event/:eventSlug" element={
       <Suspense fallback={<PageLoader />}><EventRegistration /></Suspense>
     } />
+    {/* Branch-specific routes also work on tenant custom domains so the
+        same QR/share links remain valid (https://customdomain/b/:slug). */}
+    <Route path="/b/:branchSlug" element={<Index />} />
+    <Route path="/b/:branchSlug/register" element={<Register />} />
+    <Route path="/b/:branchSlug/renew" element={<Renew />} />
+    <Route path="/b/:branchSlug/extend-pt" element={<ExtendPT />} />
     {/* Catch-all on tenant domains -> landing */}
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>
