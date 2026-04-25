@@ -217,11 +217,16 @@ export const AttendanceHistoryTab = () => {
   }, [monthRecords]);
 
   const memberStats = useMemo(() => {
-    const map: Record<string, { name: string; phone: string; present: number; skipped: number; absent: number; total: number; dates: Record<string, string> }> = {};
+    const map: Record<string, { name: string; phone: string; trainer: string | null; present: number; skipped: number; absent: number; total: number; dates: Record<string, string> }> = {};
     monthRecords.forEach((r: any) => {
       const id = r.member_id;
       if (!id) return;
-      if (!map[id]) map[id] = { name: r.members?.name || "Unknown", phone: r.members?.phone || "", present: 0, skipped: 0, absent: 0, total: 0, dates: {} };
+      if (!map[id]) map[id] = { name: r.members?.name || "Unknown", phone: r.members?.phone || "", trainer: null, present: 0, skipped: 0, absent: 0, total: 0, dates: {} };
+      // Capture the first non-null trainer name we see for this member
+      if (!map[id].trainer) {
+        const tn = resolveTrainerName(r);
+        if (tn) map[id].trainer = tn;
+      }
       map[id].total++;
       if (r.status === "present") map[id].present++;
       else if (r.status === "late" || r.status === "skipped") map[id].skipped++;
@@ -230,7 +235,8 @@ export const AttendanceHistoryTab = () => {
       map[id].dates[r.date] = r.status === "late" ? "skipped" : r.status;
     });
     return map;
-  }, [monthRecords]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthRecords, slotTrainerMap, memberSlotMap]);
 
   const memberRanking = useMemo(() => {
     const arr = Object.entries(memberStats).map(([id, s]) => ({ id, ...s, absentRate: s.total > 0 ? s.absent / s.total : 0 }));
