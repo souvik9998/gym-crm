@@ -967,7 +967,7 @@ export const AddMemberDialog = ({
 
       if (wantsPT && selectedTrainerId) {
         const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
-        await supabase.from("pt_subscriptions").insert({
+        const { data: insertedPt } = await supabase.from("pt_subscriptions").insert({
           member_id: member.id,
           personal_trainer_id: selectedTrainerId,
           start_date: formatDateOnly(gymStartDate),
@@ -976,7 +976,8 @@ export const AddMemberDialog = ({
           total_fee: ptFee,
           status: "active",
           branch_id: currentBranch?.id,
-        });
+        }).select("id").maybeSingle();
+        await bindMemberToTimeSlot(insertedPt?.id, member.id);
       }
 
       const paymentType = wantsPT ? "gym_and_pt" : "gym_membership";
