@@ -278,12 +278,16 @@ export const AttendanceHistoryTab = () => {
     return list;
   }, [monthRecords, selectedDate, search, dayStatusFilter]);
 
+  // Day-level totals computed from the full (unfiltered) day so chip badges
+  // stay stable while the user toggles between Present/Skipped/Absent.
   const selectedStats = useMemo(() => {
-    const present = selectedRecords.filter((r: any) => r.status === "present").length;
-    const skipped = selectedRecords.filter((r: any) => r.status === "late" || r.status === "skipped").length;
-    const absent = selectedRecords.filter((r: any) => r.status === "absent").length;
-    return { present, skipped, absent, total: selectedRecords.length };
-  }, [selectedRecords]);
+    if (!selectedDate) return { present: 0, skipped: 0, absent: 0, total: 0 };
+    const dayRecords = monthRecords.filter((r: any) => r.date === selectedDate);
+    const present = dayRecords.filter((r: any) => r.status === "present").length;
+    const skipped = dayRecords.filter((r: any) => r.status === "late" || r.status === "skipped").length;
+    const absent = dayRecords.filter((r: any) => r.status === "absent").length;
+    return { present, skipped, absent, total: dayRecords.length };
+  }, [monthRecords, selectedDate]);
 
   const formatDateDisplay = (d: string) =>
     new Date(d + "T00:00:00").toLocaleDateString("en-IN", {
