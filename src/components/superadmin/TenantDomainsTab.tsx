@@ -282,9 +282,10 @@ export default function TenantDomainsTab({ tenantId, branches }: Props) {
               Custom Domains
             </CardTitle>
             <CardDescription>
-              Connect the gym's own website (e.g. <code>5threalm.in</code>) so member
-              registration runs from their branded domain. Payments will then originate
-              from this domain — required by Razorpay/RBI for separate merchant credentials.
+              Connect the gym's own domain or subdomain (e.g. <code>5threalm.in</code> or
+              <code> register.5threalm.in</code>) so member registration runs from their branded
+              URL. Payments will then originate from this domain — required by Razorpay/RBI for
+              separate merchant credentials.
             </CardDescription>
           </div>
           <Button onClick={() => setAddOpen(true)} size="sm">
