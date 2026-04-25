@@ -124,9 +124,11 @@ const Attendance = () => {
         <TabsContent value="staff" className="mt-0 animate-fade-in">
           <StaffAttendanceTab />
         </TabsContent>
-        <TabsContent value="insights" className="mt-0 animate-fade-in">
-          <AttendanceInsightsTab />
-        </TabsContent>
+        {(canQR || canBiometric) && (
+          <TabsContent value="insights" className="mt-0 animate-fade-in">
+            <AttendanceInsightsTab />
+          </TabsContent>
+        )}
         {canBiometric && (
           <TabsContent value="biometric" className="mt-0 animate-fade-in">
             <BiometricDevicesTab />
