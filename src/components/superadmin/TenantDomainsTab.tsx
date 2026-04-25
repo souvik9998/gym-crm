@@ -100,12 +100,17 @@ interface VerifyResponse {
 const LOVABLE_HOSTING_IP = "185.158.133.1";
 
 function normalizeHostname(input: string): string {
-  return input
+  const trimmed = input
     .trim()
     .toLowerCase()
     .replace(/^https?:\/\//, "")
-    .replace(/\/.*$/, "")
-    .replace(/^www\./, "");
+    .replace(/\/.*$/, "");
+  // Only strip leading "www." when the host is exactly an apex+www
+  // (e.g. "www.example.com"). Preserve real subdomains like
+  // "www.register.example.com" or "register.example.com" untouched.
+  return trimmed.split(".").length === 3 && trimmed.startsWith("www.")
+    ? trimmed.slice(4)
+    : trimmed;
 }
 
 const HOSTNAME_REGEX = /^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i;
