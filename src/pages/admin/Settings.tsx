@@ -1812,6 +1812,8 @@ const AdminSettings = () => {
               <SettingsGeneralSkeleton />
             ) : (
               <>
+                <BrandLogoSettings />
+
                 <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
                   <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
                     <div className="flex items-center gap-3">
