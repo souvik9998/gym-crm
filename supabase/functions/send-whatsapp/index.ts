@@ -436,72 +436,64 @@ Deno.serve(async (req) => {
     // USAGE TRACKING — increment tenant_usage on every successful send.
     // Resolves tenant from branch_id once per request and caches it.
     // ---------------------------------------------------------------
-    const tenantCache = new Map<string, string | null>();
-    const resolveTenantId = async (bId: string | null | undefined): Promise<string | null> => {
-      if (!bId) return null;
-      if (tenantCache.has(bId)) return tenantCache.get(bId)!;
-      try {
-        const { data } = await supabase.rpc("get_tenant_from_branch", { _branch_id: bId });
-        const tId = (data as string | null) ?? null;
-        tenantCache.set(bId, tId);
-        return tId;
-      } catch (e) {
-        console.warn("Failed to resolve tenant from branch:", bId, e);
-        tenantCache.set(bId, null);
-        return null;
-      }
-    };
-
-    const trackWhatsAppUsage = async (bId: string | null | undefined, count = 1) => {
-      const tId = await resolveTenantId(bId);
-      if (!tId) {
-        console.warn("Skipping usage increment — no tenant for branch:", bId);
-        return;
-      }
-      try {
-        await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tId, _count: count });
-      } catch (e) {
-        console.error("Failed to increment whatsapp usage:", e);
-      }
-    };
-
-    // SEND VIA PERISKOPE
-    const sendPeriskopeMessage = async (
-      chatId: string,
-      message: string,
+    // -----------------------------------------------------------------
+    // Provider-agnostic send. Routes through Periskope or Zavu based on
+    // tenant_messaging_config (resolved per branch). Usage tracking is
+    // handled inside sendWhatsAppForTenant().
+    // -----------------------------------------------------------------
+    const sendMessage = async (
+      toPhone: string,
+      fallbackText: string,
+      category: MessageCategory,
+      variables: Record<string, string>,
       bId?: string | null,
     ): Promise<{ success: boolean; error?: string }> => {
-      try {
-        const response = await fetch("https://api.periskope.app/v1/message/send", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${PERISKOPE_API_KEY}`,
-            "x-phone": PERISKOPE_PHONE,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            chat_id: `${chatId}@c.us`,
-            message,
-          }),
-        });
-
-        const responseText = await response.text();
-
-        if (!response.ok) {
-          return {
-            success: false,
-            error: `${response.status} - ${responseText}`,
-          };
-        }
-
-        // Track successful send against tenant quota (best-effort)
-        await trackWhatsAppUsage(bId);
-
-        return { success: true };
-      } catch (error: any) {
-        return { success: false, error: error.message };
-      }
+      const result = await sendWhatsAppForTenant(supabase, {
+        toPhone,
+        category,
+        variables,
+        fallbackText,
+        branchId: bId ?? null,
+      });
+      return { success: result.success, error: result.error };
     };
+
+    // Build the variable map for a member-style message.
+    const buildMemberVariables = (
+      memberName: string,
+      expiryDate: string,
+      actualBranchName: string | null | undefined,
+      paymentInfo?: { amount: number; date: string; mode: string } | null,
+    ): Record<string, string> => {
+      const formattedDate = new Date(expiryDate).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const endDateObj = new Date(expiryDate);
+      endDateObj.setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((endDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+      const vars: Record<string, string> = {
+        name: memberName,
+        expiry_date: formattedDate,
+        days_expired: String(Math.abs(Math.min(0, diffDays))),
+        branch_name: actualBranchName || "Your Gym",
+      };
+      if (paymentInfo) {
+        vars.amount = String(paymentInfo.amount);
+        vars.payment_date = new Date(paymentInfo.date).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+        vars.payment_mode = paymentInfo.mode;
+      }
+      return vars;
+    };
+
 
     // STAFF CREDENTIALS SEND
     if (type === "staff_credentials" && staffCredentials) {
