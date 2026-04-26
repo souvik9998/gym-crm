@@ -587,7 +587,7 @@ export const SimpleAttendanceTab = () => {
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("prev")}>
             <ChevronLeftIcon className="w-4 h-4" />
           </Button>
-          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-1 min-w-0">
+          <div ref={weekStripRef} className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-1 min-w-0">
             {weekDates.map((d) => {
               const isSelected = d === selectedDate;
               const isToday = d === today;
