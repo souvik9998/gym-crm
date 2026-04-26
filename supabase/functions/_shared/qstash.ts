@@ -46,9 +46,10 @@ function decodeJwt(token: string): JwtParts | null {
 
 async function hmacSha256(key: string, data: string): Promise<Uint8Array> {
   const encoder = new TextEncoder();
+  const keyBytes = encoder.encode(key);
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
-    encoder.encode(key),
+    keyBytes as unknown as BufferSource,
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],

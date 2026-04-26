@@ -28,7 +28,7 @@ export async function encrypt(
 
   const key = await crypto.subtle.importKey(
     "raw",
-    keyBytes,
+    keyBytes as unknown as BufferSource,
     { name: "AES-GCM" },
     false,
     ["encrypt"]
@@ -36,7 +36,7 @@ export async function encrypt(
 
   const encoder = new TextEncoder();
   const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
+    { name: "AES-GCM", iv: iv as unknown as BufferSource },
     key,
     encoder.encode(plaintext)
   );
@@ -58,16 +58,16 @@ export async function decrypt(
 
   const key = await crypto.subtle.importKey(
     "raw",
-    keyBytes,
+    keyBytes as unknown as BufferSource,
     { name: "AES-GCM" },
     false,
     ["decrypt"]
   );
 
   const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: ivBytes },
+    { name: "AES-GCM", iv: ivBytes as unknown as BufferSource },
     key,
-    ciphertextBytes
+    ciphertextBytes as unknown as BufferSource
   );
 
   return new TextDecoder().decode(decrypted);
@@ -86,7 +86,7 @@ export async function getGymRazorpayCredentials(
     .from("branches")
     .select("tenant_id")
     .eq("id", branchId)
-    .single();
+    .single<{ tenant_id: string }>();
 
   if (branchError || !branch?.tenant_id) {
     console.error("Failed to resolve tenant from branch:", branchError);
@@ -98,7 +98,7 @@ export async function getGymRazorpayCredentials(
     .from("razorpay_credentials")
     .select("key_id, encrypted_key_secret, encryption_iv, is_verified")
     .eq("tenant_id", branch.tenant_id)
-    .single();
+    .single<{ key_id: string; encrypted_key_secret: string; encryption_iv: string; is_verified: boolean }>();
 
   if (credsError || !creds) {
     // No per-gym credentials configured
