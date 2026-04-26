@@ -236,32 +236,36 @@ Deno.serve(async (req) => {
       return cleaned;
     };
 
-    const sendMessageWithRetry = async (chatId: string, message: string): Promise<{ ok: boolean; status: number; body: string }> => {
+    // Provider-aware sender (Periskope or Zavu) — handles credential resolution + usage increment.
+    const sendMessageWithRetry = async (
+      chatId: string,
+      message: string,
+      branchId: string,
+      category: MessageCategory,
+      variables: Record<string, string>,
+    ): Promise<{ ok: boolean; status: number; body: string }> => {
       const attempt = async (): Promise<{ ok: boolean; status: number; body: string }> => {
-        try {
-          const response = await fetch("https://api.periskope.app/v1/message/send", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${PERISKOPE_API_KEY}`,
-              "x-phone": PERISKOPE_PHONE!,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ chat_id: `${chatId}@c.us`, message }),
-          });
-          const responseText = await response.text();
-          return { ok: response.ok, status: response.status, body: responseText };
-        } catch (error: any) {
-          return { ok: false, status: 0, body: error?.message || String(error) };
-        }
+        const result = await sendWhatsAppForTenant(supabase, {
+          toPhone: chatId,
+          category,
+          variables,
+          fallbackText: message,
+          branchId,
+        });
+        return {
+          ok: result.success,
+          status: result.success ? 200 : 500,
+          body: result.error ?? "ok",
+        };
       };
 
       let result = await attempt();
       if (!result.ok) {
-        log("periskope-retry", { chatId, firstStatus: result.status, firstBody: result.body });
+        log("provider-retry", { chatId, firstBody: result.body });
         await new Promise((r) => setTimeout(r, 2000));
         result = await attempt();
       }
-      log("periskope-result", { chatId, status: result.status, ok: result.ok, body: result.body.slice(0, 300) });
+      log("provider-result", { chatId, status: result.status, ok: result.ok, body: result.body.slice(0, 300) });
       return result;
     };
 
