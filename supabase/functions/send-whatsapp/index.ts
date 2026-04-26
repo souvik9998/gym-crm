@@ -543,9 +543,21 @@ Deno.serve(async (req) => {
       message += `⚠️ Please keep your credentials secure and do not share them with others.\n\n`;
       message += `— Team ${gymDisplayName}`;
       
-      const result = await sendPeriskopeMessage(formattedPhone, message, branchId || null);
-      
-      // Log the notification (without sensitive password info)
+      const result = await sendMessage(
+        formattedPhone,
+        message,
+        "staff_credentials",
+        {
+          name: staffName,
+          phone: staffPhone,
+          password: password ?? "",
+          role: roleLabel,
+          branches: branchList,
+          branch_name: gymDisplayName,
+        },
+        branchId || null,
+      );
+
       await logWhatsAppMessage({
         recipient_phone: staffPhone,
         recipient_name: staffName,
@@ -615,8 +627,8 @@ Deno.serve(async (req) => {
       }
 
       const message = generateMessage(name, memberEndDate, type, paymentInfo, null, branchName);
-      
-      const result = await sendPeriskopeMessage(formattedPhone, message, branchId || null);
+      const variables = buildMemberVariables(name, memberEndDate, branchName, paymentInfo);
+      const result = await sendMessage(formattedPhone, message, categoryFor(type), variables, branchId || null);
 
       await logWhatsAppMessage({
         member_id: directMemberId,
@@ -680,7 +692,14 @@ Deno.serve(async (req) => {
         const userBranchName = (user.branches as any)?.name;
         
         const message = generateMessage(user.name, userEndDate, type, null, userBranchName, branchName);
-        const result = await sendPeriskopeMessage(formattedPhone, message, user.branch_id || branchId || null);
+        const variables = buildMemberVariables(user.name, userEndDate, userBranchName || branchName, null);
+        const result = await sendMessage(
+          formattedPhone,
+          message,
+          categoryFor(type),
+          variables,
+          user.branch_id || branchId || null,
+        );
 
         await logWhatsAppMessage({
           daily_pass_user_id: user.id,
@@ -779,7 +798,14 @@ Deno.serve(async (req) => {
       const memberBranchName = (member.branches as any)?.name;
       
       const message = generateMessage(member.name, memberEndDate, type, paymentInfo, memberBranchName, branchName);
-      const result = await sendPeriskopeMessage(formattedPhone, message, member.branch_id || branchId || null);
+      const variables = buildMemberVariables(member.name, memberEndDate, memberBranchName || branchName, paymentInfo);
+      const result = await sendMessage(
+        formattedPhone,
+        message,
+        categoryFor(type),
+        variables,
+        member.branch_id || branchId || null,
+      );
 
       await logWhatsAppMessage({
         member_id: member.id,
