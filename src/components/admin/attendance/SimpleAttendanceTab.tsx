@@ -285,7 +285,7 @@ export const SimpleAttendanceTab = () => {
   const navigateWeek = (dir: "prev" | "next") => {
     const d = new Date(selectedDate + "T00:00:00");
     d.setDate(d.getDate() + (dir === "prev" ? -7 : 7));
-    let iso = d.toISOString().split("T")[0];
+    let iso = toLocalIso(d);
     // Clamp to today so the user always lands on a valid (selectable) date
     if (iso > today) iso = today;
     if (iso === selectedDate) return;
