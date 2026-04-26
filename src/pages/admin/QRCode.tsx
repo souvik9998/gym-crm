@@ -236,10 +236,10 @@ const QRCodePage = () => {
                 <span className="font-semibold text-foreground">{currentBranch.name}</span>
               </div>
               <CardTitle className="text-xl lg:text-2xl font-bold">
-                {activeTab === "registration" ? "Member Registration" : "Attendance Check-in"}
+                {effectiveTab === "registration" ? "Member Registration" : "Attendance Check-in"}
               </CardTitle>
               <CardDescription className="text-sm mt-1">
-                {activeTab === "registration"
+                {effectiveTab === "registration"
                   ? "Scan to register as a new member"
                   : "Scan to mark your attendance"}
               </CardDescription>
@@ -249,7 +249,7 @@ const QRCodePage = () => {
               {/* QR Code with decorative frame */}
               <div className="relative">
                 <div className="p-6 lg:p-8 bg-white rounded-2xl border border-border/60 shadow-sm">
-                  {activeTab === "registration" ? (
+                  {effectiveTab === "registration" ? (
                     <QRCodeSVG id="qr-code-svg-registration" value={portalUrl} size={220} level="H" includeMargin className="w-[200px] h-[200px] lg:w-[280px] lg:h-[280px]" />
                   ) : (
                     <QRCodeSVG id="qr-code-svg-attendance" value={attendanceUrl} size={220} level="H" includeMargin className="w-[200px] h-[200px] lg:w-[280px] lg:h-[280px]" />
@@ -260,11 +260,11 @@ const QRCodePage = () => {
               {/* URL Input */}
               <div className="w-full max-w-sm lg:max-w-md space-y-2">
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  {activeTab === "registration" ? "Portal URL" : "Attendance URL"}
+                  {effectiveTab === "registration" ? "Portal URL" : "Attendance URL"}
                 </label>
                 <div className="flex gap-2">
                   <Input
-                    value={activeTab === "registration" ? portalUrl : attendanceUrl}
+                    value={effectiveTab === "registration" ? portalUrl : attendanceUrl}
                     readOnly
                     className="font-mono text-xs h-10 bg-muted/30 border-border/50 rounded-xl"
                   />
@@ -272,16 +272,16 @@ const QRCodePage = () => {
                     variant="outline"
                     size="icon"
                     onClick={() => handleCopy(
-                      activeTab === "registration" ? portalUrl : attendanceUrl,
-                      activeTab === "registration" ? "reg" : "att"
+                      effectiveTab === "registration" ? portalUrl : attendanceUrl,
+                      effectiveTab === "registration" ? "reg" : "att"
                     )}
                     className="flex-shrink-0 h-10 w-10 rounded-xl border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all duration-200"
                   >
-                    {copied === (activeTab === "registration" ? "reg" : "att")
+                    {copied === (effectiveTab === "registration" ? "reg" : "att")
                       ? <CheckIcon className="w-4 h-4 text-primary" />
                       : <ClipboardDocumentIcon className="w-4 h-4" />}
                   </Button>
-                  {activeTab === "registration" && (
+                  {effectiveTab === "registration" && (
                     <Button
                       variant="outline"
                       size="icon"
@@ -300,8 +300,8 @@ const QRCodePage = () => {
                 className="gap-2.5 rounded-xl px-8 lg:px-10 lg:h-12 lg:text-base transition-all duration-300 active:scale-95"
                 onClick={() =>
                   handleDownload(
-                    activeTab === "registration" ? "qr-code-svg-registration" : "qr-code-svg-attendance",
-                    `${activeTab === "registration" ? "qr" : "attendance-qr"}-${currentBranch.name.toLowerCase().replace(/\s+/g, "-")}.png`
+                    effectiveTab === "registration" ? "qr-code-svg-registration" : "qr-code-svg-attendance",
+                    `${effectiveTab === "registration" ? "qr" : "attendance-qr"}-${currentBranch.name.toLowerCase().replace(/\s+/g, "-")}.png`
                   )
                 }
               >
@@ -314,7 +314,7 @@ const QRCodePage = () => {
       </div>
 
       {/* How it Works — only for attendance */}
-      {activeTab === "attendance" && (
+      {effectiveTab === "attendance" && (
         <div className="animate-fade-in" style={{ animationDelay: "100ms" }}>
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-3">
