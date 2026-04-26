@@ -91,17 +91,46 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
     return true;
   };
 
+  const syncQstashSchedules = async (updatedPrefs: Record<string, any>) => {
+    if (!currentBranch?.id) return;
+    const wantsExpiring = updatedPrefs.expiring_2days !== false;
+    const wantsExpired = updatedPrefs.expired_reminder === true;
+    const action = wantsExpiring || wantsExpired ? "upsert" : "delete";
+
+    try {
+      const { error } = await supabase.functions.invoke(
+        `qstash-schedule-manager?action=${action}`,
+        { body: { branchId: currentBranch.id } },
+      );
+      if (error) {
+        console.warn("[qstash-sync] failed:", error);
+      }
+    } catch (err) {
+      // Non-fatal — preferences are saved; scheduler can be re-synced from Super Admin
+      console.warn("[qstash-sync] threw:", err);
+    }
+  };
+
   const handleToggle = async (key: WhatsAppAutoSendType, checked: boolean) => {
     setTogglingKey(key);
-    await updatePreferences({ ...preferences, [key]: checked });
+    const updated = { ...preferences, [key]: checked };
+    const ok = await updatePreferences(updated);
+    if (ok && (key === "expiring_2days" || key === "expired_reminder")) {
+      await syncQstashSchedules(updated);
+    }
     setTogglingKey(null);
   };
 
   const handleDaysChange = async (field: string, value: string) => {
     const days = Number(value);
     const updated = { ...preferences, [field]: days };
-    await updatePreferences(updated);
-    toast.success(`Updated to ${days} day${days > 1 ? "s" : ""}`);
+    const ok = await updatePreferences(updated);
+    if (ok) {
+      // Day-count change doesn't alter the cron, but re-sync ensures the schedule
+      // body and last_synced_at stay current.
+      await syncQstashSchedules(updated);
+      toast.success(`Updated to ${days} day${days > 1 ? "s" : ""}`);
+    }
   };
 
   return (
