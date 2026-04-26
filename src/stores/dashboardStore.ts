@@ -29,6 +29,10 @@ interface DashboardUIState {
   timeSlotFilter: string | null; // time_slot_id or null for "all"
   setTimeSlotFilter: (slotId: string | null) => void;
   
+  // Time bucket filter (Morning / Afternoon / Evening / custom bucket id / "all")
+  timeBucketFilter: string;
+  setTimeBucketFilter: (bucket: string) => void;
+  
   // Sorting
   sortBy: SortByValue;
   setSortBy: (sortBy: SortByValue) => void;
@@ -50,6 +54,7 @@ const initialState = {
   ptFilterActive: false,
   trainerFilter: null as string | null,
   timeSlotFilter: null as string | null,
+  timeBucketFilter: "all" as string,
   sortBy: "name" as SortByValue,
   sortOrder: "asc" as SortOrderValue,
   dailyPassFilter: "all" as DailyPassFilterValue,
@@ -72,6 +77,8 @@ export const useDashboardStore = create<DashboardUIState>()(
       
       setTimeSlotFilter: (slotId) => set({ timeSlotFilter: slotId }),
       
+      setTimeBucketFilter: (bucket) => set({ timeBucketFilter: bucket }),
+      
       setSortBy: (sortBy) => set({ sortBy }),
       
       setSortOrder: (order) => set({ sortOrder: order }),
@@ -84,6 +91,7 @@ export const useDashboardStore = create<DashboardUIState>()(
         ptFilterActive: initialState.ptFilterActive,
         trainerFilter: initialState.trainerFilter,
         timeSlotFilter: initialState.timeSlotFilter,
+        timeBucketFilter: initialState.timeBucketFilter,
         sortBy: initialState.sortBy,
         sortOrder: initialState.sortOrder,
         dailyPassFilter: initialState.dailyPassFilter,
@@ -100,6 +108,7 @@ export const useDashboardStore = create<DashboardUIState>()(
         ptFilterActive: state.ptFilterActive,
         trainerFilter: state.trainerFilter,
         timeSlotFilter: state.timeSlotFilter,
+        timeBucketFilter: state.timeBucketFilter,
         sortBy: state.sortBy,
         sortOrder: state.sortOrder,
         dailyPassFilter: state.dailyPassFilter,

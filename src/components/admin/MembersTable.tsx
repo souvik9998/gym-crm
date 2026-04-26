@@ -44,6 +44,8 @@ import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 import { BiometricEnrollDialog } from "./BiometricEnrollDialog";
 import { checkMemberBiometricStatus, fetchBiometricDevices } from "@/api/biometric";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
+import { matchesTimeFilter } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
 // Use MemberWithSubscription from the API
 type Member = MemberWithSubscription;
@@ -55,6 +57,7 @@ interface MembersTableProps {
   ptFilterActive?: boolean;
   trainerFilter?: string | null;
   timeSlotFilter?: string | null;
+  timeBucketFilter?: string;
   sortBy?: "name" | "join_date" | "end_date";
   sortOrder?: "asc" | "desc";
 }
@@ -69,6 +72,7 @@ export const MembersTable = ({
   ptFilterActive = false,
   trainerFilter = null,
   timeSlotFilter = null,
+  timeBucketFilter = "all",
   sortBy: externalSortBy,
   sortOrder: externalSortOrder
 }: MembersTableProps) => {
@@ -865,13 +869,60 @@ export const MembersTable = ({
     staleTime: 30000,
   });
 
+  // Time-bucket filter (Morning/Afternoon/Evening/Night/custom):
+  // resolve to the set of member ids whose active PT subscription points at a
+  // time slot whose start_time falls inside the chosen bucket window.
+  const { buckets: bucketDefinitions } = useTimeBuckets();
+  const { data: bucketMemberIds } = useQuery({
+    queryKey: ["members-by-time-bucket", currentBranch?.id, timeBucketFilter],
+    queryFn: async (): Promise<Set<string>> => {
+      if (!currentBranch?.id || timeBucketFilter === "all") return new Set<string>();
+      const today = new Date().toISOString().split("T")[0];
+
+      // 1. Pull every active time slot for this branch with its window.
+      const { data: slots, error: slotsErr } = await supabase
+        .from("trainer_time_slots" as any)
+        .select("id, start_time")
+        .eq("branch_id", currentBranch.id)
+        .eq("status", "available");
+      if (slotsErr) throw slotsErr;
+
+      // 2. Keep only the slots whose start_time falls inside the chosen bucket.
+      const matchingSlotIds = ((slots as any[]) || [])
+        .filter((s: any) => matchesTimeFilter(s.start_time, timeBucketFilter, undefined, undefined, undefined, bucketDefinitions))
+        .map((s: any) => s.id as string);
+
+      if (matchingSlotIds.length === 0) return new Set<string>();
+
+      // 3. Resolve those slots → active PT members (single source of truth).
+      const { data: ptSubs, error: ptErr } = await supabase
+        .from("pt_subscriptions" as any)
+        .select("member_id")
+        .eq("branch_id", currentBranch.id)
+        .eq("status", "active")
+        .gte("end_date", today)
+        .in("time_slot_id", matchingSlotIds);
+      if (ptErr) throw ptErr;
+
+      return new Set(((ptSubs as any[]) || []).map((p: any) => p.member_id));
+    },
+    enabled: !!currentBranch?.id && timeBucketFilter !== "all",
+    staleTime: 30000,
+  });
+
   // Apply trainer/slot filter
-  const timeSlotFiltered = (() => {
+  const trainerSlotFiltered = (() => {
     if ((!trainerFilter && !timeSlotFilter) || !slotMemberIds) return filteredMembers;
     if (slotMemberIds.type === "exclude") {
       return filteredMembers.filter((m) => !slotMemberIds.ids.has(m.id));
     }
     return filteredMembers.filter((m) => slotMemberIds.ids.has(m.id));
+  })();
+
+  // Apply time-bucket filter (Morning/Afternoon/Evening/Night/custom slot)
+  const timeSlotFiltered = (() => {
+    if (timeBucketFilter === "all" || !bucketMemberIds) return trainerSlotFiltered;
+    return trainerSlotFiltered.filter((m) => bucketMemberIds.has(m.id));
   })();
 
   const handleSort = (field: SortField) => {

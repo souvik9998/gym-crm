@@ -26,6 +26,8 @@ import { AddMemberDialog } from "@/components/admin/AddMemberDialog";
 import { MemberFilter, type MemberFilterValue } from "@/components/admin/MemberFilter";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
+import { TimeBucketDropdown } from "@/components/admin/TimeBucketDropdown";
+import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { toast } from "@/components/ui/sonner";
 import {
@@ -189,6 +191,8 @@ const AdminDashboard = () => {
     setTrainerFilter,
     timeSlotFilter,
     setTimeSlotFilter,
+    timeBucketFilter,
+    setTimeBucketFilter,
     sortBy,
     setSortBy,
     sortOrder,
@@ -196,6 +200,9 @@ const AdminDashboard = () => {
     dailyPassFilter,
     setDailyPassFilter,
   } = useDashboardStore();
+  
+  // Branch-configurable time-of-day buckets (Morning / Afternoon / Evening / custom).
+  const { options: timeBucketOptions } = useTimeBuckets();
   
   // Check if user can manage members (admin or staff with can_manage_members permission)
   // Show button immediately if:
@@ -663,10 +670,22 @@ const AdminDashboard = () => {
                     onChange={setTimeSlotFilter}
                     trainerFilter={trainerFilter}
                   />
+                  <TimeBucketDropdown
+                    value={timeBucketFilter}
+                    onChange={setTimeBucketFilter}
+                    options={timeBucketOptions}
+                    className="h-8 w-auto min-w-[10rem] px-2.5 rounded-lg"
+                  />
                 </div>
 
-
-
+                {/* Mobile: Time-of-day chip row (sits below the filter dropdown) */}
+                <div className="md:hidden">
+                  <TimeBucketDropdown
+                    value={timeBucketFilter}
+                    onChange={setTimeBucketFilter}
+                    options={timeBucketOptions}
+                  />
+                </div>
 
                 <MembersTable
                   searchQuery={searchQuery} 
@@ -675,6 +694,7 @@ const AdminDashboard = () => {
                   ptFilterActive={ptFilterActive}
                   trainerFilter={trainerFilter}
                   timeSlotFilter={timeSlotFilter}
+                  timeBucketFilter={timeBucketFilter}
                   sortBy={sortBy}
                   sortOrder={sortOrder}
                 />
