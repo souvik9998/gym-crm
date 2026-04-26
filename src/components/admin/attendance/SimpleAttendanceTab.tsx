@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,8 +63,48 @@ function getWeekDates(referenceDate: string): string[] {
   return dates;
 }
 
-const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
-const DAY_LABELS_FULL = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const FULL_DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const SHORT_DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+
+/**
+ * Returns the day-of-week label (Mon, Tue, ...) for a given ISO date string.
+ * Used because the visible date range can extend beyond a single Mon-Sun week,
+ * so a fixed-index array of labels would mis-label dates.
+ */
+function dayLabelFull(iso: string): string {
+  return FULL_DAY_LABELS[new Date(iso + "T00:00:00").getDay()];
+}
+
+function dayLabelShort(iso: string): string {
+  return SHORT_DAY_LABELS[new Date(iso + "T00:00:00").getDay()];
+}
+
+/**
+ * Builds an extended date range so the user can scroll horizontally through
+ * recent days, including today. Always includes selectedDate's week (Mon-Sun)
+ * AND every day from there through today (clamped). Caps at ~21 days.
+ */
+function getVisibleDates(referenceDate: string, todayIso: string): string[] {
+  const week = getWeekDates(referenceDate);
+  const start = week[0];
+  // End at the later of: this week's Sunday OR today (so today is always reachable)
+  const endIso = week[6] > todayIso ? week[6] : todayIso;
+  const startD = new Date(start + "T00:00:00");
+  const endD = new Date(endIso + "T00:00:00");
+  const dates: string[] = [];
+  const cur = new Date(startD);
+  let guard = 0;
+  while (cur <= endD && guard < 28) {
+    dates.push(cur.toISOString().split("T")[0]);
+    cur.setDate(cur.getDate() + 1);
+    guard++;
+  }
+  return dates;
+}
+
+// Backwards-compatible aliases (existing code references these names)
+const DAY_LABELS = SHORT_DAY_LABELS;
+const DAY_LABELS_FULL = FULL_DAY_LABELS;
 
 /**
  * Skeleton mirroring the SimpleAttendanceTab member list:
@@ -210,7 +250,19 @@ export const SimpleAttendanceTab = () => {
   }, [timeFilteredSlots, selectedTrainerId]);
   const trainerSlotIdSet = useMemo(() => new Set(trainerSlotIds), [trainerSlotIds]);
 
-  const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
+  const weekDates = useMemo(() => getVisibleDates(selectedDate, today), [selectedDate, today]);
+
+  // Auto-scroll the date strip so the selected date stays in view when the
+  // visible range extends beyond a single week (e.g., includes today).
+  const weekStripRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const container = weekStripRef.current;
+    if (!container) return;
+    const target = container.querySelector<HTMLElement>(`[data-date="${selectedDate}"]`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  }, [selectedDate, weekDates]);
   const isFutureDate = selectedDate > today;
 
   const navigateWeek = (dir: "prev" | "next") => {
@@ -271,8 +323,11 @@ export const SimpleAttendanceTab = () => {
     });
   }, [scopedMembers, selectedSlotId, selectedTrainerId, trainerSlotIds, filteredSlotIds, timeFilter]);
 
+  const rangeStart = weekDates[0];
+  const rangeEnd = weekDates[weekDates.length - 1];
+
   const { data: weekRecords = [], isLoading: loadingRecords } = useQuery({
-    queryKey: ["daily-attendance-week", branchId, weekDates[0], weekDates[6], isLimitedAccess ? (assignedMemberIds ?? []).join(",") : "all"],
+    queryKey: ["daily-attendance-week", branchId, rangeStart, rangeEnd, isLimitedAccess ? (assignedMemberIds ?? []).join(",") : "all"],
     queryFn: async () => {
       if (!branchId) return [];
       if (assignedMemberIds !== null && assignedMemberIds.length === 0) return [];
@@ -280,8 +335,8 @@ export const SimpleAttendanceTab = () => {
       let query = supabase
         .from("daily_attendance").select("id, member_id, date, status, created_at, updated_at")
         .eq("branch_id", branchId)
-        .gte("date", weekDates[0])
-        .lte("date", weekDates[6])
+        .gte("date", rangeStart)
+        .lte("date", rangeEnd)
         .is("time_slot_id", null);
 
       if (assignedMemberIds !== null) {
@@ -499,7 +554,7 @@ export const SimpleAttendanceTab = () => {
                       isFuture && "opacity-40 cursor-not-allowed"
                     )}
                   >
-                    <span className="text-[8px] text-muted-foreground">{DAY_LABELS[i]}</span>
+                    <span className="text-[8px] text-muted-foreground">{dayLabelShort(d)}</span>
                     <div className={cn(
                       "w-4 h-4 rounded-full mt-0.5 transition-colors duration-300",
                       st === "present" ? "bg-green-500" :
@@ -532,8 +587,8 @@ export const SimpleAttendanceTab = () => {
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("prev")}>
             <ChevronLeftIcon className="w-4 h-4" />
           </Button>
-          <div className="flex items-center gap-1">
-            {weekDates.map((d, i) => {
+          <div ref={weekStripRef} className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-1 min-w-0">
+            {weekDates.map((d) => {
               const isSelected = d === selectedDate;
               const isToday = d === today;
               const isFuture = d > today;
@@ -542,6 +597,7 @@ export const SimpleAttendanceTab = () => {
               return (
                 <button
                   key={d}
+                  data-date={d}
                   onClick={() => { if (!isFuture) setSelectedDate(d); }}
                   disabled={isFuture}
                   className={cn(
@@ -559,7 +615,7 @@ export const SimpleAttendanceTab = () => {
                             : "hover:bg-muted text-muted-foreground"
                   )}
                 >
-                  <span className="text-[10px] font-medium uppercase">{DAY_LABELS_FULL[i]}</span>
+                  <span className="text-[10px] font-medium uppercase">{dayLabelFull(d)}</span>
                   <span className={cn(
                     "text-sm font-bold transition-transform duration-300",
                     isSelected && "animate-[bounce_0.4s_ease-out]"
@@ -723,7 +779,7 @@ export const SimpleAttendanceTab = () => {
                             : "text-muted-foreground"
                   )}
                 >
-                  <span className="text-[9px] font-medium uppercase">{DAY_LABELS[i]}</span>
+                  <span className="text-[9px] font-medium uppercase">{dayLabelShort(d)}</span>
                   <span className={cn(
                     "text-sm font-bold transition-transform duration-300",
                     isSelected && "animate-[bounce_0.4s_ease-out]"
@@ -820,11 +876,11 @@ export const SimpleAttendanceTab = () => {
         /* Desktop: Table layout */
         <Card className="border border-border/40 shadow-sm overflow-hidden animate-fade-in">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full" style={{ minWidth: `${230 + weekDates.length * 60 + 100}px` }}>
               <thead>
                 <tr className="border-b border-border/40 bg-muted/30">
-                  <th className="text-left text-[11px] font-medium text-muted-foreground px-3 py-2 sticky left-0 bg-muted/30 z-10 min-w-[140px]">Member</th>
-                  {weekDates.map((d, i) => {
+                  <th className="text-left text-[11px] font-medium text-muted-foreground px-3 py-2 sticky left-0 bg-muted/30 z-20 min-w-[140px]">Member</th>
+                  {weekDates.map((d) => {
                     const isSelected = d === selectedDate;
                     const isToday = d === today;
                     const isFuture = d > today;
@@ -844,7 +900,7 @@ export const SimpleAttendanceTab = () => {
                             isSelected && "bg-primary/10"
                           )}
                         >
-                          <span className="uppercase text-[10px]">{DAY_LABELS_FULL[i]}</span>
+                          <span className="uppercase text-[10px]">{dayLabelFull(d)}</span>
                           <span className={cn("text-xs font-bold mt-0.5 w-5 h-5 rounded-full flex items-center justify-center transition-colors",
                             isToday && !isSelected ? "bg-primary/10 text-primary" : "",
                             isSelected ? "bg-primary text-primary-foreground shadow-sm" : ""
@@ -853,7 +909,7 @@ export const SimpleAttendanceTab = () => {
                       </th>
                     );
                   })}
-                  <th className="text-center text-[11px] font-medium text-muted-foreground px-2 py-2 min-w-[90px]">Action</th>
+                  <th className="text-center text-[11px] font-medium text-muted-foreground px-2 py-2 min-w-[100px] sticky right-0 bg-muted/30 z-20 shadow-[-4px_0_8px_-4px_hsl(var(--border)/0.4)]">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/20">
@@ -926,7 +982,7 @@ export const SimpleAttendanceTab = () => {
                           </td>
                         );
                       })}
-                      <td className="px-2 py-2 text-center">
+                      <td className="px-2 py-2 text-center sticky right-0 bg-background z-10 shadow-[-4px_0_8px_-4px_hsl(var(--border)/0.4)]">
                         <div className="flex items-center justify-center gap-0.5">
                           {(["present", "skipped", "absent"] as const).map((s) => (
                             <button key={s} onClick={() => toggleStatus(member.memberId, s)} disabled={isFutureDate}
