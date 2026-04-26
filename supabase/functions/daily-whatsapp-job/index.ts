@@ -642,7 +642,20 @@ Deno.serve(async (req) => {
       summaryMessage += `\n✅ *Notifications Sent: ${successCount}*`;
       if (failCount > 0) summaryMessage += `\n❌ *Failed: ${failCount}*`;
 
-      await sendMessageWithRetry(adminPhone, summaryMessage);
+      // Admin daily summary uses global Periskope env (no tenant context)
+      try {
+        await fetch("https://api.periskope.app/v1/message/send", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${PERISKOPE_API_KEY}`,
+            "x-phone": PERISKOPE_PHONE!,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ chat_id: `${adminPhone}@c.us`, message: summaryMessage }),
+        });
+      } catch (e) {
+        log("admin-summary-error", { error: (e as Error).message });
+      }
     }
 
     log("completed", {
