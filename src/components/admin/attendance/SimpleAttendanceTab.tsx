@@ -542,7 +542,7 @@ export const SimpleAttendanceTab = () => {
                       isFuture && "opacity-40 cursor-not-allowed"
                     )}
                   >
-                    <span className="text-[8px] text-muted-foreground">{DAY_LABELS[i]}</span>
+                    <span className="text-[8px] text-muted-foreground">{dayLabelShort(d)}</span>
                     <div className={cn(
                       "w-4 h-4 rounded-full mt-0.5 transition-colors duration-300",
                       st === "present" ? "bg-green-500" :
@@ -602,7 +602,7 @@ export const SimpleAttendanceTab = () => {
                             : "hover:bg-muted text-muted-foreground"
                   )}
                 >
-                  <span className="text-[10px] font-medium uppercase">{DAY_LABELS_FULL[i]}</span>
+                  <span className="text-[10px] font-medium uppercase">{dayLabelFull(d)}</span>
                   <span className={cn(
                     "text-sm font-bold transition-transform duration-300",
                     isSelected && "animate-[bounce_0.4s_ease-out]"
@@ -766,7 +766,7 @@ export const SimpleAttendanceTab = () => {
                             : "text-muted-foreground"
                   )}
                 >
-                  <span className="text-[9px] font-medium uppercase">{DAY_LABELS[i]}</span>
+                  <span className="text-[9px] font-medium uppercase">{dayLabelShort(d)}</span>
                   <span className={cn(
                     "text-sm font-bold transition-transform duration-300",
                     isSelected && "animate-[bounce_0.4s_ease-out]"
@@ -887,7 +887,7 @@ export const SimpleAttendanceTab = () => {
                             isSelected && "bg-primary/10"
                           )}
                         >
-                          <span className="uppercase text-[10px]">{DAY_LABELS_FULL[i]}</span>
+                          <span className="uppercase text-[10px]">{dayLabelFull(d)}</span>
                           <span className={cn("text-xs font-bold mt-0.5 w-5 h-5 rounded-full flex items-center justify-center transition-colors",
                             isToday && !isSelected ? "bg-primary/10 text-primary" : "",
                             isSelected ? "bg-primary text-primary-foreground shadow-sm" : ""
