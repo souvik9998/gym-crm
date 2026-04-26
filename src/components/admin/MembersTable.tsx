@@ -44,6 +44,8 @@ import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 import { BiometricEnrollDialog } from "./BiometricEnrollDialog";
 import { checkMemberBiometricStatus, fetchBiometricDevices } from "@/api/biometric";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
+import { matchesTimeFilter } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
 // Use MemberWithSubscription from the API
 type Member = MemberWithSubscription;
