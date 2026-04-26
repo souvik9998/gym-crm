@@ -970,7 +970,7 @@ export const SimpleAttendanceTab = () => {
                           </td>
                         );
                       })}
-                      <td className="px-2 py-2 text-center">
+                      <td className="px-2 py-2 text-center sticky right-0 bg-background z-10 shadow-[-4px_0_8px_-4px_hsl(var(--border)/0.4)]">
                         <div className="flex items-center justify-center gap-0.5">
                           {(["present", "skipped", "absent"] as const).map((s) => (
                             <button key={s} onClick={() => toggleStatus(member.memberId, s)} disabled={isFutureDate}
