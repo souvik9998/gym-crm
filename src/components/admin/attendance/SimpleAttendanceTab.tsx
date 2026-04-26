@@ -864,11 +864,11 @@ export const SimpleAttendanceTab = () => {
         /* Desktop: Table layout */
         <Card className="border border-border/40 shadow-sm overflow-hidden animate-fade-in">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full" style={{ minWidth: `${230 + weekDates.length * 60 + 100}px` }}>
               <thead>
                 <tr className="border-b border-border/40 bg-muted/30">
-                  <th className="text-left text-[11px] font-medium text-muted-foreground px-3 py-2 sticky left-0 bg-muted/30 z-10 min-w-[140px]">Member</th>
-                  {weekDates.map((d, i) => {
+                  <th className="text-left text-[11px] font-medium text-muted-foreground px-3 py-2 sticky left-0 bg-muted/30 z-20 min-w-[140px]">Member</th>
+                  {weekDates.map((d) => {
                     const isSelected = d === selectedDate;
                     const isToday = d === today;
                     const isFuture = d > today;
@@ -897,7 +897,7 @@ export const SimpleAttendanceTab = () => {
                       </th>
                     );
                   })}
-                  <th className="text-center text-[11px] font-medium text-muted-foreground px-2 py-2 min-w-[90px]">Action</th>
+                  <th className="text-center text-[11px] font-medium text-muted-foreground px-2 py-2 min-w-[100px] sticky right-0 bg-muted/30 z-20 shadow-[-4px_0_8px_-4px_hsl(var(--border)/0.4)]">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/20">
