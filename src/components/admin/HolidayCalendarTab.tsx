@@ -536,10 +536,10 @@ const HolidayCalendarTab = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5 rounded-xl text-xs lg:text-sm"
+                className="gap-1.5 rounded-xl text-xs lg:text-sm border-primary/30 text-primary hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-all"
                 onClick={handleShareCalendar}
                 disabled={!shareUrl}
-                title={shareUrl || ""}
+                title="Share calendar with members"
               >
                 <ShareIcon className="w-3.5 h-3.5" />
                 Share Calendar
