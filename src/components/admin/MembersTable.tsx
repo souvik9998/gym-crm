@@ -868,12 +868,18 @@ export const MembersTable = ({
   });
 
   // Apply trainer/slot filter
-  const timeSlotFiltered = (() => {
+  const trainerSlotFiltered = (() => {
     if ((!trainerFilter && !timeSlotFilter) || !slotMemberIds) return filteredMembers;
     if (slotMemberIds.type === "exclude") {
       return filteredMembers.filter((m) => !slotMemberIds.ids.has(m.id));
     }
     return filteredMembers.filter((m) => slotMemberIds.ids.has(m.id));
+  })();
+
+  // Apply time-bucket filter (Morning/Afternoon/Evening/Night/custom slot)
+  const timeSlotFiltered = (() => {
+    if (timeBucketFilter === "all" || !bucketMemberIds) return trainerSlotFiltered;
+    return trainerSlotFiltered.filter((m) => bucketMemberIds.has(m.id));
   })();
 
   const handleSort = (field: SortField) => {
