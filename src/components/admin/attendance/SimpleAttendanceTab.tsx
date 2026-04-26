@@ -49,6 +49,23 @@ const STATUS_COLORS: Record<AttendanceStatus, string> = {
   absent: "bg-red-500/80 text-white shadow-red-500/20",
 };
 
+/**
+ * Format a Date as a local YYYY-MM-DD string. We deliberately avoid
+ * `toISOString()` because that returns UTC, which can shift the date
+ * by a day for users in non-UTC timezones (e.g. IST is UTC+5:30, so
+ * after ~6:30pm UTC the UTC date is already "tomorrow").
+ */
+function toLocalIso(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function getTodayIso(): string {
+  return toLocalIso(new Date());
+}
+
 function getWeekDates(referenceDate: string): string[] {
   const d = new Date(referenceDate + "T00:00:00");
   const day = d.getDay();
@@ -58,7 +75,7 @@ function getWeekDates(referenceDate: string): string[] {
   for (let i = 0; i < 7; i++) {
     const dt = new Date(monday);
     dt.setDate(monday.getDate() + i);
-    dates.push(dt.toISOString().split("T")[0]);
+    dates.push(toLocalIso(dt));
   }
   return dates;
 }
@@ -95,7 +112,7 @@ function getVisibleDates(referenceDate: string, todayIso: string): string[] {
   const cur = new Date(startD);
   let guard = 0;
   while (cur <= endD && guard < 28) {
-    dates.push(cur.toISOString().split("T")[0]);
+    dates.push(toLocalIso(cur));
     cur.setDate(cur.getDate() + 1);
     guard++;
   }
@@ -215,7 +232,7 @@ export const SimpleAttendanceTab = () => {
   const isMobile = useIsMobile();
   const branchId = currentBranch?.id;
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getTodayIso();
   const [selectedDate, setSelectedDate] = useState(today);
   const [search, setSearch] = useState("");
   const [localAttendance, setLocalAttendance] = useState<Map<string, AttendanceStatus>>(new Map());
@@ -268,7 +285,7 @@ export const SimpleAttendanceTab = () => {
   const navigateWeek = (dir: "prev" | "next") => {
     const d = new Date(selectedDate + "T00:00:00");
     d.setDate(d.getDate() + (dir === "prev" ? -7 : 7));
-    let iso = d.toISOString().split("T")[0];
+    let iso = toLocalIso(d);
     // Clamp to today so the user always lands on a valid (selectable) date
     if (iso > today) iso = today;
     if (iso === selectedDate) return;
@@ -279,7 +296,7 @@ export const SimpleAttendanceTab = () => {
   const canGoNext = (() => {
     const d = new Date(selectedDate + "T00:00:00");
     d.setDate(d.getDate() + 7);
-    const nextMonday = getWeekDates(d.toISOString().split("T")[0])[0];
+    const nextMonday = getWeekDates(toLocalIso(d))[0];
     return nextMonday <= today;
   })();
 
