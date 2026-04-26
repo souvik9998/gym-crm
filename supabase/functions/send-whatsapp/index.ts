@@ -494,6 +494,32 @@ Deno.serve(async (req) => {
       return vars;
     };
 
+    // Map the legacy `type` string used by callers to a MessageCategory.
+    // Unknown / custom / promotional fall back to "promotional".
+    const categoryFor = (t: string): MessageCategory => {
+      switch (t) {
+        case "new_registration":
+        case "new_member":
+          return "new_registration";
+        case "renewal": return "renewal";
+        case "daily_pass": return "daily_pass";
+        case "pt_extension": return "pt_extension";
+        case "expiring_2days": return "expiring_2days";
+        case "expiring_today": return "expiring_today";
+        case "expired_reminder":
+        case "expiry_reminder":
+          return "expired_reminder";
+        case "payment_details": return "payment_details";
+        case "admin_add_member": return "admin_add_member";
+        case "staff_credentials": return "staff_credentials";
+        case "promotional":
+        case "custom":
+        case "manual":
+        default:
+          return "promotional";
+      }
+    };
+
 
     // STAFF CREDENTIALS SEND
     if (type === "staff_credentials" && staffCredentials) {
