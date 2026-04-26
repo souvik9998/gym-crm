@@ -140,6 +140,11 @@ const QRCodePage = () => {
     { id: "attendance" as const, label: "Attendance", icon: QrCodeIcon, description: "Daily check-in" },
   ];
 
+  // Guard: if QR attendance is disabled, force the user back to the
+  // Registration tab so the attendance QR can never be viewed/downloaded.
+  const effectiveTab: "registration" | "attendance" =
+    activeTab === "attendance" && !qrAttendanceEnabled ? "registration" : activeTab;
+
   return (
     <div className="max-w-3xl mx-auto space-y-6 lg:space-y-8">
       {customDomain?.hostname && (
@@ -150,39 +155,75 @@ const QRCodePage = () => {
           </span>
         </div>
       )}
+
+      {!qrAttendanceEnabled && (
+        <div
+          className="flex items-start gap-3 px-4 py-3 rounded-xl border border-border bg-muted/40 animate-fade-in"
+          role="status"
+          aria-live="polite"
+        >
+          <LockClosedIcon className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-medium text-foreground">QR-based attendance is disabled</p>
+            <p className="text-muted-foreground text-xs mt-0.5">
+              Your plan does not include QR check-in. Contact your administrator to enable this module.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Tab Switcher */}
       <div className="flex gap-3 animate-fade-in">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              "flex-1 flex items-center gap-3 p-4 rounded-2xl border transition-all duration-300",
-              activeTab === tab.id
-                ? "bg-primary/5 border-primary/20 shadow-sm"
-                : "bg-card border-border/50 hover:border-border hover:shadow-sm"
-            )}
-          >
-            <div className={cn(
-              "w-10 h-10 rounded-xl flex items-center justify-center transition-colors duration-300",
-              activeTab === tab.id ? "bg-primary/10" : "bg-muted/50"
-            )}>
-              <tab.icon className={cn(
-                "w-5 h-5 transition-colors duration-300",
-                activeTab === tab.id ? "text-primary" : "text-muted-foreground"
-              )} />
-            </div>
-            <div className="text-left">
-              <p className={cn(
-                "font-semibold text-sm transition-colors duration-300",
-                activeTab === tab.id ? "text-foreground" : "text-muted-foreground"
+        {tabs.map((tab) => {
+          const isLocked = tab.id === "attendance" && !qrAttendanceEnabled;
+          const isActive = effectiveTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                if (isLocked) {
+                  toast.error("QR-based attendance is disabled for your plan.");
+                  return;
+                }
+                setActiveTab(tab.id);
+              }}
+              disabled={isLocked}
+              aria-disabled={isLocked}
+              title={isLocked ? "QR-based attendance is disabled" : undefined}
+              className={cn(
+                "flex-1 flex items-center gap-3 p-4 rounded-2xl border transition-all duration-300 text-left",
+                isActive
+                  ? "bg-primary/5 border-primary/20 shadow-sm"
+                  : "bg-card border-border/50 hover:border-border hover:shadow-sm",
+                isLocked && "opacity-50 cursor-not-allowed hover:border-border/50 hover:shadow-none"
+              )}
+            >
+              <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center transition-colors duration-300 relative",
+                isActive ? "bg-primary/10" : "bg-muted/50"
               )}>
-                {tab.label}
-              </p>
-              <p className="text-xs text-muted-foreground hidden sm:block">{tab.description}</p>
-            </div>
-          </button>
-        ))}
+                <tab.icon className={cn(
+                  "w-5 h-5 transition-colors duration-300",
+                  isActive ? "text-primary" : "text-muted-foreground"
+                )} />
+                {isLocked && (
+                  <LockClosedIcon className="w-3 h-3 text-muted-foreground absolute -top-0.5 -right-0.5 bg-background rounded-full p-[1px]" />
+                )}
+              </div>
+              <div className="text-left">
+                <p className={cn(
+                  "font-semibold text-sm transition-colors duration-300",
+                  isActive ? "text-foreground" : "text-muted-foreground"
+                )}>
+                  {tab.label}
+                </p>
+                <p className="text-xs text-muted-foreground hidden sm:block">
+                  {isLocked ? "Disabled by admin" : tab.description}
+                </p>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {/* QR Code Display */}
