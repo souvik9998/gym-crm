@@ -143,6 +143,14 @@ const allNavItems: NavItem[] = [
     requiresPermission: "can_manage_events" as any,
     tenantModule: "event_management",
   },
+  // Calendar - admin/staff with settings access; opens the Settings → Calendar tab
+  {
+    title: "Calendar",
+    href: "/admin/settings?tab=calendar",
+    icon: CalendarDaysIcon,
+    iconSolid: CalendarDaysIcon,
+    requiresPermission: ["can_view_settings", "can_change_settings"],
+  },
   // Ledger - requires ONLY ledger permission
   {
     title: "Ledger",

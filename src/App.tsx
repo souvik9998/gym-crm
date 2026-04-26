@@ -42,6 +42,7 @@ const Attendance = lazyWithRetry(() => import("./pages/admin/Attendance"));
 const Events = lazyWithRetry(() => import("./pages/admin/Events"));
 const EventDetail = lazyWithRetry(() => import("./pages/admin/EventDetail"));
 const EventRegistration = lazyWithRetry(() => import("./pages/EventRegistration"));
+const PublicCalendar = lazyWithRetry(() => import("./pages/PublicCalendar"));
 
 // Lazy load Super Admin pages
 const SuperAdminDashboard = lazyWithRetry(() => import("./pages/superadmin/Dashboard"));
