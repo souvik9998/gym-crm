@@ -98,7 +98,10 @@ const formatTime12h = (time: string | null | undefined): string => {
 
 const HolidayCalendarTab = () => {
   const { currentBranch } = useBranch();
+  const navigate = useNavigate();
+  const { data: customDomain } = useTenantPrimaryDomain(currentBranch?.id);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
