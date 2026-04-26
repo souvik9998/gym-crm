@@ -643,6 +643,18 @@ const HolidayCalendarTab = () => {
                         {nationalHoliday}
                       </span>
                     )}
+
+                    {/* Event indicator dots */}
+                    {hasEvent && (
+                      <div className="absolute bottom-1 left-0 right-0 flex items-center justify-center gap-0.5 pointer-events-none">
+                        {dayEvents.slice(0, 3).map((ev) => (
+                          <span key={ev.id} className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        ))}
+                        {dayEvents.length > 3 && (
+                          <span className="text-[7px] text-blue-600 font-medium leading-none">+{dayEvents.length - 3}</span>
+                        )}
+                      </div>
+                    )}
                   </button>
 
                   {/* Tooltip - render outside button for clean positioning */}
