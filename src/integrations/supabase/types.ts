@@ -2261,6 +2261,47 @@ export type Database = {
           },
         ]
       }
+      qstash_schedules: {
+        Row: {
+          branch_id: string
+          created_at: string
+          cron_expression: string
+          id: string
+          kind: string
+          last_synced_at: string
+          schedule_id: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          cron_expression: string
+          id?: string
+          kind: string
+          last_synced_at?: string
+          schedule_id: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          cron_expression?: string
+          id?: string
+          kind?: string
+          last_synced_at?: string
+          schedule_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qstash_schedules_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       razorpay_credentials: {
         Row: {
           created_at: string
