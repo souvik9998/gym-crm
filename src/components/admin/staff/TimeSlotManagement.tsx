@@ -5,7 +5,8 @@ import { Staff } from "@/pages/admin/StaffManagement";
 import { TimeSlotsTab } from "./timeslots/TimeSlotsTab";
 import { SlotMembersTab } from "./timeslots/SlotMembersTab";
 import { TimeSlotAnalyticsTab } from "./timeslots/TimeSlotAnalyticsTab";
-import { ChartBarIcon, ClockIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { TimeBucketsSettings } from "@/components/admin/TimeBucketsSettings";
+import { AdjustmentsHorizontalIcon, ChartBarIcon, ClockIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 
 interface TimeSlotManagementProps {
   trainers: Staff[];
@@ -15,7 +16,7 @@ interface TimeSlotManagementProps {
   trainersLoading?: boolean;
 }
 
-const VALID_SUBS = new Set(["slots", "members", "analytics"]);
+const VALID_SUBS = new Set(["slots", "members", "analytics", "time-filters"]);
 
 export const TimeSlotManagement = ({
   trainers,
@@ -52,7 +53,7 @@ export const TimeSlotManagement = ({
   return (
     <div className="space-y-4">
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-        <TabsList className="grid w-full max-w-xl grid-cols-3">
+        <TabsList className="grid w-full max-w-2xl grid-cols-4">
           <TabsTrigger value="slots" className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3">
             <ClockIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
             <span>Time Slots</span>
@@ -64,6 +65,10 @@ export const TimeSlotManagement = ({
           <TabsTrigger value="analytics" className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3">
             <ChartBarIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
             <span>Analytics</span>
+          </TabsTrigger>
+          <TabsTrigger value="time-filters" className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3">
+            <AdjustmentsHorizontalIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+            <span>Time Filters</span>
           </TabsTrigger>
         </TabsList>
 
@@ -77,6 +82,10 @@ export const TimeSlotManagement = ({
 
         <TabsContent value="analytics" forceMount hidden={activeSubTab !== "analytics"}>
           <TimeSlotAnalyticsTab currentBranch={currentBranch} trainerNameMap={trainerNameMap} />
+        </TabsContent>
+
+        <TabsContent value="time-filters" forceMount hidden={activeSubTab !== "time-filters"}>
+          <TimeBucketsSettings />
         </TabsContent>
       </Tabs>
     </div>
