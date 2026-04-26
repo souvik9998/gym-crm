@@ -49,6 +49,23 @@ const STATUS_COLORS: Record<AttendanceStatus, string> = {
   absent: "bg-red-500/80 text-white shadow-red-500/20",
 };
 
+/**
+ * Format a Date as a local YYYY-MM-DD string. We deliberately avoid
+ * `toISOString()` because that returns UTC, which can shift the date
+ * by a day for users in non-UTC timezones (e.g. IST is UTC+5:30, so
+ * after ~6:30pm UTC the UTC date is already "tomorrow").
+ */
+function toLocalIso(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function getTodayIso(): string {
+  return toLocalIso(new Date());
+}
+
 function getWeekDates(referenceDate: string): string[] {
   const d = new Date(referenceDate + "T00:00:00");
   const day = d.getDay();
@@ -58,7 +75,7 @@ function getWeekDates(referenceDate: string): string[] {
   for (let i = 0; i < 7; i++) {
     const dt = new Date(monday);
     dt.setDate(monday.getDate() + i);
-    dates.push(dt.toISOString().split("T")[0]);
+    dates.push(toLocalIso(dt));
   }
   return dates;
 }
