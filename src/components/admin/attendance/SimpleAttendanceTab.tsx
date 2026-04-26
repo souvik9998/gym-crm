@@ -232,7 +232,7 @@ export const SimpleAttendanceTab = () => {
   const isMobile = useIsMobile();
   const branchId = currentBranch?.id;
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getTodayIso();
   const [selectedDate, setSelectedDate] = useState(today);
   const [search, setSearch] = useState("");
   const [localAttendance, setLocalAttendance] = useState<Map<string, AttendanceStatus>>(new Map());
