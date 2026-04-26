@@ -5,7 +5,8 @@ import { Staff } from "@/pages/admin/StaffManagement";
 import { TimeSlotsTab } from "./timeslots/TimeSlotsTab";
 import { SlotMembersTab } from "./timeslots/SlotMembersTab";
 import { TimeSlotAnalyticsTab } from "./timeslots/TimeSlotAnalyticsTab";
-import { ChartBarIcon, ClockIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { TimeBucketsSettings } from "@/components/admin/TimeBucketsSettings";
+import { AdjustmentsHorizontalIcon, ChartBarIcon, ClockIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 
 interface TimeSlotManagementProps {
   trainers: Staff[];
@@ -15,7 +16,7 @@ interface TimeSlotManagementProps {
   trainersLoading?: boolean;
 }
 
-const VALID_SUBS = new Set(["slots", "members", "analytics"]);
+const VALID_SUBS = new Set(["slots", "members", "analytics", "time-filters"]);
 
 export const TimeSlotManagement = ({
   trainers,
