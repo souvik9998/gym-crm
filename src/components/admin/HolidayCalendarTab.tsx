@@ -212,14 +212,12 @@ const HolidayCalendarTab = () => {
     return buildPublicUrl(`/b/${slug}/calendar`, customDomain?.hostname);
   }, [currentBranch, customDomain]);
 
-  const handleShareCalendar = async () => {
-    if (!shareUrl) return;
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success("Calendar link copied!", { description: shareUrl });
-    } catch {
-      toast.info(shareUrl);
+  const handleShareCalendar = () => {
+    if (!shareUrl) {
+      toast.error("Calendar link is not ready yet");
+      return;
     }
+    setIsShareDialogOpen(true);
   };
 
   // Calendar days
