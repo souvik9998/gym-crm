@@ -938,6 +938,10 @@ export default function TenantDetail() {
             <RazorpayCredentialsTab tenantId={tenant.id} />
           </TabsContent>
 
+          <TabsContent value="messaging" className="space-y-4">
+            <MessagingProviderTab tenantId={tenant.id} />
+          </TabsContent>
+
           <TabsContent value="domains" className="space-y-4">
             <TenantDomainsTab tenantId={tenant.id} branches={branches} />
           </TabsContent>
