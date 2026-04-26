@@ -176,6 +176,9 @@ const PlatformRoutes = () => (
       <Route path="/admin/settings" element={
         <Suspense fallback={<PageLoader />}><AdminSettings /></Suspense>
       } />
+      <Route path="/admin/calendar" element={
+        <Suspense fallback={<PageLoader />}><AdminCalendar /></Suspense>
+      } />
     </Route>
 
     <Route element={
