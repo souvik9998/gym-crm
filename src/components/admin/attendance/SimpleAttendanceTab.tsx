@@ -63,8 +63,48 @@ function getWeekDates(referenceDate: string): string[] {
   return dates;
 }
 
-const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
-const DAY_LABELS_FULL = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const FULL_DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const SHORT_DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+
+/**
+ * Returns the day-of-week label (Mon, Tue, ...) for a given ISO date string.
+ * Used because the visible date range can extend beyond a single Mon-Sun week,
+ * so a fixed-index array of labels would mis-label dates.
+ */
+function dayLabelFull(iso: string): string {
+  return FULL_DAY_LABELS[new Date(iso + "T00:00:00").getDay()];
+}
+
+function dayLabelShort(iso: string): string {
+  return SHORT_DAY_LABELS[new Date(iso + "T00:00:00").getDay()];
+}
+
+/**
+ * Builds an extended date range so the user can scroll horizontally through
+ * recent days, including today. Always includes selectedDate's week (Mon-Sun)
+ * AND every day from there through today (clamped). Caps at ~21 days.
+ */
+function getVisibleDates(referenceDate: string, todayIso: string): string[] {
+  const week = getWeekDates(referenceDate);
+  const start = week[0];
+  // End at the later of: this week's Sunday OR today (so today is always reachable)
+  const endIso = week[6] > todayIso ? week[6] : todayIso;
+  const startD = new Date(start + "T00:00:00");
+  const endD = new Date(endIso + "T00:00:00");
+  const dates: string[] = [];
+  const cur = new Date(startD);
+  let guard = 0;
+  while (cur <= endD && guard < 28) {
+    dates.push(cur.toISOString().split("T")[0]);
+    cur.setDate(cur.getDate() + 1);
+    guard++;
+  }
+  return dates;
+}
+
+// Backwards-compatible aliases (existing code references these names)
+const DAY_LABELS = SHORT_DAY_LABELS;
+const DAY_LABELS_FULL = FULL_DAY_LABELS;
 
 /**
  * Skeleton mirroring the SimpleAttendanceTab member list:
