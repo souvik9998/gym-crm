@@ -31,6 +31,20 @@ import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { TimePicker12h } from "@/components/ui/time-picker-12h";
 import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
+import { useTenantPrimaryDomain } from "@/hooks/useTenantPrimaryDomain";
+import { buildPublicUrl } from "@/lib/publicUrl";
+import { ShareIcon, TicketIcon } from "@heroicons/react/24/outline";
+import { useNavigate } from "react-router-dom";
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  slug: string;
+  event_date: string;
+  event_end_date: string | null;
+  location: string | null;
+  status: string;
+}
 
 interface Holiday {
   id: string;
@@ -84,7 +98,10 @@ const formatTime12h = (time: string | null | undefined): string => {
 
 const HolidayCalendarTab = () => {
   const { currentBranch } = useBranch();
+  const navigate = useNavigate();
+  const { data: customDomain } = useTenantPrimaryDomain(currentBranch?.id);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -124,18 +141,29 @@ const HolidayCalendarTab = () => {
     return map;
   }, [nationalHolidays]);
 
-  // Fetch holidays
+  // Fetch holidays + events for current branch
   const fetchHolidays = useCallback(async () => {
     if (!currentBranch) return;
     setIsLoading(true);
-    const { data, error } = await supabase
-      .from("gym_holidays")
-      .select("*")
-      .eq("branch_id", currentBranch.id)
-      .order("holiday_date", { ascending: true });
+    const [holidaysRes, eventsRes] = await Promise.all([
+      supabase
+        .from("gym_holidays")
+        .select("*")
+        .eq("branch_id", currentBranch.id)
+        .order("holiday_date", { ascending: true }),
+      supabase
+        .from("events")
+        .select("id, title, slug, event_date, event_end_date, location, status")
+        .eq("branch_id", currentBranch.id)
+        .neq("status", "cancelled")
+        .order("event_date", { ascending: true }),
+    ]);
 
-    if (!error && data) {
-      setHolidays(data as unknown as Holiday[]);
+    if (!holidaysRes.error && holidaysRes.data) {
+      setHolidays(holidaysRes.data as unknown as Holiday[]);
+    }
+    if (!eventsRes.error && eventsRes.data) {
+      setEvents(eventsRes.data as unknown as CalendarEvent[]);
     }
     setIsLoading(false);
   }, [currentBranch]);
@@ -143,6 +171,54 @@ const HolidayCalendarTab = () => {
   useEffect(() => {
     fetchHolidays();
   }, [fetchHolidays]);
+
+  // Build a map of date -> events occurring on that date (events can span days)
+  const eventDateMap = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+    events.forEach((ev) => {
+      try {
+        const start = parseISO(ev.event_date);
+        const end = ev.event_end_date ? parseISO(ev.event_end_date) : start;
+        const days = eachDayOfInterval({ start, end });
+        days.forEach((d) => {
+          const key = format(d, "yyyy-MM-dd");
+          const arr = map.get(key) || [];
+          arr.push(ev);
+          map.set(key, arr);
+        });
+      } catch {
+        // ignore malformed dates
+      }
+    });
+    return map;
+  }, [events]);
+
+  const upcomingEvents = useMemo(() => {
+    const today = startOfDay(new Date());
+    return events
+      .filter((e) => {
+        const end = e.event_end_date ? parseISO(e.event_end_date) : parseISO(e.event_date);
+        return !isBefore(end, today);
+      })
+      .slice(0, 6);
+  }, [events]);
+
+  // Public share URL for the read-only calendar
+  const shareUrl = useMemo(() => {
+    if (!currentBranch) return "";
+    const slug = (currentBranch as any).slug || currentBranch.id;
+    return buildPublicUrl(`/b/${slug}/calendar`, customDomain?.hostname);
+  }, [currentBranch, customDomain]);
+
+  const handleShareCalendar = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Calendar link copied!", { description: shareUrl });
+    } catch {
+      toast.info(shareUrl);
+    }
+  };
 
   // Calendar days
   const calendarDays = useMemo(() => {
@@ -446,24 +522,37 @@ const HolidayCalendarTab = () => {
       {/* Calendar Card */}
       <Card className="border border-border/40 shadow-sm overflow-hidden">
         <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400">
                 <CalendarDaysIcon className="w-4 h-4 lg:w-5 lg:h-5" />
               </div>
               <div>
-                <CardTitle className="text-base lg:text-xl">Holiday Calendar</CardTitle>
-                <CardDescription className="text-xs lg:text-sm">Click any date to add or manage holidays</CardDescription>
+                <CardTitle className="text-base lg:text-xl">Calendar</CardTitle>
+                <CardDescription className="text-xs lg:text-sm">Holidays & events at a glance — click any date to manage holidays</CardDescription>
               </div>
             </div>
-            <Button
-              size="sm"
-              className="gap-1.5 rounded-xl text-xs lg:text-sm"
-              onClick={() => openAddDialog(new Date())}
-            >
-              <PlusIcon className="w-3.5 h-3.5" />
-              Add Holiday
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 rounded-xl text-xs lg:text-sm"
+                onClick={handleShareCalendar}
+                disabled={!shareUrl}
+                title={shareUrl || ""}
+              >
+                <ShareIcon className="w-3.5 h-3.5" />
+                Share Calendar
+              </Button>
+              <Button
+                size="sm"
+                className="gap-1.5 rounded-xl text-xs lg:text-sm"
+                onClick={() => openAddDialog(new Date())}
+              >
+                <PlusIcon className="w-3.5 h-3.5" />
+                Add Holiday
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -499,6 +588,8 @@ const HolidayCalendarTab = () => {
               const dateStr = format(day, "yyyy-MM-dd");
               const gymHoliday = holidayDateSet.get(dateStr);
               const nationalHoliday = nationalHolidayMap.get(dateStr);
+              const dayEvents = eventDateMap.get(dateStr) || [];
+              const hasEvent = dayEvents.length > 0;
               const isCurrentDay = isToday(day);
               const isPast = isBefore(day, startOfDay(new Date())) && !isCurrentDay;
               const isSunday = getDay(day) === 0;
@@ -513,7 +604,8 @@ const HolidayCalendarTab = () => {
                       "transition-colors duration-150",
                       isPast && "opacity-40",
                       // Normal day
-                      !hasHoliday && !isCurrentDay && "hover:bg-muted/60",
+                      !hasHoliday && !isCurrentDay && !hasEvent && "hover:bg-muted/60",
+                      !hasHoliday && !isCurrentDay && hasEvent && "bg-blue-500/5 hover:bg-blue-500/10",
                       // Today
                       isCurrentDay && !gymHoliday && "bg-primary/8 font-bold hover:bg-primary/12",
                       // Gym holiday
@@ -551,18 +643,37 @@ const HolidayCalendarTab = () => {
                         {nationalHoliday}
                       </span>
                     )}
+
+                    {/* Event indicator dots */}
+                    {hasEvent && (
+                      <div className="absolute bottom-1 left-0 right-0 flex items-center justify-center gap-0.5 pointer-events-none">
+                        {dayEvents.slice(0, 3).map((ev) => (
+                          <span key={ev.id} className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        ))}
+                        {dayEvents.length > 3 && (
+                          <span className="text-[7px] text-blue-600 font-medium leading-none">+{dayEvents.length - 3}</span>
+                        )}
+                      </div>
+                    )}
                   </button>
 
-                  {/* Tooltip - render outside button for clean positioning */}
-                  {hasHoliday && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-foreground text-background text-[10px] rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-30 shadow-lg">
-                      <span className="font-medium">{gymHoliday?.holiday_name || nationalHoliday}</span>
-                      {gymHoliday && (
-                        <span className="ml-1 opacity-70 text-[9px]">
-                          · {gymHoliday.holiday_type === "full_day" ? "Closed" : "Half Day"}
-                        </span>
+                  {/* Tooltip */}
+                  {(hasHoliday || hasEvent) && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-foreground text-background text-[10px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-30 shadow-lg max-w-[220px]">
+                      {hasHoliday && (
+                        <div className="whitespace-nowrap">
+                          <span className="font-medium">{gymHoliday?.holiday_name || nationalHoliday}</span>
+                          {gymHoliday && (
+                            <span className="ml-1 opacity-70 text-[9px]">· {gymHoliday.holiday_type === "full_day" ? "Closed" : "Half Day"}</span>
+                          )}
+                        </div>
                       )}
-                      {/* Arrow */}
+                      {hasEvent && dayEvents.map((ev) => (
+                        <div key={ev.id} className={cn("flex items-center gap-1 whitespace-nowrap", hasHoliday && "mt-0.5 pt-0.5 border-t border-background/20")}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+                          <span className="font-medium truncate">{ev.title}</span>
+                        </div>
+                      ))}
                       <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-foreground" />
                     </div>
                   )}
@@ -572,7 +683,11 @@ const HolidayCalendarTab = () => {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border/30">
+          <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border/30 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+              <span className="text-[10px] lg:text-xs text-muted-foreground">Event</span>
+            </div>
             <div className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
               <span className="text-[10px] lg:text-xs text-muted-foreground">Gym Holiday</span>
