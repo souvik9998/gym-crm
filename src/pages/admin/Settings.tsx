@@ -1801,6 +1801,7 @@ const AdminSettings = () => {
               <SettingsGeneralSkeleton />
             ) : (
               <>
+                <BranchManagement />
                 <BrandLogoSettings />
 
                 <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
