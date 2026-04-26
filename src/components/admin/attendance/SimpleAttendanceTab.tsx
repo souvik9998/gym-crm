@@ -251,6 +251,18 @@ export const SimpleAttendanceTab = () => {
   const trainerSlotIdSet = useMemo(() => new Set(trainerSlotIds), [trainerSlotIds]);
 
   const weekDates = useMemo(() => getVisibleDates(selectedDate, today), [selectedDate, today]);
+
+  // Auto-scroll the date strip so the selected date stays in view when the
+  // visible range extends beyond a single week (e.g., includes today).
+  const weekStripRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const container = weekStripRef.current;
+    if (!container) return;
+    const target = container.querySelector<HTMLElement>(`[data-date="${selectedDate}"]`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  }, [selectedDate, weekDates]);
   const isFutureDate = selectedDate > today;
 
   const navigateWeek = (dir: "prev" | "next") => {
