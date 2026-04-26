@@ -143,10 +143,10 @@ const allNavItems: NavItem[] = [
     requiresPermission: "can_manage_events" as any,
     tenantModule: "event_management",
   },
-  // Calendar - admin/staff with settings access; opens the Settings → Calendar tab
+  // Calendar - dedicated page with holidays + events overview
   {
     title: "Calendar",
-    href: "/admin/settings?tab=calendar",
+    href: "/admin/calendar",
     icon: CalendarDaysIcon,
     iconSolid: CalendarDaysIcon,
     requiresPermission: ["can_view_settings", "can_change_settings"],

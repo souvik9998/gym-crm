@@ -31,6 +31,7 @@ const StaffDashboard = lazyWithRetry(() => import("./pages/admin/StaffDashboard"
 const StaffTimeSlots = lazyWithRetry(() => import("./pages/admin/StaffTimeSlots"));
 const AdminQRCode = lazyWithRetry(() => import("./pages/admin/QRCode"));
 const AdminSettings = lazyWithRetry(() => import("./pages/admin/Settings"));
+const AdminCalendar = lazyWithRetry(() => import("./pages/admin/Calendar"));
 const AdminAnalytics = lazyWithRetry(() => import("./pages/admin/Analytics"));
 const BranchAnalytics = lazyWithRetry(() => import("./pages/admin/BranchAnalytics"));
 const AdminLedger = lazyWithRetry(() => import("./pages/admin/Ledger"));
