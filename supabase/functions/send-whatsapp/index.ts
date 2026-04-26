@@ -1,6 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { enforceRateLimit } from "../_shared/rate-limit.ts";
 import { SendWhatsAppSchema, validateInput } from "../_shared/validation.ts";
+import {
+  sendWhatsAppForTenant,
+  type MessageCategory,
+} from "../_shared/whatsapp-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
