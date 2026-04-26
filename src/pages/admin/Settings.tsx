@@ -1213,7 +1213,7 @@ const AdminSettings = () => {
     { value: "registration", label: "Registration" },
     { value: "assessment", label: "Assessment" },
     { value: "branches", label: "Branches" },
-    { value: "holidays", label: "Holidays" },
+    { value: "calendar", label: "Calendar" },
     { value: "time-filters", label: "Time Filters" },
     { value: "whatsapp", label: "WhatsApp" },
     { value: "general", label: "General" },
@@ -1645,7 +1645,13 @@ const AdminSettings = () => {
             <BranchManagement />
           </TabsContent>
 
-          {/* Holiday Calendar Tab */}
+          {/* Calendar Tab (events + holidays) */}
+          <TabsContent value="calendar" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
+            <Suspense fallback={<div className="space-y-4"><div className="h-64 bg-muted/30 rounded-xl animate-pulse" /><div className="h-48 bg-muted/30 rounded-xl animate-pulse" /></div>}>
+              <HolidayCalendarTab />
+            </Suspense>
+          </TabsContent>
+          {/* Back-compat: legacy ?tab=holidays still loads the calendar */}
           <TabsContent value="holidays" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
             <Suspense fallback={<div className="space-y-4"><div className="h-64 bg-muted/30 rounded-xl animate-pulse" /><div className="h-48 bg-muted/30 rounded-xl animate-pulse" /></div>}>
               <HolidayCalendarTab />
