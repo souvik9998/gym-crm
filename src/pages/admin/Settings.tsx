@@ -339,8 +339,9 @@ const AdminSettings = () => {
     variant: "default",
   });
 
-  // Controlled tab from URL
-  const activeTab = searchParams.get("tab") || "packages";
+  // Controlled tab from URL (legacy "branches" tab now lives inside "general")
+  const rawTab = searchParams.get("tab") || "packages";
+  const activeTab = rawTab === "branches" ? "general" : rawTab;
 
   useEffect(() => {
     // For admin: watch auth state
@@ -1213,7 +1214,6 @@ const AdminSettings = () => {
     { value: "packages", label: "Packages" },
     { value: "registration", label: "Registration" },
     { value: "assessment", label: "Assessment" },
-    { value: "branches", label: "Branches" },
     { value: "whatsapp", label: "WhatsApp" },
     { value: "general", label: "General" },
     { value: "coupons", label: "Coupons" },
@@ -1640,9 +1640,6 @@ const AdminSettings = () => {
           </TabsContent>
 
           {/* Branches Tab */}
-          <TabsContent value="branches" forceMount className="space-y-4 lg:space-y-6 mt-2 lg:mt-0 animate-fade-in data-[state=inactive]:hidden">
-            <BranchManagement />
-          </TabsContent>
 
 
           {/* WhatsApp Templates */}
@@ -1805,6 +1802,7 @@ const AdminSettings = () => {
               <SettingsGeneralSkeleton />
             ) : (
               <>
+                <BranchManagement />
                 <BrandLogoSettings />
 
                 <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
