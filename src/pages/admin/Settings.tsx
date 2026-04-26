@@ -339,8 +339,9 @@ const AdminSettings = () => {
     variant: "default",
   });
 
-  // Controlled tab from URL
-  const activeTab = searchParams.get("tab") || "packages";
+  // Controlled tab from URL (legacy "branches" tab now lives inside "general")
+  const rawTab = searchParams.get("tab") || "packages";
+  const activeTab = rawTab === "branches" ? "general" : rawTab;
 
   useEffect(() => {
     // For admin: watch auth state
