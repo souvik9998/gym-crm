@@ -179,15 +179,21 @@ export default function Events() {
                 className="border border-border/40 hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
                 onClick={() => navigate(`/admin/events/${event.id}`)}
               >
-                {event.banner_image_url && (
-                  <div className="h-36 overflow-hidden">
+                <div className="h-36 overflow-hidden bg-muted">
+                  {event.banner_image_url ? (
                     <img
                       src={event.banner_image_url}
                       alt={event.title}
                       className="w-full h-full object-cover"
+                      loading="lazy"
                     />
-                  </div>
-                )}
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-muted via-muted/60 to-accent/20 text-muted-foreground">
+                      <Calendar className="w-10 h-10 mb-1.5 opacity-50" />
+                      <span className="text-xs font-medium opacity-70">No banner image</span>
+                    </div>
+                  )}
+                </div>
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-semibold text-foreground line-clamp-1">{event.title}</h3>
