@@ -80,6 +80,12 @@ const TenantDomainRoutes = () => (
     <Route path="/event/:eventSlug" element={
       <Suspense fallback={<PageLoader />}><EventRegistration /></Suspense>
     } />
+    <Route path="/calendar" element={
+      <Suspense fallback={<PageLoader />}><PublicCalendar /></Suspense>
+    } />
+    <Route path="/b/:branchSlug/calendar" element={
+      <Suspense fallback={<PageLoader />}><PublicCalendar /></Suspense>
+    } />
     {/* Branch-specific routes also work on tenant custom domains so the
         same QR/share links remain valid (https://customdomain/b/:slug). */}
     <Route path="/b/:branchSlug" element={<Index />} />
@@ -110,6 +116,9 @@ const PlatformRoutes = () => (
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/event/:eventSlug" element={
       <Suspense fallback={<PageLoader />}><EventRegistration /></Suspense>
+    } />
+    <Route path="/b/:branchSlug/calendar" element={
+      <Suspense fallback={<PageLoader />}><PublicCalendar /></Suspense>
     } />
     <Route path="/check-in" element={<CheckIn />} />
 
