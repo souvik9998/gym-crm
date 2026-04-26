@@ -1213,7 +1213,6 @@ const AdminSettings = () => {
     { value: "packages", label: "Packages" },
     { value: "registration", label: "Registration" },
     { value: "assessment", label: "Assessment" },
-    { value: "branches", label: "Branches" },
     { value: "whatsapp", label: "WhatsApp" },
     { value: "general", label: "General" },
     { value: "coupons", label: "Coupons" },
