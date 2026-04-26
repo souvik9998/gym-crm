@@ -29,6 +29,10 @@ interface DashboardUIState {
   timeSlotFilter: string | null; // time_slot_id or null for "all"
   setTimeSlotFilter: (slotId: string | null) => void;
   
+  // Time bucket filter (Morning / Afternoon / Evening / custom bucket id / "all")
+  timeBucketFilter: string;
+  setTimeBucketFilter: (bucket: string) => void;
+  
   // Sorting
   sortBy: SortByValue;
   setSortBy: (sortBy: SortByValue) => void;
