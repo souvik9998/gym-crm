@@ -41,7 +41,15 @@ export function BrandLogoSettings() {
     e.target.value = ""; // allow re-selecting the same file
     if (!file || !currentBranch) return;
 
-    if (!ACCEPTED_TYPES.includes(file.type)) {
+    // Defense-in-depth: only allow uploads under a real branch UUID we own.
+    // The storage RLS policy enforces the same constraint server-side.
+    if (!UUID_RE.test(currentBranch.id)) {
+      toast.error("Cannot upload", { description: "No valid branch selected." });
+      return;
+    }
+
+    // Coarse type/size gate — exits early on obviously wrong inputs.
+    if (file.type && !ACCEPTED_TYPES.includes(file.type)) {
       toast.error("Unsupported file type", {
         description: "Please upload a PNG, JPG, WebP, or SVG image.",
       });
@@ -56,11 +64,28 @@ export function BrandLogoSettings() {
 
     setIsUploading(true);
     try {
-      // 1. Compress (downscale + WebP encode) before upload.
+      // 1. Deep validation: magic-byte sniffing, dimension check, SVG safety scan.
+      //    Rejects spoofed extensions, decompression bombs, and active SVG content.
+      const verdict = await validateImageFile(file, {
+        maxBytes: MAX_INPUT_BYTES,
+        maxDimension: MAX_DIMENSION,
+        allowedFormats: ["png", "jpeg", "webp", "svg"], // no GIF for brand logos
+      });
+      if (!verdict.ok) {
+        toast.error("Invalid image", { description: verdict.message });
+        return;
+      }
+
+      // 2. Compress raster images. SVG is passed through unchanged (already small + vector).
       const compressed = await compressImage(file, { maxDimension: 512, quality: 0.82 });
 
-      // 2. Upload to branch-logos bucket under a deterministic path.
-      const path = `${currentBranch.id}/logo.${compressed.extension}`;
+      // 3. Build a safe storage path: <branchId>/logo.<ext>. Both segments are
+      //    constrained to known-safe values (UUID + whitelisted extension).
+      const safeExt = ["webp", "png", "jpg", "jpeg", "svg"].includes(compressed.extension)
+        ? compressed.extension
+        : "webp";
+      const path = `${currentBranch.id}/logo.${safeExt}`;
+
       const { error: uploadError } = await supabase.storage
         .from("branch-logos")
         .upload(path, compressed.blob, {
@@ -70,18 +95,19 @@ export function BrandLogoSettings() {
         });
       if (uploadError) throw uploadError;
 
-      // 3. Get a public URL with cache-busting query param.
+      // 4. Get a public URL with cache-busting query param.
       const { data: urlData } = supabase.storage.from("branch-logos").getPublicUrl(path);
       const newLogoUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
-      // 4. Persist on the branch row.
+      // 5. Persist on the branch row (RLS already restricts which branches the
+      //    caller can update).
       const { error: updateError } = await supabase
         .from("branches")
         .update({ logo_url: newLogoUrl })
         .eq("id", currentBranch.id);
       if (updateError) throw updateError;
 
-      // 5. Refresh local + public caches so dashboard, sidebar, registration, etc. update.
+      // 6. Refresh local + public caches so dashboard, sidebar, registration, etc. update.
       setPreviewUrl(newLogoUrl);
       setSavings({ original: compressed.originalSize, compressed: compressed.compressedSize });
       await Promise.all([refreshBranches(), invalidatePublicDataCache()]);
@@ -94,7 +120,11 @@ export function BrandLogoSettings() {
       });
     } catch (err: any) {
       console.error("Brand logo upload failed:", err);
-      toast.error("Failed to upload logo", { description: err?.message });
+      const description =
+        err?.message?.includes("row-level security") || err?.message?.includes("permission")
+          ? "You don't have permission to upload a logo for this branch."
+          : err?.message;
+      toast.error("Failed to upload logo", { description });
     } finally {
       setIsUploading(false);
     }
