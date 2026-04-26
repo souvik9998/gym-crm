@@ -683,7 +683,11 @@ const HolidayCalendarTab = () => {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border/30">
+          <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border/30 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+              <span className="text-[10px] lg:text-xs text-muted-foreground">Event</span>
+            </div>
             <div className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
               <span className="text-[10px] lg:text-xs text-muted-foreground">Gym Holiday</span>
