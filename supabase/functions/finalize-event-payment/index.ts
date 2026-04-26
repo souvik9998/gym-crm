@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3.25.76";
 import { getGymRazorpayCredentials } from "../_shared/encryption.ts";
 import { enforceRateLimit } from "../_shared/rate-limit.ts";
+import { sendWhatsAppForTenant } from "../_shared/whatsapp-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -361,36 +362,31 @@ Deno.serve(async (req) => {
 
         const formattedPhone = phone.length === 10 ? `91${phone}` : phone;
 
-        const PERISKOPE_API_KEY = Deno.env.get("PERISKOPE_API_KEY");
-        const PERISKOPE_PHONE = Deno.env.get("PERISKOPE_PHONE");
+        const result = await sendWhatsAppForTenant(supabase, {
+          toPhone: formattedPhone,
+          category: "event_confirmation",
+          variables: {
+            name,
+            event_title: eventData.title,
+            event_date: eventDate,
+            branch_name: branchDisplayName,
+          },
+          fallbackText: message,
+          branchId,
+        });
 
-        if (PERISKOPE_API_KEY && PERISKOPE_PHONE) {
-          const waResponse = await fetch("https://api.periskope.app/v1/message/send", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${PERISKOPE_API_KEY}`,
-              "x-phone": PERISKOPE_PHONE,
-            },
-            body: JSON.stringify({
-              chat_id: `${formattedPhone}@c.us`,
-              message,
-            }),
-          });
+        console.log("WhatsApp event registration notification:", result.provider, result.success, result.error);
 
-          console.log("WhatsApp event registration notification sent:", waResponse.status);
-
-          await supabase.from("whatsapp_notifications").insert({
-            recipient_phone: formattedPhone,
-            recipient_name: name,
-            notification_type: "event_registration",
-            message_content: message.substring(0, 500),
-            status: waResponse.ok ? "sent" : "failed",
-            is_manual: false,
-            branch_id: branchId,
-            member_id: memberId || null,
-          });
-        }
+        await supabase.from("whatsapp_notifications").insert({
+          recipient_phone: formattedPhone,
+          recipient_name: name,
+          notification_type: "event_registration",
+          message_content: message.substring(0, 500),
+          status: result.success ? "sent" : "failed",
+          is_manual: false,
+          branch_id: branchId,
+          member_id: memberId || null,
+        });
       }
     } catch (waError) {
       console.error("WhatsApp notification error (non-critical):", waError);

@@ -1023,6 +1023,9 @@ async function generateAndSendReport(supabase: any, config: ReportConfig) {
 
   if (shouldSendWhatsApp) {
     if (config.whatsappPhone) {
+      // generate-report sends to the gym owner's personal admin phone (not always tenant-scoped),
+      // so use direct Periskope env to preserve current behaviour. Tenant routing happens for
+      // member/staff messages elsewhere.
       const waResult = await sendWhatsAppMessage(config.whatsappPhone, whatsappMessage);
       whatsappSent = waResult.ok;
       if (waResult.ok && config.branchId) {

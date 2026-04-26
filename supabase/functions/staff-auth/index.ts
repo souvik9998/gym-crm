@@ -25,6 +25,7 @@ import {
   parseAndValidateBody,
   handleSecurityError,
 } from "../_shared/validation.ts";
+import { sendWhatsAppForTenant } from "../_shared/whatsapp-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -930,26 +931,23 @@ async function sendPasswordWhatsApp(
   staffId: string
 ): Promise<boolean> {
   try {
-    const PERISKOPE_API_KEY = Deno.env.get("PERISKOPE_API_KEY");
-    const PERISKOPE_PHONE = Deno.env.get("PERISKOPE_PHONE");
-
-    if (!PERISKOPE_API_KEY || !PERISKOPE_PHONE) return false;
-
     const phone = staff.phone as string;
     const cleanPhone = phone.replace(/\D/g, "").replace(/^0/, "");
     const phoneWithCountry = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
 
     const { data: branchAssignments } = await supabase
       .from("staff_branch_assignments")
-      .select("branches(name)")
+      .select("branch_id, branches(name, tenant_id)")
       .eq("staff_id", staffId);
 
-    const branchNames = branchAssignments?.map((a: Record<string, unknown>) => 
+    const branchNames = branchAssignments?.map((a: Record<string, unknown>) =>
       (a.branches as Record<string, unknown>)?.name
     ).filter(Boolean) || [];
     const branchDisplay = branchNames.length > 0 ? branchNames.join(", ") : "All Branches";
     const role = staff.role as string;
     const roleLabel = role ? role.charAt(0).toUpperCase() + role.slice(1) : "Staff";
+    const primaryBranchId = branchAssignments?.[0]?.branch_id ?? null;
+    const primaryBranchName = (branchAssignments?.[0]?.branches as { name?: string } | undefined)?.name ?? "";
 
     const message = `🔐 *Staff Login Credentials*\n\n` +
       `Hi ${staff.full_name}, 👋\n\n` +
@@ -963,20 +961,22 @@ async function sendPasswordWhatsApp(
       `• Delete this message after saving your password\n` +
       `• Never share your credentials with anyone`;
 
-    const response = await fetch("https://api.periskope.app/v1/message/send", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${PERISKOPE_API_KEY}`,
-        "x-phone": PERISKOPE_PHONE,
-        "Content-Type": "application/json",
+    const result = await sendWhatsAppForTenant(supabase, {
+      toPhone: phoneWithCountry,
+      category: "staff_credentials",
+      variables: {
+        name: String(staff.full_name ?? ""),
+        phone,
+        password,
+        role: roleLabel,
+        branches: branchDisplay,
+        branch_name: primaryBranchName,
       },
-      body: JSON.stringify({
-        chat_id: `${phoneWithCountry}@c.us`,
-        message,
-      }),
+      fallbackText: message,
+      branchId: primaryBranchId,
     });
 
-    return response.ok;
+    return result.success;
   } catch (error) {
     console.error("WhatsApp send error:", error);
     return false;

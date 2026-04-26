@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { sendWhatsAppForTenant, type MessageCategory } from "../_shared/whatsapp-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -235,32 +236,36 @@ Deno.serve(async (req) => {
       return cleaned;
     };
 
-    const sendMessageWithRetry = async (chatId: string, message: string): Promise<{ ok: boolean; status: number; body: string }> => {
+    // Provider-aware sender (Periskope or Zavu) — handles credential resolution + usage increment.
+    const sendMessageWithRetry = async (
+      chatId: string,
+      message: string,
+      branchId: string,
+      category: MessageCategory,
+      variables: Record<string, string>,
+    ): Promise<{ ok: boolean; status: number; body: string }> => {
       const attempt = async (): Promise<{ ok: boolean; status: number; body: string }> => {
-        try {
-          const response = await fetch("https://api.periskope.app/v1/message/send", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${PERISKOPE_API_KEY}`,
-              "x-phone": PERISKOPE_PHONE!,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ chat_id: `${chatId}@c.us`, message }),
-          });
-          const responseText = await response.text();
-          return { ok: response.ok, status: response.status, body: responseText };
-        } catch (error: any) {
-          return { ok: false, status: 0, body: error?.message || String(error) };
-        }
+        const result = await sendWhatsAppForTenant(supabase, {
+          toPhone: chatId,
+          category,
+          variables,
+          fallbackText: message,
+          branchId,
+        });
+        return {
+          ok: result.success,
+          status: result.success ? 200 : 500,
+          body: result.error ?? "ok",
+        };
       };
 
       let result = await attempt();
       if (!result.ok) {
-        log("periskope-retry", { chatId, firstStatus: result.status, firstBody: result.body });
+        log("provider-retry", { chatId, firstBody: result.body });
         await new Promise((r) => setTimeout(r, 2000));
         result = await attempt();
       }
-      log("periskope-result", { chatId, status: result.status, ok: result.ok, body: result.body.slice(0, 300) });
+      log("provider-result", { chatId, status: result.status, ok: result.ok, body: result.body.slice(0, 300) });
       return result;
     };
 
@@ -364,7 +369,11 @@ Deno.serve(async (req) => {
             const formattedPhone = formatPhone(member.phone);
             attemptedCount++;
             stats.attempted++;
-            const result = await sendMessageWithRetry(formattedPhone, message);
+            const result = await sendMessageWithRetry(formattedPhone, message, branchId, "expiring_2days", {
+              name: member.name,
+              expiry_date: expiryDate,
+              branch_name: config.gymName,
+            });
 
             await supabase.from("whatsapp_notifications").insert({
               member_id: member.id,
@@ -385,8 +394,7 @@ Deno.serve(async (req) => {
               successCount++;
               stats.sent++;
               sentMemberIds.push(member.id);
-              const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: branchId });
-              if (tenantId) await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tenantId });
+              // usage increment handled by sendWhatsAppForTenant
             } else {
               failCount++;
               stats.failed++;
@@ -419,11 +427,16 @@ Deno.serve(async (req) => {
           for (const sub of expiringTodaySubs) {
             const member = sub.members as any;
             const message = `🚨 Hi ${member.name}!\n\nYour gym membership at *${config.gymName}* expires *TODAY*!\n\nPlease renew immediately to continue your fitness journey. 💪`;
+            const todayDate = new Date(todayStr).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
 
             const formattedPhone = formatPhone(member.phone);
             attemptedCount++;
             stats.attempted++;
-            const result = await sendMessageWithRetry(formattedPhone, message);
+            const result = await sendMessageWithRetry(formattedPhone, message, branchId, "expiring_today", {
+              name: member.name,
+              expiry_date: todayDate,
+              branch_name: config.gymName,
+            });
 
             await supabase.from("whatsapp_notifications").insert({
               member_id: member.id,
@@ -438,8 +451,7 @@ Deno.serve(async (req) => {
               successCount++;
               stats.sent++;
               sentMemberIds.push(member.id);
-              const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: branchId });
-              if (tenantId) await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tenantId });
+              // usage increment handled by sendWhatsAppForTenant
             } else {
               failCount++;
               stats.failed++;
@@ -530,7 +542,11 @@ Deno.serve(async (req) => {
             const formattedPhone = formatPhone(member.phone);
             attemptedCount++;
             stats.attempted++;
-            const result = await sendMessageWithRetry(formattedPhone, message);
+            const result = await sendMessageWithRetry(formattedPhone, message, branchId, "expired_reminder", {
+              name: member.name,
+              days_expired: String(expiredForDays),
+              branch_name: config.gymName,
+            });
 
             await supabase.from("whatsapp_notifications").insert({
               member_id: member.id,
@@ -551,8 +567,7 @@ Deno.serve(async (req) => {
               successCount++;
               stats.sent++;
               sentMemberIds.push(member.id);
-              const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: branchId });
-              if (tenantId) await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tenantId });
+              // usage increment handled by sendWhatsAppForTenant
             } else {
               failCount++;
               stats.failed++;
@@ -627,7 +642,20 @@ Deno.serve(async (req) => {
       summaryMessage += `\n✅ *Notifications Sent: ${successCount}*`;
       if (failCount > 0) summaryMessage += `\n❌ *Failed: ${failCount}*`;
 
-      await sendMessageWithRetry(adminPhone, summaryMessage);
+      // Admin daily summary uses global Periskope env (no tenant context)
+      try {
+        await fetch("https://api.periskope.app/v1/message/send", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${PERISKOPE_API_KEY}`,
+            "x-phone": PERISKOPE_PHONE!,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ chat_id: `${adminPhone}@c.us`, message: summaryMessage }),
+        });
+      } catch (e) {
+        log("admin-summary-error", { error: (e as Error).message });
+      }
     }
 
     log("completed", {
