@@ -56,6 +56,7 @@ import { CouponsDiscountsTab } from "@/components/admin/CouponsDiscountsTab";
 import { AssessmentFieldsSettings } from "@/components/admin/AssessmentFieldsSettings";
 import { BackupRestoreTab } from "@/components/admin/backup/BackupRestoreTab";
 import { TimeBucketsSettings } from "@/components/admin/TimeBucketsSettings";
+import { BrandLogoSettings } from "@/components/admin/BrandLogoSettings";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface CustomPackage {
