@@ -657,16 +657,23 @@ const HolidayCalendarTab = () => {
                     )}
                   </button>
 
-                  {/* Tooltip - render outside button for clean positioning */}
-                  {hasHoliday && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-foreground text-background text-[10px] rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-30 shadow-lg">
-                      <span className="font-medium">{gymHoliday?.holiday_name || nationalHoliday}</span>
-                      {gymHoliday && (
-                        <span className="ml-1 opacity-70 text-[9px]">
-                          · {gymHoliday.holiday_type === "full_day" ? "Closed" : "Half Day"}
-                        </span>
+                  {/* Tooltip */}
+                  {(hasHoliday || hasEvent) && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-foreground text-background text-[10px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-30 shadow-lg max-w-[220px]">
+                      {hasHoliday && (
+                        <div className="whitespace-nowrap">
+                          <span className="font-medium">{gymHoliday?.holiday_name || nationalHoliday}</span>
+                          {gymHoliday && (
+                            <span className="ml-1 opacity-70 text-[9px]">· {gymHoliday.holiday_type === "full_day" ? "Closed" : "Half Day"}</span>
+                          )}
+                        </div>
                       )}
-                      {/* Arrow */}
+                      {hasEvent && dayEvents.map((ev) => (
+                        <div key={ev.id} className={cn("flex items-center gap-1 whitespace-nowrap", hasHoliday && "mt-0.5 pt-0.5 border-t border-background/20")}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+                          <span className="font-medium truncate">{ev.title}</span>
+                        </div>
+                      ))}
                       <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-foreground" />
                     </div>
                   )}
