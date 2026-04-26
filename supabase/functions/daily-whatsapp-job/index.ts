@@ -427,11 +427,16 @@ Deno.serve(async (req) => {
           for (const sub of expiringTodaySubs) {
             const member = sub.members as any;
             const message = `🚨 Hi ${member.name}!\n\nYour gym membership at *${config.gymName}* expires *TODAY*!\n\nPlease renew immediately to continue your fitness journey. 💪`;
+            const todayDate = new Date(todayStr).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
 
             const formattedPhone = formatPhone(member.phone);
             attemptedCount++;
             stats.attempted++;
-            const result = await sendMessageWithRetry(formattedPhone, message);
+            const result = await sendMessageWithRetry(formattedPhone, message, branchId, "expiring_today", {
+              name: member.name,
+              expiry_date: todayDate,
+              branch_name: config.gymName,
+            });
 
             await supabase.from("whatsapp_notifications").insert({
               member_id: member.id,
@@ -446,8 +451,7 @@ Deno.serve(async (req) => {
               successCount++;
               stats.sent++;
               sentMemberIds.push(member.id);
-              const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: branchId });
-              if (tenantId) await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tenantId });
+              // usage increment handled by sendWhatsAppForTenant
             } else {
               failCount++;
               stats.failed++;
