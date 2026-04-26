@@ -1268,6 +1268,281 @@ interface UsageUpdateRequest {
         );
       }
 
+      case "get-messaging-config": {
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: Super admin access required" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const { tenantId } = body as { tenantId?: string };
+        if (!tenantId) {
+          return new Response(
+            JSON.stringify({ error: "Missing tenantId" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: cfg } = await supabase
+          .from("tenant_messaging_config")
+          .select(
+            "active_provider, periskope_api_key_encrypted, periskope_phone, periskope_verified_at, " +
+              "zavu_api_key_encrypted, zavu_sender_id, zavu_verified_at, zavu_templates"
+          )
+          .eq("tenant_id", tenantId)
+          .maybeSingle();
+
+        const periskopeConnected = !!cfg?.periskope_api_key_encrypted;
+        const zavuConnected = !!cfg?.zavu_api_key_encrypted;
+
+        return new Response(
+          JSON.stringify({
+            data: {
+              active_provider: cfg?.active_provider ?? "periskope",
+              periskope: {
+                connected: periskopeConnected,
+                phone: cfg?.periskope_phone ?? null,
+                verified_at: cfg?.periskope_verified_at ?? null,
+              },
+              zavu: {
+                connected: zavuConnected,
+                sender_id: cfg?.zavu_sender_id ?? null,
+                verified_at: cfg?.zavu_verified_at ?? null,
+              },
+              zavu_templates: (cfg?.zavu_templates as Record<string, string>) ?? {},
+            },
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "save-messaging-config": {
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: Super admin access required" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const {
+          tenantId,
+          active_provider,
+          periskope,
+          zavu,
+          zavu_templates,
+        } = body as {
+          tenantId?: string;
+          active_provider?: "periskope" | "zavu" | "none";
+          periskope?: { apiKey?: string; phone?: string };
+          zavu?: { apiKey?: string; senderId?: string };
+          zavu_templates?: Record<string, string>;
+        };
+
+        if (!tenantId) {
+          return new Response(
+            JSON.stringify({ error: "Missing tenantId" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const encryptionKey = Deno.env.get("RAZORPAY_ENCRYPTION_KEY");
+        if (!encryptionKey) {
+          return new Response(
+            JSON.stringify({ error: "Encryption not configured" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { encrypt } = await import("../_shared/encryption.ts");
+        const { verifyPeriskopeCredentials, verifyZavuCredentials } = await import(
+          "../_shared/whatsapp-provider.ts"
+        );
+
+        const updates: Record<string, unknown> = { tenant_id: tenantId };
+
+        if (typeof active_provider === "string") {
+          if (!["periskope", "zavu", "none"].includes(active_provider)) {
+            return new Response(
+              JSON.stringify({ error: "Invalid active_provider" }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          updates.active_provider = active_provider;
+        }
+
+        // Periskope save (with verification)
+        if (periskope?.apiKey || typeof periskope?.phone === "string") {
+          if (periskope.apiKey) {
+            const phoneForVerify = periskope.phone ?? "";
+            if (!phoneForVerify) {
+              return new Response(
+                JSON.stringify({ error: "Periskope phone is required when saving an API key" }),
+                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+            const v = await verifyPeriskopeCredentials(periskope.apiKey, phoneForVerify);
+            if (!v.ok) {
+              return new Response(
+                JSON.stringify({ error: `Periskope verification failed: ${v.error}` }),
+                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+            const enc = await encrypt(periskope.apiKey, encryptionKey);
+            updates.periskope_api_key_encrypted = enc.ciphertext;
+            updates.periskope_api_key_iv = enc.iv;
+            updates.periskope_verified_at = new Date().toISOString();
+          }
+          if (typeof periskope.phone === "string") {
+            updates.periskope_phone = periskope.phone || null;
+          }
+        }
+
+        // Zavu save (with verification)
+        if (zavu?.apiKey || typeof zavu?.senderId === "string") {
+          if (zavu.apiKey) {
+            const v = await verifyZavuCredentials(zavu.apiKey);
+            if (!v.ok) {
+              return new Response(
+                JSON.stringify({ error: `Zavu verification failed: ${v.error}` }),
+                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+            const enc = await encrypt(zavu.apiKey, encryptionKey);
+            updates.zavu_api_key_encrypted = enc.ciphertext;
+            updates.zavu_api_key_iv = enc.iv;
+            updates.zavu_verified_at = new Date().toISOString();
+          }
+          if (typeof zavu.senderId === "string") {
+            updates.zavu_sender_id = zavu.senderId || null;
+          }
+        }
+
+        if (zavu_templates && typeof zavu_templates === "object") {
+          // Sanitize: only string values
+          const cleaned: Record<string, string> = {};
+          for (const [k, v] of Object.entries(zavu_templates)) {
+            if (typeof v === "string" && v.trim().length > 0) cleaned[k] = v.trim();
+          }
+          updates.zavu_templates = cleaned;
+        }
+
+        const { error: upsertError } = await supabase
+          .from("tenant_messaging_config")
+          .upsert(updates, { onConflict: "tenant_id" });
+
+        if (upsertError) {
+          console.error("Save messaging config failed:", upsertError);
+          return new Response(
+            JSON.stringify({ error: "Failed to save messaging config" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        await supabase.from("platform_audit_logs").insert({
+          actor_user_id: userId,
+          action_type: "messaging_config_saved",
+          target_tenant_id: tenantId,
+          description: `Super admin updated messaging config (provider=${active_provider ?? "unchanged"})`,
+        });
+
+        return new Response(
+          JSON.stringify({ data: { success: true } }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "remove-messaging-credentials": {
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: Super admin access required" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const { tenantId, provider } = body as {
+          tenantId?: string;
+          provider?: "periskope" | "zavu";
+        };
+        if (!tenantId || !provider) {
+          return new Response(
+            JSON.stringify({ error: "Missing tenantId or provider" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const updates: Record<string, unknown> =
+          provider === "periskope"
+            ? {
+                periskope_api_key_encrypted: null,
+                periskope_api_key_iv: null,
+                periskope_phone: null,
+                periskope_verified_at: null,
+              }
+            : {
+                zavu_api_key_encrypted: null,
+                zavu_api_key_iv: null,
+                zavu_sender_id: null,
+                zavu_verified_at: null,
+              };
+        const { error } = await supabase
+          .from("tenant_messaging_config")
+          .update(updates)
+          .eq("tenant_id", tenantId);
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: "Failed to remove credentials" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        await supabase.from("platform_audit_logs").insert({
+          actor_user_id: userId,
+          action_type: "messaging_credentials_removed",
+          target_tenant_id: tenantId,
+          description: `Super admin removed ${provider} credentials`,
+        });
+        return new Response(
+          JSON.stringify({ data: { success: true } }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "test-messaging": {
+        if (!isSuperAdmin) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized: Super admin access required" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const { tenantId, toPhone, category } = body as {
+          tenantId?: string;
+          toPhone?: string;
+          category?: string;
+        };
+        if (!tenantId || !toPhone) {
+          return new Response(
+            JSON.stringify({ error: "Missing tenantId or toPhone" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { sendWhatsAppForTenant } = await import("../_shared/whatsapp-provider.ts");
+        const result = await sendWhatsAppForTenant(supabase, {
+          toPhone: toPhone.replace(/\D/g, ""),
+          category: (category as never) ?? "promotional",
+          variables: {
+            name: "GymKloud Test",
+            branch_name: "GymKloud",
+            expiry_date: new Date().toLocaleDateString("en-IN"),
+          },
+          fallbackText:
+            "✅ This is a test WhatsApp message from GymKloud. If you received this, your messaging provider is configured correctly.",
+          tenantId,
+        });
+
+        return new Response(
+          JSON.stringify({ data: result }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: `Unknown action: ${action}` }),
