@@ -112,7 +112,7 @@ function getVisibleDates(referenceDate: string, todayIso: string): string[] {
   const cur = new Date(startD);
   let guard = 0;
   while (cur <= endD && guard < 28) {
-    dates.push(cur.toISOString().split("T")[0]);
+    dates.push(toLocalIso(cur));
     cur.setDate(cur.getDate() + 1);
     guard++;
   }
