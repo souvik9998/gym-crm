@@ -311,8 +311,11 @@ export const SimpleAttendanceTab = () => {
     });
   }, [scopedMembers, selectedSlotId, selectedTrainerId, trainerSlotIds, filteredSlotIds, timeFilter]);
 
+  const rangeStart = weekDates[0];
+  const rangeEnd = weekDates[weekDates.length - 1];
+
   const { data: weekRecords = [], isLoading: loadingRecords } = useQuery({
-    queryKey: ["daily-attendance-week", branchId, weekDates[0], weekDates[6], isLimitedAccess ? (assignedMemberIds ?? []).join(",") : "all"],
+    queryKey: ["daily-attendance-week", branchId, rangeStart, rangeEnd, isLimitedAccess ? (assignedMemberIds ?? []).join(",") : "all"],
     queryFn: async () => {
       if (!branchId) return [];
       if (assignedMemberIds !== null && assignedMemberIds.length === 0) return [];
@@ -320,8 +323,8 @@ export const SimpleAttendanceTab = () => {
       let query = supabase
         .from("daily_attendance").select("id, member_id, date, status, created_at, updated_at")
         .eq("branch_id", branchId)
-        .gte("date", weekDates[0])
-        .lte("date", weekDates[6])
+        .gte("date", rangeStart)
+        .lte("date", rangeEnd)
         .is("time_slot_id", null);
 
       if (assignedMemberIds !== null) {
