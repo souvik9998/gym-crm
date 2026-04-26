@@ -7,6 +7,7 @@ import { BranchLogo } from "@/components/admin/BranchLogo";
 import { useBranch } from "@/contexts/BranchContext";
 import { toast } from "@/components/ui/sonner";
 import { compressImage, formatBytes } from "@/lib/imageCompression";
+import { validateImageFile } from "@/lib/imageValidation";
 import { invalidatePublicDataCache } from "@/api/publicData";
 import {
   PhotoIcon,
@@ -16,6 +17,10 @@ import {
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml"];
 const MAX_INPUT_BYTES = 5 * 1024 * 1024; // 5 MB raw input cap
+const MAX_DIMENSION = 8000; // 8000×8000 — safeguard against decompression bombs
+
+// RFC 4122 UUID — must match the storage RLS check on the path's first segment.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function BrandLogoSettings() {
   const { currentBranch, refreshBranches } = useBranch();
