@@ -31,6 +31,20 @@ import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { TimePicker12h } from "@/components/ui/time-picker-12h";
 import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
+import { useTenantPrimaryDomain } from "@/hooks/useTenantPrimaryDomain";
+import { buildPublicUrl } from "@/lib/publicUrl";
+import { ShareIcon, TicketIcon } from "@heroicons/react/24/outline";
+import { useNavigate } from "react-router-dom";
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  slug: string;
+  event_date: string;
+  event_end_date: string | null;
+  location: string | null;
+  status: string;
+}
 
 interface Holiday {
   id: string;
