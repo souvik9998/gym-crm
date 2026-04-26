@@ -296,7 +296,7 @@ export const SimpleAttendanceTab = () => {
   const canGoNext = (() => {
     const d = new Date(selectedDate + "T00:00:00");
     d.setDate(d.getDate() + 7);
-    const nextMonday = getWeekDates(d.toISOString().split("T")[0])[0];
+    const nextMonday = getWeekDates(toLocalIso(d))[0];
     return nextMonday <= today;
   })();
 
