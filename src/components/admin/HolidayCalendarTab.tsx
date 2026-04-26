@@ -110,6 +110,7 @@ const HolidayCalendarTab = () => {
   const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const whatsAppOverlay = useWhatsAppOverlay();
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 
   // Form state
   const [formName, setFormName] = useState("");
