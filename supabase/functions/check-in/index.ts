@@ -9,6 +9,7 @@ import {
   StaffDeviceCheckInSchema,
   UUIDSchema,
 } from "../_shared/validation.ts";
+import { sendWhatsAppForTenant } from "../_shared/whatsapp-provider.ts";
 
 // ─── Helper: Check if a tenant feature is enabled for a branch ───
 async function isTenantFeatureEnabled(serviceClient: any, branchId: string, featureKey: string): Promise<boolean> {
@@ -584,10 +585,8 @@ async function processCheckIn(serviceClient: any, params: {
     // Send WhatsApp notification to admin
     try {
       const adminPhone = Deno.env.get("ADMIN_WHATSAPP_NUMBER");
-      const periskopeKey = Deno.env.get("PERISKOPE_API_KEY");
-      const periskopePhone = Deno.env.get("PERISKOPE_PHONE");
 
-      if (adminPhone && periskopeKey && periskopePhone) {
+      if (adminPhone) {
         const { data: branch } = await serviceClient
           .from("branches")
           .select("name")
@@ -605,14 +604,16 @@ async function processCheckIn(serviceClient: any, params: {
         let formattedAdmin = adminPhone.replace(/\D/g, "");
         if (formattedAdmin.length === 10) formattedAdmin = "91" + formattedAdmin;
 
-        await fetch("https://api.periskope.app/v1/message/send", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${periskopeKey}`,
-            "x-phone": periskopePhone,
-            "Content-Type": "application/json",
+        await sendWhatsAppForTenant(serviceClient, {
+          toPhone: formattedAdmin,
+          category: "check_in",
+          variables: {
+            name: userName,
+            check_in_time: timeStr,
+            branch_name: branch?.name || "",
           },
-          body: JSON.stringify({ chat_id: `${formattedAdmin}@c.us`, message }),
+          fallbackText: message,
+          branchId,
         });
       }
     } catch (e) {

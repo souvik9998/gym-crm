@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { PDFDocument, StandardFonts, rgb } from "npm:pdf-lib@1.17.1";
 import { enforceRateLimit } from "../_shared/rate-limit.ts";
+import { sendWhatsAppForTenant } from "../_shared/whatsapp-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -632,7 +633,7 @@ Deno.serve(async (req) => {
 
     // Send via WhatsApp if requested
     let whatsappSent = false;
-    if (sendViaWhatsApp && customerPhone && PERISKOPE_API_KEY && PERISKOPE_PHONE) {
+    if (sendViaWhatsApp && customerPhone) {
       let whatsappEnabled = true;
       if (effectiveBranchId) {
         const { data: ws } = await supabase
@@ -661,28 +662,20 @@ Deno.serve(async (req) => {
           `\nThank you for being with us! 🙏\n— ${teamName}`;
 
         try {
-          const response = await fetch("https://api.periskope.app/v1/message/send", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${PERISKOPE_API_KEY}`,
-              "x-phone": PERISKOPE_PHONE,
-              "Content-Type": "application/json",
+          const result = await sendWhatsAppForTenant(supabase, {
+            toPhone: cleaned,
+            category: "invoice_link",
+            variables: {
+              name: customerName,
+              invoice_number: invoiceNumber,
+              invoice_url: invoiceLink,
+              branch_name: branchName || gymName,
             },
-            body: JSON.stringify({
-              chat_id: `${cleaned}@c.us`,
-              message,
-              ...(pdfUrl ? { media: { type: "document", url: pdfUrl } } : {}),
-            }),
+            fallbackText: message,
+            branchId: effectiveBranchId,
           });
 
-          whatsappSent = response.ok;
-
-          if (whatsappSent && effectiveBranchId) {
-            const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: effectiveBranchId });
-            if (tenantId) {
-              await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tenantId, _count: 1 });
-            }
-          }
+          whatsappSent = result.success;
 
           const logData: any = {
             recipient_phone: customerPhone,
