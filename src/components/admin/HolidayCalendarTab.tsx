@@ -33,8 +33,9 @@ import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
 import { useTenantPrimaryDomain } from "@/hooks/useTenantPrimaryDomain";
 import { buildPublicUrl } from "@/lib/publicUrl";
-import { ShareIcon, TicketIcon } from "@heroicons/react/24/outline";
+import { ShareIcon, TicketIcon, MapPinIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
+import ShareCalendarDialog from "./ShareCalendarDialog";
 
 interface CalendarEvent {
   id: string;
@@ -109,6 +110,7 @@ const HolidayCalendarTab = () => {
   const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const whatsAppOverlay = useWhatsAppOverlay();
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -210,14 +212,12 @@ const HolidayCalendarTab = () => {
     return buildPublicUrl(`/b/${slug}/calendar`, customDomain?.hostname);
   }, [currentBranch, customDomain]);
 
-  const handleShareCalendar = async () => {
-    if (!shareUrl) return;
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success("Calendar link copied!", { description: shareUrl });
-    } catch {
-      toast.info(shareUrl);
+  const handleShareCalendar = () => {
+    if (!shareUrl) {
+      toast.error("Calendar link is not ready yet");
+      return;
     }
+    setIsShareDialogOpen(true);
   };
 
   // Calendar days
@@ -536,10 +536,10 @@ const HolidayCalendarTab = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5 rounded-xl text-xs lg:text-sm"
+                className="gap-1.5 rounded-xl text-xs lg:text-sm border-primary/30 text-primary hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-all"
                 onClick={handleShareCalendar}
                 disabled={!shareUrl}
-                title={shareUrl || ""}
+                title="Share calendar with members"
               >
                 <ShareIcon className="w-3.5 h-3.5" />
                 Share Calendar
@@ -581,10 +581,10 @@ const HolidayCalendarTab = () => {
           <div className="grid grid-cols-7 gap-1 lg:gap-1.5">
             {/* Empty cells for padding */}
             {Array.from({ length: calendarDays.startPadding }).map((_, i) => (
-              <div key={`pad-${i}`} className="min-h-[50px] lg:min-h-[62px]" />
+              <div key={`pad-${i}`} className="min-h-[58px] lg:min-h-[100px]" />
             ))}
 
-            {calendarDays.days.map(day => {
+            {calendarDays.days.map((day, idx) => {
               const dateStr = format(day, "yyyy-MM-dd");
               const gymHoliday = holidayDateSet.get(dateStr);
               const nationalHoliday = nationalHolidayMap.get(dateStr);
@@ -596,70 +596,106 @@ const HolidayCalendarTab = () => {
               const hasHoliday = !!(gymHoliday || nationalHoliday);
 
               return (
-                <div key={dateStr} className="relative group">
+                <div
+                  key={dateStr}
+                  className="relative group animate-fade-in"
+                  style={{ animationDelay: `${Math.min(idx * 8, 240)}ms`, animationFillMode: "both" }}
+                >
                   <button
                     onClick={() => handleDayClick(day)}
                     className={cn(
-                      "w-full min-h-[50px] lg:min-h-[62px] rounded-lg flex flex-col items-center justify-start pt-1.5 lg:pt-2 relative text-xs lg:text-sm",
-                      "transition-colors duration-150",
-                      isPast && "opacity-40",
+                      "w-full min-h-[58px] lg:min-h-[100px] rounded-xl flex flex-col items-stretch p-1.5 lg:p-2 relative text-xs lg:text-sm overflow-hidden",
+                      "border border-transparent",
+                      "transition-all duration-200 ease-out",
+                      "hover:scale-[1.02] hover:shadow-md hover:z-10",
+                      isPast && "opacity-50",
                       // Normal day
-                      !hasHoliday && !isCurrentDay && !hasEvent && "hover:bg-muted/60",
-                      !hasHoliday && !isCurrentDay && hasEvent && "bg-blue-500/5 hover:bg-blue-500/10",
+                      !hasHoliday && !isCurrentDay && !hasEvent && "hover:bg-muted/60 hover:border-border/40",
+                      !hasHoliday && !isCurrentDay && hasEvent && "bg-blue-500/5 hover:bg-blue-500/10 hover:border-blue-500/30",
                       // Today
-                      isCurrentDay && !gymHoliday && "bg-primary/8 font-bold hover:bg-primary/12",
+                      isCurrentDay && !gymHoliday && "bg-gradient-to-br from-primary/15 to-primary/5 border-primary/30 ring-1 ring-primary/20 font-bold",
                       // Gym holiday
-                      gymHoliday && "bg-destructive/6 hover:bg-destructive/12",
+                      gymHoliday && "bg-destructive/8 hover:bg-destructive/14 border-destructive/20",
                       // National holiday
-                      !gymHoliday && nationalHoliday && "bg-orange-500/6 hover:bg-orange-500/12",
+                      !gymHoliday && nationalHoliday && "bg-orange-500/8 hover:bg-orange-500/14 border-orange-500/20",
                       // Sunday text
                       isSunday && !gymHoliday && !nationalHoliday && "text-destructive/60",
                     )}
                   >
-                    {/* Date number */}
-                    <span className={cn(
-                      "text-xs lg:text-sm leading-none",
-                      isCurrentDay && !gymHoliday && "text-primary font-bold",
-                      gymHoliday && "text-destructive font-semibold",
-                      !gymHoliday && nationalHoliday && "text-orange-600 dark:text-orange-400 font-semibold",
-                      !hasHoliday && !isCurrentDay && "font-medium",
-                    )}>
-                      {format(day, "d")}
-                    </span>
+                    {/* Top row: date + today badge */}
+                    <div className="flex items-center justify-between leading-none">
+                      <span className={cn(
+                        "text-xs lg:text-sm leading-none",
+                        isCurrentDay && !gymHoliday && "text-primary font-bold",
+                        gymHoliday && "text-destructive font-semibold",
+                        !gymHoliday && nationalHoliday && "text-orange-600 dark:text-orange-400 font-semibold",
+                        !hasHoliday && !isCurrentDay && "font-medium",
+                      )}>
+                        {format(day, "d")}
+                      </span>
+                      {isCurrentDay && (
+                        <span className="hidden lg:inline-block text-[8px] uppercase tracking-wide font-bold text-primary bg-primary/15 px-1 py-0.5 rounded leading-none">
+                          Today
+                        </span>
+                      )}
+                      {hasEvent && (
+                        <span className="lg:hidden inline-flex items-center justify-center w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      )}
+                    </div>
 
-                    {/* Today indicator dot */}
-                    {isCurrentDay && !gymHoliday && (
-                      <div className="w-1 h-1 rounded-full bg-primary mt-0.5" />
-                    )}
-
-                    {/* Holiday name */}
+                    {/* Holiday name (mobile + desktop) */}
                     {gymHoliday && (
-                      <span className="text-[6px] lg:text-[7px] leading-tight text-center px-0.5 line-clamp-2 text-destructive/70 font-medium mt-0.5">
+                      <span className="hidden lg:block text-[9px] leading-tight px-1 mt-1 line-clamp-1 text-destructive font-semibold uppercase tracking-wide">
+                        {gymHoliday.holiday_type === "full_day" ? "🚫 Closed" : "⏰ Half Day"}
+                      </span>
+                    )}
+                    {gymHoliday && (
+                      <span className="hidden lg:block text-[9px] leading-tight px-1 line-clamp-1 text-destructive/80">
                         {gymHoliday.holiday_name}
                       </span>
                     )}
                     {!gymHoliday && nationalHoliday && (
-                      <span className="text-[6px] lg:text-[7px] leading-tight text-center px-0.5 line-clamp-2 text-orange-500/80 dark:text-orange-400/70 font-medium mt-0.5">
+                      <span className="hidden lg:block text-[9px] leading-tight px-1 mt-1 line-clamp-2 text-orange-600 dark:text-orange-400 font-medium">
                         {nationalHoliday}
                       </span>
                     )}
 
-                    {/* Event indicator dots */}
+                    {/* Mobile: tiny holiday text */}
+                    {gymHoliday && (
+                      <span className="lg:hidden text-[7px] leading-tight text-center line-clamp-1 text-destructive/80 font-medium mt-0.5">
+                        {gymHoliday.holiday_name}
+                      </span>
+                    )}
+                    {!gymHoliday && nationalHoliday && (
+                      <span className="lg:hidden text-[7px] leading-tight text-center line-clamp-1 text-orange-500/80 font-medium mt-0.5">
+                        {nationalHoliday}
+                      </span>
+                    )}
+
+                    {/* Desktop: event pills inside the cell */}
                     {hasEvent && (
-                      <div className="absolute bottom-1 left-0 right-0 flex items-center justify-center gap-0.5 pointer-events-none">
-                        {dayEvents.slice(0, 3).map((ev) => (
-                          <span key={ev.id} className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      <div className="hidden lg:flex flex-col gap-0.5 mt-auto pt-1">
+                        {dayEvents.slice(0, 2).map((ev) => (
+                          <div
+                            key={ev.id}
+                            className="text-left text-[9px] leading-tight px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-700 dark:text-blue-300 truncate font-medium border border-blue-500/20"
+                            title={ev.title}
+                          >
+                            {ev.title}
+                          </div>
                         ))}
-                        {dayEvents.length > 3 && (
-                          <span className="text-[7px] text-blue-600 font-medium leading-none">+{dayEvents.length - 3}</span>
+                        {dayEvents.length > 2 && (
+                          <div className="text-[8px] text-blue-600 dark:text-blue-400 font-semibold px-1 leading-none">
+                            +{dayEvents.length - 2} more
+                          </div>
                         )}
                       </div>
                     )}
                   </button>
 
-                  {/* Tooltip */}
+                  {/* Hover Tooltip (mobile + extra detail) */}
                   {(hasHoliday || hasEvent) && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-foreground text-background text-[10px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-30 shadow-lg max-w-[220px]">
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-foreground text-background text-[10px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-30 shadow-lg max-w-[240px] animate-fade-in">
                       {hasHoliday && (
                         <div className="whitespace-nowrap">
                           <span className="font-medium">{gymHoliday?.holiday_name || nationalHoliday}</span>
@@ -1078,6 +1114,12 @@ const HolidayCalendarTab = () => {
       />
 
       <WhatsAppSendingOverlay {...whatsAppOverlay.overlayProps} />
+
+      <ShareCalendarDialog
+        open={isShareDialogOpen}
+        onOpenChange={setIsShareDialogOpen}
+        shareUrl={shareUrl}
+      />
     </div>
   );
 };
