@@ -522,24 +522,37 @@ const HolidayCalendarTab = () => {
       {/* Calendar Card */}
       <Card className="border border-border/40 shadow-sm overflow-hidden">
         <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400">
                 <CalendarDaysIcon className="w-4 h-4 lg:w-5 lg:h-5" />
               </div>
               <div>
-                <CardTitle className="text-base lg:text-xl">Holiday Calendar</CardTitle>
-                <CardDescription className="text-xs lg:text-sm">Click any date to add or manage holidays</CardDescription>
+                <CardTitle className="text-base lg:text-xl">Calendar</CardTitle>
+                <CardDescription className="text-xs lg:text-sm">Holidays & events at a glance — click any date to manage holidays</CardDescription>
               </div>
             </div>
-            <Button
-              size="sm"
-              className="gap-1.5 rounded-xl text-xs lg:text-sm"
-              onClick={() => openAddDialog(new Date())}
-            >
-              <PlusIcon className="w-3.5 h-3.5" />
-              Add Holiday
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 rounded-xl text-xs lg:text-sm"
+                onClick={handleShareCalendar}
+                disabled={!shareUrl}
+                title={shareUrl || ""}
+              >
+                <ShareIcon className="w-3.5 h-3.5" />
+                Share Calendar
+              </Button>
+              <Button
+                size="sm"
+                className="gap-1.5 rounded-xl text-xs lg:text-sm"
+                onClick={() => openAddDialog(new Date())}
+              >
+                <PlusIcon className="w-3.5 h-3.5" />
+                Add Holiday
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
