@@ -604,7 +604,8 @@ const HolidayCalendarTab = () => {
                       "transition-colors duration-150",
                       isPast && "opacity-40",
                       // Normal day
-                      !hasHoliday && !isCurrentDay && "hover:bg-muted/60",
+                      !hasHoliday && !isCurrentDay && !hasEvent && "hover:bg-muted/60",
+                      !hasHoliday && !isCurrentDay && hasEvent && "bg-blue-500/5 hover:bg-blue-500/10",
                       // Today
                       isCurrentDay && !gymHoliday && "bg-primary/8 font-bold hover:bg-primary/12",
                       // Gym holiday
