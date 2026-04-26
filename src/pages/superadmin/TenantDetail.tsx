@@ -67,6 +67,7 @@ import { SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
 import RazorpayCredentialsTab from "@/components/superadmin/RazorpayCredentialsTab";
 import { BiometricDevicesSection } from "@/components/superadmin/BiometricDevicesSection";
 import TenantDomainsTab from "@/components/superadmin/TenantDomainsTab";
+import MessagingProviderTab from "@/components/superadmin/MessagingProviderTab";
 
 interface Branch {
   id: string;
@@ -537,6 +538,7 @@ export default function TenantDetail() {
             <TabsTrigger value="limits">Permissions & Limits</TabsTrigger>
             <TabsTrigger value="biometric">Biometric Devices</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
+            <TabsTrigger value="messaging">Messaging</TabsTrigger>
             <TabsTrigger value="domains">Domains</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
           </TabsList>
