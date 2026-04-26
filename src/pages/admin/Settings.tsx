@@ -56,6 +56,7 @@ import { CouponsDiscountsTab } from "@/components/admin/CouponsDiscountsTab";
 import { AssessmentFieldsSettings } from "@/components/admin/AssessmentFieldsSettings";
 import { BackupRestoreTab } from "@/components/admin/backup/BackupRestoreTab";
 import { TimeBucketsSettings } from "@/components/admin/TimeBucketsSettings";
+import { BrandLogoSettings } from "@/components/admin/BrandLogoSettings";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface CustomPackage {
@@ -1811,6 +1812,8 @@ const AdminSettings = () => {
               <SettingsGeneralSkeleton />
             ) : (
               <>
+                <BrandLogoSettings />
+
                 <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
                   <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
                     <div className="flex items-center gap-3">
