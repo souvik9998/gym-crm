@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.branch-import]
 verify_jwt = false
+
+[functions.qstash-expiry-reminders]
+verify_jwt = false
+
+[functions.qstash-schedule-manager]
+verify_jwt = false

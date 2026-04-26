@@ -68,6 +68,7 @@ import RazorpayCredentialsTab from "@/components/superadmin/RazorpayCredentialsT
 import { BiometricDevicesSection } from "@/components/superadmin/BiometricDevicesSection";
 import TenantDomainsTab from "@/components/superadmin/TenantDomainsTab";
 import MessagingProviderTab from "@/components/superadmin/MessagingProviderTab";
+import { QstashSchedulerStatus } from "@/components/superadmin/QstashSchedulerStatus";
 
 interface Branch {
   id: string;
@@ -940,6 +941,7 @@ export default function TenantDetail() {
 
           <TabsContent value="messaging" className="space-y-4">
             <MessagingProviderTab tenantId={tenant.id} />
+            <QstashSchedulerStatus tenantId={tenant.id} branches={branches} />
           </TabsContent>
 
           <TabsContent value="domains" className="space-y-4">

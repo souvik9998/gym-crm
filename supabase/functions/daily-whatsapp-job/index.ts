@@ -317,7 +317,9 @@ Deno.serve(async (req) => {
       });
 
       // --- EXPIRING SOON --- (sent ONCE per subscription cycle)
-      if (prefs.expiring_2days !== false) {
+      // Skipped here when QStash owns this category (cutover flag).
+      const qstashOwnsExpiry = Deno.env.get("EXPIRY_REMINDERS_VIA_QSTASH") === "true";
+      if (!qstashOwnsExpiry && prefs.expiring_2days !== false) {
         const daysBefore = prefs.expiring_days_before ?? 2;
         const targetDate = new Date(today);
         targetDate.setDate(targetDate.getDate() + daysBefore);
@@ -463,7 +465,8 @@ Deno.serve(async (req) => {
       }
 
       // --- EXPIRED REMINDER ---
-      if (prefs.expired_reminder === true) {
+      // Skipped here when QStash owns this category (cutover flag).
+      if (!qstashOwnsExpiry && prefs.expired_reminder === true) {
         const daysAfter = prefs.expired_days_after ?? 7;
         const targetExpiredDate = new Date(today);
         targetExpiredDate.setDate(targetExpiredDate.getDate() - daysAfter);
