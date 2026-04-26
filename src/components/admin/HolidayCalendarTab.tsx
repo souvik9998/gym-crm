@@ -141,18 +141,29 @@ const HolidayCalendarTab = () => {
     return map;
   }, [nationalHolidays]);
 
-  // Fetch holidays
+  // Fetch holidays + events for current branch
   const fetchHolidays = useCallback(async () => {
     if (!currentBranch) return;
     setIsLoading(true);
-    const { data, error } = await supabase
-      .from("gym_holidays")
-      .select("*")
-      .eq("branch_id", currentBranch.id)
-      .order("holiday_date", { ascending: true });
+    const [holidaysRes, eventsRes] = await Promise.all([
+      supabase
+        .from("gym_holidays")
+        .select("*")
+        .eq("branch_id", currentBranch.id)
+        .order("holiday_date", { ascending: true }),
+      supabase
+        .from("events")
+        .select("id, title, slug, event_date, event_end_date, location, status")
+        .eq("branch_id", currentBranch.id)
+        .neq("status", "cancelled")
+        .order("event_date", { ascending: true }),
+    ]);
 
-    if (!error && data) {
-      setHolidays(data as unknown as Holiday[]);
+    if (!holidaysRes.error && holidaysRes.data) {
+      setHolidays(holidaysRes.data as unknown as Holiday[]);
+    }
+    if (!eventsRes.error && eventsRes.data) {
+      setEvents(eventsRes.data as unknown as CalendarEvent[]);
     }
     setIsLoading(false);
   }, [currentBranch]);
@@ -160,6 +171,54 @@ const HolidayCalendarTab = () => {
   useEffect(() => {
     fetchHolidays();
   }, [fetchHolidays]);
+
+  // Build a map of date -> events occurring on that date (events can span days)
+  const eventDateMap = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+    events.forEach((ev) => {
+      try {
+        const start = parseISO(ev.event_date);
+        const end = ev.event_end_date ? parseISO(ev.event_end_date) : start;
+        const days = eachDayOfInterval({ start, end });
+        days.forEach((d) => {
+          const key = format(d, "yyyy-MM-dd");
+          const arr = map.get(key) || [];
+          arr.push(ev);
+          map.set(key, arr);
+        });
+      } catch {
+        // ignore malformed dates
+      }
+    });
+    return map;
+  }, [events]);
+
+  const upcomingEvents = useMemo(() => {
+    const today = startOfDay(new Date());
+    return events
+      .filter((e) => {
+        const end = e.event_end_date ? parseISO(e.event_end_date) : parseISO(e.event_date);
+        return !isBefore(end, today);
+      })
+      .slice(0, 6);
+  }, [events]);
+
+  // Public share URL for the read-only calendar
+  const shareUrl = useMemo(() => {
+    if (!currentBranch) return "";
+    const slug = (currentBranch as any).slug || currentBranch.id;
+    return buildPublicUrl(`/b/${slug}/calendar`, customDomain?.hostname);
+  }, [currentBranch, customDomain]);
+
+  const handleShareCalendar = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Calendar link copied!", { description: shareUrl });
+    } catch {
+      toast.info(shareUrl);
+    }
+  };
 
   // Calendar days
   const calendarDays = useMemo(() => {
