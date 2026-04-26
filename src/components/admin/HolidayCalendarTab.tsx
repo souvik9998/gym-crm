@@ -704,6 +704,64 @@ const HolidayCalendarTab = () => {
         </CardContent>
       </Card>
 
+      {/* Upcoming Events */}
+      <Card className="border border-border/40 shadow-sm overflow-hidden">
+        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+              <TicketIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+            </div>
+            <div>
+              <CardTitle className="text-base lg:text-xl">Upcoming Events</CardTitle>
+              <CardDescription className="text-xs lg:text-sm">Events scheduled at this branch</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
+          {isLoading ? (
+            <div className="space-y-3">
+              {[0, 1].map(i => (
+                <div key={i} className="h-16 bg-muted/30 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : upcomingEvents.length === 0 ? (
+            <div className="text-center py-8">
+              <TicketIcon className="w-10 h-10 mx-auto text-muted-foreground/40 mb-2" />
+              <p className="text-sm text-muted-foreground">No upcoming events</p>
+              <p className="text-xs text-muted-foreground/60 mt-0.5">Create events from the Events page</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {upcomingEvents.map(ev => {
+                const date = parseISO(ev.event_date);
+                return (
+                  <button
+                    key={ev.id}
+                    onClick={() => navigate(`/admin/events/${ev.id}`)}
+                    className="w-full flex items-center justify-between gap-3 p-3 lg:p-4 rounded-xl border border-border/30 hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 text-left"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex flex-col items-center justify-center w-11 h-11 lg:w-12 lg:h-12 rounded-xl bg-blue-500/10 text-blue-600 flex-shrink-0">
+                        <span className="text-[10px] lg:text-xs font-medium leading-none">{format(date, "MMM")}</span>
+                        <span className="text-sm lg:text-base font-bold leading-tight">{format(date, "d")}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{ev.title}</p>
+                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
+                          <span>{format(date, "EEE, h:mm a")}</span>
+                          {ev.location && <span className="truncate">· {ev.location}</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRightIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Upcoming Holidays */}
       <Card className="border border-border/40 shadow-sm overflow-hidden">
         <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
