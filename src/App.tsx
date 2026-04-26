@@ -42,6 +42,7 @@ const Attendance = lazyWithRetry(() => import("./pages/admin/Attendance"));
 const Events = lazyWithRetry(() => import("./pages/admin/Events"));
 const EventDetail = lazyWithRetry(() => import("./pages/admin/EventDetail"));
 const EventRegistration = lazyWithRetry(() => import("./pages/EventRegistration"));
+const PublicCalendar = lazyWithRetry(() => import("./pages/PublicCalendar"));
 
 // Lazy load Super Admin pages
 const SuperAdminDashboard = lazyWithRetry(() => import("./pages/superadmin/Dashboard"));
@@ -79,6 +80,12 @@ const TenantDomainRoutes = () => (
     <Route path="/event/:eventSlug" element={
       <Suspense fallback={<PageLoader />}><EventRegistration /></Suspense>
     } />
+    <Route path="/calendar" element={
+      <Suspense fallback={<PageLoader />}><PublicCalendar /></Suspense>
+    } />
+    <Route path="/b/:branchSlug/calendar" element={
+      <Suspense fallback={<PageLoader />}><PublicCalendar /></Suspense>
+    } />
     {/* Branch-specific routes also work on tenant custom domains so the
         same QR/share links remain valid (https://customdomain/b/:slug). */}
     <Route path="/b/:branchSlug" element={<Index />} />
@@ -109,6 +116,9 @@ const PlatformRoutes = () => (
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/event/:eventSlug" element={
       <Suspense fallback={<PageLoader />}><EventRegistration /></Suspense>
+    } />
+    <Route path="/b/:branchSlug/calendar" element={
+      <Suspense fallback={<PageLoader />}><PublicCalendar /></Suspense>
     } />
     <Route path="/check-in" element={<CheckIn />} />
 
