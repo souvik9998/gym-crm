@@ -6,7 +6,7 @@ import { useDomainContext } from "@/contexts/DomainContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BranchLogo } from "@/components/admin/BranchLogo";
-import { PoweredByBadge } from "@/components/PoweredByBadge";
+import PoweredByBadge from "@/components/PoweredByBadge";
 import {
   CalendarDaysIcon,
   ChevronLeftIcon,
