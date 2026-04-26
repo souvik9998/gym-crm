@@ -670,10 +670,22 @@ const AdminDashboard = () => {
                     onChange={setTimeSlotFilter}
                     trainerFilter={trainerFilter}
                   />
+                  <TimeBucketDropdown
+                    value={timeBucketFilter}
+                    onChange={setTimeBucketFilter}
+                    options={timeBucketOptions}
+                    className="h-8 w-auto min-w-[10rem] px-2.5 rounded-lg"
+                  />
                 </div>
 
-
-
+                {/* Mobile: Time-of-day chip row (sits below the filter dropdown) */}
+                <div className="md:hidden">
+                  <TimeBucketDropdown
+                    value={timeBucketFilter}
+                    onChange={setTimeBucketFilter}
+                    options={timeBucketOptions}
+                  />
+                </div>
 
                 <MembersTable
                   searchQuery={searchQuery} 
@@ -682,6 +694,7 @@ const AdminDashboard = () => {
                   ptFilterActive={ptFilterActive}
                   trainerFilter={trainerFilter}
                   timeSlotFilter={timeSlotFilter}
+                  timeBucketFilter={timeBucketFilter}
                   sortBy={sortBy}
                   sortOrder={sortOrder}
                 />
