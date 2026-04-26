@@ -19,6 +19,8 @@ import { useBranch } from "@/contexts/BranchContext";
 import { cn } from "@/lib/utils";
 import { useTenantPrimaryDomain } from "@/hooks/useTenantPrimaryDomain";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
+import { LockClosedIcon } from "@heroicons/react/24/outline";
 
 const QRCodePage = () => {
   const navigate = useNavigate();
@@ -26,6 +28,8 @@ const QRCodePage = () => {
   const [activeTab, setActiveTab] = useState<"registration" | "attendance">("registration");
   const { branches, currentBranch, isLoading: branchesLoading } = useBranch();
   const { data: customDomain } = useTenantPrimaryDomain(currentBranch?.id);
+  const { tenantPermissions, isSuperAdmin } = useAuth();
+  const qrAttendanceEnabled = isSuperAdmin || tenantPermissions.attendance_qr;
 
   const getPortalUrl = () => {
     if (!currentBranch || typeof window === "undefined") return "";
