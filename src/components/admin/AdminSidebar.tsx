@@ -138,8 +138,8 @@ const allNavItems: NavItem[] = [
   {
     title: "Events",
     href: "/admin/events",
-    icon: CalendarDaysIcon,
-    iconSolid: CalendarDaysIcon,
+    icon: TicketIcon,
+    iconSolid: TicketIcon,
     requiresPermission: "can_manage_events" as any,
     tenantModule: "event_management",
   },
