@@ -71,7 +71,7 @@ export function BrandLogoSettings() {
         maxDimension: MAX_DIMENSION,
         allowedFormats: ["png", "jpeg", "webp", "svg"], // no GIF for brand logos
       });
-      if (!verdict.ok) {
+      if (verdict.ok === false) {
         toast.error("Invalid image", { description: verdict.message });
         return;
       }
