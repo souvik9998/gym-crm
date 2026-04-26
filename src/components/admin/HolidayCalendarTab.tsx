@@ -1114,6 +1114,12 @@ const HolidayCalendarTab = () => {
       />
 
       <WhatsAppSendingOverlay {...whatsAppOverlay.overlayProps} />
+
+      <ShareCalendarDialog
+        open={isShareDialogOpen}
+        onOpenChange={setIsShareDialogOpen}
+        shareUrl={shareUrl}
+      />
     </div>
   );
 };
