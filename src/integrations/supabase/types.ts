@@ -2924,6 +2924,65 @@ export type Database = {
           },
         ]
       }
+      tenant_messaging_config: {
+        Row: {
+          active_provider: string
+          created_at: string
+          id: string
+          periskope_api_key_encrypted: string | null
+          periskope_api_key_iv: string | null
+          periskope_phone: string | null
+          periskope_verified_at: string | null
+          tenant_id: string
+          updated_at: string
+          zavu_api_key_encrypted: string | null
+          zavu_api_key_iv: string | null
+          zavu_sender_id: string | null
+          zavu_templates: Json
+          zavu_verified_at: string | null
+        }
+        Insert: {
+          active_provider?: string
+          created_at?: string
+          id?: string
+          periskope_api_key_encrypted?: string | null
+          periskope_api_key_iv?: string | null
+          periskope_phone?: string | null
+          periskope_verified_at?: string | null
+          tenant_id: string
+          updated_at?: string
+          zavu_api_key_encrypted?: string | null
+          zavu_api_key_iv?: string | null
+          zavu_sender_id?: string | null
+          zavu_templates?: Json
+          zavu_verified_at?: string | null
+        }
+        Update: {
+          active_provider?: string
+          created_at?: string
+          id?: string
+          periskope_api_key_encrypted?: string | null
+          periskope_api_key_iv?: string | null
+          periskope_phone?: string | null
+          periskope_verified_at?: string | null
+          tenant_id?: string
+          updated_at?: string
+          zavu_api_key_encrypted?: string | null
+          zavu_api_key_iv?: string | null
+          zavu_sender_id?: string | null
+          zavu_templates?: Json
+          zavu_verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_messaging_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_usage: {
         Row: {
           branches_count: number

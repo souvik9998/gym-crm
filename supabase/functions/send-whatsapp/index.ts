@@ -1,6 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { enforceRateLimit } from "../_shared/rate-limit.ts";
 import { SendWhatsAppSchema, validateInput } from "../_shared/validation.ts";
+import {
+  sendWhatsAppForTenant,
+  type MessageCategory,
+} from "../_shared/whatsapp-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -432,72 +436,90 @@ Deno.serve(async (req) => {
     // USAGE TRACKING — increment tenant_usage on every successful send.
     // Resolves tenant from branch_id once per request and caches it.
     // ---------------------------------------------------------------
-    const tenantCache = new Map<string, string | null>();
-    const resolveTenantId = async (bId: string | null | undefined): Promise<string | null> => {
-      if (!bId) return null;
-      if (tenantCache.has(bId)) return tenantCache.get(bId)!;
-      try {
-        const { data } = await supabase.rpc("get_tenant_from_branch", { _branch_id: bId });
-        const tId = (data as string | null) ?? null;
-        tenantCache.set(bId, tId);
-        return tId;
-      } catch (e) {
-        console.warn("Failed to resolve tenant from branch:", bId, e);
-        tenantCache.set(bId, null);
-        return null;
-      }
-    };
-
-    const trackWhatsAppUsage = async (bId: string | null | undefined, count = 1) => {
-      const tId = await resolveTenantId(bId);
-      if (!tId) {
-        console.warn("Skipping usage increment — no tenant for branch:", bId);
-        return;
-      }
-      try {
-        await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tId, _count: count });
-      } catch (e) {
-        console.error("Failed to increment whatsapp usage:", e);
-      }
-    };
-
-    // SEND VIA PERISKOPE
-    const sendPeriskopeMessage = async (
-      chatId: string,
-      message: string,
+    // -----------------------------------------------------------------
+    // Provider-agnostic send. Routes through Periskope or Zavu based on
+    // tenant_messaging_config (resolved per branch). Usage tracking is
+    // handled inside sendWhatsAppForTenant().
+    // -----------------------------------------------------------------
+    const sendMessage = async (
+      toPhone: string,
+      fallbackText: string,
+      category: MessageCategory,
+      variables: Record<string, string>,
       bId?: string | null,
     ): Promise<{ success: boolean; error?: string }> => {
-      try {
-        const response = await fetch("https://api.periskope.app/v1/message/send", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${PERISKOPE_API_KEY}`,
-            "x-phone": PERISKOPE_PHONE,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            chat_id: `${chatId}@c.us`,
-            message,
-          }),
+      const result = await sendWhatsAppForTenant(supabase, {
+        toPhone,
+        category,
+        variables,
+        fallbackText,
+        branchId: bId ?? null,
+      });
+      return { success: result.success, error: result.error };
+    };
+
+    // Build the variable map for a member-style message.
+    const buildMemberVariables = (
+      memberName: string,
+      expiryDate: string,
+      actualBranchName: string | null | undefined,
+      paymentInfo?: { amount: number; date: string; mode: string } | null,
+    ): Record<string, string> => {
+      const formattedDate = new Date(expiryDate).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const endDateObj = new Date(expiryDate);
+      endDateObj.setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((endDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+      const vars: Record<string, string> = {
+        name: memberName,
+        expiry_date: formattedDate,
+        days_expired: String(Math.abs(Math.min(0, diffDays))),
+        branch_name: actualBranchName || "Your Gym",
+      };
+      if (paymentInfo) {
+        vars.amount = String(paymentInfo.amount);
+        vars.payment_date = new Date(paymentInfo.date).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
         });
+        vars.payment_mode = paymentInfo.mode;
+      }
+      return vars;
+    };
 
-        const responseText = await response.text();
-
-        if (!response.ok) {
-          return {
-            success: false,
-            error: `${response.status} - ${responseText}`,
-          };
-        }
-
-        // Track successful send against tenant quota (best-effort)
-        await trackWhatsAppUsage(bId);
-
-        return { success: true };
-      } catch (error: any) {
-        return { success: false, error: error.message };
+    // Map the legacy `type` string used by callers to a MessageCategory.
+    // Unknown / custom / promotional fall back to "promotional".
+    const categoryFor = (t: string): MessageCategory => {
+      switch (t) {
+        case "new_registration":
+        case "new_member":
+          return "new_registration";
+        case "renewal": return "renewal";
+        case "daily_pass": return "daily_pass";
+        case "pt_extension": return "pt_extension";
+        case "expiring_2days": return "expiring_2days";
+        case "expiring_today": return "expiring_today";
+        case "expired_reminder":
+        case "expiry_reminder":
+          return "expired_reminder";
+        case "payment_details": return "payment_details";
+        case "admin_add_member": return "admin_add_member";
+        case "staff_credentials": return "staff_credentials";
+        case "promotional":
+        case "custom":
+        case "manual":
+        default:
+          return "promotional";
       }
     };
+
 
     // STAFF CREDENTIALS SEND
     if (type === "staff_credentials" && staffCredentials) {
@@ -521,9 +543,21 @@ Deno.serve(async (req) => {
       message += `⚠️ Please keep your credentials secure and do not share them with others.\n\n`;
       message += `— Team ${gymDisplayName}`;
       
-      const result = await sendPeriskopeMessage(formattedPhone, message, branchId || null);
-      
-      // Log the notification (without sensitive password info)
+      const result = await sendMessage(
+        formattedPhone,
+        message,
+        "staff_credentials",
+        {
+          name: staffName,
+          phone: staffPhone,
+          password: password ?? "",
+          role: roleLabel,
+          branches: branchList,
+          branch_name: gymDisplayName,
+        },
+        branchId || null,
+      );
+
       await logWhatsAppMessage({
         recipient_phone: staffPhone,
         recipient_name: staffName,
@@ -593,8 +627,8 @@ Deno.serve(async (req) => {
       }
 
       const message = generateMessage(name, memberEndDate, type, paymentInfo, null, branchName);
-      
-      const result = await sendPeriskopeMessage(formattedPhone, message, branchId || null);
+      const variables = buildMemberVariables(name, memberEndDate, branchName, paymentInfo);
+      const result = await sendMessage(formattedPhone, message, categoryFor(type), variables, branchId || null);
 
       await logWhatsAppMessage({
         member_id: directMemberId,
@@ -658,7 +692,14 @@ Deno.serve(async (req) => {
         const userBranchName = (user.branches as any)?.name;
         
         const message = generateMessage(user.name, userEndDate, type, null, userBranchName, branchName);
-        const result = await sendPeriskopeMessage(formattedPhone, message, user.branch_id || branchId || null);
+        const variables = buildMemberVariables(user.name, userEndDate, userBranchName || branchName, null);
+        const result = await sendMessage(
+          formattedPhone,
+          message,
+          categoryFor(type),
+          variables,
+          user.branch_id || branchId || null,
+        );
 
         await logWhatsAppMessage({
           daily_pass_user_id: user.id,
@@ -757,7 +798,14 @@ Deno.serve(async (req) => {
       const memberBranchName = (member.branches as any)?.name;
       
       const message = generateMessage(member.name, memberEndDate, type, paymentInfo, memberBranchName, branchName);
-      const result = await sendPeriskopeMessage(formattedPhone, message, member.branch_id || branchId || null);
+      const variables = buildMemberVariables(member.name, memberEndDate, memberBranchName || branchName, paymentInfo);
+      const result = await sendMessage(
+        formattedPhone,
+        message,
+        categoryFor(type),
+        variables,
+        member.branch_id || branchId || null,
+      );
 
       await logWhatsAppMessage({
         member_id: member.id,
