@@ -1,0 +1,446 @@
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { resolveBranch } from "@/lib/slugResolver";
+import { useDomainContext } from "@/contexts/DomainContext";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { BranchLogo } from "@/components/admin/BranchLogo";
+import { PoweredByBadge } from "@/components/PoweredByBadge";
+import {
+  CalendarDaysIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  MapPinIcon,
+  TicketIcon,
+} from "@heroicons/react/24/outline";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  getDay,
+  addMonths,
+  subMonths,
+  isToday,
+  parseISO,
+  isBefore,
+  startOfDay,
+} from "date-fns";
+import { cn } from "@/lib/utils";
+
+interface PublicEvent {
+  id: string;
+  title: string;
+  slug: string;
+  event_date: string;
+  event_end_date: string | null;
+  location: string | null;
+  status: string;
+  description: string | null;
+}
+
+interface PublicHoliday {
+  id: string;
+  holiday_name: string;
+  holiday_date: string;
+  description: string | null;
+  holiday_type: string;
+  half_day_start_time: string | null;
+  half_day_end_time: string | null;
+}
+
+interface BranchInfo {
+  id: string;
+  slug: string;
+  name: string;
+  logo_url: string | null;
+}
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const formatTime12h = (time: string | null | undefined): string => {
+  if (!time) return "";
+  const [h, m] = time.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 || 12;
+  return `${hour12}:${m.toString().padStart(2, "0")} ${ampm}`;
+};
+
+export default function PublicCalendar() {
+  const params = useParams<{ branchSlug?: string }>();
+  const { branchId: domainBranchId } = useDomainContext();
+
+  const [branch, setBranch] = useState<BranchInfo | null>(null);
+  const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
+  const [events, setEvents] = useState<PublicEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // Resolve branch from URL slug, or from custom domain context
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setIsLoading(true);
+      let resolved: BranchInfo | null = null;
+
+      if (params.branchSlug) {
+        resolved = await resolveBranch(params.branchSlug);
+      } else if (domainBranchId) {
+        const { data } = await supabase
+          .from("branches")
+          .select("id, slug, name, logo_url")
+          .eq("id", domainBranchId)
+          .maybeSingle();
+        resolved = data as BranchInfo | null;
+      }
+
+      if (cancelled) return;
+      if (!resolved) {
+        setNotFound(true);
+        setIsLoading(false);
+        return;
+      }
+      setBranch(resolved);
+
+      const [holidaysRes, eventsRes] = await Promise.all([
+        supabase
+          .from("gym_holidays")
+          .select("id, holiday_name, holiday_date, description, holiday_type, half_day_start_time, half_day_end_time")
+          .eq("branch_id", resolved.id)
+          .order("holiday_date", { ascending: true }),
+        supabase
+          .from("events")
+          .select("id, title, slug, event_date, event_end_date, location, status, description")
+          .eq("branch_id", resolved.id)
+          .neq("status", "cancelled")
+          .order("event_date", { ascending: true }),
+      ]);
+
+      if (cancelled) return;
+      setHolidays((holidaysRes.data || []) as PublicHoliday[]);
+      setEvents((eventsRes.data || []) as PublicEvent[]);
+      setIsLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [params.branchSlug, domainBranchId]);
+
+  const eventDateMap = useMemo(() => {
+    const map = new Map<string, PublicEvent[]>();
+    events.forEach((ev) => {
+      try {
+        const start = parseISO(ev.event_date);
+        const end = ev.event_end_date ? parseISO(ev.event_end_date) : start;
+        const days = eachDayOfInterval({ start, end });
+        days.forEach((d) => {
+          const key = format(d, "yyyy-MM-dd");
+          const arr = map.get(key) || [];
+          arr.push(ev);
+          map.set(key, arr);
+        });
+      } catch {
+        // ignore
+      }
+    });
+    return map;
+  }, [events]);
+
+  const holidayMap = useMemo(() => {
+    const map = new Map<string, PublicHoliday>();
+    holidays.forEach((h) => map.set(h.holiday_date, h));
+    return map;
+  }, [holidays]);
+
+  const upcomingEvents = useMemo(() => {
+    const today = startOfDay(new Date());
+    return events
+      .filter((e) => {
+        const end = e.event_end_date ? parseISO(e.event_end_date) : parseISO(e.event_date);
+        return !isBefore(end, today);
+      })
+      .slice(0, 8);
+  }, [events]);
+
+  const upcomingHolidays = useMemo(() => {
+    const today = startOfDay(new Date());
+    return holidays.filter((h) => !isBefore(parseISO(h.holiday_date), today)).slice(0, 8);
+  }, [holidays]);
+
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+    const startPadding = getDay(monthStart);
+    return { days, startPadding };
+  }, [currentMonth]);
+
+  const eventLink = (ev: PublicEvent) => `/event/${ev.slug}`;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="space-y-3 w-full max-w-md px-4">
+          <div className="h-10 bg-muted/40 rounded-lg animate-pulse" />
+          <div className="h-72 bg-muted/40 rounded-xl animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  if (notFound || !branch) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 text-center">
+        <div>
+          <CalendarDaysIcon className="w-10 h-10 mx-auto text-muted-foreground/50 mb-3" />
+          <h1 className="text-lg font-semibold mb-1">Calendar not available</h1>
+          <p className="text-sm text-muted-foreground">This branch doesn't have a public calendar.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b border-border/40 bg-card/30 backdrop-blur sticky top-0 z-30">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+          <BranchLogo logoUrl={branch.logo_url} name={branch.name} size="md" />
+          <div className="min-w-0">
+            <h1 className="text-base font-semibold truncate">{branch.name}</h1>
+            <p className="text-xs text-muted-foreground">Calendar — Holidays & Events</p>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-4 py-5 space-y-5">
+        {/* Calendar */}
+        <Card className="border border-border/40 shadow-sm overflow-hidden">
+          <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-primary/10 text-primary">
+                <CalendarDaysIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base lg:text-xl">{format(currentMonth, "MMMM yyyy")}</CardTitle>
+                <CardDescription className="text-xs lg:text-sm">
+                  Hover or tap a date for details
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 lg:p-6 pt-2 lg:pt-2">
+            <div className="flex items-center justify-between mb-4">
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+                <ChevronLeftIcon className="w-4 h-4" />
+              </Button>
+              <h3 className="font-semibold text-sm lg:text-base">{format(currentMonth, "MMMM yyyy")}</h3>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+                <ChevronRightIcon className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 mb-1">
+              {WEEKDAYS.map((d) => (
+                <div key={d} className="text-center text-[10px] lg:text-xs font-medium text-muted-foreground py-1.5">
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 lg:gap-1.5">
+              {Array.from({ length: calendarDays.startPadding }).map((_, i) => (
+                <div key={`pad-${i}`} className="min-h-[50px] lg:min-h-[62px]" />
+              ))}
+              {calendarDays.days.map((day) => {
+                const dateStr = format(day, "yyyy-MM-dd");
+                const holiday = holidayMap.get(dateStr);
+                const dayEvents = eventDateMap.get(dateStr) || [];
+                const hasEvent = dayEvents.length > 0;
+                const isCurrent = isToday(day);
+                const isPast = isBefore(day, startOfDay(new Date())) && !isCurrent;
+                const isSunday = getDay(day) === 0;
+
+                return (
+                  <div key={dateStr} className="relative group">
+                    <div
+                      className={cn(
+                        "w-full min-h-[50px] lg:min-h-[62px] rounded-lg flex flex-col items-center justify-start pt-1.5 lg:pt-2 relative text-xs lg:text-sm transition-colors",
+                        isPast && "opacity-50",
+                        !holiday && !isCurrent && !hasEvent && "bg-muted/20",
+                        !holiday && !isCurrent && hasEvent && "bg-blue-500/8",
+                        isCurrent && !holiday && "bg-primary/10 font-bold",
+                        holiday && "bg-destructive/8",
+                        isSunday && !holiday && "text-destructive/60",
+                      )}
+                    >
+                      <span className={cn(
+                        "text-xs lg:text-sm leading-none",
+                        isCurrent && !holiday && "text-primary font-bold",
+                        holiday && "text-destructive font-semibold",
+                      )}>
+                        {format(day, "d")}
+                      </span>
+                      {holiday && (
+                        <span className="text-[6px] lg:text-[7px] leading-tight text-center px-0.5 line-clamp-2 text-destructive/70 font-medium mt-0.5">
+                          {holiday.holiday_name}
+                        </span>
+                      )}
+                      {hasEvent && (
+                        <div className="absolute bottom-1 left-0 right-0 flex items-center justify-center gap-0.5 pointer-events-none">
+                          {dayEvents.slice(0, 3).map((ev) => (
+                            <span key={ev.id} className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                          ))}
+                          {dayEvents.length > 3 && (
+                            <span className="text-[7px] text-blue-600 font-medium leading-none">+{dayEvents.length - 3}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {(holiday || hasEvent) && (
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-foreground text-background text-[10px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-30 shadow-lg max-w-[220px]">
+                        {holiday && (
+                          <div className="whitespace-nowrap">
+                            <span className="font-medium">{holiday.holiday_name}</span>
+                            <span className="ml-1 opacity-70 text-[9px]">· {holiday.holiday_type === "full_day" ? "Closed" : "Half Day"}</span>
+                          </div>
+                        )}
+                        {hasEvent && dayEvents.map((ev) => (
+                          <div key={ev.id} className={cn("flex items-center gap-1 whitespace-nowrap", holiday && "mt-0.5 pt-0.5 border-t border-background/20")}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+                            <span className="font-medium truncate">{ev.title}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border/30 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                <span className="text-[10px] lg:text-xs text-muted-foreground">Event</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                <span className="text-[10px] lg:text-xs text-muted-foreground">Holiday</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-primary/40 ring-2 ring-primary/30" />
+                <span className="text-[10px] lg:text-xs text-muted-foreground">Today</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Upcoming Events */}
+        <Card className="border border-border/40 shadow-sm overflow-hidden">
+          <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <TicketIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base lg:text-xl">Upcoming Events</CardTitle>
+                <CardDescription className="text-xs lg:text-sm">Tap to view & register</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
+            {upcomingEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">No upcoming events</p>
+            ) : (
+              <div className="space-y-2">
+                {upcomingEvents.map((ev) => {
+                  const start = parseISO(ev.event_date);
+                  return (
+                    <a
+                      key={ev.id}
+                      href={eventLink(ev)}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-border/30 hover:border-primary/30 hover:bg-primary/5 transition-all"
+                    >
+                      <div className="flex flex-col items-center justify-center w-11 h-11 lg:w-12 lg:h-12 rounded-xl bg-blue-500/10 text-blue-600">
+                        <span className="text-[10px] lg:text-xs font-medium leading-none">{format(start, "MMM")}</span>
+                        <span className="text-sm lg:text-base font-bold leading-tight">{format(start, "d")}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm truncate">{ev.title}</p>
+                        <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <ClockIcon className="w-3 h-3" />
+                            {format(start, "h:mm a")}
+                          </span>
+                          {ev.location && (
+                            <span className="flex items-center gap-1 truncate">
+                              <MapPinIcon className="w-3 h-3" />
+                              <span className="truncate">{ev.location}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Upcoming Holidays */}
+        {upcomingHolidays.length > 0 && (
+          <Card className="border border-border/40 shadow-sm overflow-hidden">
+            <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  <CalendarDaysIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-base lg:text-xl">Upcoming Holidays</CardTitle>
+                  <CardDescription className="text-xs lg:text-sm">Scheduled gym closures</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
+              <div className="space-y-2">
+                {upcomingHolidays.map((h) => {
+                  const date = parseISO(h.holiday_date);
+                  return (
+                    <div key={h.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/30">
+                      <div className="flex flex-col items-center justify-center w-11 h-11 lg:w-12 lg:h-12 rounded-xl bg-red-500/10 text-red-600">
+                        <span className="text-[10px] lg:text-xs font-medium leading-none">{format(date, "MMM")}</span>
+                        <span className="text-sm lg:text-base font-bold leading-tight">{format(date, "d")}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm truncate">{h.holiday_name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className={cn(
+                            "inline-flex items-center gap-1 text-[10px] lg:text-xs px-1.5 py-0.5 rounded-md",
+                            h.holiday_type === "full_day" ? "bg-red-500/10 text-red-600" : "bg-amber-500/10 text-amber-600",
+                          )}>
+                            {h.holiday_type === "full_day" ? "Full Day" : (
+                              <>
+                                <ClockIcon className="w-3 h-3" />
+                                {formatTime12h(h.half_day_start_time)} – {formatTime12h(h.half_day_end_time)}
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </main>
+
+      <PoweredByBadge />
+    </div>
+  );
+}
