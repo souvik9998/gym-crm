@@ -542,7 +542,11 @@ Deno.serve(async (req) => {
             const formattedPhone = formatPhone(member.phone);
             attemptedCount++;
             stats.attempted++;
-            const result = await sendMessageWithRetry(formattedPhone, message);
+            const result = await sendMessageWithRetry(formattedPhone, message, branchId, "expired_reminder", {
+              name: member.name,
+              days_expired: String(expiredForDays),
+              branch_name: config.gymName,
+            });
 
             await supabase.from("whatsapp_notifications").insert({
               member_id: member.id,
@@ -563,8 +567,7 @@ Deno.serve(async (req) => {
               successCount++;
               stats.sent++;
               sentMemberIds.push(member.id);
-              const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: branchId });
-              if (tenantId) await supabase.rpc("increment_whatsapp_usage", { _tenant_id: tenantId });
+              // usage increment handled by sendWhatsAppForTenant
             } else {
               failCount++;
               stats.failed++;
