@@ -588,6 +588,8 @@ const HolidayCalendarTab = () => {
               const dateStr = format(day, "yyyy-MM-dd");
               const gymHoliday = holidayDateSet.get(dateStr);
               const nationalHoliday = nationalHolidayMap.get(dateStr);
+              const dayEvents = eventDateMap.get(dateStr) || [];
+              const hasEvent = dayEvents.length > 0;
               const isCurrentDay = isToday(day);
               const isPast = isBefore(day, startOfDay(new Date())) && !isCurrentDay;
               const isSunday = getDay(day) === 0;
