@@ -211,6 +211,29 @@ async function sendViaPeriskope(
   }
 }
 
+async function fetchZavuMessageStatus(
+  apiKey: string,
+  messageId: string,
+): Promise<{ status?: string; errorCode?: string; errorMessage?: string } | null> {
+  try {
+    const res = await fetch(`https://api.zavu.dev/v1/messages/${encodeURIComponent(messageId)}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (!res.ok) return null;
+    const body = await res.json().catch(() => null) as { message?: Record<string, unknown> } | null;
+    const m = body?.message as Record<string, unknown> | undefined;
+    if (!m) return null;
+    return {
+      status: typeof m.status === "string" ? m.status : undefined,
+      errorCode: typeof m.errorCode === "string" ? m.errorCode : undefined,
+      errorMessage: typeof m.errorMessage === "string" ? m.errorMessage : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function sendViaZavu(
   apiKey: string,
   senderId: string | null,
@@ -242,10 +265,51 @@ async function sendViaZavu(
       }),
     });
 
-    const text = await response.text();
+    const rawText = await response.text();
     if (!response.ok) {
-      return { success: false, provider: "zavu", error: `Zavu ${response.status} - ${text}` };
+      return { success: false, provider: "zavu", error: `Zavu ${response.status} - ${rawText.substring(0, 400)}` };
     }
+
+    // Parse the accept response. Zavu returns 202 with { message: { id, status, errorCode?, errorMessage? } }.
+    // An immediate errorCode/errorMessage or a "failed" status means the send was rejected even though HTTP was 2xx.
+    let parsed: { message?: Record<string, unknown> } | null = null;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch {
+      // Non-JSON success body — treat as accepted.
+      return { success: true, provider: "zavu" };
+    }
+
+    const msg = (parsed?.message ?? {}) as Record<string, unknown>;
+    const initialStatus = typeof msg.status === "string" ? msg.status.toLowerCase() : "";
+    const initialErrCode = typeof msg.errorCode === "string" ? msg.errorCode : "";
+    const initialErrMsg = typeof msg.errorMessage === "string" ? msg.errorMessage : "";
+    const messageId = typeof msg.id === "string" ? msg.id : "";
+
+    if (initialStatus === "failed" || initialErrCode || initialErrMsg) {
+      const detail = initialErrMsg || initialErrCode || `status=${initialStatus || "unknown"}`;
+      return { success: false, provider: "zavu", error: `Zavu rejected: ${detail}` };
+    }
+
+    // Poll once to catch fast-fail cases (e.g. parameter-count mismatch resolved within ~1-2s).
+    if (messageId) {
+      // Two short polls so we catch immediate provider rejections without delaying the request too long.
+      for (const delayMs of [1200, 1500]) {
+        await new Promise((r) => setTimeout(r, delayMs));
+        const status = await fetchZavuMessageStatus(apiKey, messageId);
+        if (!status) continue;
+        const s = (status.status ?? "").toLowerCase();
+        if (s === "failed" || status.errorCode || status.errorMessage) {
+          const detail = status.errorMessage || status.errorCode || `status=${s || "unknown"}`;
+          return { success: false, provider: "zavu", error: `Zavu delivery failed: ${detail}` };
+        }
+        // Once we reach a non-pending state, we're done.
+        if (s && s !== "queued" && s !== "sending" && s !== "pending" && s !== "accepted") {
+          break;
+        }
+      }
+    }
+
     return { success: true, provider: "zavu" };
   } catch (err: unknown) {
     return { success: false, provider: "zavu", error: (err as Error).message };
