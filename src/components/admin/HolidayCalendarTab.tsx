@@ -33,8 +33,9 @@ import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
 import { useTenantPrimaryDomain } from "@/hooks/useTenantPrimaryDomain";
 import { buildPublicUrl } from "@/lib/publicUrl";
-import { ShareIcon, TicketIcon } from "@heroicons/react/24/outline";
+import { ShareIcon, TicketIcon, MapPinIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
+import ShareCalendarDialog from "./ShareCalendarDialog";
 
 interface CalendarEvent {
   id: string;
