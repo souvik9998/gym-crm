@@ -721,12 +721,10 @@ async function sendWhatsAppInvoice(
   paymentId: string,
   invoiceNumber: string,
   invoiceLink: string,
-  PERISKOPE_API_KEY: string | undefined,
-  PERISKOPE_PHONE: string | undefined,
+  _PERISKOPE_API_KEY: string | undefined,
+  _PERISKOPE_PHONE: string | undefined,
   branchId: string | undefined
 ) {
-  if (!PERISKOPE_API_KEY || !PERISKOPE_PHONE) return;
-
   const { data: payment } = await supabase
     .from("payments")
     .select(`*, members:member_id (id, name, phone, branch_id), daily_pass_users:daily_pass_user_id (id, name, phone, branch_id)`)
@@ -750,14 +748,17 @@ async function sendWhatsAppInvoice(
   const message = `🧾 *Invoice ${invoiceNumber}*\n\nHi ${customerName}, 👋\n\n💰 *Amount:* ₹${Number(payment.amount).toLocaleString("en-IN")}\n\n📄 *View Invoice:*\n${invoiceLink}\n\nThank you! 🙏`;
 
   try {
-    await fetch("https://api.periskope.app/v1/message/send", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${PERISKOPE_API_KEY}`,
-        "x-phone": PERISKOPE_PHONE,
-        "Content-Type": "application/json",
+    const result = await sendWhatsAppForTenant(supabase, {
+      toPhone: cleaned,
+      category: "invoice_link",
+      variables: {
+        name: customerName,
+        invoice_number: invoiceNumber,
+        invoice_url: invoiceLink,
+        branch_name: "",
       },
-      body: JSON.stringify({ chat_id: `${cleaned}@c.us`, message }),
+      fallbackText: message,
+      branchId: effectiveBranchId,
     });
 
     const logData: any = {
@@ -765,7 +766,7 @@ async function sendWhatsAppInvoice(
       recipient_name: customerName,
       notification_type: "invoice",
       message_content: message.substring(0, 500),
-      status: "sent",
+      status: result.success ? "sent" : "failed",
       is_manual: true,
       branch_id: effectiveBranchId || null,
     };
