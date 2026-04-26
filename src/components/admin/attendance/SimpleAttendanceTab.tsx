@@ -250,7 +250,7 @@ export const SimpleAttendanceTab = () => {
   }, [timeFilteredSlots, selectedTrainerId]);
   const trainerSlotIdSet = useMemo(() => new Set(trainerSlotIds), [trainerSlotIds]);
 
-  const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
+  const weekDates = useMemo(() => getVisibleDates(selectedDate, today), [selectedDate, today]);
   const isFutureDate = selectedDate > today;
 
   const navigateWeek = (dir: "prev" | "next") => {
