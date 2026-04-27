@@ -86,6 +86,11 @@ async function generateInvoicePDF(data: {
   const invoiceTitle = data.gymGst ? "TAX INVOICE" : "INVOICE";
 
   const pdfDoc = await PDFDocument.create();
+  pdfDoc.setTitle(`Invoice ${data.invoiceNumber}`);
+  pdfDoc.setSubject(`Payment invoice for ${data.memberName}`);
+  pdfDoc.setAuthor(data.invoiceBrandName || data.gymName || data.branchName || "GymKloud");
+  pdfDoc.setCreator("GymKloud");
+  pdfDoc.setProducer("GymKloud Invoice Generator");
   const page = pdfDoc.addPage([pageW, pageH]);
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -288,6 +293,39 @@ async function generateInvoicePDF(data: {
   drawTopText(150, 722, "This is a computer-generated invoice. No signature required.", 7, rgb(0.7, 0.7, 0.7), false);
 
   return await pdfDoc.save();
+}
+
+function sanitizeFilePart(value: string | null | undefined, fallback: string): string {
+  const cleaned = (value || fallback)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return cleaned || fallback;
+}
+
+function buildInvoicePdfNames(invoiceNumber: string, customerName: string, gymName: string, paymentId: string) {
+  const safeInvoiceNo = sanitizeFilePart(invoiceNumber, "invoice");
+  const safeCustomer = sanitizeFilePart(customerName, "customer");
+  const safeGym = sanitizeFilePart(gymName, "gym");
+  const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  return {
+    displayFileName: `Invoice_${safeInvoiceNo}.pdf`,
+    storageFileName: `${safeInvoiceNo}_${safeCustomer}_${safeGym}_${timestamp}_${paymentId.slice(0, 8)}.pdf`,
+  };
+}
+
+function formatPaymentMode(mode: string | null | undefined): string {
+  if (mode === "online") return "Online (Razorpay)";
+  if (mode === "upi") return "UPI";
+  if (mode === "card") return "Card";
+  if (mode === "bank_transfer") return "Bank Transfer";
+  return "Cash";
+}
+
+function isPersonalTrainingPayment(type: string | null | undefined): boolean {
+  return ["pt", "pt_only", "pt_subscription", "pt_extension"].includes(type || "");
 }
 
 Deno.serve(async (req) => {
