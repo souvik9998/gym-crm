@@ -44,6 +44,12 @@ export interface SendArgs {
   fallbackText: string;
   /** Optional document/media attachment metadata for providers/templates that support media headers. */
   document?: { url: string; filename: string; mimeType?: string };
+  /**
+   * Optional CTA url to deliver to the user (e.g. invoice link).
+   * For Zavu, this is sent as a follow-up cta_url session message after the template,
+   * so the link reaches the user even when their approved template body has no link slot.
+   */
+  ctaUrl?: { url: string; displayText: string; text?: string };
   branchId?: string | null;
   /** Optional tenant override; otherwise resolved from branchId. */
   tenantId?: string | null;
@@ -74,7 +80,7 @@ export const ZAVU_TEMPLATE_VARIABLES: Record<MessageCategory, string[]> = {
   promotional:         ["name", "branch_name"],
   staff_credentials:   ["name", "phone", "password", "role", "branches", "branch_name"],
   event_confirmation:  ["name", "event_title", "event_date", "branch_name"],
-  invoice_link:        ["invoice_number", "name", "amount", "payment_date", "package_name", "valid_till", "branch_name"],
+  invoice_link:        ["invoice_number", "name", "amount", "payment_date", "package_name", "valid_till", "branch_name", "invoice_link"],
   check_in:            ["name", "check_in_time", "branch_name"],
   password_reset:      ["name", "reset_link", "branch_name"],
   daily_summary_admin: ["summary_text"],
@@ -285,6 +291,51 @@ async function getZavuTemplateVariableCount(apiKey: string, templateId: string):
   }
 }
 
+/**
+ * Send a WhatsApp CTA URL message via Zavu (session message).
+ *
+ * Used to follow up an approved template send with a tappable button that
+ * opens a URL (e.g. the invoice link). Works inside the 24h customer-care
+ * window WhatsApp opens automatically after a template is delivered.
+ */
+async function sendZavuCtaUrl(
+  apiKey: string,
+  senderId: string | null,
+  toPhone: string,
+  cta: { url: string; displayText: string; text?: string },
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    if (senderId) headers["Zavu-Sender"] = senderId;
+
+    const response = await fetch("https://api.zavu.dev/v1/messages", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        to: formatToWithPlus(toPhone),
+        channel: "whatsapp",
+        messageType: "cta_url",
+        text: cta.text || "Tap below to view your invoice.",
+        content: {
+          ctaDisplayText: cta.displayText.substring(0, 20), // WhatsApp limits CTA text to 20 chars
+          ctaUrl: cta.url,
+        },
+      }),
+    });
+
+    const rawText = await response.text();
+    if (!response.ok) {
+      return { ok: false, error: `Zavu cta_url ${response.status} - ${rawText.substring(0, 300)}` };
+    }
+    return { ok: true };
+  } catch (err: unknown) {
+    return { ok: false, error: (err as Error).message };
+  }
+}
+
 async function sendViaZavu(
   apiKey: string,
   senderId: string | null,
@@ -293,6 +344,7 @@ async function sendViaZavu(
   variables: Record<string, string>,
   variableOrder: string[],
   document?: { url: string; filename: string; mimeType?: string },
+  ctaUrl?: { url: string; displayText: string; text?: string },
 ): Promise<SendResult> {
   if (document?.url) {
     try {
@@ -407,6 +459,17 @@ async function sendViaZavu(
       }
     }
 
+    // Template accepted. If the caller supplied a CTA URL (e.g. invoice link),
+    // follow up with a cta_url session message so the user gets a tappable
+    // button even when the approved template body has no link slot.
+    // Failure of the follow-up does NOT fail the overall send.
+    if (ctaUrl?.url) {
+      const followUp = await sendZavuCtaUrl(apiKey, senderId, toPhone, ctaUrl);
+      if (!followUp.ok) {
+        console.warn("[whatsapp-provider] Zavu cta_url follow-up failed:", followUp.error);
+      }
+    }
+
     return { success: true, provider: "zavu" };
   } catch (err: unknown) {
     return { success: false, provider: "zavu", error: (err as Error).message };
@@ -479,6 +542,7 @@ export async function sendWhatsAppForTenant(
             args.variables,
             ZAVU_TEMPLATE_VARIABLES[args.category],
             args.document,
+            args.ctaUrl,
           );
         } catch (err: unknown) {
           result = { success: false, provider: "zavu", error: `Zavu decrypt failed: ${(err as Error).message}` };

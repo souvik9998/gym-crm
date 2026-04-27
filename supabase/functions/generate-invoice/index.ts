@@ -879,6 +879,13 @@ Deno.serve(async (req) => {
             fallbackText: message,
             // Intentionally do NOT attach the PDF — send the secure link instead so
             // the customer downloads the invoice from the hosted page themselves.
+            // The CTA URL is sent as a follow-up tappable button (Zavu) so the link
+            // reaches the user even when the approved template body has no link slot.
+            ctaUrl: {
+              url: invoiceLink,
+              displayText: "View Invoice",
+              text: `🧾 Your invoice ${invoiceNumber} is ready. Tap below to view & download.`,
+            },
             branchId: effectiveBranchId,
           });
 
@@ -975,6 +982,11 @@ async function sendWhatsAppInvoice(
         invoice_link: invoiceLink,
       },
       fallbackText: message,
+      ctaUrl: {
+        url: invoiceLink,
+        displayText: "View Invoice",
+        text: `🧾 Your invoice ${invoiceNumber} is ready. Tap below to view & download.`,
+      },
       branchId: effectiveBranchId,
     });
 
