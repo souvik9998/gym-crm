@@ -30,6 +30,8 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
+import { SearchInput } from "@/components/ui/search-input";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useInfinitePaymentsQuery, type PaymentWithDetails } from "@/hooks/queries";
 import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 import { supabase } from "@/integrations/supabase/client";
