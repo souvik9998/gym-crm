@@ -26,19 +26,7 @@ const DownloadInvoiceButton = ({ paymentId, branchId }: { paymentId: string; bra
   const handleDownload = async () => {
     setLoading(true);
     try {
-      // Check if invoice already exists
-      const { data: existing } = await supabase
-        .from("invoices")
-        .select("invoice_number, pdf_url")
-        .eq("payment_id", paymentId)
-        .maybeSingle();
-
-      if (existing?.invoice_number) {
-        window.open(`/invoice/${existing.invoice_number}`, "_blank");
-        return;
-      }
-
-      // Generate invoice
+      // Always refresh invoice data before opening so stale PDFs/details are not reused.
       const { data, error } = await supabase.functions.invoke("generate-invoice", {
         body: { paymentId, branchId, sendViaWhatsApp: false },
       });

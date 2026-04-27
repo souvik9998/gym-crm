@@ -294,6 +294,40 @@ async function sendViaZavu(
   variableOrder: string[],
   document?: { url: string; filename: string; mimeType?: string },
 ): Promise<SendResult> {
+  if (document?.url) {
+    try {
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      };
+      if (senderId) headers["Zavu-Sender"] = senderId;
+
+      const response = await fetch("https://api.zavu.dev/v1/messages", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          to: formatToWithPlus(toPhone),
+          channel: "whatsapp",
+          messageType: "document",
+          text: variables.invoice_number ? `Invoice ${variables.invoice_number}` : "Invoice PDF",
+          content: {
+            mediaUrl: document.url,
+            filename: document.filename,
+            mimeType: document.mimeType || "application/pdf",
+          },
+        }),
+      });
+
+      const rawText = await response.text();
+      if (!response.ok) {
+        return { success: false, provider: "zavu", error: `Zavu ${response.status} - ${rawText.substring(0, 400)}` };
+      }
+      return { success: true, provider: "zavu" };
+    } catch (err: unknown) {
+      return { success: false, provider: "zavu", error: (err as Error).message };
+    }
+  }
+
   const templateVariableCount = await getZavuTemplateVariableCount(apiKey, templateId);
   const effectiveVariableOrder = templateVariableCount
     ? variableOrder.slice(0, templateVariableCount)
