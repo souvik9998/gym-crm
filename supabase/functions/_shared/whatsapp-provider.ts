@@ -291,6 +291,51 @@ async function getZavuTemplateVariableCount(apiKey: string, templateId: string):
   }
 }
 
+/**
+ * Send a WhatsApp CTA URL message via Zavu (session message).
+ *
+ * Used to follow up an approved template send with a tappable button that
+ * opens a URL (e.g. the invoice link). Works inside the 24h customer-care
+ * window WhatsApp opens automatically after a template is delivered.
+ */
+async function sendZavuCtaUrl(
+  apiKey: string,
+  senderId: string | null,
+  toPhone: string,
+  cta: { url: string; displayText: string; text?: string },
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    if (senderId) headers["Zavu-Sender"] = senderId;
+
+    const response = await fetch("https://api.zavu.dev/v1/messages", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        to: formatToWithPlus(toPhone),
+        channel: "whatsapp",
+        messageType: "cta_url",
+        text: cta.text || "Tap below to view your invoice.",
+        content: {
+          ctaDisplayText: cta.displayText.substring(0, 20), // WhatsApp limits CTA text to 20 chars
+          ctaUrl: cta.url,
+        },
+      }),
+    });
+
+    const rawText = await response.text();
+    if (!response.ok) {
+      return { ok: false, error: `Zavu cta_url ${response.status} - ${rawText.substring(0, 300)}` };
+    }
+    return { ok: true };
+  } catch (err: unknown) {
+    return { ok: false, error: (err as Error).message };
+  }
+}
+
 async function sendViaZavu(
   apiKey: string,
   senderId: string | null,
@@ -299,6 +344,7 @@ async function sendViaZavu(
   variables: Record<string, string>,
   variableOrder: string[],
   document?: { url: string; filename: string; mimeType?: string },
+  ctaUrl?: { url: string; displayText: string; text?: string },
 ): Promise<SendResult> {
   if (document?.url) {
     try {
