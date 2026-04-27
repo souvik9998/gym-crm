@@ -641,11 +641,18 @@ Deno.serve(async (req) => {
     if (dailyPassSubscription?.duration_days && !packageName.includes("Day")) packageName += ` (${dailyPassSubscription.duration_days} Days)`;
     if (subscription?.is_custom_package && subscription?.custom_days) packageName += ` (${subscription.custom_days} Days)`;
 
+    // Reuse the invoice's stable random public_token (or generate one for new invoices).
+    // The token is what users actually share — it's unguessable and gates both row + PDF access.
+    const publicToken = existingInvoice?.public_token
+      || (Array.from(crypto.getRandomValues(new Uint8Array(24)))
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join(""));
+
     const { displayFileName, storageFileName } = buildInvoicePdfNames(
       invoiceNumber,
       customerName,
       invoiceBrandName || gymName || branchName,
-      paymentId,
+      publicToken,
     );
 
     // Generate PDF
@@ -681,14 +688,16 @@ Deno.serve(async (req) => {
       invoicePalette,
     });
 
-    // Upload to storage
-    const filePath = `${effectiveBranchId || "general"}/${storageFileName}`;
+    // Canonical storage path: one file per invoice, overwritten on regenerate
+    // (this avoids the "many duplicate PDFs" storage bloat).
+    const filePath = existingInvoice?.pdf_storage_path
+      || `${effectiveBranchId || "general"}/${storageFileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("invoices")
       .upload(filePath, pdfBytes, {
         contentType: "application/pdf",
-        upsert: false,
+        upsert: true,
       });
 
     if (uploadError) {
@@ -696,9 +705,12 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to upload invoice PDF: ${uploadError.message}`);
     }
 
-    // Get public URL for PDF
-    const { data: urlData } = supabase.storage.from("invoices").getPublicUrl(filePath);
-    const pdfUrl = urlData?.publicUrl || null;
+    // Bucket is private; issue a long-lived signed URL for WhatsApp delivery.
+    // The Invoice page itself fetches a fresh signed URL on demand via this function.
+    const { data: signed } = await supabase.storage
+      .from("invoices")
+      .createSignedUrl(filePath, 60 * 60 * 24 * 7); // 7 days for WhatsApp link
+    const pdfUrl = signed?.signedUrl || null;
 
     const invoicePayload = {
       branch_id: effectiveBranchId,
