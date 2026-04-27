@@ -851,36 +851,39 @@ Deno.serve(async (req) => {
 
         const teamName = branchName ? `Team ${branchName}` : `Team ${gymName}`;
 
-        const message = `🧾 *Invoice ${invoiceNumber}*\n\n` +
-          `Hi ${customerName}, 👋\n\n` +
-          `Here is your payment invoice.\n\n` +
-          `💰 *Amount:* ₹${Number(payment.amount).toLocaleString("en-IN")}\n` +
-          `📅 *Date:* ${paymentDate}\n` +
-          `💳 *Mode:* ${payment.payment_mode === "online" ? "Online" : "Cash"}\n` +
-          `📦 *Package:* ${packageName}\n` +
-          (endDate !== "-" ? `📅 *Valid Till:* ${endDate}\n` : "") +
-          `\n🔗 *View & Download Invoice:*\n${invoiceLink}\n` +
-          `\nThank you for being with us! 🙏\n— ${teamName}`;
+        // Message body matches the gk_invoice_link_only template:
+        //   Hi {{1}} 👋
+        //   Your invoice has been generated successfully.
+        //   📄 Amount: ₹{{2}}
+        //   📅 Date: {{3}}
+        //   You can view and download it here:
+        //   🔗 {{4}}
+        //   - {{5}} Team
+        const amountStr = Number(payment.amount).toLocaleString("en-IN");
+        const message =
+          `Hi ${customerName} 👋\n` +
+          `Your invoice has been generated successfully.\n\n` +
+          `📄 Amount: ₹${amountStr}\n` +
+          `📅 Date: ${paymentDate}\n\n` +
+          `You can view and download it here:\n` +
+          `🔗 ${invoiceLink}\n\n` +
+          `- ${teamName}`;
 
         try {
           const result = await sendWhatsAppForTenant(supabase, {
             toPhone: cleaned,
             category: "invoice_link",
+            // Positional mapping (see ZAVU_TEMPLATE_VARIABLES.invoice_link):
+            //   {{1}} name, {{2}} amount, {{3}} payment_date, {{4}} invoice_link, {{5}} branch_name (= Team name)
             variables: {
-              invoice_number: invoiceNumber,
               name: customerName,
-              amount: Number(payment.amount).toLocaleString("en-IN"),
+              amount: amountStr,
               payment_date: paymentDate,
-              package_name: packageName,
-              valid_till: endDate !== "-" ? endDate : "-",
-              branch_name: branchName || gymName,
               invoice_link: invoiceLink,
+              branch_name: branchName || gymName,
             },
             fallbackText: message,
-            // Intentionally do NOT attach the PDF — send the secure link instead so
-            // the customer downloads the invoice from the hosted page themselves.
-            // The CTA URL is sent as a follow-up tappable button (Zavu) so the link
-            // reaches the user even when the approved template body has no link slot.
+            // Keep CTA button as a follow-up for providers that support it.
             ctaUrl: {
               url: invoiceLink,
               displayText: "View Invoice",
@@ -965,21 +968,44 @@ async function sendWhatsAppInvoice(
   if (cleaned.startsWith("0")) cleaned = cleaned.substring(1);
   if (cleaned.length === 10) cleaned = "91" + cleaned;
 
-  const message = `🧾 *Invoice ${invoiceNumber}*\n\nHi ${customerName}, 👋\n\n💰 *Amount:* ₹${Number(payment.amount).toLocaleString("en-IN")}\n\n📄 *View Invoice:*\n${invoiceLink}\n\nThank you! 🙏`;
+  // Resolve branch + gym name for the team signature in the template.
+  let branchName = "";
+  let gymName = "";
+  if (effectiveBranchId) {
+    const { data: br } = await supabase
+      .from("branches")
+      .select("name, gym_settings(gym_name)")
+      .eq("id", effectiveBranchId)
+      .maybeSingle();
+    branchName = br?.name || "";
+    gymName = (br as any)?.gym_settings?.[0]?.gym_name || (br as any)?.gym_settings?.gym_name || "";
+  }
+  const teamName = branchName || gymName || "Your Gym";
+
+  const amountStr = Number(payment.amount).toLocaleString("en-IN");
+  const paymentDate = new Date(payment.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+
+  // Mirrors the gk_invoice_link_only template body.
+  const message =
+    `Hi ${customerName} 👋\n` +
+    `Your invoice has been generated successfully.\n\n` +
+    `📄 Amount: ₹${amountStr}\n` +
+    `📅 Date: ${paymentDate}\n\n` +
+    `You can view and download it here:\n` +
+    `🔗 ${invoiceLink}\n\n` +
+    `- Team ${teamName}`;
 
   try {
     const result = await sendWhatsAppForTenant(supabase, {
       toPhone: cleaned,
       category: "invoice_link",
+      // Positional: {{1}} name, {{2}} amount, {{3}} payment_date, {{4}} invoice_link, {{5}} branch_name
       variables: {
-        invoice_number: invoiceNumber,
         name: customerName,
-        amount: Number(payment.amount).toLocaleString("en-IN"),
-        payment_date: new Date(payment.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }),
-        package_name: payment.payment_type || "Gym Membership",
-        valid_till: "-",
-        branch_name: "Your Gym",
+        amount: amountStr,
+        payment_date: paymentDate,
         invoice_link: invoiceLink,
+        branch_name: teamName,
       },
       fallbackText: message,
       ctaUrl: {
