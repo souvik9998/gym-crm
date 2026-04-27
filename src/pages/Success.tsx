@@ -36,8 +36,11 @@ const DownloadInvoiceButton = ({ paymentId, branchId }: { paymentId: string; bra
         return;
       }
 
-      if (data.invoiceNumber) {
-        window.open(`/invoice/${data.invoiceNumber}`, "_blank");
+      // Use the unguessable public token in the URL — never the sequential invoice number.
+      if (data.publicToken) {
+        window.open(`/invoice/${data.publicToken}`, "_blank");
+      } else {
+        toast.error("Invoice link unavailable");
       }
     } catch {
       toast.error("Failed to load invoice");
