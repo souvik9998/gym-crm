@@ -44,6 +44,12 @@ export interface SendArgs {
   fallbackText: string;
   /** Optional document/media attachment metadata for providers/templates that support media headers. */
   document?: { url: string; filename: string; mimeType?: string };
+  /**
+   * Optional CTA url to deliver to the user (e.g. invoice link).
+   * For Zavu, this is sent as a follow-up cta_url session message after the template,
+   * so the link reaches the user even when their approved template body has no link slot.
+   */
+  ctaUrl?: { url: string; displayText: string; text?: string };
   branchId?: string | null;
   /** Optional tenant override; otherwise resolved from branchId. */
   tenantId?: string | null;
