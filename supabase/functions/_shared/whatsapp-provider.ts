@@ -42,6 +42,8 @@ export interface SendArgs {
   variables: Record<string, string>;
   /** Free-text message used by Periskope. Built by the caller (existing generators stay as-is). */
   fallbackText: string;
+  /** Optional document/media attachment metadata for providers/templates that support media headers. */
+  document?: { url: string; filename: string; mimeType?: string };
   branchId?: string | null;
   /** Optional tenant override; otherwise resolved from branchId. */
   tenantId?: string | null;
@@ -290,6 +292,7 @@ async function sendViaZavu(
   templateId: string,
   variables: Record<string, string>,
   variableOrder: string[],
+  document?: { url: string; filename: string; mimeType?: string },
 ): Promise<SendResult> {
   const templateVariableCount = await getZavuTemplateVariableCount(apiKey, templateId);
   const effectiveVariableOrder = templateVariableCount
@@ -307,6 +310,13 @@ async function sendViaZavu(
     };
     if (senderId) headers["Zavu-Sender"] = senderId;
 
+    const content: Record<string, unknown> = { templateId, templateVariables };
+    if (document?.url) {
+      content.mediaUrl = document.url;
+      content.filename = document.filename;
+      content.mimeType = document.mimeType || "application/pdf";
+    }
+
     const response = await fetch("https://api.zavu.dev/v1/messages", {
       method: "POST",
       headers,
@@ -314,7 +324,7 @@ async function sendViaZavu(
         to: formatToWithPlus(toPhone),
         channel: "whatsapp",
         messageType: "template",
-        content: { templateId, templateVariables },
+        content,
       }),
     });
 
@@ -434,6 +444,7 @@ export async function sendWhatsAppForTenant(
             templateId,
             args.variables,
             ZAVU_TEMPLATE_VARIABLES[args.category],
+            args.document,
           );
         } catch (err: unknown) {
           result = { success: false, provider: "zavu", error: `Zavu decrypt failed: ${(err as Error).message}` };

@@ -86,6 +86,11 @@ async function generateInvoicePDF(data: {
   const invoiceTitle = data.gymGst ? "TAX INVOICE" : "INVOICE";
 
   const pdfDoc = await PDFDocument.create();
+  pdfDoc.setTitle(`Invoice ${data.invoiceNumber}`);
+  pdfDoc.setSubject(`Payment invoice for ${data.memberName}`);
+  pdfDoc.setAuthor(data.invoiceBrandName || data.gymName || data.branchName || "GymKloud");
+  pdfDoc.setCreator("GymKloud");
+  pdfDoc.setProducer("GymKloud Invoice Generator");
   const page = pdfDoc.addPage([pageW, pageH]);
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -290,6 +295,55 @@ async function generateInvoicePDF(data: {
   return await pdfDoc.save();
 }
 
+function sanitizeFilePart(value: string | null | undefined, fallback: string): string {
+  const cleaned = (value || fallback)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return cleaned || fallback;
+}
+
+function buildInvoicePdfNames(invoiceNumber: string, customerName: string, gymName: string, paymentId: string) {
+  const safeInvoiceNo = sanitizeFilePart(invoiceNumber, "invoice");
+  const safeCustomer = sanitizeFilePart(customerName, "customer");
+  const safeGym = sanitizeFilePart(gymName, "gym");
+  const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  return {
+    displayFileName: `Invoice_${safeInvoiceNo}.pdf`,
+    storageFileName: `${safeInvoiceNo}_${safeCustomer}_${safeGym}_${timestamp}_${paymentId.slice(0, 8)}.pdf`,
+  };
+}
+
+function formatPaymentMode(mode: string | null | undefined): string {
+  if (mode === "online") return "Online (Razorpay)";
+  if (mode === "upi") return "UPI";
+  if (mode === "card") return "Card";
+  if (mode === "bank_transfer") return "Bank Transfer";
+  return "Cash";
+}
+
+function isPersonalTrainingPayment(type: string | null | undefined): boolean {
+  return ["pt", "pt_only", "pt_subscription", "pt_extension"].includes(type || "");
+}
+
+function labelPaymentType(type: string | null | undefined): string {
+  const labels: Record<string, string> = {
+    membership: "Gym Membership",
+    gym_membership: "Gym Membership",
+    gym_renewal: "Gym Membership Renewal",
+    gym_and_pt: "Gym Membership + Personal Training",
+    pt: "Personal Training",
+    pt_only: "Personal Training",
+    pt_subscription: "Personal Training",
+    pt_extension: "Personal Training Extension",
+    daily_pass: "Daily Pass",
+    event_registration: "Event Registration",
+  };
+  return labels[type || ""] || (type || "Payment").replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -333,7 +387,8 @@ Deno.serve(async (req) => {
         *,
         members:member_id (id, name, phone, branch_id),
         daily_pass_users:daily_pass_user_id (id, name, phone, branch_id),
-        subscriptions:subscription_id (start_date, end_date, plan_months, trainer_fee, personal_trainer_id, is_custom_package, custom_days, branch_id)
+        subscriptions:subscription_id (start_date, end_date, plan_months, trainer_fee, personal_trainer_id, is_custom_package, custom_days, pt_start_date, pt_end_date, branch_id),
+        daily_pass_subscriptions:daily_pass_subscription_id (package_name, duration_days, start_date, end_date, price, trainer_fee, branch_id)
       `)
       .eq("id", paymentId)
       .single();
@@ -348,8 +403,9 @@ Deno.serve(async (req) => {
     const member = payment.members as any;
     const dailyPassUser = payment.daily_pass_users as any;
     const subscription = payment.subscriptions as any;
+    const dailyPassSubscription = payment.daily_pass_subscriptions as any;
 
-    let effectiveBranchId = branchId || payment.branch_id || member?.branch_id || dailyPassUser?.branch_id || subscription?.branch_id;
+    let effectiveBranchId = branchId || payment.branch_id || member?.branch_id || dailyPassUser?.branch_id || subscription?.branch_id || dailyPassSubscription?.branch_id;
 
     // Fallback branch for old records that don't have branch_id
     if (!effectiveBranchId) {
@@ -486,8 +542,22 @@ Deno.serve(async (req) => {
       existingInvoice?.transaction_id ||
       `CASH-${payment.id.slice(0, 8).toUpperCase()}`;
 
+    let linkedPtSubscription: any = null;
+    if (isPersonalTrainingPayment(payment.payment_type) && payment.member_id) {
+      const { data: ptCandidates } = await supabase
+        .from("pt_subscriptions")
+        .select("id, start_date, end_date, total_fee, monthly_fee, branch_id, personal_trainers:personal_trainer_id (name)")
+        .eq("member_id", payment.member_id)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      linkedPtSubscription = (ptCandidates || []).find((candidate: any) => Number(candidate.total_fee || 0) === Number(payment.amount || 0)) || ptCandidates?.[0] || null;
+    }
+
     // Calculate fee breakdown
-    const trainerFee = subscription?.trainer_fee ? Number(subscription.trainer_fee) : 0;
+    const trainerFee = isPersonalTrainingPayment(payment.payment_type)
+      ? Number(linkedPtSubscription?.total_fee || payment.amount || 0)
+      : Number(subscription?.trainer_fee || dailyPassSubscription?.trainer_fee || 0);
     const totalPaid = Number(payment.amount);
 
     // If GST is enabled, reverse-calculate: subtotal + tax = totalPaid
@@ -506,20 +576,33 @@ Deno.serve(async (req) => {
       taxOnInvoice = 0;
     }
 
-    const gymFee = subtotalBeforeTax - trainerFee;
+    const gymFee = isPersonalTrainingPayment(payment.payment_type) ? 0 : Math.max(subtotalBeforeTax - trainerFee, 0);
 
-    const startDate = subscription?.start_date
-      ? new Date(subscription.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+    const rawStartDate = linkedPtSubscription?.start_date || dailyPassSubscription?.start_date || subscription?.start_date;
+    const rawEndDate = linkedPtSubscription?.end_date || dailyPassSubscription?.end_date || subscription?.pt_end_date || subscription?.end_date;
+    const startDate = rawStartDate
+      ? new Date(rawStartDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
       : paymentDate;
-    const endDate = subscription?.end_date
-      ? new Date(subscription.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+    const endDate = rawEndDate
+      ? new Date(rawEndDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
       : "-";
 
-    let packageName = "Gym Membership";
-    if (payment.payment_type === "gym_and_pt") packageName = "Gym + Personal Training";
-    else if (payment.payment_type === "pt_only" || payment.payment_type === "pt") packageName = "Personal Training";
-    if (subscription?.plan_months) packageName += ` (${subscription.plan_months} Month${subscription.plan_months > 1 ? "s" : ""})`;
+    let packageName = dailyPassSubscription?.package_name || labelPaymentType(payment.payment_type);
+    if ((payment.payment_type === "membership" || payment.payment_type === "gym_membership" || payment.payment_type === "gym_renewal" || payment.payment_type === "gym_and_pt") && subscription?.plan_months) {
+      packageName += ` (${subscription.plan_months} Month${subscription.plan_months > 1 ? "s" : ""})`;
+    }
+    if (isPersonalTrainingPayment(payment.payment_type) && linkedPtSubscription?.personal_trainers?.name) {
+      packageName += ` - ${linkedPtSubscription.personal_trainers.name}`;
+    }
+    if (dailyPassSubscription?.duration_days && !packageName.includes("Day")) packageName += ` (${dailyPassSubscription.duration_days} Days)`;
     if (subscription?.is_custom_package && subscription?.custom_days) packageName += ` (${subscription.custom_days} Days)`;
+
+    const { displayFileName, storageFileName } = buildInvoicePdfNames(
+      invoiceNumber,
+      customerName,
+      invoiceBrandName || gymName || branchName,
+      paymentId,
+    );
 
     // Generate PDF
     const pdfBytes = await generateInvoicePDF({
@@ -536,7 +619,7 @@ Deno.serve(async (req) => {
       memberId: member?.id || dailyPassUser?.id || "",
       paymentDate,
       amount: totalPaid,
-      paymentMode: payment.payment_mode === "online" ? "Online (Razorpay)" : payment.payment_mode === "upi" ? "UPI" : payment.payment_mode === "card" ? "Card" : payment.payment_mode === "bank_transfer" ? "Bank Transfer" : "Cash",
+      paymentMode: formatPaymentMode(payment.payment_mode),
       paymentType: payment.payment_type || "gym_membership",
       razorpayPaymentId: transactionId,
       packageName,
@@ -555,18 +638,18 @@ Deno.serve(async (req) => {
     });
 
     // Upload to storage
-    const fileName = `${invoiceNumber.replace(/[^a-zA-Z0-9-]/g, "_")}.pdf`;
-    const filePath = `${effectiveBranchId || "general"}/${fileName}`;
+    const filePath = `${effectiveBranchId || "general"}/${storageFileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("invoices")
       .upload(filePath, pdfBytes, {
         contentType: "application/pdf",
-        upsert: true,
+        upsert: false,
       });
 
     if (uploadError) {
       console.error("Upload error:", uploadError);
+      throw new Error(`Failed to upload invoice PDF: ${uploadError.message}`);
     }
 
     // Get public URL for PDF
@@ -676,6 +759,7 @@ Deno.serve(async (req) => {
               branch_name: branchName || gymName,
             },
             fallbackText: message,
+            document: pdfUrl ? { url: pdfUrl, filename: displayFileName, mimeType: "application/pdf" } : undefined,
             branchId: effectiveBranchId,
           });
 
