@@ -274,6 +274,8 @@ async function getZavuTemplateVariableCount(apiKey: string, templateId: string):
       keys: body ? Object.keys(body).slice(0, 12) : [],
       status: (body?.template as Record<string, unknown> | undefined)?.status ?? body?.status,
       variables: (body?.template as Record<string, unknown> | undefined)?.variables ?? body?.variables,
+      body: (body?.template as Record<string, unknown> | undefined)?.body ?? body?.body,
+      whatsappBody: (body?.template as Record<string, unknown> | undefined)?.whatsappBody ?? body?.whatsappBody,
     });
     const template = (body?.template ?? body) as Record<string, unknown> | null;
     const variables = template?.variables;
