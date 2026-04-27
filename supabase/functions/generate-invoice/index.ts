@@ -968,21 +968,44 @@ async function sendWhatsAppInvoice(
   if (cleaned.startsWith("0")) cleaned = cleaned.substring(1);
   if (cleaned.length === 10) cleaned = "91" + cleaned;
 
-  const message = `🧾 *Invoice ${invoiceNumber}*\n\nHi ${customerName}, 👋\n\n💰 *Amount:* ₹${Number(payment.amount).toLocaleString("en-IN")}\n\n📄 *View Invoice:*\n${invoiceLink}\n\nThank you! 🙏`;
+  // Resolve branch + gym name for the team signature in the template.
+  let branchName = "";
+  let gymName = "";
+  if (effectiveBranchId) {
+    const { data: br } = await supabase
+      .from("branches")
+      .select("name, gym_settings(gym_name)")
+      .eq("id", effectiveBranchId)
+      .maybeSingle();
+    branchName = br?.name || "";
+    gymName = (br as any)?.gym_settings?.[0]?.gym_name || (br as any)?.gym_settings?.gym_name || "";
+  }
+  const teamName = branchName || gymName || "Your Gym";
+
+  const amountStr = Number(payment.amount).toLocaleString("en-IN");
+  const paymentDate = new Date(payment.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+
+  // Mirrors the gk_invoice_link_only template body.
+  const message =
+    `Hi ${customerName} 👋\n` +
+    `Your invoice has been generated successfully.\n\n` +
+    `📄 Amount: ₹${amountStr}\n` +
+    `📅 Date: ${paymentDate}\n\n` +
+    `You can view and download it here:\n` +
+    `🔗 ${invoiceLink}\n\n` +
+    `- Team ${teamName}`;
 
   try {
     const result = await sendWhatsAppForTenant(supabase, {
       toPhone: cleaned,
       category: "invoice_link",
+      // Positional: {{1}} name, {{2}} amount, {{3}} payment_date, {{4}} invoice_link, {{5}} branch_name
       variables: {
-        invoice_number: invoiceNumber,
         name: customerName,
-        amount: Number(payment.amount).toLocaleString("en-IN"),
-        payment_date: new Date(payment.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }),
-        package_name: payment.payment_type || "Gym Membership",
-        valid_till: "-",
-        branch_name: "Your Gym",
+        amount: amountStr,
+        payment_date: paymentDate,
         invoice_link: invoiceLink,
+        branch_name: teamName,
       },
       fallbackText: message,
       ctaUrl: {
