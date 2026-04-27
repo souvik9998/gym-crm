@@ -311,9 +311,33 @@ function buildInvoicePdfNames(invoiceNumber: string, customerName: string, gymNa
   const safeGym = sanitizeFilePart(gymName, "gym");
   const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
   return {
-    displayFileName: `Invoice_${safeInvoiceNo}.pdf`,
+    displayFileName: `${safeInvoiceNo}_${safeCustomer}_${safeGym}.pdf`,
     storageFileName: `${safeInvoiceNo}_${safeCustomer}_${safeGym}_${timestamp}_${paymentId.slice(0, 8)}.pdf`,
   };
+}
+
+function formatDateLabel(value: string | null | undefined, options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" }): string {
+  if (!value) return "-";
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? new Date(`${value}T00:00:00Z`)
+    : new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", ...options });
+}
+
+function toDateOnly(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? new Date(`${value}T00:00:00Z`)
+    : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
+}
+
+function getPublicInvoiceOrigin(req: Request): string {
+  const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/[^/]*$/, "") || "";
+  if (origin.startsWith("http") && !origin.includes("supabase.co")) return origin.replace(/\/$/, "");
+  return "https://id-preview--c30de963-7516-4305-bcdb-134d2d3ec03b.lovable.app";
 }
 
 function formatPaymentMode(mode: string | null | undefined): string {
@@ -554,6 +578,16 @@ Deno.serve(async (req) => {
       linkedPtSubscription = (ptCandidates || []).find((candidate: any) => Number(candidate.total_fee || 0) === Number(payment.amount || 0)) || ptCandidates?.[0] || null;
     }
 
+    let eventRegistration: any = null;
+    if (payment.payment_type === "event_registration") {
+      const { data: registration } = await supabase
+        .from("event_registrations")
+        .select("events:event_id (title, event_date, event_end_date)")
+        .eq("payment_id", paymentId)
+        .maybeSingle();
+      eventRegistration = registration;
+    }
+
     // Calculate fee breakdown
     const trainerFee = isPersonalTrainingPayment(payment.payment_type)
       ? Number(linkedPtSubscription?.total_fee || payment.amount || 0)
@@ -578,8 +612,9 @@ Deno.serve(async (req) => {
 
     const gymFee = isPersonalTrainingPayment(payment.payment_type) ? 0 : Math.max(subtotalBeforeTax - trainerFee, 0);
 
-    const rawStartDate = linkedPtSubscription?.start_date || dailyPassSubscription?.start_date || subscription?.start_date;
-    const rawEndDate = linkedPtSubscription?.end_date || dailyPassSubscription?.end_date || subscription?.pt_end_date || subscription?.end_date;
+    const eventDetails = eventRegistration?.events as any;
+    const rawStartDate = linkedPtSubscription?.start_date || dailyPassSubscription?.start_date || subscription?.start_date || eventDetails?.event_date;
+    const rawEndDate = linkedPtSubscription?.end_date || dailyPassSubscription?.end_date || subscription?.pt_end_date || subscription?.end_date || eventDetails?.event_end_date || eventDetails?.event_date;
     const startDate = rawStartDate
       ? new Date(rawStartDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
       : paymentDate;
@@ -588,6 +623,9 @@ Deno.serve(async (req) => {
       : "-";
 
     let packageName = dailyPassSubscription?.package_name || labelPaymentType(payment.payment_type);
+    if (payment.payment_type === "event_registration" && eventDetails?.title) {
+      packageName = `Event Registration - ${eventDetails.title}`;
+    }
     if ((payment.payment_type === "membership" || payment.payment_type === "gym_membership" || payment.payment_type === "gym_renewal" || payment.payment_type === "gym_and_pt") && subscription?.plan_months) {
       packageName += ` (${subscription.plan_months} Month${subscription.plan_months > 1 ? "s" : ""})`;
     }
@@ -675,8 +713,8 @@ Deno.serve(async (req) => {
       trainer_fee: trainerFee,
       tax: taxOnInvoice,
       package_name: packageName,
-      start_date: subscription?.start_date || null,
-      end_date: subscription?.end_date || null,
+      start_date: toDateOnly(rawStartDate),
+      end_date: toDateOnly(rawEndDate),
       payment_mode: payment.payment_mode,
       payment_date: payment.created_at,
       transaction_id: transactionId,
@@ -712,7 +750,7 @@ Deno.serve(async (req) => {
     }
 
     // Branded invoice link
-    const invoiceLink = `https://gym-qr-pro.lovable.app/invoice/${invoiceNumber}`;
+    const invoiceLink = `${getPublicInvoiceOrigin(req)}/invoice/${invoiceNumber}`;
 
     // Send via WhatsApp if requested
     let whatsappSent = false;
@@ -742,7 +780,7 @@ Deno.serve(async (req) => {
           `📅 *Date:* ${paymentDate}\n` +
           `💳 *Mode:* ${payment.payment_mode === "online" ? "Online" : "Cash"}\n` +
           `📦 *Package:* ${packageName}\n` +
-          (subscription?.end_date ? `📅 *Valid Till:* ${endDate}\n` : "") +
+          (endDate !== "-" ? `📅 *Valid Till:* ${endDate}\n` : "") +
           `\nThank you for being with us! 🙏\n— ${teamName}`;
 
         try {
@@ -755,7 +793,7 @@ Deno.serve(async (req) => {
               amount: Number(payment.amount).toLocaleString("en-IN"),
               payment_date: paymentDate,
               package_name: packageName,
-              valid_till: subscription?.end_date ? endDate : "-",
+              valid_till: endDate !== "-" ? endDate : "-",
               branch_name: branchName || gymName,
             },
             fallbackText: message,
@@ -793,6 +831,7 @@ Deno.serve(async (req) => {
         invoiceNumber,
         invoiceUrl: invoiceLink,
         pdfUrl: pdfUrl,
+        pdfFileName: displayFileName,
         whatsappSent,
         whatsappError,
       }),
