@@ -406,7 +406,7 @@ Deno.serve(async (req) => {
     // Check if invoice already exists for this payment (we refresh data even when it exists)
     const { data: existingInvoice } = await supabase
       .from("invoices")
-      .select("id, invoice_number, transaction_id")
+      .select("id, invoice_number, transaction_id, public_token, pdf_storage_path")
       .eq("payment_id", paymentId)
       .maybeSingle();
 
