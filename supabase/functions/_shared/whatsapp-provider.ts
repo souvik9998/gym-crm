@@ -542,6 +542,7 @@ export async function sendWhatsAppForTenant(
             args.variables,
             ZAVU_TEMPLATE_VARIABLES[args.category],
             args.document,
+            args.ctaUrl,
           );
         } catch (err: unknown) {
           result = { success: false, provider: "zavu", error: `Zavu decrypt failed: ${(err as Error).message}` };
