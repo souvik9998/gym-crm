@@ -849,6 +849,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         invoiceNumber,
+        publicToken,
         invoiceUrl: invoiceLink,
         pdfUrl: pdfUrl,
         pdfFileName: displayFileName,
