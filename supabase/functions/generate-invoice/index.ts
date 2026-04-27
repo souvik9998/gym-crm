@@ -371,7 +371,8 @@ Deno.serve(async (req) => {
         *,
         members:member_id (id, name, phone, branch_id),
         daily_pass_users:daily_pass_user_id (id, name, phone, branch_id),
-        subscriptions:subscription_id (start_date, end_date, plan_months, trainer_fee, personal_trainer_id, is_custom_package, custom_days, branch_id)
+        subscriptions:subscription_id (start_date, end_date, plan_months, trainer_fee, personal_trainer_id, is_custom_package, custom_days, pt_start_date, pt_end_date, branch_id),
+        daily_pass_subscriptions:daily_pass_subscription_id (package_name, duration_days, start_date, end_date, price, trainer_fee, branch_id)
       `)
       .eq("id", paymentId)
       .single();
@@ -386,8 +387,9 @@ Deno.serve(async (req) => {
     const member = payment.members as any;
     const dailyPassUser = payment.daily_pass_users as any;
     const subscription = payment.subscriptions as any;
+    const dailyPassSubscription = payment.daily_pass_subscriptions as any;
 
-    let effectiveBranchId = branchId || payment.branch_id || member?.branch_id || dailyPassUser?.branch_id || subscription?.branch_id;
+    let effectiveBranchId = branchId || payment.branch_id || member?.branch_id || dailyPassUser?.branch_id || subscription?.branch_id || dailyPassSubscription?.branch_id;
 
     // Fallback branch for old records that don't have branch_id
     if (!effectiveBranchId) {
