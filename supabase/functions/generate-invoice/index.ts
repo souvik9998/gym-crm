@@ -982,6 +982,11 @@ async function sendWhatsAppInvoice(
         invoice_link: invoiceLink,
       },
       fallbackText: message,
+      ctaUrl: {
+        url: invoiceLink,
+        displayText: "View Invoice",
+        text: `🧾 Your invoice ${invoiceNumber} is ready. Tap below to view & download.`,
+      },
       branchId: effectiveBranchId,
     });
 
