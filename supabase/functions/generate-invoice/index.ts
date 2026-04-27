@@ -851,36 +851,39 @@ Deno.serve(async (req) => {
 
         const teamName = branchName ? `Team ${branchName}` : `Team ${gymName}`;
 
-        const message = `🧾 *Invoice ${invoiceNumber}*\n\n` +
-          `Hi ${customerName}, 👋\n\n` +
-          `Here is your payment invoice.\n\n` +
-          `💰 *Amount:* ₹${Number(payment.amount).toLocaleString("en-IN")}\n` +
-          `📅 *Date:* ${paymentDate}\n` +
-          `💳 *Mode:* ${payment.payment_mode === "online" ? "Online" : "Cash"}\n` +
-          `📦 *Package:* ${packageName}\n` +
-          (endDate !== "-" ? `📅 *Valid Till:* ${endDate}\n` : "") +
-          `\n🔗 *View & Download Invoice:*\n${invoiceLink}\n` +
-          `\nThank you for being with us! 🙏\n— ${teamName}`;
+        // Message body matches the gk_invoice_link_only template:
+        //   Hi {{1}} 👋
+        //   Your invoice has been generated successfully.
+        //   📄 Amount: ₹{{2}}
+        //   📅 Date: {{3}}
+        //   You can view and download it here:
+        //   🔗 {{4}}
+        //   - {{5}} Team
+        const amountStr = Number(payment.amount).toLocaleString("en-IN");
+        const message =
+          `Hi ${customerName} 👋\n` +
+          `Your invoice has been generated successfully.\n\n` +
+          `📄 Amount: ₹${amountStr}\n` +
+          `📅 Date: ${paymentDate}\n\n` +
+          `You can view and download it here:\n` +
+          `🔗 ${invoiceLink}\n\n` +
+          `- ${teamName}`;
 
         try {
           const result = await sendWhatsAppForTenant(supabase, {
             toPhone: cleaned,
             category: "invoice_link",
+            // Positional mapping (see ZAVU_TEMPLATE_VARIABLES.invoice_link):
+            //   {{1}} name, {{2}} amount, {{3}} payment_date, {{4}} invoice_link, {{5}} branch_name (= Team name)
             variables: {
-              invoice_number: invoiceNumber,
               name: customerName,
-              amount: Number(payment.amount).toLocaleString("en-IN"),
+              amount: amountStr,
               payment_date: paymentDate,
-              package_name: packageName,
-              valid_till: endDate !== "-" ? endDate : "-",
-              branch_name: branchName || gymName,
               invoice_link: invoiceLink,
+              branch_name: branchName || gymName,
             },
             fallbackText: message,
-            // Intentionally do NOT attach the PDF — send the secure link instead so
-            // the customer downloads the invoice from the hosted page themselves.
-            // The CTA URL is sent as a follow-up tappable button (Zavu) so the link
-            // reaches the user even when the approved template body has no link slot.
+            // Keep CTA button as a follow-up for providers that support it.
             ctaUrl: {
               url: invoiceLink,
               displayText: "View Invoice",
