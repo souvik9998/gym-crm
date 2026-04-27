@@ -328,6 +328,22 @@ function isPersonalTrainingPayment(type: string | null | undefined): boolean {
   return ["pt", "pt_only", "pt_subscription", "pt_extension"].includes(type || "");
 }
 
+function labelPaymentType(type: string | null | undefined): string {
+  const labels: Record<string, string> = {
+    membership: "Gym Membership",
+    gym_membership: "Gym Membership",
+    gym_renewal: "Gym Membership Renewal",
+    gym_and_pt: "Gym Membership + Personal Training",
+    pt: "Personal Training",
+    pt_only: "Personal Training",
+    pt_subscription: "Personal Training",
+    pt_extension: "Personal Training Extension",
+    daily_pass: "Daily Pass",
+    event_registration: "Event Registration",
+  };
+  return labels[type || ""] || (type || "Payment").replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
