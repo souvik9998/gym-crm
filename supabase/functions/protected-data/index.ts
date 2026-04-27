@@ -1038,7 +1038,7 @@ Deno.serve(async (req) => {
           supabase.from("members").select("*", { count: "exact", head: true }).eq("branch_id", branchId)
             .lt("created_at", rangeStartISO),
           supabase.from("members").select("*", { count: "exact", head: true }).eq("branch_id", branchId),
-          supabase.from("subscriptions").select("*", { count: "exact", head: true }).eq("branch_id", branchId).eq("status", "active"),
+          supabase.from("subscriptions").select("member_id").eq("branch_id", branchId).eq("status", "active"),
           supabase.from("personal_trainers").select("id, name").eq("branch_id", branchId).eq("is_active", true),
           supabase.from("pt_subscriptions").select("personal_trainer_id, member_id, total_fee, created_at, status").eq("branch_id", branchId)
             .gte("created_at", rangeStartISO).lte("created_at", rangeEndISO),
@@ -1052,7 +1052,7 @@ Deno.serve(async (req) => {
         const membersInRange = membersInRangeRes.data || [];
         const membersBefore = membersBeforeRes.count || 0;
         const totalMembers = totalMembersRes.count || 0;
-        const activeMembers = activeMembersRes.count || 0;
+        const activeMembers = new Set((activeMembersRes.data || []).map((s: any) => s.member_id)).size;
         const trainers = trainersRes.data || [];
         const ptSubs = ptSubsRes.data || [];
         const monthlyPkgs = monthlyPkgsRes.data || [];
@@ -1307,7 +1307,7 @@ Deno.serve(async (req) => {
             supabase.from("members").select("id, branch_id").in("branch_id", branchIds),
             supabase.from("members").select("id, branch_id").in("branch_id", branchIds)
               .gte("created_at", `${from}T00:00:00`).lte("created_at", `${to}T23:59:59`),
-            supabase.from("subscriptions").select("id, branch_id").in("branch_id", branchIds).eq("status", "active"),
+            supabase.from("subscriptions").select("member_id, branch_id").in("branch_id", branchIds).eq("status", "active"),
             supabase.from("subscriptions").select("id, branch_id").in("branch_id", branchIds).eq("status", "expired")
               .gte("end_date", from).lte("end_date", to),
             supabase.from("pt_subscriptions").select("id, branch_id").in("branch_id", branchIds)
@@ -1339,7 +1339,16 @@ Deno.serve(async (req) => {
             expensesByBranch: groupSum(expensesRes.data || []),
             totalMembersByBranch: groupCount(totalMembersRes.data || []),
             newMembersByBranch: groupCount(newMembersRes.data || []),
-            activeMembersByBranch: groupCount(activeSubsRes.data || []),
+            activeMembersByBranch: (() => {
+              const map: Record<string, Set<string>> = {};
+              for (const row of (activeSubsRes.data || []) as any[]) {
+                if (!map[row.branch_id]) map[row.branch_id] = new Set();
+                map[row.branch_id].add(row.member_id);
+              }
+              const out: Record<string, number> = {};
+              for (const k in map) out[k] = map[k].size;
+              return out;
+            })(),
             churnedByBranch: groupCount(churnedRes.data || []),
             ptSubsByBranch: groupCount(ptSubsRes.data || []),
             staffByBranch: groupCount(staffCountRes.data || []),
