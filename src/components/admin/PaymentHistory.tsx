@@ -137,8 +137,15 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
       
       // Search filter (name or phone)
       if (q) {
-        const name = getPaymentDisplayName(payment).toLowerCase();
-        const phone = getPaymentDisplayPhone(payment);
+        const name = (
+          payment.payment_type === "event_registration" && payment.event_registration
+            ? payment.event_registration.name
+            : payment.member?.name || payment.daily_pass_user?.name || ""
+        ).toLowerCase();
+        const phone =
+          payment.payment_type === "event_registration" && payment.event_registration
+            ? payment.event_registration.phone
+            : payment.member?.phone || payment.daily_pass_user?.phone || "";
         const phoneDigits = (phone || "").replace(/\D/g, "");
         const nameMatch = name.includes(q);
         const phoneMatch = digitsQ.length > 0 && phoneDigits.includes(digitsQ);
