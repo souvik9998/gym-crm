@@ -542,8 +542,22 @@ Deno.serve(async (req) => {
       existingInvoice?.transaction_id ||
       `CASH-${payment.id.slice(0, 8).toUpperCase()}`;
 
+    let linkedPtSubscription: any = null;
+    if (isPersonalTrainingPayment(payment.payment_type) && payment.member_id) {
+      const { data: ptCandidates } = await supabase
+        .from("pt_subscriptions")
+        .select("id, start_date, end_date, total_fee, monthly_fee, branch_id, personal_trainers:personal_trainer_id (name)")
+        .eq("member_id", payment.member_id)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      linkedPtSubscription = (ptCandidates || []).find((candidate: any) => Number(candidate.total_fee || 0) === Number(payment.amount || 0)) || ptCandidates?.[0] || null;
+    }
+
     // Calculate fee breakdown
-    const trainerFee = subscription?.trainer_fee ? Number(subscription.trainer_fee) : 0;
+    const trainerFee = isPersonalTrainingPayment(payment.payment_type)
+      ? Number(linkedPtSubscription?.total_fee || payment.amount || 0)
+      : Number(subscription?.trainer_fee || dailyPassSubscription?.trainer_fee || 0);
     const totalPaid = Number(payment.amount);
 
     // If GST is enabled, reverse-calculate: subtotal + tax = totalPaid
@@ -562,19 +576,25 @@ Deno.serve(async (req) => {
       taxOnInvoice = 0;
     }
 
-    const gymFee = subtotalBeforeTax - trainerFee;
+    const gymFee = isPersonalTrainingPayment(payment.payment_type) ? 0 : Math.max(subtotalBeforeTax - trainerFee, 0);
 
-    const startDate = subscription?.start_date
-      ? new Date(subscription.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+    const rawStartDate = linkedPtSubscription?.start_date || dailyPassSubscription?.start_date || subscription?.start_date;
+    const rawEndDate = linkedPtSubscription?.end_date || dailyPassSubscription?.end_date || subscription?.pt_end_date || subscription?.end_date;
+    const startDate = rawStartDate
+      ? new Date(rawStartDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
       : paymentDate;
-    const endDate = subscription?.end_date
-      ? new Date(subscription.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+    const endDate = rawEndDate
+      ? new Date(rawEndDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
       : "-";
 
-    let packageName = "Gym Membership";
-    if (payment.payment_type === "gym_and_pt") packageName = "Gym + Personal Training";
-    else if (payment.payment_type === "pt_only" || payment.payment_type === "pt") packageName = "Personal Training";
-    if (subscription?.plan_months) packageName += ` (${subscription.plan_months} Month${subscription.plan_months > 1 ? "s" : ""})`;
+    let packageName = dailyPassSubscription?.package_name || labelPaymentType(payment.payment_type);
+    if ((payment.payment_type === "membership" || payment.payment_type === "gym_membership" || payment.payment_type === "gym_renewal" || payment.payment_type === "gym_and_pt") && subscription?.plan_months) {
+      packageName += ` (${subscription.plan_months} Month${subscription.plan_months > 1 ? "s" : ""})`;
+    }
+    if (isPersonalTrainingPayment(payment.payment_type) && linkedPtSubscription?.personal_trainers?.name) {
+      packageName += ` - ${linkedPtSubscription.personal_trainers.name}`;
+    }
+    if (dailyPassSubscription?.duration_days && !packageName.includes("Day")) packageName += ` (${dailyPassSubscription.duration_days} Days)`;
     if (subscription?.is_custom_package && subscription?.custom_days) packageName += ` (${subscription.custom_days} Days)`;
 
     // Generate PDF
