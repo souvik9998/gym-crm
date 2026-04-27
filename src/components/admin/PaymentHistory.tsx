@@ -113,6 +113,8 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
 
   // Filter payments based on current filters (client-side filtering on loaded data)
   const filteredPayments = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    const digitsQ = q.replace(/\D/g, "");
     return allPayments.filter((payment) => {
       // Date filter
       if (dateFrom && payment.created_at) {
@@ -133,9 +135,19 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
       // Type filter
       if (typeFilter !== "all" && payment.payment_type !== typeFilter) return false;
       
+      // Search filter (name or phone)
+      if (q) {
+        const name = getPaymentDisplayName(payment).toLowerCase();
+        const phone = getPaymentDisplayPhone(payment);
+        const phoneDigits = (phone || "").replace(/\D/g, "");
+        const nameMatch = name.includes(q);
+        const phoneMatch = digitsQ.length > 0 && phoneDigits.includes(digitsQ);
+        if (!nameMatch && !phoneMatch) return false;
+      }
+      
       return true;
     });
-  }, [allPayments, dateFrom, dateTo, paymentMode, statusFilter, typeFilter]);
+  }, [allPayments, dateFrom, dateTo, paymentMode, statusFilter, typeFilter, debouncedSearch]);
 
   const clearFilters = () => {
     setDateFrom("");
@@ -143,6 +155,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     setPaymentMode("all");
     setStatusFilter("all");
     setTypeFilter("all");
+    setSearchQuery("");
   };
 
   const getStatusBadge = (status: PaymentStatus | null) => {
