@@ -859,6 +859,7 @@ Deno.serve(async (req) => {
           `💳 *Mode:* ${payment.payment_mode === "online" ? "Online" : "Cash"}\n` +
           `📦 *Package:* ${packageName}\n` +
           (endDate !== "-" ? `📅 *Valid Till:* ${endDate}\n` : "") +
+          `\n🔗 *View & Download Invoice:*\n${invoiceLink}\n` +
           `\nThank you for being with us! 🙏\n— ${teamName}`;
 
         try {
@@ -873,9 +874,11 @@ Deno.serve(async (req) => {
               package_name: packageName,
               valid_till: endDate !== "-" ? endDate : "-",
               branch_name: branchName || gymName,
+              invoice_link: invoiceLink,
             },
             fallbackText: message,
-            document: pdfUrl ? { url: pdfUrl, filename: displayFileName, mimeType: "application/pdf" } : undefined,
+            // Intentionally do NOT attach the PDF — send the secure link instead so
+            // the customer downloads the invoice from the hosted page themselves.
             branchId: effectiveBranchId,
           });
 
