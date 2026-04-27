@@ -30,6 +30,8 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
 import MobileExpandableRow from "@/components/admin/MobileExpandableRow";
+import { SearchInput } from "@/components/ui/search-input";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useInfinitePaymentsQuery, type PaymentWithDetails } from "@/hooks/queries";
 import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
 import { supabase } from "@/integrations/supabase/client";
@@ -99,6 +101,8 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const [paymentMode, setPaymentMode] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery, 250);
 
   // Refetch when refreshKey changes (manual refresh)
   useEffect(() => {
@@ -109,6 +113,8 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
 
   // Filter payments based on current filters (client-side filtering on loaded data)
   const filteredPayments = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    const digitsQ = q.replace(/\D/g, "");
     return allPayments.filter((payment) => {
       // Date filter
       if (dateFrom && payment.created_at) {
@@ -129,9 +135,26 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
       // Type filter
       if (typeFilter !== "all" && payment.payment_type !== typeFilter) return false;
       
+      // Search filter (name or phone)
+      if (q) {
+        const name = (
+          payment.payment_type === "event_registration" && payment.event_registration
+            ? payment.event_registration.name
+            : payment.member?.name || payment.daily_pass_user?.name || ""
+        ).toLowerCase();
+        const phone =
+          payment.payment_type === "event_registration" && payment.event_registration
+            ? payment.event_registration.phone
+            : payment.member?.phone || payment.daily_pass_user?.phone || "";
+        const phoneDigits = (phone || "").replace(/\D/g, "");
+        const nameMatch = name.includes(q);
+        const phoneMatch = digitsQ.length > 0 && phoneDigits.includes(digitsQ);
+        if (!nameMatch && !phoneMatch) return false;
+      }
+      
       return true;
     });
-  }, [allPayments, dateFrom, dateTo, paymentMode, statusFilter, typeFilter]);
+  }, [allPayments, dateFrom, dateTo, paymentMode, statusFilter, typeFilter, debouncedSearch]);
 
   const clearFilters = () => {
     setDateFrom("");
@@ -139,6 +162,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     setPaymentMode("all");
     setStatusFilter("all");
     setTypeFilter("all");
+    setSearchQuery("");
   };
 
   const getStatusBadge = (status: PaymentStatus | null) => {
@@ -273,7 +297,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     }
   };
 
-  const hasActiveFilters = dateFrom || dateTo || paymentMode !== "all" || statusFilter !== "all" || typeFilter !== "all";
+  const hasActiveFilters = dateFrom || dateTo || paymentMode !== "all" || statusFilter !== "all" || typeFilter !== "all" || searchQuery.length > 0;
 
   const waOverlay = useWhatsAppOverlay();
 
@@ -422,6 +446,15 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
 
   return (
     <div className="space-y-2 md:space-y-4">
+      {/* Search by name or phone */}
+      <SearchInput
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        onClear={() => setSearchQuery("")}
+        placeholder="Search by name or phone…"
+        size="sm"
+      />
+
       {/* Filters - Compact mobile layout */}
       <div className="space-y-2 md:space-y-0 md:flex md:flex-wrap md:gap-3 md:items-end">
         {/* Date Range - Full width on mobile, auto on desktop */}
