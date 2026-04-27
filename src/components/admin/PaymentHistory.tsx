@@ -101,6 +101,8 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const [paymentMode, setPaymentMode] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery, 250);
 
   // Refetch when refreshKey changes (manual refresh)
   useEffect(() => {
