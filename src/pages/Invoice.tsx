@@ -230,12 +230,14 @@ export default function Invoice() {
   };
 
   const palette = {
-    header: invoice.invoice_palette?.header || "#1d4ed8",
-    accent: invoice.invoice_palette?.accent || "#dbeafe",
-    text: invoice.invoice_palette?.text || "#172554",
+    header: invoice?.invoice_palette?.header || "#1d4ed8",
+    accent: invoice?.invoice_palette?.accent || "#dbeafe",
+    text: invoice?.invoice_palette?.text || "#172554",
   };
-  const brandName = invoice.invoice_brand_name || invoice.gym_name;
+  const brandName = invoice?.invoice_brand_name || invoice?.gym_name || "";
   const invoiceItems = useMemo(() => {
+    if (!invoice) return [];
+
     const items: Array<{ description: string; duration: string; amount: number; qty?: number }> = [];
 
     if (invoice.gym_fee > 0) {
@@ -279,6 +281,8 @@ export default function Invoice() {
   }, [invoice]);
 
   const amountInWords = useMemo(() => {
+    if (!invoice) return "Zero rupees only";
+
     const value = Math.round(Number(invoice.amount));
     if (!Number.isFinite(value) || value <= 0) return "Zero rupees only";
 
@@ -302,7 +306,7 @@ export default function Invoice() {
     };
 
     return `${toWords(value).trim()} rupees only`;
-  }, [invoice.amount]);
+  }, [invoice]);
 
   const formatCurrency = (value: number) => `₹${Number(value).toLocaleString("en-IN")}`;
 
