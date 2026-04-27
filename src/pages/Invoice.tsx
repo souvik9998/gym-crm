@@ -168,6 +168,8 @@ export default function Invoice() {
   };
 
   const handleDownloadPDF = async () => {
+    if (!token) return;
+
     const downloadPdf = (url: string, filename: string) => {
       const link = document.createElement("a");
       link.href = url;
@@ -178,35 +180,34 @@ export default function Invoice() {
       document.body.removeChild(link);
     };
 
-    if (invoice?.pdf_url) {
-      downloadPdf(invoice.pdf_url, invoice.invoice_number || "invoice");
-    } else {
-      // Try to generate the PDF
-      toast.info("Generating PDF...");
-      try {
-        const { data, error } = await supabase.functions.invoke("generate-invoice", {
-          body: { paymentId: invoice?.payment_id, branchId: undefined, sendViaWhatsApp: false },
-        });
-        if (!error && data?.pdfUrl) {
-          downloadPdf(data.pdfUrl, invoice?.invoice_number || "invoice");
-          // Refresh invoice data to get the pdf_url
-          fetchInvoice();
-        } else {
-          // Try fetching fresh data
-          const { data: freshInvoice } = await supabase
-            .from("invoices")
-            .select("pdf_url")
-            .eq("invoice_number", invoiceId)
-            .maybeSingle();
-          if (freshInvoice?.pdf_url) {
-            downloadPdf(freshInvoice.pdf_url, invoice?.invoice_number || "invoice");
-          } else {
-            toast.error("PDF not available for this invoice");
-          }
-        }
-      } catch {
-        toast.error("Failed to generate PDF");
+    toast.info("Preparing PDF...");
+    try {
+      // Always request a fresh short-lived signed URL via the edge function.
+      // The token is the only authorization needed — bucket is private.
+      const { data, error } = await supabase.functions.invoke("generate-invoice", {
+        body: { action: "sign_pdf", publicToken: token },
+      });
+
+      if (!error && data?.success && data.pdfUrl) {
+        downloadPdf(data.pdfUrl, data.pdfFileName?.replace(/\.pdf$/i, "") || invoice?.invoice_number || "invoice");
+        return;
       }
+
+      // Fallback: regenerate PDF if it's missing (e.g., legacy invoice without storage path)
+      if (invoice?.payment_id) {
+        const { data: regen, error: regenErr } = await supabase.functions.invoke("generate-invoice", {
+          body: { paymentId: invoice.payment_id, sendViaWhatsApp: false },
+        });
+        if (!regenErr && regen?.pdfUrl) {
+          downloadPdf(regen.pdfUrl, invoice?.invoice_number || "invoice");
+          fetchInvoice();
+          return;
+        }
+      }
+
+      toast.error("PDF not available for this invoice");
+    } catch {
+      toast.error("Failed to generate PDF");
     }
   };
 
