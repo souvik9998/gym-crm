@@ -1361,6 +1361,7 @@ export type Database = {
           invoice_logo_url: string | null
           invoice_number: string
           invoice_palette: Json
+          invoice_terms: string | null
           joining_fee: number
           member_id: string | null
           package_name: string | null
@@ -1397,6 +1398,7 @@ export type Database = {
           invoice_logo_url?: string | null
           invoice_number: string
           invoice_palette?: Json
+          invoice_terms?: string | null
           joining_fee?: number
           member_id?: string | null
           package_name?: string | null
@@ -1433,6 +1435,7 @@ export type Database = {
           invoice_logo_url?: string | null
           invoice_number?: string
           invoice_palette?: Json
+          invoice_terms?: string | null
           joining_fee?: number
           member_id?: string | null
           package_name?: string | null
