@@ -1052,7 +1052,7 @@ Deno.serve(async (req) => {
         const membersInRange = membersInRangeRes.data || [];
         const membersBefore = membersBeforeRes.count || 0;
         const totalMembers = totalMembersRes.count || 0;
-        const activeMembers = activeMembersRes.count || 0;
+        const activeMembers = new Set((activeMembersRes.data || []).map((s: any) => s.member_id)).size;
         const trainers = trainersRes.data || [];
         const ptSubs = ptSubsRes.data || [];
         const monthlyPkgs = monthlyPkgsRes.data || [];
