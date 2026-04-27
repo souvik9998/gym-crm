@@ -633,6 +633,7 @@ Deno.serve(async (req) => {
 
     // Send via WhatsApp if requested
     let whatsappSent = false;
+    let whatsappError: string | null = null;
     if (sendViaWhatsApp && customerPhone) {
       let whatsappEnabled = true;
       if (effectiveBranchId) {
@@ -666,9 +667,12 @@ Deno.serve(async (req) => {
             toPhone: cleaned,
             category: "invoice_link",
             variables: {
-              name: customerName,
               invoice_number: invoiceNumber,
-              invoice_url: invoiceLink,
+              name: customerName,
+              amount: Number(payment.amount).toLocaleString("en-IN"),
+              payment_date: paymentDate,
+              package_name: packageName,
+              valid_till: subscription?.end_date ? endDate : "-",
               branch_name: branchName || gymName,
             },
             fallbackText: message,
@@ -676,6 +680,7 @@ Deno.serve(async (req) => {
           });
 
           whatsappSent = result.success;
+          whatsappError = result.success ? null : (result.error || "WhatsApp provider rejected the message");
 
           const logData: any = {
             recipient_phone: customerPhone,
@@ -683,6 +688,7 @@ Deno.serve(async (req) => {
             notification_type: "invoice",
             message_content: message.substring(0, 500),
             status: whatsappSent ? "sent" : "failed",
+            error_message: whatsappError,
             is_manual: true,
             branch_id: effectiveBranchId || null,
           };
@@ -691,6 +697,7 @@ Deno.serve(async (req) => {
 
           await supabase.from("whatsapp_notifications").insert(logData);
         } catch (err: any) {
+          whatsappError = err?.message || "WhatsApp send failed";
           console.error("WhatsApp send error:", err);
         }
       }
@@ -703,6 +710,7 @@ Deno.serve(async (req) => {
         invoiceUrl: invoiceLink,
         pdfUrl: pdfUrl,
         whatsappSent,
+        whatsappError,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -752,10 +760,13 @@ async function sendWhatsAppInvoice(
       toPhone: cleaned,
       category: "invoice_link",
       variables: {
-        name: customerName,
         invoice_number: invoiceNumber,
-        invoice_url: invoiceLink,
-        branch_name: "",
+        name: customerName,
+        amount: Number(payment.amount).toLocaleString("en-IN"),
+        payment_date: new Date(payment.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }),
+        package_name: payment.payment_type || "Gym Membership",
+        valid_till: "-",
+        branch_name: "Your Gym",
       },
       fallbackText: message,
       branchId: effectiveBranchId,

@@ -72,7 +72,7 @@ export const ZAVU_TEMPLATE_VARIABLES: Record<MessageCategory, string[]> = {
   promotional:         ["name", "branch_name"],
   staff_credentials:   ["name", "phone", "password", "role", "branches", "branch_name"],
   event_confirmation:  ["name", "event_title", "event_date", "branch_name"],
-  invoice_link:        ["name", "invoice_number", "invoice_url", "branch_name"],
+  invoice_link:        ["invoice_number", "name", "amount", "payment_date", "package_name", "valid_till", "branch_name"],
   check_in:            ["name", "check_in_time", "branch_name"],
   password_reset:      ["name", "reset_link", "branch_name"],
   daily_summary_admin: ["summary_text"],
@@ -234,6 +234,55 @@ async function fetchZavuMessageStatus(
   }
 }
 
+const zavuTemplateVariableCountCache = new Map<string, number | null>();
+
+function countTemplatePlaceholders(value: unknown): number {
+  if (typeof value === "string") {
+    const matches = Array.from(value.matchAll(/{{\s*(\d+|[a-zA-Z_][\w.]*)\s*}}/g));
+    return matches.reduce((max, match) => {
+      const token = match[1];
+      const numeric = /^\d+$/.test(token) ? Number(token) : 0;
+      return Math.max(max, numeric || matches.indexOf(match) + 1);
+    }, 0);
+  }
+  if (Array.isArray(value)) {
+    return value.reduce((max, item) => Math.max(max, countTemplatePlaceholders(item)), 0);
+  }
+  if (value && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).reduce<number>(
+      (max, item) => Math.max(max, countTemplatePlaceholders(item)),
+      0,
+    );
+  }
+  return 0;
+}
+
+async function getZavuTemplateVariableCount(apiKey: string, templateId: string): Promise<number | null> {
+  if (zavuTemplateVariableCountCache.has(templateId)) return zavuTemplateVariableCountCache.get(templateId)!;
+  try {
+    const res = await fetch(`https://api.zavu.dev/v1/templates/${encodeURIComponent(templateId)}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (!res.ok) {
+      zavuTemplateVariableCountCache.set(templateId, null);
+      return null;
+    }
+    const body = await res.json().catch(() => null) as Record<string, unknown> | null;
+    const template = (body?.template ?? body) as Record<string, unknown> | null;
+    const variables = template?.variables;
+    const count = Array.isArray(variables) && variables.length > 0
+      ? variables.length
+      : countTemplatePlaceholders(template);
+    const normalized = count > 0 ? count : null;
+    zavuTemplateVariableCountCache.set(templateId, normalized);
+    return normalized;
+  } catch {
+    zavuTemplateVariableCountCache.set(templateId, null);
+    return null;
+  }
+}
+
 async function sendViaZavu(
   apiKey: string,
   senderId: string | null,
@@ -242,8 +291,12 @@ async function sendViaZavu(
   variables: Record<string, string>,
   variableOrder: string[],
 ): Promise<SendResult> {
+  const templateVariableCount = await getZavuTemplateVariableCount(apiKey, templateId);
+  const effectiveVariableOrder = templateVariableCount
+    ? variableOrder.slice(0, templateVariableCount)
+    : variableOrder;
   const templateVariables: Record<string, string> = {};
-  variableOrder.forEach((key, i) => {
+  effectiveVariableOrder.forEach((key, i) => {
     templateVariables[String(i + 1)] = variables[key] ?? "";
   });
 
