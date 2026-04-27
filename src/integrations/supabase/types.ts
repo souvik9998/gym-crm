@@ -1368,7 +1368,9 @@ export type Database = {
           payment_date: string | null
           payment_id: string | null
           payment_mode: string | null
+          pdf_storage_path: string | null
           pdf_url: string | null
+          public_token: string
           start_date: string | null
           subtotal: number
           tax: number
@@ -1405,7 +1407,9 @@ export type Database = {
           payment_date?: string | null
           payment_id?: string | null
           payment_mode?: string | null
+          pdf_storage_path?: string | null
           pdf_url?: string | null
+          public_token?: string
           start_date?: string | null
           subtotal?: number
           tax?: number
@@ -1442,7 +1446,9 @@ export type Database = {
           payment_date?: string | null
           payment_id?: string | null
           payment_mode?: string | null
+          pdf_storage_path?: string | null
           pdf_url?: string | null
+          public_token?: string
           start_date?: string | null
           subtotal?: number
           tax?: number
@@ -3495,6 +3501,44 @@ export type Database = {
           monthly_revenue: number
           total_members: number
           with_pt: number
+        }[]
+      }
+      get_invoice_by_public_token: {
+        Args: { _token: string }
+        Returns: {
+          amount: number
+          branch_name: string
+          created_at: string
+          customer_name: string
+          customer_phone: string
+          discount: number
+          end_date: string
+          footer_message: string
+          gym_address: string
+          gym_email: string
+          gym_fee: number
+          gym_gst: string
+          gym_name: string
+          gym_phone: string
+          has_pdf: boolean
+          id: string
+          invoice_brand_name: string
+          invoice_logo_url: string
+          invoice_number: string
+          invoice_palette: Json
+          invoice_terms: string
+          joining_fee: number
+          member_id: string
+          package_name: string
+          payment_date: string
+          payment_id: string
+          payment_mode: string
+          public_token: string
+          start_date: string
+          subtotal: number
+          tax: number
+          trainer_fee: number
+          transaction_id: string
         }[]
       }
       get_member_subscription_info: {
