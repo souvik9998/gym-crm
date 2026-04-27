@@ -1038,7 +1038,7 @@ Deno.serve(async (req) => {
           supabase.from("members").select("*", { count: "exact", head: true }).eq("branch_id", branchId)
             .lt("created_at", rangeStartISO),
           supabase.from("members").select("*", { count: "exact", head: true }).eq("branch_id", branchId),
-          supabase.from("subscriptions").select("*", { count: "exact", head: true }).eq("branch_id", branchId).eq("status", "active"),
+          supabase.from("subscriptions").select("member_id").eq("branch_id", branchId).eq("status", "active"),
           supabase.from("personal_trainers").select("id, name").eq("branch_id", branchId).eq("is_active", true),
           supabase.from("pt_subscriptions").select("personal_trainer_id, member_id, total_fee, created_at, status").eq("branch_id", branchId)
             .gte("created_at", rangeStartISO).lte("created_at", rangeEndISO),
