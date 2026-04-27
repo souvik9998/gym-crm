@@ -249,7 +249,7 @@ function countTemplatePlaceholders(value: unknown): number {
     return value.reduce((max, item) => Math.max(max, countTemplatePlaceholders(item)), 0);
   }
   if (value && typeof value === "object") {
-    return Object.values(value as Record<string, unknown>).reduce(
+    return Object.values(value as Record<string, unknown>).reduce<number>(
       (max, item) => Math.max(max, countTemplatePlaceholders(item)),
       0,
     );
