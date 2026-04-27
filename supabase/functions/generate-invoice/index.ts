@@ -305,14 +305,20 @@ function sanitizeFilePart(value: string | null | undefined, fallback: string): s
   return cleaned || fallback;
 }
 
-function buildInvoicePdfNames(invoiceNumber: string, customerName: string, gymName: string, paymentId: string) {
+function buildInvoicePdfNames(
+  invoiceNumber: string,
+  customerName: string,
+  gymName: string,
+  publicToken: string,
+) {
   const safeInvoiceNo = sanitizeFilePart(invoiceNumber, "invoice");
   const safeCustomer = sanitizeFilePart(customerName, "customer");
   const safeGym = sanitizeFilePart(gymName, "gym");
-  const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  // Canonical storage path: one PDF per invoice (overwritten on regenerate).
+  // Token in the path keeps the file unguessable even if the bucket leaks listings.
   return {
     displayFileName: `${safeInvoiceNo}_${safeCustomer}_${safeGym}.pdf`,
-    storageFileName: `${safeInvoiceNo}_${safeCustomer}_${safeGym}_${timestamp}_${paymentId.slice(0, 8)}.pdf`,
+    storageFileName: `${safeInvoiceNo}_${publicToken.slice(0, 16)}.pdf`,
   };
 }
 
@@ -388,7 +394,47 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const body = await req.json();
-    const { paymentId, branchId, sendViaWhatsApp = true } = body;
+    const { paymentId, branchId, sendViaWhatsApp = true, action, publicToken: tokenInput } = body;
+
+    // Token-only path: issue a short-lived signed PDF URL for the public Invoice page.
+    // Does NOT require a paymentId; the token is the authorization.
+    if (action === "sign_pdf") {
+      if (!tokenInput || typeof tokenInput !== "string" || tokenInput.length < 32) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid token" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const { data: inv } = await supabase
+        .from("invoices")
+        .select("pdf_storage_path, invoice_number, customer_name, gym_name")
+        .eq("public_token", tokenInput)
+        .maybeSingle();
+
+      if (!inv?.pdf_storage_path) {
+        return new Response(
+          JSON.stringify({ success: false, error: "PDF not available" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("invoices")
+        .createSignedUrl(inv.pdf_storage_path, 60 * 10); // 10 min for direct download
+
+      if (signErr || !signed?.signedUrl) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Failed to sign PDF" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const safeName = `${sanitizeFilePart(inv.invoice_number, "invoice")}_${sanitizeFilePart(inv.customer_name, "customer")}_${sanitizeFilePart(inv.gym_name, "gym")}.pdf`;
+      return new Response(
+        JSON.stringify({ success: true, pdfUrl: signed.signedUrl, pdfFileName: safeName }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!paymentId) {
       return new Response(
@@ -400,7 +446,7 @@ Deno.serve(async (req) => {
     // Check if invoice already exists for this payment (we refresh data even when it exists)
     const { data: existingInvoice } = await supabase
       .from("invoices")
-      .select("id, invoice_number, transaction_id")
+      .select("id, invoice_number, transaction_id, public_token, pdf_storage_path")
       .eq("payment_id", paymentId)
       .maybeSingle();
 
@@ -635,11 +681,18 @@ Deno.serve(async (req) => {
     if (dailyPassSubscription?.duration_days && !packageName.includes("Day")) packageName += ` (${dailyPassSubscription.duration_days} Days)`;
     if (subscription?.is_custom_package && subscription?.custom_days) packageName += ` (${subscription.custom_days} Days)`;
 
+    // Reuse the invoice's stable random public_token (or generate one for new invoices).
+    // The token is what users actually share — it's unguessable and gates both row + PDF access.
+    const publicToken = existingInvoice?.public_token
+      || (Array.from(crypto.getRandomValues(new Uint8Array(24)))
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join(""));
+
     const { displayFileName, storageFileName } = buildInvoicePdfNames(
       invoiceNumber,
       customerName,
       invoiceBrandName || gymName || branchName,
-      paymentId,
+      publicToken,
     );
 
     // Generate PDF
@@ -675,14 +728,16 @@ Deno.serve(async (req) => {
       invoicePalette,
     });
 
-    // Upload to storage
-    const filePath = `${effectiveBranchId || "general"}/${storageFileName}`;
+    // Canonical storage path: one file per invoice, overwritten on regenerate
+    // (this avoids the "many duplicate PDFs" storage bloat).
+    const filePath = existingInvoice?.pdf_storage_path
+      || `${effectiveBranchId || "general"}/${storageFileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("invoices")
       .upload(filePath, pdfBytes, {
         contentType: "application/pdf",
-        upsert: false,
+        upsert: true,
       });
 
     if (uploadError) {
@@ -690,9 +745,30 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to upload invoice PDF: ${uploadError.message}`);
     }
 
-    // Get public URL for PDF
-    const { data: urlData } = supabase.storage.from("invoices").getPublicUrl(filePath);
-    const pdfUrl = urlData?.publicUrl || null;
+    // Storage optimization: remove any legacy timestamped duplicates of this invoice
+    // (created by the previous "always-new-filename" version). One canonical PDF per invoice.
+    try {
+      const folder = effectiveBranchId || "general";
+      const safeInvoiceNo = sanitizeFilePart(invoiceNumber, "invoice");
+      const { data: siblings } = await supabase.storage
+        .from("invoices")
+        .list(folder, { limit: 200, search: safeInvoiceNo });
+      const stale = (siblings || [])
+        .map((f: { name: string }) => `${folder}/${f.name}`)
+        .filter((p: string) => p !== filePath && p.includes(safeInvoiceNo));
+      if (stale.length > 0) {
+        await supabase.storage.from("invoices").remove(stale);
+      }
+    } catch (cleanupErr) {
+      console.warn("Stale invoice PDF cleanup skipped:", cleanupErr);
+    }
+
+    // Bucket is private; issue a long-lived signed URL for WhatsApp delivery.
+    // The Invoice page itself fetches a fresh signed URL on demand via this function.
+    const { data: signed } = await supabase.storage
+      .from("invoices")
+      .createSignedUrl(filePath, 60 * 60 * 24 * 7); // 7 days for WhatsApp link
+    const pdfUrl = signed?.signedUrl || null;
 
     const invoicePayload = {
       branch_id: effectiveBranchId,
@@ -719,6 +795,7 @@ Deno.serve(async (req) => {
       payment_date: payment.created_at,
       transaction_id: transactionId,
       pdf_url: pdfUrl,
+      pdf_storage_path: filePath,
       footer_message: footerMessage,
       invoice_terms: invoiceTerms || null,
       invoice_brand_name: invoiceBrandName || gymName,
@@ -741,6 +818,7 @@ Deno.serve(async (req) => {
         .insert({
           invoice_number: invoiceNumber,
           payment_id: paymentId,
+          public_token: publicToken,
           ...invoicePayload,
         });
 
@@ -749,8 +827,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Branded invoice link
-    const invoiceLink = `${getPublicInvoiceOrigin(req)}/invoice/${invoiceNumber}`;
+    // Public link uses the unguessable token instead of the sequential invoice number.
+    const invoiceLink = `${getPublicInvoiceOrigin(req)}/invoice/${publicToken}`;
 
     // Send via WhatsApp if requested
     let whatsappSent = false;
@@ -829,6 +907,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         invoiceNumber,
+        publicToken,
         invoiceUrl: invoiceLink,
         pdfUrl: pdfUrl,
         pdfFileName: displayFileName,
