@@ -305,14 +305,20 @@ function sanitizeFilePart(value: string | null | undefined, fallback: string): s
   return cleaned || fallback;
 }
 
-function buildInvoicePdfNames(invoiceNumber: string, customerName: string, gymName: string, paymentId: string) {
+function buildInvoicePdfNames(
+  invoiceNumber: string,
+  customerName: string,
+  gymName: string,
+  publicToken: string,
+) {
   const safeInvoiceNo = sanitizeFilePart(invoiceNumber, "invoice");
   const safeCustomer = sanitizeFilePart(customerName, "customer");
   const safeGym = sanitizeFilePart(gymName, "gym");
-  const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  // Canonical storage path: one PDF per invoice (overwritten on regenerate).
+  // Token in the path keeps the file unguessable even if the bucket leaks listings.
   return {
     displayFileName: `${safeInvoiceNo}_${safeCustomer}_${safeGym}.pdf`,
-    storageFileName: `${safeInvoiceNo}_${safeCustomer}_${safeGym}_${timestamp}_${paymentId.slice(0, 8)}.pdf`,
+    storageFileName: `${safeInvoiceNo}_${publicToken.slice(0, 16)}.pdf`,
   };
 }
 
