@@ -394,7 +394,47 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const body = await req.json();
-    const { paymentId, branchId, sendViaWhatsApp = true } = body;
+    const { paymentId, branchId, sendViaWhatsApp = true, action, publicToken: tokenInput } = body;
+
+    // Token-only path: issue a short-lived signed PDF URL for the public Invoice page.
+    // Does NOT require a paymentId; the token is the authorization.
+    if (action === "sign_pdf") {
+      if (!tokenInput || typeof tokenInput !== "string" || tokenInput.length < 32) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid token" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const { data: inv } = await supabase
+        .from("invoices")
+        .select("pdf_storage_path, invoice_number, customer_name, gym_name")
+        .eq("public_token", tokenInput)
+        .maybeSingle();
+
+      if (!inv?.pdf_storage_path) {
+        return new Response(
+          JSON.stringify({ success: false, error: "PDF not available" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("invoices")
+        .createSignedUrl(inv.pdf_storage_path, 60 * 10); // 10 min for direct download
+
+      if (signErr || !signed?.signedUrl) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Failed to sign PDF" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const safeName = `${sanitizeFilePart(inv.invoice_number, "invoice")}_${sanitizeFilePart(inv.customer_name, "customer")}_${sanitizeFilePart(inv.gym_name, "gym")}.pdf`;
+      return new Response(
+        JSON.stringify({ success: true, pdfUrl: signed.signedUrl, pdfFileName: safeName }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!paymentId) {
       return new Response(
