@@ -91,7 +91,7 @@ export default function Invoice() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
+  
 
   useEffect(() => {
     if (!token) {
