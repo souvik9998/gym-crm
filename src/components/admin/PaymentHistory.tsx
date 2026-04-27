@@ -446,6 +446,15 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
 
   return (
     <div className="space-y-2 md:space-y-4">
+      {/* Search by name or phone */}
+      <SearchInput
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        onClear={() => setSearchQuery("")}
+        placeholder="Search by name or phone…"
+        size="sm"
+      />
+
       {/* Filters - Compact mobile layout */}
       <div className="space-y-2 md:space-y-0 md:flex md:flex-wrap md:gap-3 md:items-end">
         {/* Date Range - Full width on mobile, auto on desktop */}
