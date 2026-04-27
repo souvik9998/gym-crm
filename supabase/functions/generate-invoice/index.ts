@@ -737,6 +737,7 @@ Deno.serve(async (req) => {
       payment_date: payment.created_at,
       transaction_id: transactionId,
       pdf_url: pdfUrl,
+      pdf_storage_path: filePath,
       footer_message: footerMessage,
       invoice_terms: invoiceTerms || null,
       invoice_brand_name: invoiceBrandName || gymName,
@@ -759,6 +760,7 @@ Deno.serve(async (req) => {
         .insert({
           invoice_number: invoiceNumber,
           payment_id: paymentId,
+          public_token: publicToken,
           ...invoicePayload,
         });
 
@@ -767,8 +769,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Branded invoice link
-    const invoiceLink = `${getPublicInvoiceOrigin(req)}/invoice/${invoiceNumber}`;
+    // Public link uses the unguessable token instead of the sequential invoice number.
+    const invoiceLink = `${getPublicInvoiceOrigin(req)}/invoice/${publicToken}`;
 
     // Send via WhatsApp if requested
     let whatsappSent = false;
