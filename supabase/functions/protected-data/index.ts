@@ -1307,7 +1307,7 @@ Deno.serve(async (req) => {
             supabase.from("members").select("id, branch_id").in("branch_id", branchIds),
             supabase.from("members").select("id, branch_id").in("branch_id", branchIds)
               .gte("created_at", `${from}T00:00:00`).lte("created_at", `${to}T23:59:59`),
-            supabase.from("subscriptions").select("id, branch_id").in("branch_id", branchIds).eq("status", "active"),
+            supabase.from("subscriptions").select("member_id, branch_id").in("branch_id", branchIds).eq("status", "active"),
             supabase.from("subscriptions").select("id, branch_id").in("branch_id", branchIds).eq("status", "expired")
               .gte("end_date", from).lte("end_date", to),
             supabase.from("pt_subscriptions").select("id, branch_id").in("branch_id", branchIds)
