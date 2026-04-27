@@ -269,6 +269,12 @@ async function getZavuTemplateVariableCount(apiKey: string, templateId: string):
       return null;
     }
     const body = await res.json().catch(() => null) as Record<string, unknown> | null;
+    console.log("[whatsapp-provider] zavu template metadata", {
+      templateId,
+      keys: body ? Object.keys(body).slice(0, 12) : [],
+      status: (body?.template as Record<string, unknown> | undefined)?.status ?? body?.status,
+      variables: (body?.template as Record<string, unknown> | undefined)?.variables ?? body?.variables,
+    });
     const template = (body?.template ?? body) as Record<string, unknown> | null;
     const variables = template?.variables;
     const count = Array.isArray(variables) && variables.length > 0
