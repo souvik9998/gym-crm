@@ -597,6 +597,13 @@ Deno.serve(async (req) => {
     if (dailyPassSubscription?.duration_days && !packageName.includes("Day")) packageName += ` (${dailyPassSubscription.duration_days} Days)`;
     if (subscription?.is_custom_package && subscription?.custom_days) packageName += ` (${subscription.custom_days} Days)`;
 
+    const { displayFileName, storageFileName } = buildInvoicePdfNames(
+      invoiceNumber,
+      customerName,
+      invoiceBrandName || gymName || branchName,
+      paymentId,
+    );
+
     // Generate PDF
     const pdfBytes = await generateInvoicePDF({
       invoiceNumber,
@@ -612,7 +619,7 @@ Deno.serve(async (req) => {
       memberId: member?.id || dailyPassUser?.id || "",
       paymentDate,
       amount: totalPaid,
-      paymentMode: payment.payment_mode === "online" ? "Online (Razorpay)" : payment.payment_mode === "upi" ? "UPI" : payment.payment_mode === "card" ? "Card" : payment.payment_mode === "bank_transfer" ? "Bank Transfer" : "Cash",
+      paymentMode: formatPaymentMode(payment.payment_mode),
       paymentType: payment.payment_type || "gym_membership",
       razorpayPaymentId: transactionId,
       packageName,
@@ -631,14 +638,13 @@ Deno.serve(async (req) => {
     });
 
     // Upload to storage
-    const fileName = `${invoiceNumber.replace(/[^a-zA-Z0-9-]/g, "_")}.pdf`;
-    const filePath = `${effectiveBranchId || "general"}/${fileName}`;
+    const filePath = `${effectiveBranchId || "general"}/${storageFileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("invoices")
       .upload(filePath, pdfBytes, {
         contentType: "application/pdf",
-        upsert: true,
+        upsert: false,
       });
 
     if (uploadError) {
