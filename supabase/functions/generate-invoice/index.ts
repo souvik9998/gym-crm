@@ -633,6 +633,7 @@ Deno.serve(async (req) => {
 
     // Send via WhatsApp if requested
     let whatsappSent = false;
+    let whatsappError: string | null = null;
     if (sendViaWhatsApp && customerPhone) {
       let whatsappEnabled = true;
       if (effectiveBranchId) {
@@ -676,6 +677,7 @@ Deno.serve(async (req) => {
           });
 
           whatsappSent = result.success;
+          whatsappError = result.success ? null : (result.error || "WhatsApp provider rejected the message");
 
           const logData: any = {
             recipient_phone: customerPhone,
@@ -683,6 +685,7 @@ Deno.serve(async (req) => {
             notification_type: "invoice",
             message_content: message.substring(0, 500),
             status: whatsappSent ? "sent" : "failed",
+            error_message: whatsappError,
             is_manual: true,
             branch_id: effectiveBranchId || null,
           };
@@ -691,6 +694,7 @@ Deno.serve(async (req) => {
 
           await supabase.from("whatsapp_notifications").insert(logData);
         } catch (err: any) {
+          whatsappError = err?.message || "WhatsApp send failed";
           console.error("WhatsApp send error:", err);
         }
       }
@@ -703,6 +707,7 @@ Deno.serve(async (req) => {
         invoiceUrl: invoiceLink,
         pdfUrl: pdfUrl,
         whatsappSent,
+        whatsappError,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
