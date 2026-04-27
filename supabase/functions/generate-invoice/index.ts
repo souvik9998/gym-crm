@@ -649,6 +649,7 @@ Deno.serve(async (req) => {
 
     if (uploadError) {
       console.error("Upload error:", uploadError);
+      throw new Error(`Failed to upload invoice PDF: ${uploadError.message}`);
     }
 
     // Get public URL for PDF
@@ -758,6 +759,7 @@ Deno.serve(async (req) => {
               branch_name: branchName || gymName,
             },
             fallbackText: message,
+            document: pdfUrl ? { url: pdfUrl, filename: displayFileName, mimeType: "application/pdf" } : undefined,
             branchId: effectiveBranchId,
           });
 
