@@ -72,7 +72,7 @@ export const ZAVU_TEMPLATE_VARIABLES: Record<MessageCategory, string[]> = {
   promotional:         ["name", "branch_name"],
   staff_credentials:   ["name", "phone", "password", "role", "branches", "branch_name"],
   event_confirmation:  ["name", "event_title", "event_date", "branch_name"],
-  invoice_link:        ["name", "invoice_number", "invoice_url", "branch_name"],
+  invoice_link:        ["invoice_number", "name", "amount", "payment_date", "package_name", "valid_till", "branch_name"],
   check_in:            ["name", "check_in_time", "branch_name"],
   password_reset:      ["name", "reset_link", "branch_name"],
   daily_summary_admin: ["summary_text"],
@@ -269,14 +269,6 @@ async function getZavuTemplateVariableCount(apiKey: string, templateId: string):
       return null;
     }
     const body = await res.json().catch(() => null) as Record<string, unknown> | null;
-    console.log("[whatsapp-provider] zavu template metadata", {
-      templateId,
-      keys: body ? Object.keys(body).slice(0, 12) : [],
-      status: (body?.template as Record<string, unknown> | undefined)?.status ?? body?.status,
-      variables: (body?.template as Record<string, unknown> | undefined)?.variables ?? body?.variables,
-      body: (body?.template as Record<string, unknown> | undefined)?.body ?? body?.body,
-      whatsappBody: (body?.template as Record<string, unknown> | undefined)?.whatsappBody ?? body?.whatsappBody,
-    });
     const template = (body?.template ?? body) as Record<string, unknown> | null;
     const variables = template?.variables;
     const count = Array.isArray(variables) && variables.length > 0
