@@ -459,6 +459,17 @@ async function sendViaZavu(
       }
     }
 
+    // Template accepted. If the caller supplied a CTA URL (e.g. invoice link),
+    // follow up with a cta_url session message so the user gets a tappable
+    // button even when the approved template body has no link slot.
+    // Failure of the follow-up does NOT fail the overall send.
+    if (ctaUrl?.url) {
+      const followUp = await sendZavuCtaUrl(apiKey, senderId, toPhone, ctaUrl);
+      if (!followUp.ok) {
+        console.warn("[whatsapp-provider] Zavu cta_url follow-up failed:", followUp.error);
+      }
+    }
+
     return { success: true, provider: "zavu" };
   } catch (err: unknown) {
     return { success: false, provider: "zavu", error: (err as Error).message };
