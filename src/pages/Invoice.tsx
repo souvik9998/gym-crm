@@ -11,6 +11,7 @@ import PoweredByBadge from "@/components/PoweredByBadge";
 interface InvoiceData {
   id: string;
   invoice_number: string;
+  public_token: string;
   customer_name: string;
   customer_phone: string | null;
   gym_name: string;
@@ -32,7 +33,7 @@ interface InvoiceData {
   payment_mode: string | null;
   payment_date: string | null;
   transaction_id: string | null;
-  pdf_url: string | null;
+  has_pdf: boolean;
   footer_message: string | null;
   invoice_terms: string | null;
   invoice_brand_name: string | null;
@@ -50,6 +51,7 @@ interface InvoiceData {
 const normalizeInvoiceData = (data: Record<string, unknown>): InvoiceData => ({
   id: String(data.id ?? ""),
   invoice_number: String(data.invoice_number ?? ""),
+  public_token: String(data.public_token ?? ""),
   customer_name: String(data.customer_name ?? ""),
   customer_phone: (data.customer_phone as string | null) ?? null,
   gym_name: String(data.gym_name ?? ""),
@@ -71,7 +73,7 @@ const normalizeInvoiceData = (data: Record<string, unknown>): InvoiceData => ({
   payment_mode: (data.payment_mode as string | null) ?? null,
   payment_date: (data.payment_date as string | null) ?? null,
   transaction_id: (data.transaction_id as string | null) ?? null,
-  pdf_url: (data.pdf_url as string | null) ?? null,
+  has_pdf: Boolean(data.has_pdf ?? false),
   footer_message: (data.footer_message as string | null) ?? null,
   invoice_terms: (data.invoice_terms as string | null) ?? null,
   invoice_brand_name: (data.invoice_brand_name as string | null) ?? null,
@@ -83,7 +85,8 @@ const normalizeInvoiceData = (data: Record<string, unknown>): InvoiceData => ({
 });
 
 export default function Invoice() {
-  const { invoiceId } = useParams<{ invoiceId: string }>();
+  // Route param is the unguessable public token (≥48 hex chars).
+  const { invoiceId: token } = useParams<{ invoiceId: string }>();
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,37 +94,36 @@ export default function Invoice() {
   const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
 
   useEffect(() => {
-    if (!invoiceId) {
+    if (!token) {
       setError("Invalid invoice link");
       setLoading(false);
       return;
     }
 
-    // Validate format
-    if (!/^[A-Za-z0-9-]+$/.test(invoiceId)) {
-      setError("Invalid invoice ID");
+    // Tokens are 48 hex chars. Reject anything else early to avoid wasted RPC calls.
+    if (!/^[a-f0-9]{32,}$/i.test(token)) {
+      setError("Invalid or expired invoice link");
       setLoading(false);
       return;
     }
 
     fetchInvoice();
-  }, [invoiceId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const fetchInvoice = async () => {
     try {
       const { data, error: fetchError } = await supabase
-        .from("invoices")
-        .select("*")
-        .eq("invoice_number", invoiceId)
-        .maybeSingle();
+        .rpc("get_invoice_by_public_token", { _token: token });
 
       if (fetchError) throw fetchError;
-      if (!data) {
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) {
         setError("Invoice not found");
         return;
       }
 
-      setInvoice(normalizeInvoiceData(data as Record<string, unknown>));
+      setInvoice(normalizeInvoiceData(row as Record<string, unknown>));
     } catch (err: any) {
       setError("Unable to load invoice");
     } finally {
