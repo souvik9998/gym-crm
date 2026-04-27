@@ -972,6 +972,7 @@ async function sendWhatsAppInvoice(
         package_name: payment.payment_type || "Gym Membership",
         valid_till: "-",
         branch_name: "Your Gym",
+        invoice_link: invoiceLink,
       },
       fallbackText: message,
       branchId: effectiveBranchId,
