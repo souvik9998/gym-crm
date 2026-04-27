@@ -78,7 +78,8 @@ export const ZAVU_TEMPLATE_VARIABLES: Record<MessageCategory, string[]> = {
   payment_details:     ["name", "amount", "payment_date", "payment_mode", "expiry_date", "branch_name"],
   admin_add_member:    ["name", "expiry_date", "branch_name"],
   promotional:         ["name", "branch_name"],
-  staff_credentials:   ["name", "phone", "password", "role", "branches", "branch_name"],
+  // Template: gk_staff_credentials — {{1}}=name, {{2}}=branch_name, {{3}}=role, {{4}}=password, {{5}}=phone, {{6}}=branch_name
+  staff_credentials:   ["name", "branch_name", "role", "password", "phone", "branch_name"],
   event_confirmation:  ["name", "event_title", "event_date", "branch_name"],
   // Template: gk_invoice_link_only — {{1}}=name, {{2}}=amount, {{3}}=date, {{4}}=invoice_link, {{5}}=team_name
   invoice_link:        ["name", "amount", "payment_date", "invoice_link", "branch_name"],
