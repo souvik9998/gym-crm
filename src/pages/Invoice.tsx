@@ -100,21 +100,48 @@ export default function Invoice() {
       return;
     }
 
-    // Tokens are 48 hex chars. Reject anything else early to avoid wasted RPC calls.
+    // Tokens are 48 hex chars. Legacy invoice-number URLs are only resolved for
+    // already-authenticated staff/admin users through normal RLS; public old links stay blocked.
     if (!/^[a-f0-9]{32,}$/i.test(token)) {
-      setError("Invalid or expired invoice link");
-      setLoading(false);
+      resolveLegacyInvoiceNumber(token);
       return;
     }
 
-    fetchInvoice();
+    fetchInvoice(token);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const fetchInvoice = async () => {
+  const resolveLegacyInvoiceNumber = async (invoiceNumber: string) => {
+    try {
+      if (!/^INV-[A-Z0-9-]+$/i.test(invoiceNumber)) {
+        setError("Invalid or expired invoice link");
+        return;
+      }
+
+      const { data, error: lookupError } = await supabase
+        .from("invoices")
+        .select("public_token")
+        .eq("invoice_number", invoiceNumber)
+        .maybeSingle();
+
+      if (lookupError || !data?.public_token) {
+        setError("Invalid or expired invoice link");
+        return;
+      }
+
+      window.history.replaceState(null, "", `/invoice/${data.public_token}`);
+      await fetchInvoice(data.public_token);
+    } catch {
+      setError("Invalid or expired invoice link");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchInvoice = async (lookupToken = token) => {
     try {
       const { data, error: fetchError } = await supabase
-        .rpc("get_invoice_by_public_token", { _token: token });
+        .rpc("get_invoice_by_public_token", { _token: lookupToken });
 
       if (fetchError) throw fetchError;
       const row = Array.isArray(data) ? data[0] : data;
