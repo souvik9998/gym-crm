@@ -745,6 +745,24 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to upload invoice PDF: ${uploadError.message}`);
     }
 
+    // Storage optimization: remove any legacy timestamped duplicates of this invoice
+    // (created by the previous "always-new-filename" version). One canonical PDF per invoice.
+    try {
+      const folder = effectiveBranchId || "general";
+      const safeInvoiceNo = sanitizeFilePart(invoiceNumber, "invoice");
+      const { data: siblings } = await supabase.storage
+        .from("invoices")
+        .list(folder, { limit: 200, search: safeInvoiceNo });
+      const stale = (siblings || [])
+        .map((f: { name: string }) => `${folder}/${f.name}`)
+        .filter((p: string) => p !== filePath && p.includes(safeInvoiceNo));
+      if (stale.length > 0) {
+        await supabase.storage.from("invoices").remove(stale);
+      }
+    } catch (cleanupErr) {
+      console.warn("Stale invoice PDF cleanup skipped:", cleanupErr);
+    }
+
     // Bucket is private; issue a long-lived signed URL for WhatsApp delivery.
     // The Invoice page itself fetches a fresh signed URL on demand via this function.
     const { data: signed } = await supabase.storage
