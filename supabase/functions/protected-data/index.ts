@@ -1339,7 +1339,16 @@ Deno.serve(async (req) => {
             expensesByBranch: groupSum(expensesRes.data || []),
             totalMembersByBranch: groupCount(totalMembersRes.data || []),
             newMembersByBranch: groupCount(newMembersRes.data || []),
-            activeMembersByBranch: groupCount(activeSubsRes.data || []),
+            activeMembersByBranch: (() => {
+              const map: Record<string, Set<string>> = {};
+              for (const row of (activeSubsRes.data || []) as any[]) {
+                if (!map[row.branch_id]) map[row.branch_id] = new Set();
+                map[row.branch_id].add(row.member_id);
+              }
+              const out: Record<string, number> = {};
+              for (const k in map) out[k] = map[k].size;
+              return out;
+            })(),
             churnedByBranch: groupCount(churnedRes.data || []),
             ptSubsByBranch: groupCount(ptSubsRes.data || []),
             staffByBranch: groupCount(staffCountRes.data || []),
