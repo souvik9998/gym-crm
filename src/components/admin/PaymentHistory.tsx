@@ -322,12 +322,12 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
         body: { paymentId, branchId: currentBranch?.id, sendViaWhatsApp: false },
       });
 
-      if (error || !genData?.success || !genData.invoiceNumber) {
+      if (error || !genData?.success || !genData.publicToken) {
         toast.error("Failed to generate invoice");
         return;
       }
 
-      window.open(`/invoice/${genData.invoiceNumber}`, "_blank");
+      window.open(`/invoice/${genData.publicToken}`, "_blank");
     } catch {
       toast.error("Failed to load invoice");
     }
@@ -337,12 +337,12 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     try {
       const { data } = await supabase
         .from("invoices")
-        .select("invoice_number")
+        .select("public_token")
         .eq("payment_id", paymentId)
         .maybeSingle();
       
-      if (data?.invoice_number) {
-        const url = buildPublicUrl(`/invoice/${data.invoice_number}`, customDomain?.hostname);
+      if (data?.public_token) {
+        const url = buildPublicUrl(`/invoice/${data.public_token}`, customDomain?.hostname);
         await navigator.clipboard.writeText(url);
         toast.success("Invoice link copied!");
       } else {
@@ -350,8 +350,8 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
         const { data: genData, error } = await supabase.functions.invoke("generate-invoice", {
           body: { paymentId, branchId: currentBranch?.id, sendViaWhatsApp: false },
         });
-        if (!error && genData?.invoiceNumber) {
-          const url = buildPublicUrl(`/invoice/${genData.invoiceNumber}`, customDomain?.hostname);
+        if (!error && genData?.publicToken) {
+          const url = buildPublicUrl(`/invoice/${genData.publicToken}`, customDomain?.hostname);
           await navigator.clipboard.writeText(url);
           toast.success("Invoice link copied!");
         } else {
@@ -367,7 +367,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     try {
       const { data } = await supabase
         .from("invoices")
-        .select("pdf_url, invoice_number")
+        .select("public_token, invoice_number")
         .eq("payment_id", paymentId)
         .maybeSingle();
       
@@ -381,28 +381,28 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
         document.body.removeChild(link);
       };
 
-      if (data?.pdf_url) {
-        downloadPdf(data.pdf_url, data.invoice_number || "invoice");
+      if (data?.public_token) {
+        const { data: signed, error: signError } = await supabase.functions.invoke("generate-invoice", {
+          body: { action: "sign_pdf", publicToken: data.public_token },
+        });
+        if (!signError && signed?.success && signed.pdfUrl) {
+          downloadPdf(signed.pdfUrl, signed.pdfFileName?.replace(/\.pdf$/i, "") || data.invoice_number || "invoice");
+          return;
+        }
+        toast.info("Refreshing invoice PDF...");
       } else {
         toast.info("Generating PDF...");
+      }
+
+      {
         const { data: genData, error } = await supabase.functions.invoke("generate-invoice", {
           body: { paymentId, branchId: currentBranch?.id, sendViaWhatsApp: false },
         });
         if (!error && genData?.success) {
           if (genData.pdfUrl) {
-            downloadPdf(genData.pdfUrl, genData.invoiceNumber || "invoice");
-          } else if (genData.invoiceNumber) {
-            // Fetch the pdf_url from the newly created invoice
-            const { data: newInvoice } = await supabase
-              .from("invoices")
-              .select("pdf_url")
-              .eq("invoice_number", genData.invoiceNumber)
-              .maybeSingle();
-            if (newInvoice?.pdf_url) {
-              downloadPdf(newInvoice.pdf_url, genData.invoiceNumber);
-            } else {
-              toast.error("PDF not available");
-            }
+            downloadPdf(genData.pdfUrl, genData.pdfFileName?.replace(/\.pdf$/i, "") || genData.invoiceNumber || "invoice");
+          } else {
+            toast.error("PDF not available");
           }
         } else {
           toast.error("Failed to generate PDF");
