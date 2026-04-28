@@ -7,8 +7,8 @@
 //   - `list`       : body { branchId } → returns rows from `qstash_schedules` for that branch
 //   - `sync-tenant`: body { tenantId } → upserts schedules for every WhatsApp-enabled branch in the tenant
 //
-// Auth: requires a Supabase JWT. The user must be either super_admin or
-// tenant_admin for the target branch's tenant.
+// Each branch chooses its own reminder_time (gym_settings.reminder_time, IST).
+// The tenant-wide kill switch lives at tenant_messaging_config.qstash_scheduler_enabled.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { upsertQstashSchedule, deleteQstashSchedule } from "../_shared/qstash.ts";
@@ -22,13 +22,29 @@ const log = (event: string, data: Record<string, unknown> = {}) => {
   console.log(`[qstash-schedule-manager] ${event}`, JSON.stringify(data));
 };
 
-// 09:00 IST = 03:30 UTC, every day. Keep parity with the legacy pg_cron schedule.
-const REMINDER_CRON_UTC = "30 3 * * *";
-
 const KINDS: ("expiring_soon" | "expired")[] = ["expiring_soon", "expired"];
+const DEFAULT_REMINDER_TIME = "09:00:00";
 
 const stableScheduleId = (branchId: string, kind: string) =>
   `gymkloud-${kind}-${branchId}`;
+
+/**
+ * Convert an IST time string (HH:MM or HH:MM:SS) to a UTC daily cron expression.
+ * IST is UTC+5:30, so we subtract 5h30m and wrap modulo 24h.
+ * Example: "09:00" IST → "30 3 * * *"  (03:30 UTC daily).
+ */
+const istTimeToUtcCron = (istTime: string | null | undefined): string => {
+  const safe = (istTime || DEFAULT_REMINDER_TIME).trim();
+  const parts = safe.split(":");
+  const h = Math.max(0, Math.min(23, parseInt(parts[0] || "9", 10) || 9));
+  const m = Math.max(0, Math.min(59, parseInt(parts[1] || "0", 10) || 0));
+  // Subtract 5h30m
+  let totalMin = h * 60 + m - (5 * 60 + 30);
+  if (totalMin < 0) totalMin += 24 * 60;
+  const utcH = Math.floor(totalMin / 60);
+  const utcM = totalMin % 60;
+  return `${utcM} ${utcH} * * *`;
+};
 
 interface JsonResponse {
   status: number;
@@ -83,7 +99,8 @@ Deno.serve(async (req) => {
   let body: Record<string, unknown> = {};
   if (req.method !== "GET") {
     try {
-      body = await req.json();
+      const raw = await req.text();
+      body = raw ? JSON.parse(raw) : {};
     } catch {
       body = {};
     }
@@ -91,7 +108,7 @@ Deno.serve(async (req) => {
 
   const reminderUrl = `${SUPABASE_URL}/functions/v1/qstash-expiry-reminders`;
 
-  // -------- Authorization helper --------
+  // -------- Helpers --------
   const ensureBranchAccess = async (branchId: string): Promise<boolean> => {
     if (isSuper) return true;
     const { data: tenantId } = await admin.rpc("get_tenant_from_branch", { _branch_id: branchId });
@@ -101,6 +118,81 @@ Deno.serve(async (req) => {
       _tenant_id: tenantId,
     });
     return isAdminForTenant === true;
+  };
+
+  /**
+   * Returns true if the tenant has the QStash scheduler enabled.
+   * Defaults to TRUE when no messaging config row exists yet.
+   */
+  const isTenantSchedulerEnabled = async (tenantId: string): Promise<boolean> => {
+    const { data } = await admin
+      .from("tenant_messaging_config")
+      .select("qstash_scheduler_enabled")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    if (!data) return true;
+    return data.qstash_scheduler_enabled !== false;
+  };
+
+  /**
+   * Wipe all QStash schedules + rows for a branch.
+   */
+  const purgeBranchSchedules = async (branchId: string): Promise<void> => {
+    const { data: existing } = await admin
+      .from("qstash_schedules")
+      .select("schedule_id")
+      .eq("branch_id", branchId);
+    for (const row of existing || []) {
+      try {
+        await deleteQstashSchedule(QSTASH_TOKEN, row.schedule_id);
+      } catch (err) {
+        log("purge-delete-failed", { branchId, scheduleId: row.schedule_id, error: String(err) });
+      }
+    }
+    await admin.from("qstash_schedules").delete().eq("branch_id", branchId);
+  };
+
+  /**
+   * Upsert both schedules for one branch using its configured reminder_time.
+   */
+  const upsertBranchSchedules = async (branchId: string): Promise<Record<string, unknown>> => {
+    const { data: settings } = await admin
+      .from("gym_settings")
+      .select("reminder_time")
+      .eq("branch_id", branchId)
+      .maybeSingle();
+
+    const cron = istTimeToUtcCron(settings?.reminder_time as string | null | undefined);
+    const results: Record<string, unknown> = { cron };
+
+    for (const kind of KINDS) {
+      const scheduleId = stableScheduleId(branchId, kind);
+      try {
+        const upstreamId = await upsertQstashSchedule({
+          qstashToken: QSTASH_TOKEN,
+          scheduleId,
+          destinationUrl: reminderUrl,
+          cron,
+          body: { branchId, kind },
+        });
+        await admin.from("qstash_schedules").upsert(
+          {
+            branch_id: branchId,
+            kind,
+            schedule_id: upstreamId,
+            cron_expression: cron,
+            last_synced_at: new Date().toISOString(),
+          },
+          { onConflict: "branch_id,kind" },
+        );
+        results[kind] = { ok: true, scheduleId: upstreamId };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log("upsert-failed", { branchId, kind, error: message });
+        results[kind] = { ok: false, error: message };
+      }
+    }
+    return results;
   };
 
   // -------- Action handlers --------
@@ -126,34 +218,17 @@ Deno.serve(async (req) => {
       return json({ status: 403, body: { error: "forbidden" } });
     }
 
-    const results: Record<string, unknown> = {};
-    for (const kind of KINDS) {
-      const scheduleId = stableScheduleId(branchId, kind);
-      try {
-        const upstreamId = await upsertQstashSchedule({
-          qstashToken: QSTASH_TOKEN,
-          scheduleId,
-          destinationUrl: reminderUrl,
-          cron: REMINDER_CRON_UTC,
-          body: { branchId, kind },
-        });
-        await admin.from("qstash_schedules").upsert(
-          {
-            branch_id: branchId,
-            kind,
-            schedule_id: upstreamId,
-            cron_expression: REMINDER_CRON_UTC,
-            last_synced_at: new Date().toISOString(),
-          },
-          { onConflict: "branch_id,kind" },
-        );
-        results[kind] = { ok: true, scheduleId: upstreamId };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        log("upsert-failed", { branchId, kind, error: message });
-        results[kind] = { ok: false, error: message };
-      }
+    // Tenant kill switch: if scheduler is disabled for this tenant, treat as a delete.
+    const { data: tenantId } = await admin.rpc("get_tenant_from_branch", { _branch_id: branchId });
+    if (tenantId && !(await isTenantSchedulerEnabled(tenantId as string))) {
+      await purgeBranchSchedules(branchId);
+      return json({
+        status: 200,
+        body: { branchId, skipped: "tenant-scheduler-disabled" },
+      });
     }
+
+    const results = await upsertBranchSchedules(branchId);
     return json({ status: 200, body: { branchId, results } });
   }
 
@@ -197,7 +272,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Find branches with WhatsApp enabled and at least one expiry toggle on
+    // Tenant kill switch: wipe everything if disabled.
+    const schedulerOn = await isTenantSchedulerEnabled(tenantId);
+
     const { data: branches } = await admin
       .from("branches")
       .select("id")
@@ -208,6 +285,17 @@ Deno.serve(async (req) => {
     const branchIds = (branches || []).map((b) => b.id as string);
     const summary: Record<string, unknown> = {};
 
+    if (!schedulerOn) {
+      for (const branchId of branchIds) {
+        await purgeBranchSchedules(branchId);
+        summary[branchId] = { skipped: "tenant-scheduler-disabled" };
+      }
+      return json({
+        status: 200,
+        body: { tenantId, schedulerEnabled: false, branches: summary },
+      });
+    }
+
     for (const branchId of branchIds) {
       const { data: settings } = await admin
         .from("gym_settings")
@@ -217,56 +305,25 @@ Deno.serve(async (req) => {
 
       const enabled = settings?.whatsapp_enabled === true;
       const prefs = (settings?.whatsapp_auto_send as Record<string, unknown>) || {};
-      const wantsAny = enabled && (prefs.expiring_2days !== false || prefs.expired_reminder === true);
+      const wantsAny =
+        enabled &&
+        (prefs.expiring_2days !== false ||
+          prefs.expiring_today !== false ||
+          prefs.expired_reminder === true);
 
       if (!wantsAny) {
-        // Cleanup any stale schedule for this branch
-        const { data: existing } = await admin
-          .from("qstash_schedules")
-          .select("schedule_id")
-          .eq("branch_id", branchId);
-        for (const row of existing || []) {
-          try {
-            await deleteQstashSchedule(QSTASH_TOKEN, row.schedule_id);
-          } catch (err) {
-            log("sync-cleanup-failed", { branchId, error: String(err) });
-          }
-        }
-        await admin.from("qstash_schedules").delete().eq("branch_id", branchId);
-        summary[branchId] = { skipped: "disabled" };
+        await purgeBranchSchedules(branchId);
+        summary[branchId] = { skipped: "branch-disabled" };
         continue;
       }
 
-      const branchResults: Record<string, unknown> = {};
-      for (const kind of KINDS) {
-        const scheduleId = stableScheduleId(branchId, kind);
-        try {
-          const upstreamId = await upsertQstashSchedule({
-            qstashToken: QSTASH_TOKEN,
-            scheduleId,
-            destinationUrl: reminderUrl,
-            cron: REMINDER_CRON_UTC,
-            body: { branchId, kind },
-          });
-          await admin.from("qstash_schedules").upsert(
-            {
-              branch_id: branchId,
-              kind,
-              schedule_id: upstreamId,
-              cron_expression: REMINDER_CRON_UTC,
-              last_synced_at: new Date().toISOString(),
-            },
-            { onConflict: "branch_id,kind" },
-          );
-          branchResults[kind] = { ok: true };
-        } catch (err) {
-          branchResults[kind] = { ok: false, error: err instanceof Error ? err.message : String(err) };
-        }
-      }
-      summary[branchId] = branchResults;
+      summary[branchId] = await upsertBranchSchedules(branchId);
     }
 
-    return json({ status: 200, body: { tenantId, branches: summary } });
+    return json({
+      status: 200,
+      body: { tenantId, schedulerEnabled: true, branches: summary },
+    });
   }
 
   return json({ status: 400, body: { error: "unknown-action", action } });
