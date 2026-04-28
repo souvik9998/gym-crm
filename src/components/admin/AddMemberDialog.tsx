@@ -1250,7 +1250,7 @@ export const AddMemberDialog = ({
           }
         }
 
-        toast.success(selectedAction === "renew_gym_pt" ? "Membership renewed with PT" : "Membership renewed successfully");
+        // success toast handled by caller via toast.promise
       }
 
       // Add PT Only
