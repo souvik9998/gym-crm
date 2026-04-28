@@ -47,6 +47,9 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
   );
   const [togglingKey, setTogglingKey] = useState<string | null>(null);
   const [settingsId, setSettingsId] = useState<string | null>(null);
+  const [reminderTime, setReminderTime] = useState<string>("09:00");
+  const [savedReminderTime, setSavedReminderTime] = useState<string>("09:00");
+  const [savingTime, setSavingTime] = useState(false);
 
   useEffect(() => {
     if (currentBranch?.id) {
@@ -59,7 +62,7 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
 
     const { data } = await supabase
       .from("gym_settings")
-      .select("id, whatsapp_auto_send")
+      .select("id, whatsapp_auto_send, reminder_time")
       .eq("branch_id", currentBranch.id)
       .maybeSingle();
 
@@ -73,6 +76,11 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
           ...(data.whatsapp_auto_send as Record<string, any>),
         });
       }
+      // reminder_time comes back as "HH:MM:SS"; trim to "HH:MM" for the input
+      const t = (data.reminder_time as string | null) || "09:00:00";
+      const hhmm = t.slice(0, 5);
+      setReminderTime(hhmm);
+      setSavedReminderTime(hhmm);
     }
   };
 
