@@ -412,17 +412,34 @@ Deno.serve(async (req) => {
 
       // --- EXPIRING TODAY ---
       if (prefs.expiring_today !== false) {
-        const { data: expiringTodaySubs, error: expTodayErr } = await supabase
+        const { data: expiringTodaySubsRaw, error: expTodayErr } = await supabase
           .from("subscriptions")
           .select("id, member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
           .eq("end_date", todayStr)
           .eq("members.branch_id", branchId)
           .in("status", ["active", "expiring_soon"]);
 
+        // Deduplicate: skip subscriptions already reminded today for "expiring_today".
+        const candidateSubIds = (expiringTodaySubsRaw || []).map((s: any) => s.id).filter(Boolean);
+        let alreadyToday = new Set<string>();
+        if (candidateSubIds.length > 0) {
+          const { data: priorLogs } = await supabase
+            .from("whatsapp_notifications")
+            .select("subscription_id")
+            .eq("branch_id", branchId)
+            .eq("notification_type", "expiring_today")
+            .eq("status", "sent")
+            .in("subscription_id", candidateSubIds);
+          alreadyToday = new Set((priorLogs || []).map((p: any) => p.subscription_id).filter(Boolean));
+        }
+        const expiringTodaySubs = (expiringTodaySubsRaw || []).filter((s: any) => !alreadyToday.has(s.id));
+
         log("expiring-today-query", {
           branchId,
           targetDate: todayStr,
-          matched: expiringTodaySubs?.length || 0,
+          matched: expiringTodaySubsRaw?.length || 0,
+          alreadyReminded: alreadyToday.size,
+          willSend: expiringTodaySubs.length,
           error: expTodayErr?.message,
         });
 
@@ -431,8 +448,8 @@ Deno.serve(async (req) => {
 
           for (const sub of expiringTodaySubs) {
             const member = sub.members as any;
-            const message = `🚨 Hi ${member.name}!\n\nYour gym membership at *${config.gymName}* expires *TODAY*!\n\nPlease renew immediately to continue your fitness journey. 💪`;
             const todayDate = new Date(todayStr).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+            const message = `🚨 Hi ${member.name}!\n\nYour gym membership at *${config.gymName}* expires *TODAY* (${todayDate})!\n\nPlease renew immediately to continue your fitness journey. 💪`;
 
             const formattedPhone = formatPhone(member.phone);
             attemptedCount++;
@@ -445,8 +462,14 @@ Deno.serve(async (req) => {
 
             await supabase.from("whatsapp_notifications").insert({
               member_id: member.id,
+              subscription_id: sub.id,
+              recipient_name: member.name,
+              recipient_phone: formattedPhone,
+              message_content: message,
               notification_type: "expiring_today",
               status: result.ok ? "sent" : "failed",
+              error_message: result.ok ? null : (result as any).error || `provider_status=${result.status}`,
+              is_manual: isManualTrigger,
               branch_id: branchId,
             });
 
@@ -458,12 +481,6 @@ Deno.serve(async (req) => {
               sentMemberIds.push(member.id);
               // usage increment handled by sendWhatsAppForTenant
             } else {
-              failCount++;
-              stats.failed++;
-            }
-          }
-        }
-      } else {
         log("expiring-today-disabled", { branchId });
       }
 
