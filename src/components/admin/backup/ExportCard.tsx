@@ -100,7 +100,7 @@ export const ExportCard = () => {
                 Last export
               </div>
               <div className="text-sm font-semibold text-foreground truncate">
-                {lastExportAt ? new Date(lastExportAt).toLocaleString() : "Never"}
+                {lastExportAt ? new Date(lastExportAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) : "Never"}
               </div>
             </div>
           </div>

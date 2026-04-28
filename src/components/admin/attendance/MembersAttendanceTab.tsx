@@ -123,7 +123,7 @@ export const MembersAttendanceTab = () => {
 
   const formatTime = (isoStr: string | null) => {
     if (!isoStr) return "—";
-    return new Date(isoStr).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+    return new Date(isoStr).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
   };
 
   const formatDate = (dateStr: string) => {

@@ -207,14 +207,14 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
       year: "numeric",
     });
 
-    const startTime = start.toLocaleTimeString("en-IN", {
+    const startTime = start.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata",
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
     });
 
     const endTime = end
-      ? end.toLocaleTimeString("en-IN", {
+      ? end.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata",
           hour: "numeric",
           minute: "2-digit",
           hour12: true,
@@ -496,7 +496,7 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
           const customMessage = buildRegistrationWhatsAppMessage(effectivePaymentStatus, amountToPay);
           const eventDateObj = new Date(event.event_date);
           const dateStr = eventDateObj.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
-          const timeStr = eventDateObj.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+          const timeStr = eventDateObj.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
           const { error: whatsappError } = await supabase.functions.invoke("send-whatsapp", {
             body: {
               type: "event_registration",

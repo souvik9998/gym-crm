@@ -492,7 +492,7 @@ export const SimpleAttendanceTab = () => {
   const formatShortDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   const formatDayNum = (d: string) => new Date(d + "T00:00:00").getDate();
   const formatFullDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-  const formatTime = (iso: string | null) => iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true }) : null;
+  const formatTime = (iso: string | null) => iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" }) : null;
   const statusLabel = (s: AttendanceStatus | null) => s === "present" ? "Present" : s === "skipped" ? "Skipped" : s === "absent" ? "Absent" : "Not marked";
 
   // ── Mobile card-based member row ──

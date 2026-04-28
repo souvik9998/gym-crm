@@ -213,7 +213,7 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
   }, [allLogs, searchQuery]);
 
   const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-IN", {
+    return new Date(dateString).toLocaleString("en-IN", { timeZone: "Asia/Kolkata",
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -615,7 +615,7 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
                         {/* Timestamp and Status */}
                         <div className="absolute bottom-1 right-1.5 flex items-center gap-0.5">
                           <span className="text-[11px] text-[#667781] leading-none whitespace-nowrap" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-                            {new Date(selectedMessage.sent_at).toLocaleTimeString("en-IN", {
+                            {new Date(selectedMessage.sent_at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata",
                               hour: "2-digit",
                               minute: "2-digit",
                               hour12: true

@@ -275,7 +275,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
   const handleExport = () => {
     try {
       const exportData = filteredPayments.map((payment) => ({
-        Date: payment.created_at ? new Date(payment.created_at).toLocaleString("en-IN") : "-",
+        Date: payment.created_at ? new Date(payment.created_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "-",
         "Member Name": getPaymentDisplayName(payment),
         "Member Phone": getPaymentDisplayPhone(payment),
         "Event Name": getPaymentEventName(payment) || "-",
@@ -721,6 +721,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                             day: "2-digit",
                             month: "short",
                             year: "numeric",
+                            timeZone: "Asia/Kolkata",
                           })
                         : "-"}
                     </div>

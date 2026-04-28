@@ -82,7 +82,7 @@ interface Props {
 
 const formatDateTime = (s: string | null) => {
   if (!s) return "—";
-  return new Date(s).toLocaleString("en-IN", {
+  return new Date(s).toLocaleString("en-IN", { timeZone: "Asia/Kolkata",
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -93,7 +93,7 @@ const formatDateTime = (s: string | null) => {
 
 const formatTime = (s: string | null) => {
   if (!s) return "—";
-  return new Date(s).toLocaleTimeString("en-IN", {
+  return new Date(s).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata",
     hour: "2-digit",
     minute: "2-digit",
   });

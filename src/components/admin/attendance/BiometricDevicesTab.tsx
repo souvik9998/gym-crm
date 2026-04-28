@@ -111,7 +111,7 @@ function DevicesSection({ branchId }: { branchId?: string }) {
 
   const formatTime = (iso: string | null) => {
     if (!iso) return "Never";
-    return new Date(iso).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true });
+    return new Date(iso).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
   };
 
   return (
@@ -431,7 +431,7 @@ function SyncLogsSection({ branchId }: { branchId?: string }) {
   });
 
   const formatTime = (iso: string) =>
-    new Date(iso).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true });
+    new Date(iso).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
 
   return (
     <Card className="border-0 shadow-sm">

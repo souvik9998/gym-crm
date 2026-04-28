@@ -1134,7 +1134,7 @@ export const StaffTrainersTab = ({
                               label="Last Login"
                               value={
                                 trainer.last_login_at
-                                  ? new Date(trainer.last_login_at).toLocaleString("en-IN", {
+                                  ? new Date(trainer.last_login_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata",
                                       day: "2-digit",
                                       month: "short",
                                       hour: "2-digit",

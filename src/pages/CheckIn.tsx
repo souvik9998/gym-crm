@@ -177,7 +177,7 @@ const CheckIn = () => {
 
   const formatTime = (isoStr: string) => {
     if (!isoStr) return "";
-    return new Date(isoStr).toLocaleTimeString("en-IN", {
+    return new Date(isoStr).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata",
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,

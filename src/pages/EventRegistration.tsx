@@ -51,10 +51,10 @@ async function sendEventWhatsApp(params: {
   selectedItems?: { name: string; price: number }[];
 }) {
   try {
-    const dateStr = new Date(params.eventDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
-    const timeStr = new Date(params.eventDate).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+    const dateStr = new Date(params.eventDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" });
+    const timeStr = new Date(params.eventDate).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
     const endDateStr = params.eventEndDate
-      ? new Date(params.eventEndDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
+      ? new Date(params.eventEndDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" })
       : null;
     const gymName = params.branchName || "Your Gym";
 

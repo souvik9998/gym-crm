@@ -157,7 +157,7 @@ export function ManualAutomationTriggers() {
                     {!r.ok ? "Failed" : r.skipped ? "Skipped" : "Success"}
                   </Badge>
                 </div>
-                <p className="text-[10px] text-muted-foreground">{new Date(r.ranAt).toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground">{new Date(r.ranAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}</p>
                 {r.ok ? (
                   !r.skipped && (
                     <div className="flex flex-wrap gap-1.5 pt-0.5">

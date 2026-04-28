@@ -282,7 +282,7 @@ const AdminDashboard = () => {
             Gender: user.gender || "-", "Package Name": sub?.package_name || "-",
             "Duration (Days)": sub?.duration_days || "-", "Start Date": sub?.start_date || "-",
             "End Date": sub?.end_date || "-", Price: sub?.price ? `₹${sub.price}` : "-",
-            Status: sub?.status || "-", "Created At": user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN") : "-",
+            Status: sub?.status || "-", "Created At": user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }) : "-",
           };
         });
         exportToExcel(exportData, "daily_pass_users", "Daily Pass");
@@ -300,7 +300,7 @@ const AdminDashboard = () => {
           switch (t) { case "gym_and_pt": return "Gym + PT"; case "pt_only": case "pt": return "PT"; case "gym_membership": return "Gym"; default: return t || "-"; }
         };
         const exportData = (payments || []).map((p: any) => ({
-          Date: p.created_at ? new Date(p.created_at).toLocaleString("en-IN") : "-",
+          Date: p.created_at ? new Date(p.created_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "-",
           "Member Name": p.member?.name || p.daily_pass_user?.name || "-",
           "Member Phone": p.member?.phone || p.daily_pass_user?.phone || "-",
           "Payment Type": getTypeText(p.payment_type),
