@@ -48,6 +48,7 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { supabase } from "@/integrations/supabase/client";
 import { useInfiniteWhatsAppLogsQuery, type WhatsAppLog } from "@/hooks/queries";
 import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
+import SchedulerRunsTab from "./SchedulerRunsTab";
 
 interface WhatsAppStats {
   totalMessages: number;
