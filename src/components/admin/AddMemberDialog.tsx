@@ -2318,14 +2318,36 @@ export const AddMemberDialog = ({
               ) : (
                 <Button
                   type="button"
-                  onClick={isExistingMemberAction ? handleExistingMemberSubmit : handleSubmit}
+                  onClick={() => {
+                    const isRenew = isExistingMemberAction;
+                    const loadingMsg = isRenew
+                      ? (selectedAction === "add_pt" ? "Adding personal training…" : "Renewing membership…")
+                      : "Adding member…";
+                    const successMsg = isRenew
+                      ? (selectedAction === "add_pt"
+                          ? "Personal training added"
+                          : selectedAction === "renew_gym_pt"
+                            ? "Membership renewed with PT"
+                            : "Membership renewed")
+                      : "Member added successfully";
+                    toast.promise(
+                      isRenew ? handleExistingMemberSubmit() : handleSubmit(),
+                      {
+                        loading: loadingMsg,
+                        success: successMsg,
+                        error: (err: any) => err?.friendly
+                          ? err.message
+                          : (err?.message || "Something went wrong. Please try again."),
+                      }
+                    );
+                  }}
                   className="flex-1 h-11 rounded-xl text-sm font-medium bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98] transition-all duration-200 shadow-sm"
                   disabled={isLoading || !isStep3Valid}
                 >
                   {isLoading ? (
                     <>
                       <ButtonSpinner className="mr-2" />
-                      {isExistingMemberAction ? "Processing..." : "Adding..."}
+                      {isExistingMemberAction ? "Processing…" : "Adding…"}
                     </>
                   ) : (
                     <>
