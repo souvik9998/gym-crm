@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
-import { ArrowPathIcon, ClockIcon, BoltIcon, TrashIcon, BuildingStorefrontIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, ClockIcon, BoltIcon, TrashIcon, BuildingStorefrontIcon, PowerIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 
 interface ScheduleRow {
@@ -25,6 +26,7 @@ interface BranchSettings {
   branch_id: string;
   whatsapp_enabled: boolean;
   whatsapp_auto_send: Record<string, unknown> | null;
+  reminder_time: string | null;
 }
 
 interface QstashSchedulerStatusProps {
@@ -38,11 +40,22 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [perBranchBusy, setPerBranchBusy] = useState<Record<string, "upsert" | "delete" | null>>({});
+  const [schedulerEnabled, setSchedulerEnabled] = useState<boolean>(true);
+  const [togglingScheduler, setTogglingScheduler] = useState(false);
 
   const branchIds = branches.map((b) => b.id);
 
   const fetchData = async () => {
     setLoading(true);
+
+    // Tenant-level scheduler flag (defaults to true if no row exists)
+    const { data: tmc } = await supabase
+      .from("tenant_messaging_config")
+      .select("qstash_scheduler_enabled")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    setSchedulerEnabled(tmc?.qstash_scheduler_enabled !== false);
+
     if (branchIds.length === 0) {
       setRows([]);
       setSettingsByBranch(new Map());
@@ -54,7 +67,7 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
       supabase.from("qstash_schedules").select("*").in("branch_id", branchIds),
       supabase
         .from("gym_settings")
-        .select("branch_id, whatsapp_enabled, whatsapp_auto_send")
+        .select("branch_id, whatsapp_enabled, whatsapp_auto_send, reminder_time")
         .in("branch_id", branchIds),
     ]);
 
@@ -67,6 +80,42 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
     }
     setSettingsByBranch(map);
     setLoading(false);
+  };
+
+  const handleToggleScheduler = async (next: boolean) => {
+    setTogglingScheduler(true);
+    const previous = schedulerEnabled;
+    setSchedulerEnabled(next); // optimistic
+
+    const { error } = await supabase
+      .from("tenant_messaging_config")
+      .upsert(
+        { tenant_id: tenantId, qstash_scheduler_enabled: next },
+        { onConflict: "tenant_id" },
+      );
+
+    if (error) {
+      setSchedulerEnabled(previous);
+      toast.error("Failed to update scheduler toggle");
+      setTogglingScheduler(false);
+      return;
+    }
+
+    // Re-sync to immediately wipe (or restore) all branch schedules
+    try {
+      await supabase.functions.invoke("qstash-schedule-manager?action=sync-tenant", {
+        body: { tenantId },
+      });
+      toast.success(
+        next
+          ? "Auto reminders enabled — schedules created for all eligible branches"
+          : "Auto reminders disabled — all schedules removed",
+      );
+    } catch (err) {
+      toast.error("Saved, but re-sync failed. Use 'Re-sync tenant' to retry.");
+    }
+    await fetchData();
+    setTogglingScheduler(false);
   };
 
   useEffect(() => {
@@ -132,20 +181,61 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
           <CardDescription className="mt-1.5 space-y-1">
             <span className="block">
               Each branch gets its own pair of QStash schedules — one for <strong>Expiring Soon</strong> and one for{" "}
-              <strong>Expired</strong> reminders. Both fire daily at <strong>09:00 IST</strong> and respect that branch's
-              individual WhatsApp settings (toggles, days-before, days-after).
+              <strong>Expired</strong> reminders. The exact send time is controlled by each branch's
+              <strong> Daily Reminder Time</strong> in their WhatsApp settings (defaults to 09:00 IST).
             </span>
             <span className="block text-xs">
               {branchesWithSchedules} of {branches.length} branches active · {totalSchedules} schedules registered
             </span>
           </CardDescription>
         </div>
-        <Button onClick={handleSyncTenant} disabled={syncing || branches.length === 0} variant="outline" size="sm">
+        <Button onClick={handleSyncTenant} disabled={syncing || branches.length === 0 || !schedulerEnabled} variant="outline" size="sm">
           <ArrowPathIcon className={`w-4 h-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
           {syncing ? "Syncing..." : "Re-sync tenant"}
         </Button>
       </CardHeader>
       <CardContent>
+        {/* Tenant-wide kill switch */}
+        <div
+          className={`mb-4 p-3 lg:p-4 rounded-lg border transition-all ${
+            schedulerEnabled
+              ? "border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/10"
+              : "border-amber-500/40 bg-amber-50/50 dark:bg-amber-950/10"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-start gap-2 flex-1 min-w-0">
+              <PowerIcon
+                className={`w-5 h-5 mt-0.5 shrink-0 ${
+                  schedulerEnabled ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                }`}
+              />
+              <div className="space-y-0.5 min-w-0">
+                <p className="text-sm font-semibold">Automated WhatsApp Reminders</p>
+                <p className="text-[11px] lg:text-xs text-muted-foreground">
+                  {schedulerEnabled
+                    ? "Daily QStash schedules will run for every branch in this tenant that has WhatsApp + reminder toggles enabled."
+                    : "All QStash schedules for this tenant are paused. Members will not receive any automated expiry reminders until you turn this back on."}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Badge
+                variant={schedulerEnabled ? "default" : "secondary"}
+                className={`text-[10px] ${schedulerEnabled ? "bg-emerald-600 hover:bg-emerald-600" : ""}`}
+              >
+                {schedulerEnabled ? "ON" : "OFF"}
+              </Badge>
+              <Switch
+                checked={schedulerEnabled}
+                disabled={togglingScheduler}
+                onCheckedChange={handleToggleScheduler}
+                aria-label="Toggle automated WhatsApp scheduler"
+              />
+            </div>
+          </div>
+        </div>
+
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : branches.length === 0 ? (
@@ -180,6 +270,12 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
                     <div className="flex items-center gap-2 flex-wrap">
                       <BuildingStorefrontIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                       <p className="text-sm font-medium truncate">{branch.name}</p>
+                      {settings?.reminder_time && (
+                        <Badge variant="outline" className="text-[10px] gap-1 font-mono">
+                          <ClockIcon className="w-3 h-3" />
+                          {(settings.reminder_time as string).slice(0, 5)} IST
+                        </Badge>
+                      )}
                       {!waEnabled && (
                         <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-700 dark:text-amber-300">
                           WhatsApp OFF
@@ -232,9 +328,15 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
                       size="sm"
                       variant="outline"
                       className="h-7 text-[11px]"
-                      disabled={!!busy || !wantsAny}
+                      disabled={!!busy || !wantsAny || !schedulerEnabled}
                       onClick={() => handleBranchAction(branch.id, "upsert")}
-                      title={wantsAny ? "Create or refresh this branch's schedules" : "Enable WhatsApp + a reminder toggle in branch settings first"}
+                      title={
+                        !schedulerEnabled
+                          ? "Tenant scheduler is disabled — turn it on above first"
+                          : wantsAny
+                          ? "Create or refresh this branch's schedules"
+                          : "Enable WhatsApp + a reminder toggle in branch settings first"
+                      }
                     >
                       <BoltIcon className="w-3 h-3 mr-1" />
                       {busy === "upsert" ? "Syncing..." : "Sync"}

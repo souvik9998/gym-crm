@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { useBranch } from "@/contexts/BranchContext";
 import { WHATSAPP_AUTO_SEND_DEFAULTS, type WhatsAppAutoSendType } from "@/utils/whatsappAutoSend";
-import { Cog6ToothIcon } from "@heroicons/react/24/outline";
+import { Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/outline";
 
 interface MessageTypeConfig {
   key: WhatsAppAutoSendType;
@@ -45,6 +47,9 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
   );
   const [togglingKey, setTogglingKey] = useState<string | null>(null);
   const [settingsId, setSettingsId] = useState<string | null>(null);
+  const [reminderTime, setReminderTime] = useState<string>("09:00");
+  const [savedReminderTime, setSavedReminderTime] = useState<string>("09:00");
+  const [savingTime, setSavingTime] = useState(false);
 
   useEffect(() => {
     if (currentBranch?.id) {
@@ -57,7 +62,7 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
 
     const { data } = await supabase
       .from("gym_settings")
-      .select("id, whatsapp_auto_send")
+      .select("id, whatsapp_auto_send, reminder_time")
       .eq("branch_id", currentBranch.id)
       .maybeSingle();
 
@@ -71,6 +76,11 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
           ...(data.whatsapp_auto_send as Record<string, any>),
         });
       }
+      // reminder_time comes back as "HH:MM:SS"; trim to "HH:MM" for the input
+      const t = (data.reminder_time as string | null) || "09:00:00";
+      const hhmm = t.slice(0, 5);
+      setReminderTime(hhmm);
+      setSavedReminderTime(hhmm);
     }
   };
 
@@ -133,6 +143,31 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
     }
   };
 
+  const handleSaveReminderTime = async () => {
+    if (!settingsId || !currentBranch?.id) return;
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime)) {
+      toast.error("Please enter a valid time (HH:MM, 24-hour).");
+      return;
+    }
+    setSavingTime(true);
+    const { error } = await supabase
+      .from("gym_settings")
+      .update({ reminder_time: `${reminderTime}:00` })
+      .eq("id", settingsId)
+      .eq("branch_id", currentBranch.id);
+
+    if (error) {
+      toast.error("Failed to update reminder time");
+      setSavingTime(false);
+      return;
+    }
+    setSavedReminderTime(reminderTime);
+    // Re-sync QStash schedule with the new cron
+    await syncQstashSchedules(preferences);
+    toast.success(`Daily reminders will now be sent at ${reminderTime} IST`);
+    setSavingTime(false);
+  };
+
   return (
     <Card className={cn("border-0 shadow-sm", !whatsappEnabled && "opacity-60")}>
       <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
@@ -147,6 +182,49 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-1 p-4 lg:p-6 pt-0 lg:pt-0">
+        {/* Daily reminder time picker — branch-specific */}
+        <div className="mb-3 p-3 lg:p-4 rounded-lg border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent transition-all">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-start gap-2 flex-1 min-w-0">
+              <ClockIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary mt-0.5 shrink-0" />
+              <div className="space-y-0.5 min-w-0">
+                <p className="text-xs lg:text-sm font-medium">Daily Reminder Time (IST)</p>
+                <p className="text-[10px] lg:text-xs text-muted-foreground">
+                  Set the time of day all expiry reminders go out for this branch.
+                  Each branch can pick its own time.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Input
+                type="time"
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.target.value)}
+                disabled={!whatsappEnabled || savingTime}
+                className="h-8 lg:h-9 w-[110px] text-xs lg:text-sm font-semibold tabular-nums"
+              />
+              <Button
+                size="sm"
+                onClick={handleSaveReminderTime}
+                disabled={!whatsappEnabled || savingTime || reminderTime === savedReminderTime}
+                className="h-8 lg:h-9 text-xs"
+              >
+                {savingTime ? "Saving..." : reminderTime === savedReminderTime ? "Saved" : "Save"}
+              </Button>
+            </div>
+          </div>
+          {reminderTime !== savedReminderTime && (
+            <p className="text-[10px] lg:text-xs text-amber-600 dark:text-amber-400 mt-2 ml-6 animate-fade-in">
+              Unsaved change — click Save to apply this schedule.
+            </p>
+          )}
+          {reminderTime === savedReminderTime && whatsappEnabled && (
+            <p className="text-[10px] lg:text-xs text-muted-foreground mt-2 ml-6">
+              ✓ Reminders are sent daily at <strong>{savedReminderTime} IST</strong>.
+            </p>
+          )}
+        </div>
+
         {MESSAGE_TYPES.map((type) => {
           const isEnabled = preferences[type.key] ?? WHATSAPP_AUTO_SEND_DEFAULTS[type.key];
           const showDaySelector = type.hasDaySelector && isEnabled;

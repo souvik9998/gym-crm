@@ -1271,6 +1271,7 @@ export type Database = {
           monthly_fee: number
           monthly_packages: number[] | null
           registration_field_settings: Json
+          reminder_time: string
           time_buckets: Json
           updated_at: string | null
           whatsapp_auto_send: Json
@@ -1297,6 +1298,7 @@ export type Database = {
           monthly_fee?: number
           monthly_packages?: number[] | null
           registration_field_settings?: Json
+          reminder_time?: string
           time_buckets?: Json
           updated_at?: string | null
           whatsapp_auto_send?: Json
@@ -1323,6 +1325,7 @@ export type Database = {
           monthly_fee?: number
           monthly_packages?: number[] | null
           registration_field_settings?: Json
+          reminder_time?: string
           time_buckets?: Json
           updated_at?: string | null
           whatsapp_auto_send?: Json
@@ -2983,6 +2986,7 @@ export type Database = {
           periskope_api_key_iv: string | null
           periskope_phone: string | null
           periskope_verified_at: string | null
+          qstash_scheduler_enabled: boolean
           tenant_id: string
           updated_at: string
           zavu_api_key_encrypted: string | null
@@ -2999,6 +3003,7 @@ export type Database = {
           periskope_api_key_iv?: string | null
           periskope_phone?: string | null
           periskope_verified_at?: string | null
+          qstash_scheduler_enabled?: boolean
           tenant_id: string
           updated_at?: string
           zavu_api_key_encrypted?: string | null
@@ -3015,6 +3020,7 @@ export type Database = {
           periskope_api_key_iv?: string | null
           periskope_phone?: string | null
           periskope_verified_at?: string | null
+          qstash_scheduler_enabled?: boolean
           tenant_id?: string
           updated_at?: string
           zavu_api_key_encrypted?: string | null
