@@ -546,6 +546,10 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="scheduler" className="mt-4 lg:mt-6">
+          <SchedulerRunsTab refreshKey={refreshKey} />
+        </TabsContent>
       </Tabs>
 
       {/* Message Detail Dialog - WhatsApp Style */}
