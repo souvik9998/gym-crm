@@ -291,6 +291,8 @@ Deno.serve(async (req) => {
         error: result.success ? null : (result as any).error,
         expiryDate,
       });
+    }
+  }
 
   // ----------------------------------------------------------------------------
   // EXPIRED REMINDER
