@@ -205,11 +205,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    const daysBefore =
+    const daysBeforeRaw =
       typeof prefs.expiring_days_before === "number" ? (prefs.expiring_days_before as number) : 2;
+    const daysBefore = Math.max(0, daysBeforeRaw);
+    const isToday = daysBefore === 0;
     const targetDate = new Date(today);
     targetDate.setDate(targetDate.getDate() + daysBefore);
     const targetStr = targetDate.toISOString().split("T")[0];
+
+    // Use distinct notification_type for "expiring_today" so the once-per-cycle
+    // de-dupe works correctly across both templates.
+    const notificationType = isToday ? "expiring_today" : "expiring_2days";
+    const category = isToday ? "expiring_today" : "expiring_2days";
 
     const { data: candidates } = await supabase
       .from("subscriptions")
@@ -225,7 +232,7 @@ Deno.serve(async (req) => {
         .from("whatsapp_notifications")
         .select("subscription_id")
         .eq("branch_id", branchId)
-        .eq("notification_type", "expiring_2days")
+        .eq("notification_type", notificationType)
         .eq("status", "sent")
         .in("subscription_id", candidateSubIds);
       alreadySoon = new Set((priorLogs || []).map((p: any) => p.subscription_id).filter(Boolean));
@@ -236,6 +243,7 @@ Deno.serve(async (req) => {
       branchId,
       targetDate: targetStr,
       daysBefore,
+      template: category,
       matched: candidates?.length || 0,
       alreadyReminded: alreadySoon.size,
       willSend: toSend.length,
@@ -246,7 +254,9 @@ Deno.serve(async (req) => {
       const expiryDate = new Date(sub.end_date).toLocaleDateString("en-IN", {
         day: "numeric", month: "long", year: "numeric",
       });
-      const message = `⚠️ Hi ${member.name}!\n\nYour gym membership at *${gymName}* expires in *${daysBefore} day${daysBefore > 1 ? "s" : ""}* (${expiryDate}).\n\nRenew now to avoid any interruption! 🏃`;
+      const message = isToday
+        ? `⚠️ Hi ${member.name}!\n\nYour gym membership at *${gymName}* expires *today* (${expiryDate}).\n\nRenew now to avoid any interruption! 🏃`
+        : `⚠️ Hi ${member.name}!\n\nYour gym membership at *${gymName}* expires in *${daysBefore} day${daysBefore > 1 ? "s" : ""}* (${expiryDate}).\n\nRenew now to avoid any interruption! 🏃`;
       const formatted = formatPhone(member.phone);
 
       attempted++;
@@ -255,15 +265,14 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      const variables: Record<string, string> = isToday
+        ? { name: member.name, expiry_date: expiryDate, branch_name: gymName }
+        : { name: member.name, days: String(daysBefore), expiry_date: expiryDate, branch_name: gymName };
+
       const result = await sendWhatsAppForTenant(supabase, {
         toPhone: formatted,
-        category: "expiring_2days",
-        variables: {
-          name: member.name,
-          days: String(daysBefore),
-          expiry_date: expiryDate,
-          branch_name: gymName,
-        },
+        category,
+        variables,
         fallbackText: message,
         branchId,
       });
@@ -274,7 +283,7 @@ Deno.serve(async (req) => {
         recipient_name: member.name,
         recipient_phone: formatted,
         message_content: message,
-        notification_type: "expiring_2days",
+        notification_type: notificationType,
         status: result.success ? "sent" : "failed",
         error_message: result.success ? null : result.error,
         is_manual: parsed.manual === true,
@@ -288,7 +297,7 @@ Deno.serve(async (req) => {
         name: member.name,
         phone: formatted,
         status: result.success ? "sent" : "failed",
-        type: "expiring_2days",
+        type: notificationType,
         error: result.success ? null : (result as any).error,
         expiryDate,
       });
@@ -424,6 +433,7 @@ Deno.serve(async (req) => {
     const finishedAt = new Date();
     const durationMs = finishedAt.getTime() - runStartedAt.getTime();
     const expiringSoonCount = memberLogs.filter((m) => m.type === "expiring_2days").length;
+    const expiringTodayCount = memberLogs.filter((m) => m.type === "expiring_today").length;
     const expiredCount = memberLogs.filter((m) => m.type === "expired_reminder").length;
 
     await supabase.from("whatsapp_scheduler_runs").insert({
@@ -439,7 +449,7 @@ Deno.serve(async (req) => {
       total_sent: sent,
       total_failed: failed,
       expiring_soon_count: expiringSoonCount,
-      expiring_today_count: 0,
+      expiring_today_count: expiringTodayCount,
       expired_count: expiredCount,
       recipients: memberLogs,
       metadata: { kind, gymName, dryRun: !!parsed.dryRun },

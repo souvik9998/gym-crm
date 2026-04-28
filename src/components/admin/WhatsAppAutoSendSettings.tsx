@@ -20,7 +20,7 @@ interface MessageTypeConfig {
   hasDaySelector?: "before" | "after";
 }
 
-const PRESET_DAYS = [1, 2, 3, 5, 7, 10, 15];
+const PRESET_DAYS = [0, 1, 2, 3, 5, 7, 10, 15];
 
 const MESSAGE_TYPES: MessageTypeConfig[] = [
   { key: "new_registration", label: "New Member Registration", description: "Send welcome message after a new member registers" },
@@ -148,7 +148,7 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
       // Day-count change doesn't alter the cron, but re-sync ensures the schedule
       // body and last_synced_at stay current.
       await syncQstashSchedules(updated);
-      toast.success(`Updated to ${days} day${days > 1 ? "s" : ""}`);
+      toast.success(days === 0 ? "Updated to same-day reminder" : `Updated to ${days} day${days > 1 ? "s" : ""}`);
     }
   };
 
@@ -283,16 +283,21 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
                       <SelectContent>
                         {PRESET_DAYS.map((d) => (
                           <SelectItem key={d} value={String(d)}>
-                            {d} {d === 1 ? "day" : "days"}
+                            {d === 0 ? "Same day" : `${d} ${d === 1 ? "day" : "days"}`}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     <span className="text-[11px] lg:text-xs text-muted-foreground">
                       {type.hasDaySelector === "before"
-                        ? `→ Sent ${dayValue} day${dayValue > 1 ? "s" : ""} before the membership expires`
-                        : `→ Sent ${dayValue} day${dayValue > 1 ? "s" : ""} after the membership expires`}
+                        ? dayValue === 0
+                          ? "→ Sent on the day membership expires (Expiring Today template)"
+                          : `→ Sent ${dayValue} day${dayValue > 1 ? "s" : ""} before the membership expires`
+                        : dayValue === 0
+                          ? "→ Sent on the day membership expires"
+                          : `→ Sent ${dayValue} day${dayValue > 1 ? "s" : ""} after the membership expires`}
                     </span>
+
                   </div>
                   <p className="text-[10px] lg:text-[11px] text-muted-foreground mt-2 italic">
                     ✓ Each member receives this reminder only once per membership cycle.
