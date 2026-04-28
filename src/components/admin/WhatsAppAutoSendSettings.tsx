@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useBranch } from "@/contexts/BranchContext";
 import { WHATSAPP_AUTO_SEND_DEFAULTS, type WhatsAppAutoSendType } from "@/utils/whatsappAutoSend";
 import { Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/outline";
+import { TimePicker12h } from "@/components/ui/time-picker-12h";
 
 interface MessageTypeConfig {
   key: WhatsAppAutoSendType;
