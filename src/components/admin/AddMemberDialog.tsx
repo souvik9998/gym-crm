@@ -1109,24 +1109,23 @@ export const AddMemberDialog = ({
         console.error("Failed to send WhatsApp notification:", err);
       }
 
-      toast.success("Member added successfully");
       onSuccess();
       onOpenChange(false);
       resetForm();
+      return { name } as const;
     } catch (error: any) {
       // Friendly handling for duplicate phone constraint at any insert step
       if (
         error?.code === "23505" ||
         /members_phone_branch_unique|duplicate key/i.test(error?.message || "")
       ) {
-        toast.error("Member Already Exists", {
-          description: "A member with this phone number already exists in this branch. Use Renew or Add PT instead.",
-        });
         setCurrentStep(1);
         if (currentBranch?.id) await checkExistingMember(phone);
-      } else {
-        toast.error("Error", { description: error.message });
+        const e: any = new Error(`${name || "This member"} already exists in this branch.`);
+        e.friendly = true;
+        throw e;
       }
+      throw error;
     } finally {
       setIsLoading(false);
     }
