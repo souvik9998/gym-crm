@@ -37,6 +37,15 @@ const MESSAGE_TYPES: MessageTypeConfig[] = [
 const DEFAULT_EXPIRING_DAYS = 2;
 const DEFAULT_EXPIRED_DAYS = 7;
 
+const format12h = (hhmm: string): string => {
+  const [hStr, mStr] = (hhmm || "09:00").split(":");
+  const h = Number(hStr);
+  const m = Number(mStr) || 0;
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+};
+
 interface WhatsAppAutoSendSettingsProps {
   whatsappEnabled?: boolean;
 }
