@@ -544,15 +544,21 @@ Deno.serve(async (req) => {
       }
     }
 
-    const requiredGymStartDateIso = await getNextMembershipStartDate(supabase, finalMemberId);
-    const requestedGymStartDateIso = toIsoDate(parseDateOnly(gymStartDate) ?? startOfTodayUtc());
+    // Only validate gym start date when this purchase actually includes a gym membership (months > 0).
+    // PT-only extensions do not touch the gym membership timeline.
+    const isGymPurchase = !!months && months > 0;
+    let startDate = startOfTodayUtc();
+    if (isGymPurchase) {
+      const requiredGymStartDateIso = await getNextMembershipStartDate(supabase, finalMemberId);
+      const requestedGymStartDateIso = toIsoDate(parseDateOnly(gymStartDate) ?? startOfTodayUtc());
 
-    if (!isNewMember && requestedGymStartDateIso < requiredGymStartDateIso) {
-      throw new Error(`Membership renewal must start on ${requiredGymStartDateIso} or later`);
+      if (!isNewMember && requestedGymStartDateIso < requiredGymStartDateIso) {
+        throw new Error(`Membership renewal must start on ${requiredGymStartDateIso} or later`);
+      }
+
+      // For renewals, use validated gymStartDate (day after existing end); otherwise today/requested
+      startDate = parseDateOnly(isNewMember ? requestedGymStartDateIso : requiredGymStartDateIso) ?? startOfTodayUtc();
     }
-
-    // Determine gym start date: for renewals, use validated gymStartDate (day after existing end); otherwise today
-    const startDate = parseDateOnly(isNewMember ? requestedGymStartDateIso : requiredGymStartDateIso) ?? startOfTodayUtc();
 
     // Determine if this is PT-only (extension) or includes gym membership
     const isPTOnlyPurchase = trainerId && customDays && customDays > 0 && (!months || months === 0);
