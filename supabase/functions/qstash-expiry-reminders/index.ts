@@ -282,9 +282,15 @@ Deno.serve(async (req) => {
 
       if (result.success) sent++;
       else failed++;
-      memberLogs.push({ memberId: member.id, status: result.success ? "sent" : "failed" });
-    }
-  }
+      memberLogs.push({
+        memberId: member.id,
+        name: member.name,
+        phone: formatted,
+        status: result.success ? "sent" : "failed",
+        type: "expiring_2days",
+        error: result.success ? null : (result as any).error,
+        expiryDate,
+      });
 
   // ----------------------------------------------------------------------------
   // EXPIRED REMINDER
