@@ -182,6 +182,49 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-1 p-4 lg:p-6 pt-0 lg:pt-0">
+        {/* Daily reminder time picker — branch-specific */}
+        <div className="mb-3 p-3 lg:p-4 rounded-lg border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent transition-all">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-start gap-2 flex-1 min-w-0">
+              <ClockIcon className="w-4 h-4 lg:w-5 lg:h-5 text-primary mt-0.5 shrink-0" />
+              <div className="space-y-0.5 min-w-0">
+                <p className="text-xs lg:text-sm font-medium">Daily Reminder Time (IST)</p>
+                <p className="text-[10px] lg:text-xs text-muted-foreground">
+                  Set the time of day all expiry reminders go out for this branch.
+                  Each branch can pick its own time.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Input
+                type="time"
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.target.value)}
+                disabled={!whatsappEnabled || savingTime}
+                className="h-8 lg:h-9 w-[110px] text-xs lg:text-sm font-semibold tabular-nums"
+              />
+              <Button
+                size="sm"
+                onClick={handleSaveReminderTime}
+                disabled={!whatsappEnabled || savingTime || reminderTime === savedReminderTime}
+                className="h-8 lg:h-9 text-xs"
+              >
+                {savingTime ? "Saving..." : reminderTime === savedReminderTime ? "Saved" : "Save"}
+              </Button>
+            </div>
+          </div>
+          {reminderTime !== savedReminderTime && (
+            <p className="text-[10px] lg:text-xs text-amber-600 dark:text-amber-400 mt-2 ml-6 animate-fade-in">
+              Unsaved change — click Save to apply this schedule.
+            </p>
+          )}
+          {reminderTime === savedReminderTime && whatsappEnabled && (
+            <p className="text-[10px] lg:text-xs text-muted-foreground mt-2 ml-6">
+              ✓ Reminders are sent daily at <strong>{savedReminderTime} IST</strong>.
+            </p>
+          )}
+        </div>
+
         {MESSAGE_TYPES.map((type) => {
           const isEnabled = preferences[type.key] ?? WHATSAPP_AUTO_SEND_DEFAULTS[type.key];
           const showDaySelector = type.hasDaySelector && isEnabled;
