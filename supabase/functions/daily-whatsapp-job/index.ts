@@ -298,11 +298,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    const branchRunStart = new Map<string, Date>();
+
     // Process each branch independently
     for (const branchId of branchIdsToProcess) {
       const config = branchConfigMap.get(branchId)!;
       const prefs = config.autoSend;
       const stats = branchStats.get(branchId)!;
+      branchRunStart.set(branchId, new Date());
 
       log("branch-start", {
         branchId,
