@@ -529,8 +529,24 @@ Deno.serve(async (req) => {
       }
     };
 
+    // When a manual "Send Expiry Reminder" comes in as the generic
+    // "expiry_reminder" type, pick the right per-member variant based on
+    // the member's actual subscription end date so the correct WhatsApp
+    // template is used (expiring_today / expiring_2days / expired_reminder).
+    const resolveReminderType = (requested: string, endDate: string): string => {
+      if (requested !== "expiry_reminder") return requested;
+      if (!endDate) return "expiring_2days";
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(0, 0, 0, 0);
+      const diff = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (diff < 0) return "expired_reminder";
+      if (diff === 0) return "expiring_today";
+      return "expiring_2days";
+    };
 
-    // STAFF CREDENTIALS SEND
+
     if (type === "staff_credentials" && staffCredentials) {
       const { staffName, staffPhone, password, role, branches } = staffCredentials;
       const formattedPhone = formatPhone(staffPhone);
