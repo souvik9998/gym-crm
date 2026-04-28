@@ -527,14 +527,11 @@ export async function sendWhatsAppForTenant(
     if (!config?.zavu_api_key_encrypted || !config?.zavu_api_key_iv || !encryptionKey) {
       result = { success: false, provider: "zavu", error: "Zavu credentials not configured" };
     } else {
-      // Alias auto-trigger reminder categories to the manual `expired_reminder`
-      // template so they reuse the same approved Zavu template
-      // (gk_expired_membership_reminder) — avoids template-approval/setup issues
-      // for the daily auto-send job.
-      const effectiveCategory: MessageCategory =
-        args.category === "expiring_2days" || args.category === "expiring_today"
-          ? "expired_reminder"
-          : args.category;
+      // Each reminder category uses its own approved template — do NOT alias.
+      // expiring_2days  → gk_expiring_reminder         (vars: name, days, expiry_date, branch_name)
+      // expiring_today  → gk_expiring_today_reminder   (vars: name, expiry_date, branch_name)
+      // expired_reminder→ gk_expired_membership_reminder (vars: name, days_expired, expiry_date, branch_name)
+      const effectiveCategory: MessageCategory = args.category;
 
       const templateId = (config.zavu_templates ?? {})[effectiveCategory];
       if (!templateId) {
@@ -550,11 +547,13 @@ export async function sendWhatsAppForTenant(
             config.zavu_api_key_iv,
             encryptionKey,
           );
-          // Ensure variables required by the expired_reminder template are present
-          // even when the caller built variables for expiring_2days/today.
           const vars = { ...args.variables };
+          // Defensive: backfill the variable each template needs.
           if (effectiveCategory === "expired_reminder" && !vars.days_expired) {
             vars.days_expired = vars.days ?? "0";
+          }
+          if (effectiveCategory === "expiring_2days" && !vars.days) {
+            vars.days = "1";
           }
           result = await sendViaZavu(
             apiKey,
