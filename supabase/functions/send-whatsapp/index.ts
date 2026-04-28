@@ -631,7 +631,18 @@ Deno.serve(async (req) => {
       }
 
       const message = generateMessage(name, memberEndDate, type, paymentInfo, null, branchName);
-      const variables = buildMemberVariables(name, memberEndDate, branchName, paymentInfo);
+      let variables = buildMemberVariables(name, memberEndDate, branchName, paymentInfo);
+      if ((type === "event_registration" || type === "event_confirmation") && eventDetails) {
+        variables = {
+          name,
+          event_title: eventDetails.title,
+          event_date: eventDetails.date,
+          event_time: eventDetails.time,
+          venue: eventDetails.venue,
+          amount: String(eventDetails.amount),
+          branch_name: branchName || "",
+        };
+      }
       const result = await sendMessage(formattedPhone, message, categoryFor(type), variables, branchId || null);
 
       await logWhatsAppMessage({
