@@ -1320,7 +1320,7 @@ export const AddMemberDialog = ({
           );
         }
 
-        toast.success("Personal training added successfully");
+        // success toast handled by caller via toast.promise
       }
 
       // Log activity
