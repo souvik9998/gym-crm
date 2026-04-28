@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
-import { ArrowPathIcon, ClockIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, ClockIcon, BoltIcon, TrashIcon, BuildingStorefrontIcon } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 
 interface ScheduleRow {
@@ -21,6 +21,12 @@ interface BranchInfo {
   name: string;
 }
 
+interface BranchSettings {
+  branch_id: string;
+  whatsapp_enabled: boolean;
+  whatsapp_auto_send: Record<string, unknown> | null;
+}
+
 interface QstashSchedulerStatusProps {
   tenantId: string;
   branches: BranchInfo[];
@@ -28,34 +34,47 @@ interface QstashSchedulerStatusProps {
 
 export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerStatusProps) => {
   const [rows, setRows] = useState<ScheduleRow[]>([]);
+  const [settingsByBranch, setSettingsByBranch] = useState<Map<string, BranchSettings>>(new Map());
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [perBranchBusy, setPerBranchBusy] = useState<Record<string, "upsert" | "delete" | null>>({});
 
-  const fetchRows = async () => {
+  const branchIds = branches.map((b) => b.id);
+
+  const fetchData = async () => {
     setLoading(true);
-    const branchIds = branches.map((b) => b.id);
     if (branchIds.length === 0) {
       setRows([]);
+      setSettingsByBranch(new Map());
       setLoading(false);
       return;
     }
-    const { data, error } = await supabase
-      .from("qstash_schedules")
-      .select("*")
-      .in("branch_id", branchIds);
-    if (error) {
-      console.warn("Failed to fetch qstash schedules:", error);
+
+    const [schedulesRes, settingsRes] = await Promise.all([
+      supabase.from("qstash_schedules").select("*").in("branch_id", branchIds),
+      supabase
+        .from("gym_settings")
+        .select("branch_id, whatsapp_enabled, whatsapp_auto_send")
+        .in("branch_id", branchIds),
+    ]);
+
+    if (schedulesRes.error) console.warn("schedules fetch failed:", schedulesRes.error);
+    setRows(schedulesRes.data || []);
+
+    const map = new Map<string, BranchSettings>();
+    for (const s of (settingsRes.data || []) as BranchSettings[]) {
+      map.set(s.branch_id, s);
     }
-    setRows(data || []);
+    setSettingsByBranch(map);
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchRows();
+    fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId, branches.length]);
 
-  const handleSyncAll = async () => {
+  const handleSyncTenant = async () => {
     setSyncing(true);
     try {
       const { error } = await supabase.functions.invoke(
@@ -63,8 +82,8 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
         { body: { tenantId } },
       );
       if (error) throw error;
-      toast.success("Reminder schedules re-synced with Upstash QStash");
-      await fetchRows();
+      toast.success("All branch schedules re-synced with QStash");
+      await fetchData();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to sync";
       toast.error(msg);
@@ -73,6 +92,25 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
     }
   };
 
+  const handleBranchAction = async (branchId: string, action: "upsert" | "delete") => {
+    setPerBranchBusy((p) => ({ ...p, [branchId]: action }));
+    try {
+      const { error } = await supabase.functions.invoke(
+        `qstash-schedule-manager?action=${action}`,
+        { body: { branchId } },
+      );
+      if (error) throw error;
+      toast.success(action === "upsert" ? "Branch schedules created/refreshed" : "Branch schedules removed");
+      await fetchData();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : `${action} failed`;
+      toast.error(msg);
+    } finally {
+      setPerBranchBusy((p) => ({ ...p, [branchId]: null }));
+    }
+  };
+
+  // Group schedules by branch
   const byBranch = new Map<string, ScheduleRow[]>();
   for (const r of rows) {
     const list = byBranch.get(r.branch_id) || [];
@@ -80,29 +118,44 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
     byBranch.set(r.branch_id, list);
   }
 
+  const totalSchedules = rows.length;
+  const branchesWithSchedules = byBranch.size;
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-4">
-        <div>
+        <div className="flex-1">
           <CardTitle className="flex items-center gap-2">
             <ClockIcon className="w-5 h-5 text-primary" />
-            Reminder Scheduler (Upstash QStash)
+            WhatsApp Reminder Scheduler (Branch-wise)
           </CardTitle>
-          <CardDescription>
-            Daily expiry-reminder schedules for each branch. Runs at 09:00 IST. Toggle "Expiring Soon"
-            or "Expired Reminder" inside a branch's WhatsApp settings to add/remove its schedule.
+          <CardDescription className="mt-1.5 space-y-1">
+            <span className="block">
+              Each branch gets its own pair of QStash schedules — one for <strong>Expiring Soon</strong> and one for{" "}
+              <strong>Expired</strong> reminders. Both fire daily at <strong>09:00 IST</strong> and respect that branch's
+              individual WhatsApp settings (toggles, days-before, days-after).
+            </span>
+            <span className="block text-xs">
+              {branchesWithSchedules} of {branches.length} branches active · {totalSchedules} schedules registered
+            </span>
           </CardDescription>
         </div>
-        <Button onClick={handleSyncAll} disabled={syncing} variant="outline" size="sm">
+        <Button onClick={handleSyncTenant} disabled={syncing || branches.length === 0} variant="outline" size="sm">
           <ArrowPathIcon className={`w-4 h-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
-          {syncing ? "Syncing..." : "Re-sync all"}
+          {syncing ? "Syncing..." : "Re-sync tenant"}
         </Button>
       </CardHeader>
       <CardContent>
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : branches.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No branches in this tenant.</p>
+          <div className="p-6 text-center bg-muted/20 rounded-md border border-dashed">
+            <BuildingStorefrontIcon className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm font-medium">No branches yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Once this tenant creates a branch and enables WhatsApp, schedules will appear here automatically.
+            </p>
+          </div>
         ) : (
           <div className="space-y-2">
             {branches.map((branch) => {
@@ -110,32 +163,108 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
               const hasSoon = list.some((r) => r.kind === "expiring_soon");
               const hasExpired = list.some((r) => r.kind === "expired");
               const lastSynced = list[0]?.last_synced_at;
+              const settings = settingsByBranch.get(branch.id);
+              const waEnabled = settings?.whatsapp_enabled === true;
+              const prefs = (settings?.whatsapp_auto_send as Record<string, unknown>) || {};
+              const wantsExpSoon = prefs.expiring_2days !== false;
+              const wantsExpired = prefs.expired_reminder === true;
+              const wantsAny = waEnabled && (wantsExpSoon || wantsExpired);
+              const busy = perBranchBusy[branch.id];
+
               return (
                 <div
                   key={branch.id}
-                  className="flex items-center justify-between p-3 rounded-md border bg-muted/20"
+                  className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 p-3 rounded-md border bg-muted/20"
                 >
-                  <div>
-                    <p className="text-sm font-medium">{branch.name}</p>
-                    {lastSynced && (
-                      <p className="text-xs text-muted-foreground">
-                        Last synced {formatDistanceToNow(new Date(lastSynced), { addSuffix: true })}
-                      </p>
-                    )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <BuildingStorefrontIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <p className="text-sm font-medium truncate">{branch.name}</p>
+                      {!waEnabled && (
+                        <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-700 dark:text-amber-300">
+                          WhatsApp OFF
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1 ml-6">
+                      {wantsAny ? (
+                        <>
+                          Sends:{" "}
+                          {wantsExpSoon && (
+                            <span>
+                              Expiring (
+                              {(prefs.expiring_days_before as number) ?? 2}d before)
+                            </span>
+                          )}
+                          {wantsExpSoon && wantsExpired && " · "}
+                          {wantsExpired && (
+                            <span>
+                              Expired ({(prefs.expired_days_after as number) ?? 7}d after)
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="italic">No reminders enabled in branch settings</span>
+                      )}
+                      {lastSynced && (
+                        <>
+                          {" · "}synced {formatDistanceToNow(new Date(lastSynced), { addSuffix: true })}
+                        </>
+                      )}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={hasSoon ? "default" : "secondary"} className="text-[10px]">
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge
+                      variant={hasSoon ? "default" : "secondary"}
+                      className={`text-[10px] ${hasSoon ? "bg-emerald-600 hover:bg-emerald-600" : ""}`}
+                    >
                       Expiring Soon: {hasSoon ? "ON" : "off"}
                     </Badge>
-                    <Badge variant={hasExpired ? "default" : "secondary"} className="text-[10px]">
+                    <Badge
+                      variant={hasExpired ? "default" : "secondary"}
+                      className={`text-[10px] ${hasExpired ? "bg-emerald-600 hover:bg-emerald-600" : ""}`}
+                    >
                       Expired: {hasExpired ? "ON" : "off"}
                     </Badge>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px]"
+                      disabled={!!busy || !wantsAny}
+                      onClick={() => handleBranchAction(branch.id, "upsert")}
+                      title={wantsAny ? "Create or refresh this branch's schedules" : "Enable WhatsApp + a reminder toggle in branch settings first"}
+                    >
+                      <BoltIcon className="w-3 h-3 mr-1" />
+                      {busy === "upsert" ? "Syncing..." : "Sync"}
+                    </Button>
+                    {(hasSoon || hasExpired) && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-[11px] text-destructive hover:text-destructive"
+                        disabled={!!busy}
+                        onClick={() => handleBranchAction(branch.id, "delete")}
+                      >
+                        <TrashIcon className="w-3 h-3 mr-1" />
+                        {busy === "delete" ? "..." : "Remove"}
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
         )}
+
+        <div className="mt-4 p-3 rounded-md bg-primary/5 border border-primary/20">
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">How it scales:</strong> Each new branch a tenant creates gets its own
+            isolated pair of schedules the moment a reminder toggle is turned ON in that branch's WhatsApp settings.
+            Schedules are tagged with the branch ID, so different gyms, branches, and reminder types never overlap.
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
