@@ -143,6 +143,31 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
     }
   };
 
+  const handleSaveReminderTime = async () => {
+    if (!settingsId || !currentBranch?.id) return;
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime)) {
+      toast.error("Please enter a valid time (HH:MM, 24-hour).");
+      return;
+    }
+    setSavingTime(true);
+    const { error } = await supabase
+      .from("gym_settings")
+      .update({ reminder_time: `${reminderTime}:00` })
+      .eq("id", settingsId)
+      .eq("branch_id", currentBranch.id);
+
+    if (error) {
+      toast.error("Failed to update reminder time");
+      setSavingTime(false);
+      return;
+    }
+    setSavedReminderTime(reminderTime);
+    // Re-sync QStash schedule with the new cron
+    await syncQstashSchedules(preferences);
+    toast.success(`Daily reminders will now be sent at ${reminderTime} IST`);
+    setSavingTime(false);
+  };
+
   return (
     <Card className={cn("border-0 shadow-sm", !whatsappEnabled && "opacity-60")}>
       <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
