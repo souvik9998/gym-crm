@@ -574,6 +574,7 @@ Deno.serve(async (req) => {
             const result = await sendMessageWithRetry(formattedPhone, message, branchId, "expired_reminder", {
               name: member.name,
               days_expired: String(expiredForDays),
+              expiry_date: expiryDate,
               branch_name: config.gymName,
             });
 
