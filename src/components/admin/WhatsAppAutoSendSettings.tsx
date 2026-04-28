@@ -148,7 +148,7 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
       // Day-count change doesn't alter the cron, but re-sync ensures the schedule
       // body and last_synced_at stay current.
       await syncQstashSchedules(updated);
-      toast.success(`Updated to ${days} day${days > 1 ? "s" : ""}`);
+      toast.success(days === 0 ? "Updated to same-day reminder" : `Updated to ${days} day${days > 1 ? "s" : ""}`);
     }
   };
 
