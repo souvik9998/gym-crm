@@ -36,8 +36,10 @@ const stableScheduleId = (branchId: string, kind: string) =>
 const istTimeToUtcCron = (istTime: string | null | undefined): string => {
   const safe = (istTime || DEFAULT_REMINDER_TIME).trim();
   const parts = safe.split(":");
-  const h = Math.max(0, Math.min(23, parseInt(parts[0] || "9", 10) || 9));
-  const m = Math.max(0, Math.min(59, parseInt(parts[1] || "0", 10) || 0));
+  const hParsed = parseInt(parts[0] ?? "", 10);
+  const mParsed = parseInt(parts[1] ?? "", 10);
+  const h = Math.max(0, Math.min(23, Number.isFinite(hParsed) ? hParsed : 9));
+  const m = Math.max(0, Math.min(59, Number.isFinite(mParsed) ? mParsed : 0));
   // Subtract 5h30m
   let totalMin = h * 60 + m - (5 * 60 + 30);
   if (totalMin < 0) totalMin += 24 * 60;
