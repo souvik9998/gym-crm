@@ -121,9 +121,10 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const qstashDestinationUrl = `${SUPABASE_URL}/functions/v1/qstash-expiry-reminders`;
     const verification = await verifyQstashSignature(
       req.headers.get("upstash-signature"),
-      req.url,
+      qstashDestinationUrl,
       rawBody,
       CURRENT_KEY,
       NEXT_KEY,
