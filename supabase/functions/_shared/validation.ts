@@ -408,7 +408,7 @@ export const SendWhatsAppSchema = z.object({
     "expiring_2days", "expiring_today", "manual", "renewal", 
     "pt_extension", "promotional", "expiry_reminder", "expired_reminder",
     "payment_details", "custom", "new_member", "new_registration",
-    "daily_pass", "staff_credentials"
+    "daily_pass", "staff_credentials", "event_registration", "event_confirmation"
   ]).optional(),
   customMessage: z.string().max(2000).optional(),
   isManual: z.boolean().optional(),
@@ -419,6 +419,13 @@ export const SendWhatsAppSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   endDate: DateSchema.optional(),
   staffCredentials: StaffCredentialsSchema.optional(),
+  eventDetails: z.object({
+    title: z.string().max(200),
+    date: z.string().max(100),
+    time: z.string().max(50),
+    venue: z.string().max(200),
+    amount: z.union([z.string(), z.number()]),
+  }).optional(),
 });
 
 // ============================================================================
