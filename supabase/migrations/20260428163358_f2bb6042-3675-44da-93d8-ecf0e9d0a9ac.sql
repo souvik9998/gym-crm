@@ -1,1 +1,0 @@
-UPDATE public.subscriptions SET end_date = CURRENT_DATE + INTERVAL '1 day', start_date = LEAST(start_date, CURRENT_DATE) WHERE id = '97aa95e2-b311-4048-9475-e6ac214e9985';
