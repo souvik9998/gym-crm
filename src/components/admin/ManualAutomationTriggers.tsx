@@ -7,7 +7,7 @@ import { toast } from "@/components/ui/sonner";
 import { getEdgeFunctionUrl, getEdgeFunctionHeaders } from "@/lib/supabaseConfig";
 import { getAuthToken } from "@/api/authenticatedFetch";
 import { useBranch } from "@/contexts/BranchContext";
-import { BoltIcon, BeakerIcon } from "@heroicons/react/24/outline";
+import { BoltIcon } from "@heroicons/react/24/outline";
 
 type RunResult = {
   label: string;
@@ -19,7 +19,6 @@ type RunResult = {
 
 export function ManualAutomationTriggers() {
   const [isRunningExpiry, setIsRunningExpiry] = useState(false);
-  const [isRunningTest, setIsRunningTest] = useState(false);
   const [results, setResults] = useState<RunResult[]>([]);
   const { currentBranch } = useBranch();
 
@@ -68,23 +67,6 @@ export function ManualAutomationTriggers() {
     }
   };
 
-  const handleTestWhatsApp = async () => {
-    setIsRunningTest(true);
-    try {
-      const result = await callEdge("daily-whatsapp-job", { test_mode: true });
-      pushResult({ label: "Test WhatsApp (admin number)", ok: result.ok, status: result.status, body: result.body, ranAt: new Date().toISOString() });
-      if (result.ok) {
-        toast.success("Test WhatsApp sent", { description: `Periskope status: ${result.body?.periskope_status}` });
-      } else {
-        toast.error("Test WhatsApp failed", { description: result.body?.error || `HTTP ${result.status}` });
-      }
-    } catch (e: any) {
-      toast.error("Failed to test", { description: e.message });
-    } finally {
-      setIsRunningTest(false);
-    }
-  };
-
   return (
     <Card className="border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
       <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
@@ -119,28 +101,6 @@ export function ManualAutomationTriggers() {
             className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg active:scale-[0.97] transition-all"
           >
             {isRunningExpiry ? <><ButtonSpinner /> Running...</> : "▶ Run Now"}
-          </Button>
-        </div>
-
-        {/* Test WhatsApp */}
-        <div className="flex items-center justify-between p-3 lg:p-4 bg-emerald-500/5 border border-emerald-500/30 rounded-xl">
-          <div className="space-y-0.5 flex-1 mr-3">
-            <p className="text-xs lg:text-sm font-medium flex items-center gap-2">
-              <BeakerIcon className="w-3.5 h-3.5 text-emerald-600" />
-              Send Test WhatsApp Message
-            </p>
-            <p className="text-[10px] lg:text-xs text-muted-foreground">
-              Sends a single message to the configured admin number — confirms WhatsApp delivery is working
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleTestWhatsApp}
-            disabled={isRunningTest}
-            className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg active:scale-[0.97] transition-all"
-          >
-            {isRunningTest ? <><ButtonSpinner /> Sending...</> : "▶ Send Test"}
           </Button>
         </div>
 
