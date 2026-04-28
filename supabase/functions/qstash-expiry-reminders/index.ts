@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
       .select("id, member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
       .eq("end_date", targetStr)
       .eq("members.branch_id", branchId)
-      .in("status", ["active", "expiring_soon"]);
+      .in("status", ["active", "expiring_soon", "expiring_today"]);
 
     const candidateSubIds = (candidates || []).map((s: any) => s.id).filter(Boolean);
     let alreadySoon = new Set<string>();
