@@ -1109,24 +1109,23 @@ export const AddMemberDialog = ({
         console.error("Failed to send WhatsApp notification:", err);
       }
 
-      toast.success("Member added successfully");
       onSuccess();
       onOpenChange(false);
       resetForm();
+      return { name } as const;
     } catch (error: any) {
       // Friendly handling for duplicate phone constraint at any insert step
       if (
         error?.code === "23505" ||
         /members_phone_branch_unique|duplicate key/i.test(error?.message || "")
       ) {
-        toast.error("Member Already Exists", {
-          description: "A member with this phone number already exists in this branch. Use Renew or Add PT instead.",
-        });
         setCurrentStep(1);
         if (currentBranch?.id) await checkExistingMember(phone);
-      } else {
-        toast.error("Error", { description: error.message });
+        const e: any = new Error(`${name || "This member"} already exists in this branch.`);
+        e.friendly = true;
+        throw e;
       }
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -1142,11 +1141,10 @@ export const AddMemberDialog = ({
       gymStartDate.setHours(0, 0, 0, 0);
 
       if ((selectedAction === "renew_gym" || selectedAction === "renew_gym_pt") && gymStartDate < minAllowedStartDate) {
-        toast.error("Renewal start date is invalid", {
-          description: `The next membership must start on ${format(minAllowedStartDate, "d MMM yyyy")} or later.`,
-        });
         setStartDate(minAllowedStartDate);
-        return;
+        const e: any = new Error(`Start date must be on or after ${format(minAllowedStartDate, "d MMM yyyy")}.`);
+        e.friendly = true;
+        throw e;
       }
 
       // Renew Gym Membership
@@ -1251,15 +1249,15 @@ export const AddMemberDialog = ({
           }
         }
 
-        toast.success(selectedAction === "renew_gym_pt" ? "Membership renewed with PT" : "Membership renewed successfully");
+        // success toast handled by caller via toast.promise
       }
 
       // Add PT Only
       if (selectedAction === "add_pt") {
         if (!selectedTrainerId) {
-          toast.error("Please select a trainer");
-          setIsLoading(false);
-          return;
+          const e: any = new Error("Please select a trainer to continue.");
+          e.friendly = true;
+          throw e;
         }
 
         const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
@@ -1321,7 +1319,7 @@ export const AddMemberDialog = ({
           );
         }
 
-        toast.success("Personal training added successfully");
+        // success toast handled by caller via toast.promise
       }
 
       // Log activity
@@ -1390,8 +1388,9 @@ export const AddMemberDialog = ({
       onSuccess();
       onOpenChange(false);
       resetForm();
+      return { action: selectedAction } as const;
     } catch (error: any) {
-      toast.error("Error", { description: error.message });
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -2319,14 +2318,34 @@ export const AddMemberDialog = ({
               ) : (
                 <Button
                   type="button"
-                  onClick={isExistingMemberAction ? handleExistingMemberSubmit : handleSubmit}
+                  onClick={() => {
+                    const isRenew = isExistingMemberAction;
+                    const loadingMsg = isRenew
+                      ? (selectedAction === "add_pt" ? "Adding personal training…" : "Renewing membership…")
+                      : "Adding member…";
+                    const successMsg = isRenew
+                      ? (selectedAction === "add_pt"
+                          ? "Personal training added"
+                          : selectedAction === "renew_gym_pt"
+                            ? "Membership renewed with PT"
+                            : "Membership renewed")
+                      : "Member added successfully";
+                    const work: Promise<unknown> = isRenew ? handleExistingMemberSubmit() : handleSubmit();
+                    toast.promise(work, {
+                      loading: loadingMsg,
+                      success: successMsg,
+                      error: (err: any) => err?.friendly
+                        ? err.message
+                        : (err?.message || "Something went wrong. Please try again."),
+                    });
+                  }}
                   className="flex-1 h-11 rounded-xl text-sm font-medium bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98] transition-all duration-200 shadow-sm"
                   disabled={isLoading || !isStep3Valid}
                 >
                   {isLoading ? (
                     <>
                       <ButtonSpinner className="mr-2" />
-                      {isExistingMemberAction ? "Processing..." : "Adding..."}
+                      {isExistingMemberAction ? "Processing…" : "Adding…"}
                     </>
                   ) : (
                     <>
