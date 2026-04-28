@@ -732,6 +732,7 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                         ? new Date(payment.created_at).toLocaleTimeString("en-IN", {
                             hour: "2-digit",
                             minute: "2-digit",
+                            timeZone: "Asia/Kolkata",
                           })
                         : ""}
                     </div>
