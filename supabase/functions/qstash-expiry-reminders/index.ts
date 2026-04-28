@@ -248,7 +248,12 @@ Deno.serve(async (req) => {
       const result = await sendWhatsAppForTenant(supabase, {
         toPhone: formatted,
         category: "expiring_2days",
-        variables: { name: member.name, expiry_date: expiryDate, branch_name: gymName },
+        variables: {
+          name: member.name,
+          days: String(daysBefore),
+          expiry_date: expiryDate,
+          branch_name: gymName,
+        },
         fallbackText: message,
         branchId,
       });
