@@ -2330,16 +2330,14 @@ export const AddMemberDialog = ({
                             ? "Membership renewed with PT"
                             : "Membership renewed")
                       : "Member added successfully";
-                    toast.promise(
-                      isRenew ? handleExistingMemberSubmit() : handleSubmit(),
-                      {
-                        loading: loadingMsg,
-                        success: successMsg,
-                        error: (err: any) => err?.friendly
-                          ? err.message
-                          : (err?.message || "Something went wrong. Please try again."),
-                      }
-                    );
+                    const work: Promise<unknown> = isRenew ? handleExistingMemberSubmit() : handleSubmit();
+                    toast.promise(work, {
+                      loading: loadingMsg,
+                      success: successMsg,
+                      error: (err: any) => err?.friendly
+                        ? err.message
+                        : (err?.message || "Something went wrong. Please try again."),
+                    });
                   }}
                   className="flex-1 h-11 rounded-xl text-sm font-medium bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98] transition-all duration-200 shadow-sm"
                   disabled={isLoading || !isStep3Valid}
