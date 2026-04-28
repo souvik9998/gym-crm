@@ -512,6 +512,9 @@ Deno.serve(async (req) => {
         case "payment_details": return "payment_details";
         case "admin_add_member": return "admin_add_member";
         case "staff_credentials": return "staff_credentials";
+        case "event_registration":
+        case "event_confirmation":
+          return "event_confirmation";
         case "promotional":
         case "custom":
         case "manual":
