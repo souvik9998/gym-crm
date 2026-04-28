@@ -357,7 +357,7 @@ export const ImportCard = () => {
                       <div className="min-w-0">
                         <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Exported</div>
                         <div className="text-xs font-semibold text-foreground truncate">
-                          {new Date(preview.metadata.exported_at).toLocaleDateString()}
+                          {new Date(preview.metadata.exported_at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}
                         </div>
                       </div>
                     </div>

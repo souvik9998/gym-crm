@@ -421,7 +421,7 @@ export const AttendanceHistoryTab = () => {
         "Time Slot": (() => { const sid = resolveExportSlot(record); return sid ? slotLabelMap.get(sid) || "-" : "-"; })(),
         "Marked Via": record.marked_by_type || "-",
         "Created At": record.created_at
-          ? new Date(record.created_at).toLocaleString("en-IN", {
+          ? new Date(record.created_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata",
               day: "2-digit",
               month: "short",
               year: "numeric",

@@ -974,7 +974,7 @@ export const AssessmentSection = ({ assessments, memberId, branchId, onRefresh }
       {/* Timestamp row — sits below so it never crowds the buttons */}
       {lastSavedAt && (
         <p className="text-[10px] text-muted-foreground leading-none pl-0.5">
-          Saved {lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          Saved {lastSavedAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })}
         </p>
       )}
     </div>

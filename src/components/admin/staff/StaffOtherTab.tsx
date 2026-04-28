@@ -942,7 +942,7 @@ export const StaffOtherTab = ({
                               label="Last Login"
                               value={
                                 member.last_login_at
-                                  ? new Date(member.last_login_at).toLocaleString("en-IN", {
+                                  ? new Date(member.last_login_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata",
                                       day: "2-digit",
                                       month: "short",
                                       hour: "2-digit",

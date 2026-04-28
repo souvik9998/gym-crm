@@ -189,7 +189,7 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
   };
 
   const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-IN", {
+    return new Date(dateString).toLocaleString("en-IN", { timeZone: "Asia/Kolkata",
       day: "numeric",
       month: "short",
       year: "numeric",
