@@ -3717,6 +3717,7 @@ export type Database = {
       subscription_status:
         | "active"
         | "expired"
+        | "expiring_today"
         | "expiring_soon"
         | "paused"
         | "inactive"
@@ -3855,6 +3856,7 @@ export const Constants = {
       subscription_status: [
         "active",
         "expired",
+        "expiring_today",
         "expiring_soon",
         "paused",
         "inactive",

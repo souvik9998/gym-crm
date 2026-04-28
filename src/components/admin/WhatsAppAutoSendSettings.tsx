@@ -28,7 +28,6 @@ const MESSAGE_TYPES: MessageTypeConfig[] = [
   { key: "daily_pass", label: "Daily Pass", description: "Send confirmation after daily pass purchase" },
   { key: "pt_extension", label: "PT Extension", description: "Send confirmation after personal training extension" },
   { key: "expiring_2days", label: "Expiring Soon Reminder", description: "Send reminder before membership expires", hasDaySelector: "before" },
-  { key: "expiring_today", label: "Expiring Today", description: "Send reminder on the day membership expires" },
   { key: "expired_reminder", label: "Expired Reminder", description: "Send reminder after membership has expired", hasDaySelector: "after" },
   { key: "payment_details", label: "Payment Receipt", description: "Send payment receipt after successful payment" },
   { key: "admin_add_member", label: "Admin Add Member", description: "Send message when admin adds a member manually" },
