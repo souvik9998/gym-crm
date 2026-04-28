@@ -298,11 +298,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    const branchRunStart = new Map<string, Date>();
+
     // Process each branch independently
     for (const branchId of branchIdsToProcess) {
       const config = branchConfigMap.get(branchId)!;
       const prefs = config.autoSend;
       const stats = branchStats.get(branchId)!;
+      branchRunStart.set(branchId, new Date());
 
       log("branch-start", {
         branchId,
@@ -617,6 +620,57 @@ Deno.serve(async (req) => {
         expiringTodayCount: stats.expiringToday.length,
         expiredCount: stats.expired.length,
       });
+
+      // Persist scheduler-run row for this branch
+      try {
+        const startedAt = branchRunStart.get(branchId) ?? new Date();
+        const finishedAt = new Date();
+        const { data: branchRow } = await supabase
+          .from("branches")
+          .select("tenant_id")
+          .eq("id", branchId)
+          .maybeSingle();
+
+        // Pull recipients we just wrote in whatsapp_notifications during this branch window
+        const { data: recipientRows } = await supabase
+          .from("whatsapp_notifications")
+          .select("recipient_name, recipient_phone, notification_type, status, error_message, member_id, sent_at")
+          .eq("branch_id", branchId)
+          .gte("sent_at", startedAt.toISOString())
+          .lte("sent_at", finishedAt.toISOString())
+          .in("notification_type", ["expiring_2days", "expiring_today", "expired_reminder"]);
+
+        const recipients = (recipientRows || []).map((r: any) => ({
+          memberId: r.member_id,
+          name: r.recipient_name,
+          phone: r.recipient_phone,
+          type: r.notification_type,
+          status: r.status,
+          error: r.error_message,
+          sentAt: r.sent_at,
+        }));
+
+        await supabase.from("whatsapp_scheduler_runs").insert({
+          branch_id: branchId,
+          tenant_id: branchRow?.tenant_id ?? null,
+          job_name: "daily-whatsapp-job",
+          trigger_source: isManualTrigger ? "manual" : "cron",
+          status: stats.failed > 0 && stats.sent === 0 ? "failed" : (stats.failed > 0 ? "partial" : "completed"),
+          started_at: startedAt.toISOString(),
+          finished_at: finishedAt.toISOString(),
+          duration_ms: finishedAt.getTime() - startedAt.getTime(),
+          total_attempted: stats.attempted,
+          total_sent: stats.sent,
+          total_failed: stats.failed,
+          expiring_soon_count: stats.expiringSoon.length,
+          expiring_today_count: stats.expiringToday.length,
+          expired_count: stats.expired.length,
+          recipients,
+          metadata: { gymName: stats.gymName },
+        });
+      } catch (persistErr) {
+        log("scheduler-run-persist-failed", { branchId, error: (persistErr as Error).message });
+      }
     }
 
     // Send admin daily summary (only for scheduled runs, not manual)

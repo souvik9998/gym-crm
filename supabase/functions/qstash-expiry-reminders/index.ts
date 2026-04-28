@@ -178,10 +178,19 @@ Deno.serve(async (req) => {
   today.setHours(0, 0, 0, 0);
   const todayStr = today.toISOString().split("T")[0];
 
+  const runStartedAt = new Date();
   let attempted = 0;
   let sent = 0;
   let failed = 0;
-  const memberLogs: { memberId: string; status: string }[] = [];
+  const memberLogs: {
+    memberId: string;
+    name?: string;
+    phone?: string;
+    status: string;
+    type?: string;
+    error?: string | null;
+    expiryDate?: string;
+  }[] = [];
 
   // ----------------------------------------------------------------------------
   // EXPIRING SOON
@@ -273,7 +282,15 @@ Deno.serve(async (req) => {
 
       if (result.success) sent++;
       else failed++;
-      memberLogs.push({ memberId: member.id, status: result.success ? "sent" : "failed" });
+      memberLogs.push({
+        memberId: member.id,
+        name: member.name,
+        phone: formatted,
+        status: result.success ? "sent" : "failed",
+        type: "expiring_2days",
+        error: result.success ? null : (result as any).error,
+        expiryDate,
+      });
     }
   }
 
@@ -381,11 +398,54 @@ Deno.serve(async (req) => {
 
       if (result.success) sent++;
       else failed++;
-      memberLogs.push({ memberId: member.id, status: result.success ? "sent" : "failed" });
+      memberLogs.push({
+        memberId: member.id,
+        name: member.name,
+        phone: formatted,
+        status: result.success ? "sent" : "failed",
+        type: "expired_reminder",
+        error: result.success ? null : (result as any).error,
+        expiryDate,
+      });
     }
   }
 
   log("done", { branchId, kind, attempted, sent, failed });
+
+  // Persist scheduler run for the WhatsApp Logs > Scheduler Runs UI
+  try {
+    const { data: branchRow } = await supabase
+      .from("branches")
+      .select("tenant_id")
+      .eq("id", branchId)
+      .maybeSingle();
+
+    const finishedAt = new Date();
+    const durationMs = finishedAt.getTime() - runStartedAt.getTime();
+    const expiringSoonCount = memberLogs.filter((m) => m.type === "expiring_2days").length;
+    const expiredCount = memberLogs.filter((m) => m.type === "expired_reminder").length;
+
+    await supabase.from("whatsapp_scheduler_runs").insert({
+      branch_id: branchId,
+      tenant_id: branchRow?.tenant_id ?? null,
+      job_name: kind === "expiring_soon" ? "qstash-expiring-soon" : "qstash-expired",
+      trigger_source: parsed.manual === true ? "manual" : "qstash",
+      status: failed > 0 && sent === 0 ? "failed" : (failed > 0 ? "partial" : "completed"),
+      started_at: runStartedAt.toISOString(),
+      finished_at: finishedAt.toISOString(),
+      duration_ms: durationMs,
+      total_attempted: attempted,
+      total_sent: sent,
+      total_failed: failed,
+      expiring_soon_count: expiringSoonCount,
+      expiring_today_count: 0,
+      expired_count: expiredCount,
+      recipients: memberLogs,
+      metadata: { kind, gymName, dryRun: !!parsed.dryRun },
+    });
+  } catch (persistErr) {
+    log("scheduler-run-persist-failed", { error: (persistErr as Error).message });
+  }
 
   return new Response(
     JSON.stringify({ success: true, branchId, kind, attempted, sent, failed, members: memberLogs }),

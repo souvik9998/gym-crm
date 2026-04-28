@@ -48,6 +48,7 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { supabase } from "@/integrations/supabase/client";
 import { useInfiniteWhatsAppLogsQuery, type WhatsAppLog } from "@/hooks/queries";
 import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
+import SchedulerRunsTab from "./SchedulerRunsTab";
 
 interface WhatsAppStats {
   totalMessages: number;
@@ -287,9 +288,10 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
   return (
     <div className="space-y-6">
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-        <TabsList className="grid w-full max-w-[240px] lg:max-w-xs grid-cols-2 h-8 lg:h-10">
+        <TabsList className="grid w-full max-w-[360px] lg:max-w-md grid-cols-3 h-8 lg:h-10">
           <TabsTrigger value="stats" className="text-xs lg:text-sm py-1 lg:py-1.5">Statistics</TabsTrigger>
           <TabsTrigger value="logs" className="text-xs lg:text-sm py-1 lg:py-1.5">Message Logs</TabsTrigger>
+          <TabsTrigger value="scheduler" className="text-xs lg:text-sm py-1 lg:py-1.5">Scheduler Runs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="stats" className="space-y-6 mt-6">
@@ -543,6 +545,10 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="scheduler" className="mt-4 lg:mt-6">
+          <SchedulerRunsTab refreshKey={refreshKey} />
         </TabsContent>
       </Tabs>
 

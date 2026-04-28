@@ -3460,6 +3460,87 @@ export type Database = {
           },
         ]
       }
+      whatsapp_scheduler_runs: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          expired_count: number
+          expiring_soon_count: number
+          expiring_today_count: number
+          finished_at: string | null
+          id: string
+          job_name: string
+          metadata: Json
+          recipients: Json
+          started_at: string
+          status: string
+          tenant_id: string | null
+          total_attempted: number
+          total_failed: number
+          total_sent: number
+          trigger_source: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          expired_count?: number
+          expiring_soon_count?: number
+          expiring_today_count?: number
+          finished_at?: string | null
+          id?: string
+          job_name: string
+          metadata?: Json
+          recipients?: Json
+          started_at?: string
+          status?: string
+          tenant_id?: string | null
+          total_attempted?: number
+          total_failed?: number
+          total_sent?: number
+          trigger_source?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          expired_count?: number
+          expiring_soon_count?: number
+          expiring_today_count?: number
+          finished_at?: string | null
+          id?: string
+          job_name?: string
+          metadata?: Json
+          recipients?: Json
+          started_at?: string
+          status?: string
+          tenant_id?: string | null
+          total_attempted?: number
+          total_failed?: number
+          total_sent?: number
+          trigger_source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_scheduler_runs_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_scheduler_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
