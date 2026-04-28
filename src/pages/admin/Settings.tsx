@@ -30,7 +30,7 @@ import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { User } from "@supabase/supabase-js";
-import { WhatsAppTemplates } from "@/components/admin/WhatsAppTemplates";
+
 import { WhatsAppAutoSendSettings } from "@/components/admin/WhatsAppAutoSendSettings";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { logStaffActivity } from "@/hooks/useStaffActivityLog";
@@ -1792,8 +1792,6 @@ const AdminSettings = () => {
             <WhatsAppAutoSendSettings whatsappEnabled={whatsappEnabled} />
 
             <ManualAutomationTriggers />
-
-            <WhatsAppTemplates />
           </TabsContent>
 
           {/* General Settings */}
