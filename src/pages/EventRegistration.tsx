@@ -90,6 +90,13 @@ async function sendEventWhatsApp(params: {
         branchName: params.branchName,
         customMessage: message,
         memberIds: params.memberId ? [params.memberId] : undefined,
+        eventDetails: {
+          title: params.eventTitle,
+          date: dateStr,
+          time: timeStr,
+          venue: params.location || "TBA",
+          amount: params.amount,
+        },
       },
     });
   } catch (e) {
