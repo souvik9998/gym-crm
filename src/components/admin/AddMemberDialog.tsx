@@ -1389,8 +1389,9 @@ export const AddMemberDialog = ({
       onSuccess();
       onOpenChange(false);
       resetForm();
+      return { action: selectedAction } as const;
     } catch (error: any) {
-      toast.error("Error", { description: error.message });
+      throw error;
     } finally {
       setIsLoading(false);
     }
