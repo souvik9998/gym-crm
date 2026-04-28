@@ -328,9 +328,15 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
                       size="sm"
                       variant="outline"
                       className="h-7 text-[11px]"
-                      disabled={!!busy || !wantsAny}
+                      disabled={!!busy || !wantsAny || !schedulerEnabled}
                       onClick={() => handleBranchAction(branch.id, "upsert")}
-                      title={wantsAny ? "Create or refresh this branch's schedules" : "Enable WhatsApp + a reminder toggle in branch settings first"}
+                      title={
+                        !schedulerEnabled
+                          ? "Tenant scheduler is disabled — turn it on above first"
+                          : wantsAny
+                          ? "Create or refresh this branch's schedules"
+                          : "Enable WhatsApp + a reminder toggle in branch settings first"
+                      }
                     >
                       <BoltIcon className="w-3 h-3 mr-1" />
                       {busy === "upsert" ? "Syncing..." : "Sync"}
