@@ -311,10 +311,13 @@ export const MembersTable = ({
 
   const computeStatusFromDates = (endDate: string | null | undefined): string => {
     if (!endDate) return "active";
-    const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const end = new Date(endDate);
-    const diffDays = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    end.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays < 0) return "expired";
+    if (diffDays === 0) return "expiring_today";
     if (diffDays <= 7) return "expiring_soon";
     return "active";
   };
@@ -348,7 +351,7 @@ export const MembersTable = ({
       
       invalidateMembers();
 
-      const statusLabel = computedStatus === "expiring_soon" ? "Expiring Soon" : computedStatus === "expired" ? "Expired" : "Active";
+      const statusLabel = computedStatus === "expiring_today" ? "Expiring Today" : computedStatus === "expiring_soon" ? "Expiring Soon" : computedStatus === "expired" ? "Expired" : "Active";
 
       if (isStaffLoggedIn && staffUser) {
         await logStaffActivity({
@@ -1054,11 +1057,16 @@ export const MembersTable = ({
       return <Badge variant="outline" className={`bg-muted text-muted-foreground ${badgeBaseClass}`}>Inactive</Badge>;
     }
 
+    const isActuallyExpiringToday = !isActuallyExpired && diffDays === 0;
     // Use actual calculated status for display
     if (isActuallyExpired) {
       return <Badge className={`bg-destructive/10 text-destructive border-destructive/20 ${badgeBaseClass}`}>Expired</Badge>;
     }
-    
+
+    if (isActuallyExpiringToday) {
+      return <Badge className={`bg-orange-500/10 text-orange-600 border-orange-500/20 dark:text-orange-400 animate-pulse-subtle ${badgeBaseClass}`}>Expiring Today</Badge>;
+    }
+
     if (isActuallyExpiringSoon) {
       return <Badge className={`bg-warning/10 text-warning border-warning/20 ${badgeBaseClass}`}>Expiring Soon</Badge>;
     }
@@ -1090,10 +1098,15 @@ export const MembersTable = ({
       return "Inactive";
     }
 
+    const isActuallyExpiringToday = !isActuallyExpired && diffDays === 0;
     if (isActuallyExpired) {
       return "Expired";
     }
-    
+
+    if (isActuallyExpiringToday) {
+      return "Expiring Today";
+    }
+
     if (isActuallyExpiringSoon) {
       return "Expiring Soon";
     }
