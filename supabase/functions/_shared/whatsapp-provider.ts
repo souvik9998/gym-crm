@@ -68,7 +68,8 @@ export interface SendResult {
 // -------------------------------------------------------------------------
 
 export const ZAVU_TEMPLATE_VARIABLES: Record<MessageCategory, string[]> = {
-  new_registration:    ["name", "expiry_date", "branch_name"],
+  // Template: gk_welcome — {{1}}=branch_name (twice), {{2}}=name, {{3}}=expiry_date
+  new_registration:    ["branch_name", "name", "expiry_date"],
   renewal:             ["name", "expiry_date", "branch_name"],
   daily_pass:          ["name", "expiry_date", "branch_name"],
   pt_extension:        ["name", "expiry_date", "branch_name"],
