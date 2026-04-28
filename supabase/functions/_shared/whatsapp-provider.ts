@@ -466,7 +466,10 @@ async function sendViaZavu(
         if (!status) continue;
         const s = (status.status ?? "").toLowerCase();
         if (s === "failed" || status.errorCode || status.errorMessage) {
-          const detail = status.errorMessage || status.errorCode || `status=${s || "unknown"}`;
+          const detail = status.errorMessage
+            || status.errorCode
+            || (status.raw ? `status=${s || "unknown"} | raw=${status.raw}` : `status=${s || "unknown"}`);
+          console.warn("[whatsapp-provider] Zavu delivery failed", { messageId, templateId, status });
           return { success: false, provider: "zavu", error: `Zavu delivery failed: ${detail}` };
         }
         // Once we reach a non-pending state, we're done.
