@@ -77,7 +77,8 @@ export const ZAVU_TEMPLATE_VARIABLES: Record<MessageCategory, string[]> = {
   expiring_2days:      ["name", "days", "expiry_date", "branch_name"],
   // Template: gk_expiring_today_reminder — {{1}}=name, {{2}}=expiry_date, {{3}}=branch_name
   expiring_today:      ["name", "expiry_date", "branch_name"],
-  expired_reminder:    ["name", "days_expired", "branch_name"],
+  // Template: gk_expired_membership_reminder — {{1}}=name, {{2}}=days_expired, {{3}}=expiry_date, {{4}}=branch_name
+  expired_reminder:    ["name", "days_expired", "expiry_date", "branch_name"],
   payment_details:     ["name", "amount", "payment_date", "payment_mode", "expiry_date", "branch_name"],
   admin_add_member:    ["name", "expiry_date", "branch_name"],
   promotional:         ["name", "branch_name"],
