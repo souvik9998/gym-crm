@@ -1255,9 +1255,9 @@ export const AddMemberDialog = ({
       // Add PT Only
       if (selectedAction === "add_pt") {
         if (!selectedTrainerId) {
-          toast.error("Please select a trainer");
-          setIsLoading(false);
-          return;
+          const e: any = new Error("Please select a trainer to continue.");
+          e.friendly = true;
+          throw e;
         }
 
         const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
