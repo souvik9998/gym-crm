@@ -197,18 +197,19 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Input
-                type="time"
-                value={reminderTime}
-                onChange={(e) => setReminderTime(e.target.value)}
-                disabled={!whatsappEnabled || savingTime}
-                className="h-8 lg:h-9 w-[110px] text-xs lg:text-sm font-semibold tabular-nums"
-              />
+              <div className="w-[150px]">
+                <TimePicker12h
+                  value={reminderTime}
+                  onChange={(v) => setReminderTime(v)}
+                  disabled={!whatsappEnabled || savingTime}
+                  size="sm"
+                />
+              </div>
               <Button
                 size="sm"
                 onClick={handleSaveReminderTime}
                 disabled={!whatsappEnabled || savingTime || reminderTime === savedReminderTime}
-                className="h-8 lg:h-9 text-xs"
+                className="h-9 text-xs"
               >
                 {savingTime ? "Saving..." : reminderTime === savedReminderTime ? "Saved" : "Save"}
               </Button>
@@ -221,7 +222,7 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
           )}
           {reminderTime === savedReminderTime && whatsappEnabled && (
             <p className="text-[10px] lg:text-xs text-muted-foreground mt-2 ml-6">
-              ✓ Reminders are sent daily at <strong>{savedReminderTime} IST</strong>.
+              ✓ Reminders are sent daily at <strong>{format12h(savedReminderTime)} IST</strong>.
             </p>
           )}
         </div>
