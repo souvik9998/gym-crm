@@ -178,10 +178,19 @@ Deno.serve(async (req) => {
   today.setHours(0, 0, 0, 0);
   const todayStr = today.toISOString().split("T")[0];
 
+  const runStartedAt = new Date();
   let attempted = 0;
   let sent = 0;
   let failed = 0;
-  const memberLogs: { memberId: string; status: string }[] = [];
+  const memberLogs: {
+    memberId: string;
+    name?: string;
+    phone?: string;
+    status: string;
+    type?: string;
+    error?: string | null;
+    expiryDate?: string;
+  }[] = [];
 
   // ----------------------------------------------------------------------------
   // EXPIRING SOON
