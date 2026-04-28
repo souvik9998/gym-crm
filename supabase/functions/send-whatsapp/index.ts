@@ -498,6 +498,8 @@ Deno.serve(async (req) => {
 
     // Map the legacy `type` string used by callers to a MessageCategory.
     // Unknown / custom / promotional fall back to "promotional".
+    // IMPORTANT: each reminder variant must use its own approved template so
+    // members get the correct copy (expiring soon vs today vs already expired).
     const categoryFor = (t: string): MessageCategory => {
       switch (t) {
         case "new_registration":
@@ -506,12 +508,12 @@ Deno.serve(async (req) => {
         case "renewal": return "renewal";
         case "daily_pass": return "daily_pass";
         case "pt_extension": return "pt_extension";
-        // Auto-trigger reminders reuse the approved manual expiry-reminder template
-        // (gk_expired_membership_reminder) to avoid template-approval issues.
         case "expiring_2days":
-        case "expiring_today":
-        case "expired_reminder":
         case "expiry_reminder":
+          return "expiring_2days";
+        case "expiring_today":
+          return "expiring_today";
+        case "expired_reminder":
           return "expired_reminder";
         case "payment_details": return "payment_details";
         case "admin_add_member": return "admin_add_member";
