@@ -544,7 +544,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Only validate gym start date when this purchase actually includes a gym membership (months > 0).
+    // Only resolve gym start date when this purchase actually includes a gym membership (months > 0).
     // PT-only extensions do not touch the gym membership timeline.
     const isGymPurchase = !!months && months > 0;
     let startDate = startOfTodayUtc();
@@ -553,11 +553,19 @@ Deno.serve(async (req) => {
       const requestedGymStartDateIso = toIsoDate(parseDateOnly(gymStartDate) ?? startOfTodayUtc());
 
       if (!isNewMember && requestedGymStartDateIso < requiredGymStartDateIso) {
-        throw new Error(`Membership renewal must start on ${requiredGymStartDateIso} or later`);
+        console.warn("Renewal start date adjusted to avoid overlap", {
+          requestedGymStartDateIso,
+          requiredGymStartDateIso,
+          memberId: finalMemberId,
+        });
       }
 
-      // For renewals, use validated gymStartDate (day after existing end); otherwise today/requested
-      startDate = parseDateOnly(isNewMember ? requestedGymStartDateIso : requiredGymStartDateIso) ?? startOfTodayUtc();
+      // For active renewals, always continue from the day after the existing membership ends.
+      // This makes the backend resilient if the client submitted before subscription data finished loading.
+      const effectiveGymStartDateIso = !isNewMember && requestedGymStartDateIso < requiredGymStartDateIso
+        ? requiredGymStartDateIso
+        : requestedGymStartDateIso;
+      startDate = parseDateOnly(effectiveGymStartDateIso) ?? startOfTodayUtc();
     }
 
     // Determine if this is PT-only (extension) or includes gym membership
