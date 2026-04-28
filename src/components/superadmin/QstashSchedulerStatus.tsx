@@ -26,6 +26,7 @@ interface BranchSettings {
   branch_id: string;
   whatsapp_enabled: boolean;
   whatsapp_auto_send: Record<string, unknown> | null;
+  reminder_time: string | null;
 }
 
 interface QstashSchedulerStatusProps {
