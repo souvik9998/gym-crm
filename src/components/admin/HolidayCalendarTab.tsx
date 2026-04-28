@@ -427,7 +427,7 @@ const HolidayCalendarTab = () => {
       // Filter to members with active/expiring_soon subscriptions
       const activeMembers = members.filter((m: any) => {
         const subs = m.subscriptions || [];
-        return subs.some((s: any) => s.status === "active" || s.status === "expiring_soon");
+        return subs.some((s: any) => s.status === "active" || s.status === "expiring_soon" || s.status === "expiring_today");
       });
 
       if (activeMembers.length === 0) {

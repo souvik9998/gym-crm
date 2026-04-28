@@ -279,7 +279,7 @@ export const MemberActivityDialog = ({
               if (!ptProfile) continue;
 
               // Get member's subscription end date
-              const activeSub = subscriptions.find(s => s.status === "active" || s.status === "expiring_soon");
+              const activeSub = subscriptions.find(s => s.status === "active" || s.status === "expiring_soon" || s.status === "expiring_today");
               const today = new Date().toISOString().split("T")[0];
               const endDate = activeSub?.end_date || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
 
@@ -316,6 +316,8 @@ export const MemberActivityDialog = ({
     switch (status) {
       case "active":
         return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] px-2 py-0.5">Active</Badge>;
+      case "expiring_today":
+        return <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-[10px] px-2 py-0.5 animate-pulse-subtle">Expiring Today</Badge>;
       case "expiring_soon":
         return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] px-2 py-0.5">Expiring Soon</Badge>;
       case "expired":
@@ -986,7 +988,7 @@ export const MemberActivityDialog = ({
                       : null
                   }
                   existingPtEndDate={assignMode === "extend" ? activePT?.end_date : undefined}
-                  membershipEndDate={subscriptions.find(s => s.status === "active" || s.status === "expiring_soon")?.end_date}
+                  membershipEndDate={subscriptions.find(s => s.status === "active" || s.status === "expiring_soon" || s.status === "expiring_today")?.end_date}
                   onSuccess={() => { fetchMemberData(); invalidatePtSubscriptions(); }}
                 />
               )}
