@@ -47,6 +47,15 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
 
   const fetchData = async () => {
     setLoading(true);
+
+    // Tenant-level scheduler flag (defaults to true if no row exists)
+    const { data: tmc } = await supabase
+      .from("tenant_messaging_config")
+      .select("qstash_scheduler_enabled")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    setSchedulerEnabled(tmc?.qstash_scheduler_enabled !== false);
+
     if (branchIds.length === 0) {
       setRows([]);
       setSettingsByBranch(new Map());
@@ -58,7 +67,7 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
       supabase.from("qstash_schedules").select("*").in("branch_id", branchIds),
       supabase
         .from("gym_settings")
-        .select("branch_id, whatsapp_enabled, whatsapp_auto_send")
+        .select("branch_id, whatsapp_enabled, whatsapp_auto_send, reminder_time")
         .in("branch_id", branchIds),
     ]);
 
@@ -71,6 +80,42 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
     }
     setSettingsByBranch(map);
     setLoading(false);
+  };
+
+  const handleToggleScheduler = async (next: boolean) => {
+    setTogglingScheduler(true);
+    const previous = schedulerEnabled;
+    setSchedulerEnabled(next); // optimistic
+
+    const { error } = await supabase
+      .from("tenant_messaging_config")
+      .upsert(
+        { tenant_id: tenantId, qstash_scheduler_enabled: next },
+        { onConflict: "tenant_id" },
+      );
+
+    if (error) {
+      setSchedulerEnabled(previous);
+      toast.error("Failed to update scheduler toggle");
+      setTogglingScheduler(false);
+      return;
+    }
+
+    // Re-sync to immediately wipe (or restore) all branch schedules
+    try {
+      await supabase.functions.invoke("qstash-schedule-manager?action=sync-tenant", {
+        body: { tenantId },
+      });
+      toast.success(
+        next
+          ? "Auto reminders enabled — schedules created for all eligible branches"
+          : "Auto reminders disabled — all schedules removed",
+      );
+    } catch (err) {
+      toast.error("Saved, but re-sync failed. Use 'Re-sync tenant' to retry.");
+    }
+    await fetchData();
+    setTogglingScheduler(false);
   };
 
   useEffect(() => {
