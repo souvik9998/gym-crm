@@ -279,7 +279,7 @@ export const MemberActivityDialog = ({
               if (!ptProfile) continue;
 
               // Get member's subscription end date
-              const activeSub = subscriptions.find(s => s.status === "active" || s.status === "expiring_soon");
+              const activeSub = subscriptions.find(s => s.status === "active" || s.status === "expiring_soon" || s.status === "expiring_today");
               const today = new Date().toISOString().split("T")[0];
               const endDate = activeSub?.end_date || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0];
 
@@ -988,7 +988,7 @@ export const MemberActivityDialog = ({
                       : null
                   }
                   existingPtEndDate={assignMode === "extend" ? activePT?.end_date : undefined}
-                  membershipEndDate={subscriptions.find(s => s.status === "active" || s.status === "expiring_soon")?.end_date}
+                  membershipEndDate={subscriptions.find(s => s.status === "active" || s.status === "expiring_soon" || s.status === "expiring_today")?.end_date}
                   onSuccess={() => { fetchMemberData(); invalidatePtSubscriptions(); }}
                 />
               )}

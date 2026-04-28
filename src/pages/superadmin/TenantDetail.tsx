@@ -427,7 +427,7 @@ export default function TenantDetail() {
       ]);
 
       const allSubs = subsRes.data || [];
-      const activeCount = allSubs.filter((s: any) => s.status === "active" || s.status === "expiring_soon").length;
+      const activeCount = allSubs.filter((s: any) => s.status === "active" || s.status === "expiring_soon" || s.status === "expiring_today").length;
       const expiredCount = allSubs.filter((s: any) => s.status === "expired").length;
       const inactiveCount = allSubs.filter((s: any) => s.status === "inactive").length;
 
