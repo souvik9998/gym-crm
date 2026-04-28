@@ -651,7 +651,9 @@ Deno.serve(async (req) => {
         }
       }
 
-      const message = generateMessage(name, memberEndDate, type, paymentInfo, null, branchName);
+      // Pick correct reminder template variant based on actual expiry
+      const effectiveType = resolveReminderType(type, memberEndDate);
+      const message = generateMessage(name, memberEndDate, effectiveType, paymentInfo, null, branchName);
       let variables = buildMemberVariables(name, memberEndDate, branchName, paymentInfo);
       if ((type === "event_registration" || type === "event_confirmation") && eventDetails) {
         variables = {
@@ -664,14 +666,14 @@ Deno.serve(async (req) => {
           branch_name: branchName || "",
         };
       }
-      const result = await sendMessage(formattedPhone, message, categoryFor(type), variables, branchId || null);
+      const result = await sendMessage(formattedPhone, message, categoryFor(effectiveType), variables, branchId || null);
 
       await logWhatsAppMessage({
         member_id: directMemberId,
         daily_pass_user_id: directDailyPassUserId,
         recipient_phone: phone,
         recipient_name: name,
-        notification_type: type,
+        notification_type: effectiveType,
         message_content: message,
         status: result.success ? "sent" : "failed",
         error_message: result.error || null,
