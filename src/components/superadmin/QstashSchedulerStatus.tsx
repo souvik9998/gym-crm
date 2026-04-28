@@ -40,6 +40,8 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [perBranchBusy, setPerBranchBusy] = useState<Record<string, "upsert" | "delete" | null>>({});
+  const [schedulerEnabled, setSchedulerEnabled] = useState<boolean>(true);
+  const [togglingScheduler, setTogglingScheduler] = useState(false);
 
   const branchIds = branches.map((b) => b.id);
 
