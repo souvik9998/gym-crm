@@ -481,6 +481,12 @@ Deno.serve(async (req) => {
               sentMemberIds.push(member.id);
               // usage increment handled by sendWhatsAppForTenant
             } else {
+              failCount++;
+              stats.failed++;
+            }
+          }
+        }
+      } else {
         log("expiring-today-disabled", { branchId });
       }
 
